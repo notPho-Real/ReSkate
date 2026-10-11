@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_model.h"
+#include "Extension/ArcadeMode/arcade_observation.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -10,6 +11,17 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    ObservationTracker observer;
+    check(!observer.update({false, 200, 1, 0}), "invalid watch cannot publish stale state");
+    check(!observer.update({true, 0, 1, 0}), "uninitialized selector is unavailable");
+    check(observer.update({true, 100, 1, 0}), "first native sample recorded");
+    check(!observer.update({true, 100, 1, 0}), "unchanged sample does not spam logs");
+    check(observer.update({true, 100, 3, 0}), "counter exposes intervening missed transitions");
+    check(observer.update({true, 100, 3, 1}), "wipeout counter change retained");
+    check(observer.update({false, 100, 3, 1}) && !observer.state().valid,
+        "expired ownership discards stale sample");
+    check(!observer.update({false, 300, 4, 2}), "unavailable samples stay quiet");
+    check(observer.update({true, 200, 4, 2}), "watch recovery starts a new sample");
     Model combo;
     combo.trick(100);
     check(combo.state().combo_active && combo.state().multiplier == 1, "first trick starts combo");

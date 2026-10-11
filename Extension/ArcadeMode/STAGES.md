@@ -50,3 +50,15 @@ state zero is not yet an observed selector state. Individual fields are atomic
 but the snapshot is not transactional. Use raw values for diagnostics only.
 The build-specific no_bail header identifies wipeout 300; trainer.cpp identifies
 air states 200–299. Neither establishes a native ollie command or manual identity.
+
+## Probe acceptance on Deck
+
+Run the existing observer checks first: tap and hold each face button, then
+release and press again. Notices must remain one per press. Ride, perform a
+normal native jump using the existing controls, land, bail, respawn and return
+to menus. The ReSkate log should include `ARCADE MODE STATE` when the observed
+snapshot changes and `ARCADE MODE INPUT` beside each button notice. Watch loss
+must clear state rather than retaining a last-known grounded/air value. No new
+tricks, score, suppression or control remapping are expected in this stage.
+This evidence is for identifying transitions before attempting native control;
+it is not proof that a sampled state transition was caused by a face button.
