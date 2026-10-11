@@ -1,10 +1,11 @@
 # Install once, update on the Deck
 
-Download [Install-ReSkate-Arcade.desktop](https://github.com/notPho-Real/ReSkate/releases/download/arcade-deck-latest/Install-ReSkate-Arcade.desktop)
-once. Open it in Desktop Mode and install. Existing ReSkate must already work.
-It installs permanent **Update Arcade Mode** and **Restore Stock ReSkate** buttons
-on the desktop/application menu and asks the running Steam client to add them to
-the library for Gaming Mode. KDE may ask you to trust/execute the downloaded file.
+The intended setup is remote installation over SSH while the Deck remains in
+Gaming Mode. Once the Deck is awake and reachable, install the **Update Arcade
+Mode** and **Restore Stock ReSkate** Steam library entries and verify them there.
+The entries are submitted to Steam by the installer; their appearance and
+controller operation still need hardware verification. Desktop Mode is not a
+required part of this user's acceptance path.
 
 After setup: close Skate, open **Update Arcade Mode**, and wait for the success
 message. Start Skate normally. No browser, terminal, GitHub account, repeated

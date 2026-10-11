@@ -1,13 +1,13 @@
 name: Arcade Mode development
 on:
   push:
-    branches: [arcade-mode]
+    branches: [arcade-mode, 'arcade-stage-*']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   build:
-    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode'
+    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,7 @@ jobs:
             artifacts/channel.json
           if-no-files-found: error
       - name: Publish tested Deck update
+        if: github.ref == 'refs/heads/arcade-mode'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
