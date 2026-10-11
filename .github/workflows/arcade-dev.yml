@@ -1,0 +1,37 @@
+name: Arcade Mode development
+on:
+  push:
+    branches: [arcade-mode]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode'
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON
+      - name: Build
+        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_arcade_mode_tests
+      - name: Test
+        run: ctest --test-dir build/vs2022-x64 -C Release -R "^arcade_mode$" --output-on-failure
+      - name: Stage development DLL
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/arcade-dev -Force | Out-Null
+          Copy-Item build/vs2022-x64/Release/ReSkate.dll artifacts/arcade-dev/ReSkate.dll
+          $hash = (Get-FileHash artifacts/arcade-dev/ReSkate.dll -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ReSkate.dll" | Set-Content artifacts/arcade-dev/ReSkate.dll.sha256 -Encoding ascii
+          $env:GITHUB_SHA | Set-Content artifacts/arcade-dev/commit.txt -Encoding ascii
+      - name: Upload development DLL
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReSkate-arcade-dev-${{ github.sha }}
+          path: |
+            artifacts/arcade-dev/ReSkate.dll
+            artifacts/arcade-dev/ReSkate.dll.sha256
+            artifacts/arcade-dev/commit.txt
+          if-no-files-found: error
+          retention-days: 30

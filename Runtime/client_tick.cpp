@@ -7,6 +7,7 @@
 #include "Engine/Core/Profiling/profiler.h"
 #include "Extension/Settings/job_spin.h"
 #include "Engine/Game/World/client_state.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/HallOfMeat/hall_of_meat.h"
 #include "Extension/RoadRash/road_rash.h"
 #include "Extension/Skater/camera_observer.h"
@@ -788,6 +789,7 @@ void update_model(std::uintptr_t client, TickState& frame) {
         dingosdk::tick_network_objects();
     }
     if (r.observer_failed) return; // Keep the bounded restore/telemetry path available after catalog failure.
+    dingosdk::arcade_mode::on_client_tick();
     dingosdk::hall_of_meat::on_client_tick();
     dingosdk::road_rash::on_client_tick(client);
     if (!has_request && now < r.next_model && state == r.previous_state) return;

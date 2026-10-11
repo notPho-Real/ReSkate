@@ -14,6 +14,7 @@
 #include "Engine/Vfs/mod_catalog.h"
 #include "Extension/Assets/map_download.h"
 #include "Extension/Boot/offline_boot.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/HallOfMeat/hall_of_meat.h"
 #include "Extension/RoadRash/road_rash.h"
 #include "Extension/Skater/camera_observer.h"
@@ -409,6 +410,8 @@ extern "C" __declspec(dllexport) BOOL WINAPI DingoSDKDebugInitialize() {
         const bool camera_hook = dingosdk::start_camera_observer(r.base);
         record("{\"event\":\"camera_observer_initialized\",\"active\":" + std::string(camera_hook ? "true" : "false") + "}");
         (void)dingosdk::start_no_bail(r.base);
+        const bool arcade = dingosdk::arcade_mode::start(r.base);
+        record("{\"event\":\"arcade_mode_initialized\",\"active\":" + std::string(arcade ? "true" : "false") + "}");
         const bool meat = dingosdk::hall_of_meat::start(r.base);
         record("{\"event\":\"hall_of_meat_initialized\",\"active\":" + std::string(meat ? "true" : "false") + "}");
         const bool rash = dingosdk::road_rash::start(r.base);
