@@ -8,6 +8,7 @@ import shutil
 import struct
 import subprocess
 import tempfile
+import urllib.parse
 
 TITLE = "ReSkate Arcade Mode"
 SETTINGS = "ReSkateLauncher.settings.json"
@@ -184,6 +185,56 @@ def change_installation(game, dll=None, commit=None):
         lock.rmdir()
 
 
+def desktop_argument(value):
+    # Two escape passes for Desktop Entry Exec; %% preserves a literal percent.
+    return '"' + str(value).replace("\\", "\\\\\\\\").replace('"', '\\"').replace("$", "\\$").replace("`", "\\`").replace("%", "%%") + '"'
+
+
+def install_buttons(bundle, game, manifest, register_steam=True):
+    directory = Path.home() / ".local/share/reskate-arcade"
+    directory.mkdir(parents=True, exist_ok=True)
+    for archive_name, local_name in (("installer.py", "deck_installer.py"), ("updater.py", "deck_updater.py")):
+        atomic_write(directory / local_name, bundle.read(archive_name))
+    atomic_write(directory / "config.json", encode({"game": str(game)}))
+    atomic_write(directory / "installed.json", encode({"commit": manifest["commit"], "dll_sha256": manifest["sha256"]}))
+    applications = Path.home() / ".local/share/applications"
+    applications.mkdir(parents=True, exist_ok=True)
+    desktop = Path.home() / "Desktop"
+    desktop.mkdir(exist_ok=True)
+    for name, filename, arguments in (("Update Arcade Mode", "reskate-arcade-update.desktop", ""),
+                                      ("Restore Stock ReSkate", "reskate-arcade-restore.desktop", " --restore")):
+        content = ("[Desktop Entry]\nType=Application\nName=" + name +
+                   "\nIcon=applications-games\nTerminal=false\nExec=python3 " +
+                   desktop_argument(directory / "deck_updater.py") + arguments + "\n")
+        for folder in (applications, desktop):
+            atomic_write(folder / filename, content.encode())
+            (folder / filename).chmod(0o755)
+        marker = directory / (filename + ".steam-requested")
+        if register_steam and not marker.exists() and shutil.which("steam"):
+            # Steam's Linux add URL imports a desktop launcher into the running client.
+            # Leave shortcuts.vdf to Steam; never edit it or stop Steam underneath the user.
+            try:
+                sentinel = Path("/tmp/addnonsteamgamefile")
+                fd = os.open(sentinel, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+                os.close(fd)
+                result = subprocess.run(["steam", "steam://addnonsteamgame/" +
+                    urllib.parse.quote(str(applications / filename), safe="")],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15, check=False)
+                if result.returncode == 0:
+                    atomic_write(marker, b"Steam import requested\n")
+            except (OSError, subprocess.TimeoutExpired):
+                pass  # Desktop/menu buttons still work; remote setup can verify Steam import.
+
+
+def install_bundle(bundle, game, register_steam=True):
+    manifest = json.loads(bundle.read("manifest.json"))
+    dll = bundle.read("ReSkate.dll")
+    if hashlib.sha256(dll).hexdigest() != manifest["sha256"]:
+        raise RuntimeError("Installer checksum failed. Download it again; nothing was changed.")
+    change_installation(game, dll, manifest["commit"])
+    install_buttons(bundle, game, manifest, register_steam)
+
+
 def main(bundle):
     try:
         game = choose_game()
@@ -199,15 +250,12 @@ def main(bundle):
                       ("Install" if installing else "Restore", "Cancel")):
             return
         if installing:
-            manifest = json.loads(bundle.read("manifest.json"))
-            dll = bundle.read("ReSkate.dll")
-            if hashlib.sha256(dll).hexdigest() != manifest["sha256"]:
-                raise RuntimeError("Installer checksum failed. Download it again; nothing was changed.")
-            change_installation(game, dll, manifest["commit"])
+            install_bundle(bundle, game)
             message = ("Arcade Mode installed!\n\nYour stock DLL is backed up and automatic ReSkate updates "
                        "are turned off.\n\nReturn to Gaming Mode and start Skate as usual. "
-                       "A/B/X/Y should show ARCADE MODE DEV notices.\n\nKeep this installer: open it again "
-                       "to restore stock.")
+                       "Use Update Arcade Mode for future builds and Restore Stock ReSkate to switch back. "
+                       "Both buttons are on your desktop and were submitted to Steam for Gaming Mode. "
+                       "You can delete the downloaded installer.")
         else:
             change_installation(game)
             message = "Stock ReSkate restored. Your previous update setting is restored too. Start Skate as usual."

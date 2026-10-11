@@ -17,6 +17,7 @@ def build(dll_path, commit, output):
     with zipfile.ZipFile(payload, "w", zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("ReSkate.dll", dll)
         archive.writestr("installer.py", Path(__file__).with_name("deck_installer.py").read_bytes())
+        archive.writestr("updater.py", Path(__file__).with_name("deck_updater.py").read_bytes())
         archive.writestr("manifest.json", json.dumps({"commit": commit, "sha256": hashlib.sha256(dll).hexdigest()}))
     data = payload.getvalue()
     # %k is supplied as a separate argument by KDE, never interpolated into code or a shell.
@@ -37,6 +38,10 @@ def build(dll_path, commit, output):
     encoded = "\n".join("#" + base64_data[i:i+120] for i in range(0, len(base64_data), 120))
     Path(output).write_text(header + encoded + "\n")
     Path(output).chmod(0o755)
+    channel = {"schema": 1, "commit": commit,
+               "sha256": hashlib.sha256(Path(output).read_bytes()).hexdigest(),
+               "url": "https://github.com/notPho-Real/ReSkate/releases/download/arcade-build-" + commit + "/Install-ReSkate-Arcade.desktop"}
+    Path(output).with_name("channel.json").write_text(json.dumps(channel, indent=2) + "\n")
 
 
 if __name__ == "__main__":

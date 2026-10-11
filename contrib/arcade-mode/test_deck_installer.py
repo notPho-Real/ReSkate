@@ -13,6 +13,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import deck_installer as installer
 import package_deck_installer as package
+import deck_updater as updater
+import hashlib
 
 
 def fake_dll():
@@ -139,6 +141,69 @@ class InstallerTests(unittest.TestCase):
         subprocess.run(argv, env=env, check=True, capture_output=True)
         self.assertEqual((game / "ReSkate.dll").read_bytes(), fake_dll())
         self.assertFalse(installer.load_settings(game)["updates"])
+
+
+class UpdaterTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.game = game_at(self.root / "game")
+        self.home = self.root / "home"
+        self.home.mkdir()
+        self.directory = self.home / ".local/share/reskate-arcade"
+        self.directory.mkdir(parents=True)
+        self.dll = self.root / "ReSkate.dll"
+        self.dll.write_bytes(fake_dll())
+        self.desktop = self.root / "Install.desktop"
+        package.build(self.dll, "b" * 40, self.desktop)
+        self.channel = json.loads(self.desktop.with_name("channel.json").read_text())
+        self.patches = [patch.object(installer, "ensure_stopped"),
+                        patch("pathlib.Path.home", return_value=self.home),
+                        patch("subprocess.run", return_value=subprocess.CompletedProcess([], 1))]
+        for mock in self.patches:
+            mock.start()
+            self.addCleanup(mock.stop)
+
+    def test_update_download_verify_install_and_repeat(self):
+        # The downloaded installer calls pgrep; return its 'not running' code.
+        with patch.object(updater, "download", side_effect=[json.dumps(self.channel).encode(), self.desktop.read_bytes()]):
+            self.assertIn("updated", updater.update(self.game, self.directory))
+        self.assertEqual((self.game / "ReSkate.dll").read_bytes(), fake_dll())
+        self.assertEqual((self.game / installer.BACKUP).read_bytes(), b"stock")
+        self.assertFalse(installer.load_settings(self.game)["updates"])
+        self.assertTrue((self.home / "Desktop/reskate-arcade-update.desktop").exists())
+        with patch.object(updater, "download", return_value=json.dumps(self.channel).encode()) as fetch:
+            self.assertIn("already up to date", updater.update(self.game, self.directory))
+            self.assertEqual(fetch.call_count, 1)
+        installer.change_installation(self.game)
+        with patch.object(updater, "download", side_effect=[json.dumps(self.channel).encode(), self.desktop.read_bytes()]):
+            self.assertIn("updated", updater.update(self.game, self.directory))
+        self.assertEqual((self.game / installer.BACKUP).read_bytes(), b"stock")
+
+    def test_bad_download_and_offline_leave_dll_unchanged(self):
+        with patch.object(updater, "download", side_effect=[json.dumps(self.channel).encode(), b"corrupted"]):
+            with self.assertRaises(ValueError):
+                updater.update(self.game, self.directory)
+        with patch.object(updater, "download", side_effect=updater.urllib.error.URLError("offline")):
+            with self.assertRaises(updater.urllib.error.URLError):
+                updater.update(self.game, self.directory)
+        self.assertEqual((self.game / "ReSkate.dll").read_bytes(), b"stock")
+        self.assertFalse((self.game / installer.BACKUP).exists())
+
+    def test_other_repository_or_unversioned_update_refused(self):
+        for url in ("https://example.com/update", updater.RELEASES + "arcade-deck-latest/Install-ReSkate-Arcade.desktop"):
+            bad = dict(self.channel, url=url)
+            with self.assertRaises(ValueError):
+                updater.validate_channel(bad)
+
+    def test_manifest_commit_must_match_channel(self):
+        wrong = dict(self.channel, commit="c" * 40,
+                     url=updater.RELEASES + "arcade-build-" + "c" * 40 + "/Install-ReSkate-Arcade.desktop")
+        with patch.object(updater, "download", side_effect=[json.dumps(wrong).encode(), self.desktop.read_bytes()]):
+            with self.assertRaises(ValueError):
+                updater.update(self.game, self.directory)
+        self.assertEqual((self.game / "ReSkate.dll").read_bytes(), b"stock")
 
 
 if __name__ == "__main__":

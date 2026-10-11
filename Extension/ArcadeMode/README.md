@@ -88,9 +88,10 @@ Keep the normal launch option, approximately:
 bash -c 'exec "${@/EAAntiCheat.GameServiceLauncher.exe/ReSkateLauncher.exe}"' -- %command%
 ```
 
-Future one-tap flow: select a successful branch run, download and verify its artifact, install
-while the game is closed, then launch through ReSkateLauncher. Automatic download/launch is
-intentionally deferred in v0.1. After restoring stock, normal updates may be re-enabled.
+The permanent **Update Arcade Mode** and **Restore Stock ReSkate** buttons now handle
+future tested builds. CI publishes a checksummed public update channel only after Windows
+and Deck tests pass. See the Deck installation guide above for one-time setup and SSH
+deployment. The old manual scripts are still available.
 
 ## In-game acceptance (requires Skate)
 

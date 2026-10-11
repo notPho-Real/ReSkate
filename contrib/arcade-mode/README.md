@@ -1,55 +1,72 @@
-# Steam Deck: download, open, install
+# Install once, update on the Deck
 
-Download **Install-ReSkate-Arcade.desktop** from the fork's Arcade Mode development
-pre-release. In Steam Deck Desktop Mode, open it from Downloads, accept KDE's
-Run/Execute confirmation if shown, and press **Install**. Return to Gaming Mode
-and launch Skate normally. Existing ReSkate must already work on your Deck.
+Download [Install-ReSkate-Arcade.desktop](https://github.com/notPho-Real/ReSkate/releases/download/arcade-deck-latest/Install-ReSkate-Arcade.desktop)
+once. Open it in Desktop Mode and install. Existing ReSkate must already work.
+It installs permanent **Update Arcade Mode** and **Restore Stock ReSkate** buttons
+on the desktop/application menu and asks the running Steam client to add them to
+the library for Gaming Mode. KDE may ask you to trust/execute the downloaded file.
 
-No terminal, archive extraction, GitHub sign-in, administrator password, package
-installation, or manual DLL copying. The file includes the verified Windows x64
-DLL and the installer; it works offline after downloading. Keep the file to
-switch back: open it again, choose **Restore stock**, and confirm.
+After setup: close Skate, open **Update Arcade Mode**, and wait for the success
+message. Start Skate normally. No browser, terminal, GitHub account, repeated
+installer download, or manual DLL copying. Restore Stock works offline. Updating
+after restoring stock switches back to Arcade Mode without overwriting the backup.
+The updater needs Wi-Fi only when checking/downloading a new build. It can update
+its own installer/updater code as well as the DLL.
 
-The installer finds Steam's internal library, registered extra libraries, and SD
-card libraries under /run/media. If no installation or multiple installations are
-found, a folder picker asks which Skate folder to use. It never changes Steam
-launch options or installs a launcher. A working ReSkateLauncher.exe, Skate.exe,
-and ReSkate.dll must already exist beside each other.
+## SSH deployment from this Mac
 
-It refuses a running game/launcher, preserves the first stock DLL in
-ReSkate.dll.arcade-stock.bak, and atomically installs the development DLL. It sets
-`updates: false` in the launcher's actual `ReSkateLauncher.settings.json`, preserving
-unrelated settings. Restore puts back the stock DLL and the prior update preference.
-The existing command-line helpers remain available for manual installs.
+Default host: `deck@steamdeck.local`, recovered from the earlier setup conversation.
+The Deck's SSH service was enabled; Mac key pairing still needs completion.
+The Deck must be awake and reachable from the Mac. A sleeping/unreachable Deck
+cannot be installed remotely. No need to switch to Desktop Mode for SSH.
 
-## Build and verification
+Double-click `Pair-Steam-Deck.command` on the Mac once and enter the Deck's local
+Linux password into SSH's terminal prompt. It creates a dedicated key in this
+checkout's ignored `tools/arcade-deck/`, adds only that public key to the Deck, then
+installs the latest verified package and buttons. The password is never stored.
+Subsequently `Deploy-to-Steam-Deck.command` deploys without a password. Codex can
+run the same helper. If mDNS fails, pass `--host deck@LOCAL_IP`; if multiple game
+folders are found, pass `--game /exact/Skate/folder`. Host keys remain checked;
+changed keys are not silently accepted. Keys and pairing state are not committed.
 
-The single .desktop contains a compressed, checksummed payload in comment lines.
-KDE passes the launcher's own file location through `%k` as a separate argument;
-no downloaded path is substituted into a shell command. Python verifies the
-payload and DLL checksum, then runs the embedded installer. Zenity or KDialog
-provides the normal desktop prompts. Steam Deck's Python 3 and pgrep are required.
-Downloaded desktop launchers may require KDE's normal trust/execute confirmation.
+Steam import uses its Linux add-non-Steam URL and sentinel mechanism, leaving
+Steam to write its own configuration. It never edits shortcuts.vdf or restarts
+Steam. The installer records import requests to avoid duplicates. A request is
+not proof that the current Steam version imported the shortcut: verify both
+buttons in the Deck library during SSH/on-device acceptance. Desktop buttons
+remain usable if Steam import is unavailable. The mechanism is documented by the
+[steam-add-nonsteam-game project](https://github.com/GloriousEggroll/steam-add-nonsteam-game).
 
-`python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v` tests
-Steam/SD discovery, install/reinstall/restore, preference preservation, malformed
-input, locks, symlinks, running-game refusal, write-failure rollback and executing
-the generated launcher's embedded payload (including a filename with spaces).
-The GUI and hardware still need a real Deck smoke test.
+## Safe update and publication path
 
-The packaging workflow pins the already-green Windows runtime build:
-`dc15bac9feaa67d5520d6dabe5dc03f6ea25cf74`, Actions run `38114122001`.
-This packaging change does not alter runtime code. The DLL manifest records its
-source commit separately from the installer commit. The original Actions artifact
-expires after 30 days; archive/re-pin a newly validated runtime before rebuilding
-after expiration. The published self-contained installer remains usable offline.
+The Windows workflow builds the current arcade-mode DLL and runs the model test.
+Only after success does its Linux job test and package the Deck installer, publish
+an immutable `arcade-build-COMMIT` development release in **notPho-Real/ReSkate**,
+and advance the `arcade-deck-latest/channel.json` pointer. An older build finishing
+after a newer branch commit cannot advance the pointer. Nothing publishes from
+main or upstream. The separate Deck test workflow supplies fast Linux feedback.
 
-To package a verified downloaded DLL manually:
+The updater validates the channel schema, pinned fork URL, commit, installer SHA256,
+embedded DLL SHA256 and x64 PE header before installing. No Actions tokens or
+expiring artifact URLs are required on the Deck. HTTP/checksum failures preserve
+the installed build. A transient channel replacement failure can be retried.
 
-```sh
-python3 contrib/arcade-mode/package_deck_installer.py /path/to/ReSkate.dll FULL_DLL_COMMIT_SHA /path/to/Install-ReSkate-Arcade.desktop
-```
+The first stock DLL stays in `ReSkate.dll.arcade-stock.bak`. The installer disables
+`updates` in `ReSkateLauncher.settings.json`, preserving other settings. Restore
+puts back stock and the previous update preference. Game/launcher processes must
+be closed; installation uses the existing lock and atomic DLL replacement. Steam
+launch options are unchanged. Permanent scripts/config live in
+`~/.local/share/reskate-arcade` and need no root access.
 
-The development pre-release is only in notPho-Real/ReSkate. The original v0.1
-runtime artifact remains available in Actions; the pre-release adds a public direct
-installer download so a Deck does not need GitHub authentication to fetch it.
+## Tests and remaining hardware verification
+
+`python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v`
+
+Tests cover Steam/SD discovery, install/reinstall/restore, preference preservation,
+invalid files, locks, running games, write rollback, desktop payload execution,
+update-to-latest, already-current detection, restore-then-update, failed downloads,
+checksum mismatch, wrong commit and wrong download origin.
+
+Actual Steam Deck GUI/controller behavior, Steam library import and SSH pairing
+must be checked with the Deck awake. The Windows DLL is observer-only: A/B/X/Y
+produce development notices, with no trick injection or gameplay changes.

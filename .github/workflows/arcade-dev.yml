@@ -35,3 +35,67 @@ jobs:
             artifacts/arcade-dev/commit.txt
           if-no-files-found: error
           retention-days: 30
+
+  deck:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: arcade-deck-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test installer and updater
+        run: python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v
+      - uses: actions/download-artifact@v4
+        with:
+          name: ReSkate-arcade-dev-${{ github.sha }}
+          path: artifacts/runtime
+      - name: Verify and package this tested build
+        run: |
+          cd artifacts/runtime
+          sha256sum -c ReSkate.dll.sha256
+          test "$(tr -d '\r\n' < commit.txt)" = "$GITHUB_SHA"
+          cd ../..
+          python3 contrib/arcade-mode/package_deck_installer.py artifacts/runtime/ReSkate.dll "$GITHUB_SHA" artifacts/Install-ReSkate-Arcade.desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReSkate-Arcade-Deck-${{ github.sha }}
+          path: |
+            artifacts/Install-ReSkate-Arcade.desktop
+            artifacts/channel.json
+          if-no-files-found: error
+      - name: Publish tested Deck update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="arcade-build-$GITHUB_SHA"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" artifacts/Install-ReSkate-Arcade.desktop artifacts/channel.json \
+              --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Arcade Mode tested build ${GITHUB_SHA:0:7}" \
+              --notes "Windows x64 DLL and model tests passed. Deck installer/updater tests passed. Install once; use Update Arcade Mode on the Deck for subsequent tested builds."
+          else
+            # Keep versioned downloads immutable on workflow retries.
+            mkdir -p artifacts/existing
+            gh release download "$tag" --pattern Install-ReSkate-Arcade.desktop --dir artifacts/existing
+            python3 -c 'import hashlib,json,pathlib; p=pathlib.Path("artifacts/channel.json"); c=json.loads(p.read_text()); c["sha256"]=hashlib.sha256(pathlib.Path("artifacts/existing/Install-ReSkate-Arcade.desktop").read_bytes()).hexdigest(); p.write_text(json.dumps(c,indent=2)+"\n")'
+            cp artifacts/existing/Install-ReSkate-Arcade.desktop artifacts/Install-ReSkate-Arcade.desktop
+          fi
+          # An older build finishing late must not replace the current update channel.
+          head=$(gh api "repos/$GH_REPO/git/ref/heads/arcade-mode" --jq .object.sha)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "Newer arcade-mode commit exists; leaving the update channel unchanged."
+            exit 0
+          fi
+          if ! gh release view arcade-deck-latest >/dev/null 2>&1; then
+            gh release create arcade-deck-latest --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Arcade Mode — install once, update on Deck" \
+              --notes "Download Install-ReSkate-Arcade.desktop once. It installs Update Arcade Mode and Restore Stock ReSkate buttons. Future updates fetch only tested arcade-mode builds."
+          fi
+          # Publish the pointer last, after the immutable build and installer are available.
+          gh release upload arcade-deck-latest artifacts/Install-ReSkate-Arcade.desktop --clobber
+          gh release upload arcade-deck-latest artifacts/channel.json --clobber
