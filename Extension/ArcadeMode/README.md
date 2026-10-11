@@ -55,6 +55,8 @@ c++ -std=c++20 -I. Extension/ArcadeMode/Test/arcade_model_tests.cpp -o /tmp/arca
 
 ## Development artifact and Steam Deck
 
+For the graphical, single-file Deck installer, see [Steam Deck installation](../../contrib/arcade-mode/README.md). It handles backup and the update setting automatically. The commands below are the manual alternative.
+
 The `Arcade Mode development` Actions workflow runs on pushes to `arcade-mode` and manual
 dispatch on that branch, only in `notPho-Real/ReSkate`. Windows 2022 builds and tests Release x64.
 In the successful run's **Artifacts** section, download `ReSkate-arcade-dev-<full commit SHA>`

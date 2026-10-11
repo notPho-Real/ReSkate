@@ -1,0 +1,41 @@
+name: Arcade Mode Steam Deck installer
+on:
+  push:
+    branches: [arcade-mode]
+    paths:
+      - 'contrib/arcade-mode/**'
+      - '.github/workflows/arcade-deck.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  installer:
+    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test installer
+        run: python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v
+      # Keep the installer pinned to the observer DLL already built and tested on Windows.
+      # Advance both this run ID and commit only after validating a newer runtime build.
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: 38114122001
+          name: ReSkate-arcade-dev-dc15bac9feaa67d5520d6dabe5dc03f6ea25cf74
+          path: artifacts/runtime
+      - name: Verify runtime and package offline installer
+        run: |
+          cd artifacts/runtime
+          sha256sum -c ReSkate.dll.sha256
+          test "$(tr -d '\r\n' < commit.txt)" = dc15bac9feaa67d5520d6dabe5dc03f6ea25cf74
+          cd ../..
+          python3 contrib/arcade-mode/package_deck_installer.py artifacts/runtime/ReSkate.dll dc15bac9feaa67d5520d6dabe5dc03f6ea25cf74 artifacts/Install-ReSkate-Arcade.desktop
+          sha256sum artifacts/Install-ReSkate-Arcade.desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ReSkate-Arcade-Deck-${{ github.sha }}
+          path: artifacts/Install-ReSkate-Arcade.desktop
+          if-no-files-found: error
+          retention-days: 30
