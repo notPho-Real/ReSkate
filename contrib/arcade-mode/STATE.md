@@ -6,6 +6,22 @@ hardware milestone are complete: 13/13 acceptance criteria PASS.
 
 ## Current handoff: hardware acceptance PASS, Deck restored to stock
 NEW ACTIVE TASK: user authorized proceeding with A -> native-quality ollie.
+LATEST VERIFIED BUILD: bbd1def2eaf42945d43f4e0708574852eee3b817. CI run
+38313781791 PASS for Windows build/model, Linux, macOS, and gated Deck packaging;
+installer run 38313781774 PASS. Earlier runtime-only run 38313325123 also PASS.
+Public tested release was downloaded/validated in memory: channel commit bbd1def,
+DLL SHA-256 082e804b302e59963961f90bf001320acbf90e3901d1c5686fcb82b363719468,
+13045760 bytes. No deployment. Local Python tests 70/70 PASS, C++ model/capture
+suite PASS normally and under ASan/UBSan, 10 Python syntax checks PASS, diff check
+clean. No workflow definitions changed. Only local ignored research artifacts
+were added outside tracked code; real Deck operations in this task were reads.
+The user has been asked for explicit diagnostic deployment under the original
+deploy-only safety rule. Pending that answer, Deck remains stock. After authorized
+deployment: idle five-second A-armed capture, then A-armed ordinary stick ollie,
+repeat, `controller.py trace`, and interpret numeric evidence. This is a hardware
+input dependency, not completion of A-to-ollie. The unknown native request API
+remains the primary blocker; never present this diagnostic as the gameplay feature.
+
 Runtime probe commit: 270a532c01ad39ddfbcfbbe8515f5ed484b032a4, pushed only to
 origin arcade-mode. CI 38313325123: Linux/macOS passed; Windows still running
 at last check. Installer workflow 38313325113 passed. Follow-up adds read-only
