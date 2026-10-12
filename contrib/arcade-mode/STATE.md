@@ -1,6 +1,13 @@
 # Arcade Mode persistent project state
 
-Updated 2026-10-11 during Arcade Lab implementation. Read this file before work.
+Updated 2026-10-11 after Arcade Lab implementation and hosted CI/release verification.
+Read this file before work. Implementation is complete; real hardware acceptance
+has NOT been performed.
+
+Current tested implementation/release: f09872f179434cd3d474c9952b8325363424c308.
+Final HEAD is a subsequent STATE.md-only handoff commit marked [skip ci]; use
+`git rev-parse HEAD` for its exact SHA. It does not change the tested code or advance
+the release. No essential continuation state depends on the conversation.
 
 ## Boundaries and starting state
 Only `notPho-Real/ReSkate`, branch `arcade-mode`. Never main/master, upstream,
@@ -107,17 +114,70 @@ Implementation committed and pushed only to origin arcade-mode:
 b4fb40f37acc52f99d61da562b8e43b8a63fdf48, "Add tested Arcade Lab controller, safe
 deployment and hardware evidence protocol" (22 files). Credential/key/log audit passed.
 Hosted run 38199528643 (separate Linux Deck workflow) passed. Run 38199528667
-(Windows + Linux + macOS release-gated workflow) is in progress. Its linux-tests
-and macos-lab jobs passed; Windows build is still running. No release from this
-source has been claimed yet.
+(Windows + Linux + macOS release-gated workflow) passed all four jobs.
 Logging correction committed/pushed as e39227940ef9f536b61fd425bea0cd2823bc31a2.
-Its run 38199870622 has passed Linux and macOS gates; Windows is building.
-Separate Deck run 38199870610 passed. A final self-test presentation safeguard
+Its run 38199870622 passed, including Windows and the release job.
+Separate Deck run 38199870610 passed. Final self-test presentation safeguard
 suppresses fixture success messages (so fake LAB READY cannot confuse users) and
-refuses incomplete test installations. Rerun, commit/push, then verify that final
-source's Windows/Linux/macOS workflow and release. b4fb40f is superseded.
-No hardware acceptance
-may be inferred from CI. Old tools/arcade-deck directory is empty; no existing
-project SSH credentials were available there for read-only hardware preflight.
-No real Mac installation, key creation, pairing, or Deck access has occurred.
-Filesystem writes require execution approval in this session (read-only sandbox).
+refuses incomplete test installations. Committed/pushed as
+f09872f179434cd3d474c9952b8325363424c308 (final implementation source).
+Final local rerun: 65/65 passed, compileall and diff check passed.
+Its gated workflow is [38200147202](https://github.com/notPho-Real/ReSkate/actions/runs/38200147202):
+all four jobs passed. Actual job logs confirm Windows x64 build + CTest 1 passed,
+0 failed; linux-tests 65 passed, 0 failed; macos-lab 65 passed, 0 failed;
+deck packaging/release tests 65 passed, 0 failed; publication step succeeded.
+Separate [Linux Deck run 38200147179](https://github.com/notPho-Real/ReSkate/actions/runs/38200147179)
+passed another 65 tests, 0 failed. No hardware or user credentials used by CI.
+Earlier run 38199528667 completed all four jobs successfully. Its publication log
+explicitly said "Newer arcade-mode commit exists; leaving the update channel
+unchanged." Public channel remained d83e1e6, verifying late-workflow protection
+in a real hosted run (not a simulated Deck result).
+b4fb40f/e392279 are superseded implementation checkpoints.
+
+## Verified release and channel
+Public channel was downloaded and validated after final CI success:
+`arcade-deck-latest/channel.json` points to source
+f09872f179434cd3d474c9952b8325363424c308 and immutable release
+`arcade-build-f09872f179434cd3d474c9952b8325363424c308`.
+Installer archive SHA-256:
+9ff9be15724f977ebc7b3e9bd26c09f33e1657c2df516a307296317e4c5103c4.
+DLL SHA-256:
+d81bd1045b689ef346fdfce74475d37e9f47d6bc5a7af39be991f620f7d23c01.
+DLL size: 13,041,152 bytes. Public archive hash, pinned origin/URL, embedded source
+commit, DLL hash and x64 PE validation all passed using verified_release().
+Bytes were verified in memory only; no DLL was deployed to the user's Mac or Deck.
+
+## SIMULATED/CI VERIFIED versus REAL HARDWARE VERIFIED
+SIMULATED/CI VERIFIED: all local/hosted tests above, fake Deck exact stock-byte
+round trip, preferences, interruption recovery, non-mutating preflight, fake SSH,
+pairing idempotency, release rejection, sanitized collection and GitHub API mocks.
+Real GitHub CI/release integrity and late-workflow protection were also verified.
+REAL HARDWARE VERIFIED: NONE. No real Deck SSH connection, preflight, pairing,
+installation, game launch, controller event collection or restore occurred.
+No persistent Mac lab installation or key was created. Outside the repository,
+only temporary test fixtures/tool temporary files were used; fake HOME trees were
+cleaned up. Repository-local ignored tools contain the standalone model executable.
+No keys, credentials or full runtime logs are tracked.
+
+## Blockers, assumptions and exact next action
+No remaining implementation/CI blocker. Hardware acceptance requires the user.
+Old tools/arcade-deck is empty; no existing project SSH credentials were available
+there for a read-only preflight. Deck reachability, SSH enablement, correct game
+directory, first backup being genuine stock, actual Proton log path, focus/controller
+delivery, native behavior and absence of crashes remain unverified assumptions.
+Publication transport is tested with mocks; no live hardware result was invented
+or published, and arcade-lab-results will be created only by an actual collection.
+Mac gh authentication/publication permission will be checked when collecting.
+
+Exact next user action: wake the Deck and double-click
+`contrib/arcade-mode/Install Arcade Lab.command`. It reruns all 65 offline tests,
+installs under HOME, optionally pairs via SSH's password prompt, then performs ONLY
+read-only preflight. It must print LAB READY before proceeding. Pairing is optional
+at setup but necessary before strict SSH preflight if no key was authorized.
+The user then chooses Deploy Latest Arcade Mode explicitly, launches Skate, tests
+A/B/X/Y taps/holds/native controls, collects, closes the game, restores stock, and
+collects again. See LAB_PROTOCOL.md for action locations and precise semantics.
+Do not begin A/ollie native reverse engineering until observer acceptance is backed
+by real evidence. Following gameplay milestone remains A -> native-quality ollie,
+then X -> one fixed native flip, then complete grounded/air/grind/manual/landing/bail
+observation. Primary technical risk remains commanding Skate's native trick state machine.
