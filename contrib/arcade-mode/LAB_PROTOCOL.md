@@ -124,6 +124,10 @@ when actually observed. Unknown is never converted into a pass.
 
 Actual logging is defined by Engine/Core/Log/paths.cpp, logger.cpp, crash.cpp,
 Launcher/launch.cpp, and Runtime/runtime_state.cpp (`record` routes to logging::event).
+Engine/Core/Log/events.cpp formats initialization as `Arcade mode initialized:
+active=true`; JSON is emitted only at trace level. Arcade initialization explicitly
+uses info level in Runtime/runtime_init.cpp so normal launches expose it. The
+collector recognizes the actual formatted message and optional trace JSON.
 The primary file is `<game>/logs/ReSkate.log`, truncated by the launcher at startup.
 Fallback is Windows LocalAppData/ReSkate/logs or RESKATE_LOG_DIRECTORY; the lab does
 not guess a Proton prefix. If the real installation uses a fallback, specify the

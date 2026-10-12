@@ -172,7 +172,10 @@ def evidence(request, **kwargs):
     # Use only the most recent ready event, never union buttons across launches.
     start = text.rfind("Arcade Mode ready")
     session = text[start:] if start >= 0 else ""
-    initialized = bool(re.search(r'"event"\s*:\s*"arcade_mode_initialized"\s*,\s*"active"\s*:\s*true', session))
+    # logging::event renders underscores as spaces and scalar members as key=value.
+    # Raw JSON exists only in its optional trace-level "Native event" line.
+    initialized = bool(re.search(r'Arcade mode initialized: active=true\b', session)
+                       or re.search(r'"event"\s*:\s*"arcade_mode_initialized"\s*,\s*"active"\s*:\s*true', session))
     buttons = {b: bool(re.search(r"ARCADE MODE DEV: " + b + r" press #[1-9][0-9]* seen on ReSkate client tick\.", session)) for b in "ABXY"}
     crashed = "ReSkate unhandled exception" in session
     restored = (not active and status["dll_sha256"] == receipt.get("stock_sha256")

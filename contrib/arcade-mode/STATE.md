@@ -58,7 +58,11 @@ LocalAppData/ReSkate/logs fallback; RESKATE_LOG_DIRECTORY can override. Logger
 truncates at session start in the default path. Crash marker comes from
 Engine/Core/Log/crash.cpp: ReSkate unhandled exception. Do not invent a Proton
 prefix path or publish full logs. Runtime/runtime_state.cpp routes record() to
-logging::event, so initialized active and ready are in the same log mechanism.
+logging::event. Important review correction: Engine/Core/Log/events.cpp formats
+events as text (`Arcade mode initialized: active=true`); raw JSON is trace-only.
+The original record() default is debug and hidden at the launcher's normal info
+level. Runtime/runtime_init.cpp now emits this one event at info, and the collector
+matches its actual text (also supports trace JSON). No gameplay behavior changed.
 Hardware acceptance requires actual startup, initialized active, ready, each
 A/B/X/Y tap observed, no repeat on holds, normal native controls, exact stock
 restore and previous updater preference restored. All UNVERIFIED on hardware.
@@ -98,9 +102,17 @@ Standalone C++20 model/observation executable: 1 passed, 0 failed.
 Both workflow YAML files parsed; explicit needs/build/Linux/macOS runner assertions
 passed. Git diff whitespace check passed. Report/channel/manifest schema rejection
 and allowlist tests passed within the 63-test suite.
-Exact next action: commit the reviewed implementation and push only origin
-arcade-mode, then inspect hosted Windows/Linux/macOS results and public releases.
-Update this section with their real outcome before handoff. No hardware acceptance
+Implementation committed and pushed only to origin arcade-mode:
+b4fb40f37acc52f99d61da562b8e43b8a63fdf48, "Add tested Arcade Lab controller, safe
+deployment and hardware evidence protocol" (22 files). Credential/key/log audit passed.
+Hosted run 38199528643 (separate Linux Deck workflow) passed. Run 38199528667
+(Windows + Linux + macOS release-gated workflow) is in progress. Its linux-tests
+and macos-lab jobs passed; Windows build is still running. No release from this
+source has been claimed yet.
+Follow-up required after logging review: rerun offline tests for formatted info
+initialization, commit/push this logging/collector correction, and verify the new
+Windows/Linux/macOS workflow and release. b4fb40f is not the final lab implementation.
+No hardware acceptance
 may be inferred from CI. Old tools/arcade-deck directory is empty; no existing
 project SSH credentials were available there for read-only hardware preflight.
 No real Mac installation, key creation, pairing, or Deck access has occurred.

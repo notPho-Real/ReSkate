@@ -80,7 +80,7 @@ class Fixture(unittest.TestCase):
         path = self.game / "logs/ReSkate.log"
         path.parent.mkdir(exist_ok=True)
         content = text if text is not None else ('Arcade Mode ready (development observer).\n'
-            '{"event":"arcade_mode_initialized","active":true}\n' +
+            '[2026-10-11 22:00:00.123] [42:7] SDK: Arcade mode initialized: active=true\n' +
             ''.join('ARCADE MODE DEV: ' + b + ' press #1 seen on ReSkate client tick.\n' for b in "ABXY"))
         path.write_text(content)
         receipt = json.loads((self.game / installer.RECEIPT).read_text()) if (self.game / installer.RECEIPT).exists() else {}
@@ -284,6 +284,18 @@ class LabTests(Fixture):
         self.assertTrue(report["unexpected_crash"])
         self.assertEqual(report["observer_acceptance"], "FAIL")
         self.assertNotIn("192.168", json.dumps(report))
+
+    def test_formatted_initialization_false_not_accepted(self):
+        self.installed()
+        self.log('Arcade Mode ready\nArcade mode initialized: active=false\n')
+        _, _, report = self.lab.collect(publish=False)
+        self.assertFalse(report["arcade_mode_initialized"])
+
+    def test_trace_json_initialization_supported(self):
+        self.installed()
+        self.log('Arcade Mode ready\nNative event: {"event":"arcade_mode_initialized","active":true}\n')
+        _, _, report = self.lab.collect(publish=False)
+        self.assertTrue(report["arcade_mode_initialized"])
 
     def test_explicit_log_fallback_with_deploy_baseline(self):
         path = self.root / "proton/LocalAppData/ReSkate/logs/ReSkate.log"

@@ -411,7 +411,10 @@ extern "C" __declspec(dllexport) BOOL WINAPI DingoSDKDebugInitialize() {
         record("{\"event\":\"camera_observer_initialized\",\"active\":" + std::string(camera_hook ? "true" : "false") + "}");
         (void)dingosdk::start_no_bail(r.base);
         const bool arcade = dingosdk::arcade_mode::start(r.base);
-        record("{\"event\":\"arcade_mode_initialized\",\"active\":" + std::string(arcade ? "true" : "false") + "}");
+        // Lab acceptance must be observable at the launcher's normal info level.
+        dingosdk::logging::event(dingosdk::logging::Channel::runtime,
+            "{\"event\":\"arcade_mode_initialized\",\"active\":" + std::string(arcade ? "true" : "false") + "}",
+            dingosdk::logging::Level::info);
         const bool meat = dingosdk::hall_of_meat::start(r.base);
         record("{\"event\":\"hall_of_meat_initialized\",\"active\":" + std::string(meat ? "true" : "false") + "}");
         const bool rash = dingosdk::road_rash::start(r.base);
