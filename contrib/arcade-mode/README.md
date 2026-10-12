@@ -1,7 +1,12 @@
-# Install once, update on the Deck
+# Arcade Lab and Deck updates
 
-The intended setup is remote installation over SSH while the Deck remains in
-Gaming Mode. Once the Deck is awake and reachable, install the **Update Arcade
+Start with [STATE.md](STATE.md) for persistent engineering context and
+[LAB_PROTOCOL.md](LAB_PROTOCOL.md) for the tested Mac lab workflow. Double-click
+**Install Arcade Lab.command** to run offline self-tests, install the controller
+under HOME, optionally pair, and run read-only preflight. This never deploys.
+Use **Deploy Latest Arcade Mode.command** separately when ready for hardware testing.
+
+The existing standalone Deck package can install the **Update Arcade
 Mode** and **Restore Stock ReSkate** Steam library entries and verify them there.
 The entries are submitted to Steam by the installer; their appearance and
 controller operation still need hardware verification. Desktop Mode is not a
@@ -16,15 +21,14 @@ its own installer/updater code as well as the DLL.
 
 ## SSH deployment from this Mac
 
-Default host: `deck@steamdeck.local`, recovered from the earlier setup conversation.
-The Deck's SSH service was enabled; Mac key pairing still needs completion.
+Default host: `deck@steamdeck.local`. Current connectivity and pairing are unverified.
 The Deck must be awake and reachable from the Mac. A sleeping/unreachable Deck
 cannot be installed remotely. No need to switch to Desktop Mode for SSH.
 
 Double-click `Pair-Steam-Deck.command` on the Mac once and enter the Deck's local
 Linux password into SSH's terminal prompt. It creates a dedicated key in this
-checkout's ignored `tools/arcade-deck/`, adds only that public key to the Deck, then
-installs the latest verified package and buttons. The password is never stored.
+HOME at `~/.local/share/reskate-arcade-lab/`, and adds only that public key to the Deck.
+Pairing stops there and never installs a DLL or buttons. The password is never stored.
 Subsequently `Deploy-to-Steam-Deck.command` deploys without a password. Codex can
 run the same helper. If mDNS fails, pass `--host deck@LOCAL_IP`; if multiple game
 folders are found, pass `--game /exact/Skate/folder`. Host keys remain checked;
@@ -41,7 +45,7 @@ remain usable if Steam import is unavailable. The mechanism is documented by the
 ## Safe update and publication path
 
 The Windows workflow builds the current arcade-mode DLL and runs the model test.
-Only after success does its Linux job test and package the Deck installer, publish
+Only after Windows, Linux and hosted macOS lab gates pass does its Linux job package the Deck installer, publish
 an immutable `arcade-build-COMMIT` development release in **notPho-Real/ReSkate**,
 and advance the `arcade-deck-latest/channel.json` pointer. An older build finishing
 after a newer branch commit cannot advance the pointer. Nothing publishes from

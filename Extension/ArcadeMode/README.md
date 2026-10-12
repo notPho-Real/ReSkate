@@ -61,7 +61,9 @@ The `Arcade Mode development` Actions workflow runs on pushes to `arcade-mode` a
 dispatch on that branch, only in `notPho-Real/ReSkate`. Windows 2022 builds and tests Release x64.
 In the successful run's **Artifacts** section, download `ReSkate-arcade-dev-<full commit SHA>`
 (30-day retention). It contains exactly `ReSkate.dll`, `ReSkate.dll.sha256`, and `commit.txt`.
-There is no GitHub Release. Extract the ZIP, check `commit.txt`, and run
+Tested builds also publish immutable GitHub Releases after Windows, Linux and
+hosted macOS lab gates pass. See contrib/arcade-mode/LAB_PROTOCOL.md. For manual
+artifact installation, extract the ZIP, check `commit.txt`, and run
 `sha256sum -c ReSkate.dll.sha256` from the extracted directory before installing.
 
 On Steam Deck / Proton, `ReSkateLauncher.exe` and `ReSkate.dll` sit beside `Skate.exe`.
@@ -78,8 +80,9 @@ PE x64 DLL header, saves the current DLL once as `ReSkate.dll.arcade-stock.bak`,
 replaces the DLL in the same directory. Start with a known stock DLL: the script cannot establish
 its provenance. Subsequent installs never overwrite that backup; restore retains it. Both refuse
 running game/launcher processes, symlink destinations, or a concurrent installation. Keep the game
-closed until completion. After an interrupted install, verify no helper is running before removing
-a stale `.arcade-mode-install.lock` directory. Header validation is not an authenticity check;
+closed until completion. The shared installer now uses a persistent regular flock
+file and recovery journal; do not remove a live lock. See LAB_PROTOCOL.md for
+interrupted-install recovery. Header validation is not an authenticity check;
 use the artifact hash and commit from your successful run.
 
 Keep the normal launch option, approximately:

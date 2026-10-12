@@ -36,8 +36,30 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  linux-tests:
+    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deck and lab simulations
+        run: python3 contrib/arcade-mode/lab/controller.py self-test
+      - name: Shell syntax
+        run: find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
+
+  macos-lab:
+    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mac lab, bootstrap and fake Deck tests (no hardware)
+        run: python3 contrib/arcade-mode/lab/controller.py self-test
+      - name: Python and shell syntax
+        run: |
+          python3 -m compileall -q contrib/arcade-mode
+          find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
+
   deck:
-    needs: build
+    needs: [build, linux-tests, macos-lab]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -78,7 +100,7 @@ jobs:
             gh release create "$tag" artifacts/Install-ReSkate-Arcade.desktop artifacts/channel.json \
               --target "$GITHUB_SHA" --prerelease --latest=false \
               --title "Arcade Mode tested build ${GITHUB_SHA:0:7}" \
-              --notes "Windows x64 DLL and model tests passed. Deck installer/updater tests passed. Install once; use Update Arcade Mode on the Deck for subsequent tested builds."
+              --notes "Windows x64 DLL/model, Linux installer/updater and hosted macOS Arcade Lab simulations passed. Hardware acceptance is separate; these gates do not deploy to any Deck."
           else
             # Keep versioned downloads immutable on workflow retries.
             mkdir -p artifacts/existing

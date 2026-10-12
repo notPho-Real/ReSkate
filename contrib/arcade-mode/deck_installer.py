@@ -1,5 +1,7 @@
 """Offline Steam Deck installer. Launched from the generated self-contained .desktop."""
 import hashlib
+import base64
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -9,11 +11,38 @@ import struct
 import subprocess
 import tempfile
 import urllib.parse
+import time
+import uuid
 
 TITLE = "ReSkate Arcade Mode"
 SETTINGS = "ReSkateLauncher.settings.json"
 BACKUP = "ReSkate.dll.arcade-stock.bak"
 RECEIPT = ".arcade-mode-install.json"
+JOURNAL = ".arcade-mode-transaction.json"
+LOCK = ".arcade-mode-install.lock"
+
+
+def safe_path(path):
+    path = Path(os.path.abspath(path))
+    for component in (path, *path.parents):
+        if component.is_symlink():
+            raise RuntimeError("Refusing a symlink in installation path")
+    return path
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def validate_manifest(value, commit=None):
+    if (not isinstance(value, dict)
+            or not isinstance(value.get("commit"), str)
+            or not re.fullmatch(r"[0-9a-f]{40}", value["commit"])
+            or not isinstance(value.get("sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", value["sha256"])
+            or (commit is not None and value["commit"] != commit)):
+        raise ValueError("Invalid source commit or DLL hash")
+    return value
 
 
 def dialog(kind, text, buttons=None):
@@ -92,6 +121,7 @@ def ensure_stopped():
 
 
 def atomic_write(path, data):
+    safe_path(path)
     fd, name = tempfile.mkstemp(prefix=".arcade-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as output:
@@ -100,9 +130,55 @@ def atomic_write(path, data):
             os.fsync(output.fileno())
         os.chmod(name, 0o644)
         os.replace(name, path)
+        sync_directory(path.parent)
     finally:
         if os.path.exists(name):
             os.unlink(name)
+
+
+def sync_directory(path):
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def preserve_backup(path, data):
+    # Publish a completely written file with an exclusive hard link. Never replace
+    # an existing backup, including when another process creates it concurrently.
+    fd, name = tempfile.mkstemp(prefix=".arcade-backup-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as output:
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
+        try:
+            os.link(name, path)
+            sync_directory(path.parent)
+        except FileExistsError:
+            raise RuntimeError("Stock backup appeared concurrently; inspect before retrying") from None
+    finally:
+        os.unlink(name)
+
+
+def recover_transaction(game):
+    journal = game / JOURNAL
+    if not journal.exists():
+        return
+    value = json.loads(journal.read_text())
+    if set(value) != {"ReSkate.dll", SETTINGS, RECEIPT}:
+        raise RuntimeError("Invalid recovery journal; manual inspection required")
+    for name, encoded in value.items():
+        path = game / name
+        if encoded is None:
+            path.unlink(missing_ok=True)
+        else:
+            data = base64.b64decode(encoded, validate=True)
+            if not path.exists() or path.read_bytes() != data:
+                atomic_write(path, data)
+    journal.unlink()
+    sync_directory(game)
 
 
 def load_settings(game):
@@ -128,61 +204,101 @@ def validate_dll(data):
         raise RuntimeError("The bundled file is not an x64 Windows DLL.")
 
 
-def change_installation(game, dll=None, commit=None):
+def change_installation(game, dll=None, commit=None, log_path=None):
     """Serialize both operations; preserve stock, unrelated preferences and rollback data."""
-    game = Path(game)
+    game = safe_path(game)
+    if dll is not None:
+        validate_dll(dll)
+        validate_manifest({"commit": commit, "sha256": digest(dll)})
     if not valid_game(game):
         raise RuntimeError("The selected Skate installation is incomplete.")
-    for name in ("ReSkate.dll", SETTINGS, BACKUP, RECEIPT):
+    for name in ("ReSkate.dll", SETTINGS, BACKUP, RECEIPT, JOURNAL, LOCK):
         path = game / name
         if path.is_symlink() or (path.exists() and not path.is_file()):
             raise RuntimeError("Refusing an unexpected file type: " + str(path))
-    lock = game / ".arcade-mode-install.lock"
+    lock = game / LOCK
+    fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     try:
-        lock.mkdir()
-    except FileExistsError:
-        raise RuntimeError("Another install is running. Close it before trying again.") from None
-    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise RuntimeError("Another install is running") from None
         ensure_stopped()
+        recover_transaction(game)
         settings = load_settings(game)
         receipt_path = game / RECEIPT
         receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else None
+        if receipt is not None and (not isinstance(receipt, dict)
+                or not isinstance(receipt.get("updates_before"), bool)):
+            raise RuntimeError("Invalid installation receipt; inspect before modifying")
         backup = game / BACKUP
+        before = {name: base64.b64encode((game / name).read_bytes()).decode()
+                  if (game / name).exists() else None for name in ("ReSkate.dll", SETTINGS, RECEIPT)}
         if dll is None:
             if not backup.is_file():
                 raise RuntimeError("No stock backup exists yet. Nothing was changed.")
             if receipt and "updates_before" in receipt:
                 settings["updates"] = receipt["updates_before"]
-            # Restore the DLL before allowing the stock updater again.
-            atomic_write(game / "ReSkate.dll", backup.read_bytes())
-            atomic_write(game / SETTINGS, encode(settings))
-            if receipt:
-                receipt["active"] = False
-                atomic_write(receipt_path, encode(receipt))
+            stock = backup.read_bytes()
+            if receipt and receipt.get("stock_sha256") not in (None, digest(stock)):
+                raise RuntimeError("Stock backup hash mismatch")
+            atomic_write(game / JOURNAL, encode(before))
+            try:
+                atomic_write(game / "ReSkate.dll", stock)
+                if digest((game / "ReSkate.dll").read_bytes()) != digest(stock):
+                    raise RuntimeError("Restored DLL verification failed")
+                atomic_write(game / SETTINGS, encode(settings))
+                if receipt:
+                    receipt.update(active=False, restored_sha256=digest(stock),
+                                   restored_updates=settings.get("updates", True))
+                    atomic_write(receipt_path, encode(receipt))
+                (game / JOURNAL).unlink()
+                sync_directory(game)
+            except BaseException:
+                recover_transaction(game)
+                raise
             return
         validate_dll(dll)
         old_dll = (game / "ReSkate.dll").read_bytes()
         settings_path = game / SETTINGS
-        old_settings = settings_path.read_bytes() if settings_path.exists() else None
         if not backup.exists():
-            atomic_write(backup, old_dll)
+            if receipt and receipt.get("active"):
+                raise RuntimeError("Active development install has lost its stock backup")
+            preserve_backup(backup, old_dll)
+        if receipt and receipt.get("stock_sha256") not in (None, digest(backup.read_bytes())):
+            raise RuntimeError("Stock backup hash mismatch")
         if not receipt or not receipt.get("active"):
             receipt = {"updates_before": settings.get("updates", True)}
-        receipt.update(active=True, commit=commit)
-        # Save recovery information before writes; a retry preserves the original update choice.
-        atomic_write(receipt_path, encode(receipt))
+        receipt.pop("previous_log_prefix_sha256", None)
+        receipt.pop("previous_log_prefix_size", None)
+        log = safe_path(log_path if log_path else game / "logs/ReSkate.log")
+        if log.name != "ReSkate.log":
+            raise ValueError("Expected ReSkate.log")
+        receipt.update(active=True, commit=commit, dll_sha256=digest(dll),
+                       stock_sha256=digest(backup.read_bytes()), installed_at=time.time(),
+                       installation_id=uuid.uuid4().hex,
+                       log_path=str(log),
+                       previous_log_sha256=digest(log.read_bytes())
+                       if log.is_file() and log.stat().st_size <= 16 * 1024 * 1024 else None)
+        if log.is_file():
+            with log.open("rb") as stream:
+                prefix = stream.read(512)
+            receipt.update(previous_log_prefix_sha256=digest(prefix), previous_log_prefix_size=len(prefix))
+        atomic_write(game / JOURNAL, encode(before))
         settings["updates"] = False
         try:
+            atomic_write(receipt_path, encode(receipt))
             atomic_write(settings_path, encode(settings))
             atomic_write(game / "ReSkate.dll", dll)
-        except Exception:
-            if old_settings is None:
-                settings_path.unlink(missing_ok=True)
-            else:
-                atomic_write(settings_path, old_settings)
+            if digest((game / "ReSkate.dll").read_bytes()) != digest(dll):
+                raise RuntimeError("Destination DLL verification failed")
+            (game / JOURNAL).unlink()
+            sync_directory(game)
+        except BaseException:
+            recover_transaction(game)
             raise
     finally:
-        lock.rmdir()
+        os.close(fd)  # flock releases after interruption; never unlink a live lock inode.
 
 
 def desktop_argument(value):
@@ -227,7 +343,7 @@ def install_buttons(bundle, game, manifest, register_steam=True):
 
 
 def install_bundle(bundle, game, register_steam=True):
-    manifest = json.loads(bundle.read("manifest.json"))
+    manifest = validate_manifest(json.loads(bundle.read("manifest.json")))
     dll = bundle.read("ReSkate.dll")
     if hashlib.sha256(dll).hexdigest() != manifest["sha256"]:
         raise RuntimeError("Installer checksum failed. Download it again; nothing was changed.")

@@ -29,6 +29,8 @@ def download(url, limit=MAX_DOWNLOAD):
 
 def validate_channel(value):
     if (not isinstance(value, dict) or value.get("schema") != 1
+            or not isinstance(value.get("commit"), str)
+            or not isinstance(value.get("sha256"), str)
             or not re.fullmatch(r"[0-9a-f]{40}", value.get("commit", ""))
             or not re.fullmatch(r"[0-9a-f]{64}", value.get("sha256", ""))):
         raise ValueError("The update information is invalid. Your installed version is unchanged.")
@@ -44,9 +46,24 @@ def unpack_download(data, expected_hash):
     text = data.decode("utf-8")
     payload = text.split("# ARCADE_PAYLOAD\n", 1)[1]
     archive = zipfile.ZipFile(io.BytesIO(base64.b64decode("".join(line[1:] for line in payload.splitlines()), validate=True)))
+    names = archive.namelist()
+    if len(names) != 4 or set(names) != {"ReSkate.dll", "installer.py", "updater.py", "manifest.json"}:
+        archive.close()
+        raise ValueError("Unexpected archive members")
     if sum(info.file_size for info in archive.infolist()) > MAX_DOWNLOAD:
         raise ValueError("The unpacked update is unexpectedly large.")
     return archive
+
+
+def verified_release(fetch=download):
+    channel = validate_channel(json.loads(fetch(CHANNEL, 65536)))
+    with unpack_download(fetch(channel["url"]), channel["sha256"]) as bundle:
+        manifest = installer.validate_manifest(json.loads(bundle.read("manifest.json")), channel["commit"])
+        dll = bundle.read("ReSkate.dll")
+        if installer.digest(dll) != manifest["sha256"]:
+            raise ValueError("Source DLL hash mismatch")
+        installer.validate_dll(dll)
+    return manifest, dll
 
 
 def update(game, directory):
