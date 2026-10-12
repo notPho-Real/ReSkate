@@ -6,6 +6,12 @@ hardware milestone are complete: 13/13 acceptance criteria PASS.
 
 ## Current handoff: hardware acceptance PASS, Deck restored to stock
 NEW ACTIVE TASK: user authorized proceeding with A -> native-quality ollie.
+Runtime probe commit: 270a532c01ad39ddfbcfbbe8515f5ed484b032a4, pushed only to
+origin arcade-mode. CI 38313325123: Linux/macOS passed; Windows still running
+at last check. Installer workflow 38313325113 passed. Follow-up adds read-only
+`controller.py trace` collection with numeric allowlist and source/hash/freshness
+binding; local suite now 70/70 PASS, including serialized fake-Deck trace and
+wrong-DLL refusal. These supersede the earlier 65-test count for this new work.
 The first implementation is a focused READ-ONLY native request probe, not an
 ollie trigger. See NATIVE_OLLIE.md for exact static evidence and hardware protocol.
 Two 32-byte contracts (rig crouch predicate RVA 0x476f130 and producer 0x1009e29)

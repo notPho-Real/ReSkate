@@ -91,7 +91,7 @@ class Fixture(unittest.TestCase):
 
 class LabTests(Fixture):
     def test_readonly_generated_code_ast(self):
-        for operation in ("preflight", "status", "collect"):
+        for operation in ("preflight", "status", "collect", "trace"):
             tree = ast.parse(controller.remote_code(operation))
             banned = {"write_text", "write_bytes", "mkdir", "unlink", "rename", "replace", "chmod", "touch",
                       "atomic_write", "change_installation", "exec", "eval", "system", "run", "Popen", "kill"}
@@ -582,6 +582,60 @@ i.change_installation(Path(sys.argv[2]), Path(sys.argv[3]).read_bytes(), 'a'*40)
         (proc / "123/cmdline").write_bytes(b"wine\0Z:\\games\\Skate.exe\0")
         self.assertTrue(probe.processes(proc)["skate"])
         self.assertFalse(probe.processes(proc)["launcher"])
+
+
+class NativeTraceIntegrationTests(Fixture):
+    def test_actual_serialized_trace_and_dll_identity(self):
+        self.installed()
+        self.log("Arcade Mode ready\nARCADE NATIVE CAPTURE: id=1 begin=true.\n"
+                 "ARCADE NATIVE SAMPLE: id=1 ms=0 valid=true state=100 crouch_mode=2 words="
+                 "00000001,00000002,00000003,00000004,00000005,00000006,00000007,00000008.\n"
+                 "ARCADE NATIVE CAPTURE: id=1 end=true samples=1.\nprivate unrelated text\n")
+        report = self.lab.remote("trace")
+        self.assertEqual(report["source_commit"], self.commit)
+        self.assertEqual(report["captures"][0]["samples"][0]["words"], list(range(1, 9)))
+        self.assertTrue(report["captures"][0]["complete"])
+        self.assertNotIn("private", json.dumps(report))
+        (self.game / "ReSkate.dll").write_bytes(b"wrong DLL")
+        with self.assertRaises(ValueError):
+            self.lab.remote("trace")
+
+
+class NativeTraceTests(unittest.TestCase):
+    def test_numeric_allowlist_and_invalid_owner(self):
+        text = "ARCADE NATIVE CAPTURE: id=2 begin=true.\n"
+        text += "unrelated secret must never appear\n"
+        text += "ARCADE NATIVE SAMPLE: id=2 ms=100 valid=false state=103 crouch_mode=2 words=" + ",".join(["ffffffff"]*8) + ".\n"
+        text += "ARCADE NATIVE CAPTURE: id=2 end=true samples=1."
+        result = probe.parse_native_captures(text)
+        self.assertTrue(result[0]["complete"])
+        self.assertEqual(result[0]["samples"][0]["words"], [0]*8)
+        self.assertEqual(result[0]["samples"][0]["state"], 0)
+        self.assertNotIn("secret", json.dumps(result))
+
+    def test_capture_and_sample_bounds(self):
+        text = ""
+        for capture in range(10):
+            text += f"ARCADE NATIVE CAPTURE: id={capture} begin=true.\n"
+            text += (f"ARCADE NATIVE SAMPLE: id={capture} ms=1 valid=true state=103 crouch_mode=2 words=" + ",".join(["00000001"]*8) + ".\n")*130
+        result = probe.parse_native_captures(text)
+        self.assertEqual(len(result), 8)
+        self.assertEqual(len(result[-1]["samples"]), 128)
+        self.assertFalse(result[-1]["complete"])
+
+    def test_wrong_id_and_expired_sample_rejected(self):
+        text = "ARCADE NATIVE CAPTURE: id=2 begin=true.\n"
+        for identity, milliseconds in ((1, 10), (2, 5000)):
+            text += f"ARCADE NATIVE SAMPLE: id={identity} ms={milliseconds} valid=true state=100 crouch_mode=0 words=" + ",".join(["00000000"]*8) + ".\n"
+        self.assertEqual(probe.parse_native_captures(text)[0]["samples"], [])
+
+    def test_trace_transport_is_read_only(self):
+        code = controller.remote_code("trace")
+        self.assertNotIn("change_installation", code)
+        self.assertIn("native_trace(json.load(sys.stdin))", code)
+        with patch.object(probe, "evidence", return_value={"fresh_log": False}):
+            with self.assertRaises(ValueError):
+                probe.native_trace({})
 
 
 if __name__ == "__main__":

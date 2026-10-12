@@ -36,8 +36,8 @@ def ssh_arguments(host, directory, pair=False):
 
 def remote_code(operation):
     probe = (HERE / "probe.py").read_text()
-    if operation in ("preflight", "status", "collect"):
-        function = "evidence" if operation == "collect" else "snapshot"
+    if operation in ("preflight", "status", "collect", "trace"):
+        function = "native_trace" if operation == "trace" else "evidence" if operation == "collect" else "snapshot"
         return probe + '\nimport sys\nprint(json.dumps(' + function + '(json.load(sys.stdin))))\n'
     if operation not in ("deploy", "restore"):
         raise ValueError("Unknown remote operation")
@@ -263,7 +263,7 @@ def bootstrap():
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("self-test", "bootstrap", "pair", "preflight", "deploy", "status", "collect", "restore"))
+    parser.add_argument("operation", choices=("self-test", "bootstrap", "pair", "preflight", "deploy", "status", "collect", "restore", "trace"))
     parser.add_argument("--host", default="deck@steamdeck.local")
     parser.add_argument("--game")
     parser.add_argument("--log", help="Explicit actual ReSkate.log fallback path; never guessed")
@@ -284,6 +284,9 @@ def main(argv=None):
         print(json.dumps(result, indent=2))
         print("PREFLIGHT PASS — NO GAME FILES CHANGED" if result["pass"] else "PREFLIGHT FAIL — NO GAME FILES CHANGED")
         return 0 if result["pass"] else 1
+    elif args.operation == "trace":
+        # Read-only numeric research evidence, separate from observer acceptance.
+        print(json.dumps(lab.remote("trace"), indent=2))
     elif args.operation == "collect":
         checks = {name: None if getattr(args, name.replace("-", "_")) is None else
                   getattr(args, name.replace("-", "_")) == "pass" for name in ("holds", "native", "no-crash")}

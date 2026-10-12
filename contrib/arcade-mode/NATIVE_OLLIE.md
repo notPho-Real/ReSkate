@@ -61,6 +61,13 @@ may be truncated; lack of a sample does not establish lack of a physics transiti
    freshness evidence. Compare idle and native-jump captures; preserve findings
    here and in STATE.md before implementing any request producer.
 
+The Mac controller has a read-only `trace` operation:
+`python3 -B contrib/arcade-mode/lab/controller.py trace`. It outputs sanitized JSON
+with source/hash/installation/timestamp and the last eight captures (at most 128
+samples each). It refuses stale logs or a changed DLL. It prints no arbitrary log
+lines and does not publish or alter the observer-acceptance report. Capture
+completion means the end marker's count matches parsed samples, not trick success.
+
 Do not automatically deploy this build or modify the real game while running.
 The previously accepted observer report belongs to f09872f, not this new build.
 The remaining blocker to claiming an ollie implementation is identifying and

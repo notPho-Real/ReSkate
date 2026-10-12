@@ -189,3 +189,52 @@ def evidence(request, **kwargs):
             "buttons": buttons, "unexpected_crash": True if crashed else None,
             "fresh_log": fresh, "stock_restore": "PASS" if restored else "UNVERIFIED",
             "updater_restore": "PASS" if updates_restored else "UNVERIFIED"}
+
+
+def parse_native_captures(text):
+    """Extract only bounded numeric diagnostics, never arbitrary log excerpts."""
+    captures = []
+    current = None
+    for line in text.splitlines():
+        begin = re.search(r'ARCADE NATIVE CAPTURE: id=([0-9]{1,20}) begin=true\.$', line)
+        if begin:
+            current = {"id": int(begin[1]), "complete": False, "samples": []}
+            captures.append(current)
+            captures = captures[-8:]
+            continue
+        if current is None:
+            continue
+        end = re.search(r'ARCADE NATIVE CAPTURE: id=([0-9]{1,20}) end=true samples=([0-9]{1,3})\.$', line)
+        if end and int(end[1]) == current["id"]:
+            current["complete"] = int(end[2]) == len(current["samples"])
+            current = None
+            continue
+        sample = re.search(r'ARCADE NATIVE SAMPLE: id=([0-9]{1,20}) ms=([0-9]{1,4}) valid=(true|false) state=([0-9]{1,10}) crouch_mode=([0-9]{1,10}) words=([0-9a-f]{8}(?:,[0-9a-f]{8}){7})\.$', line)
+        if (sample and int(sample[1]) == current["id"] and int(sample[2]) < 5000
+                and len(current["samples"]) < 128
+                and int(sample[4]) <= 0xffffffff and int(sample[5]) <= 0xffffffff):
+            valid = sample[3] == "true"
+            current["samples"].append({"ms": int(sample[2]), "valid": valid,
+                "state": int(sample[4]) if valid else 0,
+                "crouch_mode": int(sample[5]) if valid else 0,
+                "words": [int(x, 16) for x in sample[6].split(",")] if valid else [0]*8})
+    return captures
+
+
+def native_trace(request, **kwargs):
+    verified = evidence(request, **kwargs)
+    if not verified["fresh_log"]:
+        raise ValueError("Native trace requires a fresh log from the active installed DLL")
+    status = snapshot(request, **kwargs)
+    receipt = read_json(Path(status["game"]) / RECEIPT)
+    path = Path(receipt["log_path"])
+    if path.name != "ReSkate.log" or any(p.is_symlink() for p in (path, *path.parents)):
+        raise ValueError("Unsafe native trace log")
+    if path.stat().st_size > 16 * 1024 * 1024:
+        raise ValueError("Native trace log too large")
+    text = path.read_text(errors="replace")
+    start = text.rfind("Arcade Mode ready")
+    captures = parse_native_captures(text[start:] if start >= 0 else "")
+    return {"schema": 1, "kind": "native_request_trace",
+            **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
+            "captures": captures}
