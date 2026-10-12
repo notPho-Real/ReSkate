@@ -5,6 +5,33 @@ Read this file before work. Infrastructure implementation and the current observ
 hardware milestone are complete: 13/13 acceptance criteria PASS.
 
 ## Current handoff: hardware acceptance PASS, Deck restored to stock
+NEW ACTIVE TASK: user authorized proceeding with A -> native-quality ollie.
+The first implementation is a focused READ-ONLY native request probe, not an
+ollie trigger. See NATIVE_OLLIE.md for exact static evidence and hardware protocol.
+Two 32-byte contracts (rig crouch predicate RVA 0x476f130 and producer 0x1009e29)
+match the actual binary; runtime disables the new probe on mismatch. A starts a
+five-second capture limited to 128 changed samples, no game memory writes or
+new hooks. Pure tests cover inactive capture, deduplication, ownership loss,
+recovery, time expiry/backwards clock, cap and rearming. Local C++ model/probe
+suite PASS with -Wall -Wextra -pedantic; existing Python simulations 65/65 PASS.
+Next: Windows/Linux/macOS gates for this build, then explicit diagnostic deployment
+and user-performed normal stick ollie to correlate native requests. No safe native
+ollie command is established yet. Deck remains stock; never attribute old hardware
+acceptance to this new probe build. No new real-target writes in this task.
+
+Active task authorization context: user authorized proceeding after
+observer acceptance. Work starts from f814aec2cbdbacfaee2582a5175cc546f8bcd0de,
+branch arcade-mode, clean worktree. Native-path investigation is now in scope.
+Read-only SSH copied installed Skate.exe to ignored repository artifact
+artifacts/arcade-native-research/Skate.exe (144567168 bytes); SHA-256
+fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9 matches the
+existing 20260929 build contracts exactly. Never commit/publish this binary.
+No new DLL deployed; Deck still stock. Existing trainer_jump.cpp changes no-comply
+and boneless launch velocities, not an ollie trigger. Existing selector at RVA
+0x4745a70 and context request flags are analysis anchors, not an established
+ollie command. Next: trace native crouch/pop request producers and consumers in
+this verified binary; do not force state IDs or invent a function signature.
+
 Final sanitized report timestamp: 2026-10-12T06:31:01Z; source build
 f09872f179434cd3d474c9952b8325363424c308, installation ID
 0c790805de1b44d69785aaacac95493e. Report:

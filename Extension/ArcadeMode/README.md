@@ -1,5 +1,11 @@
 # Arcade Mode v0.1
 
+Observer milestone passed on the actual Deck for f09872f; see the hardware report
+linked in `contrib/arcade-mode/STATE.md`. Active native-ollie investigation adds a
+read-only, five-second native-request capture on A, bounded to 128 changes.
+It does not make A ollie yet. See
+[native investigation](../../contrib/arcade-mode/NATIVE_OLLIE.md).
+
 Experimental, always-active controller observation built natively inside ReSkate.dll on
 `notPho-Real/ReSkate:arcade-mode`. No plugin loading, Lua, profile toggle, console command,
 input remapping/suppression, trick injection, or gameplay changes. Original code and generic

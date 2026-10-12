@@ -6,7 +6,7 @@ A green build is not in-game acceptance.
 
 | Branch | Parent | Deliverable | Acceptance |
 | --- | --- | --- | --- |
-| arcade-mode | Existing baseline | Controller observer, model, Deck updater | Still needs Deck verification |
+| arcade-mode | Existing baseline | Controller observer, model, Deck updater | f09872f observer: 13/13 hardware criteria PASS; native ollie remains unimplemented |
 | arcade-stage-01-builds | arcade-mode | Isolated CI for stage branches | Windows/model/package CI |
 | arcade-stage-02-state-probe | arcade-stage-01-builds | Read-only state and button correlation | Observe normal riding, jumps and bails on Deck |
 

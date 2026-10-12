@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_model.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
+#include "Extension/ArcadeMode/arcade_native_probe.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -11,6 +12,33 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    NativeRequestCapture capture;
+    NativeRequestSample native{true, 100, 0, {1,2,3,4,5,6,7,8}};
+    check(!capture.sample(100, native), "native capture requires explicit arm");
+    capture.arm(100);
+    check(capture.sample(100, native) && capture.count() == 1, "capture includes first sample");
+    check(!capture.sample(110, native), "unchanged native request suppressed");
+    native.words[7] ^= 1;
+    check(capture.sample(120, native), "request change recorded without state change");
+    native.valid = false;
+    check(capture.sample(130, native) && capture.last() == NativeRequestSample{},
+        "ownership loss clears all native fields");
+    check(!capture.sample(140, {}), "repeated unavailable capture suppressed");
+    native.valid = true;
+    check(capture.sample(150, native), "recovered owner creates fresh sample");
+    check(!capture.sample(5100, native) && !capture.active(), "five-second capture expires");
+    capture.arm(100);
+    check(!capture.sample(99, native) && !capture.active(), "backwards clock cancels capture");
+    capture.arm(100);
+    for (unsigned i = 0; i < NativeRequestCapture::limit; ++i) {
+        native.state = i;
+        check(capture.sample(100+i, native), "changing samples accepted up to limit");
+    }
+    ++native.state;
+    check(!capture.sample(300, native) && capture.count() == NativeRequestCapture::limit &&
+        !capture.active(), "native trace cannot exceed sample limit");
+    capture.arm(1000);
+    check(capture.sample(1000, native) && capture.count() == 1, "explicit rearm resets capture");
     ObservationTracker observer;
     check(!observer.update({false, 200, 1, 0}), "invalid watch cannot publish stale state");
     check(!observer.update({true, 0, 1, 0}), "uninitialized selector is unavailable");

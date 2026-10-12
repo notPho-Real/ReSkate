@@ -1,5 +1,8 @@
 #include "arcade_mode.h"
 #include "arcade_observation.h"
+#include "arcade_native_probe.h"
+#include "Engine/Core/Platform/memory.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Input/controller_bindings.h"
@@ -18,11 +21,40 @@ ObservationTracker observations;
 std::array<std::uint64_t, 4> press_counts{};
 constexpr std::array<std::uint32_t, 4> face_buttons{0x1000u, 0x2000u, 0x4000u, 0x8000u};
 constexpr std::array<char, 4> button_names{'A', 'B', 'X', 'Y'};
+NativeRequestCapture request_capture;
+bool request_probe_ready{};
+std::uint64_t capture_started{}, capture_id{};
+
+bool validate_request_probe(std::uintptr_t base) noexcept {
+    using namespace game::build::v20260929::arcade_native_probe;
+    for (const auto& contract : {crouch_predicate, crouch_producer}) {
+        decltype(contract.bytes) actual{};
+        if (!memory::read(base + contract.rva, actual) || actual != contract.bytes) return false;
+    }
+    return true;
+}
+
+NativeRequestSample native_request_sample() noexcept {
+    using namespace game::build::v20260929::arcade_native_probe;
+    NoBailSkater owner{}, after{};
+    NativeRequestSample result;
+    if (!request_probe_ready || !no_bail_skater(owner) ||
+        !memory::peek(owner.context + request_words, result.words) ||
+        !memory::peek(owner.context + selected_state, result.state) ||
+        !memory::peek(owner.rig + crouch_mode, result.crouch_mode) ||
+        !no_bail_skater(after) || owner.core != after.core || owner.context != after.context ||
+        owner.rig != after.rig || owner.entity != after.entity) return {};
+    result.valid = true;
+    return result; // Independent guarded reads, NOT an atomic physics snapshot.
+}
 }
 
 bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
+    request_probe_ready = validate_request_probe(image_base);
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE NATIVE PROBE: available={} read_only=true duration_ms=5000 limit=128.", request_probe_ready);
     logging::log(logging::Level::info, logging::Channel::skater,
         "Arcade Mode ready (development controller and native-state observer only).");
     ready.store(true, std::memory_order_release);
@@ -44,6 +76,26 @@ void on_client_tick() noexcept {
         const auto buttons = input.available ? input.buttons : 0u;
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
+        const auto now = GetTickCount64();
+        if (request_probe_ready && (pressed & face_buttons[0])) {
+            capture_started = now;
+            ++capture_id;
+            request_capture.arm(now);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE CAPTURE: id={} begin=true.", capture_id);
+        }
+        const bool capturing = request_capture.active();
+        if (capturing && request_capture.sample(now, input.available ? native_request_sample() : NativeRequestSample{})) {
+            const auto& sample = request_capture.last();
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE SAMPLE: id={} ms={} valid={} state={} crouch_mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
+                capture_id, now - capture_started, sample.valid, sample.state, sample.crouch_mode,
+                sample.words[0], sample.words[1], sample.words[2], sample.words[3],
+                sample.words[4], sample.words[5], sample.words[6], sample.words[7]);
+        }
+        if (capturing && !request_capture.active())
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE CAPTURE: id={} end=true samples={}.", capture_id, request_capture.count());
         for (std::size_t i = 0; i < face_buttons.size(); ++i) {
             if (!(pressed & face_buttons[i])) continue;
             auto& count = press_counts[i];
