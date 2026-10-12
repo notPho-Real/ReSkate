@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "source_commit": "f09872f179434cd3d474c9952b8325363424c308",
+  "installed_dll_sha256": "d81bd1045b689ef346fdfce74475d37e9f47d6bc5a7af39be991f620f7d23c01",
+  "installation_id": "0c790805de1b44d69785aaacac95493e",
+  "timestamp": "2026-10-12T06:24:45Z",
+  "reskate_process_seen": true,
+  "arcade_mode_initialized": true,
+  "arcade_mode_ready": true,
+  "fresh_log": true,
+  "buttons": {
+    "A": true,
+    "B": true,
+    "X": true,
+    "Y": true
+  },
+  "unexpected_crash": null,
+  "holds": "UNVERIFIED",
+  "native_controls": "UNVERIFIED",
+  "stock_restore": "UNVERIFIED",
+  "updater_restore": "UNVERIFIED",
+  "criteria": {
+    "reskate_process_seen": "PASS",
+    "arcade_mode_initialized": "PASS",
+    "arcade_mode_ready": "PASS",
+    "fresh_log": "PASS",
+    "button_A": "PASS",
+    "button_B": "PASS",
+    "button_X": "PASS",
+    "button_Y": "PASS",
+    "holds": "UNVERIFIED",
+    "native_controls": "UNVERIFIED",
+    "stock_restore": "UNVERIFIED",
+    "updater_restore": "UNVERIFIED",
+    "no_unexpected_crash": "UNVERIFIED"
+  },
+  "observer_acceptance": "UNVERIFIED",
+  "operator_reported_criteria": [
+    "holds",
+    "native_controls",
+    "no_unexpected_crash"
+  ]
+}
