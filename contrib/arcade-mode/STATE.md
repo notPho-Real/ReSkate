@@ -92,7 +92,8 @@ LAB_PROTOCOL.md documents all interfaces, operation semantics and recovery detai
 arcade-dev.yml now gates deck packaging/publication on build, linux-tests, macos-lab.
 
 ## Tests and remaining milestones
-Final pre-push offline suite: 63 tests passed, 0 failures (macOS execution, fake targets).
+Final offline suite after actual log-format correction: 65 tests passed,
+0 failures (macOS execution, fake targets).
 This includes actual generated SSH payload execution, exact stock restore, AST
 preflight non-mutation, failed writes, flock contention, bootstrap failure gating,
 stale log refusal, mocked GitHub publication, an actual child-process exit during
@@ -101,7 +102,7 @@ Python compileall: 10 files passed. Shell bash -n: 11 files passed.
 Standalone C++20 model/observation executable: 1 passed, 0 failed.
 Both workflow YAML files parsed; explicit needs/build/Linux/macOS runner assertions
 passed. Git diff whitespace check passed. Report/channel/manifest schema rejection
-and allowlist tests passed within the 63-test suite.
+and allowlist tests passed within the 65-test suite.
 Implementation committed and pushed only to origin arcade-mode:
 b4fb40f37acc52f99d61da562b8e43b8a63fdf48, "Add tested Arcade Lab controller, safe
 deployment and hardware evidence protocol" (22 files). Credential/key/log audit passed.
@@ -109,9 +110,12 @@ Hosted run 38199528643 (separate Linux Deck workflow) passed. Run 38199528667
 (Windows + Linux + macOS release-gated workflow) is in progress. Its linux-tests
 and macos-lab jobs passed; Windows build is still running. No release from this
 source has been claimed yet.
-Follow-up required after logging review: rerun offline tests for formatted info
-initialization, commit/push this logging/collector correction, and verify the new
-Windows/Linux/macOS workflow and release. b4fb40f is not the final lab implementation.
+Logging correction committed/pushed as e39227940ef9f536b61fd425bea0cd2823bc31a2.
+Its run 38199870622 has passed Linux and macOS gates; Windows is building.
+Separate Deck run 38199870610 passed. A final self-test presentation safeguard
+suppresses fixture success messages (so fake LAB READY cannot confuse users) and
+refuses incomplete test installations. Rerun, commit/push, then verify that final
+source's Windows/Linux/macOS workflow and release. b4fb40f is superseded.
 No hardware acceptance
 may be inferred from CI. Old tools/arcade-deck directory is empty; no existing
 project SSH credentials were available there for read-only hardware preflight.

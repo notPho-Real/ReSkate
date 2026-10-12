@@ -220,8 +220,15 @@ def publish_report(report, run=subprocess.run):
 
 
 def self_test():
+    import contextlib
+    import io
     suite = unittest.defaultTestLoader.discover(str(HERE.parent), pattern="test_*.py")
-    return unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful()
+    if suite.countTestCases() < 40:
+        raise RuntimeError("Incomplete self-test installation; nothing installed")
+    # Fixtures exercise success messages too. Do not expose their simulated
+    # LAB READY output as if the user's own Deck had passed preflight.
+    with contextlib.redirect_stdout(io.StringIO()):
+        return unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful()
 
 
 def bootstrap():
