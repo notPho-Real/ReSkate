@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source_commit": "f669926ab790d1328bc234a9828c290fb46ee276",
-  "dll_sha256": "c67bb9dd2a2cec4db0b683df7cb96de165a801dd7153e8a2010b35a2485008c7",
+  "source_commit": "e63dbe15623ef18cb1cd2bfe76a85b9f8c64ef60",
+  "dll_sha256": "c44fd019365bed73ab97e1bb0f9ee4912e743d5a1e5f75bf27c18bcdf0223f45",
   "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
   "candidates": [
     {

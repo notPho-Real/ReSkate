@@ -6,9 +6,11 @@ Run from this checkout:
 python3 -B /Users/andrewfarrell/reskate-arcade-mode/contrib/arcade-mode/lab/trick_batch.py contrib/arcade-mode/research/batch-example.json
 ```
 
-First replace the example's source/DLL/stock hashes with the exact verified
-development installation. The example is deliberately pinned to the historical
-f669926 installation, not whatever a rolling release happens to contain.
+The example is pinned to CI-tested heartbeat build
+`e63dbe15623ef18cb1cd2bfe76a85b9f8c64ef60` and the preserved stock hash.
+That exact build must be installed before this example can run. Future builds
+require updating the source/DLL pins from verified release metadata. The runner
+refuses a different installation rather than implicitly deploying anything.
 `--validate-only` checks the complete data schema without accessing the Deck.
 The runner never installs a DLL. Use a CI-tested build with the `ARCADE HIL
 STATE` heartbeat, launch Skate and return to ordinary on-board skating first.

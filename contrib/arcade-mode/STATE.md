@@ -28,16 +28,38 @@ executable passed. Includes fake Deck exact stock roundtrip, existing 21 robot
 tests and new failed-candidate continuation/integrity/interrupt/evidence bounds.
 Current CLI accepts auto_review/workspace-write and parses the rules; positive
 batch rule matched. Python compileall, shell syntax and git diff checks passed;
-arbitrary python and ssh matched no project allow rule. Hosted CI pending.
+arbitrary python, ssh and a same-named script outside this checkout matched no
+project allow rule. Both workflow YAML files parsed. 15 Python files and 11
+shell files passed syntax validation.
 No new batch was executed on the real Deck during this task.
 Last known installed build remains f669926 and stock backup remains preserved.
 
-Exact next action: finish syntax/rule checks, commit/push only arcade-mode, wait
-for Windows/Linux/macOS and release gates. Do not run new batch code on Deck
-before those gates pass. Example plan is pinned to historical f669926; replace
-source/DLL pins after an explicit CI-verified development update. Keep dev DLL
-installed. Then resume controlled repeatability/chain tests, not claims of
-completed flips.
+Implementation commits: `5c1be16b78bbb856c6d831a7d9d99bf52b2eb32f` and
+`e63dbe15623ef18cb1cd2bfe76a85b9f8c64ef60`, pushed only to origin arcade-mode,
+along with the preserved earlier 8ff309f milestone. Final code CI
+https://github.com/notPho-Real/ReSkate/actions/runs/38356744624 passed all four
+jobs: Windows build/model, Linux tests, macOS lab and gated release. Separate
+installer run 38356744628 passed too. Local suite: 114 passed, zero failures;
+pure C++ executable passed. Hosted jobs include the same batch tests.
+
+Immutable release `arcade-build-e63dbe15623ef18cb1cd2bfe76a85b9f8c64ef60` and
+rolling channel were downloaded and verified with the existing pinned-origin,
+commit, archive hash, DLL hash and x64 PE validators. DLL SHA-256:
+`c44fd019365bed73ab97e1bb0f9ee4912e743d5a1e5f75bf27c18bcdf0223f45`.
+Example JSON now pins this build. This final handoff/data-pin commit does not
+change executable code and deliberately skips another identical CI build.
+
+Exact next action: reload this trusted project so Codex can apply local policy
+(managed host policy still wins), use the established standing-authorized
+deployment procedure to update the active development installation to the
+verified e63dbe1 build, launch Skate into on-board skating, then run the command
+in lab/TRICK_BATCH.md. No new runner operation or SSH access occurred during
+this autonomy implementation; hardware behavior of heartbeat/batching remains
+UNVERIFIED. Last known installed DLL remains f669926; do not mistake release
+publication for deployment. Keep dev installed. Resume controlled repeatability
+and chain tests, not claims of completed flips. Recovery is bounded readiness
+waiting, not automatic launcher navigation. Skipped-context trials and named
+trick UNVERIFIED must not be promoted to passes.
 
 ## Live Deck research session (update immediately after each milestone)
 
