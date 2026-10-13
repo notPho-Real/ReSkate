@@ -323,6 +323,7 @@ def experiment_events(name, events, duration):
                     return capabilities().get("ready", False)
                 try:
                     replay(pad, events, duration, alive)
+                    pad.neutral()  # Never hold the final phase while capture drains.
                     frames = future.result()
                 finally:
                     # Neutralize BEFORE joining the screenshot worker, otherwise
