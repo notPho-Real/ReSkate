@@ -2,6 +2,7 @@
 #include "overlay_internal.h"
 #include "input_capture.h"
 #include "held_input.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Engine/Game/Input/playstation_report.h"
 #include <hidsdi.h>
 #include <atomic>
@@ -283,6 +284,12 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
     if (result == ERROR_SUCCESS && output && capture) {
         output->Gamepad = {};
         output->dwPacketNumber ^= 0x80000000u;
+        if (!overlay_input_access) arcade_mode::remap_xinput(user,
+            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false);
+    } else if (result == ERROR_SUCCESS && output && !overlay_input_access) {
+        const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
+            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true);
+        if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
     }
     return result;
 }
@@ -584,6 +591,12 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         // The game must notice a neutral state even if the physical packet did
         // not change between opening the menu and its next controller poll.
         output->dwPacketNumber ^= 0x80000000u;
+        if (!overlay_input_access) arcade_mode::remap_xinput(user,
+            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false);
+    } else if (result == ERROR_SUCCESS && output && !overlay_input_access) {
+        const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
+            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true);
+        if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
     }
     return result;
 }

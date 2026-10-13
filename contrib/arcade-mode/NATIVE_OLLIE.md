@@ -1,7 +1,29 @@
 # Native ollie investigation
 
-This is the active A-button milestone after observer acceptance. An A-to-ollie
-command is **not implemented**. Do not treat the diagnostic build as one.
+The bbd1def diagnostic build is fully tested and stock restored. A separate
+experimental input mapping now exists in source, but it has **not** been
+deployed or verified on the Deck. Do not treat this source as a passed ollie
+milestone until the game itself demonstrates the result.
+
+## Real hardware input baseline and mapping
+
+The autonomous virtual gamepad pressed A to arm a five-second native capture,
+then performed the game's normal right-stick ollie on a board while on a clear
+sidewalk. A fresh Gamescope frame displayed “Ollie.” Capture 4 was complete
+(30 bounded samples) and showed these client-sampled state/mode transitions:
+100/1 at 0 ms, 100/0 at 1634 ms, 103/0 at 1734 ms, 200/2 at 1834 ms,
+201/2 at 1867 ms, and 100/1 at 2634 ms. The prior on-board A-only baseline
+was contaminated by a traffic collision and is not proof of an A ollie.
+The 13/13 sanitized observer/restore report is at
+https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/bbd1def2eaf42945d43f4e0708574852eee3b817.json .
+
+`arcade_ollie.h` models a single bounded A-to-right-stick gesture. The existing
+game XInput hook applies it only with a fresh local on-board idle sample,
+preserves physical right-stick priority, suppresses the triggering A from the
+game, and provides packet changes for the two synthetic stick phases. There
+are no direct native game calls or state writes. Pure model tests exercise
+timing, hold behavior, off-board passthrough, cancellation and clock rollback.
+Whether Skate uses this hooked path for gameplay is hardware-unverified.
 
 ## Verified binary and evidence
 
@@ -50,16 +72,14 @@ game `logs/ReSkate.log`. Each capture has an ID; sample milliseconds are relativ
 to its arm. A new A press starts a new capture ID. A capture ending at 128 samples
 may be truncated; lack of a sample does not establish lack of a physics transition.
 
-## Next hardware experiment
+## Completed diagnostic hardware experiment
 
-1. Wait for all release gates, then explicitly deploy the tested diagnostic build.
-2. Launch normally. In a clear flat area, tap A once and do nothing for five seconds.
-3. Tap A once, then perform one ordinary ollie with the game's existing stick
-   control within five seconds. Avoid further A presses during that capture.
-4. Repeat once to separate repeatable crouch/pop requests from incidental changes.
-5. Collect only the matching diagnostic fields plus installed source/hash and
-   freshness evidence. Compare idle and native-jump captures; preserve findings
-   here and in STATE.md before implementing any request producer.
+The virtual controller and collector completed this on the real Deck. Next,
+after Windows/Linux/macOS release gates pass for the new source, an explicitly
+authorized feature deployment can test A on a board in a clear area. Capture
+periodic private frames and bounded numeric traces, repeat A, check a held A
+does not repeat, and verify physical right-stick control remains native. Restore
+the exact stock DLL and previous updater preference at the end of the run.
 
 The Mac controller has a read-only `trace` operation:
 `python3 -B contrib/arcade-mode/lab/controller.py trace`. It outputs sanitized JSON
@@ -68,8 +88,7 @@ samples each). It refuses stale logs or a changed DLL. It prints no arbitrary lo
 lines and does not publish or alter the observer-acceptance report. Capture
 completion means the end marker's count matches parsed samples, not trick success.
 
-Do not automatically deploy this build or modify the real game while running.
-The previously accepted observer report belongs to f09872f, not this new build.
-The remaining blocker to claiming an ollie implementation is identifying and
-validating its native input/request path, including ownership, calling thread,
-grounded gating, stale-request invalidation and one action per A press.
+Do not automatically deploy a new feature build or modify the real game while
+running. The accepted diagnostic report belongs to bbd1def, not the new source.
+The remaining blocker to claiming an ollie implementation is a real Deck run
+showing this A remap causes a native ollie consistently and safely.

@@ -1,6 +1,7 @@
 #include "arcade_mode.h"
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
+#include "arcade_ollie.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Extension/Skater/no_bail.h"
@@ -10,6 +11,7 @@
 #include <array>
 #include <atomic>
 #include <limits>
+#include <mutex>
 #include <string>
 
 namespace dingosdk::arcade_mode {
@@ -24,6 +26,9 @@ constexpr std::array<char, 4> button_names{'A', 'B', 'X', 'Y'};
 NativeRequestCapture request_capture;
 bool request_probe_ready{};
 std::uint64_t capture_started{}, capture_id{};
+std::atomic<std::uint64_t> ollie_eligible_until{};
+std::array<OllieGesture, 4> ollie_gestures{};
+std::mutex ollie_mutex;
 
 bool validate_request_probe(std::uintptr_t base) noexcept {
     using namespace game::build::v20260929::arcade_native_probe;
@@ -56,7 +61,7 @@ bool start(std::uintptr_t image_base) noexcept {
     logging::log(logging::Level::info, logging::Channel::skater,
         "ARCADE NATIVE PROBE: available={} read_only=true duration_ms=5000 limit=128.", request_probe_ready);
     logging::log(logging::Level::info, logging::Channel::skater,
-        "Arcade Mode ready (development controller and native-state observer only).");
+        "Arcade Mode ready (controller observer and experimental A-to-native-input ollie).");
     ready.store(true, std::memory_order_release);
     return true;
 }
@@ -77,6 +82,11 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        // State 100/mode 1 is the verified on-board idle baseline. Expire this
+        // permission quickly if client ticks, game focus, or owner reads stop.
+        ollie_eligible_until.store(native.valid && native.state == 100 && native.crouch_mode == 1
+            ? now + 150 : 0, std::memory_order_release);
         if (request_probe_ready && (pressed & face_buttons[0])) {
             capture_started = now;
             ++capture_id;
@@ -85,7 +95,7 @@ void on_client_tick() noexcept {
                 "ARCADE NATIVE CAPTURE: id={} begin=true.", capture_id);
         }
         const bool capturing = request_capture.active();
-        if (capturing && request_capture.sample(now, input.available ? native_request_sample() : NativeRequestSample{})) {
+        if (capturing && request_capture.sample(now, native)) {
             const auto& sample = request_capture.last();
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE NATIVE SAMPLE: id={} ms={} valid={} state={} crouch_mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
@@ -112,6 +122,26 @@ void on_client_tick() noexcept {
                     " seen on ReSkate client tick.");
             } catch (...) { /* A lost debug notice must not interrupt other buttons or the tick. */ }
         }
-    } catch (...) { /* Debug observation is never worth the client tick. */ }
+    } catch (...) { ollie_eligible_until.store(0, std::memory_order_release); }
+}
+
+unsigned remap_xinput(unsigned user, unsigned short& buttons, short right_x,
+                      short& right_y, bool game_input) noexcept {
+    if (user >= ollie_gestures.size() || !ready.load(std::memory_order_acquire)) return 0;
+    const auto now = GetTickCount64();
+    const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
+    const bool may_start = game_input && deadline >= now && deadline - now <= 150;
+    const bool manual_stick = (right_x < -8689 || right_x > 8689 || right_y < -8689 || right_y > 8689);
+    OllieGesture::Output result{};
+    {
+        std::lock_guard lock(ollie_mutex);
+        result = ollie_gestures[user].poll(now, buttons, right_y,
+            game_input, may_start, manual_stick);
+    }
+    buttons = result.buttons;
+    right_y = result.right_y;
+    if (result.started) logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE OLLIE: A started native right-stick gesture (experimental).");
+    return result.phase;
 }
 }

@@ -1,15 +1,33 @@
 # Arcade Mode v0.1
 
-Observer milestone passed on the actual Deck for f09872f; see the hardware report
-linked in `contrib/arcade-mode/STATE.md`. Active native-ollie investigation adds a
-read-only, five-second native-request capture on A, bounded to 128 changes.
-It does not make A ollie yet. See
+Observer milestone passed on the actual Deck for f09872f and bbd1def; see the
+hardware reports linked in `contrib/arcade-mode/STATE.md`. The experimental
+A-to-native-ollie input mapping is pure/CI tested but has **not** been deployed
+or validated on hardware. See
 [native investigation](../../contrib/arcade-mode/NATIVE_OLLIE.md).
 
-Experimental, always-active controller observation built natively inside ReSkate.dll on
+Experimental controller observation and A gesture built natively inside ReSkate.dll on
 `notPho-Real/ReSkate:arcade-mode`. No plugin loading, Lua, profile toggle, console command,
-input remapping/suppression, trick injection, or gameplay changes. Original code and generic
+direct game-state writes, or native function calls. Original code and generic
 skating mechanics only; no third-party game branding, copied UI, art, logos, music, or assets.
+
+## Experimental A gesture
+
+The existing XInput hook may translate one A rising edge into the same right-stick
+crouch/release timing that produced a real native “Ollie” with the lab's virtual
+controller. It only starts when a fresh guarded client-tick sample sees the local
+skater in the verified on-board idle state (100, rig mode 1), with game focus and
+no interactive overlay. The hook suppresses that A press for the game, waits one
+second, holds the right stick down for 600 ms, releases it up for 150 ms, then
+returns it to neutral. Holding A does not restart the gesture. A real right-stick
+move cancels the synthetic gesture; menu capture cancels it too. The physical
+controller and unrelated buttons remain unchanged. If native ownership or the
+binary probe is unavailable, A retains its original game action.
+
+This is an input-path experiment, not a proven native-quality gameplay milestone.
+Windows CI proves the hook compiles; the Deck must prove the hooked XInput path
+actually reaches Skate and that A consistently creates the native ollie without
+unwanted actions or affecting normal stick control. The Deck is currently stock.
 
 ## Controller observation
 
@@ -124,8 +142,9 @@ API signatures are verified against this repository, not inferred from another r
 5. Combo score + revert/manual linking + balance + persistent fatigue.
 6. Host-validated multiplayer knockdown event.
 
-Only milestone 1 is implemented here. After observation works in-game, investigate whether the
-native trick state machine supports a native-quality ollie, fixed flip, revert -> manual, and
+Milestone 1 is hardware verified; milestone 2 has a tested but hardware-unverified
+input-path implementation. After A is verified in-game, investigate whether the
+native trick state machine supports a fixed flip, revert -> manual, and
 natural grind release/failure. Later controls may use B for grab and Y for grind/context action.
 Future knockdown should be a host-authoritative ATTACK/KNOCKDOWN event plus native bail, rather
 than rigid-body player collision. Long unbanked combos should become increasingly unstable.

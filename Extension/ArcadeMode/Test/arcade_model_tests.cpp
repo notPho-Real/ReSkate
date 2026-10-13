@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_model.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
+#include "Extension/ArcadeMode/arcade_ollie.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -12,6 +13,39 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    OllieGesture ollie;
+    auto frame = ollie.poll(0, 0, 0, true, true);
+    check(frame.buttons == 0 && frame.phase == 0, "idle leaves native controller alone");
+    frame = ollie.poll(10, OllieGesture::a_button, 0, true, false);
+    check(frame.buttons == OllieGesture::a_button && !frame.started,
+        "A stays native when off board");
+    frame = ollie.poll(20, 0, 0, true, true);
+    frame = ollie.poll(30, OllieGesture::a_button, 0, true, true);
+    check(frame.started && frame.buttons == 0 && frame.phase == 0,
+        "on-board A edge starts one gesture and suppresses native A");
+    frame = ollie.poll(1029, OllieGesture::a_button, 0, true, false);
+    check(!frame.started && frame.right_y == 0 && frame.buttons == 0,
+        "holding A neither repeats nor aborts when board state changes");
+    frame = ollie.poll(1030, OllieGesture::a_button, 0, true, false);
+    check(frame.phase == 1 && frame.right_y == -32768, "native crouch phase begins");
+    frame = ollie.poll(1630, 0, 0, true, false);
+    check(frame.phase == 2 && frame.right_y == 32767, "native release phase begins");
+    frame = ollie.poll(1780, 0, 0, true, false);
+    check(frame.phase == 0 && frame.right_y == 0, "gesture always returns stick to neutral");
+    frame = ollie.poll(1900, OllieGesture::a_button, 15000, true, true, true);
+    check(!frame.started && frame.buttons == OllieGesture::a_button && frame.right_y == 15000,
+        "physical right-stick control takes precedence");
+    frame = ollie.poll(1910, 0, 0, true, true);
+    frame = ollie.poll(1920, OllieGesture::a_button, 0, true, true);
+    frame = ollie.poll(2920, 0, 15000, true, false, true);
+    check(frame.phase == 0 && frame.right_y == 15000, "player stick cancels synthetic gesture");
+    frame = ollie.poll(2930, OllieGesture::a_button, 0, false, false);
+    check(frame.buttons == OllieGesture::a_button && frame.phase == 0,
+        "menu input capture cancels synthetic gesture");
+    frame = ollie.poll(2940, 0, 0, true, true);
+    frame = ollie.poll(2950, OllieGesture::a_button, 0, true, true);
+    frame = ollie.poll(2949, OllieGesture::a_button, 0, true, false);
+    check(frame.phase == 0, "backwards time cancels synthetic gesture");
     NativeRequestCapture capture;
     NativeRequestSample native{true, 100, 0, {1,2,3,4,5,6,7,8}};
     check(!capture.sample(100, native), "native capture requires explicit arm");
