@@ -114,10 +114,15 @@ class RobotTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 robot.experiment("idle")
             pad.assert_not_called()
-        for name in ("idle", "stick-ollie", "observer"):
+        for name in ("idle", "stick-ollie", "observer", "candidate-flip-left", "candidate-flip-right"):
             events, duration = robot.recipe(name)
             self.assertLessEqual(duration, 16)
             self.assertEqual(events, sorted(events, key=lambda event: event[0]))
+        left, duration = robot.recipe("candidate-flip-left")
+        right, other_duration = robot.recipe("candidate-flip-right")
+        self.assertEqual((duration, other_duration), (6, 6))
+        self.assertEqual(left[1][1], [(3, 3, -28000), (3, 4, -28000)])
+        self.assertEqual(right[1][1], [(3, 3, 28000), (3, 4, -28000)])
         with self.assertRaises(ValueError):
             robot.recipe("arbitrary-command")
 

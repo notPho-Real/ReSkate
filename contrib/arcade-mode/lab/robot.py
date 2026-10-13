@@ -139,6 +139,13 @@ def recipe(name):
                 (1, [(3, 4, 32767)]), (1.6, [(3, 4, -32768)]), (1.75, [(3, 4, 0)])], 5
     if name == "idle":
         return [(0, [(1, BUTTONS["A"], 1)]), (0.1, [(1, BUTTONS["A"], 0)])], 5
+    if name in ("candidate-flip-left", "candidate-flip-right"):
+        # Research only: crouch, then flick toward one upper diagonal. Do not
+        # label a native trick until a fresh game HUD/frame confirms its name.
+        side = -28000 if name.endswith("left") else 28000
+        return [(1, [(3, 4, 32767)]),
+                (1.6, [(3, 3, side), (3, 4, -28000)]),
+                (1.85, [(3, 3, 0), (3, 4, 0)])], 6
     raise ValueError("Unknown fixed recipe")
 
 
@@ -329,7 +336,8 @@ def main(argv=None):
     from controller import ssh_arguments, HOME
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("preflight", "run", "capture"))
-    parser.add_argument("--recipe", choices=("observer", "idle", "stick-ollie"), default="idle")
+    parser.add_argument("--recipe", choices=("observer", "idle", "stick-ollie",
+                                             "candidate-flip-left", "candidate-flip-right"), default="idle")
     parser.add_argument("--host", default="deck@steamdeck.local")
     parser.add_argument("--output", type=Path, help="New local directory, required for run; screenshots stay private")
     args = parser.parse_args(argv)

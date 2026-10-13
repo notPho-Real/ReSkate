@@ -15,6 +15,8 @@ python3 -B contrib/arcade-mode/lab/robot.py capture --output artifacts/robot-scr
 python3 -B contrib/arcade-mode/lab/robot.py run --recipe idle --output artifacts/robot-idle-01
 python3 -B contrib/arcade-mode/lab/robot.py run --recipe stick-ollie --output artifacts/robot-stick-01
 python3 -B contrib/arcade-mode/lab/robot.py run --recipe observer --output artifacts/robot-observer-01
+python3 -B contrib/arcade-mode/lab/robot.py run --recipe candidate-flip-left --output artifacts/robot-flip-left-01
+python3 -B contrib/arcade-mode/lab/robot.py run --recipe candidate-flip-right --output artifacts/robot-flip-right-01
 python3 -B contrib/arcade-mode/lab/controller.py trace
 ```
 
@@ -33,6 +35,11 @@ checks screenshot capture, then runs one fixed recipe. Idle taps A and waits fiv
 seconds. Stick-ollie taps A to arm the diagnostic trace, then moves right-stick Y
 down/up/neutral; this is a candidate native gesture, not an implemented A ollie.
 Observer holds each A/B/X/Y for three seconds with one press/release each.
+The two `candidate-flip-*` recipes are stock-game research gestures: crouch,
+then flick the right stick to an upper diagonal. They are deliberately named
+*candidate* because the resulting native move has not been verified on this
+Deck. Compare fresh private frames with the in-game trick HUD before assigning
+a trick name. No game files or lab release are changed by these recipes.
 No keyboard events, arbitrary commands or user-defined long scripts are accepted.
 
 Four screenshots run alongside input, distributed across the recipe, plus one

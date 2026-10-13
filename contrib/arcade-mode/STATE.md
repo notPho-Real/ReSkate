@@ -1,5 +1,61 @@
 # Arcade Mode persistent project state
 
+## Active X flip-trick milestone (2026-10-12 Pacific)
+
+Starting HEAD `970b2d93048d46c41506ed35a8a5df05076aefaf`, branch
+`arcade-mode`, clean at start. User requested actual THUG/THPS flip tricks on
+X plus left stick or D-pad. Activision's official THPS1+2 controls table
+(https://support.activision.com/tony-hawks-pro-skater-1-2/articles/controls-and-tricks-in-tony-hawks-pro-skater-1-2)
+specifies Xbox X + left/right/up/down = Kickflip/Heelflip/Impossible/Pop
+Shove-It, and top-left/top-right/bottom-left/bottom-right = Hardflip/Inward
+Heelflip/Varial Kickflip/Varial Heelflip. This is a verified classic input
+mapping; the native Skate right-stick sequences for those eight moves are
+**not yet verified**. The real Deck was confirmed reachable and STOCK by a
+read-only `controller.py status`; game and launcher stopped. Do not deploy a
+new DLL without explicit approval for the tested source. Immediate work:
+derive bounded native gesture candidates and test with the stock game where
+possible, then implement pure direction selection and verified native X
+remapping. Preserve A behavior and rerun local/CI gates.
+
+Progress: `arcade_flip.h` now has a pure eight-direction selector for both
+XInput D-pad and left stick, with D-pad precedence, a stick deadzone, and
+invalid opposing D-pad rejection. C++ model tests pass locally. `lab/robot.py`
+has two bounded, explicitly experimental upper-diagonal right-stick recipes,
+with fake-device tests and instructions in `lab/ROBOT.md`. Python Deck/Mac
+suite passes 91/91 with permitted temporary filesystem access. The initial
+read-only sandbox run failed 71 tests because the sandbox disallowed *all*
+temporary directories; the exact suite passed unsandboxed. No X runtime hook
+or native trick claim yet; no new Deck game mutation. Await stock Skate being
+launched before attempting screen-based gesture identification.
+Read-only remote robot preflight found the Deck connected with Gamescope and
+writable uinput, but `skate_running=false`, so no gesture was sent and no
+native trick identity was asserted. The existing ReSkate Steam shortcut was
+identified by read-only lookup; shortcuts.vdf was not edited. Python syntax
+passes for changed files. These changes are research and pure selection only,
+not an X gameplay implementation; do not call this milestone complete.
+
+Stock-game attempt: launched the existing ReSkate Steam shortcut solely for
+gesture research; its launcher displayed **"A ReSkate update is ready"** and
+offered UPDATE, so no button was selected. Launched Skate's own installed Steam
+app separately; private Gamescope evidence showed startup error E111000B:
+"Wine, Proton, and Steam Deck are not supported by this application." Skate
+never reached gameplay. The launcher window opened by this attempt was closed
+via its verified X window ID, without pressing update. Final read-only status
+showed game=false, launcher=false, active Arcade=false, updates=true, current
+DLL and original backup still exactly
+`5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039`.
+No candidate flip gesture was sent. Private images are ignored under
+`artifacts/flip-*` and must never be published.
+
+Current external blocker for **native trick identification**: stock Skate
+cannot start directly under Proton, while the ReSkate launcher currently
+requires a pending stock update to expose Play. Do not click UPDATE or deploy
+a development DLL implicitly. Next action is to resolve that launcher state
+through an explicitly authorized safe operation (or obtain native gesture
+evidence through another primary route), then run the candidate recipes on
+the actual game, identify HUD results, add only confirmed gesture profiles to
+the guarded runtime X remapper, and pass C++/Python/Windows/Linux/macOS gates.
+
 Updated 2026-10-13 UTC (2026-10-12 Pacific). This first section is authoritative.
 The historical sections below are retained for provenance and are superseded.
 

@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
 #include "Extension/ArcadeMode/arcade_ollie.h"
+#include "Extension/ArcadeMode/arcade_flip.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -13,6 +14,25 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    check(flip_direction(0x0004, 0, 0) == FlipTrick::kickflip, "D-pad left selects kickflip");
+    check(flip_direction(0x0008, 0, 0) == FlipTrick::heelflip, "D-pad right selects heelflip");
+    check(flip_direction(0x0001, 0, 0) == FlipTrick::impossible, "D-pad up selects impossible");
+    check(flip_direction(0x0002, 0, 0) == FlipTrick::pop_shove_it, "D-pad down selects pop shove-it");
+    check(flip_direction(0x0005, 0, 0) == FlipTrick::hardflip, "D-pad top-left selects hardflip");
+    check(flip_direction(0x0009, 0, 0) == FlipTrick::inward_heelflip, "D-pad top-right selects inward heelflip");
+    check(flip_direction(0x0006, 0, 0) == FlipTrick::varial_kickflip, "D-pad bottom-left selects varial kickflip");
+    check(flip_direction(0x000a, 0, 0) == FlipTrick::varial_heelflip, "D-pad bottom-right selects varial heelflip");
+    check(flip_direction(0, -32768, 0) == FlipTrick::kickflip, "left stick left selects kickflip");
+    check(flip_direction(0, 32767, 0) == FlipTrick::heelflip, "left stick right selects heelflip");
+    check(flip_direction(0, 0, 32767) == FlipTrick::impossible, "left stick up selects impossible");
+    check(flip_direction(0, 0, -32768) == FlipTrick::pop_shove_it, "left stick down selects pop shove-it");
+    check(flip_direction(0, -25000, 25000) == FlipTrick::hardflip, "left stick top-left selects hardflip");
+    check(flip_direction(0, 25000, 25000) == FlipTrick::inward_heelflip, "left stick top-right selects inward heelflip");
+    check(flip_direction(0, -25000, -25000) == FlipTrick::varial_kickflip, "left stick bottom-left selects varial kickflip");
+    check(flip_direction(0, 25000, -25000) == FlipTrick::varial_heelflip, "left stick bottom-right selects varial heelflip");
+    check(flip_direction(0, 12000, 12000) == FlipTrick::none, "stick deadzone remains unselected");
+    check(flip_direction(0x000c, 0, 0) == FlipTrick::none, "opposing D-pad directions are rejected");
+    check(flip_direction(0x0004, 32767, 0) == FlipTrick::kickflip, "D-pad overrides steering stick");
     OllieGesture ollie;
     auto frame = ollie.poll(0, 0, 0, true, true);
     check(frame.buttons == 0 && frame.phase == 0, "idle leaves native controller alone");
