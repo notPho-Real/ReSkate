@@ -18,6 +18,7 @@ import stat
 import struct
 import subprocess
 import sys
+import threading
 import time
 
 BUTTONS = {"A": 0x130, "B": 0x131, "X": 0x133, "Y": 0x134}
@@ -230,11 +231,12 @@ def screenshot(pid, tmp=Path("/tmp"), sleep=time.sleep, clock=time.monotonic):
         os.close(fd)
 
 
-def periodic(pid, duration):
+def periodic(pid, duration, stop):
     frames = []
     start = time.monotonic()
     for offset in (0, duration / 3, duration * 2 / 3, duration):
-        time.sleep(max(0, offset - (time.monotonic() - start)))
+        if stop.wait(max(0, offset - (time.monotonic() - start))):
+            break
         format_name, data = screenshot(pid)
         frames.append({"elapsed_ms": round((time.monotonic() - start) * 1000),
                        "sha256": hashlib.sha256(data).hexdigest(),
@@ -270,14 +272,20 @@ def experiment(name):
             # Prove screenshot transport before any non-neutral gameplay input.
             screenshot(status["gamescope_pids"][0])
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(periodic, status["gamescope_pids"][0], duration)
+                stop = threading.Event()
+                future = pool.submit(periodic, status["gamescope_pids"][0], duration, stop)
                 def alive():
                     if future.done():
                         future.result()  # Stop input if capture failed.
                     return capabilities().get("ready", False)
-                replay(pad, events, duration, alive)
-                pad.neutral()
-                frames = future.result()
+                try:
+                    replay(pad, events, duration, alive)
+                    frames = future.result()
+                finally:
+                    # Neutralize BEFORE joining the screenshot worker, otherwise
+                    # a failed replay could leave a button held until its next frame.
+                    stop.set()
+                    pad.neutral()
         return {"schema": 1, "recipe": name, "input_sent": True,
                 "game_response": "UNVERIFIED", "frames": frames}
     finally:

@@ -155,6 +155,34 @@ class RobotTests(unittest.TestCase):
         self.assertEqual(self.closed, [7])
         self.assertTrue(all(event[-1] == 0 for payload in self.writes for event in robot.EVENT.iter_unpack(payload)))
 
+    def test_failed_replay_cancels_capture_before_join(self):
+        sequence = []
+        future = Mock()
+        pad = Mock()
+        pad.__enter__ = Mock(return_value=pad)
+        pad.__exit__ = Mock(return_value=False)
+        pad.neutral.side_effect = lambda: sequence.append("neutral")
+        pool = Mock()
+        pool.__enter__ = Mock(return_value=pool)
+        pool.__exit__ = Mock(side_effect=lambda *args: sequence.append("join"))
+        pool.submit.return_value = future
+        with patch.object(robot, "capabilities", return_value={"ready": True, "gamescope_pids": [12]}), \
+             patch.object(robot, "Gamepad", return_value=pad), patch.object(robot.time, "sleep"), \
+             patch.object(robot, "screenshot"), patch.object(robot, "replay", side_effect=RuntimeError("exit")), \
+             patch.object(robot.concurrent.futures, "ThreadPoolExecutor", return_value=pool), \
+             patch.object(robot.signal, "alarm"), patch.object(robot.signal, "signal"):
+            with self.assertRaises(RuntimeError):
+                robot.experiment("observer")
+        self.assertEqual(sequence, ["neutral", "join"])
+        self.assertTrue(pool.submit.call_args.args[-1].is_set())
+
+    def test_cancelled_periodic_capture_sends_no_signal(self):
+        stop = robot.threading.Event()
+        stop.set()
+        with patch.object(robot, "screenshot") as shot:
+            self.assertEqual(robot.periodic(12, 16, stop), [])
+        shot.assert_not_called()
+
     def test_capabilities_fake_proc_handler_and_ambiguity(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

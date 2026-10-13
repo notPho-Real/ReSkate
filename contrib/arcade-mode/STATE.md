@@ -50,6 +50,14 @@ Latest local validation: 89/89 Python tests PASS (70 existing + 19 robot tests),
 executable PASS, git diff --check clean. Existing Linux/macOS CI discover the new
 tests automatically; bootstrap now includes test_robot.py. CI/channel status will
 be recorded after pushing; no workflow definition or runtime DLL code changed.
+Implementation commit 367f67da09c686bc5755efdf5644aa552c539c33 pushed only to
+origin arcade-mode. Hosted Linux/macOS and installer passed; Windows was building
+at last check (development run 38334453685, installer 38334453702). Follow-up
+review found screenshot-worker joining could delay neutralization after a replay
+error. Fixed by neutralizing before joining and cancelling screenshot waits; two
+regression tests added. Latest local suite 91/91 PASS, 12 compile checks PASS.
+This supersedes the earlier 89-test count. User has not yet confirmed Skate open;
+last real preflight still reports game closed. No non-neutral input has been sent.
 
 NEW ACTIVE TASK: user authorized proceeding with A -> native-quality ollie.
 LATEST VERIFIED BUILD: bbd1def2eaf42945d43f4e0708574852eee3b817. CI run
