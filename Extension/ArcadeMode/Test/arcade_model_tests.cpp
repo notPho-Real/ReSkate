@@ -3,6 +3,7 @@
 #include "Extension/ArcadeMode/arcade_native_probe.h"
 #include "Extension/ArcadeMode/arcade_ollie.h"
 #include "Extension/ArcadeMode/arcade_flip.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -14,6 +15,48 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    for (const auto direction : {std::uint16_t{4}, std::uint16_t{8}}) {
+        NativeGesture gesture;
+        const auto expected = direction == 4 ? NativeTrick::kickflip : NativeTrick::heelflip;
+        for (unsigned trial = 0; trial < 20; ++trial) {
+            const auto t = 3000ull * trial;
+            auto out = gesture.poll(t, NativeGesture::x | direction, 0, 0, 0, 0, true, true);
+            check(out.started == expected && !(out.buttons & NativeGesture::x), "X direction starts once and consumes X");
+            out = gesture.poll(t + 1000, NativeGesture::x | direction, 0, 0, 0, 0, true, false);
+            check(out.phase == 1 && out.right_y == -32768 && out.started == NativeTrick::none, "gesture continues across native crouch state");
+            out = gesture.poll(t + 1600, NativeGesture::x | direction, 0, 0, 0, 0, true, false);
+            check(out.phase == 2 && out.right_y == 28000 && out.right_x == (direction == 4 ? 28000 : -28000), "flip polarity matches discovered native gesture");
+            out = gesture.poll(t + 1850, NativeGesture::x, 0, 0, 0, 0, true, true);
+            check(out.phase == 0 && out.right_x == 0 && out.right_y == 0, "flip ends neutral at boundary");
+            check(gesture.poll(t + 2200, NativeGesture::x, 0, 0, 0, 0, true, true).started == NativeTrick::none, "long hold never repeats");
+            gesture.poll(t + 2500, 0, 0, 0, 0, 0, true, true);
+        }
+    }
+    {
+        NativeGesture gesture;
+        check(gesture.poll(0, NativeGesture::x, 0, 0, 0, 0, true, false).started == NativeTrick::none, "air/invalid state refuses new flip");
+        check(gesture.poll(1, NativeGesture::x, 0, 0, 0, 0, true, true).started == NativeTrick::none, "refused edge is not queued");
+        gesture.poll(2, 0, 0, 0, 0, 0, true, true);
+        check(gesture.poll(3, NativeGesture::x, 0, 0, 0, 0, true, true).started == NativeTrick::kickflip, "neutral X selects kickflip");
+        auto out = gesture.poll(1003, NativeGesture::x, 0, 0, 9000, -10000, true, true);
+        check(out.phase == 0 && out.right_x == 9000 && out.right_y == -10000, "physical right stick cancels without modification");
+        check(gesture.poll(1603, NativeGesture::x, 0, 0, 0, 0, true, true).phase == 0, "cancelled hold cannot restart");
+        gesture.poll(2000, 0, 0, 0, 0, 0, false, false);
+        check(gesture.poll(2001, NativeGesture::x, 0, 0, 0, 0, true, true).started == NativeTrick::none, "menu return requires release");
+        gesture.poll(2002, 0, 0, 0, 0, 0, true, true);
+        check(gesture.poll(2003, NativeGesture::x | 1, 0, 0, 0, 0, true, true).started == NativeTrick::none, "unmeasured impossible is not faked");
+    }
+    {
+        NativeGesture shared;
+        OllieGesture old;
+        for (const auto now : {0ull, 100ull, 999ull, 1000ull, 1599ull, 1600ull, 1749ull, 1750ull, 3000ull}) {
+            const auto buttons = static_cast<std::uint16_t>(now < 100 ? 0x1000 : 0);
+            const auto before = old.poll(now, buttons, 0, true, true);
+            const auto after = shared.poll(now, buttons, 0, 0, 0, 0, true, true);
+            check(before.right_y == after.right_y && before.buttons == after.buttons && before.phase == after.phase,
+                  "shared A profile preserves measured ollie boundaries");
+        }
+    }
     check(flip_direction(0x0004, 0, 0) == FlipTrick::kickflip, "D-pad left selects kickflip");
     check(flip_direction(0x0008, 0, 0) == FlipTrick::heelflip, "D-pad right selects heelflip");
     check(flip_direction(0x0001, 0, 0) == FlipTrick::impossible, "D-pad up selects impossible");

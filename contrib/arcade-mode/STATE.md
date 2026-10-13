@@ -11,8 +11,15 @@ Upstream fetched read-only at 28118efc2735a71a0c38bda2e7955d35cb2e7d24:
 on arcade-mode before new trick work, preserving both upstream filter and our
 outer-game-read remap. Local 114 Python tests and C++ model pass after merge;
 Windows integration still needs CI. No deployment or gameplay input yet.
-Next: shared bounded A/X gesture engine for discovered kickflip/heelflip,
-then CI before hardware. Other directional trick names remain selection-only
+Merge checkpoint: 25507d6. Shared bounded A/X gesture engine now implemented
+locally: X neutral/left = discovered kickflip, X right = discovered heelflip,
+direction selected by D-pad before left stick. Preserves measured A timing,
+physical right-stick cancellation, no queued/repeated hold, menu release gate.
+Only grounded state100/mode1 starts; midair ollie->flip remains unsupported and
+must be characterized rather than counted as integrated. C++ tests include 20
+repetitions per flip profile in simulation plus exact A boundary equivalence.
+Next: CI, then deploy/test and record actual hardware outcomes. Other
+directional trick names remain selection-only
 until native gestures are measured. Do not call the flips repeatable/integrated.
 
 ## Autonomy implementation — 2026-10-12

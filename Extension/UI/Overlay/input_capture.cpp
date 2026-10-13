@@ -307,11 +307,13 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         output->Gamepad = {};
         output->dwPacketNumber ^= 0x80000000u;
         if (!overlay_input_access) arcade_mode::remap_xinput(user,
-            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false);
+            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
     } else if (result == ERROR_SUCCESS && output && outer) {
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
-            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true);
+            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
         if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
     }
     return result;
@@ -616,11 +618,13 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         // not change between opening the menu and its next controller poll.
         output->dwPacketNumber ^= 0x80000000u;
         if (!overlay_input_access) arcade_mode::remap_xinput(user,
-            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false);
+            output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
     } else if (result == ERROR_SUCCESS && output && outer) {
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
-            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true);
+            output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
         if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
     }
     return result;
