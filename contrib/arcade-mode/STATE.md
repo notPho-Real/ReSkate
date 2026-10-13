@@ -1,5 +1,20 @@
 # Arcade Mode persistent project state
 
+## X tricks continuation — 2026-10-13
+
+Starting HEAD 5f479ba. Deck connection verified read-only: active f669926,
+game/launcher running, expected dev hash and original stock hash intact,
+updates=false. Temporary mDNS failure resolved after wake; IP was checked
+against the existing paired hostname key, with no new key acceptance.
+Upstream fetched read-only at 28118efc2735a71a0c38bda2e7955d35cb2e7d24:
+71 commits behind, including relevant grind-exit gamepad filtering. Integrated
+on arcade-mode before new trick work, preserving both upstream filter and our
+outer-game-read remap. Local 114 Python tests and C++ model pass after merge;
+Windows integration still needs CI. No deployment or gameplay input yet.
+Next: shared bounded A/X gesture engine for discovered kickflip/heelflip,
+then CI before hardware. Other directional trick names remain selection-only
+until native gestures are measured. Do not call the flips repeatable/integrated.
+
 ## Autonomy implementation — 2026-10-12
 
 Starting HEAD for this task: `8ff309f569446b45fb0203fb4b6c5ab83acd57f9`.
