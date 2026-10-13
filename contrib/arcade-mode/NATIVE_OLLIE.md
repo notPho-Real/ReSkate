@@ -1,9 +1,10 @@
 # Native ollie investigation
 
-The bbd1def diagnostic build is fully tested and stock restored. A separate
-experimental input mapping now exists in source, but it has **not** been
-deployed or verified on the Deck. Do not treat this source as a passed ollie
-milestone until the game itself demonstrates the result.
+The bbd1def diagnostic build was tested and stock restored. Feature f669926
+was then explicitly deployed and tested on the real Deck: an A-only tap created
+Skate's visible native “Ollie,” and a three-second A hold produced one additional
+native ollie/capture. Stock and updater preference were restored afterward.
+The initial A milestone is hardware verified in this bounded setting.
 
 ## Real hardware input baseline and mapping
 
@@ -23,7 +24,9 @@ preserves physical right-stick priority, suppresses the triggering A from the
 game, and provides packet changes for the two synthetic stick phases. There
 are no direct native game calls or state writes. Pure model tests exercise
 timing, hold behavior, off-board passthrough, cancellation and clock rollback.
-Whether Skate uses this hooked path for gameplay is hardware-unverified.
+The real Deck confirmed Skate uses this hooked path for gameplay on this build.
+The sanitized feature result is at
+https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/f669926ab790d1328bc234a9828c290fb46ee276-ollie.json .
 
 ## Verified binary and evidence
 
@@ -74,12 +77,12 @@ may be truncated; lack of a sample does not establish lack of a physics transiti
 
 ## Completed diagnostic hardware experiment
 
-The virtual controller and collector completed this on the real Deck. Next,
-after Windows/Linux/macOS release gates pass for the new source, an explicitly
-authorized feature deployment can test A on a board in a clear area. Capture
-periodic private frames and bounded numeric traces, repeat A, check a held A
-does not repeat, and verify physical right-stick control remains native. Restore
-the exact stock DLL and previous updater preference at the end of the run.
+The virtual controller and collector completed this on the real Deck. The
+feature run then repeated A on a board in a clear area, checked a three-second
+hold produces one edge, captured private frames and numeric traces, and restored
+the exact stock DLL and previous updater preference. A short X tap was missed
+after virtual-controller hotplug; a one-second X hold registered. Future work
+should test physical controller ergonomics and additional skating contexts.
 
 The Mac controller has a read-only `trace` operation:
 `python3 -B contrib/arcade-mode/lab/controller.py trace`. It outputs sanitized JSON
@@ -89,6 +92,6 @@ lines and does not publish or alter the observer-acceptance report. Capture
 completion means the end marker's count matches parsed samples, not trick success.
 
 Do not automatically deploy a new feature build or modify the real game while
-running. The accepted diagnostic report belongs to bbd1def, not the new source.
-The remaining blocker to claiming an ollie implementation is a real Deck run
-showing this A remap causes a native ollie consistently and safely.
+running. The accepted diagnostic report belongs to bbd1def; the new f669926
+feature result is separately published. Remaining risk is broader compatibility
+with physical controllers, varied terrain and game sessions.

@@ -1,89 +1,132 @@
 # Arcade Mode persistent project state
 
-Updated 2026-10-13 UTC (2026-10-12 local). Read the current handoff first;
-historical sections below preserve provenance and are explicitly superseded.
+Updated 2026-10-13 UTC (2026-10-12 Pacific). This first section is authoritative.
+The historical sections below are retained for provenance and are superseded.
 
-## Current handoff: diagnostic tested and stock restored; A->native ollie next
-Repository/branch ONLY notPho-Real/ReSkate, arcade-mode; never main/master/upstream.
-Current implementation HEAD 2a410720c61aecc2895f10bbc213bfff8ade16bb (pushed).
-Current real Deck DLL is STOCK, SHA256
+## Current handoff
+
+Repository: notPho-Real/ReSkate, branch `arcade-mode` ONLY. Never change
+main/master/upstream, replace Skate.exe, use Deck root/sudo, disable SteamOS
+read-only mode, save a Deck password, or edit shortcuts.vdf. Origin is
+https://github.com/notPho-Real/ReSkate.git. Starting HEAD for the most recent
+A-ollie implementation was 2a410720c61aecc2895f10bbc213bfff8ade16bb.
+Feature commit f669926ab790d1328bc234a9828c290fb46ee276 was pushed only
+to arcade-mode; a documentation-only final handoff commit may follow. No PR.
+
+The REAL Steam Deck is currently STOCK: ReSkate.dll and preserved first-stock
+backup both hash SHA-256
 5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039.
-User explicitly approved diagnostic bbd1def2eaf42945d43f4e0708574852eee3b817
-(DLL 082e804b302e59963961f90bf001320acbf90e3901d1c5686fcb82b363719468)
-for automated tests; that installation was restored and is no longer active.
-Stock backup SHA256 remains 5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039;
-updates=true again, receipt inactive; original updater preference restored.
-Verified real hardware: strict SSH, rootless virtual gamepad creation/destruction,
-Steam UI accepts virtual A (opened launcher), Gamescope AVIF screenshots captured
-and inspected locally. Launcher initially showed UPDATE, which was NOT activated.
-Relaunch completed autonomously: acknowledged Steam external-controller notice,
-then clicked visually verified ReSkate Play on X11 :1 (window 33554433, 1254x731).
-Fresh runtime evidence 2026-10-13T02:15:55Z: process seen, initialized=true,
-ready=true, all A/B/X/Y false. Installation ID 0fd664dc2d494aa1a9487464e5d9b70c.
-REAL GAMEPLAY INPUT VERIFIED: virtual B closed Hub and logged B #1. A-only
-on-foot experiment produced A #1, four periodic frames, complete capture id=1
-(10 samples, state=504, crouch_mode=0); Jump score visible. Observer 3-second
-holds then advanced A/B/X/Y counters from 1/1/0/0 to 2/2/1/1, EXACTLY +1 each.
-Four periodic frames collected; last shows Y mounting the board. Capture id=2
-complete (14 samples). No crash observed during these bounded experiments; game
-remains running. Next: on-board A-only baseline, then right-stick ollie recipe,
-inspect screenshots plus `controller.py trace`. Native A->ollie NOT implemented.
-On-board A-only capture id=3 completed with 25 samples, states 100/504 and mode 1,
-but final screenshot shows an IN-GAME traffic collision/Harsh Slam. This is a
-contaminated baseline, NOT a process crash or clean native ollie result. Preserve
-artifacts/robot-idle-board-01 and do not infer request meanings from it alone.
-Next experiment must first recover/reposition away from moving traffic.
-SUBSEQUENT NATIVE GESTURE SUCCESS: Y recovery + left-stick back moved onto the
-sidewalk facing away from traffic; Y mounted the board. `robot.py run --recipe
-stick-ollie` completed: four periodic frames, fresh complete capture id=4 with
-30 samples, states 100/103/200/201, crouch_mode 0/1/2. Final image visibly labels
-the trick "Ollie" and shows the skater on the board. This verifies a native
-right-stick ollie driven by the virtual controller, NOT an A->ollie remap.
-No unexpected application crash observed; prior Harsh Slam was gameplay physics.
-Evidence under ignored artifacts/robot-stick-01; numeric trace is sanitized.
-Native trace id=4 transition timeline (milliseconds after A arm): state/mode
-100/1 at 0, 100/0 at 1634, 103/0 at 1734, 200/2 at 1834, 201/2 at 1867,
-100/1 at 2634. This is a clean native ollie baseline for input experiments,
-not proof that directly writing these states is safe.
-SESSION CLOSED AND RESTORED: after collecting live evidence, X11 requested
-graceful close on the verified `skate.` game window. Read-only status confirmed
-Skate and launcher both stopped. `controller.py restore` returned pass: live and
-backup DLL hashes equal exact stock SHA above, active=false, updates=true,
-recovery_pending=false. Final post-restore collection retained the same
-installation ID and published all 13 observer criteria PASS to
-https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/bbd1def2eaf42945d43f4e0708574852eee3b817.json .
-Holds/native-controls/no-crash are operator-observed classifications from this
-automated session; actual input counters, initialization and hashes came from
-Deck reads. No new A->ollie gameplay feature is implemented yet. Exact next
-action: inspect existing XInput interception and implement a bounded native
-right-stick gesture triggered by an A rising edge in gameplay, with pure tests;
-build and validate through gated CI before another explicit feature deployment.
-Local tests: 91/91 Python, 12 Python syntax, 11 shell syntax, C++ model suite PASS.
-CI for 2a41072: Windows build/model, Linux, macOS, gated release ALL PASS in
-run 38334666711; installer run 38334666790 PASS. Public tested channel verified
-at 2a410720c61aecc2895f10bbc213bfff8ade16bb, DLL SHA256
-29b2ce4933b76b0cc575ffb0a204e71e19f7466bde397fe57711d186a3eba482 (13045760 bytes).
-That newer release was NOT deployed; the user-approved immutable bbd1def is active.
-No workflow changes. Robot code/test/docs live under contrib/arcade-mode/lab and
-test_robot.py; bootstrap includes the tests. Screenshots are private ignored
-artifacts/robot-*; do not publish them unreviewed. Nothing installed into Mac HOME.
-Original observer build f09872f passed all 13 hardware criteria and was restored
-to stock earlier; that acceptance does not transfer to this diagnostic session.
+Skate and ReSkateLauncher were both stopped after the test. Arcade receipt
+active=false, recovery_pending=false, and the original ReSkate updater
+preference was restored to true. User explicitly approved deploying and testing
+feature f669926, then restoring; the approved session is finished. Another
+development DLL deployment requires an explicit user operation/authorization.
 
-NEW SOURCE WORK IN PROGRESS, uncommitted at this handoff: `arcade_ollie.h` pure
-bounded A-to-right-stick gesture; `arcade_mode.cpp` publishes 150 ms on-board
-idle permission from guarded state=100/rig mode=1 reads; existing XInput hook
-remaps only game reads, suppresses triggering A, produces the exact measured
-1 s delay/600 ms crouch/150 ms release, preserves manual right-stick priority,
-and tags changed XInput packet phases. Menu capture cancels it. No game memory
-write or guessed native function call. This is EXPERIMENTAL and has NOT run on
-real hardware; Skate may not use this hook for gameplay. Local pure C++ model
-test PASS, Python simulation 91/91 PASS, diff check PASS. Before any feature
-deployment: inspect/review final diff, commit/push to arcade-mode, wait for
-Windows/Linux/macOS/release gates, verify immutable SHA/hash; only then a new
-explicit feature deployment and actual in-game A test can establish behavior.
-The currently published bbd1def 13/13 result applies solely to the older
-diagnostic DLL. Real Deck is stock and updater=true.
+## Implemented architecture
+
+Arcade Mode is native in ReSkate.dll because stock ReSkate does not load
+arbitrary Plugins/*.dll and custom Lua scripts are currently disabled. Its
+startup and client-tick hooks already exist; the overlay controller reader
+provides A/B/X/Y edges and the runtime observer. A=ollie, X=flip/trick family,
+B=grab, Y=grind/context are intended controls; only A ollie has gameplay
+implementation. The existing pure `arcade_model.h` handles combo scoring,
+banking, fatigue, balance/grace, and bail reset without affecting game state.
+Future multiplayer knockdowns should be host-authoritative events that invoke
+native bail, not player rigid-body collisions.
+
+Feature f669926 adds pure `arcade_ollie.h` and hooks the already-present
+XInput game-read paths, including Steam's front hook. A triggers a native
+right-stick gesture only when guarded client-tick reads show a fresh local
+on-board idle state (state 100, rig mode 1), game focus and no interactive
+overlay. It suppresses the triggering game A, waits 1 s, holds the right stick
+down 600 ms, releases up 150 ms, then returns to neutral. Holding A starts once;
+physical right-stick movement or menu capture cancels it. The binary signatures,
+owner checks and five-second bounded numeric diagnostic trace remain in
+`arcade_native_probe.h` and `arcade_mode.cpp`. This path does not write game
+memory or guess a native trick function. The major technical risk remains
+commanding Skate's native trick state machine cleanly across contexts.
+
+## Build, release and tests
+
+Feature source f669926 passed local 91/91 Python Deck/Mac simulations, pure C++
+model tests, and diff check. GitHub run 38338735186 passed Windows x64 DLL build
+and C++ tests, Linux simulations/shell syntax, hosted macOS lab tests/Python
+syntax, and gated Deck packaging. Installer workflow 38338735189 passed.
+The public immutable `arcade-build-f669926ab790d1328bc234a9828c290fb46ee276`
+and rolling tested `arcade-deck-latest` point to source f669926 and DLL SHA-256
+c67bb9dd2a2cec4db0b683df7cb96de165a801dd7153e8a2010b35a2485008c7
+(13049344 bytes). The channel was verified with commit/hash/PE/origin checks.
+There is no expiring artifact or Deck GitHub-auth requirement. CI advances the
+rolling channel only after Windows, Linux and macOS gates; older late workflows
+cannot roll it backward.
+
+Mac lab controller is `contrib/arcade-mode/lab/controller.py`, Deck installer
+and updater are `deck_installer.py` and `deck_updater.py`, and autonomous
+virtual pad/screenshot runner is `lab/robot.py`. The controller offers
+self-test, pair, read-only preflight, explicit deploy, status, collect, restore,
+and numeric trace. Pairing uses a dedicated ed25519 key and known_hosts under
+the user's HOME; password goes only to the SSH terminal. Host-key checking
+stays strict. Preflight performs only reads. Deploy validates pinned release
+metadata, refuses running processes, preserves the first stock DLL and previous
+updater preference, atomically installs and verifies source/hash. Restore
+requires stopped processes and recovers exact stock. Bootstrap runs its tests
+before installing the HOME controller and never deploys automatically.
+`LAB_PROTOCOL.md` and `lab/ROBOT.md` specify the interfaces and safety rules.
+
+## Real hardware evidence
+
+Diagnostic bbd1def2eaf42945d43f4e0708574852eee3b817 established a native
+right-stick ollie baseline on this Deck and was restored to stock. That result
+is at
+https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/bbd1def2eaf42945d43f4e0708574852eee3b817.json .
+A private Gamescope frame showed Skate's “Ollie”; complete numeric capture
+transitioned state/mode 100/1 -> 100/0 -> 103/0 -> 200/2 -> 201/2 -> 100/1.
+A prior A-only board baseline was contaminated by an in-game traffic collision,
+not an application crash; do not use it as a clean control.
+
+For feature f669926, a fresh read-only preflight passed with the game closed,
+stock and backup matching, and sufficient space. After explicit authorization,
+`Lab.deploy` installed and verified the feature DLL, retained the backup and
+disabled updates. ReSkate launcher showed READY and updates-off; Skate started,
+`arcade_mode_initialized` was true, “Arcade Mode ready” logged, and B exited
+Hub. Y mounted the skater on the board on a sidewalk. The bounded virtual-pad
+`idle` recipe sent ONLY a 100 ms A tap with NO right-stick input. Four private
+Gamescope frames showed crouch, Skate's native “Ollie” HUD, and board landing.
+Complete native capture id 1 had 21 samples and the same state/mode sequence as
+the ordinary right-stick ollie. A continuous 3000 ms A hold generated exactly
+one additional complete capture id 2 (21 samples), with the same native
+sequence, and no repeated rising edge. Skate did not unexpectedly crash.
+A/B/Y observer events registered; a short 120 ms X tap was missed after virtual
+pad hotplug, while a later one-second X hold registered. Do NOT claim that short
+X tap passed.
+
+Live evidence was saved before graceful game close. After both game processes
+stopped, restore verified the exact stock SHA above, active=false and
+updates=true. Final sanitized observer report has 13/13 PASS (holds,
+native-controls and no-crash include operator observation):
+https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/f669926ab790d1328bc234a9828c290fb46ee276.json .
+Separate sanitized machine-readable A-specific result, with no full logs,
+screenshots, credentials, IPs or personal paths:
+https://github.com/notPho-Real/ReSkate/blob/arcade-lab-results/results/f669926ab790d1328bc234a9828c290fb46ee276-ollie.json .
+Private frames remain ignored under `artifacts/robot-feature-*`; Mac HOME
+contains sanitized results at `~/.local/share/reskate-arcade-lab/results`.
+No Mac controller bootstrap/pair/config was installed or changed in this run.
+The Deck game DLL/updater were modified only for the expressly approved test
+and restored; transient virtual input devices and Gamescope temporary frames
+were created by the test.
+
+## Exact next action and unknowns
+
+A -> native-quality Skate ollie is VERIFIED for two bounded Deck inputs in this
+single session. Next gameplay milestone: X -> one fixed native flip, followed
+by grounded/air/grind/manual/landing/bail observation. First review this state
+and the published result, then design the fixed X action against native input
+evidence; run pure/CI gates before any new explicit deployment. The A mapping
+still needs testing with physical controllers, varied terrain, repeated sessions
+and online contexts. Short X taps near virtual-controller hotplug are
+unreliable in this setup; use a settled pad or longer hold when testing.
+No current external blocker. Never claim broader hardware compatibility from
+this one session.
 
 ## Historical robot implementation progression (superseded by current handoff)
 LATEST WORK (2026-10-12): user requested autonomous virtual controller input over

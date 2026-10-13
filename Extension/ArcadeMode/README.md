@@ -1,9 +1,9 @@
 # Arcade Mode v0.1
 
-Observer milestone passed on the actual Deck for f09872f and bbd1def; see the
-hardware reports linked in `contrib/arcade-mode/STATE.md`. The experimental
-A-to-native-ollie input mapping is pure/CI tested but has **not** been deployed
-or validated on hardware. See
+Observer milestone passed on the actual Deck for f09872f, bbd1def and f669926;
+see the hardware reports linked in `contrib/arcade-mode/STATE.md`. The A-to-native
+ollie input mapping passed a real Deck A tap and held-A test, and stock was
+restored afterward. See
 [native investigation](../../contrib/arcade-mode/NATIVE_OLLIE.md).
 
 Experimental controller observation and A gesture built natively inside ReSkate.dll on
@@ -24,10 +24,11 @@ move cancels the synthetic gesture; menu capture cancels it too. The physical
 controller and unrelated buttons remain unchanged. If native ownership or the
 binary probe is unavailable, A retains its original game action.
 
-This is an input-path experiment, not a proven native-quality gameplay milestone.
-Windows CI proves the hook compiles; the Deck must prove the hooked XInput path
-actually reaches Skate and that A consistently creates the native ollie without
-unwanted actions or affecting normal stick control. The Deck is currently stock.
+The real Deck proved the hooked path reaches Skate: an A-only tap produced its
+native “Ollie” HUD and crouch/air/landing sequence; a three-second hold produced
+one more ollie and one observer edge. This is an initial hardware validation,
+not a broad gameplay compatibility claim across maps or controllers. The Deck
+was returned to stock after the test.
 
 ## Controller observation
 
@@ -142,9 +143,9 @@ API signatures are verified against this repository, not inferred from another r
 5. Combo score + revert/manual linking + balance + persistent fatigue.
 6. Host-validated multiplayer knockdown event.
 
-Milestone 1 is hardware verified; milestone 2 has a tested but hardware-unverified
-input-path implementation. After A is verified in-game, investigate whether the
-native trick state machine supports a fixed flip, revert -> manual, and
+Milestones 1 and 2 are hardware verified in the bounded Deck session. Next,
+investigate whether the native trick state machine supports a fixed flip,
+revert -> manual, and
 natural grind release/failure. Later controls may use B for grab and Y for grind/context action.
 Future knockdown should be a host-authoritative ATTACK/KNOCKDOWN event plus native bail, rather
 than rigid-body player collision. Long unbanked combos should become increasingly unstable.
