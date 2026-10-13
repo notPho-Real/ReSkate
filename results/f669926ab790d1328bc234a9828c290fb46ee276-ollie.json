@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "kind": "arcade_ollie_hardware_result",
+  "source_commit": "f669926ab790d1328bc234a9828c290fb46ee276",
+  "installed_dll_sha256": "c67bb9dd2a2cec4db0b683df7cb96de165a801dd7153e8a2010b35a2485008c7",
+  "timestamp": "2026-10-13T03:51:42Z",
+  "criteria": {
+    "a_tap_native_ollie": "PASS",
+    "a_hold_single_rising_edge": "PASS",
+    "native_landing_after_each": "PASS",
+    "no_unexpected_process_crash": "PASS",
+    "stock_dll_restore": "PASS",
+    "updater_preference_restore": "PASS"
+  },
+  "a_tap": {
+    "input": "one 100 ms A press; no physical right-stick input",
+    "visual_observation": "Skate displayed Ollie and the skater landed on the board",
+    "native_capture_id": 1,
+    "capture_complete": true,
+    "native_sample_count": 21,
+    "state_mode_sequence": [
+      [
+        100,
+        1
+      ],
+      [
+        100,
+        0
+      ],
+      [
+        103,
+        0
+      ],
+      [
+        200,
+        2
+      ],
+      [
+        201,
+        2
+      ],
+      [
+        100,
+        1
+      ]
+    ]
+  },
+  "a_hold": {
+    "input": "one continuous 3000 ms A hold",
+    "new_native_capture_count": 1,
+    "native_capture_id": 2,
+    "capture_complete": true,
+    "native_sample_count": 21,
+    "state_mode_sequence": [
+      [
+        100,
+        1
+      ],
+      [
+        100,
+        0
+      ],
+      [
+        103,
+        0
+      ],
+      [
+        200,
+        2
+      ],
+      [
+        201,
+        2
+      ],
+      [
+        100,
+        1
+      ]
+    ]
+  },
+  "observer_report": "results/f669926ab790d1328bc234a9828c290fb46ee276.json",
+  "private_evidence": "Four A-tap Gamescope frames and one post-hold frame were inspected locally; screenshots and full logs are not published."
+}
