@@ -26,6 +26,7 @@ constexpr std::array<char, 4> button_names{'A', 'B', 'X', 'Y'};
 NativeRequestCapture request_capture;
 bool request_probe_ready{};
 std::uint64_t capture_started{}, capture_id{};
+std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
 std::array<OllieGesture, 4> ollie_gestures{};
 std::mutex ollie_mutex;
@@ -83,6 +84,14 @@ void on_client_tick() noexcept {
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
+        // checks without injecting an A press merely to arm a capture.
+        if (now >= hil_heartbeat_at && now - hil_heartbeat_at >= 250) {
+            hil_heartbeat_at = now;
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE HIL STATE: seq={} valid={} state={} mode={}.",
+                ++hil_heartbeat_id, native.valid, native.state, native.crouch_mode);
+        }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
         ollie_eligible_until.store(native.valid && native.state == 100 && native.crouch_mode == 1

@@ -1,5 +1,92 @@
 # Arcade Mode persistent project state
 
+## Autonomy implementation — 2026-10-12
+
+Starting HEAD for this task: `8ff309f569446b45fb0203fb4b6c5ab83acd57f9`.
+Repository remains notPho-Real/ReSkate, branch arcade-mode. Preserve the older
+flip selector milestone and uncommitted research recipes; no upstream edits.
+
+Added `.codex/config.toml` (workspace-write, network off, automatic escalation
+review, high reasoning) and absolute-path command rules. They require a trusted
+project reload and cannot override this session's managed read-only policy.
+No global configuration is modified. `inspect_project.py` exposes fixed git,
+fork Actions/release and robot/controller read-only commands without forwarded
+host/options. `trick_batch.py` accepts only bounded JSON controller data and
+pins the target, source hash, DLL hash and original stock hash. See
+`lab/TRICK_BATCH.md` and `.codex/README.md` for exact interfaces and limitations.
+
+The batch runner reuses single-run robot cleanup/locking/capture, checks every
+candidate, continues ordinary criterion failures, checkpoints private summaries,
+and never deploys/restores/publishes. New read-only native heartbeat every 250 ms
+provides fresh numeric state/mode for conservative on-board context gating.
+No heartbeat means SKIPPED_CONTEXT. Named trick remains UNVERIFIED; sampled
+state sequence is not proof of trick identity or integration. Recovery currently
+waits boundedly for existing game/HIL readiness; no automatic launcher clicking.
+
+Local verification: 114 Python tests passed (23 new batch tests), C++ pure model
+executable passed. Includes fake Deck exact stock roundtrip, existing 21 robot
+tests and new failed-candidate continuation/integrity/interrupt/evidence bounds.
+Current CLI accepts auto_review/workspace-write and parses the rules; positive
+batch rule matched. Python compileall, shell syntax and git diff checks passed;
+arbitrary python and ssh matched no project allow rule. Hosted CI pending.
+No new batch was executed on the real Deck during this task.
+Last known installed build remains f669926 and stock backup remains preserved.
+
+Exact next action: finish syntax/rule checks, commit/push only arcade-mode, wait
+for Windows/Linux/macOS and release gates. Do not run new batch code on Deck
+before those gates pass. Example plan is pinned to historical f669926; replace
+source/DLL pins after an explicit CI-verified development update. Keep dev DLL
+installed. Then resume controlled repeatability/chain tests, not claims of
+completed flips.
+
+## Live Deck research session (update immediately after each milestone)
+
+Latest user instructions establish **ACTIVE HARDWARE-IN-THE-LOOP DEVELOPMENT**.
+Leave the current tested Arcade development DLL installed across iterations;
+the preserved stock backup is emergency/final rollback, not the default between
+experiments. The user grants standing authorization for bounded HIL candidates,
+repo edits/tests/CI, and atomically updating an active dev installation with
+a newly CI-verified development DLL. Restore only on explicit user request,
+declared end of development, inability to start the game, failed integrity
+requiring recovery, or a concrete safety invariant. Never restore because a
+trick probe fails or a handoff is being written. Do not claim any trick
+implemented from one HUD observation.
+
+Trick maturity: DISCOVERED (>=1 confirmed), REPEATABLE (>=20 controlled trials
+plus varied speed/respawn), INTEGRATED (composes with ollie/landing/grind/manual
+contexts, boundaries and physical-input precedence characterized). Current A
+ollie is hardware demonstrated twice, Kickflip once, Heelflip at least once;
+NONE meets the full new integrated standard. Immediate chain baseline is
+ollie -> land; kickflip -> land; heelflip -> land; ollie -> kickflip -> land;
+ollie -> heelflip -> land. Grind/manual chains follow once controllable.
+Use data-driven bounded candidate tables and machine result files under
+`contrib/arcade-mode/research/`. Keep game/dev build hot, neutralize temporary
+virtual input after each candidate, and do not publish raw frames/logs.
+
+The user explicitly approved redeploying the previously tested f669926 DLL
+for native flip research, then restoring stock. Read-only preflight passed:
+both processes stopped, tested release source f669926 and expected DLL hash
+`c67bb9dd2a2cec4db0b683df7cb96de165a801dd7153e8a2010b35a2485008c7`.
+`controller.py deploy` then succeeded and verified this exact installed hash,
+preserved original backup hash
+`5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039`,
+active=true, updates=false. The later standing authorization above supersedes
+the original restore-after-research instruction. Keep development installed.
+The new X selector code remains only in
+local commit `8ff309f569446b45fb0203fb4b6c5ab83acd57f9`, not on the Deck.
+
+Live update: ReSkate launcher READY with updates off; Play launched Skate.
+The tested virtual controller exited Hub with B and mounted the board with Y.
+On flat ground, right stick down (XInput Y=-32768) for 600 ms then upper-left
+(-28000,+28000) for 250 ms produced the in-game HUD **Heelflip Sketchy**.
+The mirror upper-right (+28000,+28000) produced **Kickflip Sketchy**. Four
+private Gamescope frames per run; the named HUD is visible in frame 2 of each
+`artifacts/flip-candidate-left-01` and `...right-01`. These are REAL Deck
+observations, but each is one attempt and "Sketchy" means the current timing
+may need refinement. The classic THPS mapping is left X=Kickflip/right
+X=Heelflip, so the native right-stick **direction is opposite** the THPS
+direction for these two names. No X runtime build has been deployed.
+
 ## Active X flip-trick milestone (2026-10-12 Pacific)
 
 Starting HEAD `970b2d93048d46c41506ed35a8a5df05076aefaf`, branch

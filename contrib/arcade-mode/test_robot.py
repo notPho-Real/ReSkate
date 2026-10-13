@@ -114,7 +114,8 @@ class RobotTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 robot.experiment("idle")
             pad.assert_not_called()
-        for name in ("idle", "stick-ollie", "observer", "candidate-flip-left", "candidate-flip-right"):
+        for name in ("idle", "stick-ollie", "observer", "exit-hub", "mount-board",
+                     "candidate-flip-left", "candidate-flip-right"):
             events, duration = robot.recipe(name)
             self.assertLessEqual(duration, 16)
             self.assertEqual(events, sorted(events, key=lambda event: event[0]))
@@ -123,6 +124,19 @@ class RobotTests(unittest.TestCase):
         self.assertEqual((duration, other_duration), (6, 6))
         self.assertEqual(left[1][1], [(3, 3, -28000), (3, 4, -28000)])
         self.assertEqual(right[1][1], [(3, 3, 28000), (3, 4, -28000)])
+        self.assertEqual(robot.recipe("exit-hub")[0][0][1], [(1, robot.BUTTONS["B"], 1)])
+        self.assertEqual(robot.recipe("mount-board")[0][0][1], [(1, robot.BUTTONS["Y"], 1)])
+        self.assertEqual(robot.recipe("open-menu")[0][0][1], [(1, 0x13b, 1)])
+        self.assertEqual(robot.recipe("candidate-side-left")[0][1][1], [(3, 3, -32768), (3, 4, 0)])
+        self.assertEqual(robot.recipe("candidate-side-right")[0][1][1], [(3, 3, 32767), (3, 4, 0)])
+        self.assertEqual(robot.recipe("candidate-arc-left")[0][1][1], [(3, 3, -23000), (3, 4, 23000)])
+        self.assertEqual(robot.recipe("candidate-arc-right")[0][1][1], [(3, 3, 23000), (3, 4, 23000)])
+        for direction in ("left", "right"):
+            events, duration = robot.recipe("candidate-half-" + direction)
+            self.assertEqual((len(events), duration), (6, 6))
+            self.assertEqual(events[-1][1], [(3, 4, 0)])
+        self.assertEqual(robot.recipe("candidate-scoop-left")[0][1][1], [(3, 3, -28000), (3, 4, 14000)])
+        self.assertEqual(robot.recipe("candidate-scoop-right")[0][1][1], [(3, 3, 28000), (3, 4, 14000)])
         with self.assertRaises(ValueError):
             robot.recipe("arbitrary-command")
 

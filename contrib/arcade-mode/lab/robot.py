@@ -139,6 +139,11 @@ def recipe(name):
                 (1, [(3, 4, 32767)]), (1.6, [(3, 4, -32768)]), (1.75, [(3, 4, 0)])], 5
     if name == "idle":
         return [(0, [(1, BUTTONS["A"], 1)]), (0.1, [(1, BUTTONS["A"], 0)])], 5
+    if name in ("exit-hub", "mount-board"):
+        button = BUTTONS["B" if name == "exit-hub" else "Y"]
+        return [(0, [(1, button, 1)]), (1, [(1, button, 0)])], 6
+    if name == "open-menu":
+        return [(0, [(1, 0x13b, 1)]), (1, [(1, 0x13b, 0)])], 6
     if name in ("candidate-flip-left", "candidate-flip-right"):
         # Research only: crouch, then flick toward one upper diagonal. Do not
         # label a native trick until a fresh game HUD/frame confirms its name.
@@ -146,6 +151,32 @@ def recipe(name):
         return [(1, [(3, 4, 32767)]),
                 (1.6, [(3, 3, side), (3, 4, -28000)]),
                 (1.85, [(3, 3, 0), (3, 4, 0)])], 6
+    if name in ("candidate-side-left", "candidate-side-right"):
+        side = -32768 if name.endswith("left") else 32767
+        return [(1, [(3, 4, 32767)]),
+                (1.6, [(3, 3, side), (3, 4, 0)]),
+                (1.85, [(3, 3, 0)])], 6
+    if name in ("candidate-arc-left", "candidate-arc-right"):
+        side = -32768 if name.endswith("left") else 32767
+        half = -23000 if side < 0 else 23000
+        return [(1, [(3, 4, 32767)]),
+                (1.52, [(3, 3, half), (3, 4, 23000)]),
+                (1.62, [(3, 3, side), (3, 4, 0)]),
+                (1.8, [(3, 3, 0)])], 6
+    if name in ("candidate-half-left", "candidate-half-right"):
+        side = -32768 if name.endswith("left") else 32767
+        half = -23000 if side < 0 else 23000
+        return [(1, [(3, 4, 32767)]),
+                (1.52, [(3, 3, half), (3, 4, 23000)]),
+                (1.60, [(3, 3, side), (3, 4, 0)]),
+                (1.68, [(3, 3, half), (3, 4, -23000)]),
+                (1.76, [(3, 3, 0), (3, 4, -32768)]),
+                (1.93, [(3, 4, 0)])], 6
+    if name in ("candidate-scoop-left", "candidate-scoop-right"):
+        side = -28000 if name.endswith("left") else 28000
+        return [(1, [(3, 4, 32767)]),
+                (1.55, [(3, 3, side), (3, 4, 14000)]),
+                (1.75, [(3, 3, 0), (3, 4, 0)])], 6
     raise ValueError("Unknown fixed recipe")
 
 
@@ -265,6 +296,11 @@ def capture():
 
 def experiment(name):
     events, duration = recipe(name)  # Reject arbitrary recipes before side effects.
+    return experiment_events(name, events, duration)
+
+
+def experiment_events(name, events, duration):
+    """Repository-generated, validated batch events share single-run cleanup."""
     status = capabilities()
     if not status.get("ready"):
         raise RuntimeError("Input/capture preflight failed; no input sent: " + json.dumps(status))
@@ -337,7 +373,12 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("operation", choices=("preflight", "run", "capture"))
     parser.add_argument("--recipe", choices=("observer", "idle", "stick-ollie",
-                                             "candidate-flip-left", "candidate-flip-right"), default="idle")
+                                             "exit-hub", "mount-board", "open-menu", "candidate-flip-left",
+                                             "candidate-flip-right", "candidate-side-left",
+                                             "candidate-side-right", "candidate-arc-left",
+                                             "candidate-arc-right", "candidate-half-left",
+                                             "candidate-half-right", "candidate-scoop-left",
+                                             "candidate-scoop-right"), default="idle")
     parser.add_argument("--host", default="deck@steamdeck.local")
     parser.add_argument("--output", type=Path, help="New local directory, required for run; screenshots stay private")
     args = parser.parse_args(argv)

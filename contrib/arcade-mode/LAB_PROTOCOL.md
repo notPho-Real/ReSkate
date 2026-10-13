@@ -172,3 +172,20 @@ sends input to an already running game. Neither deploys. Rootless uinput access,
 installed capture support and Steam controller routing require hardware checks.
 Screenshots stay private locally; only separately sanitized runtime reports may
 be published. The existing observer acceptance and deploy/restore rules remain.
+# Standing-authorized unattended iteration
+
+Routine bounded HIL experiments, tests, arcade-mode commits/pushes, evidence
+collection and CI-verified updates of an active development installation are
+standing-authorized. Keep the development DLL installed across candidates,
+batches, failed hypotheses and handoffs. Restore only on explicit user request,
+declared end of development, or recovery/integrity conditions that require it.
+These current instructions supersede historical restore-after-each-run notes.
+
+Use `lab/trick_batch.py` and [its data protocol](lab/TRICK_BATCH.md) instead of
+asking between candidates. Run local tests and Windows/Linux/macOS CI before
+using new runner code on hardware. Failed state/trick criteria continue; exact
+installation/backup integrity and confirmed neutralization remain mandatory.
+Project `.codex/` requests workspace-write with automatic approval review and
+only fixed bounded command exceptions. Managed policy still wins; reload a
+trusted project to activate config. No global or unrelated repository policy
+is changed. No new runner hardware validation is implied by simulation passes.

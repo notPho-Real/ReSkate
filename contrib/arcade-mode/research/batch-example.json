@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "source_commit": "f669926ab790d1328bc234a9828c290fb46ee276",
+  "dll_sha256": "c67bb9dd2a2cec4db0b683df7cb96de165a801dd7153e8a2010b35a2485008c7",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "upper-right-600", "family": "flip", "repeat": 2,
+      "phases": [{"ms": 0}, {"ms": 1000, "ry": 32767},
+                 {"ms": 1600, "rx": 28000, "ry": -28000}, {"ms": 1850}],
+      "expected": {"states": [100], "trick": "kickflip"},
+      "timeout_ms": 6000, "reset_ms": 3000
+    },
+    {
+      "name": "upper-left-600", "family": "flip", "repeat": 2,
+      "phases": [{"ms": 0}, {"ms": 1000, "ry": 32767},
+                 {"ms": 1600, "rx": -28000, "ry": -28000}, {"ms": 1850}],
+      "expected": {"states": [100], "trick": "heelflip"},
+      "timeout_ms": 6000, "reset_ms": 3000
+    }
+  ]
+}

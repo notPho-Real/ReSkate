@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Deck and lab simulations
+      - name: Deck, lab and bounded trick-batch simulations
         run: python3 contrib/arcade-mode/lab/controller.py self-test
       - name: Shell syntax
         run: find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
@@ -51,7 +51,7 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: Mac lab, bootstrap and fake Deck tests (no hardware)
+      - name: Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)
         run: python3 contrib/arcade-mode/lab/controller.py self-test
       - name: Python and shell syntax
         run: |
