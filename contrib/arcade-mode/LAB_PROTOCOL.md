@@ -163,3 +163,12 @@ nor main is touched, and no local Git checkout is switched by collection.
 No credentials or publication failure affects the Deck installation. The complete
 sanitized JSON remains local; retry Collect when gh authentication/network access
 is ready. Publication is a separate blocker from hardware evidence completeness.
+
+## Bounded autonomous input experiments
+
+See [lab/ROBOT.md](lab/ROBOT.md) for the optional virtual gamepad and periodic
+Gamescope screenshots. `robot.py preflight` is read-only; `robot.py run` explicitly
+sends input to an already running game. Neither deploys. Rootless uinput access,
+installed capture support and Steam controller routing require hardware checks.
+Screenshots stay private locally; only separately sanitized runtime reports may
+be published. The existing observer acceptance and deploy/restore rules remain.

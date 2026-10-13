@@ -5,6 +5,52 @@ Read this file before work. Infrastructure implementation and the current observ
 hardware milestone are complete: 13/13 acceptance criteria PASS.
 
 ## Current handoff: hardware acceptance PASS, Deck restored to stock
+LATEST WORK (2026-10-12): user requested autonomous virtual controller input over
+SSH with periodic screenshots. Start HEAD 80ec088f0906482dcff926798825deec5b9bef1d,
+clean arcade-mode, origin pinned to notPho-Real/ReSkate. Strict read-only SSH
+capability attempts failed: hostname resolution, then last known IP timed out.
+No remote command ran. Deck input/capture permissions are UNKNOWN, not denied.
+Implementing lab/robot.py: stdlib temporary Linux x86_64 uinput Xbox-style device,
+fixed bounded experiments, neutralization/destruction on failure, same-owner
+Gamescope SIGUSR2 screenshots via pidfd, private local frames, no auto publication
+or deployment. No sudo, permission changes, system installation or game writes.
+Upstream Linux uinput headers/docs and Valve Gamescope main.cpp confirm interfaces;
+installed SteamOS version/support and Steam player assignment remain UNVERIFIED.
+Tests are in progress. Exact next action: finish offline tests, then retry read-only
+robot preflight; run a bounded test only when game is intentionally open/visible.
+The diagnostic DLL remains undeployed pending the prior explicit deploy question.
+UPDATE: after user woke Deck, real read-only SSH succeeded. Linux x86_64,
+/dev/uinput character-device write access and Python pidfd support are VERIFIED.
+Skate was closed. Display is same-user gamescope-wl, argv0 gamescope, SIGUSR2
+handler installed. /proc/PID/exe returns EACCES; do not change permissions to read
+it. Identity check uses comm+argv0+UID+caught handler and pidfd for signalling.
+Input creation, game delivery and screenshots not yet verified. User asked to
+open Skate at a skating scene. Offline 87/87 PASS, 12 Python syntax/11 shell syntax
+PASS, C++ model/capture suite PASS; no CI run yet for this work.
+REAL HARDWARE UPDATE: temporary neutral virtual gamepad successfully created using
+the real Gamepad implementation. /sys/devices/virtual/input matching name was
+absent before, present during, absent after (exit 0). No non-neutral input sent,
+no game files changed. This proves rootless device creation/cleanup, not Steam
+player routing or gameplay. New explicit `robot.py capture --output <new-dir>`
+can verify display capture while Skate is closed; it never creates a controller.
+REAL SCREENSHOT VERIFIED: this SteamOS emits /tmp/gamescope_<timestamp>.avif,
+not PNG. First capture attempts correctly returned no image rather than using
+stale files; adapted collector to PNG/AVIF with freshness, ownership, no-symlink,
+size, complete-box and stable-metadata checks. Actual AVIF downloaded, hash-checked
+and saved under ignored artifacts/robot-screen-01; converted locally with macOS
+sips and visually inspected: Steam ReSkateLauncher.exe page, Play button visible.
+No game running, so non-neutral input/Steam player routing and periodic in-game
+capture still UNVERIFIED. Deck changes: transient neutral input device (removed)
+and Gamescope-owned temporary screenshots only. No DLL/config/settings changed.
+No Mac HOME installation changed; preview/evidence files stay inside repository
+ignored artifacts. Exact next action: once Skate is at a skating scene, run robot
+idle experiment, inspect four frames and actual response before any further input.
+Latest local validation: 89/89 Python tests PASS (70 existing + 19 robot tests),
+12 Python compile checks PASS, 11 shell syntax checks PASS, one C++ model/capture
+executable PASS, git diff --check clean. Existing Linux/macOS CI discover the new
+tests automatically; bootstrap now includes test_robot.py. CI/channel status will
+be recorded after pushing; no workflow definition or runtime DLL code changed.
+
 NEW ACTIVE TASK: user authorized proceeding with A -> native-quality ollie.
 LATEST VERIFIED BUILD: bbd1def2eaf42945d43f4e0708574852eee3b817. CI run
 38313781791 PASS for Windows build/model, Linux, macOS, and gated Deck packaging;
