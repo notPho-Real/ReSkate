@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch native dependencies required at configure time
+        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
         run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON
       - name: Build

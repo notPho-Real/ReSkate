@@ -18,7 +18,11 @@ physical right-stick cancellation, no queued/repeated hold, menu release gate.
 Only grounded state100/mode1 starts; midair ollie->flip remains unsupported and
 must be characterized rather than counted as integrated. C++ tests include 20
 repetitions per flip profile in simulation plus exact A boundary equivalence.
-Next: CI, then deploy/test and record actual hardware outcomes. Other
+X implementation commit 7eb6b3b. Its Windows CI configure failed before compile:
+upstream Runtime.cmake globbed an unfetched windows_x86_64_msvc Cargo import
+library. Linux/macOS passed. Workflow now fetches locked Windows dependencies
+before CMake (preserving upstream features). Next: rerun CI, then deploy/test
+and record actual hardware outcomes. Other
 directional trick names remain selection-only
 until native gestures are measured. Do not call the flips repeatable/integrated.
 
