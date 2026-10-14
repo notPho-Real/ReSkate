@@ -306,10 +306,10 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
     if (result == ERROR_SUCCESS && output && capture) {
         output->Gamepad = {};
         output->dwPacketNumber ^= 0x80000000u;
-        if (!overlay_input_access) arcade_mode::remap_xinput(user,
+        if (!overlay_input_access) output->dwPacketNumber ^= arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
@@ -317,7 +317,7 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
         output->dwPacketNumber ^= phase;
     }
     return result;
@@ -621,10 +621,10 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         // The game must notice a neutral state even if the physical packet did
         // not change between opening the menu and its next controller poll.
         output->dwPacketNumber ^= 0x80000000u;
-        if (!overlay_input_access) arcade_mode::remap_xinput(user,
+        if (!overlay_input_access) output->dwPacketNumber ^= arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
@@ -632,7 +632,7 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
         output->dwPacketNumber ^= phase;
     }
     return result;

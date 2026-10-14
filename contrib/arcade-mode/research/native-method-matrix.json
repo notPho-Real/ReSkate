@@ -842,6 +842,21 @@
       "classification": null,
       "hil_status": "UNVERIFIED",
       "review_pending": true
+    },
+    {
+      "arcade_input": "RT",
+      "semantic_action": "Frontside / Backside Revert",
+      "native_method": "Native RS setup plus full LS circle; 30 ms lead, 33 positions at 5 ms, 40 ms tail",
+      "method_source": "community-revert-source.json; EterrnaWasTaken revision 7c28aade77293d0ec269eb5567ffff7314cf8007",
+      "native_id": null,
+      "classification": "COMMUNITY METHOD AVAILABLE",
+      "implementation_status": "Source behavior established; no compatible copying license; independent native recipe test pending",
+      "hil_status": "UNVERIFIED; no new Deck trials while paired host is unreachable",
+      "repeatability": {
+        "trials": 0,
+        "exact": 0
+      },
+      "review_pending": false
     }
   ],
   "schema": 1,

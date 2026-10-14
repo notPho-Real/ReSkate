@@ -1,5 +1,69 @@
 # Arcade Mode persistent project state
 
+## Current resumption checkpoint — 2026-10-14 afternoon
+
+This section supersedes the historical status below. Security work is complete
+and is not an active gameplay milestone. Local and remote `arcade-mode` were
+both `6a8db432d3d90f4179f55a50d7d3413eabd59cf8` at recovery. The other existing
+worktree remains detached at `42102ae`; no files there were changed. Earlier
+uncommitted manual adapter, score-label and grab-guide work is preserved separately.
+
+The latest **recorded installation**, newer than the old handoff, is source
+`6a8db432d3d90f4179f55a50d7d3413eabd59cf8`, DLL SHA-256
+`8bcf84f8affa3961d9422e4958babd93ae88e600e91b01aca956a154dad353b5`.
+The private `arc-observer-deploy-v1/deployment-result.json` reports the game and
+launcher stopped at installation, unchanged game/stock hashes, updates off,
+active receipt and no recovery pending. This is recorded evidence, not a fresh
+claim that the game is running. The external v17 and v3 runner pins still target
+`d0c835c`; they must be reconciled against a fresh installation read before input.
+
+**External blocker:** paired SSH cannot resolve `steamdeck.local`. The trusted
+status request failed, and two explicit paired connectivity checks failed with
+the same resolution error, including after the configured three-packet wake
+request. No controller input, game close/restart, deployment, or stock restore
+was performed in this continuation. Wake/network reconnection is requested.
+
+The earliest incomplete requirement remains flip repeatability. The latest
+recorded d0 regression is 16/24 exact native IDs, including eight failures; all
+24 neutralized and returned to idle. No new Deck trial has been run here.
+Authored compilation already matches the pinned Style Editor reference. The
+demonstrated difference is delivery-relative rescheduling versus an absolute
+game-tick timeline. The reference also increments packets every poll and replaces
+the complete scripted pad. This does not yet prove which difference causes the
+native misrecognitions.
+
+The current change adds unsaved `arcadeplayback delivery|timeline|reference|off`
+diagnostics, selectable only while Arcade Mode is OFF. Ordinary startup behavior
+is unchanged. Timeline isolates absolute scheduling; reference also uses per-poll
+packet progression and full-pad replacement during authored flips. Freshness,
+menu cancellation and bounded expiry remain in force. Per-tick/changed-output
+numeric evidence includes cumulative poll count and delivered packets; the
+existing bounded collector now parses it. The external runner was not updated.
+See `research/playback-parity.json` for the exact comparison and safety differences.
+
+Local validation: 40 focused playback/packet checks and 33,500 working-tree model
+checks passed with sanitizers; the isolated commit without the preserved manual
+work also passed all 33,480 model checks. All 166 Python tests passed. These are not native
+acceptance. Hosted Windows build and controlled Deck A/B remain required.
+
+The exact community revert repository and revision are now recovered. The
+verified source recipe is 235 ms, including 33 circle samples rather than 32.
+There is no compatible source-copying grant, so use the behavioral recipe for an
+independent implementation. The native-method matrix now classifies RT as
+COMMUNITY METHOD AVAILABLE, without a Deck-success claim. See
+`research/community-revert-source.json`; its source uses human verification,
+not native observations.
+
+**Resume:** reconnect Deck; read fresh status/trace; reconcile the reviewed runner
+pins with the installed artifact; complete the hosted build gate before any new
+DLL deployment; restore a safe stationary scene in the same game session where
+possible; run paired reference/delivery trials for Kickflip, Hardflip, Varial
+Kickflip and Impossible under measured 60 Hz simulation and identical stance.
+Use timeline mode only to isolate any reference improvement. Preserve every native
+ID and reset outcome. Do not promote a playback fix without real trials. Then
+evaluate the verified revert recipe, continue the preserved manual/grab work,
+and proceed to grind, HIL throughput, HUD and combo/stress acceptance.
+
 ## Security-first sequence — 2026-10-14
 
 Active work follows SECURITY.md, then live Arcade Mode toggle, automatic skating,

@@ -8,6 +8,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import struct
 import subprocess
@@ -28,6 +29,36 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_playback_trace_preserves_cadence_and_packet_bounds_with_explicit_loss(self):
+        row = 'ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=2 input_packet=0 output_packet=4294967295.'
+        result = probe.parse_playback_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['samples'][0]['seq'], 2)
+        self.assertEqual(result['samples'][-1], dict(seq=129, poll=4, tick=7, mode=2,
+                                                   input_packet=0, output_packet=4294967295))
+        for mode in range(3):
+            self.assertEqual(probe.parse_playback_samples(row.replace('mode=2', f'mode={mode}'))['samples'][0]['mode'], mode)
+        for field in ('seq', 'poll', 'tick'):
+            maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
+            self.assertEqual(probe.parse_playback_samples(maximum)['samples'][0][field], 18446744073709551615)
+            for bad in (maximum.replace('18446744073709551615', '18446744073709551616'),
+                        maximum.replace('18446744073709551615', '-1')):
+                self.assertEqual(probe.parse_playback_samples(bad), dict(samples=[], dropped=0))
+        for bad in (row + ' private', row.replace('mode=2', 'mode=3'), row.replace('mode=2', 'mode=-1'),
+                    row.replace('input_packet=0', 'input_packet=4294967296'),
+                    row.replace('input_packet=0', 'input_packet=-1'), row.replace('4294967295', '4294967296')):
+            self.assertEqual(probe.parse_playback_samples(bad), dict(samples=[], dropped=0))
+
+    def test_trial_observations_expose_playback_and_stick_rows_with_shared_sequence(self):
+        from lab import trick_batch
+        text = ('ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=12000 y=20000 phase=1.\n'
+                'ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=1 input_packet=10 output_packet=11.')
+        result = trick_batch.observations(text)
+        self.assertEqual(result['playback']['samples'][0]['seq'], result['stick']['samples'][0]['seq'])
+        self.assertEqual(result['playback']['samples'][0]['mode'], 1)
+        self.assertEqual(result['playback']['dropped'], 0)
+
     def test_delivered_stick_trace_has_bounded_numeric_fields_and_explicit_loss(self):
         row = 'ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=-32768 y=32767 phase=1.'
         result = probe.parse_stick_samples((row + '\n') * 130)
@@ -770,11 +801,18 @@ class NativeTraceIntegrationTests(Fixture):
         self.log("Arcade Mode ready\nARCADE NATIVE CAPTURE: id=1 begin=true.\n"
                  "ARCADE NATIVE SAMPLE: id=1 ms=0 valid=true state=100 crouch_mode=2 words="
                  "00000001,00000002,00000003,00000004,00000005,00000006,00000007,00000008.\n"
-                 "ARCADE NATIVE CAPTURE: id=1 end=true samples=1.\nprivate unrelated text\n")
+                 "ARCADE NATIVE CAPTURE: id=1 end=true samples=1.\n"
+                 "ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=12000 y=20000 phase=1.\n"
+                 "ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=2 input_packet=10 output_packet=11.\n"
+                 "private unrelated text\n")
         report = self.lab.remote("trace")
         self.assertEqual(report["source_commit"], self.commit)
         self.assertEqual(report["captures"][0]["samples"][0]["words"], list(range(1, 9)))
         self.assertTrue(report["captures"][0]["complete"])
+        playback = report['playback_observations']['samples'][0]
+        stick = report['stick_observations']['samples'][0]
+        self.assertEqual((playback['seq'], playback['tick']), (stick['seq'], stick['tick']))
+        self.assertEqual(playback['output_packet'], 11)
         self.assertNotIn("private", json.dumps(report))
         (self.game / "ReSkate.dll").write_bytes(b"wrong DLL")
         with self.assertRaises(ValueError):

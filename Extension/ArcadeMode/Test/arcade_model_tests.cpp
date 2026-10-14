@@ -26,7 +26,13 @@ void check(bool passed, const char* description) {
     if (!passed) { std::cerr << "FAIL: " << description << '\n'; std::exit(1); }
 }
 }
+#ifdef ARCADE_PLAYBACK_COMBINED_TESTS
+int run_arcade_playback_tests();
+#endif
 int main() {
+#ifdef ARCADE_PLAYBACK_COMBINED_TESTS
+    run_arcade_playback_tests();
+#endif
     using namespace dingosdk::arcade_mode;
     {
         check(score_label_id("Manual") == 1 && score_label_id("BS Revert") == 4,

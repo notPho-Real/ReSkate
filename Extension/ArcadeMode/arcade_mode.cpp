@@ -6,6 +6,7 @@
 #include "arcade_native_events.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
+#include "arcade_playback_packet.h"
 #include "arcade_camera.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_hud.h"
@@ -59,6 +60,10 @@ std::atomic<float> push_speed{};
 std::atomic<bool> authored_mirror_x{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
+std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
+bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
+std::array<PlaybackPacket, 4> playback_packets;
+std::array<std::uint64_t, 4> playback_polls{};
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 struct PadEvidence {
     std::uint64_t sequence{}, ms{};
@@ -66,6 +71,9 @@ struct PadEvidence {
     bool source{};
     std::uint64_t tick{};
     short right_x{}, right_y{};
+    bool playback_sample{};
+    unsigned playback_mode{}, input_packet{}, output_packet{};
+    std::uint64_t poll{};
 };
 std::array<PadEvidence, 64> pad_evidence{};
 std::array<PadEvidence, 4> previous_pad{};
@@ -292,6 +300,21 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
     } catch (...) { restore(); }
 }
 
+PlaybackExperiment playback_experiment() noexcept {
+    return playback_mode.load(std::memory_order_acquire);
+}
+bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcept {
+    if (value != PlaybackExperiment::delivery && value != PlaybackExperiment::timeline &&
+        value != PlaybackExperiment::reference) return false;
+    std::lock_guard lock(ollie_mutex);
+    if (mode_enabled.load(std::memory_order_acquire)) return false;
+    arcade_input.set_playback_schedule(value == PlaybackExperiment::delivery ?
+        AuthoredPlaybackSchedule::delivery_relative : AuthoredPlaybackSchedule::absolute_ticks);
+    playback_mode.store(value, std::memory_order_release);
+    playback_diagnostics = diagnostics;
+    return true;
+}
+
 void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
@@ -408,6 +431,9 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE STICK SAMPLE: seq={} ms={} tick={} user={} x={} y={} phase={}.",
                 p.sequence, p.ms, p.tick, p.user, p.right_x, p.right_y, p.phase);
+            if (p.poll) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PLAYBACK SAMPLE: seq={} poll={} tick={} mode={} input_packet={} output_packet={}.",
+                p.sequence, p.poll, p.tick, p.playback_mode, p.input_packet, p.output_packet);
         }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
@@ -537,11 +563,13 @@ void observe_xinput_source(unsigned user, unsigned short buttons,
 }
 
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
-                      short& right_y, bool game_input, short left_x, short left_y,
-                      unsigned char& left_trigger, unsigned char& right_trigger) noexcept {
+                      short& right_y, bool game_input, short& left_x, short& left_y,
+                      unsigned char& left_trigger, unsigned char& right_trigger,
+                      std::uint32_t physical_packet) noexcept {
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
     const auto physical_buttons = buttons;
     const auto physical_right_x = right_x, physical_right_y = right_y;
+    const auto physical_left_trigger = left_trigger, physical_right_trigger = right_trigger;
     const auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
@@ -555,6 +583,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto prepared = prepared_catalog.load(std::memory_order_acquire);
     const bool authored = prepared && !prepared->empty();
     const auto tick = input_game_tick.load(std::memory_order_acquire);
+    std::uint32_t packet_mask{};
     {
         std::lock_guard lock(ollie_mutex);
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
@@ -562,13 +591,31 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire));
+        const auto experiment = playback_mode.load(std::memory_order_relaxed);
+        const bool reference = experiment == PlaybackExperiment::reference && result.authored_playback;
+        const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && left_trigger != 0;
+        // The reference arm matches upstream's complete scripted pad during the
+        // active flip. The timeline arm isolates scheduling with ordinary masking.
+        if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
+        else if (consume_nollie) left_trigger = 0;
+        const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
+            result.right_x != physical_right_x || result.right_y != physical_right_y) ^
+            (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
+        const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask, reference);
+        packet_mask = physical_packet ^ output_packet;
+        const auto poll = ++playback_polls[user];
         const auto& old = previous_pad[user];
+        const bool diagnostic = playback_diagnostics && (result.authored_playback || old.playback_sample);
+        // Keep one cadence row per game tick plus every changed output. The
+        // cumulative poll count exposes extra reads without logging each one.
         if (mode_enabled.load(std::memory_order_acquire) &&
-            (old.buttons != physical_buttons || old.lt != left_trigger || old.rt != right_trigger ||
+            ((diagnostic && old.tick != tick) || old.buttons != physical_buttons || old.lt != physical_left_trigger || old.rt != physical_right_trigger ||
              old.output != result.buttons || old.phase != result.phase ||
              old.right_x != result.right_x || old.right_y != result.right_y)) {
-            const PadEvidence row{++pad_sequence, now, user, physical_buttons, left_trigger,
-                right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y};
+            const PadEvidence row{++pad_sequence, now, user, physical_buttons, physical_left_trigger,
+                physical_right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y,
+                playback_diagnostics && result.authored_playback, static_cast<unsigned>(experiment),
+                physical_packet, output_packet, diagnostic ? poll : 0};
             previous_pad[user] = row;
             if (pad_count == pad_evidence.size()) ++pad_dropped;
             else {
@@ -588,11 +635,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     if (result.requested_id || result.unsupported)
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE AUTHORED REQUEST: id={} unsupported={}.", result.requested_id, result.unsupported);
-    const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && left_trigger != 0;
-    if (consume_nollie) left_trigger = 0;
-    const auto packet = synthetic_packet_mask(result.phase, buttons != physical_buttons || consume_nollie ||
-        right_x != physical_right_x || right_y != physical_right_y);
-    // A stationary physical pad still needs each authored game-tick step delivered.
-    return authored && result.phase == 1 ? packet ^ static_cast<unsigned>(tick & 0x00ffffffu) : packet;
+    return packet_mask;
 }
 }

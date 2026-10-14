@@ -38,6 +38,26 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+    auto playback_mode = argument("delivery|timeline|reference|off", Type::text, true);
+    playback_mode.choices = {"delivery", "timeline", "reference", "off"};
+    auto playback = action("arcadeplayback", "Unsaved playback A/B diagnostic; change with Arcade Mode OFF",
+                           Group::gameplay, {playback_mode});
+    playback.run = [](const Model&, const Values& values, const Output& out) {
+        using arcade_mode::PlaybackExperiment;
+        if (!values.empty()) {
+            const auto& name = std::get<std::string>(values[0]);
+            const auto mode = name == "reference" ? PlaybackExperiment::reference :
+                name == "timeline" ? PlaybackExperiment::timeline : PlaybackExperiment::delivery;
+            if (!arcade_mode::set_playback_experiment(mode, name != "off")) {
+                out("Turn Arcade Mode OFF before changing playback diagnostics.");
+                return;
+            }
+        }
+        const auto mode = arcade_mode::playback_experiment();
+        out(mode == PlaybackExperiment::reference ? "Playback: reference (experimental)" :
+            mode == PlaybackExperiment::timeline ? "Playback: timeline (experimental)" : "Playback: delivery");
+    };
+    registry.add(std::move(playback));
     auto topic = argument("command", Type::text, true);
     topic.rest = true;
     topic.complete = [&registry](const Model &, auto) {

@@ -7,6 +7,10 @@ bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;
 // Game update thread, via the normal menu/console command dispatcher.
 void set_enabled(bool value, bool persist = true) noexcept;
+// Unsaved development A/B selection; changing it requires Arcade Mode OFF.
+enum class PlaybackExperiment : unsigned { delivery, timeline, reference };
+bool set_playback_experiment(PlaybackExperiment value, bool diagnostics = true) noexcept;
+PlaybackExperiment playback_experiment() noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Uses the existing validated native camera lease on the client thread.
@@ -17,6 +21,7 @@ void observe_xinput_source(unsigned user, unsigned short buttons,
 // Called only for the game's XInput reads, after normal menu input capture.
 // Returns a packet-number XOR mask so synthetic changes and restoration are seen.
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
-                      short& right_y, bool game_input, short left_x, short left_y,
-                      unsigned char& left_trigger, unsigned char& right_trigger) noexcept;
+                      short& right_y, bool game_input, short& left_x, short& left_y,
+                      unsigned char& left_trigger, unsigned char& right_trigger,
+                      std::uint32_t physical_packet) noexcept;
 }

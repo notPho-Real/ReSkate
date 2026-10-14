@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "IMPLEMENTED FOR CONTROLLED A/B; NOT DECK VERIFIED",
+  "baseline_commit": "6a8db432d3d90f4179f55a50d7d3413eabd59cf8",
+  "upstream": {
+    "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/230",
+    "repository": "worthlessnorms/ReSkate",
+    "revision": "f6d7e5a929f9e2b046ea6b1192b1fac2487079c7",
+    "license": "GPL-3.0; compatible with this repository",
+    "files": ["Extension/UI/Overlay/scripted_pad.cpp", "Extension/Style/trick_gestures.cpp", "Extension/Style/trick_pad.cpp", "Extension/Style/trick_recorder.cpp"],
+    "recorder_retry_limit": 3,
+    "caveat": "27/27 recorded tricks is not a first-attempt repeatability denominator."
+  },
+  "demonstrated_differences": {
+    "compiler": "Same 18-tick setup, arc midpoint/interpolation, later 90-degree subdivision, release and end spacing; parser is reused unchanged.",
+    "timeline": "Current delivery schedule advances one step per observed poll and reschedules later arcs from that poll. Reference selects latest step due on an absolute game-tick timeline.",
+    "packets": "Current XOR of physical packet and tick can collide. Reference emits a new packet per poll, including same-tick polls.",
+    "pad": "Reference replaces the full pad while its script owns input; ordinary Arcade preserves physical controls outside its translation.",
+    "safety": "Experiment retains Arcade menu/freshness/backwards-clock/180-tick cancellation. It deliberately does not copy upstream's no-tick fallback or two-second terminal linger. Compare the active trajectory before these terminal differences."
+  },
+  "modes": {
+    "delivery": "Existing schedule and packet handling, with bounded active-poll diagnostics enabled.",
+    "timeline": "Absolute schedule only; ordinary packet handling and masking.",
+    "reference": "Absolute schedule, per-poll packet progression and complete pad replacement during the active authored flip.",
+    "off": "Restore delivery schedule and disable extra poll diagnostics."
+  },
+  "selection": "With Arcade Mode OFF, use arcadeplayback delivery|timeline|reference|off in the existing console, then enable Arcade Mode. Selection is unsaved; startup defaults to ordinary delivery. Mode changes while enabled are rejected.",
+  "controlled_trials": {
+    "gestures": ["Kickflip", "Hardflip", "Varial Kickflip", "Impossible"],
+    "expected_regular_ids": [2, 9, 5, 36],
+    "first_comparison": "Reference versus delivery in paired blocks on the same installed DLL and same authored catalog; timeline arm isolates a demonstrated discrepancy.",
+    "baseline": "Same safe stationary location and clear-bit stance, at least 500 ms measured stable riding, identical 600 ms preparation, neutral physical LS and triggers, D-pad plus single X. Do not compare held-A setup in the first experiment.",
+    "rate": "Match the reference's 60 Hz simulation and normal time scale through existing local setting controls; measure tick/ms cadence and do not infer simulation rate from display refresh.",
+    "evidence": "Join bounded playback and delivered-stick rows by seq; retain native FlipTrickType, timestamps, poll/tick/packet progression, gaps/drops, neutralization and reset. Cadence rows sample each active game tick and every changed output; cumulative poll counts expose additional same-tick reads without logging every identical poll. Reject incomplete timing evidence rather than promoting a partial trace.",
+    "acceptance": "No promotion from local tests. Preserve all native misrecognitions. After selecting a proven change, at least 20 controlled trials per supported action with relevant context variation and no unexplained stuck states are required."
+  },
+  "deck_trials_this_checkpoint": 0,
+  "blocker": "steamdeck.local did not resolve on paired SSH checks, including after a bounded wake request. Existing runner pins still target d0c835c despite the later recorded 6a8db43 install; re-read status and review exact target pins before any input."
+}

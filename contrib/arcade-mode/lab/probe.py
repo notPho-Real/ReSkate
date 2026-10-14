@@ -369,6 +369,24 @@ def parse_stick_samples(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_playback_samples(text):
+    """Bounded numeric cadence and packet evidence, joined to stick rows by seq."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE PLAYBACK SAMPLE: seq=([0-9]{1,20}) poll=([0-9]{1,20}) tick=([0-9]{1,20}) mode=([0-2]) input_packet=([0-9]{1,10}) output_packet=([0-9]{1,10})\.$', line)
+        if not row:
+            continue
+        seq, poll, tick, mode, input_packet, output_packet = map(int, row.groups())
+        if max(seq, poll, tick) > 0xffffffffffffffff or max(input_packet, output_packet) > 0xffffffff:
+            continue
+        samples.append(dict(seq=seq, poll=poll, tick=tick, mode=mode,
+                            input_packet=input_packet, output_packet=output_packet))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
@@ -444,4 +462,5 @@ def native_trace(request, **kwargs):
             "pad_observations": parse_pad_samples(text[start:] if start >= 0 else ""),
             "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
             "stick_observations": parse_stick_samples(text[start:] if start >= 0 else ""),
+            "playback_observations": parse_playback_samples(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

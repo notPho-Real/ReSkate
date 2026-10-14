@@ -13,8 +13,8 @@ struct AuthoredStickStep {
     unsigned tick{};
     std::int16_t x{}, y{};
 };
-// Prepare away from the input callback. Playback advances on game ticks, so
-// repeated XInput reads cannot skip an authored arc or accelerate the gesture.
+// Prepare away from the input callback. Authored step offsets use game ticks,
+// independent of the number of XInput reads in a frame.
 inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGesture& gesture,
                                                            unsigned flick_ms = 24) {
     if (gesture.arcs.empty() || gesture.arcs.size() > 32 || flick_ms > 1000) return {};
@@ -59,9 +59,17 @@ inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGestu
     return result;
 }
 
+enum class AuthoredPlaybackSchedule { delivery_relative, absolute_ticks };
+
 class AuthoredPlayback {
 public:
     struct Output { bool owns_stick{}; std::int16_t x{}, y{}; };
+    void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
+        if (schedule_ == schedule) return;
+        cancel();
+        schedule_ = schedule;
+    }
+    AuthoredPlaybackSchedule schedule() const noexcept { return schedule_; }
     bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup, bool mirror_x = false) noexcept {
         cancel();
         if (steps.empty() || steps.size() > steps_.size() || steps.front().tick != 0 ||
@@ -88,6 +96,14 @@ public:
         if (holding_) return {true, steps_[0].x, steps_[0].y};
         const auto elapsed = tick - began_;
         if (elapsed >= 180) { cancel(); return {}; }
+        if (schedule_ == AuthoredPlaybackSchedule::absolute_ticks) {
+            // Match the reference script's absolute game-tick timeline. A late
+            // poll observes the latest due step without delaying later arcs. cat pouch
+            const auto script_tick = elapsed + (released_ ? 18u : 0u);
+            while (index_ + 1 < size_ && steps_[index_ + 1].tick <= script_tick) ++index_;
+            if (index_ + 1 == size_) { cancel(); return {}; }
+            return {true, steps_[index_].x, steps_[index_].y};
+        }
         const auto since_step = tick - step_at_;
         if (index_ >= last_non_neutral_ &&
             since_step >= steps_[size_ - 1].tick - steps_[index_].tick) {
@@ -112,5 +128,6 @@ private:
     std::size_t size_{}, index_{}, last_non_neutral_{};
     std::uint64_t began_{}, last_{}, step_at_{};
     bool holding_{}, released_{};
+    AuthoredPlaybackSchedule schedule_{AuthoredPlaybackSchedule::delivery_relative};
 };
 }

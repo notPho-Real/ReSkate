@@ -35,6 +35,7 @@ public:
         unsigned phase;
         std::uint8_t requested_id{};
         bool unsupported{};
+        bool authored_playback{};
     };
     void cancel() noexcept {
         active_ = NativeTrick::none;
@@ -106,6 +107,9 @@ private:
 // Own only synthetic state. Every poll starts with the caller's physical input.
 class ArcadeInput {
 public:
+    void set_playback_schedule(AuthoredPlaybackSchedule schedule) noexcept {
+        for (auto& gesture : classic_) gesture.set_schedule(schedule);
+    }
     void enable(bool value) noexcept {
         if (enabled_ == value) return;
         enabled_ = value;
@@ -130,6 +134,7 @@ public:
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
                 classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};
             busy = classic_[user].busy();
+            out.authored_playback = classic.owns_stick;
         } else {
             out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
             busy = gestures_[user].busy();

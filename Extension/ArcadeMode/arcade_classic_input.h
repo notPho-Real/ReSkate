@@ -42,6 +42,11 @@ public:
         playback_.cancel(); previous_ = 0; count_ = 0; holding_ = false; armed_ = false; clocked_ = false;
     }
     bool busy() const noexcept { return playback_.busy() || count_; }
+    void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
+        if (playback_.schedule() == schedule) return;
+        cancel();
+        playback_.set_schedule(schedule);
+    }
     Output poll(std::uint64_t now, std::uint64_t tick, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, bool game_input, bool may_start, bool nollie,
             std::span<const PreparedGesture> catalog, bool mirror_x = false) noexcept {

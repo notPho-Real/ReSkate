@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "classification": "COMMUNITY METHOD AVAILABLE",
+  "implementation_status": "BEHAVIORAL RECIPE VERIFIED IN SOURCE; NATIVE TEST PENDING",
+  "repository": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate",
+  "revision": "7c28aade77293d0ec269eb5567ffff7314cf8007",
+  "source": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/blob/7c28aade77293d0ec269eb5567ffff7314cf8007/dualstick_translator.py#L1632",
+  "license": {
+    "compatible_copying_grant": false,
+    "api_license": null,
+    "notice": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/blob/7c28aade77293d0ec269eb5567ffff7314cf8007/ETERRNA.txt",
+    "finding": "No LICENSE in the reviewed tree. Notice requests retained credit and prohibits re-upload. Do not copy implementation; use independently implemented behavioral parameters."
+  },
+  "recipe": {
+    "native_input_setting": "Classic Flick Mode",
+    "coordinates": "XInput, up-positive Y; invert Y when constructing Linux HIL phases",
+    "rs_regular": [0, -1],
+    "rs_nollie": [0, 1],
+    "lead_ms": 30,
+    "ls_magnitude": 1,
+    "circle_nominal_ms": 160,
+    "circle_segments": 32,
+    "circle_emitted_positions": 33,
+    "position_ms": 5,
+    "circle_actual_ms": 165,
+    "tail_ms": 40,
+    "total_actual_ms": 235,
+    "frontside_candidate": "Clockwise, starts LS right; x=cos(angle), y=sin(angle), angle decreases from zero.",
+    "backside_candidate": "Counterclockwise, starts LS left; angle increases from pi.",
+    "goofy": "Reverse circle direction.",
+    "nollie": "Reverse RS Y only under default REVERT_NOLLIE_MIRROR=false.",
+    "tail": "Center LS, retain RS setup, then release override.",
+    "triggers": "Both zero; no bumper required.",
+    "rt_default": "REVERT_SWAP=true routes RT to the frontside candidate; old header comments are stale.",
+    "scheduler": "500 Hz loop; accumulate deadlines with catch-up when at most 50 ms late, otherwise resynchronize."
+  },
+  "verification_caveat": "Community verification is human D-pad confirmation, not native telemetry. FS/BS must be established from independent score labels/state on this pinned game build.",
+  "verified_deck_results": [],
+  "next": "Evaluate this raw native recipe with native right-stick control available, then integrate RT only after observing real revert identity. Current batch runner requires Arcade ON, which redirects physical RS to camera; an OFF-native trial needs a separately reviewed bounded runner context, not blind playback through the current ON gate."
+}
