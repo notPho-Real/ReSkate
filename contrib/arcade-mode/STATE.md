@@ -43,13 +43,26 @@ press/release before later trigger ramps made both game-facing trigger bytes
 reach 59/127/255 and return to zero. A shorter lead failed again, so this is not
 yet a repeatable readiness guarantee. A later full LT ramp produced native
 off-board state before the chord; the adapter emitted no synthetic board pulse.
-Reset to clear Stadium1 and test partial triggers to separate that native response
-from Arcade chord suppression. See activation_followup in board-toggle-results.
+Clear Stadium1 follow-up passed two partial-trigger smoke cases and all 20 repeated
+cases (10 LT, 10 RT): the game received 59, the chord emitted no synthetic Y,
+releasing the trigger while holding both bumpers did not trigger a delayed toggle,
+and native riding/neutral input remained stable with no evidence gaps or drops.
+The fixed bumper activation and 800 ms trigger lead are part of this tested setup;
+general hotplug readiness and full-trigger native behavior remain separate open
+cases. See activation_followup in board-toggle-results.
 
-The next integration adds only the existing upstream authored flip parser and
-guarded native FlipTrickType observation, with asynchronous game-data loading and
+Source 81c7f910074ba4b2ec32c03c4e9173fa536cb776 adds the existing upstream
+authored flip parser and guarded native FlipTrickType observation, with asynchronous game-data loading and
 bounded numeric catalog/identifier telemetry. This prepares exact native mappings;
 it does not yet change the timed input adapter or claim full trick support.
+
+Windows CI 38565068892 rejected a shadowed loop variable under warnings-as-errors.
+The parser variable names are corrected. No failed artifact was deployed.
+The follow-up also prepares bounded authored flick compilation, hold/release tick
+playback and exact native-ID/context selection, with 32,487 sanitizer checks and
+156 Python checks passing. Playback is not yet connected to the live adapter.
+Reviewed external runner v13 adds only bounded numeric catalog/native-ID parsing;
+it is installed with the existing d93 target pins pending a verified new artifact.
 
 The real Deck live toggle gate PASSED in one game process: ON A produced native
 100 → 103 → 200/201 → 100, OFF A remained 100 and rolled normally, and ON A

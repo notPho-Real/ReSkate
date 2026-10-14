@@ -1,0 +1,100 @@
+#pragma once
+// Adapted from the GPL v3 Style Editor gesture playback in
+// worthlessnorms/ReSkate, f6d7e5a929f9e2b046ea6b1192b1fac2487079c7.
+#include "arcade_authored_gestures.h"
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <span>
+#include <vector>
+
+namespace dingosdk::arcade_mode {
+struct AuthoredStickStep {
+    unsigned tick{};
+    std::int16_t x{}, y{};
+};
+// Prepare away from the input callback. Playback advances on game ticks, so
+// repeated XInput reads cannot skip an authored arc or accelerate the gesture.
+inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGesture& gesture,
+                                                           unsigned flick_ms = 24) {
+    if (gesture.arcs.empty() || gesture.arcs.size() > 32 || flick_ms > 1000) return {};
+    constexpr float pi = 3.14159265358979323846f;
+    std::vector<std::array<float, 2>> points;
+    points.reserve(gesture.arcs.size());
+    for (const auto& arc : gesture.arcs) {
+        if (!std::isfinite(arc.start) || !std::isfinite(arc.end) ||
+            std::abs(arc.start) > 3600 || std::abs(arc.end) > 3600 ||
+            !std::isfinite(arc.minimum) || !std::isfinite(arc.maximum) ||
+            arc.minimum < 0 || arc.minimum > 1 || arc.maximum < arc.minimum || arc.maximum > 2)
+            return {};
+        const auto angle = (arc.start + std::remainder(arc.end - arc.start, 360.0f) / 2 + 180.0f) * pi / 180;
+        float magnitude = arc.maximum <= .25f ? 0 : (arc.minimum + arc.maximum) / 2;
+        if (points.empty() && arc.maximum >= 1) magnitude = 1;
+        points.push_back({std::sin(angle) * magnitude, std::cos(angle) * magnitude});
+    }
+    const auto axis = [](float value) {
+        return static_cast<std::int16_t>(std::clamp(value, -1.0f, 1.0f) * 32767);
+    };
+    std::vector<AuthoredStickStep> result;
+    const auto append = [&](unsigned tick, const std::array<float, 2>& p) {
+        result.push_back({tick, axis(p[0]), axis(p[1])});
+    };
+    append(0, points.front());
+    const auto moves = static_cast<unsigned>(std::max<std::size_t>(points.size() - 1, 1));
+    const auto total = std::max(moves, (flick_ms * 60 + 500) / 1000);
+    unsigned tick = 18;
+    for (std::size_t i = 1; i < points.size(); ++i) {
+        const auto& a = points[i - 1]; const auto& b = points[i];
+        const float turn = std::abs(std::remainder(std::atan2(b[0], b[1]) - std::atan2(a[0], a[1]), 2 * pi)) * 180 / pi;
+        const auto least = i > 1 ? static_cast<unsigned>(std::ceil(turn / 90)) : 1u;
+        const auto share = std::max(total / moves + (i - 1 < total % moves ? 1u : 0u), least);
+        for (unsigned t = 1; t <= share; ++t) {
+            const float f = static_cast<float>(t) / static_cast<float>(share);
+            append(tick + t - 1, {a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f});
+        }
+        tick += share;
+    }
+    append(tick + 3, {0, 0});
+    append(tick + 35, {0, 0});
+    return result;
+}
+
+class AuthoredPlayback {
+public:
+    struct Output { bool owns_stick{}; std::int16_t x{}, y{}; };
+    bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup) noexcept {
+        cancel();
+        if (steps.empty() || steps.size() > steps_.size() || steps.front().tick != 0 ||
+            steps.back().tick > 180 || steps.back().x || steps.back().y) return false;
+        for (std::size_t i = 1; i < steps.size(); ++i)
+            if (steps[i].tick <= steps[i - 1].tick) return false;
+        std::copy(steps.begin(), steps.end(), steps_.begin());
+        size_ = steps.size(); began_ = last_ = tick; holding_ = hold_setup;
+        return true;
+    }
+    void release(std::uint64_t tick) noexcept {
+        if (!holding_ || !size_) return;
+        if (tick < last_) { cancel(); return; }
+        holding_ = false; released_ = true; began_ = last_ = tick;
+    }
+    Output sample(std::uint64_t tick) noexcept {
+        if (!size_) return {};
+        if (tick < last_) { cancel(); return {}; }
+        last_ = tick;
+        if (holding_) return {true, steps_[0].x, steps_[0].y};
+        const auto elapsed = tick - began_;
+        if (elapsed >= 180) { cancel(); return {}; }
+        const auto at = elapsed + (released_ ? 18 : 0);
+        if (at >= steps_[size_ - 1].tick) { cancel(); return {}; }
+        while (index_ + 1 < size_ && steps_[index_ + 1].tick <= at) ++index_;
+        return {true, steps_[index_].x, steps_[index_].y};
+    }
+    void cancel() noexcept { size_ = index_ = 0; holding_ = released_ = false; }
+    bool busy() const noexcept { return size_ != 0; }
+private:
+    std::array<AuthoredStickStep, 128> steps_{};
+    std::size_t size_{}, index_{};
+    std::uint64_t began_{}, last_{};
+    bool holding_{}, released_{};
+};
+}

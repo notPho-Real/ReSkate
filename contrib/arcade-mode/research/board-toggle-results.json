@@ -2,7 +2,7 @@
   "source_commit": "a39311b5b14dc6dc842cdd366132657f77425951",
   "dll_sha256": "8d7923348497aa30c0a513372e81bd9f331cc7382eea3cde9e7a7be16e3dd400",
   "scene": "Stadium1",
-  "maturity": "Repeated native board cycles verified; trigger-conflict boundary unresolved",
+  "maturity": "Repeated native board cycles and partial-trigger suppression verified; full skating-chain integration pending",
   "batches": [
     {
       "evidence": "1791973907394668000",
@@ -553,6 +553,30 @@
       "offboard_ms": 84527728,
       "chord_ms": 84528088,
       "interpretation": "Native off-board transition preceded the chord while LT alone was held. Adapter emitted no synthetic Y. Clear-scene partial-trigger followup is required."
+    },
+    "clear_scene_partial_triggers": {
+      "source_commit": "d93dcef1822d1a0eccb660bb7b9508e86d666059",
+      "runner_version": 10,
+      "smoke_evidence": "1791981268476940000",
+      "smoke_passed": 2,
+      "repeat_evidence": "1791981379132966000",
+      "attempted": 20,
+      "passed": 20,
+      "lt_trials": 10,
+      "rt_trials": 10,
+      "requested_trigger": 64,
+      "received_trigger": 59,
+      "native_states": [
+        100
+      ],
+      "synthetic_board_pulses": 0,
+      "delayed_toggle_after_trigger_release": false,
+      "neutralized_all": true,
+      "native_idle_restored_all": true,
+      "physics_drops": 0,
+      "pad_drops": 0,
+      "evidence_gaps": 0,
+      "limitation": "A bumper press/release and 800 ms trigger lead were used. This proves partial-trigger suppression under the tested setup, not general hotplug readiness or full-trigger native behavior."
     }
   }
 }

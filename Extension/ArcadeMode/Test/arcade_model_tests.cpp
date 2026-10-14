@@ -9,6 +9,8 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_trick_table.h"
 #include "Extension/ArcadeMode/arcade_native_trick.h"
+#include "Extension/ArcadeMode/arcade_authored_playback.h"
+#include "Extension/ArcadeMode/arcade_native_mapping.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -23,6 +25,64 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        check(native_flip_id(ArcadeTrick::impossible, false) == 0 &&
+            native_flip_id(ArcadeTrick::double_kickflip, false) == 0,
+            "unestablished exact variants never fall back to basic flips");
+        std::array<AuthoredGesture, 2> catalog{};
+        catalog[0].native_id = 2;
+        catalog[0].context = GestureContext::from_grind;
+        catalog[1].native_id = 17;
+        catalog[1].nollie = true;
+        check(!exact_authored_gesture(catalog, 2, false, GestureContext::ground),
+            "ground request cannot borrow a grind-exit recipe");
+        check(exact_authored_gesture(catalog, 2, false, GestureContext::from_grind) == &catalog[0],
+            "grind exit retains its authored context");
+        check(!exact_authored_gesture(catalog, 17, false, GestureContext::ground) &&
+            exact_authored_gesture(catalog, 17, true, GestureContext::ground) == &catalog[1],
+            "native nollie context must agree with the authored gesture");
+    }
+    {
+        AuthoredGesture authored{};
+        authored.arcs = {{-10, 10, .8f, 1, 0}, {170, 190, .8f, 1, 0}};
+        const auto steps = compile_authored_flick(authored);
+        check(steps.size() == 4 && steps.front().tick == 0 && steps.front().y == -32767,
+            "authored setup rotates data by half a circle and reaches full crouch");
+        check(steps[1].tick == 18 && steps[1].y > 29000,
+            "authored flick follows the existing eighteen tick setup recipe");
+        check(steps[2].x == 0 && steps[2].y == 0 && steps[3].x == 0 && steps[3].y == 0,
+            "authored playback includes neutral release and neutral completion");
+        AuthoredPlayback playback;
+        check(playback.start(steps, 100, true) && playback.sample(100).y == -32767 &&
+            playback.sample(500).y == -32767, "held A can retain authored crouch without an automatic release");
+        playback.release(501);
+        check(playback.sample(501).y > 29000 && playback.sample(501).y > 29000,
+            "A release begins the flick once; repeated input polls do not advance it");
+        check(!playback.sample(600).owns_stick && !playback.busy(),
+            "completed authored gesture relinquishes synthetic ownership");
+        playback.start(steps, 700, false);
+        playback.sample(710);
+        check(!playback.sample(709).owns_stick && !playback.busy(),
+            "backwards game ticks cancel authored input");
+        playback.start(steps, 800, true);
+        playback.cancel();
+        check(!playback.sample(801).owns_stick, "toggle cancellation clears held authored input");
+        authored.arcs.push_back({-10, 10, .8f, 1, 0});
+        const auto turning = compile_authored_flick(authored);
+        check(turning.size() >= 6 && turning[2].tick + 1 == turning[3].tick,
+            "later half-circle movement receives intermediate game ticks");
+        authored.arcs = {{350, 10, .8f, 1, 0}};
+        check(compile_authored_flick(authored).front().y == -32767,
+            "authored arc crossing zero uses the short angular interval");
+        authored.arcs[0].start = std::numeric_limits<float>::infinity();
+        check(compile_authored_flick(authored).empty(), "nonfinite authored angles cannot produce input");
+        authored.arcs[0] = {0, 10, .9f, .1f, 0};
+        check(compile_authored_flick(authored).empty(), "reversed authored magnitude limits cannot produce input");
+        authored.arcs.resize(33);
+        check(compile_authored_flick(authored).empty(), "authored playback remains bounded");
+        authored.arcs.clear();
+        check(compile_authored_flick(authored).empty(), "missing exact authored gesture produces no substitute input");
+    }
     {
         namespace layout = dingosdk::game::build::v20260929::arcade_tricks;
         constexpr std::uintptr_t core = 0x100000, selection = 0x200000;
