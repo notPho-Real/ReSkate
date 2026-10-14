@@ -22,7 +22,12 @@ X implementation commit 7eb6b3b. Its Windows CI configure failed before compile:
 upstream Runtime.cmake globbed an unfetched windows_x86_64_msvc Cargo import
 library. Linux/macOS passed. Workflow now fetches locked Windows dependencies
 before CMake (preserving upstream features). Next: rerun CI, then deploy/test
-and record actual hardware outcomes. Other
+and record actual hardware outcomes. Second run 38431924270 passed configure
+and built dependencies but MSVC /WX rejected an int-to-uint16 button mask in
+arcade_gesture.h. Explicitly narrowed the bounded mask; rerun required. No
+development DLL update has occurred. Private game guide captures confirm
+diagonal flip directions and describe scoop paths; see research/TRICK_FINDINGS.md.
+Other
 directional trick names remain selection-only
 until native gestures are measured. Do not call the flips repeatable/integrated.
 

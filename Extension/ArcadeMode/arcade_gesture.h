@@ -30,7 +30,7 @@ public:
                 std::int16_t ly, std::int16_t rx, std::int16_t ry,
                 bool game_input, bool may_start) noexcept {
         Output out{buttons, rx, ry, NativeTrick::none, 0};
-        const auto pressed = buttons & (a | x);
+        const auto pressed = static_cast<std::uint16_t>(buttons & (a | x));
         const auto edges = pressed & ~previous_;
         previous_ = pressed;
         if (!game_input) {
