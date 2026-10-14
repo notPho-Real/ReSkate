@@ -19,6 +19,29 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    for (const auto first : {SkatePose::grind, SkatePose::manual}) {
+        ComboSession session;
+        const auto other = first == SkatePose::grind ? SkatePose::manual : SkatePose::grind;
+        session.step(first, 0, 0);
+        const float initial = session.model().difficulty();
+        for (int i = 0; i < 120; ++i) session.step(first, 1.0f / 60, 0);
+        session.step(SkatePose::air, 0, 0);
+        check(session.model().state().balance_kind == BalanceKind::none,
+              "native takeoff stops balance without banking");
+        session.step(other, 0, 0);
+        for (int i = 0; i < 120; ++i) session.step(other, 1.0f / 60, 0);
+        session.step(SkatePose::air, 0, 0);
+        session.step(first, 0, 0);
+        check(session.model().difficulty() > initial,
+              "semantic mixed-mode chain preserves accumulated difficulty");
+        check(session.model().state().grind_fatigue > 0 && session.model().state().manual_fatigue > 0,
+              "semantic mode transitions preserve both mode histories");
+        session.step(SkatePose::riding, 0, 0);
+        session.step(SkatePose::riding, 0.25f, 0);
+        session.step(SkatePose::riding, 0.20f, 0);
+        check(!session.model().state().combo_active && session.model().state().fatigue == 0,
+              "semantic landing grace banks and resets fatigue");
+    }
     {
         ComboSession session;
         session.step(SkatePose::air, 0, 0);

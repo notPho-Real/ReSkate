@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "verification": "REAL_HARDWARE",
+  "source_commit": "276a39664f7805c1693c7f28f6f314c21bc6d469",
+  "setup_ms": 100,
+  "observations": [
+    {
+      "flick_ms": 300,
+      "native_hud": "Manual -> Boned Ollie Sketchy",
+      "evidence": "trick-batch-20261013T215347-43251/trial-000/2.png"
+    },
+    {
+      "flick_ms": 75,
+      "native_hud": "Manual -> Ollie Sketchy",
+      "evidence": "trick-batch-20261013T215714-44036/trial-000/2.png"
+    },
+    {
+      "flick_ms": 150,
+      "native_hud": "Manual -> Ollie Sketchy",
+      "evidence": "trick-batch-20261013T215714-44036/trial-002/2.png"
+    }
+  ],
+  "status": "REPEATABLE_IN_ONE_CONTEXT",
+  "arcade_combo_integration": "NOT_IMPLEMENTED",
+  "note": "Twenty native Manual -> Ollie chains reviewed in private HUD frames, near stationary at one flat sidewalk location. Landing quality varies. No Arcade model/HUD integration or speed/geometry generalization.",
+  "repeat_batch": "trick-batch-20261013T220120-45043",
+  "reviewed_repeat_landings": {
+    "1": "Clean",
+    "2": "Sketchy",
+    "3": "unqualified",
+    "4": "Sketchy",
+    "5": "Clean",
+    "6": "Clean",
+    "7": "Clean",
+    "8": "Sketchy",
+    "11": "Clean",
+    "9": "unqualified",
+    "10": "Sketchy",
+    "12": "Clean",
+    "13": "Sketchy",
+    "14": "Clean",
+    "15": "Clean",
+    "16": "Clean",
+    "17": "Sketchy",
+    "18": "Clean",
+    "19": "Sketchy",
+    "20": "Clean"
+  },
+  "reviewed_repeat_chain": "Manual -> Ollie",
+  "landing_counts": {
+    "Clean": 11,
+    "Sketchy": 7,
+    "unqualified": 2
+  },
+  "attempts": 20,
+  "named_chain_confirmed": 20
+}

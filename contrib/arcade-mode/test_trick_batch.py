@@ -130,7 +130,7 @@ class BatchTests(unittest.TestCase):
         env.observe.return_value = {"states": [{"seq": 2, "valid": True, "state": 100, "mode": 1}], "buttons": []}
         value = plan()
         result = batch.perform_case(value, value["candidates"][0], env)
-        self.assertEqual(result["criteria"]["native_state_sequence"], "FAIL")
+        self.assertEqual(result["criteria"]["native_state_sequence"], "UNVERIFIED")
         self.assertEqual(result["criteria"]["named_trick"], "UNVERIFIED")
         self.assertEqual(result["criteria"]["returned_to_idle"], "FAIL")
         self.assertEqual(env.integrity.call_count, 2)
@@ -150,11 +150,26 @@ class BatchTests(unittest.TestCase):
         env.gesture.return_value = {"input_sent": True, "frames": []}
         env.observe.side_effect = [
             {"combo": {"samples": [{"ms": 100}]}},
-            {"states": [], "combo": {"samples": [{"ms": 99}, {"ms": 100}, {"ms": 101}]}}]
+            {"states": [], "combo": {"samples": [{"ms": 99, "state": 100}, {"ms": 100, "state": 100}, {"ms": 101, "state": 100}]}}]
         value = plan()
         result = batch.perform_case(value, value["candidates"][0], env)
-        self.assertEqual(result["observations"]["combo"]["samples"], [{"ms": 101}])
+        self.assertEqual(result["observations"]["combo"]["samples"], [{"ms": 101, "state": 100}])
         self.assertEqual(result["criteria"]["named_trick"], "UNVERIFIED")
+
+    def test_physics_sequence_can_prove_pop_missed_by_heartbeat(self):
+        for dropped in (0, 1):
+            env = Mock()
+            env.wait_idle.side_effect = [1, 3]
+            env.gesture.return_value = {"input_sent": True, "frames": []}
+            env.observe.side_effect = [
+                {"log_end": 100},
+                {"states": [], "combo": {"dropped": dropped, "samples": [
+                    {"ms": i, "state": state} for i, state in enumerate((100, 200, 100))]}}]
+            value = plan()
+            result = batch.perform_case(value, value["candidates"][0], env)
+            self.assertEqual(result["criteria"]["native_state_sequence"], "PASS" if dropped == 0 else "UNVERIFIED")
+            self.assertEqual(result["criteria"]["heartbeat_state_sequence"], "UNVERIFIED")
+            self.assertEqual(result["criteria"]["named_trick"], "UNVERIFIED")
 
     def test_quiet_baseline_captures_new_physics_rows_by_byte_boundary(self):
         with tempfile.TemporaryDirectory() as temp:

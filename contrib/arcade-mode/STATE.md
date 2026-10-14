@@ -2,6 +2,42 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+823c3ad CI38513539193 ALL FOUR gates PASS. Twenty-trial manual-pop batch
+completed candidates_exhausted:20/20 native HUD Manual→Ollie confirmed in reviewed
+frame2,11 Clean/7 Sketchy/2 unqualified. Same near-stationary flat sidewalk only;
+not full integration. Findings saved research/manual-pop-findings.json. Latest
+pure tests30,512 PASS and Python130 PASS. Graceful shutdown completed; read-only
+status confirms Skate and launcher both stopped, stock hash unchanged. Verified
+823 immutable DLL SHA e3d3b895c824fae315a88ad3f3156607096d97e5770552f4bce9e6352ef12b92.
+Atomic deployment completed: destination hash verified, stock backup unchanged,
+updatesfalse/recoveryfalse. Existing Steam shortcut relaunch requested. No stock restore. Next collect nested score signals during manual and
+negative controls; actual event identity remains unverified.
+
+Current continuation: 130 Python tests PASS, 0 failures after correcting the
+batch evaluator: either heartbeat or complete per-trial physics sequence may
+prove a transition; a missing sample is UNVERIFIED, never an invented trick
+failure. New evaluator remains local pending CI; the active batch uses frozen
+823c3ad runner code against verified installed276a396. Twenty-trial manual-pop
+repeat batch is artifacts/trick-batch-20261013T220120-45043 (session35745).
+First11 completed trials show air→riding and reset PASS; remaining trials running.
+Reviewed trial010/2.png explicitly shows Manual→Ollie Clean. Do not equate state
+sequence alone with named-trick confirmation. Stock remains untouched; dev stays
+installed. Next: complete repetitions, review evidence, wait823 full CI, deploy
+nested score observer, correlate actual manual state before runtime/HUD wiring.
+
+Active source823c3adb6255b3879381edb1027f0e39fe68144f pushed; CI38513539193
+Linux/macOS PASS, Windows pending; separate Deck38513539191 PASS. Do not deploy
+until full gate. Installed276a396 is healthy. During build, manual-pop timing
+batch artifacts/trick-batch-20261013T215347-43251 completed3 trials (100/250/400ms
+full-down setup after manual,300ms up flick). Physics traces show103→200→201
+for ALL THREE; heartbeat missed200 in two and reports FAIL. This is sampling loss,
+not evidence the trick failed. Screenshot trial000/2.png explicitly shows Manual
+then Boned Ollie Sketchy in native history. Discovery only; no repeatability claim.
+Important integration constraint: current A/X profile waits1000ms then crouches
+600ms, exceeding450ms link grace. Do not hide that by inventing input-intent links.
+Bounded follow-up manual-pop-flick-276a396.json fixes setup100ms and compares
+75/150ms flick, twice each; currently running. Existing A mapping unchanged.
+
 276a396 launched successfully; fresh sanitized trace contains28 actual
 ScoringHUDViewModel fields (research/score-schema-276a396.json). This proves the
 read-only UI path works. Observed boolean kind10/size1, integers kind8/size4;

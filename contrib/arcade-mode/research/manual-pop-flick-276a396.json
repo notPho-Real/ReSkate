@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "source_commit": "276a39664f7805c1693c7f28f6f314c21bc6d469",
+  "dll_sha256": "3683ab2c2e7031331b481e46f205ef865dadf5dd6252f6531c11a479d35c571a",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "manual-pop-flick-75",
+      "family": "combo-transition",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000
+        },
+        {
+          "ms": 4000,
+          "ry": 32767
+        },
+        {
+          "ms": 4100,
+          "ry": -32768
+        },
+        {
+          "ms": 4175
+        }
+      ],
+      "expected": {
+        "states": [
+          201,
+          100
+        ],
+        "trick": "ollie"
+      },
+      "timeout_ms": 10000,
+      "reset_ms": 5000,
+      "repeat": 2
+    },
+    {
+      "name": "manual-pop-flick-150",
+      "family": "combo-transition",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000
+        },
+        {
+          "ms": 4000,
+          "ry": 32767
+        },
+        {
+          "ms": 4100,
+          "ry": -32768
+        },
+        {
+          "ms": 4250
+        }
+      ],
+      "expected": {
+        "states": [
+          201,
+          100
+        ],
+        "trick": "ollie"
+      },
+      "timeout_ms": 10000,
+      "reset_ms": 5000,
+      "repeat": 2
+    }
+  ]
+}
