@@ -2,6 +2,38 @@
 
 ## Wake helper — 2026-10-13
 
+User explicitly approved narrow administrator changes to enable Wi-Fi wake.
+sudo -n confirmed a password is required. Created lab/enable_wifi_wake.py and
+Enable WiFi Wake.command, syntax-checked and opened in Mac Terminal for direct
+remote sudo password entry (never captured/stored). The script requires the
+inspected rtw88_8822ce baseline (profile0x1, driver disabled, device disabled),
+sets active profile magic0x8, enables iw magic-packet, enables device wake,
+verifies all three and attempts complete rollback on failure. No automatic
+suspend/reconnect, daemon, read-only-mode change or game-file mutation.
+User completed terminal authentication. Read-only verification CONFIRMED:
+iw magic-packet enabled, device power/wakeup enabled, profile wake-on-wlan
+0x8. Configuration is enabled; actual wake and reboot persistence UNVERIFIED.
+Baseline /sys/power/suspend_stats/success=7. login1 CanSuspend returns challenge,
+so user was asked to press power once and confirm Asleep for the packet test.
+Do not equate enabled settings with successful wake. No game files changed.
+
+REAL HARDWARE WAKE TEST PASSED once: user confirmed Asleep; wake.py sent
+three magic packets; subsequent strictly host-key-verified SSH returned, and
+suspend_stats/success advanced from 7 to 8. iw still reports magic-packet
+enabled and device power/wakeup still enabled after resume. This verifies one
+controlled suspend/wake cycle, not reliability across repeated cycles or
+reboot persistence. No game files or SteamOS read-only setting changed.
+
+Follow-up real Deck read-only inspection after user woke it: phy0/wlan0,
+rtw88_8822ce driver, kernel 6.18.50-valve2-1-neptune-618-gc7289a96b14d.
+`iw phy` explicitly advertises magic-packet WoWLAN support. `iw phy phy0
+wowlan show` reports disabled; device power/wakeup also disabled.
+NetworkManager reports modifying connection settings requires authentication.
+Capability advertisement is not proof of successful suspend/wake. No wake
+setting has been changed. Enabling device wake/driver magic-packet handling
+crosses the user's no-root/system-change boundary: obtain explicit narrow
+authorization before doing so; never store password or disable read-only mode.
+
 User requested a Wake-on-LAN sender while X hardware work was connectivity
 blocked. Added lab/wake.py and Wake Steam Deck.command: three 102-byte magic
 packets to local subnet UDP port 9; no SSH, root, deployment or Deck settings
