@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "source_commit": "35d933e919c405132e8fa948f30de2eadb2511d9",
+  "dll_sha256": "9a79deffb6c6104c131f20e15666475a29def3b32d6ba27ef2905b688a3bb17a",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "left-arc-400",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": -30000
+        },
+        {
+          "ms": 1100,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1200,
+          "ly": 30000
+        },
+        {
+          "ms": 1300,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "lx": 30000
+        },
+        {
+          "ms": 1600
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "left-arc-800",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": -30000
+        },
+        {
+          "ms": 1200,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "ly": 30000
+        },
+        {
+          "ms": 1600,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1800,
+          "lx": 30000
+        },
+        {
+          "ms": 2000
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "right-arc-400",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": 30000
+        },
+        {
+          "ms": 1100,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1200,
+          "ly": 30000
+        },
+        {
+          "ms": 1300,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "lx": -30000
+        },
+        {
+          "ms": 1600
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "right-arc-800",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": 30000
+        },
+        {
+          "ms": 1200,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "ly": 30000
+        },
+        {
+          "ms": 1600,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1800,
+          "lx": -30000
+        },
+        {
+          "ms": 2000
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000
+    }
+  ]
+}

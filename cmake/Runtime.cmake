@@ -142,6 +142,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Multiplayer/Remote/remote_collision.cpp
     Extension/Skater/physics_tuning_model.cpp
     Extension/ArcadeMode/arcade_mode.cpp
+    Extension/ArcadeMode/arcade_score_probe.cpp
     Extension/HallOfMeat/hall_of_meat.cpp
     Extension/HallOfMeat/hall_of_meat_card.cpp
     Extension/HallOfMeat/hall_of_meat_commands.cpp

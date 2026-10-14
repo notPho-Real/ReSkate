@@ -2,6 +2,7 @@
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
 #include "arcade_gesture.h"
+#include "arcade_score_probe.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Extension/Skater/no_bail.h"
@@ -17,6 +18,7 @@
 namespace dingosdk::arcade_mode {
 namespace {
 std::atomic<bool> ready{};
+std::uintptr_t score_probe_base{};
 // Only touched by the client thread, after initialization has been published.
 std::uint32_t previous_buttons{};
 ObservationTracker observations;
@@ -80,6 +82,7 @@ NativeRequestSample native_request_sample() noexcept {
 bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
+    score_probe_base = image_base;
     request_probe_ready = validate_request_probe(image_base);
     const bool combo_observer = request_probe_ready && add_no_bail_step_listener(observe_combo_step);
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -108,6 +111,7 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        observe_score_hud(score_probe_base, now);
         // Drain a fixed maximum per tick; explicitly report lost evidence.
         std::array<ComboSample, 16> samples{};
         std::size_t sample_count{};

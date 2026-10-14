@@ -60,6 +60,16 @@ arcs rather than inventing a face-button mapping.
 
 ## Pure model contract
 
+IMPORTANT NEGATIVE CONTROL: subsequent left-stick semicircles also produced
+word1 mask0x4000 while turning, without establishing a manual or revert. Thus
+contact flags alone are NOT an actual manual event. Magnitude controls12000/16000
+remained unchanged;20000 repeated both manual patterns. All16 follow-up trials
+are summarized in manual-revert-controls.json. Four left-stick arcs (both signs,
+400/800ms) did not establish a reliable revert identity. Next observable: native
+ScoringHUDViewModel, already read elsewhere in ReSkate. New probe enumerates only
+bounded schema metadata, booleans, and exact Manual/Nose Manual/FS Revert/BS Revert
+labels; it never logs arbitrary strings or writes native state. Pending CI/HIL.
+
 Further real batch `trick-batch-20261013T210055-33354`: two neutral controls,
 two +20000 holds, two -20000 holds. Six controller neutralizations and reset
 checks passed. Native HUD confirmed Manual in trial003/1.png and Nose Manual

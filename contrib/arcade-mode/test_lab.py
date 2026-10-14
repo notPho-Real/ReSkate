@@ -28,6 +28,22 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_score_probe_allowlist_and_bounds(self):
+        text = 'unrelated secret /home/personal\n' + (
+            'ARCADE SCORE FIELD: hash=12345678 kind=7 size=8.\n'
+            'ARCADE SCORE SAMPLE: ms=12 hash=12345678 value=2.\n') * 200
+        result = probe.parse_score_samples(text)
+        self.assertEqual(len(result['fields']), 128)
+        self.assertEqual(len(result['samples']), 128)
+        self.assertNotIn('secret', json.dumps(result))
+        self.assertEqual(result['event_identity'], 'UNVERIFIED')
+
+    def test_score_probe_rejects_arbitrary_values_and_suffix(self):
+        for row in ('ARCADE SCORE SAMPLE: ms=12 hash=12345678 value=5.',
+                    'ARCADE SCORE SAMPLE: ms=12 hash=12345678 value=2. private',
+                    'ARCADE SCORE SAMPLE: ms=99999999999999999999 hash=12345678 value=1.'):
+            self.assertEqual(probe.parse_score_samples(row)['samples'], [])
+
     def test_numeric_allowlist(self):
         row = 'ARCADE COMBO SAMPLE: ms=12 state=401 mode=1 words=' + ','.join(['00000001'] * 8) + '.'
         result = probe.parse_combo_samples('password=secret /home/personal\n' + row)

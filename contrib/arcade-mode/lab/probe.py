@@ -236,6 +236,20 @@ def parse_combo_samples(text):
     return {"samples": samples, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
 
 
+def parse_score_samples(text):
+    fields, samples = [], []
+    for line in text.splitlines():
+        field = re.search(r'ARCADE SCORE FIELD: hash=([0-9a-f]{8}) kind=([0-9]{1,2}) size=([0-9]{1,5})\.$', line)
+        if field and int(field[2]) <= 31 and int(field[3]) <= 65535:
+            fields.append({"hash": field[1], "kind": int(field[2]), "size": int(field[3])})
+            fields = fields[-128:]
+        sample = re.search(r'ARCADE SCORE SAMPLE: ms=([0-9]{1,20}) hash=([0-9a-f]{8}) value=([0-4])\.$', line)
+        if sample and int(sample[1]) <= 0xffffffffffffffff:
+            samples.append({"ms": int(sample[1]), "hash": sample[2], "value": int(sample[3])})
+            samples = samples[-128:]
+    return {"fields": fields, "samples": samples, "event_identity": "UNVERIFIED"}
+
+
 def native_trace(request, **kwargs):
     verified = evidence(request, **kwargs)
     if not verified["fresh_log"]:
@@ -252,4 +266,5 @@ def native_trace(request, **kwargs):
     captures = parse_native_captures(text[start:] if start >= 0 else "")
     return {"schema": 1, "kind": "native_request_trace",
             **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
-            "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else "")}
+            "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
+            "score_observations": parse_score_samples(text[start:] if start >= 0 else "")}

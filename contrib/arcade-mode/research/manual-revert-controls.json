@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "verification": "REAL_HARDWARE",
+  "source_commit": "35d933e919c405132e8fa948f30de2eadb2511d9",
+  "trials": [
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "neutral-control",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "neutral-control",
+      "repeat": 2,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "tail-confirm",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "tail-confirm",
+      "repeat": 2,
+      "reset": "PASS",
+      "sample_count": 6,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "nose-confirm",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 9,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        32768,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210055-33354",
+      "candidate": "nose-confirm",
+      "repeat": 2,
+      "reset": "PASS",
+      "sample_count": 9,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        32768,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "tail-12000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "tail-16000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "tail-20000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 6,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "nose-12000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "nose-16000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 0,
+      "states": [],
+      "word1_contact_masks": [],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T210734-34424",
+      "candidate": "nose-20000",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 9,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        32768,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T211101-35211",
+      "candidate": "left-arc-400",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 6,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T211101-35211",
+      "candidate": "left-arc-800",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 10,
+      "states": [
+        100,
+        101
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T211101-35211",
+      "candidate": "right-arc-400",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 6,
+      "states": [
+        100
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    },
+    {
+      "batch": "trick-batch-20261013T211101-35211",
+      "candidate": "right-arc-800",
+      "repeat": 1,
+      "reset": "PASS",
+      "sample_count": 10,
+      "states": [
+        100,
+        101
+      ],
+      "word1_contact_masks": [
+        16384,
+        49152
+      ],
+      "native_event_identity": "UNVERIFIED"
+    }
+  ],
+  "conclusion": "Contact flags alone also change during left-stick turns; they are insufficient to classify actual manuals. Native HUD labels confirm manual and nose manual in the documented successful holds."
+}

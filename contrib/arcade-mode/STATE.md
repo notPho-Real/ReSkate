@@ -2,6 +2,23 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+LATEST: febdb40 CI38508894785 ALL FOUR gates PASS.61cdf4d runner Linux/macOS
+and separate Deck installer PASS; Windows pending last check. Continued real
+testing completed16 additional trials across three batches (all bounded and reset
+PASS), summarized in research/manual-revert-controls.json. Crucial negative
+result: LEFT-stick arcs also produce0x4000 contact flags during ordinary turns;
+do NOT wire contact bits alone as manual events. Both actual manual types remain
+confirmed by native HUD labels, not negated by this observer limitation.
+Next implementation checkpoint adds a strictly read-only ScoringHUDViewModel
+probe using existing validated native UI APIs/model lock: bounded field metadata,
+boolean values and four exact allowed labels only, no pointers/arbitrary strings.
+No gameplay writes. It needs Windows CI then verified deployment before use.
+Pure ComboSession adapter added/tested: semantic transition edges, real landing
+grace/revert consumption, failure latch preventing per-frame combo restart.
+30,504 C++ sanitizer checks and128 Python tests PASS. Runtime/HUD integration
+still incomplete; next real experiment must identify actual scoring/manual event,
+then wire that verified observation. Current Deck still35d933e; no restore.
+
 ACTIVE follow-up: febdb40 pushed; CI38508894785 Linux/macOS PASS, Windows
 building; separate Deck38508894846 PASS. New real six-trial batch completed:
 artifacts/trick-batch-20261013T210055-33354 (two neutral, two tail, two nose).

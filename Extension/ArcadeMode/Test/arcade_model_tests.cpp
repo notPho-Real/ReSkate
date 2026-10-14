@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_model.h"
+#include "Extension/ArcadeMode/arcade_combo_session.h"
 #include "Extension/ArcadeMode/arcade_balance_input.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
@@ -18,6 +19,30 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        ComboSession session;
+        session.step(SkatePose::air, 0, 0);
+        session.step(SkatePose::riding, 0.1f, 0);
+        check(session.model().state().landing_grace, "observed air-to-ground opens landing grace");
+        session.step(SkatePose::riding, 0.2f, 0, true);
+        check(session.model().state().revert_pending, "observed revert establishes pending link");
+        session.step(SkatePose::manual, 0.2f, 0);
+        check(session.model().state().balance_kind == BalanceKind::manual &&
+              !session.model().state().revert_pending, "observed manual consumes revert link");
+        const auto multiplier = session.model().state().multiplier;
+        for (int i = 0; i < 30; ++i) session.step(SkatePose::manual, 1.0f / 60, 0);
+        check(session.model().state().multiplier == multiplier, "continuous observed manual cannot farm multiplier");
+        bool failure = false;
+        for (int i = 0; i < 1200 && !failure; ++i) failure = session.step(SkatePose::manual, 1.0f / 60, 1);
+        check(failure && session.failed_section(), "balance failure latches native section");
+        for (int i = 0; i < 60; ++i) session.step(SkatePose::manual, 1.0f / 60, 0);
+        check(!session.model().state().combo_active, "failed native section cannot restart combo every frame");
+        session.step(SkatePose::riding, 0.01f, 0);
+        session.step(SkatePose::manual, 0.01f, 0);
+        check(session.model().state().combo_active, "genuine balance re-entry can start fresh after failure");
+        session.step(SkatePose::unknown, 0.01f, 0);
+        check(!session.model().state().combo_active, "lost native observation clears active HUD and combo");
+    }
     check(balance_correction(BalanceKind::grind, -32768, 32767, true) == -1, "left corrects grind left");
     check(balance_correction(BalanceKind::grind, 32767, -32768, true) == 1, "right corrects grind right");
     check(balance_correction(BalanceKind::manual, -32768, 32767, true) == 1, "up corrects manual up");
