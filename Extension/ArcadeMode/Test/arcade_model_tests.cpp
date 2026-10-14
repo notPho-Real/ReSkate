@@ -13,6 +13,7 @@
 #include "Extension/ArcadeMode/arcade_native_mapping.h"
 #include "Extension/ArcadeMode/arcade_classic_input.h"
 #include "Extension/ArcadeMode/arcade_camera.h"
+#include "Extension/ArcadeMode/arcade_score_labels.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -27,6 +28,14 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        check(score_label_id("Manual") == 1 && score_label_id("BS Revert") == 4,
+            "existing score label IDs remain stable");
+        for (std::size_t i = 0; i < score_labels.size(); ++i)
+            check(score_label_id(score_labels[i]) == i + 1, "score labels have distinct diagnostic IDs");
+        check(score_label_id("private player text") == 0 && score_label_id("Melon private") == 0 &&
+            score_label_id("melon") == 0, "unrecognized score text is never emitted");
+    }
     {
         const std::array<float, 16> follow{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,2,-4,1};
         const std::array<float, 3> target{0,1,0};
@@ -122,7 +131,10 @@ int main() {
             "authored label evidence uses a fixed numeric vocabulary");
         check(authored_name_tokens("unrelated/private/value") == 0,
             "unknown authored names cannot become diagnostic text");
-        check(native_flip_id(ArcadeTrick::impossible, false) == 0 &&
+        check(native_flip_id(ArcadeTrick::impossible, false) == 36 &&
+            native_flip_id(ArcadeTrick::impossible, true) == 38,
+            "current-game Impossible labels select exact regular and nollie identifiers");
+        check(native_flip_id(ArcadeTrick::double_impossible, false) == 0 &&
             native_flip_id(ArcadeTrick::double_kickflip, false) == 0,
             "unestablished exact variants never fall back to basic flips");
         std::array<AuthoredGesture, 2> catalog{};

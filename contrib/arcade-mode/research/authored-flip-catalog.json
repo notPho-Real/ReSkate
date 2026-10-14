@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "source_commit": "d799c63d477dc42a649c83dfbde548e376aaea22",
-  "dll_sha256": "4435d96d0c786bdfa897e1bc18824eaf8fbfc6f2604b29dbbfe095548313eed3",
+  "source_commit": "f47e6cfd0a8bc5e2f118e09d3cc7f8704910432d",
+  "dll_sha256": "3dec1862d95b44218435374537a8c8e087aa682f1e3c26b127993be65b056178",
   "catalog": {
     "status": 2,
     "entries": [
@@ -10,654 +10,753 @@
         "id": 1,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 1,
         "id": 1,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 2,
         "id": 1,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 3,
         "id": 1,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 4,
         "id": 1,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 5,
         "id": 1,
         "nollie": false,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 256
       },
       {
         "index": 6,
         "id": 1,
         "nollie": false,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 0
       },
       {
         "index": 7,
         "id": 1,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 8,
         "id": 1,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 9,
         "id": 2,
         "nollie": false,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 10,
         "id": 2,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 256
       },
       {
         "index": 11,
         "id": 2,
         "nollie": false,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 256
       },
       {
         "index": 12,
         "id": 3,
         "nollie": false,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 13,
         "id": 3,
         "nollie": false,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 14,
         "id": 3,
         "nollie": false,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 15,
         "id": 3,
         "nollie": false,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 512
       },
       {
         "index": 16,
         "id": 4,
         "nollie": false,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 17,
         "id": 4,
         "nollie": false,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 18,
         "id": 4,
         "nollie": false,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 19,
         "id": 4,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 20,
         "id": 5,
         "nollie": true,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 256
       },
       {
         "index": 21,
         "id": 5,
         "nollie": false,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 256
       },
       {
         "index": 22,
         "id": 5,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 256
       },
       {
         "index": 23,
         "id": 6,
         "nollie": true,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 24,
         "id": 6,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 25,
         "id": 7,
         "nollie": true,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 26,
         "id": 7,
         "nollie": true,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 27,
         "id": 7,
         "nollie": false,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 28,
         "id": 7,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 29,
         "id": 8,
         "nollie": false,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 512
       },
       {
         "index": 30,
         "id": 8,
         "nollie": true,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 31,
         "id": 8,
         "nollie": true,
         "context": 2,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 32,
         "id": 8,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 33,
         "id": 9,
         "nollie": false,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 34,
         "id": 9,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 35,
         "id": 10,
         "nollie": false,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 36,
         "id": 10,
         "nollie": false,
         "context": 1,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 37,
         "id": 10,
         "nollie": false,
         "context": 0,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 38,
         "id": 11,
         "nollie": true,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 39,
         "id": 11,
         "nollie": false,
         "context": 0,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 128
       },
       {
         "index": 40,
         "id": 12,
         "nollie": true,
         "context": 2,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 41,
         "id": 12,
         "nollie": false,
         "context": 0,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 640
       },
       {
         "index": 42,
         "id": 13,
         "nollie": false,
         "context": 2,
-        "arcs": 10
+        "arcs": 10,
+        "source_tokens": 1
       },
       {
         "index": 43,
         "id": 13,
         "nollie": false,
         "context": 2,
-        "arcs": 9
+        "arcs": 9,
+        "source_tokens": 1
       },
       {
         "index": 44,
         "id": 13,
         "nollie": false,
         "context": 0,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 45,
         "id": 14,
         "nollie": false,
         "context": 2,
-        "arcs": 10
+        "arcs": 10,
+        "source_tokens": 33
       },
       {
         "index": 46,
         "id": 14,
         "nollie": false,
         "context": 2,
-        "arcs": 9
+        "arcs": 9,
+        "source_tokens": 33
       },
       {
         "index": 47,
         "id": 14,
         "nollie": false,
         "context": 1,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 0
       },
       {
         "index": 48,
         "id": 14,
         "nollie": false,
         "context": 0,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 0
       },
       {
         "index": 49,
         "id": 15,
         "nollie": false,
         "context": 0,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 128
       },
       {
         "index": 50,
         "id": 16,
         "nollie": true,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 51,
         "id": 16,
         "nollie": true,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 52,
         "id": 16,
         "nollie": true,
         "context": 1,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 53,
         "id": 16,
         "nollie": true,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 0
       },
       {
         "index": 54,
         "id": 16,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 55,
         "id": 16,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 56,
         "id": 17,
         "nollie": true,
         "context": 2,
-        "arcs": 10
+        "arcs": 10,
+        "source_tokens": 1
       },
       {
         "index": 57,
         "id": 17,
         "nollie": true,
         "context": 2,
-        "arcs": 9
+        "arcs": 9,
+        "source_tokens": 1
       },
       {
         "index": 58,
         "id": 17,
         "nollie": true,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 256
       },
       {
         "index": 59,
         "id": 18,
         "nollie": true,
         "context": 2,
-        "arcs": 10
+        "arcs": 10,
+        "source_tokens": 65
       },
       {
         "index": 60,
         "id": 18,
         "nollie": true,
         "context": 2,
-        "arcs": 9
+        "arcs": 9,
+        "source_tokens": 65
       },
       {
         "index": 61,
         "id": 18,
         "nollie": true,
         "context": 0,
-        "arcs": 2
+        "arcs": 2,
+        "source_tokens": 512
       },
       {
         "index": 62,
         "id": 19,
         "nollie": true,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 63,
         "id": 19,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 64,
         "id": 20,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 65,
         "id": 21,
         "nollie": true,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 512
       },
       {
         "index": 66,
         "id": 21,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 67,
         "id": 22,
         "nollie": true,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 0
       },
       {
         "index": 68,
         "id": 22,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 69,
         "id": 23,
         "nollie": true,
         "context": 1,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 256
       },
       {
         "index": 70,
         "id": 23,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 256
       },
       {
         "index": 71,
         "id": 24,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 512
       },
       {
         "index": 72,
         "id": 25,
         "nollie": true,
         "context": 1,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 73,
         "id": 25,
         "nollie": true,
         "context": 0,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 74,
         "id": 26,
         "nollie": true,
         "context": 0,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 128
       },
       {
         "index": 75,
         "id": 27,
         "nollie": true,
         "context": 1,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 0
       },
       {
         "index": 76,
         "id": 27,
         "nollie": true,
         "context": 0,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 0
       },
       {
         "index": 77,
         "id": 28,
         "nollie": true,
         "context": 1,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 78,
         "id": 28,
         "nollie": true,
         "context": 0,
-        "arcs": 5
+        "arcs": 5,
+        "source_tokens": 128
       },
       {
         "index": 79,
         "id": 29,
         "nollie": true,
         "context": 1,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 128
       },
       {
         "index": 80,
         "id": 29,
         "nollie": true,
         "context": 0,
-        "arcs": 6
+        "arcs": 6,
+        "source_tokens": 128
       },
       {
         "index": 81,
         "id": 30,
         "nollie": true,
         "context": 0,
-        "arcs": 4
+        "arcs": 4,
+        "source_tokens": 640
       },
       {
         "index": 82,
         "id": 31,
         "nollie": false,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 83,
         "id": 32,
         "nollie": true,
         "context": 0,
-        "arcs": 3
+        "arcs": 3,
+        "source_tokens": 0
       },
       {
         "index": 84,
         "id": 36,
         "nollie": false,
         "context": 1,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 1
       },
       {
         "index": 85,
         "id": 36,
         "nollie": false,
         "context": 0,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 1
       },
       {
         "index": 86,
         "id": 37,
         "nollie": false,
         "context": 1,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 33
       },
       {
         "index": 87,
         "id": 37,
         "nollie": false,
         "context": 0,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 33
       },
       {
         "index": 88,
         "id": 38,
         "nollie": true,
         "context": 1,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 1
       },
       {
         "index": 89,
         "id": 38,
         "nollie": true,
         "context": 0,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 1
       },
       {
         "index": 90,
         "id": 39,
         "nollie": true,
         "context": 1,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 65
       },
       {
         "index": 91,
         "id": 39,
         "nollie": true,
         "context": 0,
-        "arcs": 8
+        "arcs": 8,
+        "source_tokens": 65
       }
     ],
     "diagnostic": {
       "stage": 7,
-      "field": 0,
-      "error": 3,
+      "field": 13,
+      "error": 2,
       "rejected": 4
     },
     "partial": true,
     "complete": false
   },
-  "interpretation": "Authored data availability only; does not prove successful native input execution. Four rejected assets mean this catalog remains partial."
+  "interpretation": "Authored data availability only; does not prove successful native input execution. Four rejected assets mean this catalog remains partial.",
+  "semantic_evidence": {
+    "36": "Impossible (regular): fixed authored name token 1, ground and grind-exit contexts",
+    "37": "Front Foot Impossible (regular): tokens 33",
+    "38": "Impossible (nollie): token 1 with IsNollie",
+    "39": "Back Foot Impossible (nollie): tokens 65"
+  },
+  "limitation": "Authored asset labels establish the requested native identifiers, not successful runtime execution. Four assets rejected because an arc minimum exceeds its maximum; 92 patterns retained."
 }

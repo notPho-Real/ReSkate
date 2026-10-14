@@ -144,6 +144,17 @@ class ComboTraceTests(unittest.TestCase):
         self.assertNotIn('secret', json.dumps(result))
         self.assertEqual(result['event_identity'], 'UNVERIFIED')
 
+    def test_score_label_events_are_exact_bounded_and_distinct_from_numeric_fields(self):
+        row = 'ARCADE SCORE LABEL: ms=12 path=9b74fc7c.12345678 id=20.'
+        result = probe.parse_score_samples((row + '\n') * 200)
+        self.assertEqual(len(result['labels']), 128)
+        self.assertEqual(result['labels_dropped'], 72)
+        self.assertEqual(result['labels'][-1]['id'], 20)
+        for bad in (row.replace('id=20', 'id=21'), row.replace('id=20', 'id=0'),
+                    row + ' private', row.replace('ms=12', 'ms=99999999999999999999'),
+                    row.replace('LABEL', 'VALUE')):
+            self.assertEqual(probe.parse_score_samples(bad)['labels'], [])
+
     def test_score_probe_rejects_arbitrary_values_and_suffix(self):
         for row in ('ARCADE SCORE SAMPLE: ms=12 hash=12345678 value=5.',
                     'ARCADE SCORE SAMPLE: ms=12 hash=12345678 value=2. private',

@@ -62,7 +62,7 @@ def validate_plan(plan):
         for state in states:
             integer(state, 0, 10000)
         if "trick" in case["expected"] and (not isinstance(case["expected"]["trick"], str) or
-                not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case["expected"]["trick"])):
+                not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,47}", case["expected"]["trick"])):
             raise ValueError("Invalid expected trick")
         phases = case["phases"]
         if not isinstance(phases, list) or not 1 <= len(phases) <= 64:
@@ -121,7 +121,8 @@ def named_flip_result(expected, observation, log_boundary):
                    "nollie-pop-shove-it": 19, "nollie-hardflip": 20, "nollie-varial-heelflip": 21,
                    "nollie-varial-kickflip": 23, "nollie-inward-heelflip": 24,
                    "nollie-360-hardflip": 26, "nollie-360-heelflip": 27,
-                   "nollie-360-shove-it": 28, "nollie-360-flip": 29, "nollie-360-inward-heelflip": 30}
+                   "nollie-360-shove-it": 28, "nollie-360-flip": 29, "nollie-360-inward-heelflip": 30,
+                   "impossible": 36, "nollie-impossible": 38}
     wanted = identifiers.get(expected)
     native = observation.get("flip", {})
     if wanted is None or log_boundary is None or observation.get("evidence_gap") or native.get("dropped", 0):

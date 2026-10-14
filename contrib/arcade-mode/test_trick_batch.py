@@ -76,6 +76,15 @@ class BatchTests(unittest.TestCase):
             with self.subTest(label=label), self.assertRaises(ValueError):
                 batch.validate_plan(value)
 
+    def test_numeric_trick_names_keep_the_same_data_only_boundary(self):
+        value = plan()
+        value["candidates"][0]["expected"]["trick"] = "360-flip"
+        self.assertEqual(batch.validate_plan(value), value)
+        for bad in ("360;id", "360$(id)", "360/escape", "360\nflip", "", "3" * 49):
+            value["candidates"][0]["expected"]["trick"] = bad
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                batch.validate_plan(value)
+
     def test_phase_limits(self):
         for key, bad in (("ms", -1), ("ms", True), ("rx", 32768), ("ry", float("nan")),
                          ("lt", -1), ("dx", 2), ("buttons", ["START"]), ("buttons", "A")):
@@ -149,6 +158,14 @@ class BatchTests(unittest.TestCase):
         observed["flip"]["dropped"] = 0
         observed["flip"]["samples"][0]["valid"] = False
         self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "UNVERIFIED")
+
+    def test_impossible_requires_its_current_game_identifier_and_context(self):
+        observed = {"flip": {"samples": [{"ms": 12, "valid": True, "id": 36}], "dropped": 0}}
+        self.assertEqual(batch.named_flip_result("impossible", observed, 100), "PASS")
+        self.assertEqual(batch.named_flip_result("nollie-impossible", observed, 100), "FAIL")
+        observed["flip"]["samples"][0]["id"] = 38
+        self.assertEqual(batch.named_flip_result("nollie-impossible", observed, 100), "PASS")
+        self.assertEqual(batch.named_flip_result("double-impossible", observed, 100), "UNVERIFIED")
 
     def test_combo_capture_is_bounded_and_not_named_from_state(self):
         text = "private unrelated log\n" + "\n".join(

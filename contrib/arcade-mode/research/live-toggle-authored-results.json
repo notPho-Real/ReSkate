@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "source_commit": "d799c63d477dc42a649c83dfbde548e376aaea22",
+  "sequence": "Player menu ON -> OFF, two native-control trials, Player menu ON again; no restart between toggles",
+  "off_trials": [
+    {
+      "name": "arcade-off-native-a",
+      "native_ids": [],
+      "native_states": [
+        100,
+        200
+      ],
+      "neutralized": true,
+      "returned_to_idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "arcade-off-native-stick",
+      "native_ids": [
+        1
+      ],
+      "native_states": [
+        100,
+        103,
+        200,
+        201
+      ],
+      "neutralized": true,
+      "returned_to_idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "result": "OFF A produced no native Ollie; physical right-stick native gesture produced Ollie ID 1. ON was visibly restored; the next A repeat batch ran after the necessary f47 DLL restart and is recorded separately.",
+  "limitation": "This authored-build follow-up proves OFF behavior; it does not replace the earlier complete live ON/OFF/ON acceptance."
+}

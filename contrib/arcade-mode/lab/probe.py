@@ -263,7 +263,14 @@ def parse_combo_samples(text):
 
 def parse_score_samples(text):
     fields, samples, nodes, values = [], [], [], []
+    labels, labels_dropped = [], 0
     for line in text.splitlines():
+        label = re.search(r'ARCADE SCORE LABEL: ms=([0-9]{1,20}) path=([0-9a-f]{8}(?:\.[0-9a-f]{8}){0,3}) id=([0-9]{1,2})\.$', line)
+        if label and int(label[1]) <= 0xffffffffffffffff and 1 <= int(label[3]) <= 20:
+            labels.append({"ms": int(label[1]), "path": label[2], "id": int(label[3])})
+            if len(labels) > 128:
+                labels.pop(0)
+                labels_dropped += 1
         field = re.search(r'ARCADE SCORE FIELD: hash=([0-9a-f]{8}) kind=([0-9]{1,2}) size=([0-9]{1,5})\.$', line)
         if field and int(field[2]) <= 31 and int(field[3]) <= 65535:
             fields.append({"hash": field[1], "kind": int(field[2]), "size": int(field[3])})
@@ -281,6 +288,7 @@ def parse_score_samples(text):
             values.append({"ms": int(value[1]), "path": value[2], "value": int(value[3])})
             values = values[-128:]
     return {"fields": fields, "samples": samples, "nodes": nodes, "values": values,
+            "labels": labels, "labels_dropped": labels_dropped,
             "limit_reached": any(line.endswith("ARCADE SCORE LIMIT: reached=true.") for line in text.splitlines()),
             "event_identity": "UNVERIFIED"}
 

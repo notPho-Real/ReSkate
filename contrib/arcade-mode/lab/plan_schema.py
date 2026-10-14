@@ -51,7 +51,7 @@ def validate_plan(plan):
         for state in states:
             integer(state, 0, 10000)
         if "trick" in case["expected"] and (not isinstance(case["expected"]["trick"], str) or
-                not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case["expected"]["trick"])):
+                not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,47}", case["expected"]["trick"])):
             raise ValueError("Invalid expected trick")
         phases = case["phases"]
         if not isinstance(phases, list) or not 1 <= len(phases) <= 64:
@@ -73,4 +73,3 @@ def validate_plan(plan):
     if trials > MAX_TRIALS:
         raise ValueError("At most 24 trials per batch")
     return plan
-

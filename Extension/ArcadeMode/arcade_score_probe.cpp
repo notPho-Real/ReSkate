@@ -1,4 +1,5 @@
 #include "arcade_score_probe.h"
+#include "arcade_score_labels.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/hud_corner.h"
@@ -20,14 +21,6 @@ ScoreActivity activity{};
 unsigned emitted{};
 std::uintptr_t previous_manager{};
 data::Value score_model{};
-// Exact allowlist: unrelated text is never logged or hashed into the report.
-std::uint32_t label(std::string_view text) noexcept {
-    if (text == "Manual") return 1;
-    if (text == "Nose Manual") return 2;
-    if (text == "FS Revert") return 3;
-    if (text == "BS Revert") return 4;
-    return 0;
-}
 void inspect(const data::Context& context, data::Value value, const std::string& path,
              unsigned depth, unsigned& budget, std::uint64_t now) {
     if (!budget || depth > 3 || emitted >= 4096) return;
@@ -59,7 +52,7 @@ void inspect(const data::Context& context, data::Value value, const std::string&
         return;
     }
     std::uint32_t current{};
-    if (kind == 7) current = label(context.text(value, 96));
+    if (kind == 7) current = score_label_id(context.text(value, 96));
     else if (kind == 10 && size == 1) {
         current = data::read<std::uint8_t>(context.address(value));
         if (current > 1) return;
@@ -70,6 +63,9 @@ void inspect(const data::Context& context, data::Value value, const std::string&
     if (previous.size() >= 256 && !previous.contains(path)) return;
     previous[path] = current;
     ++emitted;
+    if (kind == 7 && current)
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE SCORE LABEL: ms={} path={} id={}.", now, path, current);
     logging::log(logging::Level::info, logging::Channel::skater,
         "ARCADE SCORE VALUE: ms={} path={} value={}.", now, path, current);
     if (emitted == 4096) logging::log(logging::Level::info, logging::Channel::skater,

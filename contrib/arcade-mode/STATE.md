@@ -16,59 +16,53 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Current installed source is d799c63d477dc42a649c83dfbde548e376aaea22, all five
-gates passed in run 38573131328. DLL SHA-256:
-4435d96d0c786bdfa897e1bc18824eaf8fbfc6f2604b29dbbfe095548313eed3.
+Current installed source is f47e6cfd0a8bc5e2f118e09d3cc7f8704910432d, all five
+gates passed in run 38579226003. DLL SHA-256:
+3dec1862d95b44218435374537a8c8e087aa682f1e3c26b127993be65b056178.
 The game and stock backup hashes are unchanged, updates are off, and no recovery
-is pending. Reviewed runner v14 and lifecycle helper v12 pins match this target.
-The necessary DLL restart completed. The loader now reports 92 authored patterns,
-including ground, nollie and grind-exit contexts. Four rejected assets leave the
-catalog explicitly partial (stage 7, error 3). Native IDs 36–39 also have authored
-ground patterns; their exact semantic names are not yet established. See
-research/authored-flip-catalog.json. New control/camera acceptance remains open.
-The first authored batch produced native Ollie ID 1 twice from A hold/release,
-but Kickflip/Heelflip requests produced opposite IDs 3/2. The full eight-direction
-matrix continued without stuck input and recorded further mapping failures;
-unsupported Up emitted no native trick. No authored flip is accepted. A local
-follow-up reflects lateral authored coordinates for the measured clear-bit stance,
-reusing the existing guarded stance flag; other stance contexts remain unverified.
-See research/authored-control-results.json. The method matrix is now maintained
-in research/native-method-matrix.json; null classification means source review is
-still incomplete, not evidence that an exact equivalent does not exist.
+is pending. Reviewed runner v16 and lifecycle helper v13 match this target.
+The game remains running in Stadium1 after the necessary DLL restart.
 
-On the preceding 3fa4a43 build, independent native IDs confirmed two Ollies,
-twelve Kickflips and twelve Heelflips in the current flat Stadium1 context.
-All valid trials neutralized and returned to idle without gaps or drops.
-This is below the per-trick repeatability/context gate. D-pad trials opened the
-native Social menu and are excluded. Two delayed Back presses closed its settings
-and parent panel; fresh gameplay eligibility preceded the valid left-stick trials.
-Both adapters now consume gameplay D-pad modifiers locally; menus/OFF preserve
-native direction input. That correction is awaiting the next build. See
-research/native-flip-results.json and research/TRICK_FINDINGS.md.
+The reflected authored adapter passed all seven mapped primary flips with exact
+native IDs: Kickflip 2, Heelflip 3, Pop Shove-It 4, Hardflip 9, Inward Heelflip 6,
+Varial Kickflip 5 and Varial Heelflip 8. Left/right D-pad also produced IDs 2/3
+without opening the native menu. A hold/release passed 20 controlled trials:
+seven 200 ms, seven 500 ms, six 1500 ms holds, all native Ollie ID 1.
+Every trial neutralized and returned to idle, with no evidence gaps or dropped
+flip rows. This establishes A repeatability in the stationary test context;
+flips remain discovered until repetition and practical context variation pass.
+See research/reflection-control-results.json. The 24-case nollie/repeated-input
+matrix is in progress. No repeated-variant or nollie success is claimed yet.
 
-The authored catalog failed to load on 3fa4a43 (status 3, no entries), so no
-authored trick support is claimed. The current build adds bounded diagnostics
-to identify that failure. A first observer batch skipped all six cases while the
-map menu remained open; no input or success was counted.
+The catalog contains 92 valid patterns. Four rejected assets have an arc minimum
+above its maximum (stage 7, field 13, error 2), so the catalog remains partial.
+Fixed numeric authored-label tokens establish Impossible IDs 36 (regular) and
+38 (nollie); 37/39 identify different foot variants and are not substituted.
+The exact Impossible mapping is added locally but has not been deployed or HIL
+verified. See research/authored-flip-catalog.json and native-method-matrix.json.
+Null matrix classifications mean source review remains incomplete, not that an
+exact equivalent is absent or that new reverse engineering is warranted.
 
-Local integration now prepares exact authored A hold/release and directional/repeated
-X selection, with LT as nollie context. The existing timed adapter remains the
-fallback until a prepared catalog exists. Repeated variants without an established
-exact mapping do not fall back to single flips. Physical right stick is camera
-when the authored adapter is active, using the existing guarded native camera lease
-with separate Arcade ownership, menu/OFF restoration and priority for party viewing.
-These new controls/camera are deployed but not yet verified on the Deck. Native
-camera collision behavior and restoration remain acceptance items.
+On the preceding d799 build, A hold/release worked twice but lateral flips had
+opposite native IDs. The f47 correction reflects authored X for the measured
+clear-bit stance using the existing guarded stance flag. Other stance contexts
+remain unverified. The older 3fa timed adapter produced twelve Kickflips and
+twelve Heelflips; those counts do not establish repeatability of the new adapter.
+The d799 failures remain in research/authored-control-results.json.
 
-The loader follow-up rejects malformed assets individually, retains only fully
-parsed gestures, and emits bounded numeric stage/field/error/rejected diagnostics.
-Partial catalogs remain explicitly partial. This is a diagnostic correction, not
-a claim that the observed load failure is fixed. Stages: 1 archives, 2 TOC,
-3 bundle, 4 payload, 5 EBX, 6 fields, 7 finished. Field IDs follow the fixed list
-in arcade_authored_gestures.cpp. Errors: 1 type/missing, 2 numeric bounds,
-3 resource/other failure, 4 no usable gestures.
-Local validation: 159 Python tests, 33,452 C++ sanitizer checks, strict header
-conversion/shadow checks and parser syntax checks pass.
+Physical right stick controls the camera when the authored catalog is active,
+using the existing guarded native camera lease. On d799, yaw worked both ways;
+stronger two-second pitch holds after controller activation moved up/down.
+Pause restored the native camera. Movement, collision and repeated restoration
+remain open. See research/camera-results.json. A live OFF check on d799 restored
+native A and right-stick behavior without restarting; ON was then restored.
+The f47 A repeat batch followed a DLL restart, so it is not counted as the same
+live-toggle cycle. See research/live-toggle-authored-results.json.
+
+The next change also adds an exact 20-label diagnostic allowlist for native
+manual/revert/grab text, with a separate numeric label event. It does not infer
+grab success from input or generic numeric score fields. Unknown text is excluded.
+Local validation: 162 Python tests and 33,475 C++ sanitizer checks pass.
 
 Previous installed source d93dcef1822d1a0eccb660bb7b9508e86d666059 passed all five hosted
 jobs in run 38554517047. DLL SHA-256:

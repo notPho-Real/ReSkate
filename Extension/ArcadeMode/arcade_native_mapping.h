@@ -4,11 +4,13 @@
 #include <span>
 
 namespace dingosdk::arcade_mode {
-// Native identifiers documented by the existing upstream Style Editor.
+// Native identifiers documented by the existing upstream Style Editor and
+// confirmed current-game authored labels (Impossible: regular 36, nollie 38).
 // Zero means no established exact mapping, never permission to substitute.
 constexpr std::uint8_t native_flip_id(ArcadeTrick trick, bool nollie) noexcept {
     switch (trick) {
     case ArcadeTrick::kickflip: return nollie ? 17 : 2;
+    case ArcadeTrick::impossible: return nollie ? 38 : 36;
     case ArcadeTrick::heelflip: return nollie ? 18 : 3;
     case ArcadeTrick::pop_shove_it: return nollie ? 19 : 4;
     case ArcadeTrick::hardflip: return nollie ? 20 : 9;

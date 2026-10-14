@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "source_commit": "d799c63d477dc42a649c83dfbde548e376aaea22",
+  "context": "Stadium1 stationary, normal full-size Gamescope captures",
+  "trials": [
+    {
+      "name": "camera-right",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "camera-left",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "camera-up",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "camera-down",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "camera-pitch-up",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "camera-pitch-down",
+      "states": [
+        100
+      ],
+      "native_ids": [],
+      "neutralized": true,
+      "idle": "PASS",
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "visual_result": "Yaw changed in both directions. Initial moderate pitch trials did not move the view; stronger two-second pitch holds after RB activation moved the view up and down. Pause restored the native camera. No native trick or board-state transition was observed.",
+  "status": "DISCOVERED; hotplug readiness, varied movement, collision behavior and repeated restoration remain open"
+}

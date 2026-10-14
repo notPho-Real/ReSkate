@@ -12,7 +12,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 2,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "Existing timed adapter: native ID verified 12/12 in one stance; authored adapter UNVERIFIED; authored d799 primary request produced incorrect native ID 3",
+      "hil_status": "DISCOVERED on f47: exact native ID 2 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 17
     },
@@ -23,12 +23,13 @@
         "presses": 1
       },
       "semantic_action": "Impossible",
-      "native_method": null,
-      "method_source": null,
-      "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "native_method": "Current-game authored eight-arc gesture",
+      "method_source": "authored-flip-catalog.json: numeric source tokens and AnimationEnum",
+      "native_id": 36,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact authored labels identified on f47; mapping added after that build",
+      "review_pending": false,
+      "nollie_native_id": 38
     },
     {
       "arcade_input": {
@@ -41,7 +42,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 3,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "Existing timed adapter: native ID verified 12/12 in one stance; authored adapter UNVERIFIED; authored d799 primary request produced incorrect native ID 2",
+      "hil_status": "DISCOVERED on f47: exact native ID 3 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 18
     },
@@ -56,7 +57,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 4,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 7",
+      "hil_status": "DISCOVERED on f47: exact native ID 4 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 19
     },
@@ -71,7 +72,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 9,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 6",
+      "hil_status": "DISCOVERED on f47: exact native ID 9 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 20
     },
@@ -86,7 +87,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 6,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 1",
+      "hil_status": "DISCOVERED on f47: exact native ID 6 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 24
     },
@@ -101,7 +102,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 5,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 8",
+      "hil_status": "DISCOVERED on f47: exact native ID 5 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 23
     },
@@ -116,7 +117,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 8,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 2",
+      "hil_status": "DISCOVERED on f47: exact native ID 8 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
       "nollie_native_id": 21
     },
