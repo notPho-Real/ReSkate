@@ -347,11 +347,15 @@ def parse_flip_observations(text):
 
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
+    diagnostic = None
     conflicting = False
     for line in text.splitlines():
         state = re.search(r'ARCADE AUTHORED STATUS: state=([0-3])\.$', line)
         if state:
             status = int(state[1])
+        failure = re.search(r'ARCADE AUTHORED DIAGNOSTIC: stage=([0-7]) field=([0-9]{1,2}) error=([0-4]) rejected=([0-9]{1,5})\.$', line)
+        if failure and int(failure[2]) <= 14 and int(failure[4]) <= 65535:
+            diagnostic = dict(zip(('stage', 'field', 'error', 'rejected'), map(int, failure.groups())))
         row = re.search(r'ARCADE AUTHORED GESTURE: index=([0-9]{1,3}) total=([0-9]{1,3}) id=([0-9]{1,2}) nollie=(true|false) context=([0-2]) arcs=([0-9]{1,2})\.$', line)
         if not row:
             continue
@@ -363,8 +367,10 @@ def parse_authored_catalog(text):
             conflicting = True
         total = count
         entries[index] = entry
-    return {'status': status, 'entries': [entries[i] for i in sorted(entries)],
-            'complete': status == 2 and total is not None and not conflicting and set(entries) == set(range(total))}
+    return {'status': status, 'entries': [entries[i] for i in sorted(entries)], 'diagnostic': diagnostic,
+            'partial': bool(diagnostic and diagnostic['rejected']),
+            'complete': status == 2 and total is not None and not conflicting and
+                        not (diagnostic and diagnostic['rejected']) and set(entries) == set(range(total))}
 
 
 def native_trace(request, **kwargs):

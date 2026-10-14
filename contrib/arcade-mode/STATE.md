@@ -16,7 +16,37 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Installed source d93dcef1822d1a0eccb660bb7b9508e86d666059 passed all five hosted
+Current installed source is 3fa4a43b68d0730063297c1e80130d715a99ab36, all five
+gates passed in run 38567765136. DLL SHA-256:
+cff15b9c8d14ba8c28f91450f9cbe6145f99f411fe4db3fefee08c0370e9cdd5.
+The game and stock backup hashes are unchanged, updates are off, and no recovery
+is pending. Reviewed runner v13 and lifecycle helper pins match this target.
+The native flip observer returns valid -1 baseline readings; this is not a named
+trick result. The authored catalog failed to load (status 3, no entries), so no
+authored trick support is claimed. A first six-case observer batch skipped every
+case because the map menu had not activated; no input was sent or success counted.
+The fixed Stadium1 click is correcting setup before the next batch.
+
+Local integration now prepares exact authored A hold/release and directional/repeated
+X selection, with LT as nollie context. The existing timed adapter remains the
+fallback until a prepared catalog exists. Repeated variants without an established
+exact mapping do not fall back to single flips. Physical right stick is camera
+when the authored adapter is active, using the existing guarded native camera lease
+with separate Arcade ownership, menu/OFF restoration and priority for party viewing.
+These new controls/camera are not yet deployed or verified on the Deck. Native
+camera collision behavior and restoration remain acceptance items.
+
+The loader follow-up rejects malformed assets individually, retains only fully
+parsed gestures, and emits bounded numeric stage/field/error/rejected diagnostics.
+Partial catalogs remain explicitly partial. This is a diagnostic correction, not
+a claim that the observed load failure is fixed. Stages: 1 archives, 2 TOC,
+3 bundle, 4 payload, 5 EBX, 6 fields, 7 finished. Field IDs follow the fixed list
+in arcade_authored_gestures.cpp. Errors: 1 type/missing, 2 numeric bounds,
+3 resource/other failure, 4 no usable gestures.
+Local validation: 157 Python tests, 33,406 C++ sanitizer checks, strict header
+conversion/shadow checks and parser syntax checks pass.
+
+Previous installed source d93dcef1822d1a0eccb660bb7b9508e86d666059 passed all five hosted
 jobs in run 38554517047. DLL SHA-256:
 1dda9303d02e018edf67932dc32b5e36e95bff19315fb6bba571fb0938f0df1b.
 Game and stock backup hashes remain unchanged; updates are off, no recovery pending.

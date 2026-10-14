@@ -11,6 +11,8 @@
 #include "Extension/ArcadeMode/arcade_native_trick.h"
 #include "Extension/ArcadeMode/arcade_authored_playback.h"
 #include "Extension/ArcadeMode/arcade_native_mapping.h"
+#include "Extension/ArcadeMode/arcade_classic_input.h"
+#include "Extension/ArcadeMode/arcade_camera.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -25,6 +27,92 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        const std::array<float, 16> follow{1,0,0,0, 0,1,0,0, 0,0,1,0, 0,2,-4,1};
+        const std::array<float, 3> target{0,1,0};
+        CameraOrbit orbit;
+        const auto initial = orbit.update(follow, target, 0, 0, 0);
+        check(initial && std::abs((*initial)[13] - 2) < .001f && std::abs((*initial)[14] + 4) < .001f,
+            "camera orbit begins at the existing follow-camera position");
+        for (unsigned i = 0; i < 300; ++i) {
+            const auto camera = orbit.update(follow, target, 1, -1, .016f);
+            check(camera.has_value(), "sustained camera input stays finite");
+            const auto& m = *camera;
+            const float radius_squared = m[12]*m[12] + (m[13]-1)*(m[13]-1) + m[14]*m[14];
+            check(std::abs(radius_squared - 17) < .01f && m[3] == 0 && m[7] == 0 && m[11] == 0 && m[15] == 1,
+                "camera orbit preserves follow distance and affine transform");
+            const float orthogonal = m[0]*m[4] + m[1]*m[5] + m[2]*m[6];
+            check(std::abs(orthogonal) < .001f, "camera basis stays orthogonal at pitch limits");
+        }
+        orbit.reset();
+        const auto reset = orbit.update(follow, target, 0, 0, 0);
+        check(reset == initial, "camera reset clears accumulated orbit state");
+        check(!orbit.update(follow, target, std::numeric_limits<float>::quiet_NaN(), 0, .016f),
+            "invalid camera input cannot reach native transform setter");
+    }
+    {
+        const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
+        const std::array<PreparedGesture, 4> catalog{{{1,false,GestureContext::ground,steps},
+            {2,false,GestureContext::ground,steps}, {3,false,GestureContext::ground,steps},
+            {17,true,GestureContext::ground,steps}}};
+        ClassicGesture controls;
+        auto out = controls.poll(0, 0, ClassicGesture::a, 0, 0, true, true, false, catalog);
+        check(out.requested_id == 1 && out.owns_stick && out.right_y == -32767 && !out.buttons,
+            "Classic A starts native authored crouch and consumes native push");
+        out = controls.poll(1000, 60, ClassicGesture::a, 0, 0, true, false, false, catalog);
+        check(out.right_y == -32767, "Classic A remains crouched until released");
+        out = controls.poll(1100, 66, 0, 0, 0, true, false, false, catalog);
+        check(out.right_y == 28000, "Classic A release begins native authored flick");
+        controls.cancel();
+        out = controls.poll(1200, 72, ClassicGesture::a, 0, 0, true, true, false, catalog);
+        check(!out.owns_stick && !out.requested_id, "mode reset cannot convert held A into a new crouch");
+        controls.poll(1300, 78, 0, 0, 0, true, true, false, catalog);
+        out = controls.poll(1400, 84, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
+        check(!out.requested_id && !(out.buttons & ClassicGesture::x), "X waits briefly for exact repeated-button selection");
+        out = controls.poll(1600, 96, 0, 0, 0, true, true, false, catalog);
+        check(out.requested_id == 2 && out.right_y == -32767, "left X selects the exact authored kickflip");
+        controls.cancel(); controls.poll(1700, 102, 0, 0, 0, true, true, false, catalog);
+        controls.poll(1800, 108, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
+        controls.poll(1850, 111, 4, 0, 0, true, true, false, catalog);
+        controls.poll(1900, 114, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
+        out = controls.poll(2100, 126, 0, 0, 0, true, true, false, catalog);
+        check(out.unsupported && !out.requested_id && !out.owns_stick,
+            "unsupported double kickflip never executes a single kickflip substitute");
+        controls.poll(2200, 132, ClassicGesture::x | 4, 0, 0, true, true, true, catalog);
+        out = controls.poll(2400, 144, 0, 0, 0, true, true, true, catalog);
+        check(out.requested_id == 17, "LT context selects the distinct authored nollie identifier");
+        out = controls.poll(2500, 150, ClassicGesture::a, 0, 0, false, true, true, catalog);
+        check(out.buttons == ClassicGesture::a && !out.owns_stick, "menus retain native buttons and cancel synthetic ownership");
+        controls.poll(2600, 156, 0, 0, 0, true, true, false, catalog);
+        controls.poll(2700, 162, ClassicGesture::a, 0, 0, true, true, false, catalog);
+        out = controls.poll(2800, 161, ClassicGesture::a | ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
+        check(!out.owns_stick && !controls.busy(), "game-tick regression cancels both held crouch and pending trick intent");
+        out = controls.poll(2900, 170, ClassicGesture::a, 0, 0, true, true, false, catalog);
+        check(!out.requested_id, "cancelled clock boundary requires release before rearming");
+        check(classic_direction(5, 32767, 0) == TrickDirection::up_left &&
+            classic_direction(3, 0, 32767) == TrickDirection::invalid,
+            "D-pad overrides steering and contradictory directions are rejected");
+        ArcadeInput integrated;
+        out = {};
+        auto packet = integrated.poll(0, 3000, ClassicGesture::a, 0, 0, 9000, 10000,
+            true, true, false, 0, false, true, true, 180, false, catalog);
+        check(packet.buttons == ClassicGesture::a && packet.right_x == 9000 && packet.right_y == 10000,
+            "Arcade OFF preserves physical input with an authored catalog available");
+        integrated.enable(true);
+        packet = integrated.poll(0, 3100, ClassicGesture::a, 0, 0, 0, 0,
+            true, true, false, 0, false, true, true, 186, false, catalog);
+        check(packet.phase == 0 && !packet.requested_id, "enabling authored controls requires held A release");
+        integrated.poll(0, 3200, 0, 0, 0, 0, 0, true, true, false, 0, false, true, true, 192, false, catalog);
+        packet = integrated.poll(0, 3300, ClassicGesture::a, 0, 0, 0, 0,
+            true, true, false, 0, false, true, true, 198, false, catalog);
+        check(packet.requested_id == 1 && packet.phase == 1 && packet.right_y == -32767,
+            "rearmed authored A owns native crouch through the combined adapter");
+        integrated.enable(false);
+        packet = integrated.poll(0, 3400, ClassicGesture::a, 0, 0, -9000, 12000,
+            true, true, false, 0, false, true, true, 204, false, catalog);
+        check(packet.phase == 0 && packet.buttons == ClassicGesture::a && packet.right_x == -9000 && packet.right_y == 12000,
+            "disabling during authored crouch immediately restores physical buttons and axes");
+    }
     {
         check(native_flip_id(ArcadeTrick::impossible, false) == 0 &&
             native_flip_id(ArcadeTrick::double_kickflip, false) == 0,

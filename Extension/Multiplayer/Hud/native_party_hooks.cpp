@@ -873,6 +873,7 @@ void spectate_party_member(std::uint64_t id) noexcept {
         }
     } catch (...) {}
 }
+bool party_camera_requested() noexcept { return state().spectating.load(std::memory_order_acquire) != 0; }
 void tick_native_party_actions(std::uintptr_t base, std::uintptr_t client, bool ready, bool camera_phase) noexcept {
     auto &s = state();
     if (!s.installed.load(std::memory_order_acquire)) return;

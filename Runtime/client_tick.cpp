@@ -1312,6 +1312,8 @@ void tick(std::uintptr_t client, std::uintptr_t update) {
         std::uintptr_t camera_context{};
         const bool camera_phase = tick_state.camera_issue ? *tick_state.camera_issue == nullptr :
             memory::peek(client + 8, camera_context) && !dingosdk::camera_probe_unavailable_reason(camera_context);
+        dingosdk::arcade_mode::on_camera_tick(r.base, client,
+            r.spectate_ready && r.spectate_client == client && (state == 13 || state == 21), camera_phase);
         {
             DINGO_PROFILE_ZONE("tick/native party");
             dingosdk::multiplayer::tick_native_party_actions(r.base, client,

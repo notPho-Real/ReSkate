@@ -121,11 +121,17 @@ std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCa
 namespace dingosdk {
 using namespace client_source::detail;
 
-bool update_party_camera(std::uintptr_t base, std::uintptr_t client, bool ready, bool phase,
-    const std::array<float, 16>* transform, std::string& detail, float fov) noexcept {
-    struct Lease { bool owned{}, uncertain{}; SourceCameraIdentity identity; DWORD thread{}; float saved_fov{}; };
+namespace {
+enum class ViewOwner { party, arcade };
+bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready, bool phase,
+    const std::array<float, 16>* transform, std::string& detail, float fov, ViewOwner requester) noexcept {
+    struct Lease { bool owned{}, uncertain{}; SourceCameraIdentity identity; DWORD thread{}; float saved_fov{}; ViewOwner owner{}; };
     static Lease lease;
     SourceLastError error;
+    if (lease.owned && lease.owner != requester) {
+        if (transform) detail = "Another camera control owns the current view.";
+        return transform == nullptr;
+    }
     auto& s = source_state();
     if (!transform && !lease.owned) return true;
     if (!s.initialized.load(std::memory_order_acquire) || s.busy.test_and_set(std::memory_order_acquire)) return false;
@@ -163,7 +169,7 @@ bool update_party_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
             source_require(!trial.debug.camera_owned && !trial.debug.noclip && camera.mode == 0 &&
                            camera.view_enabled && !camera.input_active,
                            "Exit Freecam or Noclip before spectating a party member.");
-            lease.identity = camera.identity; lease.owned = lease.uncertain = true;
+            lease.identity = camera.identity; lease.owner = requester; lease.owned = lease.uncertain = true;
             lease.saved_fov = reader.value<float>(camera.identity.camera, camera_fov_offset);
             if (!std::isfinite(lease.saved_fov) || lease.saved_fov <= 1 || lease.saved_fov >= 175) lease.saved_fov = 0;
             trial.camera_mode(camera.identity.controller, 1);
@@ -180,6 +186,15 @@ bool update_party_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
     } catch (const SourceGuard& issue) { detail = issue.message; }
       catch (...) { detail = "Native spectate camera is unavailable."; }
     return false;
+}
+}
+bool update_party_camera(std::uintptr_t base, std::uintptr_t client, bool ready, bool phase,
+    const std::array<float, 16>* transform, std::string& detail, float fov) noexcept {
+    return update_owned_camera(base, client, ready, phase, transform, detail, fov, ViewOwner::party);
+}
+bool update_arcade_camera(std::uintptr_t base, std::uintptr_t client, bool ready, bool phase,
+    const std::array<float, 16>* transform, std::string& detail, float fov) noexcept {
+    return update_owned_camera(base, client, ready, phase, transform, detail, fov, ViewOwner::arcade);
 }
 bool read_local_camera_transform(std::uintptr_t base, std::uintptr_t client, std::array<float, 16>& transform) noexcept {
     SourceLastError error;

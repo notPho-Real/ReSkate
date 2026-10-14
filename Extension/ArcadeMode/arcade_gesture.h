@@ -2,6 +2,7 @@
 #include "arcade_flip.h"
 #include "arcade_push.h"
 #include "arcade_board.h"
+#include "arcade_classic_input.h"
 #include <array>
 #include <cstdint>
 
@@ -32,6 +33,8 @@ public:
         std::int16_t right_x, right_y;
         NativeTrick started;
         unsigned phase;
+        std::uint8_t requested_id{};
+        bool unsupported{};
     };
     void cancel() noexcept {
         active_ = NativeTrick::none;
@@ -106,22 +109,36 @@ public:
         if (enabled_ == value) return;
         enabled_ = value;
         for (auto& gesture : gestures_) gesture.cancel();
+        for (auto& gesture : classic_) gesture.cancel();
         for (auto& push : pushes_) push.reset();
         for (auto& chord : chords_) chord.reset();
     }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,
-            bool triggers_held = false, bool may_toggle_board = false) noexcept {
+            bool triggers_held = false, bool may_toggle_board = false,
+            bool authored = false, std::uint64_t tick = 0, bool nollie = false,
+            std::span<const PreparedGesture> catalog = {}) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
-        auto out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+        NativeGesture::Output out{};
+        bool busy{};
+        if (authored) {
+            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog);
+            out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
+                classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
+                classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};
+            busy = classic_[user].busy();
+        } else {
+            out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+            busy = gestures_[user].busy();
+        }
         const auto board = chords_[user].poll(now, out.buttons, game_input,
-            may_toggle_board && !gestures_[user].busy() && !triggers_held);
+            may_toggle_board && !busy && !triggers_held);
         out.buttons = board.buttons;
         if (board.pulse) out.phase = 3;
-        const bool conflict = buttons || triggers_held || gestures_[user].busy() ||
-            rx < -8689 || rx > 8689 || ry < -8689 || ry > 8689;
+        const bool conflict = buttons || triggers_held || busy ||
+            (!authored && (rx < -8689 || rx > 8689 || ry < -8689 || ry > 8689));
         if (pushes_[user].poll(now, lx, ly, speed, game_input, may_push && !conflict))
             out.buttons |= NativeGesture::x; // Internal native push; physical X remains a flip request.
         return out;
@@ -129,6 +146,7 @@ public:
 private:
     bool enabled_{};
     std::array<NativeGesture, 4> gestures_{};
+    std::array<ClassicGesture, 4> classic_{};
     std::array<AutomaticPush, 4> pushes_{};
     std::array<BoardChord, 4> chords_{};
 };

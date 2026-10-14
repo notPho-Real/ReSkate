@@ -15,6 +15,8 @@ struct AuthoredGesture {
     float hold_start{}, hold_end{}, hold_minimum{};
     std::vector<AuthoredArc> arcs;
 };
+struct AuthoredLoadDiagnostics { unsigned stage{}, field{}, error{}, rejected{}; };
 // Read only from the installed game's level-root bundle. Never writes game data.
-std::vector<AuthoredGesture> read_authored_gestures(const std::filesystem::path& game_root);
+std::vector<AuthoredGesture> read_authored_gestures(const std::filesystem::path& game_root,
+                                                 AuthoredLoadDiagnostics* diagnostics = nullptr);
 }

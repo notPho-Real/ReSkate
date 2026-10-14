@@ -6,6 +6,7 @@
 #include "arcade_native_events.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
+#include "arcade_camera.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_hud.h"
 #include "Engine/Core/Platform/memory.h"
@@ -13,6 +14,10 @@
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Extension/Skater/no_bail.h"
+#include "Extension/Skater/client_source_spawn.h"
+#include "Extension/Multiplayer/Remote/native_skater.h"
+#include "Extension/Multiplayer/Hud/native_party.h"
+#include "Extension/Multiplayer/Hud/follow_camera.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Input/controller_bindings.h"
 #include "Extension/UI/Overlay/overlay.h"
@@ -65,24 +70,40 @@ std::size_t pad_head{}, pad_count{};
 std::uint64_t pad_sequence{}, pad_dropped{};
 std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
+std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
+std::atomic<std::uint64_t> input_game_tick{};
+CameraOrbit camera_orbit;
+std::uint64_t camera_at{};
+bool camera_lease_requested{};
 std::atomic<unsigned> authored_status{};
+std::atomic<unsigned> authored_stage{}, authored_field{}, authored_error{}, authored_rejected{};
 std::size_t authored_reported{};
 void prepare_authored_catalog() noexcept {
     try {
         std::call_once(authored_started, [] {
             authored_status.store(1, std::memory_order_release);
             std::thread([] {
+                AuthoredLoadDiagnostics diagnostic{};
+                bool loaded{};
                 try {
                     std::vector<wchar_t> path(32768);
                     const auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
                     if (!length || length >= path.size()) throw std::runtime_error("Game folder unavailable");
                     const auto root = std::filesystem::path(std::wstring(path.data(), length)).parent_path();
-                    auto catalog = std::make_shared<const std::vector<AuthoredGesture>>(read_authored_gestures(root));
+                    auto catalog = std::make_shared<const std::vector<AuthoredGesture>>(read_authored_gestures(root, &diagnostic));
+                    auto prepared = std::make_shared<const std::vector<PreparedGesture>>(prepare_gestures(*catalog));
+                    if (prepared->empty()) throw std::runtime_error("No playable authored gestures");
+                    prepared_catalog.store(std::move(prepared), std::memory_order_release);
                     authored_catalog.store(std::move(catalog), std::memory_order_release);
-                    authored_status.store(2, std::memory_order_release);
+                    loaded = true;
                 } catch (...) {
-                    authored_status.store(3, std::memory_order_release);
+                    if (!diagnostic.error) diagnostic.error = 3;
                 }
+                authored_stage.store(diagnostic.stage, std::memory_order_release);
+                authored_field.store(diagnostic.field, std::memory_order_release);
+                authored_error.store(diagnostic.error, std::memory_order_release);
+                authored_rejected.store(diagnostic.rejected, std::memory_order_release);
+                authored_status.store(loaded ? 2u : 3u, std::memory_order_release);
             }).detach();
         });
     } catch (...) {
@@ -229,6 +250,44 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
 
+void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
+    const auto restore = [&]() noexcept {
+        camera_orbit.reset(); camera_at = 0;
+        try {
+            if (camera_lease_requested) {
+                std::string detail;
+                if (update_arcade_camera(base, client, false, phase, nullptr, detail)) camera_lease_requested = false;
+            }
+        } catch (...) {}
+    };
+    try {
+        const auto ui = multiplayer::sample_game_ui_state(base);
+        if (!enabled() || !prepared_catalog.load(std::memory_order_acquire) || !ready_for_camera ||
+            !ui.available || ui.in_menu || multiplayer::party_camera_requested()) {
+            restore(); return;
+        }
+        ControllerInput input{};
+        DingoSDKOverlayReadControllerInput(&input);
+        if (!input.available || (input.buttons & 0x0010u)) { restore(); return; }
+        const auto local = multiplayer::capture_local(base, client, false);
+        if (!local.ready) { restore(); return; }
+        float fov{};
+        const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov);
+        auto target = local.pose.root.position;
+        target[1] += 1.0f;
+        const auto now = GetTickCount64();
+        const float dt = camera_at && now >= camera_at ? static_cast<float>(std::min<std::uint64_t>(now - camera_at, 50)) / 1000 : 0;
+        camera_at = now;
+        const auto transform = camera_orbit.update(follow, target,
+            static_cast<float>(input.right_x) / 32767, static_cast<float>(input.right_y) / 32767, dt);
+        if (!transform) { restore(); return; }
+        std::string detail;
+        // Activation can succeed before a subsequent verification fails: always retain restoration intent.
+        camera_lease_requested = true;
+        if (!update_arcade_camera(base, client, true, phase, &*transform, detail, fov)) restore();
+    } catch (...) { restore(); }
+}
+
 void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
@@ -275,6 +334,7 @@ bool start(std::uintptr_t image_base) noexcept {
 
 void on_client_tick() noexcept {
     if (!ready.load(std::memory_order_acquire)) return;
+    input_game_tick.fetch_add(1, std::memory_order_acq_rel);
     try {
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
             set_enabled(profile_runtime::local_preference("ArcadeMode").value_or(false), false);
@@ -387,6 +447,10 @@ void on_client_tick() noexcept {
                 hil_heartbeat_id, now, speed_valid, push_valid, speed, native.words[1] & 0xc000u);
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE AUTHORED STATUS: state={}.", authored_status.load(std::memory_order_acquire));
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE AUTHORED DIAGNOSTIC: stage={} field={} error={} rejected={}.",
+                authored_stage.load(std::memory_order_acquire), authored_field.load(std::memory_order_acquire),
+                authored_error.load(std::memory_order_acquire), authored_rejected.load(std::memory_order_acquire));
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
@@ -449,9 +513,10 @@ void observe_xinput_source(unsigned user, unsigned short buttons,
 
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                       short& right_y, bool game_input, short left_x, short left_y,
-                      unsigned char left_trigger, unsigned char right_trigger) noexcept {
+                      unsigned char& left_trigger, unsigned char& right_trigger) noexcept {
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
     const auto physical_buttons = buttons;
+    const auto physical_right_x = right_x, physical_right_y = right_y;
     const auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
@@ -462,11 +527,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
     const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
     NativeGesture::Output result{};
+    const auto prepared = prepared_catalog.load(std::memory_order_acquire);
+    const bool authored = prepared && !prepared->empty();
+    const auto tick = input_game_tick.load(std::memory_order_acquire);
     {
         std::lock_guard lock(ollie_mutex);
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
-            left_trigger > 30 || right_trigger > 30, may_toggle_board);
+            left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
+            left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{});
         const auto& old = previous_pad[user];
         if (mode_enabled.load(std::memory_order_acquire) &&
             (old.buttons != physical_buttons || old.lt != left_trigger || old.rt != right_trigger ||
@@ -489,6 +558,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     if (result.started == NativeTrick::kickflip || result.started == NativeTrick::heelflip)
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE FLIP: X started candidate={} (experimental).", static_cast<unsigned>(result.started));
-    return synthetic_packet_mask(result.phase, buttons != physical_buttons);
+    if (result.requested_id || result.unsupported)
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE AUTHORED REQUEST: id={} unsupported={}.", result.requested_id, result.unsupported);
+    const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && left_trigger != 0;
+    if (consume_nollie) left_trigger = 0;
+    const auto packet = synthetic_packet_mask(result.phase, buttons != physical_buttons || consume_nollie ||
+        right_x != physical_right_x || right_y != physical_right_y);
+    // A stationary physical pad still needs each authored game-tick step delivered.
+    return authored && result.phase == 1 ? packet ^ static_cast<unsigned>(tick & 0x00ffffffu) : packet;
 }
 }

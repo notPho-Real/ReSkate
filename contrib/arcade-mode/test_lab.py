@@ -50,6 +50,15 @@ class ComboTraceTests(unittest.TestCase):
                     a.replace('total=2', 'total=257'), a.replace('context=0', 'context=3')):
             self.assertEqual(probe.parse_authored_catalog(bad)['entries'], [])
 
+    def test_authored_load_diagnostics_never_return_paths_or_arbitrary_text(self):
+        row = 'ARCADE AUTHORED DIAGNOSTIC: stage=6 field=13 error=2 rejected=1.'
+        result = probe.parse_authored_catalog(row)
+        self.assertTrue(result['partial'])
+        self.assertEqual(result['diagnostic'], {'stage': 6, 'field': 13, 'error': 2, 'rejected': 1})
+        for bad in (row + ' private', row.replace('field=13', 'field=15'),
+                    row.replace('rejected=1', 'rejected=65536'), row.replace('stage=6', 'stage=8')):
+            self.assertIsNone(probe.parse_authored_catalog(bad)['diagnostic'])
+
     def test_source_pad_observation_is_separate_and_bounded(self):
         row = 'ARCADE PAD SOURCE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0.'
         result = probe.parse_pad_samples((row + '\n') * 130)
