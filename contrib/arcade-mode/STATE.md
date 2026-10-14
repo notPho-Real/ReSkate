@@ -28,6 +28,14 @@ still idempotent);27 deterministic envelope runs saved,483 C++ checks and122
 Python tests pass (three new strict numeric combo-trace sanitizer tests).
 Python compileall, all shell syntax and diff checks passed. Manual/revert mapping,
 HUD/runtime driving and native physical failure remain unverified/incomplete.
+Second pushed checkpoint97f071f: CI38502612665 pending Windows; Deck installer
+CI38502612733 passed. Additional local tests now pass30,493 checks with address
+and undefined-behavior sanitizers, including10,000 seeded varied event sequences.
+Prepared raw controller axes on the existing overlay-bypass sample and pure
+balance correction/meter geometry (horizontal grind, vertical up-positive manual).
+These are not connected to gameplay or a rendered HUD yet. No input filter slot
+changed. Waiting for first diagnostic CI before native manual candidate batch;
+do not deploy an unverified local DLL or call partial geometry an integrated HUD.
 Verified repository observations: air 200–299, wipeout300, upstream measured
 grind400–499 (especially401). Manual and revert identities are unverified;
 button intent must not substitute for those events. Exact next action: implement

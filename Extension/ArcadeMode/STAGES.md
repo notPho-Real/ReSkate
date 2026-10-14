@@ -4,6 +4,18 @@ Only notPho-Real/ReSkate is used. No upstream PRs. Main changes only after the
 user explicitly accepts the feature on the Deck and authorizes its integration.
 A green build is not in-game acceptance.
 
+## Current work (2026-10-13)
+
+The table below is historical. Work continues only on arcade-mode. Native A
+ollie has prior Deck evidence; X kickflip/heelflip remain experimental and their
+repeatability/integration must not be inferred from discovery. Current task is
+combo linking and balance, not new flip discovery. Pure lifecycle, one-use revert
+grace, persistent three-part fatigue and inertial dynamics are implemented and
+simulation-tested. Native manual/revert events, gameplay-driven meters and native
+balance failure remain unverified. See contrib/arcade-mode/STATE.md and
+contrib/arcade-mode/research/COMBO_EVENTS.md for current evidence and exact next
+action. Keep the active development DLL installed between experiments.
+
 | Branch | Parent | Deliverable | Acceptance |
 | --- | --- | --- | --- |
 | arcade-mode | Existing baseline | Controller observer, model, Deck updater | f09872f observer: 13/13 hardware criteria PASS; native ollie remains unimplemented |

@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_model.h"
+#include "Extension/ArcadeMode/arcade_balance_input.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
 #include "Extension/ArcadeMode/arcade_ollie.h"
@@ -17,6 +18,24 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    check(balance_correction(BalanceKind::grind, -32768, 32767, true) == -1, "left corrects grind left");
+    check(balance_correction(BalanceKind::grind, 32767, -32768, true) == 1, "right corrects grind right");
+    check(balance_correction(BalanceKind::manual, -32768, 32767, true) == 1, "up corrects manual up");
+    check(balance_correction(BalanceKind::manual, 32767, -32768, true) == -1, "down corrects manual down");
+    check(balance_correction(BalanceKind::manual, 32767, 32767, false) == 0, "unavailable input is neutral");
+    check(balance_correction(BalanceKind::grind, 7849, 32767, true) == 0, "balance deadzone suppresses idle noise");
+    {
+        Model m;
+        check(!balance_meter(m.state()).visible, "idle meter hidden");
+        m.begin_balance(BalanceKind::grind, 0.5f);
+        auto view = balance_meter(m.state());
+        check(view.visible && !view.vertical && view.cursor_x == 0.5f && view.cursor_y == 0, "grind meter horizontal and model-driven");
+        m.begin_balance(BalanceKind::manual, 0.5f);
+        view = balance_meter(m.state());
+        check(view.visible && view.vertical && view.cursor_x == 0 && view.cursor_y == -0.5f, "manual meter vertical and up-positive");
+        m.bail();
+        check(!balance_meter(m.state()).visible, "bail hides meter");
+    }
     for (const auto direction : {std::uint16_t{4}, std::uint16_t{8}}) {
         NativeGesture gesture;
         const auto expected = direction == 4 ? NativeTrick::kickflip : NativeTrick::heelflip;
@@ -300,6 +319,32 @@ int main() {
         bool failed = false;
         for (int i = 0; i < 3600 && !failed; ++i) failed = neutral.tick(1.0f / 60.0f);
         check(failed && !neutral.state().combo_active, "uncorrected balance eventually fails deterministically");
+    }
+    {
+        Model m;
+        std::uint32_t sequence = 12345;
+        for (unsigned i = 0; i < 10000; ++i) {
+            sequence = sequence * 1664525u + 1013904223u;
+            switch ((sequence >> 16u) % 8u) {
+            case 0: m.trick(sequence); break;
+            case 1: m.landing(); break;
+            case 2: m.revert(); break;
+            case 3: m.begin_balance(BalanceKind::grind); break;
+            case 4: m.begin_balance(BalanceKind::manual); break;
+            case 5: m.end_balance(); break;
+            case 6: m.bail(); break;
+            default: m.bank(); break;
+            }
+            const float dt = i % 17 == 0 ? std::numeric_limits<float>::quiet_NaN() : 1.0f / 30.0f;
+            m.tick(dt, sequence & 256u ? 1.0f : -1.0f);
+            const auto& s = m.state();
+            check(std::isfinite(s.balance) && std::isfinite(s.balance_velocity) && std::abs(s.balance) < 1,
+                  "adversarial transitions preserve finite bounded motion");
+            check(s.fatigue >= 0 && s.fatigue <= 1 && s.grind_fatigue >= 0 && s.grind_fatigue <= 1 &&
+                  s.manual_fatigue >= 0 && s.manual_fatigue <= 1, "adversarial transitions preserve fatigue bounds");
+            check(s.combo_active || (s.raw_points == 0 && s.multiplier == 0 && !s.revert_pending &&
+                  s.balance_kind == BalanceKind::none), "inactive state never retains a combo or HUD");
+        }
     }
     std::cout << "Arcade Mode tests: " << checks << " checks passed, 0 failed\n";
 }

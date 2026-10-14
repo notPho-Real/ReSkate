@@ -83,6 +83,8 @@ struct ControllerInput {
     unsigned device{};
     ControllerStyle style{};
     std::array<std::uint64_t, 4> keys{};
+    // Raw overlay-bypass sample, before game-facing filters/synthetic gestures.
+    short left_x{}, left_y{}, right_x{}, right_y{};
 };
 // Switches a player can put on a button or key: each runs a console command when pressed.
 // `key` is its name in the profile, `name` what "bind <name>" takes.

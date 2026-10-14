@@ -521,6 +521,10 @@ extern "C" void DingoSDKOverlayReadControllerInput(dingosdk::ControllerInput* ou
     output->available = true;
     output->device = sample.device;
     output->buttons = pad.wButtons & dingosdk::controller_button_mask;
+    output->left_x = pad.sThumbLX;
+    output->left_y = pad.sThumbLY;
+    output->right_x = pad.sThumbRX;
+    output->right_y = pad.sThumbRY;
     if (pad.bLeftTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) output->buttons |= 0x10000;
     if (pad.bRightTrigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD) output->buttons |= 0x20000;
 }
