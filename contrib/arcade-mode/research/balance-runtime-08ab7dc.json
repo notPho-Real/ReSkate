@@ -1,0 +1,140 @@
+{
+  "schema": 1,
+  "source_commit": "08ab7dc5b0a91c3fcb65ae1e1084fefa427c62a5",
+  "dll_sha256": "4eba60e862ce52de28b165d2229b50f5aa4df4103118caf9f9118cab51c3ac9e",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "neutral-control",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 0
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 1
+    },
+    {
+      "name": "tail-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 1
+    },
+    {
+      "name": "nose-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": -20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 1
+    },
+    {
+      "name": "manual-neutral-long",
+      "family": "balance-runtime",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000,
+          "ly": 0
+        },
+        {
+          "ms": 10000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 12000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "manual-correction-long",
+      "family": "balance-runtime",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000,
+          "ly": 12000
+        },
+        {
+          "ms": 10000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 12000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "manual-wrong-way",
+      "family": "balance-runtime",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000,
+          "ly": -32768
+        },
+        {
+          "ms": 10000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 12000,
+      "reset_ms": 5000
+    }
+  ]
+}

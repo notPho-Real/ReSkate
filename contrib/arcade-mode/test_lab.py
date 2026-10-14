@@ -28,6 +28,16 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_balance_samples_preserve_measured_correction_without_private_text(self):
+        row = ('ARCADE BALANCE SAMPLE: ms=12 kind=2 x=0.4 v=0.2 input=-0.3 '
+               'difficulty=0.5 raw_x=0 raw_y=-15000.')
+        samples = probe.parse_combo_samples((row + '\n') * 200 + 'secret')['balance']
+        self.assertEqual(len(samples), 128)
+        self.assertEqual(samples[-1]['correction'], -0.3)
+        self.assertEqual(samples[-1]['raw_y'], -15000)
+        for bad in (row + ' private', row.replace('x=0.4', 'x=1e999'), row.replace('-15000', '-40000')):
+            self.assertEqual(probe.parse_combo_samples(bad)['balance'], [])
+
     def test_runtime_combo_events_are_bounded_and_sanitized(self):
         row = ('ARCADE COMBO EVENT: ms=12 pose=4 active=true failed=false '
                'fatigue=0.5 grind=0.2 manual=0.3 native_failure_verified=false.')

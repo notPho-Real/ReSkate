@@ -2,6 +2,42 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+08ab first runtime batch completed6 candidates: neutral no events, manual/nose
+pose4/5 detected, long neutral and LY12000 each failed Arcade combo after6.833s,
+wrong-way LY-32768 failed1.634s. Native manual continued until input release;
+physical failure remains NOT integrated. HUD render-idle omission fixed locally;
+added capped4Hz numeric cursor/velocity/raw-input/correction diagnostics to resolve
+ineffective modest input.132 Python tests and30,520 C++ sanitizer checks PASS.
+Next commit/CI these fixes before deployment. A two-trial existing-Y dismount/remount
+experiment is running against verified08ab; no failure actuation wired yet.
+Collector-only parser additions are local tested; input runner unchanged from
+CI08ab. Do not claim those new parser additions CI verified until next gate.
+
+FIRST RUNTIME HARDWARE BUG:08ab batch artifacts/trick-batch-20261013T232900-54160
+(session9788) logs real manual pose4 and accumulated fatigue, but private trial001/1.png
+shows no meter. Found overlay_render.cpp idle guard omitted Arcade HUD pending
+state, so draw function was skipped without another overlay notice. Local fix adds
+freshness-bounded balance_hud_pending to that guard. Must pass CI before update;
+leave08ab installed while remaining bounded correction trials finish.
+
+LATEST REAL INSTALL:08ab7dc5b0a91c3fcb65ae1e1084fefa427c62a5 passed ALL CI
+38519111179 gates; deployed atomically after verified game/launcher shutdown.
+Destination SHA4eba60e862ce52de28b165d2229b50f5aa4df4103118caf9f9118cab51c3ac9e,
+stock backup unchanged, updatesfalse/recoveryfalse. Steam shortcut relaunched.
+This is FIRST runtime combo/HUD build; not yet hardware accepted. Next launcher
+PLAY, leave hub, ensure on board on safe sidewalk, run balance-runtime-08ab7dc.json.
+Includes brief manual/nose and long neutral/correcting/wrong-way holds. Native
+physical failure and revert remain unverified; no stock restore.
+
+LATEST: HEAD08ab7dc5b0a91c3fcb65ae1e1084fefa427c62a5 pushed; runtime/HUD CI
+38519111179 building, separate Deck38519111183 PASS. DO NOT deploy08ab until full
+gate. Installed7e3f4ea5ccc4a4848fc767e938d11c230a36004f after ALL CI38517265406
+passed; destination SHA4f484cbea989854543d4351b259dfdbb92f5dc937ab977f088bf7dcef03f6056.
+Stock5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039 unchanged,
+updatesfalse/recoveryfalse. Existing Steam shortcut launched; next verify launcher
+ready, PLAY, leave hub/mount, read scalar probe and reset ground away from traffic.
+No stock restore. Runtime balance is committed but unverified on hardware.
+
 Runtime wiring checkpoint (local, NOT deployed): combined native activity+contact
 classifier,50ms score read, ComboSession, raw LX/LY correction and original
 horizontal grind/vertical manual HUD.131 Python tests and30,520 sanitizer model

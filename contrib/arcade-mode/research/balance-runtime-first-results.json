@@ -1,0 +1,168 @@
+{
+  "schema": 1,
+  "source_commit": "08ab7dc5b0a91c3fcb65ae1e1084fefa427c62a5",
+  "verification": "REAL_HARDWARE",
+  "hud": "FAIL_OVERLAY_IDLE_GUARD",
+  "native_failure": "NOT_IMPLEMENTED",
+  "trials": [
+    {
+      "name": "neutral-control",
+      "events": []
+    },
+    {
+      "name": "tail-confirm",
+      "events": [
+        {
+          "ms": 63111399,
+          "pose": 4,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63114332,
+          "pose": 1,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.23433468,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.23433468,
+          "native_failure_verified": false
+        }
+      ]
+    },
+    {
+      "name": "nose-confirm",
+      "events": [
+        {
+          "ms": 63135065,
+          "pose": 5,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63137432,
+          "pose": 1,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.18933392,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.18933392,
+          "native_failure_verified": false
+        }
+      ]
+    },
+    {
+      "name": "manual-neutral-long",
+      "events": [
+        {
+          "ms": 63160399,
+          "pose": 4,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63167232,
+          "pose": 4,
+          "active": false,
+          "failed": true,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63169299,
+          "pose": 1,
+          "active": false,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        }
+      ]
+    },
+    {
+      "name": "manual-correction-long",
+      "events": [
+        {
+          "ms": 63191332,
+          "pose": 4,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63198165,
+          "pose": 4,
+          "active": false,
+          "failed": true,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63200265,
+          "pose": 1,
+          "active": false,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        }
+      ]
+    },
+    {
+      "name": "manual-wrong-way",
+      "events": [
+        {
+          "ms": 63221665,
+          "pose": 4,
+          "active": true,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63223299,
+          "pose": 4,
+          "active": false,
+          "failed": true,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        },
+        {
+          "ms": 63230566,
+          "pose": 1,
+          "active": false,
+          "failed": false,
+          "fatigue": 0.0,
+          "grind_fatigue": 0.0,
+          "manual_fatigue": 0.0,
+          "native_failure_verified": false
+        }
+      ]
+    }
+  ]
+}

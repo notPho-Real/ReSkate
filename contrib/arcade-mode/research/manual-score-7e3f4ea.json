@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "source_commit": "7e3f4ea5ccc4a4848fc767e938d11c230a36004f",
+  "dll_sha256": "4f484cbea989854543d4351b259dfdbb92f5dc937ab977f088bf7dcef03f6056",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "neutral-control",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 0
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    },
+    {
+      "name": "tail-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    },
+    {
+      "name": "nose-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": -20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    }
+  ]
+}

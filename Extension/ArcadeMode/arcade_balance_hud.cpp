@@ -17,6 +17,10 @@ void publish_balance_hud(const State& state, unsigned danger) noexcept {
     danger_level = danger;
     updated = std::chrono::steady_clock::now();
 }
+bool balance_hud_pending() noexcept {
+    std::lock_guard lock(hud_mutex);
+    return meter.visible && std::chrono::steady_clock::now() - updated <= std::chrono::milliseconds(250);
+}
 void draw_balance_hud() noexcept {
     BalanceMeter view;
     unsigned danger{};

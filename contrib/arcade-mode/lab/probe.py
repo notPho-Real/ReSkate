@@ -223,7 +223,7 @@ def parse_native_captures(text):
 
 def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
-    samples, events, dropped = [], [], 0
+    samples, events, balance, dropped = [], [], [], 0
     for line in text.splitlines():
         event = re.search(r'ARCADE COMBO EVENT: ms=([0-9]{1,20}) pose=([0-6]) active=(true|false) failed=(true|false) fatigue=([0-9.eE+-]{1,24}) grind=([0-9.eE+-]{1,24}) manual=([0-9.eE+-]{1,24}) native_failure_verified=false\.$', line)
         if event and int(event[1]) <= 0xffffffffffffffff:
@@ -237,6 +237,19 @@ def parse_combo_samples(text):
                     events = events[-128:]
             except ValueError:
                 pass
+        meter = re.search(r'ARCADE BALANCE SAMPLE: ms=([0-9]{1,20}) kind=([12]) x=([0-9.eE+-]{1,24}) v=([0-9.eE+-]{1,24}) input=([0-9.eE+-]{1,24}) difficulty=([0-9.eE+-]{1,24}) raw_x=(-?[0-9]{1,5}) raw_y=(-?[0-9]{1,5})\.$', line)
+        if meter and int(meter[1]) <= 0xffffffffffffffff:
+            try:
+                x, velocity, correction, difficulty = (float(meter[i]) for i in (3, 4, 5, 6))
+                raw_x, raw_y = int(meter[7]), int(meter[8])
+                if (abs(x) <= 1 and abs(velocity) <= 100 and abs(correction) <= 1 and
+                        0 <= difficulty <= 1 and -32768 <= raw_x <= 32767 and -32768 <= raw_y <= 32767):
+                    balance.append({"ms": int(meter[1]), "kind": int(meter[2]), "x": x,
+                        "velocity": velocity, "correction": correction, "difficulty": difficulty,
+                        "raw_x": raw_x, "raw_y": raw_y})
+                    balance = balance[-128:]
+            except ValueError:
+                pass
         gap = re.search(r'ARCADE COMBO GAP: dropped=([0-9]{1,20})\.$', line)
         if gap:
             dropped = min(0xffffffffffffffff, dropped + int(gap[1]))
@@ -245,7 +258,7 @@ def parse_combo_samples(text):
             samples.append({"ms": int(match[1]), "state": int(match[2]), "mode": int(match[3]),
                             "words": [int(word, 16) for word in match[4].split(',')]})
             samples = samples[-128:]
-    return {"samples": samples, "events": events, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
+    return {"samples": samples, "events": events, "balance": balance, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
 
 
 def parse_score_samples(text):

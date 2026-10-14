@@ -40,6 +40,8 @@ std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
 bool had_combo_owner{};
 SkatePose previous_pose{SkatePose::unknown};
+std::uint64_t next_balance_sample{};
+unsigned balance_sample_count{};
 void update_combo(const NativeRequestSample& native, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now) noexcept {
     const auto score = score_activity();
@@ -55,6 +57,15 @@ void update_combo(const NativeRequestSample& native, const ControllerInput& inpu
     const auto kind = combo_session.model().state().balance_kind;
     const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available);
     const bool failed = combo_session.step(pose, dt, correction);
+    const auto& balance = combo_session.model().state();
+    if (balance.balance_kind != BalanceKind::none && now >= next_balance_sample && balance_sample_count < 4096) {
+        next_balance_sample = now + 250;
+        ++balance_sample_count;
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
+            now, static_cast<unsigned>(balance.balance_kind), balance.balance, balance.balance_velocity,
+            correction, combo_session.model().difficulty(), input.left_x, input.left_y);
+    }
     if (pose != previous_pose || failed) {
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE COMBO EVENT: ms={} pose={} active={} failed={} fatigue={} grind={} manual={} native_failure_verified=false.",
