@@ -115,20 +115,23 @@ def perform_case(plan, case, env):
     if baseline is None:
         return {"name": case["name"], "outcome": "SKIPPED_CONTEXT", "input_sent": False,
                 "reason": "No fresh stable on-board heartbeat", "frames": [], "observations": {}}
-    before = env.observe().get("combo", {}).get("samples", [])
+    baseline_observation = env.observe()
+    before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
     result = env.gesture(case)
     # Gesture's finally neutralizes BEFORE waiting on screenshots or reset.
     env.integrity(plan)
     reset = env.wait_idle(case["reset_ms"])
-    obs = env.observe()
+    log_boundary = baseline_observation.get("log_end")
+    obs = env.observe(since=log_boundary)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
     combo = obs.get("combo", {})
     # Changed-state samples need their own timestamp watermark: heartbeat seq
     # cannot delimit them. Without a baseline do not attribute historical rows.
-    combo["samples"] = [r for r in combo.get("samples", [])
-                        if watermark is not None and r["ms"] > watermark]
-    combo["baseline_available"] = watermark is not None
+    if log_boundary is None:
+        combo["samples"] = [r for r in combo.get("samples", [])
+                            if watermark is not None and r["ms"] > watermark]
+    combo["baseline_available"] = log_boundary is not None or watermark is not None
     combo["native_event_identity"] = "UNVERIFIED"
     obs["combo"] = combo
     wanted = case["expected"]["states"]
@@ -168,11 +171,22 @@ class DeckEnvironment:
             time.sleep(1)
         raise HardStop("game_or_hil_unavailable_after_recovery_wait")
 
-    def observe(self):
+    def observe(self, since=None):
         try:
             with self.log.open("rb") as stream:
-                stream.seek(max(0, self.log.stat().st_size - 65536))
-                return observations(stream.read(65536).decode(errors="replace"))
+                size = self.log.stat().st_size
+                start = max(0, size - 65536)
+                if since is not None:
+                    if since > size:
+                        return {"states": [], "buttons": [], "log_end": size,
+                                "evidence_gap": "log_truncated"}
+                    start = max(start, since)
+                stream.seek(start)
+                data = stream.read(65536)
+                result = observations(data.decode(errors="replace"))
+                result["log_end"] = start + len(data)
+                result["evidence_gap"] = "tail_limit" if since is not None and start > since else None
+                return result
         except OSError:
             return {"states": [], "buttons": []}
 
@@ -207,15 +221,19 @@ import controller
 import robot
 from probe import parse_combo_samples
 
+# Freeze trusted code for the lifetime of this process. Editing the worktree
+# during analysis must never change the remote implementation mid-batch.
+REMOTE_SOURCES = (robot.remote_source("preflight", "idle").rsplit("\nprint(json.dumps(", 1)[0],
+                  (HERE / "probe.py").read_text(),
+                  Path(__file__).read_text().split("# LOCAL TRANSPORT:")[0])
+
 
 def remote_payload(plan, case):
     validate_plan(plan)
     if case not in plan["candidates"]:
         raise ValueError("Candidate not in validated plan")
-    sources = [robot.remote_source("preflight", "idle").rsplit("\nprint(json.dumps(", 1)[0],
-               (HERE / "probe.py").read_text(), Path(__file__).read_text().split("# LOCAL TRANSPORT:")[0]]
     # Data travels on stdin as JSON. Neither labels nor phases are shell/code.
-    return "\n".join(sources) + "\nrequest=json.load(sys.stdin)\nvalidate_plan(request['plan'])\n" + \
+    return "\n".join(REMOTE_SOURCES) + "\nrequest=json.load(sys.stdin)\nvalidate_plan(request['plan'])\n" + \
         "case=request['plan']['candidates'][request['index']]\n" + \
         "try:\n result=perform_case(request['plan'],case,DeckEnvironment())\n" + \
         "except Exception as exc:\n result={'hard_stop':type(exc).__name__,'reason':str(exc) if isinstance(exc,HardStop) else 'remote_safety_failure'}\n" + \

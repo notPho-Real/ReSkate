@@ -2,6 +2,22 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+ACTIVE follow-up: febdb40 pushed; CI38508894785 Linux/macOS PASS, Windows
+building; separate Deck38508894846 PASS. New real six-trial batch completed:
+artifacts/trick-batch-20261013T210055-33354 (two neutral, two tail, two nose).
+All six neutralized/reset PASS; unchanged35d933e DLL and preserved stock verified
+per trial. Reviewed trial003/1.png native "Manual" and trial005/2.png native
+"Nose Manual" labels. Request word1 mask0xc000: riding0xc000, sustained tail
+0x4000, nose0x8000; air200/201 has0. Candidate wheel-contact interpretation,
+NOT yet authoritative event mapping. Transient crouch103 also has0x4000, so
+mask alone is unsafe. Next: negative low-stick controls and repeated holds,
+then validate a state-gated, time-qualified observer before runtime activation.
+Quiet baseline revealed missing timestamp watermark after long unchanged state;
+local runner fix uses log byte boundaries and marks truncation. Also freeze
+remote source at process startup so edits cannot change later batch candidates.
+126 offline Python tests PASS. These follow-up changes await CI before real use.
+No deployment, restore, or game-file mutation in this follow-up.
+
 Capture correction checkpoint: per-trial batch evidence now includes bounded
 numeric physics samples, delimited by a pre-input timestamp watermark. This
 does not label manuals from input or selector100.124 offline Python tests pass

@@ -60,6 +60,17 @@ arcs rather than inventing a face-button mapping.
 
 ## Pure model contract
 
+Further real batch `trick-batch-20261013T210055-33354`: two neutral controls,
+two +20000 holds, two -20000 holds. Six controller neutralizations and reset
+checks passed. Native HUD confirmed Manual in trial003/1.png and Nose Manual
+in trial005/2.png. Word1 at context+0x13c8, mask0xc000, changed from idle0xc000
+to tail0x4000 or nose0x8000 and back on release. Air200/201 has0; crouch103 can
+transiently have0x4000. Hypothesis: front/rear wheel contacts, not command intent.
+This needs negative controls and repeated state-qualified correlation before use.
+Quiet log baselines caused the first tail trace to be omitted by the timestamp
+watermark; screenshots remain valid. A byte-boundary collector fix is locally
+tested, not yet CI approved. Do not count missing trace as missing trick.
+
 `trick(points)` consumes pending links and ends balance. `landing()` opens450ms
 grace once. `revert()` succeeds once during landing grace, opening a single450ms
 pending window. `begin_balance(kind)` consumes it; duplicate continuous entries

@@ -110,6 +110,12 @@ class BatchTests(unittest.TestCase):
         self.assertNotIn("publish_report(", source)
         self.assertNotIn(value["source_commit"], source)
 
+    def test_remote_code_is_frozen_for_batch_process(self):
+        value = plan()
+        with patch.object(Path, "read_text", side_effect=AssertionError("mid-batch read")):
+            source = batch.remote_payload(value, value["candidates"][0])
+        compile(source, "frozen-remote-batch", "exec")
+
     def test_observations_sanitize_and_bound(self):
         text = "secret password and personal path\n" + "\n".join(
             "ARCADE HIL STATE: seq=%d valid=true state=100 mode=1." % i for i in range(200))
@@ -149,6 +155,22 @@ class BatchTests(unittest.TestCase):
         result = batch.perform_case(value, value["candidates"][0], env)
         self.assertEqual(result["observations"]["combo"]["samples"], [{"ms": 101}])
         self.assertEqual(result["criteria"]["named_trick"], "UNVERIFIED")
+
+    def test_quiet_baseline_captures_new_physics_rows_by_byte_boundary(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "ReSkate.log"
+            path.write_text("quiet heartbeat\n")
+            env = batch.DeckEnvironment()
+            env.log = path
+            boundary = env.observe()["log_end"]
+            with path.open("a") as stream:
+                stream.write("ARCADE COMBO SAMPLE: ms=10 state=100 mode=1 words=" +
+                             ",".join(["00000000"] * 8) + ".\n")
+            result = env.observe(since=boundary)
+            self.assertEqual(len(result["combo"]["samples"]), 1)
+            self.assertIsNone(result["evidence_gap"])
+            path.write_text("")
+            self.assertEqual(env.observe(since=boundary)["evidence_gap"], "log_truncated")
 
     def test_invalid_context_sends_no_input(self):
         env = Mock()
