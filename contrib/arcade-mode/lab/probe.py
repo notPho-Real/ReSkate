@@ -353,12 +353,39 @@ def parse_flip_observations(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_stick_samples(text):
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE STICK SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) x=(-?[0-9]{1,5}) y=(-?[0-9]{1,5}) phase=([0-3])\.$', line)
+        if not row:
+            continue
+        seq, ms, tick, user, x, y, phase = map(int, row.groups())
+        if max(seq, ms, tick) > 0xffffffffffffffff or not (-32768 <= x <= 32767 and -32768 <= y <= 32767):
+            continue
+        samples.append(dict(seq=seq, ms=ms, tick=tick, user=user, x=x, y=y, phase=phase))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
+    arc_data = {}
     diagnostic = None
     conflicting = False
     for line in text.splitlines():
+        arc = re.search(r'ARCADE AUTHORED ARC: index=([0-9]{1,3}) arc=([0-9]{1,2}) start=(-?[0-9]{1,7}) end=(-?[0-9]{1,7}) min=([0-9]{1,4}) max=([0-9]{1,4}) wait=(-?[0-9]{1,5})\.$', line)
+        if arc:
+            index, ordinal, start, end, minimum, maximum, wait = map(int, arc.groups())
+            if (index < 256 and ordinal < 32 and abs(start) <= 3600000 and abs(end) <= 3600000
+                    and 0 <= minimum <= 1000 and minimum <= maximum <= 2000 and -1000 <= wait <= 10000):
+                value = dict(start_mdeg=start, end_mdeg=end, min_milli=minimum, max_milli=maximum, wait_ms=wait)
+                key = (index, ordinal)
+                if key in arc_data and arc_data[key] != value:
+                    conflicting = True
+                arc_data[key] = value
         label = re.search(r'ARCADE AUTHORED LABEL: index=([0-9]{1,3}) tokens=([0-9]{1,4})\.$', line)
         if label and int(label[1]) < 256 and int(label[2]) <= 1023:
             index, tokens = map(int, label.groups())
@@ -385,6 +412,10 @@ def parse_authored_catalog(text):
     for index, entry in entries.items():
         if index in labels:
             entry['source_tokens'] = labels[index]
+        if any(key[0] == index for key in arc_data):
+            entry['arc_data'] = [dict(arc=ordinal, **arc_data[index, ordinal])
+                                for ordinal in range(entry['arcs']) if (index, ordinal) in arc_data]
+            entry['arcs_complete'] = len(entry['arc_data']) == entry['arcs'] and not conflicting
     return {'status': status, 'entries': [entries[i] for i in sorted(entries)], 'diagnostic': diagnostic,
             'partial': bool(diagnostic and diagnostic['rejected']),
             'complete': status == 2 and total is not None and not conflicting and
@@ -412,4 +443,5 @@ def native_trace(request, **kwargs):
             "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
             "pad_observations": parse_pad_samples(text[start:] if start >= 0 else ""),
             "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
+            "stick_observations": parse_stick_samples(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

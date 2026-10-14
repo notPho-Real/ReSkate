@@ -1,0 +1,417 @@
+{
+  "schema": 1,
+  "source_commit": "d0c835c18af48cee21554453a12c41998706dee8",
+  "dll_sha256": "7ae0c5c0828ca4da34b32d3dbb4699d15e916404d223137439241fc56127149d",
+  "context": "Stationary Stadium1, clear-bit stance, hot game session",
+  "trials": [
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        9
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        5
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        24
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        16
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-inward-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        30
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-inward-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        30
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-impossible",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        19
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-impossible",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        19
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-a-hold-200",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-a-hold-1500",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "conclusion": "Late-poll arc preservation fixes a demonstrated local defect but does not resolve intermittent native diagonal recognition. Impossible still produces the simpler shove-it. All 24 trials neutralized and returned to idle without observed gaps or dropped flip rows."
+}

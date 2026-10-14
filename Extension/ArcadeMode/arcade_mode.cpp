@@ -64,6 +64,8 @@ struct PadEvidence {
     std::uint64_t sequence{}, ms{};
     unsigned user{}, buttons{}, lt{}, rt{}, output{}, phase{};
     bool source{};
+    std::uint64_t tick{};
+    short right_x{}, right_y{};
 };
 std::array<PadEvidence, 64> pad_evidence{};
 std::array<PadEvidence, 4> previous_pad{};
@@ -356,7 +358,7 @@ void on_client_tick() noexcept {
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
         if (const auto catalog = authored_catalog.load(std::memory_order_acquire)) {
-            for (unsigned batch = 0; batch < 4 && authored_reported < catalog->size(); ++batch) {
+            if (authored_reported < catalog->size()) {
                 const auto index = authored_reported++;
                 const auto& gesture = (*catalog)[index];
                 logging::log(logging::Level::info, logging::Channel::skater,
@@ -365,6 +367,17 @@ void on_client_tick() noexcept {
                     static_cast<unsigned>(gesture.context), gesture.arcs.size());
                 logging::log(logging::Level::info, logging::Channel::skater,
                     "ARCADE AUTHORED LABEL: index={} tokens={}.", index, gesture.source_tokens);
+                // Quantized, bounded game data only; no asset names or memory dumps.
+                for (std::size_t arc_index = 0; arc_index < gesture.arcs.size(); ++arc_index) {
+                    const auto& arc = gesture.arcs[arc_index];
+                    logging::log(logging::Level::info, logging::Channel::skater,
+                        "ARCADE AUTHORED ARC: index={} arc={} start={} end={} min={} max={} wait={}.",
+                        index, arc_index, static_cast<int>(std::lround(arc.start * 1000)),
+                        static_cast<int>(std::lround(arc.end * 1000)),
+                        static_cast<int>(std::lround(arc.minimum * 1000)),
+                        static_cast<int>(std::lround(arc.maximum * 1000)),
+                        static_cast<int>(std::lround(arc.wait * 1000)));
+                }
             }
         }
         std::array<PadEvidence, 16> pad_rows{};
@@ -392,6 +405,9 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE PAD SAMPLE: seq={} ms={} user={} buttons={} lt={} rt={} output={} phase={}.",
                 p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt, p.output, p.phase);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE STICK SAMPLE: seq={} ms={} tick={} user={} x={} y={} phase={}.",
+                p.sequence, p.ms, p.tick, p.user, p.right_x, p.right_y, p.phase);
         }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
@@ -549,9 +565,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto& old = previous_pad[user];
         if (mode_enabled.load(std::memory_order_acquire) &&
             (old.buttons != physical_buttons || old.lt != left_trigger || old.rt != right_trigger ||
-             old.output != result.buttons || old.phase != result.phase)) {
+             old.output != result.buttons || old.phase != result.phase ||
+             old.right_x != result.right_x || old.right_y != result.right_y)) {
             const PadEvidence row{++pad_sequence, now, user, physical_buttons, left_trigger,
-                right_trigger, result.buttons, result.phase};
+                right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y};
             previous_pad[user] = row;
             if (pad_count == pad_evidence.size()) ++pad_dropped;
             else {

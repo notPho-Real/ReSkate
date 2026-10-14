@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "source_commit": "53593c4672c565c84e459eeae38555be51ecb93b",
+  "dll_sha256": "4edd106111f9e13e09bbbd5e2f382c91efc9204a8a1cb74cc4d68ebf351c498d",
+  "context": "Stadium1 fresh spawn, measured clear-bit stance",
+  "trials": [
+    {
+      "name": "classic-up",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-impossible",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        19
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-impossible",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        19
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "result": "FAIL: regular Impossible requests produced Pop Shove-It ID 4 twice; nollie Impossible requests produced ID 19 twice. Kickflip and Heelflip controls passed. All neutralized and returned to idle without gaps/drops. Authored mapping availability does not prove native execution.",
+  "native_guide": {
+    "source": "Current installed game: pause twice -> Skatepedia -> Flip Tricks -> entry 16",
+    "native_method": "Right-stick full circle from downward setup toward heel side",
+    "button_modifier": "None shown",
+    "interpretation": "Confirms the intended full-circle method; does not establish playback success. Re-test the missed-arc correction before adding another recipe."
+  }
+}

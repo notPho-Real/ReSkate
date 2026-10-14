@@ -28,6 +28,33 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_delivered_stick_trace_has_bounded_numeric_fields_and_explicit_loss(self):
+        row = 'ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=-32768 y=32767 phase=1.'
+        result = probe.parse_stick_samples((row + '\n') * 130)
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['samples'][-1], dict(seq=3, ms=125, tick=7, user=0, x=-32768, y=32767, phase=1))
+        for bad in (row + ' private', row.replace('user=0', 'user=4'), row.replace('32767', '32768'),
+                    row.replace('-32768', '-32769'), row.replace('tick=7', 'tick=18446744073709551616')):
+            self.assertEqual(probe.parse_stick_samples(bad)['samples'], [])
+
+    def test_authored_arc_details_are_bounded_complete_and_consistent(self):
+        entry = 'ARCADE AUTHORED GESTURE: index=0 total=1 id=36 nollie=false context=0 arcs=2.\n'
+        arc = 'ARCADE AUTHORED ARC: index=0 arc=0 start=-45000 end=45000 min=800 max=1000 wait=-1000.\n'
+        ready = 'ARCADE AUTHORED STATUS: state=2.'
+        partial = probe.parse_authored_catalog(entry + arc + ready)
+        self.assertFalse(partial['entries'][0]['arcs_complete'])
+        complete = entry + arc + arc.replace('arc=0', 'arc=1') + ready
+        self.assertTrue(probe.parse_authored_catalog(complete)['entries'][0]['arcs_complete'])
+        self.assertEqual(partial['entries'][0]['arc_data'][0]['start_mdeg'], -45000)
+        conflict = probe.parse_authored_catalog(complete + '\n' + arc.replace('max=1000', 'max=1100'))
+        self.assertFalse(conflict['complete'])
+        self.assertFalse(conflict['entries'][0]['arcs_complete'])
+        for bad in (arc.replace('index=0', 'index=256'), arc.replace('arc=0', 'arc=32'),
+                    arc.replace('-45000', '-3600001'), arc.replace('max=1000', 'max=799'),
+                    arc.replace('wait=-1000', 'wait=10001'), arc.rstrip() + ' private\n'):
+            self.assertNotIn('arc_data', probe.parse_authored_catalog(entry + bad + ready)['entries'][0])
+
     def test_flip_identifiers_are_numeric_bounded_and_do_not_infer_tricks(self):
         row = 'ARCADE FLIP OBSERVATION: ms=123 valid=true id=2.'
         result = probe.parse_flip_observations((row + '\n') * 130)

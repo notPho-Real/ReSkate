@@ -1652,5 +1652,246 @@
       "dropped": null
     }
   ],
-  "repeat_two_context": "Nine D-pad trials passed exact native IDs and returned to idle. The next Hardflip produced ID 9 but ended in native offboard state 504; full-frame evidence shows a collision/bail among spawn barriers. Fourteen subsequent cases skipped without input because no stable on-board baseline returned. These skips are not trick failures or successful neutralization trials."
+  "repeat_two_context": "Nine D-pad trials passed exact native IDs and returned to idle. The next Hardflip produced ID 9 but ended in native offboard state 504; full-frame evidence shows a collision/bail among spawn barriers. Fourteen subsequent cases skipped without input because no stable on-board baseline returned. These skips are not trick failures or successful neutralization trials.",
+  "dpad_reset_retry": [
+    {
+      "name": "classic-up-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        9
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        5
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        24
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        24
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-inward-heelflip-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        30
+      ],
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "dpad_reset_retry_result": "After fixed Stadium map reset and native remount in the same game process, all 14 previously unexecuted cases ran. Eleven exact IDs; one Hardflip became Ollie and two Varial Kickflips became Kickflip. All neutralized and returned to idle without gaps/drops. Both inward-nollie variants passed this retry."
 }

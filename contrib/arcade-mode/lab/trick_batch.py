@@ -100,7 +100,7 @@ def observations(text):
     return {"states": rows[-128:], "buttons": buttons[-32:],
             "combo": parse_combo_samples(text), "score": parse_score_samples(text),
             "push": parse_push_samples(text), "pad": parse_pad_samples(text),
-            "flip": parse_flip_observations(text)}
+            "flip": parse_flip_observations(text), "stick": parse_stick_samples(text)}
 
 
 def subsequence(expected, rows):
@@ -250,7 +250,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree
 # during analysis must never change the remote implementation mid-batch.

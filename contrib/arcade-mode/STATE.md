@@ -16,7 +16,30 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Current installed source is f47e6cfd0a8bc5e2f118e09d3cc7f8704910432d, all five
+Current installed source is d0c835c18af48cee21554453a12c41998706dee8, all five
+gates passed in run 38590114296. DLL SHA-256:
+7ae0c5c0828ca4da34b32d3dbb4699d15e916404d223137439241fc56127149d.
+The game executable and stock backup hashes remain unchanged, automatic updates
+are off and recovery is clear. Reviewed runner v16 and lifecycle helper v16 use
+this exact target. The late-poll correction passed its local regression but the
+24-trial Deck matrix still found intermittent diagonal recognition failures and
+four Impossible requests that produced shove-its. Every trial neutralized and
+returned to idle with no gaps or dropped flip rows. The fix is not sufficient
+for repeatable exact recognition. See research/playback-regression-results.json.
+Bounded authored-arc and delivered-stick diagnostics are the next investigation.
+
+The preceding 53593c4 build also passed all gates. Its Impossible mapping failed
+four native trials: regular requests produced ID 4, nollie requests ID 19;
+Kickflip/Heelflip controls passed and all six trials neutralized/returned to idle.
+The current-game Skatepedia confirms a full right-stick circle from downward
+setup toward the heel side, with no extra button modifier shown. This supports
+re-testing the missed-arc correction before changing the native recipe.
+See research/impossible-control-results.json. The native guide is accessible by
+pausing twice, selecting its third side-menu row, then choosing Flip Tricks;
+Impossible is the sixteenth entry. The visible side-menu Get Unstuck action may
+provide a native reset later, but has not been tested.
+
+Earlier installed source was f47e6cfd0a8bc5e2f118e09d3cc7f8704910432d, all five
 gates passed in run 38579226003. DLL SHA-256:
 3dec1862d95b44218435374537a8c8e087aa682f1e3c26b127993be65b056178.
 The game and stock backup hashes are unchanged, updates are off, and no recovery
