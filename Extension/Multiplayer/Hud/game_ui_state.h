@@ -10,6 +10,7 @@ struct GameUiState {
     bool ui_hidden{};         // the game's UI is hidden (captures)
     bool nametags_hidden{};   // the game's nametag setting is off
     bool indicators_hidden{}; // the game's player indicator setting is off
+    bool available{};         // a current native screen model was resolved
 };
 
 // Client thread only (it takes the UI model lock): reads the state at most every 100 ms and

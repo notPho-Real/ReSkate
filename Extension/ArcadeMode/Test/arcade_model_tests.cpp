@@ -47,6 +47,14 @@ int main() {
                       "turning off cancels every synthetic gesture and preserves native axes and buttons");
             }
         }
+        input.enable(true);
+        poll(0, 110000, 0);
+        poll(0, 110001, NativeGesture::a);
+        out = input.poll(0, 111100, NativeGesture::a, 0, 0, 0, 0, false, true);
+        check(!out.phase && out.right_y == 0 && out.buttons == NativeGesture::a,
+              "menu boundary cancels synthetic setup and preserves menu confirm");
+        check(poll(0, 111101, NativeGesture::a).started == NativeTrick::none,
+              "closing menu with A held requires release");
     }
     check(observed_pose({true, true, true, false, 100, 1, 0x4000}) == SkatePose::manual,
           "measured scoring plus tail contact identifies manual");

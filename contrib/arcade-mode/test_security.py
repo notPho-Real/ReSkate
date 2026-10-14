@@ -4,7 +4,9 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 LAB = Path(__file__).parent / 'lab'
@@ -71,6 +73,40 @@ class PlanSecurity(unittest.TestCase):
             self.runner.validate_request({'operation': operation, 'plan': None}, self.trust, self.schema.validate_plan)
             with self.assertRaises(ValueError):
                 self.runner.validate_request({'operation': operation, 'plan': {'game': '/tmp'}}, self.trust, self.schema.validate_plan)
+
+    def test_setup_has_only_fixed_reviewed_actions(self):
+        for action in self.runner.SETUP_ACTIONS:
+            self.runner.validate_request({'operation': 'setup', 'plan': action}, self.trust, self.schema.validate_plan)
+        for action in ('shell', 'sudo', 'replace-game', 'delete-backup', ['pause'], {'key': 'Escape'}):
+            with self.assertRaises(ValueError):
+                self.runner.validate_request({'operation': 'setup', 'plan': action}, self.trust, self.schema.validate_plan)
+
+    def test_external_bundle_rejects_tampering_and_foreign_scope(self):
+        import hashlib
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            manifest = {'version': self.runner.VERSION, 'repository': 'notPho-Real/ReSkate',
+                        'host': 'deck@steamdeck.local', 'pins': {}, 'files': {}}
+            for name in self.runner.FILES:
+                data = b'# reviewed fixture\n'
+                (root / name).write_bytes(data)
+                manifest['files'][name] = hashlib.sha256(data).hexdigest()
+            (root / 'trust.json').write_text(json.dumps(manifest))
+            with patch.object(self.runner, 'ROOT', root):
+                self.runner.load_bundle()
+                for field, value in (('host', 'other@example.invalid'), ('repository', 'other/project')):
+                    bad = dict(manifest, **{field: value})
+                    (root / 'trust.json').write_text(json.dumps(bad))
+                    with self.assertRaises(ValueError):
+                        self.runner.load_bundle()
+                (root / 'trust.json').write_text(json.dumps(manifest))
+                (root / 'worker_batch.py').write_text('# replaced checkout code\n')
+                with self.assertRaises(ValueError):
+                    self.runner.load_bundle()
+                (root / 'worker_batch.py').unlink()
+                (root / 'worker_batch.py').symlink_to(root / 'worker_probe.py')
+                with self.assertRaises(ValueError):
+                    self.runner.load_bundle()
 
 
 class WorkflowSecurity(unittest.TestCase):

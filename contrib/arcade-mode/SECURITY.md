@@ -70,6 +70,12 @@ An admin account or broad owner token can change rules/workflows. Admin bypass i
 retained for the owner development path; this is not a defense against owner
 account compromise. CODEOWNERS alone does not prevent admin direct pushes.
 
+External runner v2 adds only enumerated menu/mount setup presses, with the same
+independently pinned host, game and stock identities. The bundle staging utility
+does not install anything or grant approval. Installation stays a separate digest
+review. A private external lifecycle helper permits only exact game/launcher
+windows, graceful shutdown and the existing Steam shortcut for a new DLL install.
+
 The external runner is a versioned snapshot: edits in the checkout do not update
 it. Review every change, install a new version/digest and update target pins
 explicitly. Never auto-copy workers after pull. Current runner preserves existing

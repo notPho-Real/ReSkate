@@ -13,6 +13,7 @@
 #include "Engine/Game/Input/controller_bindings.h"
 #include "Extension/UI/Overlay/overlay.h"
 #include "Extension/Profile/local_profile_runtime.h"
+#include "Extension/Multiplayer/Hud/game_ui_state.h"
 #include <array>
 #include <atomic>
 #include <limits>
@@ -36,6 +37,7 @@ bool request_probe_ready{};
 std::uint64_t capture_started{}, capture_id{};
 std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
+std::atomic<std::uint64_t> gameplay_valid_until{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
 ComboSession combo_session;
@@ -134,6 +136,7 @@ void set_enabled(bool value, bool persist) noexcept {
         arcade_input.enable(value);
         mode_enabled.store(value, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
+        gameplay_valid_until.store(0, std::memory_order_release);
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
@@ -186,6 +189,9 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
+        const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
+        gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
         // Drain a fixed maximum per tick; explicitly report lost evidence.
         std::array<ComboSample, 16> samples{};
@@ -212,7 +218,12 @@ void on_client_tick() noexcept {
                 s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
         }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
-        if (enabled()) update_combo(native, input, watch.valid, watch.wipeouts, now);
+        if (gameplay) update_combo(native, input, watch.valid, watch.wipeouts, now);
+        else {
+            combo_session.invalidate();
+            combo_tick_at = 0;
+            publish_balance_hud({}, 0);
+        }
         // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
         // checks without injecting an A press merely to arm a capture.
         if (now >= hil_heartbeat_at && now - hil_heartbeat_at >= 250) {
@@ -223,7 +234,7 @@ void on_client_tick() noexcept {
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
-        ollie_eligible_until.store(enabled() && native.valid && native.state == 100 && native.crouch_mode == 1
+        ollie_eligible_until.store(gameplay && native.valid && native.state == 100 && native.crouch_mode == 1
             ? now + 150 : 0, std::memory_order_release);
         if (enabled() && request_probe_ready && (pressed & face_buttons[0])) {
             capture_started = now;
@@ -255,7 +266,10 @@ void on_client_tick() noexcept {
                 "ARCADE MODE INPUT: {} #{} native_state_available={} native_state={} selector_changes={} wipeouts={}.",
                 button_names[i], count, sample.valid, sample.state, sample.changes, sample.wipeouts);
         }
-    } catch (...) { ollie_eligible_until.store(0, std::memory_order_release); }
+    } catch (...) {
+        ollie_eligible_until.store(0, std::memory_order_release);
+        gameplay_valid_until.store(0, std::memory_order_release);
+    }
 }
 
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
@@ -263,6 +277,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
     const auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
+    const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
+    game_input = game_input && gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
     const bool may_start = game_input && deadline >= now && deadline - now <= 150;
     NativeGesture::Output result{};
     {

@@ -66,6 +66,16 @@ class InstallerTests(unittest.TestCase):
         installer.change_installation(self.game)
         self.assertFalse(installer.load_settings(self.game)["updates"])
 
+    def test_install_and_restore_never_replace_game_or_delete_stock(self):
+        before = {name: (self.game / name).read_bytes() for name in ('Skate.exe', 'ReSkateLauncher.exe')}
+        installer.change_installation(self.game, fake_dll(), 'a' * 40)
+        for operation in (lambda: installer.change_installation(self.game, fake_dll(), 'b' * 40),
+                          lambda: installer.change_installation(self.game)):
+            operation()
+            self.assertEqual((self.game / installer.BACKUP).read_bytes(), b'stock')
+            for name, content in before.items():
+                self.assertEqual((self.game / name).read_bytes(), content)
+
     def test_missing_settings_use_launcher_default_on_restore(self):
         installer.change_installation(self.game, fake_dll(), "a" * 40)
         installer.change_installation(self.game)

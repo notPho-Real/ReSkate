@@ -10,10 +10,11 @@ import subprocess
 import sys
 import time
 
-VERSION = 1
+VERSION = 2
 MAX_REQUEST = 65536
 ROOT = Path(__file__).resolve().parent
 FILES = ('trusted_runner.py', 'plan_schema.py', 'worker_robot.py', 'worker_probe.py', 'worker_batch.py')
+SETUP_ACTIONS = ('mount-board', 'pause', 'back', 'confirm', 'up', 'down', 'left', 'right', 'tab-left', 'tab-right')
 
 
 def owned_file(path, limit):
@@ -66,19 +67,23 @@ def validate_request(request, trust, validate_plan):
     if not isinstance(request, dict) or set(request) != {'operation', 'plan'}:
         raise ValueError('Expected operation and plan only')
     operation = request['operation']
-    if operation not in ('status', 'trace', 'capture', 'batch'):
+    if operation not in ('status', 'trace', 'capture', 'batch', 'setup'):
         raise ValueError('Operation outside approved primitives')
-    if operation != 'batch':
+    if operation in ('status', 'trace', 'capture'):
         if request['plan'] is not None:
             raise ValueError('Observation takes no plan')
         return
-    plan = validate_plan(request['plan'])
+    if operation == 'setup':
+        if request['plan'] not in SETUP_ACTIONS:
+            raise ValueError('Unknown fixed setup action')
+    else:
+        validate_plan(request['plan'])
     if set(trust['pins']) != {'source_commit', 'dll_sha256', 'stock_sha256', 'game_sha256'}:
         raise ValueError('Missing independently reviewed target pins')
     for key, size in (('source_commit', 40), ('dll_sha256', 64), ('stock_sha256', 64), ('game_sha256', 64)):
         if not re.fullmatch('[0-9a-f]{%d}' % size, trust['pins'][key]):
             raise ValueError('Invalid target pin')
-        if key != 'game_sha256' and plan[key] != trust['pins'][key]:
+        if operation == 'batch' and key != 'game_sha256' and request['plan'][key] != trust['pins'][key]:
             raise ValueError('Plan does not match approved target')
 
 
@@ -94,10 +99,21 @@ elif operation == 'trace':
 elif operation == 'capture':
     result = capture()
 else:
-    plan = validate_plan(request['plan'])
     status = snapshot({})
     if not status.get('safe_paths') or sha(Path(status['game']) / 'Skate.exe') != request['game_sha256']:
         raise HardStop('game_integrity')
+    for key, actual in (('source_commit', 'installed_commit'), ('dll_sha256', 'dll_sha256'), ('stock_sha256', 'backup_sha256')):
+        if status.get(actual) != request['pins'][key]:
+            raise HardStop('target_integrity')
+    if operation == 'setup':
+        actions = {'mount-board':(1,0x134,1), 'pause':(1,0x13b,1), 'back':(1,0x131,1),
+                   'confirm':(1,0x130,1), 'up':(3,17,-1), 'down':(3,17,1),
+                   'left':(3,16,-1), 'right':(3,16,1), 'tab-left':(1,0x136,1), 'tab-right':(1,0x137,1)}
+        event = actions[request['plan']]
+        result = experiment_events(request['plan'], [(0,[event]),(0.1,[(event[0],event[1],0)])], 1)
+        print(json.dumps(result))
+        sys.exit(0)
+    plan = validate_plan(request['plan'])
     results = []
     for case in plan['candidates']:
         for repetition in range(case.get('repeat', 1)):
@@ -117,7 +133,7 @@ print(json.dumps(result))
 def execute(request, trust, sources):
     # Payload code comes exclusively from reviewed external files.
     payload = '\n'.join(sources[name] for name in ('worker_robot.py', 'worker_probe.py', 'plan_schema.py', 'worker_batch.py')) + REMOTE
-    forwarded = dict(request, game_sha256=trust['pins'].get('game_sha256'))
+    forwarded = dict(request, game_sha256=trust['pins'].get('game_sha256'), pins=trust['pins'])
     lab = ROOT.parent
     for name in ('known_hosts', 'id_ed25519'):
         path = lab / name
