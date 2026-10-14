@@ -14,6 +14,7 @@
   "demonstrated_differences": {
     "compiler": "Same 18-tick setup, arc midpoint/interpolation, later 90-degree subdivision, release and end spacing; parser is reused unchanged.",
     "timeline": "Current delivery schedule advances one step per observed poll and reschedules later arcs from that poll. Reference selects latest step due on an absolute game-tick timeline.",
+    "clock": "Pinned Runtime/client_tick.cpp calls style::on_client_tick, then style_editor_entry.cpp calls trick_pad::tick after the native client update. Arcade on_client_tick also runs after that native update, inside update_model and before its 500 ms model refresh gate. Neither clock is XInput poll count; Arcade additionally gates on valid client/observer state.",
     "packets": "Current XOR of physical packet and tick can collide. Reference emits a new packet per poll, including same-tick polls.",
     "pad": "Reference replaces the full pad while its script owns input; ordinary Arcade preserves physical controls outside its translation.",
     "safety": "Experiment retains Arcade menu/freshness/backwards-clock/180-tick cancellation. It deliberately does not copy upstream's no-tick fallback or two-second terminal linger. Compare the active trajectory before these terminal differences."
@@ -25,6 +26,7 @@
     "off": "Restore delivery schedule and disable extra poll diagnostics."
   },
   "selection": "With Arcade Mode OFF, use arcadeplayback delivery|timeline|reference|off in the existing console, then enable Arcade Mode. Selection is unsaved; startup defaults to ordinary delivery. Mode changes while enabled are rejected.",
+  "analysis": "Run python3 contrib/arcade-mode/lab/playback_report.py RESULT.json on sanitized trial or batch evidence. It joins sampled cadence and stick rows, checks reference packet deltas against cumulative polls, and reports measured timing and native IDs separately from neutralization/reset. It never infers trick success from requested input. Old artifacts without new timing evidence remain incomplete.",
   "controlled_trials": {
     "gestures": ["Kickflip", "Hardflip", "Varial Kickflip", "Impossible"],
     "expected_regular_ids": [2, 9, 5, 36],

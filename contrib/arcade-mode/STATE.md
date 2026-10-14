@@ -44,7 +44,23 @@ See `research/playback-parity.json` for the exact comparison and safety differen
 Local validation: 40 focused playback/packet checks and 33,500 working-tree model
 checks passed with sanitizers; the isolated commit without the preserved manual
 work also passed all 33,480 model checks. All 166 Python tests passed. These are not native
-acceptance. Hosted Windows build and controlled Deck A/B remain required.
+acceptance. Controlled Deck A/B remains required.
+
+Playback implementation `6ec5e58ac99d436b421b2b56a65e60b264cc552f` is pushed.
+Hosted run `38630732455` passed all five gates: Windows build/model tests,
+Linux, macOS, packaging tests and publication. No new DLL was deployed.
+The A/B artifact is cached privately at `artifacts/playback-parity-6ec5e58/`.
+Its DLL SHA-256 is
+`fafea7d19e8c1d7f8b3829dafaa514f5653fdbaa30306f81fecb8886531383a5`.
+The immutable package and raw CI artifact contain byte-identical DLLs; their
+source and checksums were verified locally without executing downloaded code.
+The offline `lab/playback_report.py` follow-up joins the
+sampled cadence/stick evidence and checks packet increments against cumulative
+poll counts. Fifteen focused analyzer tests pass, and the full Python suite now
+passes 181 tests. Native IDs, timing completeness,
+neutralization and reported reset are kept separate; no requested action becomes
+a success through this analyzer. Existing results without cadence evidence cannot
+pass the new A/B evidence check.
 
 The exact community revert repository and revision are now recovered. The
 verified source recipe is 235 ms, including 33 circle samples rather than 32.
