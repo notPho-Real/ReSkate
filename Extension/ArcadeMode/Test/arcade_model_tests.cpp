@@ -7,6 +7,7 @@
 #include "Extension/ArcadeMode/arcade_ollie.h"
 #include "Extension/ArcadeMode/arcade_flip.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_trick_table.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -20,6 +21,36 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        for (std::size_t i = 0; i < literal_trick_table.size(); ++i)
+            for (std::size_t j = i + 1; j < literal_trick_table.size(); ++j) {
+                const auto& a = literal_trick_table[i]; const auto& b = literal_trick_table[j];
+                check(a.family != b.family || a.direction != b.direction || a.presses != b.presses,
+                    "literal trick table has no ambiguous duplicate input");
+            }
+        for (const auto& row : literal_trick_table) {
+            check(select_named_trick(row.family, row.direction, 0) == ArcadeTrick::none,
+                  "zero presses cannot select a trick");
+            check(select_named_trick(row.family, row.direction, 4) == ArcadeTrick::none,
+                  "unassigned repetition cannot fall back to an easier variant");
+        }
+        check(select_named_trick(TrickFamily::flip, TrickDirection::up_left, 3) == ArcadeTrick::none,
+              "unassigned triple diagonal remains unselected");
+        check(select_named_trick(TrickFamily::grab, TrickDirection::right, 3) == ArcadeTrick::none,
+              "unassigned triple grab cannot silently substitute");
+        check(select_named_trick(TrickFamily::flip, TrickDirection::none, 1) == ArcadeTrick::none,
+              "literal table does not invent a neutral flip default");
+        check(select_grind(TrickDirection::none, 1, 1, RailRelationship::unknown) == ArcadeTrick::none,
+              "unknown rail relationship cannot imply a 50-50");
+        check(select_grind(TrickDirection::up, 1, 2, RailRelationship::unknown) == ArcadeTrick::nosebluntslide &&
+              select_grind(TrickDirection::down, 1, 2, RailRelationship::unknown) == ArcadeTrick::bluntslide,
+              "direction repetition is distinct from grind-button repetition");
+        check(select_grind(TrickDirection::left, 1, 1, RailRelationship::parallel) ==
+              select_grind(TrickDirection::right, 1, 1, RailRelationship::parallel),
+              "lateral grind requests retain contextual pair identity");
+        check(select_grind(TrickDirection::up, 2, 2, RailRelationship::unknown) == ArcadeTrick::none,
+              "unassigned combination of button and direction repetition stays unselected");
+    }
     {
         BoardChord chord;
         constexpr auto pair = BoardChord::pair;
@@ -73,6 +104,22 @@ int main() {
         check(poll(127, BoardChord::pair).phase != 3, "board action never overlaps synthetic trick preparation");
     }
     {
+        ArcadeInput input;
+        input.enable(true);
+        auto poll = [&](std::uint64_t now, std::uint16_t buttons, bool trigger) {
+            return input.poll(0, now, buttons, 0, 0, 0, 0, true, true, true, 0, trigger, true);
+        };
+        poll(0, 0, false);
+        poll(300, 0, true);
+        check(poll(800, BoardChord::pair, true).buttons == BoardChord::pair,
+            "held trigger suppresses board translation");
+        check(poll(2200, BoardChord::pair, false).phase != 3,
+            "trigger release cannot resurrect a rejected chord");
+        poll(2201, 0, false);
+        check(poll(2202, BoardChord::pair, false).phase == 3,
+            "full release rearms after a rejected trigger chord");
+    }
+    {
         AutomaticPush push;
         check(!push.poll(0, 0, 25000, 0, true, true), "held movement across enable does not auto push");
         push.poll(1, 0, 0, 0, true, true);
@@ -86,7 +133,7 @@ int main() {
         check(!push.poll(3000, 0, 25000, 15.0f, true, true), "downhill speed is left alone");
         check(push.poll(4000, 0, 25000, 3.9f, true, true), "push resumes after slowing below lower threshold");
         check(!push.poll(4001, 0, 25000, 3.9f, true, false), "lost riding eligibility cancels a push immediately");
-        check(!push.poll(5000, 0, -25000, 0, true, true), "backward brake intent never accelerates");
+        check(!push.poll(5000, 0, -25000, 0, true, true), "backward stick intent never accelerates");
         check(!push.poll(6000, 0, 25000, std::numeric_limits<float>::quiet_NaN(), true, true), "unknown speed suppresses push");
         check(!push.poll(7000, 0, 25000, -1, true, true), "invalid negative speed suppresses push");
         check(push.poll(8000, 25000, 0, 1, true, true), "steering can resume native pushing");

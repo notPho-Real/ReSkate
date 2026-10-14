@@ -46,6 +46,15 @@ std::atomic<std::uint64_t> board_eligible_until{};
 std::atomic<float> push_speed{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
+// Bounded edge evidence at the game-facing input boundary, not requested lab input.
+struct PadEvidence {
+    std::uint64_t sequence{}, ms{};
+    unsigned user{}, buttons{}, lt{}, rt{}, output{}, phase{};
+};
+std::array<PadEvidence, 64> pad_evidence{};
+std::array<PadEvidence, 4> previous_pad{};
+std::size_t pad_head{}, pad_count{};
+std::uint64_t pad_sequence{}, pad_dropped{};
 ComboSession combo_session;
 std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
@@ -189,6 +198,7 @@ void set_enabled(bool value, bool persist) noexcept {
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
+        previous_pad = {};
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
@@ -241,6 +251,26 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        std::array<PadEvidence, 16> pad_rows{};
+        std::size_t pad_rows_count{};
+        std::uint64_t pad_lost{};
+        {
+            std::lock_guard lock(ollie_mutex);
+            pad_rows_count = std::min(pad_rows.size(), pad_count);
+            for (std::size_t i = 0; i < pad_rows_count; ++i)
+                pad_rows[i] = pad_evidence[(pad_head + i) % pad_evidence.size()];
+            pad_head = (pad_head + pad_rows_count) % pad_evidence.size();
+            pad_count -= pad_rows_count;
+            pad_lost = pad_dropped; pad_dropped = 0;
+        }
+        if (pad_lost) logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE PAD GAP: dropped={}.", pad_lost);
+        for (std::size_t i = 0; i < pad_rows_count; ++i) {
+            const auto& p = pad_rows[i];
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PAD SAMPLE: seq={} ms={} user={} buttons={} lt={} rt={} output={} phase={}.",
+                p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt, p.output, p.phase);
+        }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
@@ -272,7 +302,7 @@ void on_client_tick() noexcept {
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
         float speed{};
         // Both wheel contacts exclude the measured manual poses. Unknown state
-        // or speed means no push; native down-stick braking also remains intact.
+        // or speed means no push; native down-stick sliding also remains intact.
         const bool speed_valid = native.valid && native.state == 100 && native.crouch_mode == 1 && native_board_speed(speed);
         const bool push_valid = gameplay && watch.valid && speed_valid && (native.words[1] & 0xc000u) == 0xc000u;
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
@@ -358,6 +388,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board);
+        const auto& old = previous_pad[user];
+        if (mode_enabled.load(std::memory_order_acquire) &&
+            (old.buttons != physical_buttons || old.lt != left_trigger || old.rt != right_trigger ||
+             old.output != result.buttons || old.phase != result.phase)) {
+            const PadEvidence row{++pad_sequence, now, user, physical_buttons, left_trigger,
+                right_trigger, result.buttons, result.phase};
+            previous_pad[user] = row;
+            if (pad_count == pad_evidence.size()) ++pad_dropped;
+            else {
+                pad_evidence[(pad_head + pad_count) % pad_evidence.size()] = row;
+                ++pad_count;
+            }
+        }
     }
     buttons = result.buttons;
     right_x = result.right_x;

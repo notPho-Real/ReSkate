@@ -1,0 +1,453 @@
+{
+  "source_commit": "0447a406d4b0bb87f465565c66361b09af942cd1",
+  "scope": "Automatic-skating exclusion and reset-method validation; not integrated maturity",
+  "conflict_trials": [
+    {
+      "name": "manual-push-exclusion",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "states": [
+        100
+      ],
+      "poses": [
+        4,
+        4,
+        1
+      ],
+      "contacts": [
+        16384,
+        49152
+      ],
+      "nondual_eligible": 0,
+      "max_speed": 0.050265815,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nose-push-exclusion",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "states": [
+        100
+      ],
+      "poses": [
+        5,
+        1
+      ],
+      "contacts": [
+        32768,
+        49152
+      ],
+      "nondual_eligible": 0,
+      "max_speed": 0.07033122,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "ollie-push-exclusion",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "states": [
+        100,
+        103,
+        201
+      ],
+      "poses": [
+        0,
+        2,
+        1,
+        0,
+        1
+      ],
+      "contacts": [
+        0,
+        49152
+      ],
+      "nondual_eligible": 0,
+      "max_speed": 0.9050463,
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "short_burst_trials": [
+    {
+      "trial": 1,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 3.192,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 2,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.333,
+      "final_speed": 0.051,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 3,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 2.481,
+      "final_speed": 0.001,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 4,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.623,
+      "final_speed": 0.266,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 5,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.251,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 6,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.308,
+      "final_speed": 0.017,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 7,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.788,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 8,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.306,
+      "final_speed": 0.007,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 9,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.651,
+      "final_speed": 0.046,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 10,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.123,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 11,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.236,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 12,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.786,
+      "final_speed": 0.506,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 13,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 2.966,
+      "final_speed": 0.301,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 14,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 2.165,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 15,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 2.479,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 16,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.374,
+      "final_speed": 0.099,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 17,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.322,
+      "final_speed": 0.052,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 18,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 3.189,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 19,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.176,
+      "final_speed": 0.0,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 20,
+      "outcome": "OBSERVED",
+      "reason": null,
+      "max_speed": 0.711,
+      "final_speed": 0.127,
+      "states": [
+        100,
+        101
+      ],
+      "idle": "PASS",
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "short_burst_acceptance": "NOT REPEATABLE: native down-stick powerslides changed heading and later encountered a wall; clean input release is not acceleration success",
+  "button_stop_calibration": [
+    {
+      "trial": 1,
+      "maximum_speed_mps": 3.9849505,
+      "final_speed_mps": 7.060456e-06,
+      "native_states": [
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 2,
+      "maximum_speed_mps": 4.593014,
+      "final_speed_mps": 0.00014103329,
+      "native_states": [
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "trial": 3,
+      "maximum_speed_mps": 2.6555352,
+      "final_speed_mps": 3.256856e-05,
+      "native_states": [
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "reset_method": "Native B stop preserved heading in three calibration trials; use for subsequent bounded batches while B remains native in this build."
+}

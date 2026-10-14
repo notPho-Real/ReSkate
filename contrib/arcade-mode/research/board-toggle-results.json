@@ -1,0 +1,27 @@
+{
+  "source_commit": "a39311b5b14dc6dc842cdd366132657f77425951",
+  "dll_sha256": "8d7923348497aa30c0a513372e81bd9f331cc7382eea3cde9e7a7be16e3dd400",
+  "scene": "Stadium1",
+  "maturity": "Repeated native board cycles verified; trigger-conflict boundary unresolved",
+  "batches": [
+    {"evidence": "1791973907394668000", "case": "smoke", "passed": 1, "attempted": 1},
+    {"evidence": "1791974003558053000", "case": "simultaneous and staggered long-hold cycles", "passed": 20, "attempted": 20, "heartbeat_and_physics_sequence": [100, 504, 100]},
+    {"evidence": "1791974623725611000", "case": "quick-tap cycles", "passed": 5, "attempted": 5, "heartbeat_and_physics_sequence": [100, 504, 100]},
+    {"evidence": "1791974363480200000", "case": "individual bumpers and late pair", "passed": 3, "attempted": 3, "heartbeat_sequence": [100]},
+    {"evidence": "1791974363480200000", "case": "simultaneous partial trigger and chord", "passed": 0, "attempted": 1, "heartbeat_and_physics_sequence": [100, 504], "subsequent_context_skips": 5},
+    {"evidence": "1791974753593547000", "case": "menu suppression", "passed": 1, "attempted": 1, "heartbeat_sequence": [100]},
+    {"evidence": "1791975097736239000", "case": "OFF plain chord and trigger chord", "passed": 2, "attempted": 2, "heartbeat_sequence": [100]},
+    {"evidence": "1791975435601305000", "case": "full trigger held 500ms before chord", "passed": 0, "attempted": 1, "heartbeat_and_physics_sequence": [100, 504], "subsequent_context_skips": 2}
+  ],
+  "neutralized_all_executed_trials": true,
+  "physics_drops": 0,
+  "log_evidence_gaps": 0,
+  "limitations": [
+    "No gameplay restart or stock restore between these batches.",
+    "Held chords did not oscillate in successful cycles; both buttons were released before the next request.",
+    "The negative trigger cases unexpectedly dismounted. They are failures, despite the generic subsequence criterion matching the initial riding state.",
+    "Requested trigger values are not proof that XInput delivered those values. Bounded game-facing pad evidence is being added to diagnose this boundary.",
+    "OFF and menu states were visually checked in normal-size private captures. ON was restored and visually confirmed before the final trigger trial.",
+    "After the final failed trial, the fixed native mount action restored the setup. Full skating-chain integration remains pending."
+  ]
+}

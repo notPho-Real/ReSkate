@@ -26,7 +26,7 @@ def build(output):
     for name, value in files.items():
         compile(value, name, 'exec')
         (output / name).write_text(value)
-    manifest = {'version': 4, 'repository': 'notPho-Real/ReSkate', 'host': 'deck@steamdeck.local',
+    manifest = {'version': 5, 'repository': 'notPho-Real/ReSkate', 'host': 'deck@steamdeck.local',
                 'pins': {}, 'files': {name: hashlib.sha256(value.encode()).hexdigest() for name, value in files.items()}}
     (output / 'trust.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print('Staged only. Review every file; populate independently verified target pins before external installation.')

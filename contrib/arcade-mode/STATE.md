@@ -16,9 +16,9 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Installed source 0447a406d4b0bb87f465565c66361b09af942cd1 passed all five hosted
-jobs in run 38537428716. DLL SHA-256:
-c65a23f143fde1d395dbd22dd19287131df9f4c0bbe644bc6f21bfeb43da75e8.
+Installed source a39311b5b14dc6dc842cdd366132657f77425951 passed all five hosted
+jobs in run 38546030615. DLL SHA-256:
+8d7923348497aa30c0a513372e81bd9f331cc7382eea3cde9e7a7be16e3dd400.
 Game and stock backup hashes remain unchanged; updates are off, no recovery pending.
 
 The real Deck live toggle gate PASSED in one game process: ON A produced native
@@ -50,6 +50,15 @@ gaps/drops. Initial mixed-scene cases encountered obstacles and remain recorded
 honestly in research/automatic-skating-results.json. Downhill behavior and varied
 context repeatability remain open; these are not final integrated skating chains.
 
+Follow-up manual/nose observations confirmed push exclusion. A short movement
+batch using backward-stick stops remained neutralized but did not establish
+repeatable acceleration: screenshots show native powerslides changed heading,
+eventually pointing into a wall. Native B stops preserved heading in three
+subsequent calibration trials, each accelerating then stopping. Use that stop
+in bounded HIL while B remains native in this build. Do not count the earlier
+20 short trials as 20 acceleration successes. See
+research/automatic-skating-followup-results.json.
+
 External trusted-v4 was independently reviewed and installed with the current
 verified target pins; it adds only numeric push observation parsing. The private deployment helper
 uses encoded transport because plain inline installer text falsely matched its
@@ -59,8 +68,23 @@ The board chord is now the active milestone. The local adapter requests one nati
 Y pulse for LB+RB within 120 ms, preserves individual/late bumper input, requires
 both releases to rearm, and suppresses menus, stale state, air, ragdoll and trick
 conflicts. It uses existing guarded offboard flags rather than input intent to
-decide eligibility. Local checks pass; hosted build and 20 real board cycles are
-still required before hardware acceptance.
+decide eligibility. Hosted gates passed and the first real cycle plus a 20-cycle
+batch passed: each showed exactly 100 → 504 → 100 in both heartbeat and physics
+observations, with neutralized input and no gaps/drops. Long holds did not
+oscillate. The batch varied simultaneous, left-leading and right-leading presses.
+Five additional quick-tap cycles passed. Individual bumpers, a late pair, the menu
+boundary and two OFF cases passed. However, a partial trigger/chord and a full
+trigger held before the chord both unexpectedly dismounted. These are recorded
+failures, not successful suppression. The skater was remounted with the fixed
+native setup action. Bounded numeric game-facing pad edge evidence is being added
+to distinguish requested virtual input from actual received input before the
+board-control checkpoint closes. See research/board-toggle-results.json.
+
+The literal target table is in CLASSIC_CONTROLS.md and arcade_trick_table.h.
+Unassigned repeats have no fallback, and geometry-dependent grinds retain pair
+identity. These definitions are not native support claims. The existing timed
+gesture adapter remains installed; authoritative native methods are the next
+integration pass after the board boundary checks.
 
 ## Combo/balance implementation in progress — 2026-10-13
 

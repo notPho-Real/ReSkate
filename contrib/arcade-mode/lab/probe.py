@@ -285,6 +285,26 @@ def parse_score_samples(text):
             "event_identity": "UNVERIFIED"}
 
 
+def parse_pad_samples(text):
+    """Only numeric controller fields from the game-facing adapter; bounded tail."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        gap = re.search(r'ARCADE PAD GAP: dropped=([0-9]{1,20})\.$', line)
+        if gap and int(gap[1]) <= 0xffffffffffffffff:
+            dropped = min(0xffffffffffffffff, dropped + int(gap[1]))
+        row = re.search(r'ARCADE PAD SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) user=([0-3]) buttons=([0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) output=([0-9]{1,5}) phase=([0-3])\.$', line)
+        if not row:
+            continue
+        values = [int(v) for v in row.groups()]
+        if max(values[:2]) > 0xffffffffffffffff or max(values[3], values[6]) > 65535 or max(values[4:6]) > 255:
+            continue
+        samples.append(dict(zip(('seq', 'ms', 'user', 'buttons', 'lt', 'rt', 'output', 'phase'), values)))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped = min(0xffffffffffffffff, dropped + 1)
+    return {'samples': samples, 'dropped': dropped}
+
+
 def parse_push_samples(text):
     """Bounded numeric speed evidence; never return arbitrary log text."""
     samples = []
@@ -322,4 +342,5 @@ def native_trace(request, **kwargs):
             **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
             "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
             "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
-            "push_observations": parse_push_samples(text[start:] if start >= 0 else "")}
+            "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
+            "pad_observations": parse_pad_samples(text[start:] if start >= 0 else "")}

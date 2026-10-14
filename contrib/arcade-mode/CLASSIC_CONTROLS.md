@@ -1,0 +1,113 @@
+# Arcade Mode — Classic Controls
+
+This is the literal target control contract. It does not claim that every native
+adapter is implemented or verified. Native result observations and the method
+matrix determine support; input intent alone never proves a trick. An unavailable
+exact equivalent is **UNSUPPORTED**, never silently replaced by another trick.
+
+## Core controls
+
+| Input | Action |
+| --- | --- |
+| Left Stick | Move, steer and directional trick modifier |
+| D-pad | Alternate directional trick input |
+| Right Stick | Camera |
+| A hold / release | Crouch / ollie |
+| X | Flip |
+| B | Grab |
+| Y | Contextual grind / lip |
+| LB / RB | Spin left / right |
+| LT | Nollie context |
+| RT | Switch / revert context |
+| LB+RB | Native dismount / remount, one edge per fresh chord |
+| Up → Down | Manual request |
+| Down → Up | Nose Manual request |
+
+Native locomotion supplies automatic pushes when movement intent and observed
+speed require them. The player does not need to repeatedly press a push button.
+The physical right stick always belongs to the camera; any synthetic gesture used
+inside a native adapter is an implementation detail, not another player control.
+
+## Flip table — X
+
+Repeated presses select the exact listed variant only where a native equivalent
+exists. A dash means this contract assigns no variant to that combination.
+
+| Direction | X | X,X | X,X,X |
+| --- | --- | --- | --- |
+| Left | Kickflip | Double Kickflip | Triple Kickflip |
+| Up | Impossible | Double Impossible | Triple Impossible |
+| Right | Heelflip | Double Heelflip | Triple Heelflip |
+| Down | Pop Shove-It | 360 Shove-It | 540 Shove-It |
+| Up-Left | Hardflip | 360 Hardflip | — |
+| Up-Right | Inward Heelflip | 360 Inward Heelflip | — |
+| Down-Left | Varial Kickflip | 360 Flip | — |
+| Down-Right | Varial Heelflip | 360 Heelflip | — |
+
+## Grab table — B
+
+| Direction | B | B,B |
+| --- | --- | --- |
+| Left | Melon | Method |
+| Up | Nosegrab | Rocket Air |
+| Right | Indy | Stiffy |
+| Down | Tailgrab | One Foot Tailgrab |
+| Up-Left | Japan | One Foot Japan |
+| Up-Right | Madonna | Judo |
+| Down-Left | Benihana | Sacktap |
+| Down-Right | Airwalk | Christ Air |
+
+## Grind / lip table — Y
+
+Native rail/board geometry decides the appropriate member of a semantic pair.
+Left/right does not hardcode an identity that depends on physical approach,
+orientation or which end of the board meets the rail.
+
+| Input / relationship | Semantic action |
+| --- | --- |
+| Y, parallel | 50-50 |
+| Y, sufficiently perpendicular | Appropriate Boardslide / Lipslide |
+| Up + Y | Nosegrind |
+| Down + Y | 5-0 |
+| Left or Right + Y | Appropriate Noseslide / Tailslide |
+| Up diagonal + Y | Appropriate Crooked / Overcrook |
+| Down diagonal + Y | Appropriate Smith / Feeble |
+| Up,Up + Y | Nosebluntslide |
+| Down,Down + Y | Bluntslide |
+
+| Direction | Y,Y, where an exact equivalent exists |
+| --- | --- |
+| Up | Nosegrind to Pivot |
+| Down | 5-0 Overturn |
+| Left | Hurricane |
+| Right | Salad |
+| Up-Left | Hang Ten Nosegrind |
+| Up-Right | Crail Slide |
+| Down-Left | Double Blunt Slide |
+| Down-Right | Darkslide |
+
+## Manual, revert and balance
+
+Up → Down requests Manual; Down → Up requests Nose Manual. Only verified native
+observations establish the actual pose. Manual correction uses Up / Down; grind
+correction uses Left / Right. Both meters display the actual inertial balance
+model, including fatigue retained throughout the same unbanked combo.
+
+RT requests the appropriate switch/revert action for the observed context. Native
+revert identity must be observed. A landing revert creates one continuation
+opportunity; repeated revert cannot keep extending grace or farming multiplier.
+
+## Live mode boundary
+
+Pause → Mod Options → Player → Arcade Mode changes ON/OFF without a restart.
+OFF restores native behavior and cancels all Arcade synthetic input, latches,
+balance, HUD and combo state. ON requires release/rearm so an already held input
+does not become a fresh press. The preference persists normally.
+
+## Acceptance order
+
+Security and the live toggle precede automatic skating and the board chord.
+This table then drives the native-method matrix and exact-result verification.
+Solved native methods are integrated before novel research. Revert, persistent
+HIL and readable HUD precede final combo-chain acceptance. See STATE.md for the
+current gate; this document is a target contract, not a completion report.
