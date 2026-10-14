@@ -1,5 +1,21 @@
 # Arcade Mode persistent project state
 
+## Wake helper — 2026-10-13
+
+User requested a Wake-on-LAN sender while X hardware work was connectivity
+blocked. Added lab/wake.py and Wake Steam Deck.command: three 102-byte magic
+packets to local subnet UDP port 9; no SSH, root, deployment or Deck settings
+changes. MAC/subnet from the user's earlier photo are kept only in ignored
+tools/arcade-deck/wake.json (0600), not committed. CLI --mac/--broadcast can
+also be supplied; never infer successful wake from sendto success.
+119 Python tests passed including five packet/validation/bounds/cleanup tests;
+shell syntax passed. Three actual packets sent; subsequent strict-key SSH to
+the last known IP timed out. Wake UNVERIFIED, Deck connectivity still blocked.
+No new DLL reached Deck. X build run 38489414985 remains Windows-in-progress,
+Linux/macOS success as last checked. Resume that work after connectivity and
+green CI, without restoring stock. Repo action works with its private config;
+if copied elsewhere, supply --mac and --broadcast explicitly.
+
 ## X tricks continuation — 2026-10-13
 
 Starting HEAD 5f479ba. Deck connection verified read-only: active f669926,
@@ -30,6 +46,18 @@ diagonal flip directions and describe scoop paths; see research/TRICK_FINDINGS.m
 Other
 directional trick names remain selection-only
 until native gestures are measured. Do not call the flips repeatable/integrated.
+
+Current X source checkpoint: adbf6ee24918648a97673fceb228b5b20f403191.
+Strict local -Wall -Wextra -Wconversion -Werror model build/run passes.
+CI 38489414985: Linux/macOS passed, Windows pending at this checkpoint.
+Deck later became unreachable at both paired hostname and known IP (bounded
+strict-key read-only checks timed out). User wake request is pending. Attempted
+graceful close did NOT reach the Deck, and no DLL deployment occurred. Last
+observed screen was Hub's menu after leaving Skatepedia; do not send a trick
+until on-board skating is freshly verified. No restore is requested or needed.
+Resume: wait for this CI, verify immutable release, regain SSH, gracefully close
+game/launcher, update active development DLL through controller, relaunch,
+run an A/X neutral/X-left/X-right batch before repetitions and chain boundaries.
 
 ## Autonomy implementation — 2026-10-12
 

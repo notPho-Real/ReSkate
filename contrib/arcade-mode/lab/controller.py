@@ -240,7 +240,7 @@ def bootstrap():
         raise ValueError("Unsafe lab installation path")
     destination.mkdir(parents=True, exist_ok=True)
     for name in ("deck_installer.py", "deck_updater.py", "package_deck_installer.py", "test_deck_installer.py", "test_lab.py",
-                 "test_robot.py", "test_trick_batch.py", "manual_install.py", "update_arcade_dev.sh", "restore_stock.sh"):
+                 "test_robot.py", "test_trick_batch.py", "test_wake.py", "manual_install.py", "update_arcade_dev.sh", "restore_stock.sh"):
         installer.safe_path(destination / name)
         shutil.copy2(HERE.parent / name, destination / name)
     installer.safe_path(destination / "lab")
