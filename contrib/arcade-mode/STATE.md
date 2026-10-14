@@ -16,10 +16,26 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Installed source a39311b5b14dc6dc842cdd366132657f77425951 passed all five hosted
-jobs in run 38546030615. DLL SHA-256:
-8d7923348497aa30c0a513372e81bd9f331cc7382eea3cde9e7a7be16e3dd400.
+Installed source d93dcef1822d1a0eccb660bb7b9508e86d666059 passed all five hosted
+jobs in run 38554517047. DLL SHA-256:
+1dda9303d02e018edf67932dc32b5e36e95bff19315fb6bba571fb0938f0df1b.
 Game and stock backup hashes remain unchanged; updates are off, no recovery pending.
+This adds bounded game-facing pad edge evidence to diagnose the trigger boundary.
+External trusted-v5 added numeric pad observation parsing with independently
+reviewed installation and exact target pins. The necessary game restart for the
+new DLL completed and Stadium1 was loaded, with no stock restore. The pad matrix
+showed that requested LT/RT levels never changed the game-facing trigger bytes;
+the failed chord arrived as LB+RB with both triggers zero. Treat prior
+trigger-dependent HIL checks as unverified. Runner v6's standard Linux controller
+version identity did not fix this. Reviewed v8 now observes only the kernel event
+device created by its own live uinput descriptor, after hotplug permissions settle.
+Numeric trigger samples and bounded failure codes distinguish device transport
+from game-facing translation. Runner v10 additionally confirmed correct full-range
+trigger values through the system SDL controller API. The standard device name
+and v11 wider-range experiment did not fix game-facing translation; the wider
+range was removed. No shortcut-specific binding override was found in the bounded
+inspection. The next DLL adds numeric source edges before existing ReSkate filters
+to locate the remaining boundary. Chord semantics remain unchanged.
 
 The real Deck live toggle gate PASSED in one game process: ON A produced native
 100 → 103 → 200/201 → 100, OFF A remained 100 and rolled normally, and ON A
@@ -58,6 +74,18 @@ subsequent calibration trials, each accelerating then stopping. Use that stop
 in bounded HIL while B remains native in this build. Do not count the earlier
 20 short trials as 20 acceleration successes. See
 research/automatic-skating-followup-results.json.
+
+A later obstructed batch remained neutralized but was excluded from repeatability.
+After a native scene reset and full-size baseline capture, 16 consecutive trials
+across 300/450/600ms movement holds accelerated near 4 m/s and stopped near zero.
+Further travel reached course obstacles: one collision transition, one blocked
+case, then a native lip stall (400) and one context skip. These remain separate
+from clean flat trials. Native B is only the current lab stop, not the final B
+control mapping. The same hot game was used for these batches. Five more clean
+600ms repetitions on d93dcef brought the clean flat total to 21: each reached
+3.998–4.026 m/s, stopped near zero, remained native riding and neutralized without
+evidence gaps/drops. The final full-size capture is near a barrier; reset the scene
+before further movement batches. Downhill and full-chain integration remain open.
 
 External trusted-v4 was independently reviewed and installed with the current
 verified target pins; it adds only numeric push observation parsing. The private deployment helper

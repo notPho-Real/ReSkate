@@ -4,14 +4,83 @@
   "scene": "Stadium1",
   "maturity": "Repeated native board cycles verified; trigger-conflict boundary unresolved",
   "batches": [
-    {"evidence": "1791973907394668000", "case": "smoke", "passed": 1, "attempted": 1},
-    {"evidence": "1791974003558053000", "case": "simultaneous and staggered long-hold cycles", "passed": 20, "attempted": 20, "heartbeat_and_physics_sequence": [100, 504, 100]},
-    {"evidence": "1791974623725611000", "case": "quick-tap cycles", "passed": 5, "attempted": 5, "heartbeat_and_physics_sequence": [100, 504, 100]},
-    {"evidence": "1791974363480200000", "case": "individual bumpers and late pair", "passed": 3, "attempted": 3, "heartbeat_sequence": [100]},
-    {"evidence": "1791974363480200000", "case": "simultaneous partial trigger and chord", "passed": 0, "attempted": 1, "heartbeat_and_physics_sequence": [100, 504], "subsequent_context_skips": 5},
-    {"evidence": "1791974753593547000", "case": "menu suppression", "passed": 1, "attempted": 1, "heartbeat_sequence": [100]},
-    {"evidence": "1791975097736239000", "case": "OFF plain chord and trigger chord", "passed": 2, "attempted": 2, "heartbeat_sequence": [100]},
-    {"evidence": "1791975435601305000", "case": "full trigger held 500ms before chord", "passed": 0, "attempted": 1, "heartbeat_and_physics_sequence": [100, 504], "subsequent_context_skips": 2}
+    {
+      "evidence": "1791973907394668000",
+      "case": "smoke",
+      "passed": 1,
+      "attempted": 1
+    },
+    {
+      "evidence": "1791974003558053000",
+      "case": "simultaneous and staggered long-hold cycles",
+      "passed": 20,
+      "attempted": 20,
+      "heartbeat_and_physics_sequence": [
+        100,
+        504,
+        100
+      ]
+    },
+    {
+      "evidence": "1791974623725611000",
+      "case": "quick-tap cycles",
+      "passed": 5,
+      "attempted": 5,
+      "heartbeat_and_physics_sequence": [
+        100,
+        504,
+        100
+      ]
+    },
+    {
+      "evidence": "1791974363480200000",
+      "case": "individual bumpers and late pair",
+      "passed": 3,
+      "attempted": 3,
+      "heartbeat_sequence": [
+        100
+      ]
+    },
+    {
+      "evidence": "1791974363480200000",
+      "case": "simultaneous partial trigger and chord",
+      "passed": 0,
+      "attempted": 1,
+      "heartbeat_and_physics_sequence": [
+        100,
+        504
+      ],
+      "subsequent_context_skips": 5
+    },
+    {
+      "evidence": "1791974753593547000",
+      "case": "menu suppression",
+      "passed": 1,
+      "attempted": 1,
+      "heartbeat_sequence": [
+        100
+      ]
+    },
+    {
+      "evidence": "1791975097736239000",
+      "case": "OFF plain chord and trigger chord",
+      "passed": 2,
+      "attempted": 2,
+      "heartbeat_sequence": [
+        100
+      ]
+    },
+    {
+      "evidence": "1791975435601305000",
+      "case": "full trigger held 500ms before chord",
+      "passed": 0,
+      "attempted": 1,
+      "heartbeat_and_physics_sequence": [
+        100,
+        504
+      ],
+      "subsequent_context_skips": 2
+    }
   ],
   "neutralized_all_executed_trials": true,
   "physics_drops": 0,
@@ -23,5 +92,427 @@
     "Requested trigger values are not proof that XInput delivered those values. Bounded game-facing pad evidence is being added to diagnose this boundary.",
     "OFF and menu states were visually checked in normal-size private captures. ON was restored and visually confirmed before the final trigger trial.",
     "After the final failed trial, the fixed native mount action restored the setup. Full skating-chain integration remains pending."
-  ]
+  ],
+  "input_boundary_diagnostic": {
+    "source_commit": "d93dcef1822d1a0eccb660bb7b9508e86d666059",
+    "evidence": "1791977867947053000",
+    "runner_version": 5,
+    "lt_rt_requested_levels": [
+      64,
+      128,
+      255
+    ],
+    "game_facing_trigger_changes": 0,
+    "chord_received": {
+      "buttons": 768,
+      "lt": 0,
+      "rt": 0
+    },
+    "chord_emitted": {
+      "buttons": 32768,
+      "phase": 3
+    },
+    "interpretation": "The virtual controller triggers did not reach the adapter. The chord result does not establish a trigger-suppression bug; prior trigger-dependent HIL claims remain unverified until transport is fixed."
+  },
+  "trigger_transport_checks": [
+    {
+      "runner_version": 6,
+      "evidence": "1791978136972587000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "preheld-trigger-chord",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [
+              {
+                "seq": 14,
+                "ms": 81890827,
+                "user": 0,
+                "buttons": 768,
+                "lt": 0,
+                "rt": 0,
+                "output": 32768,
+                "phase": 3
+              },
+              {
+                "seq": 15,
+                "ms": 81890891,
+                "user": 0,
+                "buttons": 768,
+                "lt": 0,
+                "rt": 0,
+                "output": 0,
+                "phase": 0
+              },
+              {
+                "seq": 16,
+                "ms": 81891819,
+                "user": 0,
+                "buttons": 0,
+                "lt": 0,
+                "rt": 0,
+                "output": 0,
+                "phase": 0
+              }
+            ],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "FAIL"
+        }
+      ]
+    },
+    {
+      "runner_version": 7,
+      "evidence": "1791978768354237000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "preheld-trigger-chord",
+          "kernel_observer_available": false,
+          "kernel_levels": {
+            "lt": [],
+            "rt": []
+          },
+          "game_pad": {
+            "samples": [
+              {
+                "seq": 19,
+                "ms": 82522107,
+                "user": 0,
+                "buttons": 768,
+                "lt": 0,
+                "rt": 0,
+                "output": 32768,
+                "phase": 3
+              },
+              {
+                "seq": 20,
+                "ms": 82522159,
+                "user": 0,
+                "buttons": 768,
+                "lt": 0,
+                "rt": 0,
+                "output": 0,
+                "phase": 0
+              },
+              {
+                "seq": 21,
+                "ms": 82523103,
+                "user": 0,
+                "buttons": 0,
+                "lt": 0,
+                "rt": 0,
+                "output": 0,
+                "phase": 0
+              }
+            ],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "FAIL"
+        }
+      ]
+    },
+    {
+      "runner_version": 8,
+      "evidence": "1791978887656462000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0,
+              64,
+              128,
+              255
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              64,
+              128,
+              255
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        }
+      ]
+    },
+    {
+      "runner_version": 9,
+      "evidence": "1791978950099841000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0,
+              64,
+              128,
+              255
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              64,
+              128,
+              255
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        }
+      ]
+    },
+    {
+      "runner_version": 10,
+      "evidence": "1791979162432272000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": true,
+          "sdl_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0,
+              64,
+              128,
+              255
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "sdl_levels": {
+            "lt": [
+              0,
+              8223,
+              16447,
+              32767
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": true,
+          "sdl_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              64,
+              128,
+              255
+            ]
+          },
+          "sdl_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              8223,
+              16447,
+              32767
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        }
+      ]
+    },
+    {
+      "runner_version": 11,
+      "evidence": "1791979732907945000",
+      "trials": [
+        {
+          "case": "lt-levels",
+          "kernel_observer_available": true,
+          "sdl_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0,
+              8223,
+              16447,
+              32767
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "sdl_levels": {
+            "lt": [
+              0,
+              8222,
+              16447,
+              32767
+            ],
+            "rt": [
+              0
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        },
+        {
+          "case": "rt-levels",
+          "kernel_observer_available": true,
+          "sdl_observer_available": true,
+          "kernel_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              8223,
+              16447,
+              32767
+            ]
+          },
+          "sdl_levels": {
+            "lt": [
+              0
+            ],
+            "rt": [
+              0,
+              8222,
+              16447,
+              32767
+            ]
+          },
+          "game_pad": {
+            "samples": [],
+            "dropped": 0
+          },
+          "neutralized": true,
+          "returned_to_idle": "PASS"
+        }
+      ]
+    }
+  ],
+  "trigger_transport_conclusion": "Kernel and system SDL receive both triggers through full range and return to neutral. The game-facing adapter still receives zero. Standard controller identity/name and wider device range did not fix translation. Wider range was removed. Next compare XInput before and after existing ReSkate filters; trigger-conflict acceptance remains unverified."
 }

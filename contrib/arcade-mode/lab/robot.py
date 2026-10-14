@@ -6,12 +6,14 @@ The remote worker is sent in memory. Linux x86_64 uinput ABI is deliberate.
 import argparse
 import base64
 import concurrent.futures
+import ctypes
 import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
 import platform
+import re
 import shlex
 import signal
 import stat
@@ -70,9 +72,13 @@ def capabilities(proc=Path("/proc"), device=Path("/dev/uinput")):
 
 class Gamepad:
     def __init__(self, open_fd=os.open, ioctl=fcntl.ioctl, write=os.write,
-                 close=os.close, lock=fcntl.flock, fstat=os.fstat):
+                 close=os.close, lock=fcntl.flock, fstat=os.fstat, observe_kernel=False):
         self.open_fd, self.ioctl, self.write, self.close_fd = open_fd, ioctl, write, close
         self.lock, self.fstat, self.fd = lock, fstat, None
+        self.observe_kernel, self.observer_fd = observe_kernel, None
+        self.kernel_pad = {'available': False, 'stage': 0, 'errno': 0, 'samples': []}
+        self.event_path, self.sdl, self.sdl_pad = None, None, None
+        self.sdl_observation = {'available': False, 'stage': 0, 'samples': []}
 
     def __enter__(self):
         self.fd = self.open_fd("/dev/uinput", os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC)
@@ -87,15 +93,132 @@ class Gamepad:
                 self.ioctl(self.fd, KEYBIT, key)
             for axis, (low, high) in AXES.items():
                 self.ioctl(self.fd, ABS_SETUP, struct.pack("<H2xiiiiii", axis, 0, low, high, 0, 0, 0))
-            self.ioctl(self.fd, SETUP, struct.pack("<HHHH80sI", 3, 0x045e, 0x028e, 1,
-                                                 b"ReSkate Arcade Lab Virtual Controller", 0))
+            # Match the standard Linux controller GUID, including its version.
+            # SDL's mapping assigns trigger axes 2/5 to this 0x0114 identity.
+            self.ioctl(self.fd, SETUP, struct.pack("<HHHH80sI", 3, 0x045e, 0x028e, 0x0114,
+                                                 b"Microsoft X-Box 360 pad", 0))
             self.ioctl(self.fd, CREATE)
             self.neutral()
+            if self.observe_kernel:
+                self.attach_observer()
             return self
         except BaseException:
             self.close_fd(self.fd)
             self.fd = None
             raise
+
+    def attach_observer(self):
+        """Read only the event device created by this live uinput descriptor."""
+        try:
+            self.kernel_pad['stage'] = 1
+            name = bytearray(64)
+            self.ioctl(self.fd, 0x8040552c, name, True)  # UI_GET_SYSNAME(64)
+            identity = bytes(name).split(b'\0', 1)[0].decode('ascii')
+            if not re.fullmatch(r'input[0-9]{1,8}', identity):
+                return
+            self.kernel_pad['stage'] = 2
+            parent = Path('/sys/devices/virtual/input') / identity
+            entries = [p for p in parent.glob('event*') if re.fullmatch(r'event[0-9]{1,8}', p.name)]
+            if len(entries) != 1:
+                return
+            self.kernel_pad['stage'] = 3
+            expected = (entries[0] / 'dev').read_text().strip()
+            if not re.fullmatch(r'[0-9]{1,8}:[0-9]{1,8}', expected):
+                return
+            self.kernel_pad['stage'] = 4
+            fd = self.open_fd(str(Path('/dev/input') / entries[0].name),
+                              os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC)
+            try:
+                info = self.fstat(fd)
+                self.kernel_pad['stage'] = 5
+                device = tuple(int(v) for v in expected.split(':'))
+                if not stat.S_ISCHR(info.st_mode) or (os.major(info.st_rdev), os.minor(info.st_rdev)) != device:
+                    return
+                observed_name = bytearray(80)
+                self.kernel_pad['stage'] = 6
+                self.ioctl(fd, 0x80504506, observed_name, True)  # EVIOCGNAME(80)
+                if bytes(observed_name).split(b'\0', 1)[0] != b'Microsoft X-Box 360 pad':
+                    return
+                self.observer_fd = fd
+                self.event_path = str(Path('/dev/input') / entries[0].name)
+                self.kernel_pad['available'] = True
+                self.kernel_pad['stage'] = 7
+                self.kernel_pad['errno'] = 0
+            finally:
+                if self.observer_fd != fd:
+                    self.close_fd(fd)
+        except OSError as error:
+            self.kernel_pad['errno'] = error.errno if type(error.errno) is int and 0 <= error.errno < 4096 else 0
+        except (ValueError, UnicodeError):
+            pass  # Missing observation is explicit, never treated as input proof.
+
+    def observe(self):
+        if self.observer_fd is None or len(self.kernel_pad['samples']) >= 128:
+            return
+        try:
+            values = []
+            for axis in (2, 5):
+                data = bytearray(24)
+                self.ioctl(self.observer_fd, 0x80184540 + axis, data, True)  # EVIOCGABS
+                value, low, high, _, _, _ = struct.unpack('<iiiiii', data)
+                if (low, high) != AXES[axis] or not low <= value <= high:
+                    raise ValueError('Kernel trigger range differs')
+                values.append(value)
+            self.kernel_pad['samples'].append({'ns': time.monotonic_ns(), 'lt': values[0], 'rt': values[1]})
+        except (OSError, ValueError):
+            self.kernel_pad['available'] = False
+
+    def attach_sdl_observer(self):
+        """Open only our already-validated event path through the system SDL API."""
+        if not self.event_path or self.observer_fd is None:
+            return
+        try:
+            self.sdl_observation['stage'] = 1
+            sdl = ctypes.CDLL('/usr/lib/libSDL2-2.0.so.0')
+            declarations = {
+                'SDL_InitSubSystem': ([ctypes.c_uint32], ctypes.c_int),
+                'SDL_QuitSubSystem': ([ctypes.c_uint32], None),
+                'SDL_NumJoysticks': ([], ctypes.c_int),
+                'SDL_JoystickPathForIndex': ([ctypes.c_int], ctypes.c_char_p),
+                'SDL_IsGameController': ([ctypes.c_int], ctypes.c_int),
+                'SDL_GameControllerOpen': ([ctypes.c_int], ctypes.c_void_p),
+                'SDL_GameControllerClose': ([ctypes.c_void_p], None),
+                'SDL_GameControllerUpdate': ([], None),
+                'SDL_GameControllerGetAxis': ([ctypes.c_void_p, ctypes.c_int], ctypes.c_int16),
+            }
+            for name, (arguments, result) in declarations.items():
+                function = getattr(sdl, name)
+                function.argtypes, function.restype = arguments, result
+            self.sdl_observation['stage'] = 2
+            if sdl.SDL_InitSubSystem(0x2000) != 0:
+                return
+            self.sdl = sdl
+            self.sdl_observation['stage'] = 3
+            count = sdl.SDL_NumJoysticks()
+            if not 0 <= count <= 32:
+                return
+            matches = [i for i in range(count)
+                       if sdl.SDL_JoystickPathForIndex(i) == self.event_path.encode('ascii')]
+            if len(matches) != 1:
+                return
+            self.sdl_observation['stage'] = 4
+            if not sdl.SDL_IsGameController(matches[0]):
+                return
+            self.sdl_pad = sdl.SDL_GameControllerOpen(matches[0])
+            if self.sdl_pad:
+                self.sdl_observation.update(available=True, stage=5)
+        except (OSError, AttributeError):
+            pass
+
+    def observe_sdl(self):
+        if not self.sdl_pad or len(self.sdl_observation['samples']) >= 128:
+            return
+        self.sdl.SDL_GameControllerUpdate()
+        self.sdl_observation['samples'].append({
+            'ns': time.monotonic_ns(),
+            'lt': int(self.sdl.SDL_GameControllerGetAxis(self.sdl_pad, 4)),
+            'rt': int(self.sdl.SDL_GameControllerGetAxis(self.sdl_pad, 5)),
+        })
 
     def frame(self, changes):
         events = []
@@ -110,6 +233,8 @@ class Gamepad:
         payload = b"".join(events) + EVENT.pack(0, 0, 0, 0, 0)
         if self.write(self.fd, payload) != len(payload):
             raise RuntimeError("Incomplete uinput write")
+        self.observe()
+        self.observe_sdl()
 
     def neutral(self):
         self.frame([(1, key, 0) for key in KEYS] + [(3, axis, 0) for axis in AXES])
@@ -119,10 +244,21 @@ class Gamepad:
             self.neutral()
         finally:
             try:
-                self.ioctl(self.fd, DESTROY)
+                if self.sdl_pad:
+                    self.sdl.SDL_GameControllerClose(self.sdl_pad)
+                    self.sdl_pad = None
+                if self.sdl:
+                    self.sdl.SDL_QuitSubSystem(0x2000)
+                    self.sdl = None
+                if self.observer_fd is not None:
+                    self.close_fd(self.observer_fd)
+                    self.observer_fd = None
             finally:
-                self.close_fd(self.fd)
-                self.fd = None
+                try:
+                    self.ioctl(self.fd, DESTROY)
+                finally:
+                    self.close_fd(self.fd)
+                    self.fd = None
 
 
 def recipe(name):
@@ -310,8 +446,11 @@ def experiment_events(name, events, duration):
                 (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGALRM)}
     signal.alarm(25)  # Device lifetime stays bounded even if the SSH client disappears.
     try:
-        with Gamepad() as pad:
+        with Gamepad(observe_kernel=True) as pad:
             time.sleep(2)  # Allow Steam's controller hotplug path to settle.
+            if pad.observer_fd is None:
+                pad.attach_observer()  # Device permissions can settle after creation.
+            pad.attach_sdl_observer()
             # Prove screenshot transport before any non-neutral gameplay input.
             screenshot(status["gamescope_pids"][0])
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
@@ -331,7 +470,8 @@ def experiment_events(name, events, duration):
                     stop.set()
                     pad.neutral()
         return {"schema": 1, "recipe": name, "input_sent": True,
-                "game_response": "UNVERIFIED", "frames": frames}
+                "game_response": "UNVERIFIED", "frames": frames, "kernel_pad": pad.kernel_pad,
+                "sdl_pad": pad.sdl_observation}
     finally:
         signal.alarm(0)
         for sig, handler in handlers.items():

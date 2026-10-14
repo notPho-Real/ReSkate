@@ -9,6 +9,9 @@ bool enabled() noexcept;
 void set_enabled(bool value, bool persist = true) noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
+// Numeric read-only evidence before any ReSkate controller filter runs.
+void observe_xinput_source(unsigned user, unsigned short buttons,
+                           unsigned char left_trigger, unsigned char right_trigger) noexcept;
 // Called only for the game's XInput reads, after normal menu input capture.
 // Returns a packet-number XOR mask so synthetic changes and restoration are seen.
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,

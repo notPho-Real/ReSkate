@@ -449,5 +449,703 @@
       "dropped": 0
     }
   ],
-  "reset_method": "Native B stop preserved heading in three calibration trials; use for subsequent bounded batches while B remains native in this build."
+  "reset_method": "Native B stop preserved heading in three calibration trials; use for subsequent bounded batches while B remains native in this build.",
+  "native_stop_repeat_followup": {
+    "evidence": "1791976260927198000",
+    "source_commit": "a39311b5b14dc6dc842cdd366132657f77425951",
+    "executed": 20,
+    "neutralized_and_riding_idle": 20,
+    "drops": 0,
+    "evidence_gaps": 0,
+    "acceleration_repeatability": "NOT ESTABLISHED",
+    "reason": "Normal-size first and last captures show the skater beside backstage walls and equipment. Native B stops neutralized, but blocked travel confounds acceleration trials.",
+    "trials": [
+      {
+        "trial": 1,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.29998386,
+        "end": 4.7243143e-06,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 2,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 2.0620084,
+        "end": 9.861766e-05,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 3,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 1.0515639,
+        "end": 0.00018392134,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 4,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.9982998,
+        "end": 4.3616426e-05,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 5,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.98285,
+        "end": 0.00011017623,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 6,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.07776614,
+        "end": 0.000110832516,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 7,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.01997028,
+        "end": 0.00015589247,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 8,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.13425918,
+        "end": 0.00022451847,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 9,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.006014882,
+        "end": 0.00019125338,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 10,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.01637779,
+        "end": 7.258286e-05,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 11,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.53652483,
+        "end": 7.103923e-05,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 12,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.9990556,
+        "end": 3.7366099e-06,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 13,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 2.1675284,
+        "end": 0.00010010305,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 14,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.9981787,
+        "end": 9.883903e-05,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 15,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.53384346,
+        "end": 0.00018305292,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 16,
+        "name": "native-stop-900",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.99908,
+        "end": 0.00013097082,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 17,
+        "name": "native-stop-900",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.53768885,
+        "end": 0.000117363714,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 18,
+        "name": "native-stop-900",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.9986808,
+        "end": 0.00013010703,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 19,
+        "name": "native-stop-900",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 0.53662676,
+        "end": 0.000104540304,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      },
+      {
+        "trial": 20,
+        "name": "native-stop-900",
+        "outcome": "OBSERVED",
+        "neutral": true,
+        "idle": "PASS",
+        "peak": 3.998216,
+        "end": 0.000100923935,
+        "states": [
+          100
+        ],
+        "drops": 0,
+        "gap": null
+      }
+    ]
+  },
+  "clear_area_repeats": {
+    "source_commit": "a39311b5b14dc6dc842cdd366132657f77425951",
+    "clean_flat_acceleration_and_stop": 16,
+    "collision_or_obstruction_cases": 2,
+    "ended_in_native_grind": 1,
+    "context_skips": 1,
+    "summary": "Initial 16 cases accelerated near 4 m/s and stopped; later travel reached course obstacles. No restart or stock restore between the two batches.",
+    "trials": [
+      {
+        "batch": "1791976774628442000",
+        "trial": 1,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9984043,
+        "end": 0.000107884065,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976774628442000",
+        "trial": 2,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9975924,
+        "end": 0.00021379428,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976774628442000",
+        "trial": 3,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9995494,
+        "end": 5.7325826e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976774628442000",
+        "trial": 4,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9983099,
+        "end": 7.8876474e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976774628442000",
+        "trial": 5,
+        "name": "native-stop-600",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 4.025951,
+        "end": 2.2650558e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 1,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9977164,
+        "end": 8.559825e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 2,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 4.026043,
+        "end": 1.1080985e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 3,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9986165,
+        "end": 9.2760376e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 4,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9828227,
+        "end": 7.104098e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 5,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9995682,
+        "end": 6.38532e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 6,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9986799,
+        "end": 3.69382e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 7,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9978333,
+        "end": 0.00011468341,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 8,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 4.0259886,
+        "end": 3.9968552e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 9,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.9985785,
+        "end": 2.001928e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 10,
+        "name": "native-stop-300",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 3.998028,
+        "end": 1.42070585e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 11,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 4.026036,
+        "end": 5.6860732e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 12,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 5.8632545,
+        "end": 3.1931642e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100,
+          605,
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 13,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "PASS",
+        "peak": 0.5335101,
+        "end": 1.3074398e-05,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 14,
+        "name": "native-stop-450",
+        "outcome": "OBSERVED",
+        "neutralized": true,
+        "idle": "FAIL",
+        "peak": 4.0208616,
+        "end": 0.0,
+        "drops": 0,
+        "gap": null,
+        "states": [
+          100,
+          201,
+          400
+        ]
+      },
+      {
+        "batch": "1791976935345633000",
+        "trial": 15,
+        "name": "native-stop-450",
+        "outcome": "SKIPPED_CONTEXT",
+        "neutralized": null,
+        "idle": null,
+        "peak": 0,
+        "end": null,
+        "drops": null,
+        "gap": null,
+        "states": []
+      }
+    ]
+  },
+  "current_build_flat_repetitions": {
+    "source_commit": "d93dcef1822d1a0eccb660bb7b9508e86d666059",
+    "evidence": "1791979349923816000",
+    "runner_version": 10,
+    "trials": [
+      {
+        "peak": 4.0259886,
+        "end": 6.746919e-05,
+        "states": [
+          100
+        ],
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "UNVERIFIED"
+        },
+        "gap": null,
+        "drops": 0,
+        "neutralized": true
+      },
+      {
+        "peak": 3.9978476,
+        "end": 0.00013593929,
+        "states": [
+          100
+        ],
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "UNVERIFIED"
+        },
+        "gap": null,
+        "drops": 0,
+        "neutralized": true
+      },
+      {
+        "peak": 3.9982822,
+        "end": 2.3786733e-05,
+        "states": [
+          100
+        ],
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "UNVERIFIED"
+        },
+        "gap": null,
+        "drops": 0,
+        "neutralized": true
+      },
+      {
+        "peak": 3.999054,
+        "end": 8.2150764e-05,
+        "states": [
+          100
+        ],
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "UNVERIFIED"
+        },
+        "gap": null,
+        "drops": 0,
+        "neutralized": true
+      },
+      {
+        "peak": 4.025995,
+        "end": 3.1426403e-05,
+        "states": [
+          100
+        ],
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "UNVERIFIED"
+        },
+        "gap": null,
+        "drops": 0,
+        "neutralized": true
+      }
+    ],
+    "clean_flat_repetitions_total": 21,
+    "limits": "Three movement-hold durations across earlier batches; downhill and full-chain integration remain unverified. Last full-size capture checked; nearing course barrier, reset before further movement batches."
+  }
 }

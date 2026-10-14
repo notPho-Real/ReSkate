@@ -28,6 +28,17 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_source_pad_observation_is_separate_and_bounded(self):
+        row = 'ARCADE PAD SOURCE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0.'
+        result = probe.parse_pad_samples((row + '\n') * 130)
+        self.assertEqual(result['samples'], [])
+        self.assertEqual(len(result['source_samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['source_samples'][-1]['lt'], 255)
+        for bad in (row + ' private', row.replace('255', '256'), row.replace('user=0', 'user=4'),
+                    row.replace('768', '65536'), row.replace('123', '18446744073709551616')):
+            self.assertEqual(probe.parse_pad_samples(bad)['source_samples'], [])
+
     def test_pad_observation_bounds_and_explicit_evidence_loss(self):
         row = 'ARCADE PAD SAMPLE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0 output=768 phase=0.'
         result = probe.parse_pad_samples((row + '\n') * 130 + 'ARCADE PAD GAP: dropped=3.')

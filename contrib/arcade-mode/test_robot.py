@@ -37,7 +37,7 @@ class RobotTests(unittest.TestCase):
         self.assertEqual(robot.EVENT.size, 24)
         setup = next(c[2] for c in self.calls if c[1] == robot.SETUP)
         self.assertEqual(len(setup), 92)
-        self.assertEqual(struct.unpack("<HHHH", setup[:8]), (3, 0x45e, 0x28e, 1))
+        self.assertEqual(struct.unpack("<HHHH", setup[:8]), (3, 0x45e, 0x28e, 0x0114))
         axes = [c[2] for c in self.calls if c[1] == robot.ABS_SETUP]
         self.assertEqual(len(axes), 8)
         self.assertTrue(all(len(a) == 28 for a in axes))
@@ -53,6 +53,122 @@ class RobotTests(unittest.TestCase):
         last = list(robot.EVENT.iter_unpack(self.writes[-1]))
         self.assertTrue(all(event[-1] == 0 for event in last))
         self.assertEqual(self.closed, [7])
+
+    def test_kernel_observer_rejects_unrelated_or_path_shaped_identity(self):
+        with self.pad() as pad:
+            original = pad.ioctl
+            for identity in (b'../event0', b'/dev/input/event0', b'event0', b'input1/../../event0'):
+                def ioctl(fd, request, data=None, mutate=False):
+                    if request == 0x8040552c:
+                        data[:len(identity)] = identity
+                    else:
+                        return original(fd, request, data)
+                pad.ioctl = ioctl
+                pad.attach_observer()
+                self.assertIsNone(pad.observer_fd)
+                self.assertFalse(pad.kernel_pad['available'])
+            pad.open_fd.assert_called_once()  # Only our /dev/uinput; no event device was opened.
+
+    def test_kernel_trigger_observation_is_numeric_bounded_and_closed(self):
+        with self.pad() as pad:
+            original = pad.ioctl
+            pad.observer_fd = 8
+            pad.kernel_pad['available'] = True
+            def ioctl(fd, request, data=None, mutate=False):
+                if request in (0x80184542, 0x80184545):
+                    data[:] = struct.pack('<iiiiii', 255 if request == 0x80184542 else 64, 0, 255, 0, 0, 0)
+                else:
+                    return original(fd, request, data)
+            pad.ioctl = ioctl
+            for _ in range(140):
+                pad.observe()
+            self.assertEqual(len(pad.kernel_pad['samples']), 128)
+            row = pad.kernel_pad['samples'][0]
+            self.assertEqual(set(row), {'ns', 'lt', 'rt'})
+            self.assertEqual((row['lt'], row['rt']), (255, 64))
+        self.assertEqual(self.closed, [8, 7])
+
+    def test_trigger_plan_values_match_declared_device_range(self):
+        with self.pad() as pad:
+            pad.frame([(3, 2, 64), (3, 5, 255)])
+            events = list(robot.EVENT.iter_unpack(self.writes[-1]))
+            self.assertEqual([event[2:] for event in events[:2]], [(3, 2, 64), (3, 5, 255)])
+            with self.assertRaises(ValueError):
+                pad.frame([(3, 2, 256)])
+
+    def test_kernel_observer_checks_owned_device_and_retries_hotplug_permission(self):
+        with self.pad() as pad:
+            original = pad.ioctl
+            def ioctl(fd, request, data=None, mutate=False):
+                if request == 0x8040552c:
+                    data[:8] = b'input123'
+                elif request == 0x80504506:
+                    name = b'Microsoft X-Box 360 pad'
+                    data[:len(name)] = name
+                else:
+                    return original(fd, request, data)
+            pad.ioctl = ioctl
+            pad.open_fd = Mock(side_effect=[PermissionError(13, 'pending'), 8])
+            pad.fstat = Mock(return_value=Mock(st_mode=stat.S_IFCHR, st_rdev=os.makedev(13, 77)))
+            with patch.object(Path, 'glob', return_value=[Path('/sys/devices/virtual/input/input123/event13')]), \
+                 patch.object(Path, 'read_text', return_value='13:77'):
+                pad.attach_observer()
+                self.assertFalse(pad.kernel_pad['available'])
+                self.assertEqual((pad.kernel_pad['stage'], pad.kernel_pad['errno']), (4, 13))
+                pad.attach_observer()
+            self.assertTrue(pad.kernel_pad['available'])
+            self.assertEqual(pad.kernel_pad['errno'], 0)
+            self.assertEqual([c.args[0] for c in pad.open_fd.call_args_list], ['/dev/input/event13'] * 2)
+        self.assertEqual(self.closed, [8, 7])
+
+    def test_kernel_observer_rejects_replaced_event_node(self):
+        with self.pad() as pad:
+            original = pad.ioctl
+            def ioctl(fd, request, data=None, mutate=False):
+                if request == 0x8040552c:
+                    data[:8] = b'input123'
+                else:
+                    return original(fd, request, data)
+            pad.ioctl = ioctl
+            pad.open_fd = Mock(return_value=8)
+            pad.fstat = Mock(return_value=Mock(st_mode=stat.S_IFCHR, st_rdev=os.makedev(13, 78)))
+            with patch.object(Path, 'glob', return_value=[Path('/sys/devices/virtual/input/input123/event13')]), \
+                 patch.object(Path, 'read_text', return_value='13:77'):
+                pad.attach_observer()
+            self.assertIsNone(pad.observer_fd)
+            self.assertFalse(pad.kernel_pad['available'])
+            self.assertEqual(self.closed, [8])
+
+    def test_sdl_observer_opens_only_own_validated_event_path(self):
+        sdl = Mock()
+        sdl.SDL_InitSubSystem.return_value = 0
+        sdl.SDL_NumJoysticks.return_value = 3
+        sdl.SDL_JoystickPathForIndex.side_effect = [b'/dev/input/event1', b'/dev/input/event13', b'/dev/input/event2']
+        sdl.SDL_IsGameController.return_value = 1
+        sdl.SDL_GameControllerOpen.return_value = 123
+        sdl.SDL_GameControllerGetAxis.side_effect = [32767, 0, 0, 0]
+        with self.pad() as pad:
+            pad.event_path, pad.observer_fd = '/dev/input/event13', 8
+            with patch.object(robot.ctypes, 'CDLL', return_value=sdl) as library:
+                pad.attach_sdl_observer()
+            library.assert_called_once_with('/usr/lib/libSDL2-2.0.so.0')
+            sdl.SDL_GameControllerOpen.assert_called_once_with(1)
+            pad.observe_sdl()
+            self.assertEqual(pad.sdl_observation['samples'][0]['lt'], 32767)
+        sdl.SDL_GameControllerClose.assert_called_once_with(123)
+        sdl.SDL_QuitSubSystem.assert_called_once_with(0x2000)
+
+    def test_sdl_observer_refuses_other_paths(self):
+        sdl = Mock()
+        sdl.SDL_InitSubSystem.return_value = 0
+        sdl.SDL_NumJoysticks.return_value = 1
+        sdl.SDL_JoystickPathForIndex.return_value = b'/dev/input/event14'
+        with self.pad() as pad:
+            pad.event_path, pad.observer_fd = '/dev/input/event13', 8
+            with patch.object(robot.ctypes, 'CDLL', return_value=sdl):
+                pad.attach_sdl_observer()
+            self.assertFalse(pad.sdl_observation['available'])
+            sdl.SDL_GameControllerOpen.assert_not_called()
 
     def test_setup_failure_closes_device(self):
         pad = self.pad()

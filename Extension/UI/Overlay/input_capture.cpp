@@ -311,6 +311,8 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
     } else if (result == ERROR_SUCCESS && output && outer) {
+        arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
@@ -624,6 +626,8 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
     } else if (result == ERROR_SUCCESS && output && outer) {
+        arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,

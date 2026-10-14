@@ -287,11 +287,19 @@ def parse_score_samples(text):
 
 def parse_pad_samples(text):
     """Only numeric controller fields from the game-facing adapter; bounded tail."""
-    samples, dropped = [], 0
+    samples, sources, dropped = [], [], 0
     for line in text.splitlines():
         gap = re.search(r'ARCADE PAD GAP: dropped=([0-9]{1,20})\.$', line)
         if gap and int(gap[1]) <= 0xffffffffffffffff:
             dropped = min(0xffffffffffffffff, dropped + int(gap[1]))
+        source = re.search(r'ARCADE PAD SOURCE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) user=([0-3]) buttons=([0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3})\.$', line)
+        if source:
+            values = [int(v) for v in source.groups()]
+            if max(values[:2]) <= 0xffffffffffffffff and values[3] <= 65535 and max(values[4:]) <= 255:
+                sources.append(dict(zip(('seq', 'ms', 'user', 'buttons', 'lt', 'rt'), values)))
+                if len(sources) > 128:
+                    sources.pop(0)
+                    dropped = min(0xffffffffffffffff, dropped + 1)
         row = re.search(r'ARCADE PAD SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) user=([0-3]) buttons=([0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) output=([0-9]{1,5}) phase=([0-3])\.$', line)
         if not row:
             continue
@@ -302,7 +310,7 @@ def parse_pad_samples(text):
         if len(samples) > 128:
             samples.pop(0)
             dropped = min(0xffffffffffffffff, dropped + 1)
-    return {'samples': samples, 'dropped': dropped}
+    return {'samples': samples, 'source_samples': sources, 'dropped': dropped}
 
 
 def parse_push_samples(text):

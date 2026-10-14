@@ -50,9 +50,11 @@ std::mutex ollie_mutex;
 struct PadEvidence {
     std::uint64_t sequence{}, ms{};
     unsigned user{}, buttons{}, lt{}, rt{}, output{}, phase{};
+    bool source{};
 };
 std::array<PadEvidence, 64> pad_evidence{};
 std::array<PadEvidence, 4> previous_pad{};
+std::array<PadEvidence, 4> previous_source_pad{};
 std::size_t pad_head{}, pad_count{};
 std::uint64_t pad_sequence{}, pad_dropped{};
 ComboSession combo_session;
@@ -199,6 +201,7 @@ void set_enabled(bool value, bool persist) noexcept {
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
         previous_pad = {};
+        previous_source_pad = {};
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
@@ -267,6 +270,12 @@ void on_client_tick() noexcept {
             "ARCADE PAD GAP: dropped={}.", pad_lost);
         for (std::size_t i = 0; i < pad_rows_count; ++i) {
             const auto& p = pad_rows[i];
+            if (p.source) {
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE PAD SOURCE: seq={} ms={} user={} buttons={} lt={} rt={}.",
+                    p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt);
+                continue;
+            }
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE PAD SAMPLE: seq={} ms={} user={} buttons={} lt={} rt={} output={} phase={}.",
                 p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt, p.output, p.phase);
@@ -365,6 +374,23 @@ void on_client_tick() noexcept {
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
+    }
+}
+
+void observe_xinput_source(unsigned user, unsigned short buttons,
+                           unsigned char left_trigger, unsigned char right_trigger) noexcept {
+    if (user >= previous_source_pad.size() || !ready.load(std::memory_order_acquire) ||
+        !mode_enabled.load(std::memory_order_acquire)) return;
+    std::lock_guard lock(ollie_mutex);
+    auto& old = previous_source_pad[user];
+    if (old.buttons == buttons && old.lt == left_trigger && old.rt == right_trigger) return;
+    const PadEvidence row{++pad_sequence, GetTickCount64(), user, buttons,
+        left_trigger, right_trigger, 0, 0, true};
+    old = row;
+    if (pad_count == pad_evidence.size()) ++pad_dropped;
+    else {
+        pad_evidence[(pad_head + pad_count) % pad_evidence.size()] = row;
+        ++pad_count;
     }
 }
 
