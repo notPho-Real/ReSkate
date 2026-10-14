@@ -1,0 +1,508 @@
+{
+  "source_commit": "3634e30f1bd2e2650a325626af79a2047befadfb",
+  "scope": "Existing timed A adapter only; no final hold-release or combo acceptance",
+  "batches": [
+    {
+      "context": "city-traffic",
+      "trials": [
+        {
+          "trial": 1,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 2,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "UNVERIFIED",
+            "heartbeat_state_sequence": "UNVERIFIED",
+            "physics_state_sequence": "UNVERIFIED",
+            "returned_to_idle": "FAIL",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 3,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 4,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 5,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 6,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 7,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 8,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 9,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 10,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 11,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 12,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 13,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 14,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 15,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 16,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 17,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 18,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 19,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        },
+        {
+          "trial": 20,
+          "outcome": "SKIPPED_CONTEXT",
+          "criteria": null,
+          "neutralized": null,
+          "dropped": null,
+          "gap": null,
+          "reason": "No fresh stable on-board heartbeat"
+        }
+      ]
+    },
+    {
+      "context": "stadium-native-brake",
+      "trials": [
+        {
+          "trial": 1,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 2,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 3,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 4,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 5,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 6,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 7,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 8,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 9,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 10,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 11,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 12,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 13,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 14,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 15,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 16,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 17,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 18,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 19,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        },
+        {
+          "trial": 20,
+          "outcome": "OBSERVED",
+          "criteria": {
+            "native_state_sequence": "PASS",
+            "heartbeat_state_sequence": "PASS",
+            "physics_state_sequence": "PASS",
+            "returned_to_idle": "PASS",
+            "named_trick": "UNVERIFIED"
+          },
+          "neutralized": true,
+          "dropped": 0,
+          "gap": null,
+          "reason": null
+        }
+      ]
+    }
+  ]
+}

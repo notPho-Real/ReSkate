@@ -16,9 +16,9 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Installed source 3634e30f1bd2e2650a325626af79a2047befadfb passed all five hosted
-jobs in run 38531124492. DLL SHA-256:
-2d77e90d51b4a856a4bfd53ede1849e58bf74c069db80581dd8ba7f9451f8a5d.
+Installed source 0447a406d4b0bb87f465565c66361b09af942cd1 passed all five hosted
+jobs in run 38537428716. DLL SHA-256:
+c65a23f143fde1d395dbd22dd19287131df9f4c0bbe644bc6f21bfeb43da75e8.
 Game and stock backup hashes remain unchanged; updates are off, no recovery pending.
 
 The real Deck live toggle gate PASSED in one game process: ON A produced native
@@ -27,22 +27,40 @@ again produced the air/landing sequence. All three trials returned to idle with
 neutralized input and no dropped physics samples or evidence gaps. The Player
 menu shows the setting; controller A toggles it without triggering a trick in
 the menu. See research/toggle-live-results.json. This is one acceptance sequence,
-not twenty-trial repeatability or final control/combo acceptance. No restart
+not final control/combo acceptance. No restart
 occurred between the three settings. Private full-size captures remain ignored
 under artifacts/toggle-acceptance. The tested A gesture still uses its existing
 timed recipe; hold/release Classic Controls comes at the control-table milestone.
 
-Automatic skating is now the active milestone. The working adapter uses guarded
+An additional controlled flat batch passed 20/20 A air/landing trials with neutral
+input and idle restoration. A city batch first passed once, then hit traffic and
+skipped 18 offboard cases; neither failure nor missing context was counted as a
+success. See research/toggle-repeat-results.json. The saved ON preference survived
+the natural restart for the automatic-skating DLL.
+
+The automatic-skating adapter uses guarded
 native horizontal speed, ordinary riding/two-wheel contact eligibility, lower/upper
 speed thresholds and bounded native push-button cadence. It never writes velocity.
 Pure tests cover cadence, hysteresis, menu/toggle rearm, conflicts and stale state;
-runtime speed parsing is numeric and bounded. Hardware acceptance remains pending.
+runtime speed parsing is numeric and bounded. Basic Deck acceptance passed: forward
+intent accelerated from rest to 5.49 m/s, the identical OFF input stayed below
+0.00004 m/s, and ON brake/resume accelerated, stopped, accelerated again and stopped.
+All three controlled cases neutralized and returned to native riding, with no
+gaps/drops. Initial mixed-scene cases encountered obstacles and remain recorded
+honestly in research/automatic-skating-results.json. Downhill behavior and varied
+context repeatability remain open; these are not final integrated skating chains.
 
-External trusted-v3 remains installed with the verified toggle target pins.
-Source runner v4 adds only numeric push observation parsing; it still requires a
-separate bundle/digest review before installation. The private deployment helper
+External trusted-v4 was independently reviewed and installed with the current
+verified target pins; it adds only numeric push observation parsing. The private deployment helper
 uses encoded transport because plain inline installer text falsely matched its
 own process-name check. Actual stopped-process and hash checks remain intact.
+
+The board chord is now the active milestone. The local adapter requests one native
+Y pulse for LB+RB within 120 ms, preserves individual/late bumper input, requires
+both releases to rearm, and suppresses menus, stale state, air, ragdoll and trick
+conflicts. It uses existing guarded offboard flags rather than input intent to
+decide eligibility. Local checks pass; hosted build and 20 real board cycles are
+still required before hardware acceptance.
 
 ## Combo/balance implementation in progress — 2026-10-13
 

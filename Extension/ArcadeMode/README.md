@@ -25,7 +25,15 @@ cruise speed, with separate resume and stop thresholds. It does not write or
 clamp velocity. Both wheel contacts and ordinary riding state are required;
 menus, manual/grind/air/bail states, stale evidence and conflicting actions
 suppress pushing. Movement must release/rearm across mode and menu boundaries.
-This adapter is locally tested; real Deck speed/cadence acceptance is pending.
+Basic Deck acceptance passed: ON accelerated to 5.49 m/s, identical OFF input
+remained stationary, and braking/resumption worked without stuck input. Downhill
+and varied-context repeatability remain open. Sanitized results are linked from
+the current checkpoint.
+
+LB+RB within 120 ms requests one native board toggle from a verified safe riding
+or grounded offboard state. Both bumpers must release before another request;
+held or late chords cannot repeat. Individual bumpers retain native behavior.
+This adapter is locally tested and awaits its hosted build and real 20-cycle batch.
 
 ## Read-only observations
 

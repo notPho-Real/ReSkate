@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_flip.h"
 #include "arcade_push.h"
+#include "arcade_board.h"
 #include <array>
 #include <cstdint>
 
@@ -11,7 +12,7 @@ struct GestureProfile { std::array<GesturePhase, 3> phases; };
 // Distinguish button masking, stick setup and flick from the native packet.
 // Restoration must also be visible when the physical packet has not changed.
 constexpr std::uint32_t synthetic_packet_mask(unsigned phase, bool masked_buttons) noexcept {
-    return phase == 1 ? 0x40000000u : phase == 2 ? 0x20000000u : masked_buttons ? 0x60000000u : 0u;
+    return phase == 3 ? 0x10000000u : phase == 1 ? 0x40000000u : phase == 2 ? 0x20000000u : masked_buttons ? 0x60000000u : 0u;
 }
 // XInput Y is up-positive. Flip endpoints are DISCOVERED Deck observations,
 // not a claim of repeatability, airborne chaining or stance independence.
@@ -106,14 +107,19 @@ public:
         enabled_ = value;
         for (auto& gesture : gestures_) gesture.cancel();
         for (auto& push : pushes_) push.reset();
+        for (auto& chord : chords_) chord.reset();
     }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,
-            bool triggers_held = false) noexcept {
+            bool triggers_held = false, bool may_toggle_board = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         auto out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+        const auto board = chords_[user].poll(now, out.buttons, game_input,
+            may_toggle_board && !gestures_[user].busy() && !triggers_held);
+        out.buttons = board.buttons;
+        if (board.pulse) out.phase = 3;
         const bool conflict = buttons || triggers_held || gestures_[user].busy() ||
             rx < -8689 || rx > 8689 || ry < -8689 || ry > 8689;
         if (pushes_[user].poll(now, lx, ly, speed, game_input, may_push && !conflict))
@@ -124,5 +130,6 @@ private:
     bool enabled_{};
     std::array<NativeGesture, 4> gestures_{};
     std::array<AutomaticPush, 4> pushes_{};
+    std::array<BoardChord, 4> chords_{};
 };
 }

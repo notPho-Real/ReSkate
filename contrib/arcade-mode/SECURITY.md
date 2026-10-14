@@ -85,7 +85,12 @@ bounded trial behavior; persistent controller/telemetry is milestone 6, not yet
 implemented. Routine HIL cannot deploy; a new DLL remains separately reviewed.
 
 Signing enforcement is deliberately OFF until a pushed commit is GitHub Verified.
-The live toggle and all later gameplay gates are still pending.
+The live toggle subsequently passed real ON/OFF/ON acceptance, and the current
+installed source 0447a40 passed all hosted jobs plus basic automatic-skating checks.
+Trusted runner v4 was separately reviewed and installed; its only added capability
+is bounded numeric speed observation. Target hashes were updated after verified
+deployment. Game and stock backup identities remain unchanged. See STATE.md for
+current gameplay gates and measured limitations.
 
 Official references: [rulesets](https://docs.github.com/en/rest/repos/rules),
 [local execution rules](https://learn.chatgpt.com/docs/agent-configuration/rules).

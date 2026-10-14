@@ -9,6 +9,7 @@
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
+#include "Engine/Game/Build/20260929/no_bail.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Input/controller_bindings.h"
@@ -41,6 +42,7 @@ std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
 std::atomic<std::uint64_t> push_eligible_until{};
+std::atomic<std::uint64_t> board_eligible_until{};
 std::atomic<float> push_speed{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
@@ -154,6 +156,26 @@ bool native_board_speed(float& speed) noexcept {
     speed = std::hypot(velocity[0], velocity[2]);
     return true;
 }
+
+bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
+    namespace layout = game::build::v20260929::skater_state;
+    if (!sample.valid) return false;
+    if (sample.state == 100 && sample.crouch_mode == 1 && (sample.words[1] & 0xc000u) == 0xc000u) return true;
+    if (sample.state != game::build::v20260929::no_bail::offboard_physics_state) return false;
+    // Reuse Hall of Meat's native offboard flags to distinguish standing from a bail.
+    NoBailSkater owner{}, after{};
+    std::uintptr_t trick{}, offboard{};
+    std::uint8_t ragdoll{}, airborne{};
+    std::uint32_t current{};
+    return no_bail_skater(owner) &&
+        memory::peek(owner.core + layout::trick_state_offset, trick) &&
+        memory::peek(trick + layout::offboard_state_offset, offboard) &&
+        memory::peek(offboard + layout::ragdoll_offset, ragdoll) && ragdoll == 0 &&
+        memory::peek(offboard + layout::in_the_air_offset, airborne) && airborne == 0 &&
+        memory::peek(owner.context + layout::physics_state_offset, current) && current == sample.state &&
+        no_bail_skater(after) && owner.core == after.core && owner.context == after.context &&
+        owner.rig == after.rig && owner.entity == after.entity;
+}
 }
 
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
@@ -166,6 +188,7 @@ void set_enabled(bool value, bool persist) noexcept {
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
+        board_eligible_until.store(0, std::memory_order_release);
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
@@ -254,6 +277,8 @@ void on_client_tick() noexcept {
         const bool push_valid = gameplay && watch.valid && speed_valid && (native.words[1] & 0xc000u) == 0xc000u;
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
+        board_eligible_until.store(gameplay && watch.valid && native_board_toggle_safe(native) ? now + 150 : 0,
+            std::memory_order_release);
         if (gameplay) update_combo(native, input, watch.valid, watch.wipeouts, now);
         else {
             combo_session.invalidate();
@@ -309,6 +334,7 @@ void on_client_tick() noexcept {
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
+        board_eligible_until.store(0, std::memory_order_release);
     }
 }
 
@@ -324,12 +350,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool may_start = game_input && deadline >= now && deadline - now <= 150;
     const auto push_deadline = push_eligible_until.load(std::memory_order_acquire);
     const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
+    const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
+    const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
     NativeGesture::Output result{};
     {
         std::lock_guard lock(ollie_mutex);
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
-            left_trigger > 30 || right_trigger > 30);
+            left_trigger > 30 || right_trigger > 30, may_toggle_board);
     }
     buttons = result.buttons;
     right_x = result.right_x;

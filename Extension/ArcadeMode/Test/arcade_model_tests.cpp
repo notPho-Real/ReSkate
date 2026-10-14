@@ -21,6 +21,58 @@ void check(bool passed, const char* description) {
 int main() {
     using namespace dingosdk::arcade_mode;
     {
+        BoardChord chord;
+        constexpr auto pair = BoardChord::pair;
+        check(chord.poll(0, pair, true, true).buttons == pair, "held chord across enable cannot mount");
+        chord.poll(1, 0, true, true);
+        check(chord.poll(2, BoardChord::lb, true, true).buttons == BoardChord::lb, "LB alone passes through");
+        auto out = chord.poll(100, pair, true, true);
+        check(out.pulse && out.buttons == BoardChord::native_y, "small chord requests one native board press");
+        check(chord.poll(219, pair, true, true).pulse, "board pulse remains bounded but long enough for native input");
+        check(chord.poll(220, pair, true, true).buttons == 0, "native Y releases even with the chord held");
+        check(!chord.poll(5000, pair, true, true).pulse, "held chord cannot oscillate after native state changes");
+        chord.poll(5001, BoardChord::rb, true, true);
+        check(!chord.poll(5002, pair, true, true).pulse, "partial release cannot rearm chord");
+        chord.poll(5003, 0, true, true);
+        check(chord.poll(5004, BoardChord::rb, true, true).buttons == BoardChord::rb, "RB alone passes through");
+        check(chord.poll(5125, pair, true, true).buttons == pair, "late pair remains ordinary native input");
+        chord.poll(5126, BoardChord::rb, true, true);
+        check(!chord.poll(5127, pair, true, true).pulse, "late pair requires complete release before another attempt");
+        for (unsigned cycle = 0; cycle < 40; ++cycle) {
+            const auto now = 6000ull + cycle * 1000;
+            chord.poll(now, 0, true, true);
+            check(chord.poll(now + 1, pair, true, true).pulse, "fresh chord supports repeated native board transitions");
+            check(!chord.poll(now + 2, pair, true, false).pulse, "lost safe native state immediately ends synthetic Y");
+            check(!chord.poll(now + 3, pair, true, true).pulse, "state recovery cannot replay the same chord");
+        }
+        check(chord.poll(50000, pair, false, true).buttons == pair, "menus preserve physical bumpers");
+        check(!chord.poll(50001, pair, true, true).pulse, "menu close requires release");
+        chord.poll(50002, 0, true, true);
+        check(!chord.poll(50003, pair | 1, true, true).pulse, "directional marker chord is not a board toggle");
+        chord.reset(); chord.poll(1, 0, true, true);
+        chord.poll(2, pair, true, true);
+        check(!chord.poll(0, pair, true, true).pulse, "clock rollback neutralizes board request");
+    }
+    {
+        ArcadeInput input;
+        input.enable(true);
+        auto poll = [&](std::uint64_t now, std::uint16_t buttons, bool gameplay = true) {
+            return input.poll(0, now, buttons, 0, 0, 0, 0, gameplay, true, true, 0, false, true);
+        };
+        poll(0, 0);
+        auto out = poll(1, BoardChord::pair);
+        check(out.buttons == BoardChord::native_y && out.phase == 3, "board adapter emits native Y with distinct packet phase");
+        out = poll(122, BoardChord::pair);
+        check(out.buttons == 0 && out.phase == 0, "held chord releases synthetic Y without leaking bumpers");
+        input.enable(false);
+        check(poll(123, BoardChord::pair).buttons == BoardChord::pair, "OFF restores physical board chord immediately");
+        input.enable(true);
+        check(poll(124, BoardChord::pair).buttons == BoardChord::pair, "ON cannot treat a held board chord as fresh");
+        poll(125, 0);
+        poll(126, NativeGesture::a);
+        check(poll(127, BoardChord::pair).phase != 3, "board action never overlaps synthetic trick preparation");
+    }
+    {
         AutomaticPush push;
         check(!push.poll(0, 0, 25000, 0, true, true), "held movement across enable does not auto push");
         push.poll(1, 0, 0, 0, true, true);
@@ -73,7 +125,8 @@ int main() {
             physical_packet ^ synthetic_packet_mask(0, false),
             physical_packet ^ synthetic_packet_mask(0, true),
             physical_packet ^ synthetic_packet_mask(1, true),
-            physical_packet ^ synthetic_packet_mask(2, true)};
+            physical_packet ^ synthetic_packet_mask(2, true),
+            physical_packet ^ synthetic_packet_mask(3, true)};
         for (std::size_t i = 0; i < packets.size(); ++i)
             for (std::size_t j = i + 1; j < packets.size(); ++j)
                 check(packets[i] != packets[j], "every synthetic phase and native restoration changes an unchanged physical packet");
