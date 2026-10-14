@@ -10,11 +10,12 @@ import subprocess
 import sys
 import time
 
-VERSION = 2
+VERSION = 3
 MAX_REQUEST = 65536
 ROOT = Path(__file__).resolve().parent
 FILES = ('trusted_runner.py', 'plan_schema.py', 'worker_robot.py', 'worker_probe.py', 'worker_batch.py')
-SETUP_ACTIONS = ('mount-board', 'pause', 'back', 'confirm', 'up', 'down', 'left', 'right', 'tab-left', 'tab-right')
+SETUP_ACTIONS = ('mount-board', 'pause', 'back', 'confirm', 'up', 'down', 'left', 'right',
+                 'tab-left', 'tab-right', 'subtab-left', 'subtab-right')
 
 
 def owned_file(path, limit):
@@ -108,7 +109,8 @@ else:
     if operation == 'setup':
         actions = {'mount-board':(1,0x134,1), 'pause':(1,0x13b,1), 'back':(1,0x131,1),
                    'confirm':(1,0x130,1), 'up':(3,17,-1), 'down':(3,17,1),
-                   'left':(3,16,-1), 'right':(3,16,1), 'tab-left':(1,0x136,1), 'tab-right':(1,0x137,1)}
+                   'left':(3,16,-1), 'right':(3,16,1), 'tab-left':(1,0x136,1), 'tab-right':(1,0x137,1),
+                   'subtab-left':(3,2,255), 'subtab-right':(3,5,255)}
         event = actions[request['plan']]
         result = experiment_events(request['plan'], [(0,[event]),(0.1,[(event[0],event[1],0)])], 1)
         print(json.dumps(result))

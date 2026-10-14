@@ -45,6 +45,16 @@ class InstallerTests(unittest.TestCase):
         self.stopped.start()
         self.addCleanup(self.stopped.stop)
 
+    def test_package_retry_is_byte_identical_across_wall_clock_changes(self):
+        dll = self.root / 'build.dll'
+        dll.write_bytes(fake_dll())
+        first, second = self.root / 'first.desktop', self.root / 'second.desktop'
+        with patch('zipfile.time.localtime', return_value=(2020, 1, 1, 0, 0, 0, 0, 1, -1)):
+            package.build(dll, 'a' * 40, first)
+        with patch('zipfile.time.localtime', return_value=(2030, 1, 1, 0, 0, 0, 0, 1, -1)):
+            package.build(dll, 'a' * 40, second)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+
     def test_install_repeat_restore_preserves_preferences(self):
         settings = self.game / installer.SETTINGS
         settings.write_text(json.dumps({"updates": True, "width": 1280, "arguments": "keep me"}))

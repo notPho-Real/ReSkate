@@ -15,10 +15,17 @@ def build(dll_path, commit, output):
     dll = Path(dll_path).read_bytes()
     payload = io.BytesIO()
     with zipfile.ZipFile(payload, "w", zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr("ReSkate.dll", dll)
-        archive.writestr("installer.py", Path(__file__).with_name("deck_installer.py").read_bytes())
-        archive.writestr("updater.py", Path(__file__).with_name("deck_updater.py").read_bytes())
-        archive.writestr("manifest.json", json.dumps({"commit": commit, "sha256": hashlib.sha256(dll).hexdigest()}))
+        def write(name, data):
+            # Stable metadata lets a package-only retry verify immutable bytes.
+            member = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            member.compress_type = zipfile.ZIP_DEFLATED
+            member.create_system = 3
+            member.external_attr = 0o100644 << 16
+            archive.writestr(member, data)
+        write("ReSkate.dll", dll)
+        write("installer.py", Path(__file__).with_name("deck_installer.py").read_bytes())
+        write("updater.py", Path(__file__).with_name("deck_updater.py").read_bytes())
+        write("manifest.json", json.dumps({"commit": commit, "sha256": hashlib.sha256(dll).hexdigest()}))
     data = payload.getvalue()
     # %k is supplied as a separate argument by KDE, never interpolated into code or a shell.
     code = ("import base64,hashlib,io,pathlib,sys,urllib.parse,zipfile; "
