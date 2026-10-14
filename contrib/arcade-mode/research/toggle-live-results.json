@@ -1,0 +1,72 @@
+{
+  "source_commit": "3634e30f1bd2e2650a325626af79a2047befadfb",
+  "dll_sha256": "2d77e90d51b4a856a4bfd53ede1849e58bf74c069db80581dd8ba7f9451f8a5d",
+  "ci_run": 38531124492,
+  "menu_path": "Pause / Mod Options / Player / Arcade Mode",
+  "same_game_process": true,
+  "restarts_between_settings": 0,
+  "raw_input": {
+    "button": "A",
+    "held_ms": 300
+  },
+  "trials": [
+    {
+      "setting": "on-first",
+      "native_states": [
+        100,
+        103,
+        200,
+        201,
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "dropped": 0,
+      "evidence_gap": null
+    },
+    {
+      "setting": "off-native",
+      "native_states": [
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "dropped": 0,
+      "evidence_gap": null
+    },
+    {
+      "setting": "on-again",
+      "native_states": [
+        100,
+        103,
+        200,
+        201,
+        100
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "dropped": 0,
+      "evidence_gap": null
+    }
+  ],
+  "scope": "One live toggle acceptance sequence; repeatability and full controls remain pending.",
+  "captures": "Ignored local artifacts/toggle-acceptance directory"
+}

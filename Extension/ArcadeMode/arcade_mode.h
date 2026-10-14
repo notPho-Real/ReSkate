@@ -12,5 +12,6 @@ void on_client_tick() noexcept;
 // Called only for the game's XInput reads, after normal menu input capture.
 // Returns a packet-number XOR mask so synthetic changes and restoration are seen.
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
-                      short& right_y, bool game_input, short left_x, short left_y) noexcept;
+                      short& right_y, bool game_input, short left_x, short left_y,
+                      unsigned char left_trigger, unsigned char right_trigger) noexcept;
 }

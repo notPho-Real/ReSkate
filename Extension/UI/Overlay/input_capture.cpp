@@ -308,12 +308,14 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         output->dwPacketNumber ^= 0x80000000u;
         if (!overlay_input_access) arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
-            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
     } else if (result == ERROR_SUCCESS && output && outer) {
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
-            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
         output->dwPacketNumber ^= phase;
     }
     return result;
@@ -619,12 +621,14 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         output->dwPacketNumber ^= 0x80000000u;
         if (!overlay_input_access) arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
-            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
     } else if (result == ERROR_SUCCESS && output && outer) {
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
-            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
         output->dwPacketNumber ^= phase;
     }
     return result;

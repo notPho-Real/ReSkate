@@ -1,53 +1,39 @@
-# Arcade Mode v0.1
+# Arcade Mode
 
-Observer milestone passed on the actual Deck for f09872f, bbd1def and f669926;
-see the hardware reports linked in `contrib/arcade-mode/STATE.md`. The A-to-native
-ollie input mapping passed a real Deck A tap and held-A test, and stock was
-restored afterward. See
-[native investigation](../../contrib/arcade-mode/NATIVE_OLLIE.md).
+Arcade Mode is experimental and built inside ReSkate.dll on this fork. The live
+preference is available at **Pause → Mod Options → Player → Arcade Mode** and
+through `arcademode`, `arcademode on`, and `arcademode off`. It defaults OFF and
+persists through the normal local preference store.
 
-Experimental controller observation and A gesture built natively inside ReSkate.dll on
-`notPho-Real/ReSkate:arcade-mode`. No plugin loading, Lua, profile toggle, console command,
-direct game-state writes, or native function calls. Original code and generic
-skating mechanics only; no third-party game branding, copied UI, art, logos, music, or assets.
+OFF preserves native controller input. A transition cancels synthetic gestures,
+clears combo/HUD state and requires release before held commands can rearm. Native
+menus, lost focus and stale observations suppress translation. The real Deck
+passed ON → OFF → ON in one process on source 3634e30: A produced an observed
+native air/landing sequence in both ON trials and stayed native while OFF. See
+[the current checkpoint](../../contrib/arcade-mode/STATE.md).
 
-## Experimental A gesture
+## Controls under development
 
-The existing XInput hook may translate one A rising edge into the same right-stick
-crouch/release timing that produced a real native “Ollie” with the lab's virtual
-controller. It only starts when a fresh guarded client-tick sample sees the local
-skater in the verified on-board idle state (100, rig mode 1), with game focus and
-no interactive overlay. The hook suppresses that A press for the game, waits one
-second, holds the right stick down for 600 ms, releases it up for 150 ms, then
-returns it to neutral. Holding A does not restart the gesture. A real right-stick
-move cancels the synthetic gesture; menu capture cancels it too. The physical
-controller and unrelated buttons remain unchanged. If native ownership or the
-binary probe is unavailable, A retains its original game action.
+The current A adapter uses the previously observed timed native crouch/flick
+recipe. Physical X supports the measured basic flip candidates; this is not the
+complete exact trick table. Hold/release ollie, remaining controls and final
+combo chaining still have their ordered acceptance gates ahead.
 
-The real Deck proved the hooked path reaches Skate: an A-only tap produced its
-native “Ollie” HUD and crouch/air/landing sequence; a three-second hold produced
-one more ollie and one observer edge. This is an initial hardware validation,
-not a broad gameplay compatibility claim across maps or controllers. The Deck
-was returned to stock after the test.
+Automatic skating uses left-stick movement intent and the existing guarded
+board-root velocity reader. It emits bounded native push-button pulses below
+cruise speed, with separate resume and stop thresholds. It does not write or
+clamp velocity. Both wheel contacts and ordinary riding state are required;
+menus, manual/grind/air/bail states, stale evidence and conflicting actions
+suppress pushing. Movement must release/rearm across mode and menu boundaries.
+This adapter is locally tested; real Deck speed/cadence acceptance is pending.
 
-## Controller observation
+## Read-only observations
 
-`start(r.base)` publishes readiness and logs initialization next to Hall of Meat. Every
-validated client update calls `on_client_tick()` immediately before Hall of Meat, before the
-500 ms model throttle. It reads `ControllerInput` through `DingoSDKOverlayReadControllerInput`.
-A/B/X/Y use bits 0x1000/0x2000/0x4000/0x8000. Rising edges update separate per-button counters
-(starting at 1 per process) and produce an existing ReSkate overlay notice:
-
-- Title: `ARCADE MODE DEV`
-- Body: `A press #1 seen on ReSkate client tick.`
-
-The same press goes to the skater log channel. Holding does not repeat; simultaneous buttons
-each report. Unavailable input clears the held mask. The existing input reader requires game
-focus and hides input while the interactive overlay is open. A held button seen again after
-unavailability counts as a new edge. No new XInput reader or game memory writes are used.
-Reporting is best effort: the overlay retains at most six notices, so rapid presses can evict
-older notices. Logging and notification APIs are already nonthrowing; allocation/input exceptions
-are contained by the observer. A failed notice cannot replay an edge or escape the client tick.
+The client tick records bounded native state, button edges and numeric speed
+observations. Button diagnostics are logs, not player-facing notices. Native
+physics-step observations and score signals are evidence; requested synthetic
+input is never proof that a named trick succeeded. Full captures and local
+machine details remain outside tracked project content.
 
 ## Independent model and tests
 
@@ -59,8 +45,8 @@ increases on links. Drift scales with fatigue; signed correction acts along the 
 `tick()` returns true and bails when absolute balance reaches 1. Initial balance at a limit also
 bails. Balance requires an active combo. Nonfinite inputs become zero, dt is bounded to [0, 1]
 seconds, fatigue to [0, 10], and age to one day. Grace counts down but does not automatically
-bank: future observed landing/bail events will decide settlement. None of this model drives the
-game in v0.1.
+bank: future observed landing/bail events will decide settlement. The current experimental runtime observes native poses and publishes balance state;
+physical failure, exact trick identity and complete combo acceptance remain unverified.
 
 Defaults: grace 0.45 s, fatigue/second 0.08, fatigue/link 0.12, restoration 1.8,
 drift 0.20, fatigue drift gain 0.85.

@@ -28,6 +28,16 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_push_observation_is_numeric_bounded_and_read_only(self):
+        row = 'ARCADE PUSH OBSERVATION: seq=1 ms=123 valid=true eligible=true speed=5.25 contacts=49152.'
+        result = probe.parse_push_samples((row + '\n') * 200 + ' unrelated private text')
+        self.assertEqual(len(result), 128)
+        self.assertEqual(result[-1], dict(seq=1, ms=123, valid=True, eligible=True, speed=5.25, contacts=49152))
+        for bad in (row + ' unrelated', row.replace('5.25', 'nan'), row.replace('5.25', '1e999'),
+                    row.replace('5.25', '-1'), row.replace('49152', '49153'),
+                    row.replace('123', '18446744073709551616')):
+            self.assertEqual(probe.parse_push_samples(bad), [])
+
     def test_balance_samples_preserve_measured_correction_without_private_text(self):
         row = ('ARCADE BALANCE SAMPLE: ms=12 kind=2 x=0.4 v=0.2 input=-0.3 '
                'difficulty=0.5 raw_x=0 raw_y=-15000.')

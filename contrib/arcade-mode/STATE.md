@@ -16,19 +16,33 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Live menu toggle and native-menu suppression are committed at becfa5d; Windows
-run 38529029254 must finish before deployment. C++ sanitizer tests: 30,843 checks
-passed. Lab/security/installer tests including deterministic package retries:
-144 passed. No real toggle ON/OFF acceptance has occurred yet.
+Installed source 3634e30f1bd2e2650a325626af79a2047befadfb passed all five hosted
+jobs in run 38531124492. DLL SHA-256:
+2d77e90d51b4a856a4bfd53ede1849e58bf74c069db80581dd8ba7f9451f8a5d.
+Game and stock backup hashes remain unchanged; updates are off, no recovery pending.
 
-The current installed source remains 08ab7dc, with original game and stock hashes
-verified. External runner trusted-v3 accepts bounded plans plus enumerated menu
-actions. Worker digests are independent of checkout contents. The separately
-reviewed one-build deployment helper targets becfa5d only and cannot restore stock.
-Native Hub → Mod Options → Player is now visually confirmed on Deck. Virtual
-trigger taps alone did not change subtabs; focusing the exact game window and
-holding the pointer press for 200 ms did. Last private capture:
-artifacts/player-focused-baseline.png. The game remains open on Player, on-board.
+The real Deck live toggle gate PASSED in one game process: ON A produced native
+100 → 103 → 200/201 → 100, OFF A remained 100 and rolled normally, and ON A
+again produced the air/landing sequence. All three trials returned to idle with
+neutralized input and no dropped physics samples or evidence gaps. The Player
+menu shows the setting; controller A toggles it without triggering a trick in
+the menu. See research/toggle-live-results.json. This is one acceptance sequence,
+not twenty-trial repeatability or final control/combo acceptance. No restart
+occurred between the three settings. Private full-size captures remain ignored
+under artifacts/toggle-acceptance. The tested A gesture still uses its existing
+timed recipe; hold/release Classic Controls comes at the control-table milestone.
+
+Automatic skating is now the active milestone. The working adapter uses guarded
+native horizontal speed, ordinary riding/two-wheel contact eligibility, lower/upper
+speed thresholds and bounded native push-button cadence. It never writes velocity.
+Pure tests cover cadence, hysteresis, menu/toggle rearm, conflicts and stale state;
+runtime speed parsing is numeric and bounded. Hardware acceptance remains pending.
+
+External trusted-v3 remains installed with the verified toggle target pins.
+Source runner v4 adds only numeric push observation parsing; it still requires a
+separate bundle/digest review before installation. The private deployment helper
+uses encoded transport because plain inline installer text falsely matched its
+own process-name check. Actual stopped-process and hash checks remain intact.
 
 ## Combo/balance implementation in progress — 2026-10-13
 

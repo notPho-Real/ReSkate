@@ -285,6 +285,25 @@ def parse_score_samples(text):
             "event_identity": "UNVERIFIED"}
 
 
+def parse_push_samples(text):
+    """Bounded numeric speed evidence; never return arbitrary log text."""
+    samples = []
+    for line in text.splitlines():
+        match = re.search(r'ARCADE PUSH OBSERVATION: seq=([0-9]{1,20}) ms=([0-9]{1,20}) valid=(true|false) eligible=(true|false) speed=([0-9.eE+-]{1,24}) contacts=([0-9]{1,5})\.$', line)
+        if not match or max(int(match[1]), int(match[2])) > 0xffffffffffffffff:
+            continue
+        try:
+            speed, contacts = float(match[5]), int(match[6])
+            if 0 <= speed < 1500 and contacts in (0, 0x4000, 0x8000, 0xc000):
+                samples.append({'seq': int(match[1]), 'ms': int(match[2]),
+                                'valid': match[3] == 'true', 'eligible': match[4] == 'true',
+                                'speed': speed, 'contacts': contacts})
+                samples = samples[-128:]
+        except ValueError:
+            pass
+    return samples
+
+
 def native_trace(request, **kwargs):
     verified = evidence(request, **kwargs)
     if not verified["fresh_log"]:
@@ -302,4 +321,5 @@ def native_trace(request, **kwargs):
     return {"schema": 1, "kind": "native_request_trace",
             **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
             "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
-            "score_observations": parse_score_samples(text[start:] if start >= 0 else "")}
+            "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
+            "push_observations": parse_push_samples(text[start:] if start >= 0 else "")}

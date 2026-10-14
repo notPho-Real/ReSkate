@@ -8,6 +8,7 @@
 #include "arcade_balance_hud.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Input/controller_bindings.h"
@@ -16,6 +17,7 @@
 #include "Extension/Multiplayer/Hud/game_ui_state.h"
 #include <array>
 #include <atomic>
+#include <cmath>
 #include <limits>
 #include <mutex>
 #include <string>
@@ -38,6 +40,8 @@ std::uint64_t capture_started{}, capture_id{};
 std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
+std::atomic<std::uint64_t> push_eligible_until{};
+std::atomic<float> push_speed{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
 ComboSession combo_session;
@@ -126,6 +130,30 @@ NativeRequestSample native_request_sample() noexcept {
     result.valid = true;
     return result; // Independent guarded reads, NOT an atomic physics snapshot.
 }
+
+// Reuse the board-root layout and owner/vtable checks used by Grind Exit and
+// Hall of Meat. This observer never writes physics or scales native velocity.
+bool native_board_speed(float& speed) noexcept {
+    namespace layout = game::build::v20260929::skater_state;
+    NoBailSkater skater{}, after{};
+    std::uintptr_t holder{}, physics{}, type{}, bodies{}, owner{};
+    std::uint32_t count{};
+    std::array<float, 3> velocity{};
+    if (!no_bail_skater(skater) ||
+        !memory::peek(skater.core + layout::board_holder_offset, holder) ||
+        !memory::peek(holder + layout::board_physics_offset, physics) ||
+        !memory::peek(physics, type) || type != skater.base + layout::board_physics_vtable ||
+        !memory::peek(physics + layout::physics_bodies_offset, bodies) ||
+        !memory::peek(bodies, count) || count != layout::board_body_count) return false;
+    const auto body = bodies + layout::board_root_body * layout::physics_body_size;
+    if (!memory::peek(body + layout::body_owner_offset, owner) || owner != physics ||
+        !memory::peek(body + layout::body_velocity_offset, velocity) ||
+        !no_bail_skater(after) || skater.core != after.core || skater.entity != after.entity ||
+        skater.context != after.context || skater.rig != after.rig) return false;
+    for (const auto value : velocity) if (!std::isfinite(value) || std::abs(value) >= 1000) return false;
+    speed = std::hypot(velocity[0], velocity[2]);
+    return true;
+}
 }
 
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
@@ -137,6 +165,7 @@ void set_enabled(bool value, bool persist) noexcept {
         mode_enabled.store(value, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
+        push_eligible_until.store(0, std::memory_order_release);
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
@@ -218,6 +247,13 @@ void on_client_tick() noexcept {
                 s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
         }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        float speed{};
+        // Both wheel contacts exclude the measured manual poses. Unknown state
+        // or speed means no push; native down-stick braking also remains intact.
+        const bool speed_valid = native.valid && native.state == 100 && native.crouch_mode == 1 && native_board_speed(speed);
+        const bool push_valid = gameplay && watch.valid && speed_valid && (native.words[1] & 0xc000u) == 0xc000u;
+        if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
+        push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
         if (gameplay) update_combo(native, input, watch.valid, watch.wipeouts, now);
         else {
             combo_session.invalidate();
@@ -231,6 +267,9 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE HIL STATE: seq={} valid={} state={} mode={}.",
                 ++hil_heartbeat_id, native.valid, native.state, native.crouch_mode);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PUSH OBSERVATION: seq={} ms={} valid={} eligible={} speed={} contacts={}.",
+                hil_heartbeat_id, now, speed_valid, push_valid, speed, native.words[1] & 0xc000u);
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
@@ -269,11 +308,13 @@ void on_client_tick() noexcept {
     } catch (...) {
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
+        push_eligible_until.store(0, std::memory_order_release);
     }
 }
 
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
-                      short& right_y, bool game_input, short left_x, short left_y) noexcept {
+                      short& right_y, bool game_input, short left_x, short left_y,
+                      unsigned char left_trigger, unsigned char right_trigger) noexcept {
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
     const auto physical_buttons = buttons;
     const auto now = GetTickCount64();
@@ -281,11 +322,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
     game_input = game_input && gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
     const bool may_start = game_input && deadline >= now && deadline - now <= 150;
+    const auto push_deadline = push_eligible_until.load(std::memory_order_acquire);
+    const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
     NativeGesture::Output result{};
     {
         std::lock_guard lock(ollie_mutex);
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start);
+            game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
+            left_trigger > 30 || right_trigger > 30);
     }
     buttons = result.buttons;
     right_x = result.right_x;

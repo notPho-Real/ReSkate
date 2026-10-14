@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_flip.h"
+#include "arcade_push.h"
 #include <array>
 #include <cstdint>
 
@@ -37,6 +38,7 @@ public:
         began_ = 0;
         armed_ = false;
     }
+    bool busy() const noexcept { return active_ != NativeTrick::none; }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx,
                 std::int16_t ly, std::int16_t rx, std::int16_t ry,
                 bool game_input, bool may_start) noexcept {
@@ -103,16 +105,24 @@ public:
         if (enabled_ == value) return;
         enabled_ = value;
         for (auto& gesture : gestures_) gesture.cancel();
+        for (auto& push : pushes_) push.reset();
     }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
-            bool game_input, bool may_start) noexcept {
+            bool game_input, bool may_start, bool may_push = false, float speed = 0,
+            bool triggers_held = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
-        return gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+        auto out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+        const bool conflict = buttons || triggers_held || gestures_[user].busy() ||
+            rx < -8689 || rx > 8689 || ry < -8689 || ry > 8689;
+        if (pushes_[user].poll(now, lx, ly, speed, game_input, may_push && !conflict))
+            out.buttons |= NativeGesture::x; // Internal native push; physical X remains a flip request.
+        return out;
     }
 private:
     bool enabled_{};
     std::array<NativeGesture, 4> gestures_{};
+    std::array<AutomaticPush, 4> pushes_{};
 };
 }

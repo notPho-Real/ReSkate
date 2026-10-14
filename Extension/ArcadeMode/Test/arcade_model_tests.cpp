@@ -21,6 +21,53 @@ void check(bool passed, const char* description) {
 int main() {
     using namespace dingosdk::arcade_mode;
     {
+        AutomaticPush push;
+        check(!push.poll(0, 0, 25000, 0, true, true), "held movement across enable does not auto push");
+        push.poll(1, 0, 0, 0, true, true);
+        check(push.poll(2, 0, 25000, 0, true, true), "fresh movement at rest requests native push");
+        check(push.poll(181, 0, 25000, 4.5f, true, true), "acceleration hysteresis survives lower speed crossing");
+        check(!push.poll(182, 0, 25000, 4.5f, true, true), "native push has a bounded hold");
+        check(!push.poll(851, 0, 25000, 4.5f, true, true), "cadence leaves an actual release gap");
+        check(push.poll(852, 0, 25000, 4.5f, true, true), "acceleration continues on the next native pulse");
+        check(!push.poll(853, 0, 25000, 6.0f, true, true), "cruise speed immediately ends an active push");
+        check(!push.poll(2000, 0, 25000, 5.0f, true, true), "cruise hysteresis prevents push chatter");
+        check(!push.poll(3000, 0, 25000, 15.0f, true, true), "downhill speed is left alone");
+        check(push.poll(4000, 0, 25000, 3.9f, true, true), "push resumes after slowing below lower threshold");
+        check(!push.poll(4001, 0, 25000, 3.9f, true, false), "lost riding eligibility cancels a push immediately");
+        check(!push.poll(5000, 0, -25000, 0, true, true), "backward brake intent never accelerates");
+        check(!push.poll(6000, 0, 25000, std::numeric_limits<float>::quiet_NaN(), true, true), "unknown speed suppresses push");
+        check(!push.poll(7000, 0, 25000, -1, true, true), "invalid negative speed suppresses push");
+        check(push.poll(8000, 25000, 0, 1, true, true), "steering can resume native pushing");
+        check(!push.poll(8001, 25000, 0, 1, false, true), "menu opening neutralizes push");
+        check(!push.poll(9000, 25000, 0, 1, true, true), "menu closing with held movement requires release");
+        push.poll(9001, 0, 0, 1, true, true);
+        check(push.poll(9002, 25000, 0, 1, true, true), "released movement rearms after menu");
+        check(!push.poll(5, 25000, 0, 1, true, true), "clock rollback cancels a pulse safely");
+    }
+    {
+        ArcadeInput input;
+        input.enable(true);
+        auto poll = [&](std::uint64_t now, std::uint16_t buttons, short ly, bool allowed = true, bool trigger = false) {
+            return input.poll(0, now, buttons, 0, ly, 0, 0, true, true, allowed, 0, trigger);
+        };
+        poll(0, 0, 0);
+        auto out = poll(1, 0, 25000);
+        check(out.buttons == NativeGesture::x && out.started == NativeTrick::none && !out.phase,
+              "internal push reaches native button output without becoming a flip request");
+        check(poll(2, 0, 25000, true, true).buttons == 0, "trigger context cancels internal push");
+        check(poll(1000, NativeGesture::a, 25000).started == NativeTrick::ollie, "physical A retains trick priority");
+        check(poll(1301, 0, 25000).buttons == 0, "gesture preparation remains exclusive after A release");
+        check(poll(2100, 0, 25000).buttons == 0, "synthetic stick setup never overlaps automatic push");
+        check(poll(2700, 0, 25000).buttons == 0, "synthetic flick never overlaps automatic push");
+        input.enable(false);
+        out = poll(2701, 0x2000, 25000);
+        check(out.buttons == 0x2000 && !out.phase, "OFF preserves physical buttons and cancels push and gesture together");
+        input.enable(true);
+        check(poll(3000, 0, 25000).buttons == 0, "ON cannot inherit held movement from OFF");
+        poll(3001, 0, 0);
+        check(poll(3002, 0, 25000, false).buttons == 0, "air grind manual bail or stale native evidence cannot push");
+    }
+    {
         constexpr std::uint32_t physical_packet = 123;
         const std::array packets{
             physical_packet ^ synthetic_packet_mask(0, false),
