@@ -8,9 +8,11 @@
 #include "Extension/ArcadeMode/arcade_flip.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_trick_table.h"
+#include "Extension/ArcadeMode/arcade_native_trick.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <type_traits>
 
 namespace {
 unsigned checks{};
@@ -21,6 +23,38 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        namespace layout = dingosdk::game::build::v20260929::arcade_tricks;
+        constexpr std::uintptr_t core = 0x100000, selection = 0x200000;
+        unsigned pointer_reads{};
+        bool replace{}, unreadable{};
+        std::int32_t id = 2;
+        auto read = [&](std::uintptr_t at, auto& value) noexcept {
+            using T = std::remove_reference_t<decltype(value)>;
+            if (at == core + layout::core_selection) {
+                value = static_cast<T>(selection + (replace && pointer_reads++ ? 0x100 : 0));
+                return true;
+            }
+            if (at == selection + layout::selection_flip && !unreadable) {
+                value = static_cast<T>(id); return true;
+            }
+            return false;
+        };
+        check(read_flip_selection(read, core) == NativeFlipSelection{true, 2}, "read the actual native flip selection");
+        replace = true;
+        check(!read_flip_selection(read, core).valid, "selection replacement invalidates native trick evidence");
+        replace = false; unreadable = true;
+        check(!read_flip_selection(read, core).valid, "unreadable native selection remains unknown");
+        unreadable = false;
+        for (const int value : {-2, 64, 10000}) {
+            id = value;
+            check(!read_flip_selection(read, core).valid, "out-of-range native identifiers are rejected");
+        }
+        id = -1;
+        check(read_flip_selection(read, core) == NativeFlipSelection{true, -1}, "native no-trick sentinel remains distinct from unknown");
+        check(!read_flip_selection(read, 0).valid && !read_flip_selection(read, UINTPTR_MAX).valid,
+            "native selection never follows null or overflowing core addresses");
+    }
     {
         for (std::size_t i = 0; i < literal_trick_table.size(); ++i)
             for (std::size_t j = i + 1; j < literal_trick_table.size(); ++j) {

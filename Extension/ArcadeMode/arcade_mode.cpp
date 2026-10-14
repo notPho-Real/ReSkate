@@ -4,6 +4,8 @@
 #include "arcade_gesture.h"
 #include "arcade_score_probe.h"
 #include "arcade_native_events.h"
+#include "arcade_native_trick.h"
+#include "arcade_authored_gestures.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_hud.h"
 #include "Engine/Core/Platform/memory.h"
@@ -22,6 +24,10 @@
 #include <limits>
 #include <mutex>
 #include <string>
+#include <stdexcept>
+#include <memory>
+#include <thread>
+#include <Windows.h>
 
 namespace dingosdk::arcade_mode {
 namespace {
@@ -57,6 +63,32 @@ std::array<PadEvidence, 4> previous_pad{};
 std::array<PadEvidence, 4> previous_source_pad{};
 std::size_t pad_head{}, pad_count{};
 std::uint64_t pad_sequence{}, pad_dropped{};
+std::once_flag authored_started;
+std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
+std::atomic<unsigned> authored_status{};
+std::size_t authored_reported{};
+void prepare_authored_catalog() noexcept {
+    try {
+        std::call_once(authored_started, [] {
+            authored_status.store(1, std::memory_order_release);
+            std::thread([] {
+                try {
+                    std::vector<wchar_t> path(32768);
+                    const auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
+                    if (!length || length >= path.size()) throw std::runtime_error("Game folder unavailable");
+                    const auto root = std::filesystem::path(std::wstring(path.data(), length)).parent_path();
+                    auto catalog = std::make_shared<const std::vector<AuthoredGesture>>(read_authored_gestures(root));
+                    authored_catalog.store(std::move(catalog), std::memory_order_release);
+                    authored_status.store(2, std::memory_order_release);
+                } catch (...) {
+                    authored_status.store(3, std::memory_order_release);
+                }
+            }).detach();
+        });
+    } catch (...) {
+        authored_status.store(3, std::memory_order_release);
+    }
+}
 ComboSession combo_session;
 std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
@@ -100,24 +132,30 @@ void update_combo(const NativeRequestSample& native, const ControllerInput& inpu
 }
 // Read-only physics-step evidence. A short revert can disappear between client
 // ticks; keep bounded transitions, not full memory dumps or guessed event IDs.
-struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; };
+struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipSelection flip; };
 std::array<ComboSample, 64> combo_samples{};
 std::mutex combo_samples_mutex;
 std::size_t combo_head{}, combo_count{};
 std::uint64_t combo_dropped{};
 NativeRequestSample combo_previous{};
+NativeFlipSelection flip_previous{};
 void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
     using namespace game::build::v20260929::arcade_native_probe;
     NativeRequestSample sample{};
     if (!memory::peek(owner.context + request_words, sample.words) ||
         !memory::peek(owner.context + selected_state, sample.state) ||
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) return;
+    const auto flip = read_flip_selection([](auto address, auto& value) { return memory::peek(address, value); }, owner.core);
+    NoBailSkater after{};
+    if (!no_bail_skater(after) || owner.core != after.core || owner.entity != after.entity ||
+        owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
     std::lock_guard lock(combo_samples_mutex);
-    if (sample == combo_previous) return;
+    if (sample == combo_previous && flip == flip_previous) return;
     combo_previous = sample;
+    flip_previous = flip;
     if (combo_count == combo_samples.size()) { ++combo_dropped; return; }
-    combo_samples[(combo_head + combo_count) % combo_samples.size()] = {sample, GetTickCount64()};
+    combo_samples[(combo_head + combo_count) % combo_samples.size()] = {sample, GetTickCount64(), flip};
     ++combo_count;
 }
 
@@ -192,6 +230,7 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
 
 void set_enabled(bool value, bool persist) noexcept {
+    if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
         arcade_input.enable(value);
@@ -254,6 +293,16 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        if (const auto catalog = authored_catalog.load(std::memory_order_acquire)) {
+            for (unsigned batch = 0; batch < 4 && authored_reported < catalog->size(); ++batch) {
+                const auto index = authored_reported++;
+                const auto& gesture = (*catalog)[index];
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE AUTHORED GESTURE: index={} total={} id={} nollie={} context={} arcs={}.",
+                    index, catalog->size(), gesture.native_id, gesture.nollie,
+                    static_cast<unsigned>(gesture.context), gesture.arcs.size());
+            }
+        }
         std::array<PadEvidence, 16> pad_rows{};
         std::size_t pad_rows_count{};
         std::uint64_t pad_lost{};
@@ -307,6 +356,8 @@ void on_client_tick() noexcept {
                 s.ms, s.sample.state, s.sample.crouch_mode,
                 s.sample.words[0], s.sample.words[1], s.sample.words[2], s.sample.words[3],
                 s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
         }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
         float speed{};
@@ -334,6 +385,8 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE PUSH OBSERVATION: seq={} ms={} valid={} eligible={} speed={} contacts={}.",
                 hil_heartbeat_id, now, speed_valid, push_valid, speed, native.words[1] & 0xc000u);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE AUTHORED STATUS: state={}.", authored_status.load(std::memory_order_acquire));
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.

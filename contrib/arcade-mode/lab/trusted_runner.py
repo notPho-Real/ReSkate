@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-VERSION = 12
+VERSION = 13
 MAX_REQUEST = 65536
 ROOT = Path(__file__).resolve().parent
 FILES = ('trusted_runner.py', 'plan_schema.py', 'worker_robot.py', 'worker_probe.py', 'worker_batch.py')

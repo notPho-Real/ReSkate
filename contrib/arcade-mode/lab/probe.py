@@ -332,6 +332,41 @@ def parse_push_samples(text):
     return samples
 
 
+def parse_flip_observations(text):
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE FLIP OBSERVATION: ms=([0-9]{1,20}) valid=(true|false) id=(-?[0-9]{1,2})\.$', line)
+        if not row or int(row[1]) > 0xffffffffffffffff or not -1 <= int(row[3]) <= 63:
+            continue
+        samples.append({'ms': int(row[1]), 'valid': row[2] == 'true', 'id': int(row[3])})
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
+def parse_authored_catalog(text):
+    entries, status, total = {}, None, None
+    conflicting = False
+    for line in text.splitlines():
+        state = re.search(r'ARCADE AUTHORED STATUS: state=([0-3])\.$', line)
+        if state:
+            status = int(state[1])
+        row = re.search(r'ARCADE AUTHORED GESTURE: index=([0-9]{1,3}) total=([0-9]{1,3}) id=([0-9]{1,2}) nollie=(true|false) context=([0-2]) arcs=([0-9]{1,2})\.$', line)
+        if not row:
+            continue
+        index, count, native_id, arcs = int(row[1]), int(row[2]), int(row[3]), int(row[6])
+        if not (0 <= index < count <= 256 and 1 <= native_id <= 63 and 1 <= arcs <= 32):
+            continue
+        entry = {'index': index, 'id': native_id, 'nollie': row[4] == 'true', 'context': int(row[5]), 'arcs': arcs}
+        if (total is not None and total != count) or (index in entries and entries[index] != entry):
+            conflicting = True
+        total = count
+        entries[index] = entry
+    return {'status': status, 'entries': [entries[i] for i in sorted(entries)],
+            'complete': status == 2 and total is not None and not conflicting and set(entries) == set(range(total))}
+
+
 def native_trace(request, **kwargs):
     verified = evidence(request, **kwargs)
     if not verified["fresh_log"]:
@@ -351,4 +386,6 @@ def native_trace(request, **kwargs):
             "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
             "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
             "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
-            "pad_observations": parse_pad_samples(text[start:] if start >= 0 else "")}
+            "pad_observations": parse_pad_samples(text[start:] if start >= 0 else ""),
+            "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
+            "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

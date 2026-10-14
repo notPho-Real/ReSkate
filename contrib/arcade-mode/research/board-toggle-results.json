@@ -514,5 +514,45 @@
       ]
     }
   ],
-  "trigger_transport_conclusion": "Kernel and system SDL receive both triggers through full range and return to neutral. The game-facing adapter still receives zero. Standard controller identity/name and wider device range did not fix translation. Wider range was removed. Next compare XInput before and after existing ReSkate filters; trigger-conflict acceptance remains unverified."
+  "trigger_transport_conclusion": "Kernel and system SDL receive both triggers through full range and return to neutral. The game-facing adapter still receives zero. Standard controller identity/name and wider device range did not fix translation. Wider range was removed. Next compare XInput before and after existing ReSkate filters; trigger-conflict acceptance remains unverified.",
+  "activation_followup": {
+    "bumper_then_ramps": {
+      "evidence": "1791980462783514000",
+      "attempted": 2,
+      "received_levels": [
+        59,
+        127,
+        255
+      ],
+      "neutralized": true,
+      "native_idle_restored": true,
+      "interpretation": "Single bumper activation then later ramps reached the game; not yet a general readiness guarantee."
+    },
+    "shorter_lead_twenty": {
+      "evidence": "1791980554514169000",
+      "attempted": 20,
+      "executed": 1,
+      "context_skips": 19,
+      "first_chord_received_triggers": [
+        0,
+        0
+      ],
+      "first_native_states": [
+        100,
+        504
+      ],
+      "interpretation": "Activation was not repeatable with this shorter trigger lead; excluded from suppression acceptance."
+    },
+    "full_ramp_then_chord": {
+      "evidence": "1791980785771140000",
+      "executed": 1,
+      "context_skips": 1,
+      "received_lt": 255,
+      "chord_output_buttons": 768,
+      "chord_synthetic_phase": 0,
+      "offboard_ms": 84527728,
+      "chord_ms": 84528088,
+      "interpretation": "Native off-board transition preceded the chord while LT alone was held. Adapter emitted no synthetic Y. Clear-scene partial-trigger followup is required."
+    }
+  }
 }

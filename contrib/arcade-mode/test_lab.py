@@ -28,6 +28,28 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_flip_identifiers_are_numeric_bounded_and_do_not_infer_tricks(self):
+        row = 'ARCADE FLIP OBSERVATION: ms=123 valid=true id=2.'
+        result = probe.parse_flip_observations((row + '\n') * 130)
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['samples'][-1], {'ms': 123, 'valid': True, 'id': 2})
+        for bad in (row + ' private', row.replace('id=2', 'id=64'), row.replace('id=2', 'id=-2'),
+                    row.replace('123', '18446744073709551616')):
+            self.assertEqual(probe.parse_flip_observations(bad)['samples'], [])
+
+    def test_authored_catalog_requires_all_consistent_bounded_entries(self):
+        a = 'ARCADE AUTHORED GESTURE: index=0 total=2 id=2 nollie=false context=0 arcs=3.\n'
+        b = 'ARCADE AUTHORED GESTURE: index=1 total=2 id=17 nollie=true context=1 arcs=4.\n'
+        ready = 'ARCADE AUTHORED STATUS: state=2.'
+        self.assertTrue(probe.parse_authored_catalog(a + b + ready)['complete'])
+        for text in (a + ready, a + b, a + b + a.replace('id=2', 'id=3') + ready,
+                     a + b.replace('total=2', 'total=3') + ready):
+            self.assertFalse(probe.parse_authored_catalog(text)['complete'])
+        for bad in (a.replace('arcs=3', 'arcs=33'), a.replace('id=2', 'id=64'),
+                    a.replace('total=2', 'total=257'), a.replace('context=0', 'context=3')):
+            self.assertEqual(probe.parse_authored_catalog(bad)['entries'], [])
+
     def test_source_pad_observation_is_separate_and_bounded(self):
         row = 'ARCADE PAD SOURCE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0.'
         result = probe.parse_pad_samples((row + '\n') * 130)

@@ -37,6 +37,20 @@ range was removed. No shortcut-specific binding override was found in the bounde
 inspection. The next DLL adds numeric source edges before existing ReSkate filters
 to locate the remaining boundary. Chord semantics remain unchanged.
 
+Source 4081eccfe0a7c0a347262c49617a88983cb2473f passed all five hosted gates
+in run 38562178690. It is not installed; d93dcef remains hot. A single bumper
+press/release before later trigger ramps made both game-facing trigger bytes
+reach 59/127/255 and return to zero. A shorter lead failed again, so this is not
+yet a repeatable readiness guarantee. A later full LT ramp produced native
+off-board state before the chord; the adapter emitted no synthetic board pulse.
+Reset to clear Stadium1 and test partial triggers to separate that native response
+from Arcade chord suppression. See activation_followup in board-toggle-results.
+
+The next integration adds only the existing upstream authored flip parser and
+guarded native FlipTrickType observation, with asynchronous game-data loading and
+bounded numeric catalog/identifier telemetry. This prepares exact native mappings;
+it does not yet change the timed input adapter or claim full trick support.
+
 The real Deck live toggle gate PASSED in one game process: ON A produced native
 100 → 103 → 200/201 → 100, OFF A remained 100 and rolled normally, and ON A
 again produced the air/landing sequence. All three trials returned to idle with
