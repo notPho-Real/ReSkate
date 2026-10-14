@@ -237,7 +237,7 @@ def parse_combo_samples(text):
 
 
 def parse_score_samples(text):
-    fields, samples = [], []
+    fields, samples, nodes, values = [], [], [], []
     for line in text.splitlines():
         field = re.search(r'ARCADE SCORE FIELD: hash=([0-9a-f]{8}) kind=([0-9]{1,2}) size=([0-9]{1,5})\.$', line)
         if field and int(field[2]) <= 31 and int(field[3]) <= 65535:
@@ -247,7 +247,17 @@ def parse_score_samples(text):
         if sample and int(sample[1]) <= 0xffffffffffffffff:
             samples.append({"ms": int(sample[1]), "hash": sample[2], "value": int(sample[3])})
             samples = samples[-128:]
-    return {"fields": fields, "samples": samples, "event_identity": "UNVERIFIED"}
+        node = re.search(r'ARCADE SCORE NODE: path=([0-9a-f]{8}(?:\.[0-9a-f]{8}){0,3}) kind=([0-9]{1,2}) size=([0-9]{1,5})\.$', line)
+        if node and int(node[2]) <= 31 and int(node[3]) <= 65535:
+            nodes.append({"path": node[1], "kind": int(node[2]), "size": int(node[3])})
+            nodes = nodes[-256:]
+        value = re.search(r'ARCADE SCORE VALUE: ms=([0-9]{1,20}) path=([0-9a-f]{8}(?:\.[0-9a-f]{8}){0,3}) value=([0-9]{1,10})\.$', line)
+        if value and int(value[1]) <= 0xffffffffffffffff and int(value[3]) <= 0xffffffff:
+            values.append({"ms": int(value[1]), "path": value[2], "value": int(value[3])})
+            values = values[-128:]
+    return {"fields": fields, "samples": samples, "nodes": nodes, "values": values,
+            "limit_reached": any(line.endswith("ARCADE SCORE LIMIT: reached=true.") for line in text.splitlines()),
+            "event_identity": "UNVERIFIED"}
 
 
 def native_trace(request, **kwargs):

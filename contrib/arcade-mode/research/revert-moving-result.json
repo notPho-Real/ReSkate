@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "verification": "REAL_HARDWARE",
+  "source_commit": "35d933e919c405132e8fa948f30de2eadb2511d9",
+  "dll_sha256": "9a79deffb6c6104c131f20e15666475a29def3b32d6ba27ef2905b688a3bb17a",
+  "trials": [
+    {
+      "name": "left-push-arc-120",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "FAIL",
+        "named_trick": "UNVERIFIED"
+      }
+    },
+    {
+      "name": "left-push-arc-240",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": {}
+    },
+    {
+      "name": "right-push-arc-120",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": {}
+    },
+    {
+      "name": "right-push-arc-240",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": {}
+    }
+  ],
+  "interpretation": "First trial interrupted by visible car collision; remaining three skipped off-board context. No revert conclusion. Development DLL remains installed."
+}

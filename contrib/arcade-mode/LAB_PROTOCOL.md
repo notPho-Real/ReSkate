@@ -6,6 +6,17 @@ authorizes main/master, upstream, or an implicit deployment.
 
 ## CI and release
 
+During active combo research, preserve successful visual/native HUD evidence even
+when the coarse state detector is unchanged. Manual/nose-manual can remain in
+state100/mode1. Contact flags alone also change during turns. Never promote those
+flags to a named event without negative controls. Per-trial collection uses the
+verified log's byte boundary, reports truncation, and freezes trusted remote source
+for the lifetime of a batch. Candidate files remain finite controller data only.
+Use the existing trainer ground-surface command for a reviewed test location when
+traffic obstructs a trial; do not overwrite user markers or alter physics tuning.
+Read-only native scoring probes publish only bounded numeric schema/allowlisted
+labels. Neither a probe nor a failed experiment is a reason to restore stock.
+
 `.github/workflows/arcade-dev.yml` requires Windows x64 build/model tests, Linux
 installer/lab simulations, and hosted macOS lab/bootstrap simulations before its
 `deck` job may package or publish. The separate `arcade-deck.yml` supplies extra

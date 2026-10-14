@@ -2,6 +2,14 @@
 
 Status: discovery instrumentation; runtime balance integration is NOT complete.
 
+Native UI observation verified on276a396: score-schema-276a396.json records28
+fields from the actual ScoringHUDViewModel. Boolean kind10/size1 and integer
+kind8/size4 are observed, not guessed. Most text is in nested structures (sizes
+80/104); two arrays exist. Follow-up probe is bounded to depth3 and256 nodes in
+this single scoring schema, array count<=8, with no object-reference traversal.
+Only numeric values and exact Manual/Nose Manual/FS Revert/BS Revert labels can
+leave the probe. This is discovery evidence, not an authoritative event feed yet.
+
 | Event | Existing evidence | Safe interpretation |
 |---|---|---|
 | Riding baseline | Real Deck state100 / crouch mode1 | On-board baseline, not every grounded context |

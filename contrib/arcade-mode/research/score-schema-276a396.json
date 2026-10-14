@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "verification": "REAL_HARDWARE",
+  "source_commit": "276a39664f7805c1693c7f28f6f314c21bc6d469",
+  "installed_dll_sha256": "3683ab2c2e7031331b481e46f205ef865dadf5dd6252f6531c11a479d35c571a",
+  "fields": [
+    {
+      "hash": "84db5623",
+      "kind": 2,
+      "size": 80
+    },
+    {
+      "hash": "1a93e458",
+      "kind": 2,
+      "size": 80
+    },
+    {
+      "hash": "b3e9db3c",
+      "kind": 2,
+      "size": 104
+    },
+    {
+      "hash": "7d1e237c",
+      "kind": 2,
+      "size": 104
+    },
+    {
+      "hash": "9acb7cf0",
+      "kind": 2,
+      "size": 104
+    },
+    {
+      "hash": "6a41d8c6",
+      "kind": 19,
+      "size": 4
+    },
+    {
+      "hash": "e8264626",
+      "kind": 2,
+      "size": 104
+    },
+    {
+      "hash": "7f3e74e7",
+      "kind": 8,
+      "size": 4
+    },
+    {
+      "hash": "bd9da937",
+      "kind": 19,
+      "size": 4
+    },
+    {
+      "hash": "7aab675c",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "a0bfc5b4",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "2a7d50b4",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "55c071ca",
+      "kind": 2,
+      "size": 48
+    },
+    {
+      "hash": "cdffb552",
+      "kind": 2,
+      "size": 16
+    },
+    {
+      "hash": "40bff667",
+      "kind": 19,
+      "size": 4
+    },
+    {
+      "hash": "9a6daa54",
+      "kind": 19,
+      "size": 4
+    },
+    {
+      "hash": "0426783f",
+      "kind": 8,
+      "size": 4
+    },
+    {
+      "hash": "f9dc9463",
+      "kind": 2,
+      "size": 104
+    },
+    {
+      "hash": "e1b69fc5",
+      "kind": 2,
+      "size": 48
+    },
+    {
+      "hash": "4c7b2d94",
+      "kind": 8,
+      "size": 4
+    },
+    {
+      "hash": "374f751b",
+      "kind": 4,
+      "size": 8
+    },
+    {
+      "hash": "eb3a9e86",
+      "kind": 8,
+      "size": 4
+    },
+    {
+      "hash": "739c95e8",
+      "kind": 19,
+      "size": 4
+    },
+    {
+      "hash": "bc696ce7",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "eab1da23",
+      "kind": 4,
+      "size": 8
+    },
+    {
+      "hash": "818ecae9",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "3aa2f739",
+      "kind": 10,
+      "size": 1
+    },
+    {
+      "hash": "af6e13b9",
+      "kind": 10,
+      "size": 1
+    }
+  ],
+  "event_identity": "UNVERIFIED"
+}

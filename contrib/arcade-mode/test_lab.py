@@ -28,6 +28,19 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_nested_score_probe_is_numeric_bounded_and_private(self):
+        rows = ('ARCADE SCORE NODE: path=9b74fc7c.12345678 kind=10 size=1.\n'
+                'ARCADE SCORE VALUE: ms=99 path=9b74fc7c.12345678 value=1.\n') * 500
+        value = probe.parse_score_samples(rows + 'private unrelated text')
+        self.assertEqual(len(value['nodes']), 256)
+        self.assertEqual(len(value['values']), 128)
+        self.assertNotIn('private', json.dumps(value))
+        self.assertTrue(probe.parse_score_samples('ARCADE SCORE LIMIT: reached=true.')['limit_reached'])
+        self.assertEqual(probe.parse_score_samples(
+            'ARCADE SCORE VALUE: ms=99 path=../../home value=1.')['values'], [])
+        self.assertEqual(probe.parse_score_samples(
+            'ARCADE SCORE VALUE: ms=99 path=9b74fc7c value=4294967296.')['values'], [])
+
     def test_score_probe_allowlist_and_bounds(self):
         text = 'unrelated secret /home/personal\n' + (
             'ARCADE SCORE FIELD: hash=12345678 kind=7 size=8.\n'

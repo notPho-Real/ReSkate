@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "source_commit": "35d933e919c405132e8fa948f30de2eadb2511d9",
+  "dll_sha256": "9a79deffb6c6104c131f20e15666475a29def3b32d6ba27ef2905b688a3bb17a",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "left-push-arc-120",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "rx": 12000,
+          "buttons": [
+            "X"
+          ]
+        },
+        {
+          "ms": 2200
+        },
+        {
+          "ms": 2800,
+          "lx": -30000
+        },
+        {
+          "ms": 2830,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2860,
+          "ly": 30000
+        },
+        {
+          "ms": 2890,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2920,
+          "lx": 30000
+        },
+        {
+          "ms": 3020
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 7000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "left-push-arc-240",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "rx": 12000,
+          "buttons": [
+            "X"
+          ]
+        },
+        {
+          "ms": 2200
+        },
+        {
+          "ms": 2800,
+          "lx": -30000
+        },
+        {
+          "ms": 2860,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2920,
+          "ly": 30000
+        },
+        {
+          "ms": 2980,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 3040,
+          "lx": 30000
+        },
+        {
+          "ms": 3140
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 7000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "right-push-arc-120",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "rx": 12000,
+          "buttons": [
+            "X"
+          ]
+        },
+        {
+          "ms": 2200
+        },
+        {
+          "ms": 2800,
+          "lx": 30000
+        },
+        {
+          "ms": 2830,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2860,
+          "ly": 30000
+        },
+        {
+          "ms": 2890,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2920,
+          "lx": -30000
+        },
+        {
+          "ms": 3020
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 7000,
+      "reset_ms": 5000
+    },
+    {
+      "name": "right-push-arc-240",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "rx": 12000,
+          "buttons": [
+            "X"
+          ]
+        },
+        {
+          "ms": 2200
+        },
+        {
+          "ms": 2800,
+          "lx": 30000
+        },
+        {
+          "ms": 2860,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 2920,
+          "ly": 30000
+        },
+        {
+          "ms": 2980,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 3040,
+          "lx": -30000
+        },
+        {
+          "ms": 3140
+        }
+      ],
+      "expected": {
+        "states": [],
+        "trick": "revert"
+      },
+      "timeout_ms": 7000,
+      "reset_ms": 5000
+    }
+  ]
+}

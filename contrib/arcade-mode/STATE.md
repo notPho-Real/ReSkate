@@ -2,6 +2,43 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+276a396 launched successfully; fresh sanitized trace contains28 actual
+ScoringHUDViewModel fields (research/score-schema-276a396.json). This proves the
+read-only UI path works. Observed boolean kind10/size1, integers kind8/size4;
+text-bearing fields are nested structures, plus two arrays. Flat probe therefore
+does not yet identify native manuals/reverts. Follow-up locally adds a bounded
+depth3/256-node walk of this ONE schema, arrays<=8, never object/pointer traversal,
+only booleans/int32 and exact four text labels; max4096 value changes per process.
+129 Python tests PASS; awaiting next CI before deployment. No feature integration
+claim. Current276a396 stays installed. Plan manual-score-276a396 is prepared,
+not run yet. Next diagnostic must correlate native scoring values with real
+manuals and negative turn controls before the model/HUD is activated.
+
+LATEST DEPLOYMENT VERIFIED:276a39664f7805c1693c7f28f6f314c21bc6d469 passed
+ALL CI38510708319 gates and immutable release validation. Graceful Skate exit
+confirmed both game/launcher stopped. Existing installer updated development DLL
+atomically and verified SHA3683ab2c2e7031331b481e46f205ef865dadf5dd6252f6531c11a479d35c571a.
+Stock5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039 unchanged;
+updatesfalse, recoveryfalse. Steam shortcut relaunch initiated. Keep this build
+installed. Next: launcher PLAY, collect score schema via controller trace, then
+known manual holds on this new pinned source/hash. Older35d933e plans must be
+repinned explicitly; their integrity refusal against this install is correct.
+
+Current in-flight checkpoint276a39664f7805c1693c7f28f6f314c21bc6d469:
+CI38510708319 Linux/macOS PASS, Windows building (started04:18UTC);
+Deck installer38510708174 PASS. Must wait full build/release before DLL update.
+Moving revert batch: first candidate hit a car; three remaining candidates
+correctly skipped off-board state. Not a revert failure conclusion. Existing Y
+recipe recovered upright. Used existing ReSkate trainer console (grave key) to
+read position, then validated `trainer ground 630 1069` placed skater on sidewalk.
+This is a reproducible native ground-surface reset, no marker/settings overwritten.
+Live Skate X11 window56623105 title `skate.` on DISPLAY=:1 (requery on relaunch).
+Console input at400,640; grave closes; console filter currently `heading`.
+No game DLL changed yet;35d933e remains installed. Next after CI: graceful close,
+verified276a396 deploy, relaunch, native score schema/label trace during manuals.
+Contact-control durations: false manual-like pattern up to433ms during turns;
+500ms debounce would exceed450ms link grace, so it is not an acceptable shortcut.
+
 LATEST: febdb40 CI38508894785 ALL FOUR gates PASS.61cdf4d runner Linux/macOS
 and separate Deck installer PASS; Windows pending last check. Continued real
 testing completed16 additional trials across three batches (all bounded and reset
