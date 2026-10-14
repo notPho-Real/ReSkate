@@ -12,6 +12,9 @@ constexpr std::array<std::string_view, 20> score_labels{
     "Method", "Rocket Air", "Stiffy", "One Foot Tailgrab", "One Foot Japan", "Judo", "Sacktap", "Christ Air"
 };
 constexpr std::uint32_t score_label_id(std::string_view text) noexcept {
+    // Observed on Deck after a native revert changes riding context. This
+    // preserves semantic identity; persistent text still cannot prove repeats.
+    if (text == "Switch FS Revert") return 3;
     // Exact current-game guide spellings, sharing the same semantic IDs.
     if (text == "Nose Grab") return 6;
     if (text == "Tail Grab") return 8;

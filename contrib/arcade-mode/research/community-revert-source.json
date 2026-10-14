@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "classification": "COMMUNITY METHOD AVAILABLE",
-  "implementation_status": "EXPERIMENTAL RT CANDIDATE ROUTING IMPLEMENTED; NATIVE TEST PENDING",
+  "classification": "VERIFIED ON OUR DECK",
+  "implementation_status": "DISCOVERED ON OUR DECK: moving community recipe produces independently visible FS and Switch FS Revert; RT integration and repeatability pending",
   "repository": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate",
   "revision": "7c28aade77293d0ec269eb5567ffff7314cf8007",
   "source": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/blob/7c28aade77293d0ec269eb5567ffff7314cf8007/dualstick_translator.py#L1632",
@@ -41,16 +41,123 @@
     "scheduler": "500 Hz loop; accumulate deadlines with catch-up when at most 50 ms late, otherwise resynchronize."
   },
   "verification_caveat": "Community verification is human D-pad confirmation, not native telemetry. FS/BS must be established from independent score labels/state on this pinned game build.",
-  "verified_deck_results": [],
-  "next": "Verify built artifact and live installation, run controlled flip A/B first, then evaluate delivered235ms revert candidate and independent native label/state outcome. Production RT remains unaccepted. External runner update and experiment selection require existing reviewed workflow.",
+  "verified_deck_results": [
+    {
+      "source": "c1e2a79c51d92f0575232462767d3f299be0492a",
+      "evidence": "trusted-v20/results/1792021418110850000.json",
+      "location": "Stadium1 stationary",
+      "native_preset": "Classic",
+      "requested_trials": 8,
+      "contexts": "regular/nollie, clockwise/counterclockwise, two each",
+      "native_revert_confirmed": 0,
+      "classification": "UNVERIFIED; native100 throughout, no FS/BS label evidence; delivery timing later shown distorted",
+      "reset_pass": 8,
+      "neutralized": 8
+    },
+    {
+      "evidence": "trusted-v20/results/1792021790434965000.json",
+      "native_ollie_controls": "2/2 exact native ID1, states100/103/200/201",
+      "regular_clockwise_repeats": "0/2 independently confirmed; native100 throughout",
+      "reset_pass": 4,
+      "neutralized": 4
+    },
+    {
+      "evidence": "trusted-v21/results/1792021892103793000.json",
+      "native_ollie_controls": "1/1 exact ID1",
+      "revert_requested": 1,
+      "revert_confirmed": 0,
+      "delivery": {
+        "nominal_ms": 235,
+        "actual_setup_to_release_ms": 339.427,
+        "nominal_circle_ms": 160,
+        "actual_first_to_last_angle_ms": 296.075,
+        "readiness_scan_mean_ms": 9.1256,
+        "readiness_scan_max_ms": 10.327,
+        "write_and_observe_max_ms": 0.144
+      },
+      "finding": "Full process scan before each5ms phase stretches gesture; this is runner delivery failure, not a valid rejection of the original235ms method."
+    },
+    {
+      "evidence": "trusted-v22/results/1792022058615348000.json",
+      "native_ollie_controls": "1/1 exact ID1",
+      "revert_requested": 1,
+      "revert_confirmed": 0,
+      "delivery": {
+        "nominal_ms": 235,
+        "actual_setup_to_release_ms": 234.985,
+        "actual_first_to_last_angle_ms": 159.982,
+        "max_write_lateness_ms": 0.258,
+        "max_readiness_cost_ms": 0.251
+      },
+      "reset_pass": 2,
+      "neutralized": 2,
+      "finding": "Measured delivery stretch fixed by background read-only readiness inspection. Game polling remains a separate unobserved boundary in native OFF mode; stationary revert not confirmed."
+    },
+    {
+      "evidence": "trusted-v22/results/1792022144732345000.json",
+      "location": "Stadium1, short native A push before gesture; B brake afterward",
+      "requested_trials": 2,
+      "independent_visual_native_results": [
+        {
+          "candidate": "moving-regular-clockwise",
+          "frame": 3,
+          "label": "FS Revert",
+          "displayed_score": 5,
+          "displayed_line": 5
+        },
+        {
+          "candidate": "moving-regular-counterclockwise",
+          "frame": 3,
+          "label": "Switch FS Revert",
+          "displayed_score": 7,
+          "displayed_line": 12
+        }
+      ],
+      "native_revert_confirmed": 2,
+      "reset_pass": 2,
+      "neutralized": 2,
+      "limits": "Direction labels do not establish a fixed side mapping across changing stance. Native100/101 alone is insufficient identity. Native score parser produced no named label rows; full-size Gamescope images provide independent positive identity. RT binding and20-trial repeatability remain unaccepted."
+    }
+  ],
+  "next": "Evaluate unchanged recipe with bounded native push, then production RT after restored Windows/package CI passes.",
   "implementation": {
     "source": "Extension/ArcadeMode/arcade_revert_input.h",
     "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",
     "runtime_enabled": false,
     "local_checks": 192,
-    "deck_trials": 0,
+    "deck_trials": 14,
     "delivery_caveat": "Absolute millisecond sampling may skip 5 ms positions under slower XInput polling; real delivered trajectory and stance contexts require observation.",
     "runtime_selector": "arcadeactions revert-fs or revert-bs (unsaved; change with Arcade Mode OFF)",
     "runtime_context": "Inspected clear-bit stance only; native100/103 riding state with fresh observation. Alternate stance mirroring pending."
+  },
+  "native_settings_checkpoint": {
+    "date": "2026-10-14",
+    "installed_source": "c1e2a79",
+    "evidence": "trusted-v20/results/1792020806200100000.json",
+    "control_preset": "Classic (green check)",
+    "flick_sensitivity": 50,
+    "hold_fakie_stance": false,
+    "legacy_dark_catch": false,
+    "changed": false,
+    "trick_toggle_evidence": [
+      "trusted-v20/results/1792021179360620000.json",
+      "trusted-v20/results/1792021258339086000.json"
+    ],
+    "trick_toggles": {
+      "held_flips": true,
+      "late_flips": true,
+      "fingerflips": true,
+      "underflips": true,
+      "one_foot_ollies": true,
+      "no_comply": false,
+      "grind_lean_exits": true,
+      "quick_ollie": true,
+      "sideways_ollie": true,
+      "prewind_spins": true,
+      "prewind_style": "Hold in Spin Direction",
+      "roll_ins": true,
+      "anti_pumping": true
+    },
+    "impossible_toggle": "No separate setting observed in the complete native Trick Toggles list."
   }
 }

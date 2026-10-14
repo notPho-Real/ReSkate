@@ -12,7 +12,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 2,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED on f47: exact native ID 2 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
+      "hil_status": "DISCOVERED; c1e2a79 controlled 60Hz checkpoint: 14/14 exact across delivery/reference and two locations. See playback-parity.json; contexts/modes remain distinct, no 20-trial per-context acceptance.",
       "review_pending": false,
       "nollie_native_id": 17,
       "reuse_review": {
@@ -24,7 +24,7 @@
         ],
         "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
         "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
-        "new_deck_trials": 0
+        "new_deck_trials": 14
       }
     },
     {
@@ -38,7 +38,7 @@
       "method_source": "authored-flip-catalog.json: numeric source tokens and AnimationEnum",
       "native_id": 36,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "FAIL on 535 and d0: all eight regular/nollie requests produced shove-it IDs 4/19. Authored arc delivery investigation remains active.",
+      "hil_status": "UNRESOLVED; c1e2a79 0/6 requested exact; five complete traces selected4, final city-reference trial inconclusive after off-board/reset and evidence gap. Upstream recorder excludes36; not declared unsupported. See playback-parity.json.",
       "review_pending": false,
       "nollie_native_id": 38,
       "reuse_review": {
@@ -50,7 +50,7 @@
         ],
         "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
         "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
-        "new_deck_trials": 0
+        "new_deck_trials": 6
       }
     },
     {
@@ -116,7 +116,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 9,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
+      "hil_status": "DISCOVERED; c1e2a79 controlled 60Hz checkpoint: 12/14 exact across delivery/reference and two locations. See playback-parity.json; contexts/modes remain distinct, no 20-trial per-context acceptance.",
       "review_pending": false,
       "nollie_native_id": 20,
       "reuse_review": {
@@ -128,7 +128,7 @@
         ],
         "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
         "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
-        "new_deck_trials": 0
+        "new_deck_trials": 14
       }
     },
     {
@@ -168,7 +168,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 5,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
+      "hil_status": "DISCOVERED; c1e2a79 controlled 60Hz checkpoint: 10/14 exact across delivery/reference and two locations. See playback-parity.json; contexts/modes remain distinct, no 20-trial per-context acceptance.",
       "review_pending": false,
       "nollie_native_id": 23,
       "reuse_review": {
@@ -180,7 +180,7 @@
         ],
         "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
         "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
-        "new_deck_trials": 0
+        "new_deck_trials": 14
       }
     },
     {
@@ -1785,9 +1785,9 @@
       "native_method": "Native RS setup plus full LS circle; 30 ms lead, 33 positions at 5 ms, 40 ms tail",
       "method_source": "community-revert-source.json; EterrnaWasTaken revision 7c28aade77293d0ec269eb5567ffff7314cf8007",
       "native_id": null,
-      "classification": "COMMUNITY METHOD AVAILABLE",
+      "classification": "VERIFIED ON OUR DECK",
       "implementation_status": "Source behavior established; no compatible copying license; independent native recipe test pending",
-      "hil_status": "UNVERIFIED; no new Deck trials while paired host is unreachable",
+      "hil_status": "DISCOVERED: c1e2a79 moving community recipe produced independently visible FS Revert and Switch FS Revert in2/2 trials; both reset. Stationary controls did not confirm revert; HIL235ms delivery now measured. Direction/stance mapping,20-trial repeatability and RT integration remain pending. See community-revert-source.json.",
       "repeatability": {
         "trials": 0,
         "exact": 0

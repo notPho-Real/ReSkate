@@ -1,5 +1,33 @@
 # Arcade Mode persistent project state
 
+## Native revert discovery and HIL timing repair — 2026-10-14
+
+Source checkpoint continues `2ea4337710ea7fb7fa6281f3dcbe4229e6345be8`.
+Installed c1e2a79 DLL/hash below remains unchanged; game remains hot in Stadium1,
+Arcade Mode OFF, mounted, controller neutral. Native Classic preset independently
+confirmed; no native gameplay settings changed. No Comply is disabled; other
+recorded settings and evidence are in community-revert-source.json.
+
+The community235ms recipe now produces actual FS Revert and Switch FS Revert
+labels on the Deck:2/2 moving trials, both neutralized/reset. This is DISCOVERED,
+not20-trial repeatability or RT integration acceptance. Stationary requests did
+not establish native reverts. Four native Ollie positive controls passed exactID1.
+
+Measured a runner defect before judging the recipe: full process-list scans on
+every5ms angular step stretched235ms to339.427ms. Moved those same read-only
+checks to a background observer; stale100ms evidence, changed capture owner,
+failed capture or session deadline stops input. Existing identity checks,
+watchdogs and neutralization remain. Real Deck retest delivered234.985ms with
+max0.258ms write lateness; native Ollie still passed.215 Python tests pass.
+Frozen external trusted-v22 is current; maintenance-v23 uses reliable console
+key timing. Native game polling is a distinct boundary from uinput write timing.
+
+CI restored by the user after account-level blocking. The development run
+38656982739 for2ea4337 is active; Linux/macOS gates passed, Windows build pending.
+No unverified DLL deployed. Next: stance/direction revert trials, then install the
+new runtime only after complete build/package gates and test the actual RT path.
+
+
 ## Live Deck resumption and score observer — 2026-10-14
 
 Deck reconnected. Installed the newest fully gate-passed artifact, source
@@ -39,8 +67,9 @@ remain unverified. No score writes or combo decisions are added.
 
 Stadium reference follow-up:6/8 exact IDs, both Impossibles selected4; all8
 neutralized/reset with complete timing. End-only screenshots reduced artifact
-size to25MB. A24-trial reference repeat block for Kickflip/Hardflip/Varial Kickflip
-is running. Upstream recorder accepts onlyIDs1..32, so its27/27 evidence cannot
+size to25MB. The24-trial reference repeat block completed:Kickflip8/8,Hardflip7/8,
+Varial Kickflip5/8 exact; all24 reset with complete timing. Combined Stadium
+reference denominators are10/10,9/10,7/10 respectively, and Impossible0/2. Upstream recorder accepts onlyIDs1..32, so its27/27 evidence cannot
 cover Impossible36. Read-only grind asset/page plumbing also passes45 sanitizer
 checks; runtime discovery/wiring and named enum mappings remain pending.
 

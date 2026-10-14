@@ -320,15 +320,27 @@ def recipe(name):
 
 def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic):
     start = clock()
+    timing = {"samples": [], "dropped": 0, "scope": "uinput_write_not_game_poll"}
     for offset, changes in events + [(duration, [])]:
         while clock() - start < offset:
             if not alive():
                 raise RuntimeError("Skate exited; test stopped")
             sleep(max(0, min(0.05, offset - (clock() - start))))
+        check_at = clock()
         if not alive():
             raise RuntimeError("Skate exited; test stopped")
         if changes:
+            write_at = clock()
             pad.frame(changes)
+            finished_at = clock()
+            if len(timing["samples"]) < 128:
+                timing["samples"].append({"scheduled_ms": round(offset * 1000, 3),
+                    "write_ms": round((write_at - start) * 1000, 3),
+                    "ready_check_ms": round((write_at - check_at) * 1000, 3),
+                    "write_and_observe_ms": round((finished_at - write_at) * 1000, 3)})
+            else:
+                timing["dropped"] += 1
+    return timing
 
 
 def image_format(data):
@@ -440,6 +452,42 @@ def experiment(name):
     return experiment_events(name, events, duration)
 
 
+class ReadinessMonitor:
+    """Read-only process checks off the timed writer; stale evidence stops input."""
+    def __init__(self, initial, pid, checked_at, check=capabilities, clock=time.monotonic):
+        self.pid, self.check, self.clock = pid, check, clock
+        self.snapshot = (checked_at, initial)
+        self.stop, self.failed = threading.Event(), threading.Event()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+
+    def _run(self):
+        while not self.stop.is_set():
+            began = self.clock()
+            try:
+                current = self.check()
+            except Exception:
+                current = {}
+            self.snapshot = (began, current)
+            if not current.get("ready") or current.get("gamescope_pids") != [self.pid]:
+                self.failed.set()
+                return
+            self.stop.wait(0.020)
+
+    def start(self):
+        self.thread.start()
+
+    def ready(self, now):
+        sampled_at, current = self.snapshot
+        return (not self.failed.is_set() and 0 <= now - sampled_at <= 0.100
+                and current.get("ready", False) and current.get("gamescope_pids") == [self.pid])
+
+    def close(self):
+        self.stop.set()
+        self.thread.join(timeout=0.2)
+        if self.thread.is_alive():
+            raise RuntimeError("Readiness inspection did not stop")
+
+
 class ExperimentSession:
     """One neutral-idle controller for a bounded batch, never a persistent daemon."""
     def __init__(self, max_seconds=600, max_trials=24):
@@ -544,14 +592,18 @@ class ExperimentSession:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 self.stop = stop = threading.Event()
                 future = pool.submit(periodic, self.pid, duration, stop, capture_frames)
+                watch = None
                 def alive():
-                    self._clock()
+                    nonlocal watch
+                    current_time = self._clock()
                     if future.done():
                         future.result()  # Stop input if capture failed.
-                    current = capabilities()
-                    return current.get("ready", False) and current.get("gamescope_pids") == [self.pid]
+                    if watch is None:
+                        watch = ReadinessMonitor(status, self.pid, now, check=capabilities)
+                        watch.start()
+                    return watch.ready(current_time)
                 try:
-                    replay(pad, events, duration, alive)
+                    delivery_timing = replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.
                     frames = future.result()
                 finally:
@@ -560,10 +612,13 @@ class ExperimentSession:
                     stop.set()
                     if self.pad is not None:
                         pad.neutral()
+                    if watch is not None:
+                        watch.close()
             self.stop = None
             self._arm(self.deadline)  # Idle time between trials stays bounded too.
             return {"schema": 1, "recipe": name, "input_sent": True,
                     "game_response": "UNVERIFIED", "frames": frames,
+                    "delivery_timing": delivery_timing,
                     "kernel_pad": copy.deepcopy(pad.kernel_pad),
                     "sdl_pad": copy.deepcopy(pad.sdl_observation)}
         except BaseException:

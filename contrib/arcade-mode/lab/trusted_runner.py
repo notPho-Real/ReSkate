@@ -112,7 +112,7 @@ else:
                    'left':(3,16,-1), 'right':(3,16,1), 'tab-left':(1,0x136,1), 'tab-right':(1,0x137,1),
                    'subtab-left':(3,2,255), 'subtab-right':(3,5,255)}
         event = actions[request['plan']]
-        result = experiment_events(request['plan'], [(0,[event]),(0.1,[(event[0],event[1],0)])], 1)
+        result = experiment_events(request['plan'], [(0,[event]),(0.1,[(event[0],event[1],0)])], 1, capture_frames=1)
         print(json.dumps(result))
         sys.exit(0)
     plan = validate_plan(request['plan'])

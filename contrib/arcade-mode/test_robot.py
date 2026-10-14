@@ -239,6 +239,58 @@ class RobotTests(unittest.TestCase):
             robot.replay(pad, events, duration, lambda: False, clock=lambda: 0)
         self.assertEqual(pad.frame.call_count, 8)
 
+    def test_delivery_timing_exposes_readiness_stretch_and_observer_cost(self):
+        now = [0.0]
+        def ready():
+            now[0] += 0.010
+            return True
+        pad = Mock()
+        pad.frame.side_effect = lambda changes: now.__setitem__(0, now[0] + 0.002)
+        report = robot.replay(pad, [(i * 0.005, [(3, 0, i)]) for i in range(4)], .030,
+                              ready, clock=lambda: now[0],
+                              sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+        self.assertEqual(report['scope'], 'uinput_write_not_game_poll')
+        self.assertEqual([r['write_ms'] for r in report['samples']], [10, 22, 34, 46])
+        self.assertTrue(all(r['ready_check_ms'] == 10 and r['write_and_observe_ms'] == 2
+                            for r in report['samples']))
+        self.assertEqual(report['dropped'], 0)
+
+    def test_delivery_timing_storage_is_bounded(self):
+        report = robot.replay(Mock(), [(0, [(3, 0, 0)])] * 140, 0, lambda: True, clock=lambda: 0)
+        self.assertEqual(len(report['samples']), 128)
+        self.assertEqual(report['dropped'], 12)
+
+    def test_readiness_monitor_never_blocks_writer_and_expires_slow_checks(self):
+        entered, release = robot.threading.Event(), robot.threading.Event()
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        def slow():
+            entered.set()
+            release.wait(1)
+            return ready
+        monitor = robot.ReadinessMonitor(ready, 12, 0, check=slow, clock=lambda: 0)
+        monitor.start()
+        try:
+            self.assertTrue(entered.wait(1))
+            self.assertTrue(monitor.ready(.099))
+            self.assertFalse(monitor.ready(.101))
+            self.assertFalse(monitor.ready(-.001))
+        finally:
+            release.set()
+            monitor.close()
+
+    def test_readiness_monitor_latches_failure_and_rejects_wrong_capture_owner(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        monitor = robot.ReadinessMonitor(ready, 12, 0,
+                    check=lambda: {'ready': True, 'gamescope_pids': [13]}, clock=lambda: 0)
+        monitor.start()
+        try:
+            self.assertTrue(monitor.failed.wait(1))
+            self.assertFalse(monitor.ready(.01))
+            monitor.snapshot = (0, ready)
+            self.assertFalse(monitor.ready(.01))
+        finally:
+            monitor.close()
+
     def test_fixed_recipes_and_preflight_refusal(self):
         with patch.object(robot, "capabilities", return_value={"ready": False}), patch.object(robot, "Gamepad") as pad:
             with self.assertRaises(RuntimeError):
