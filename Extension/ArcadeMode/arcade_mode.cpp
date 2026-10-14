@@ -13,6 +13,7 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
+#include "Engine/Game/Build/20260929/grind_exit.h"
 #include "Extension/Skater/no_bail.h"
 #include "Extension/Skater/client_source_spawn.h"
 #include "Extension/Multiplayer/Remote/native_skater.h"
@@ -55,6 +56,7 @@ std::atomic<std::uint64_t> gameplay_valid_until{};
 std::atomic<std::uint64_t> push_eligible_until{};
 std::atomic<std::uint64_t> board_eligible_until{};
 std::atomic<float> push_speed{};
+std::atomic<bool> authored_mirror_x{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
@@ -361,6 +363,8 @@ void on_client_tick() noexcept {
                     "ARCADE AUTHORED GESTURE: index={} total={} id={} nollie={} context={} arcs={}.",
                     index, catalog->size(), gesture.native_id, gesture.nollie,
                     static_cast<unsigned>(gesture.context), gesture.arcs.size());
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE AUTHORED LABEL: index={} tokens={}.", index, gesture.source_tokens);
             }
         }
         std::array<PadEvidence, 16> pad_rows{};
@@ -420,6 +424,11 @@ void on_client_tick() noexcept {
                 "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
         }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        // Reuse the existing guarded stance flag in request_words[0]. On this
+        // Deck, the clear-bit stance needs lateral reflection: authored 2/3
+        // otherwise produced native 3/2. Other stance contexts remain HIL gates.
+        if (native.valid) authored_mirror_x.store(
+            !(native.words[0] & game::build::v20260929::grind_exit::stance_switch_mask), std::memory_order_release);
         float speed{};
         // Both wheel contacts exclude the measured manual poses. Unknown state
         // or speed means no push; native down-stick sliding also remains intact.
@@ -535,7 +544,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
-            left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{});
+            left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
+            authored_mirror_x.load(std::memory_order_acquire));
         const auto& old = previous_pad[user];
         if (mode_enabled.load(std::memory_order_acquire) &&
             (old.buttons != physical_buttons || old.lt != left_trigger || old.rt != right_trigger ||

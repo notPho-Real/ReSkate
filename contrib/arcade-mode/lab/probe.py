@@ -347,9 +347,16 @@ def parse_flip_observations(text):
 
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
+    labels = {}
     diagnostic = None
     conflicting = False
     for line in text.splitlines():
+        label = re.search(r'ARCADE AUTHORED LABEL: index=([0-9]{1,3}) tokens=([0-9]{1,4})\.$', line)
+        if label and int(label[1]) < 256 and int(label[2]) <= 1023:
+            index, tokens = map(int, label.groups())
+            if index in labels and labels[index] != tokens:
+                conflicting = True
+            labels[index] = tokens
         state = re.search(r'ARCADE AUTHORED STATUS: state=([0-3])\.$', line)
         if state:
             status = int(state[1])
@@ -367,6 +374,9 @@ def parse_authored_catalog(text):
             conflicting = True
         total = count
         entries[index] = entry
+    for index, entry in entries.items():
+        if index in labels:
+            entry['source_tokens'] = labels[index]
     return {'status': status, 'entries': [entries[i] for i in sorted(entries)], 'diagnostic': diagnostic,
             'partial': bool(diagnostic and diagnostic['rejected']),
             'complete': status == 2 and total is not None and not conflicting and

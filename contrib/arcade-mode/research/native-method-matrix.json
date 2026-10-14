@@ -1,0 +1,849 @@
+{
+  "status": "INCOMPLETE: authored flip catalog available; remaining exact methods still under source review",
+  "rows": [
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "left",
+        "presses": 1
+      },
+      "semantic_action": "Kickflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 2,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "Existing timed adapter: native ID verified 12/12 in one stance; authored adapter UNVERIFIED; authored d799 primary request produced incorrect native ID 3",
+      "review_pending": false,
+      "nollie_native_id": 17
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up",
+        "presses": 1
+      },
+      "semantic_action": "Impossible",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "right",
+        "presses": 1
+      },
+      "semantic_action": "Heelflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 3,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "Existing timed adapter: native ID verified 12/12 in one stance; authored adapter UNVERIFIED; authored d799 primary request produced incorrect native ID 2",
+      "review_pending": false,
+      "nollie_native_id": 18
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down",
+        "presses": 1
+      },
+      "semantic_action": "Pop Shove-It",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 4,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 7",
+      "review_pending": false,
+      "nollie_native_id": 19
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up_left",
+        "presses": 1
+      },
+      "semantic_action": "Hardflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 9,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 6",
+      "review_pending": false,
+      "nollie_native_id": 20
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up_right",
+        "presses": 1
+      },
+      "semantic_action": "Inward Heelflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 6,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 1",
+      "review_pending": false,
+      "nollie_native_id": 24
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down_left",
+        "presses": 1
+      },
+      "semantic_action": "Varial Kickflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 5,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 8",
+      "review_pending": false,
+      "nollie_native_id": 23
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down_right",
+        "presses": 1
+      },
+      "semantic_action": "Varial Heelflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 8,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED; authored d799 primary request produced incorrect native ID 2",
+      "review_pending": false,
+      "nollie_native_id": 21
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "left",
+        "presses": 2
+      },
+      "semantic_action": "Double Kickflip",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up",
+        "presses": 2
+      },
+      "semantic_action": "Double Impossible",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "right",
+        "presses": 2
+      },
+      "semantic_action": "Double Heelflip",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down",
+        "presses": 2
+      },
+      "semantic_action": "360 Shove-It",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 10,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED",
+      "review_pending": false,
+      "nollie_native_id": 28
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up_left",
+        "presses": 2
+      },
+      "semantic_action": "360 Hardflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 15,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED",
+      "review_pending": false,
+      "nollie_native_id": 26
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up_right",
+        "presses": 2
+      },
+      "semantic_action": "360 Inward Heelflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 12,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED",
+      "review_pending": false,
+      "nollie_native_id": 30
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down_left",
+        "presses": 2
+      },
+      "semantic_action": "360 Flip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 11,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED",
+      "review_pending": false,
+      "nollie_native_id": 29
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down_right",
+        "presses": 2
+      },
+      "semantic_action": "360 Heelflip",
+      "native_method": "Current-game authored gesture with existing upstream flick compiler",
+      "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
+      "native_id": 14,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED",
+      "review_pending": false,
+      "nollie_native_id": 27
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "left",
+        "presses": 3
+      },
+      "semantic_action": "Triple Kickflip",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "up",
+        "presses": 3
+      },
+      "semantic_action": "Triple Impossible",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "right",
+        "presses": 3
+      },
+      "semantic_action": "Triple Heelflip",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "flip",
+        "direction": "down",
+        "presses": 3
+      },
+      "semantic_action": "540 Shove-It",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "left",
+        "presses": 1
+      },
+      "semantic_action": "Melon",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up",
+        "presses": 1
+      },
+      "semantic_action": "Nosegrab",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "right",
+        "presses": 1
+      },
+      "semantic_action": "Indy",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down",
+        "presses": 1
+      },
+      "semantic_action": "Tailgrab",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up_left",
+        "presses": 1
+      },
+      "semantic_action": "Japan",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up_right",
+        "presses": 1
+      },
+      "semantic_action": "Madonna",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down_left",
+        "presses": 1
+      },
+      "semantic_action": "Benihana",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down_right",
+        "presses": 1
+      },
+      "semantic_action": "Airwalk",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "left",
+        "presses": 2
+      },
+      "semantic_action": "Method",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up",
+        "presses": 2
+      },
+      "semantic_action": "Rocket Air",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "right",
+        "presses": 2
+      },
+      "semantic_action": "Stiffy",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down",
+        "presses": 2
+      },
+      "semantic_action": "One Foot Tailgrab",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up_left",
+        "presses": 2
+      },
+      "semantic_action": "One Foot Japan",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "up_right",
+        "presses": 2
+      },
+      "semantic_action": "Judo",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down_left",
+        "presses": 2
+      },
+      "semantic_action": "Sacktap",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grab",
+        "direction": "down_right",
+        "presses": 2
+      },
+      "semantic_action": "Christ Air",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up",
+        "presses": 1
+      },
+      "semantic_action": "Nosegrind",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down",
+        "presses": 1
+      },
+      "semantic_action": "5-0",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "left",
+        "presses": 1
+      },
+      "semantic_action": "Noseslide / Tailslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "right",
+        "presses": 1
+      },
+      "semantic_action": "Noseslide / Tailslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up_left",
+        "presses": 1
+      },
+      "semantic_action": "Crooked / Overcrook",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up_right",
+        "presses": 1
+      },
+      "semantic_action": "Crooked / Overcrook",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down_left",
+        "presses": 1
+      },
+      "semantic_action": "Smith / Feeble",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down_right",
+        "presses": 1
+      },
+      "semantic_action": "Smith / Feeble",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up",
+        "presses": 2
+      },
+      "semantic_action": "Nosegrind to Pivot",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down",
+        "presses": 2
+      },
+      "semantic_action": "5-0 Overturn",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "left",
+        "presses": 2
+      },
+      "semantic_action": "Hurricane",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "right",
+        "presses": 2
+      },
+      "semantic_action": "Salad",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up_left",
+        "presses": 2
+      },
+      "semantic_action": "Hang Ten Nosegrind",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "up_right",
+        "presses": 2
+      },
+      "semantic_action": "Crail Slide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down_left",
+        "presses": 2
+      },
+      "semantic_action": "Double Blunt Slide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": {
+        "family": "grind",
+        "direction": "down_right",
+        "presses": 2
+      },
+      "semantic_action": "Darkslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": "Left Stick",
+      "semantic_action": "Automatic skating",
+      "native_method": "Bounded native push with speed hysteresis",
+      "method_source": "arcade_push.h; automatic-skating-followup-results.json",
+      "native_id": null,
+      "classification": "VERIFIED ON OUR DECK",
+      "hil_status": "21 clean flat repetitions; broader contexts open",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "LB+RB",
+      "semantic_action": "Board toggle",
+      "native_method": "Native Y pulse after chord edge; observed board-state gate",
+      "method_source": "arcade_board.h; board-toggle-results.json",
+      "native_id": null,
+      "classification": "VERIFIED ON OUR DECK",
+      "hil_status": "20 long and 5 quick cycles; partial-trigger suppression 20/20",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "Up then Down",
+      "semantic_action": "Manual",
+      "native_method": "Synthetic native right-stick partial hold; actual contact/activity observation",
+      "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
+      "native_id": null,
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "hil_status": "Native pose observed; sequence adapter not integrated",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "Down then Up",
+      "semantic_action": "Nose Manual",
+      "native_method": "Synthetic native right-stick opposite partial hold; actual contact/activity observation",
+      "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
+      "native_id": null,
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "hil_status": "Native pose observed; sequence adapter not integrated",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "Manual then A release",
+      "semantic_action": "Manual exit to ollie",
+      "native_method": "Native setup then opposite flick",
+      "method_source": "manual-pop-findings.json",
+      "native_id": null,
+      "classification": "VERIFIED ON OUR DECK",
+      "hil_status": "20 native Manual to Ollie chains in one context; Classic adapter integration open",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "A hold / release",
+      "semantic_action": "Ollie",
+      "native_method": "Authored setup held until release, then native flick",
+      "method_source": "arcade_classic_input.h; arcade_authored_playback.h",
+      "native_id": 1,
+      "nollie_native_id": 16,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "Authored A hold/release: ID 1 observed twice, DISCOVERED; repeatability and short-release envelope remain open",
+      "review_pending": false
+    },
+    {
+      "arcade_input": "Y parallel",
+      "semantic_action": "50-50",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": "Y perpendicular",
+      "semantic_action": "Boardslide / Lipslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": "Up,Up + Y",
+      "semantic_action": "Nosebluntslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    },
+    {
+      "arcade_input": "Down,Down + Y",
+      "semantic_action": "Bluntslide",
+      "native_method": null,
+      "method_source": null,
+      "native_id": null,
+      "classification": null,
+      "hil_status": "UNVERIFIED",
+      "review_pending": true
+    }
+  ],
+  "schema": 1,
+  "catalog_source": "authored-flip-catalog.json",
+  "classification_policy": "Null classification means source review remains incomplete; it is not permission to begin novel reverse engineering or evidence an exact equivalent is absent."
+}

@@ -62,13 +62,15 @@ inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGestu
 class AuthoredPlayback {
 public:
     struct Output { bool owns_stick{}; std::int16_t x{}, y{}; };
-    bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup) noexcept {
+    bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup, bool mirror_x = false) noexcept {
         cancel();
         if (steps.empty() || steps.size() > steps_.size() || steps.front().tick != 0 ||
             steps.back().tick > 180 || steps.back().x || steps.back().y) return false;
         for (std::size_t i = 1; i < steps.size(); ++i)
             if (steps[i].tick <= steps[i - 1].tick) return false;
         std::copy(steps.begin(), steps.end(), steps_.begin());
+        if (mirror_x) for (std::size_t i = 0; i < steps.size(); ++i)
+            steps_[i].x = static_cast<std::int16_t>(std::clamp(-static_cast<int>(steps_[i].x), -32768, 32767));
         size_ = steps.size(); began_ = last_ = tick; holding_ = hold_setup;
         return true;
     }

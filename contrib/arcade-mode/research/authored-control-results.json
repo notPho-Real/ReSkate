@@ -1,0 +1,248 @@
+{
+  "schema": 1,
+  "source_commit": "d799c63d477dc42a649c83dfbde548e376aaea22",
+  "dll_sha256": "4435d96d0c786bdfa897e1bc18824eaf8fbfc6f2604b29dbbfe095548313eed3",
+  "context": "Stadium1, current stance flag clear, authored adapter active",
+  "smoke": [
+    {
+      "case": "native-id-ollie",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        200,
+        201
+      ],
+      "ids": [
+        -1,
+        1
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    },
+    {
+      "case": "native-id-ollie",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        201
+      ],
+      "ids": [
+        -1,
+        1
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    },
+    {
+      "case": "native-id-kickflip",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        201
+      ],
+      "ids": [
+        -1,
+        3
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    },
+    {
+      "case": "native-id-kickflip",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        201
+      ],
+      "ids": [
+        -1,
+        3
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    },
+    {
+      "case": "native-id-heelflip",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        201
+      ],
+      "ids": [
+        -1,
+        2
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    },
+    {
+      "case": "native-id-heelflip",
+      "outcome": "OBSERVED",
+      "states": [
+        100,
+        201
+      ],
+      "ids": [
+        -1,
+        2
+      ],
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "neutralized": true,
+      "gap": null,
+      "physics_drops": 0,
+      "flip_drops": 0
+    }
+  ],
+  "primary": [
+    {
+      "case": "classic-left",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        3
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-up",
+      "outcome": "OBSERVED",
+      "ids": [],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-right",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        2
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-down",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        0,
+        7
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-up-left",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        0,
+        6
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-up-right",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        0,
+        1
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-down-left",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        0,
+        8
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    },
+    {
+      "case": "classic-down-right",
+      "outcome": "OBSERVED",
+      "ids": [
+        -1,
+        2
+      ],
+      "idle": "PASS",
+      "neutral": true,
+      "gap": null,
+      "drops": 0
+    }
+  ],
+  "finding": "A hold/release produced Ollie ID 1 twice. Authored Kickflip/Heelflip requests produced opposite native IDs 3/2. Other primary rows show further mapping failures or unsupported intent. No authored flip accepted yet.",
+  "followup": "Reflect authored lateral coordinates using the existing guarded stance flag, then rerun the whole matrix. Context variation remains unverified."
+}

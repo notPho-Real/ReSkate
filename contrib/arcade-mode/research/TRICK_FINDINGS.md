@@ -7,6 +7,32 @@ repetitions and varied conditions; INTEGRATED requires useful chains and a
 documented failure envelope. No flip currently meets the latter two levels.
 Simulation repetition tests validate the mapper, not the game's responses.
 
+## Independent native identifiers — 2026-10-14
+
+On source 3fa4a43b68d0730063297c1e80130d715a99ab36, two A trials observed
+native FlipTrickType 1. A later gameplay-ready batch observed ID 2 for both
+left-stick + X trials and ID 3 for both right-stick + X trials. Each returned
+to riding and neutral input with no physics/identifier drops or evidence gap.
+The existing timed adapter is still in use; these results do not validate the
+new authored adapter, other stances, or air/grind chaining.
+
+The preceding D-pad batch opened the native Social panel. Subsequent X presses
+entered its settings, and no flips occurred. A short setup Back press did not
+close it. Two delayed 300 ms Back presses closed the settings and parent panel;
+fresh gameplay eligibility was checked before the valid left-stick batch.
+Menu-interrupted trials are excluded from gameplay success counts. Both input
+adapters now consume D-pad modifiers only during Arcade gameplay; native menu
+navigation and Arcade OFF retain them. That correction is awaiting deployment.
+
+The authored catalog failed to load on that build. The d799c63 follow-up loads
+92 patterns with four rejected assets. Its first authored trials produced Ollie
+ID 1 twice, but requested Kickflip/Heelflip produced opposite IDs 3/2, matching
+the lateral discrepancy with the upstream test. The complete primary matrix
+continued and remained neutralized; it did not establish correct advanced flips.
+The next correction reflects authored lateral input for the measured clear-bit
+stance. Other stance contexts and corrected exact results remain acceptance
+items. See authored-control-results.json and authored-flip-catalog.json.
+
 ## Known observations before X mapping
 
 Installed source: f669926ab790d1328bc234a9828c290fb46ee276. XInput coordinates

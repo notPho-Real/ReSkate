@@ -69,6 +69,7 @@ int main() {
         controls.poll(1300, 78, 0, 0, 0, true, true, false, catalog);
         out = controls.poll(1400, 84, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
         check(!out.requested_id && !(out.buttons & ClassicGesture::x), "X waits briefly for exact repeated-button selection");
+        check(!(out.buttons & 15), "directional trick input cannot open a native gameplay menu");
         out = controls.poll(1600, 96, 0, 0, 0, true, true, false, catalog);
         check(out.requested_id == 2 && out.right_y == -32767, "left X selects the exact authored kickflip");
         controls.cancel(); controls.poll(1700, 102, 0, 0, 0, true, true, false, catalog);
@@ -81,8 +82,9 @@ int main() {
         controls.poll(2200, 132, ClassicGesture::x | 4, 0, 0, true, true, true, catalog);
         out = controls.poll(2400, 144, 0, 0, 0, true, true, true, catalog);
         check(out.requested_id == 17, "LT context selects the distinct authored nollie identifier");
-        out = controls.poll(2500, 150, ClassicGesture::a, 0, 0, false, true, true, catalog);
-        check(out.buttons == ClassicGesture::a && !out.owns_stick, "menus retain native buttons and cancel synthetic ownership");
+        out = controls.poll(2500, 150, ClassicGesture::a | 4, 0, 0, false, true, true, catalog);
+        check(out.buttons == (ClassicGesture::a | 4) && !out.owns_stick,
+            "menus retain native buttons and directional navigation while cancelling synthetic ownership");
         controls.poll(2600, 156, 0, 0, 0, true, true, false, catalog);
         controls.poll(2700, 162, ClassicGesture::a, 0, 0, true, true, false, catalog);
         out = controls.poll(2800, 161, ClassicGesture::a | ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
@@ -114,6 +116,12 @@ int main() {
             "disabling during authored crouch immediately restores physical buttons and axes");
     }
     {
+        check(authored_name_tokens("gameplay/input/gestures/fliptricks/gesture_fliptrick_impossible") == 1 &&
+            authored_name_tokens("gesture_fliptrick_front_foot_impossible_fromgrind") == 33 &&
+            authored_name_tokens("gesture_fliptrick_no_comply") == 2,
+            "authored label evidence uses a fixed numeric vocabulary");
+        check(authored_name_tokens("unrelated/private/value") == 0,
+            "unknown authored names cannot become diagnostic text");
         check(native_flip_id(ArcadeTrick::impossible, false) == 0 &&
             native_flip_id(ArcadeTrick::double_kickflip, false) == 0,
             "unestablished exact variants never fall back to basic flips");
@@ -155,6 +163,14 @@ int main() {
         playback.start(steps, 800, true);
         playback.cancel();
         check(!playback.sample(801).owns_stick, "toggle cancellation clears held authored input");
+        const std::array<AuthoredStickStep, 3> lateral{{{0, -30000, -12000}, {18, 20000, 25000}, {24, 0, 0}}};
+        playback.start(lateral, 900, true, true);
+        check(playback.sample(900).x == 30000 && playback.sample(900).y == -12000,
+            "stance reflection changes lateral setup without changing crouch depth");
+        playback.release(930);
+        check(playback.sample(930).x == -20000 && playback.sample(930).y == 25000 && lateral[1].x == 20000,
+            "stance reflection preserves authored timing and the immutable catalog");
+        check(!playback.sample(940).owns_stick, "reflected authored input returns to neutral completion");
         authored.arcs.push_back({-10, 10, .8f, 1, 0});
         const auto turning = compile_authored_flick(authored);
         check(turning.size() >= 6 && turning[2].tick + 1 == turning[3].tick,
@@ -485,6 +501,7 @@ int main() {
             const auto t = 3000ull * trial;
             auto out = gesture.poll(t, NativeGesture::x | direction, 0, 0, 0, 0, true, true);
             check(out.started == expected && !(out.buttons & NativeGesture::x), "X direction starts once and consumes X");
+            check(!(out.buttons & 15), "fallback directional trick input also suppresses native gameplay menus");
             out = gesture.poll(t + 1000, NativeGesture::x | direction, 0, 0, 0, 0, true, false);
             check(out.phase == 1 && out.right_y == -32768 && out.started == NativeTrick::none, "gesture continues across native crouch state");
             out = gesture.poll(t + 1600, NativeGesture::x | direction, 0, 0, 0, 0, true, false);

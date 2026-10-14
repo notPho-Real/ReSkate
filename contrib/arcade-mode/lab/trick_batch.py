@@ -111,6 +111,25 @@ def subsequence(expected, rows):
     return index == len(expected)
 
 
+def named_flip_result(expected, observation, log_boundary):
+    # Exact current-game FlipTrickType values from the reviewed native mapping.
+    identifiers = {"ollie": 1, "kickflip": 2, "heelflip": 3, "pop-shove-it": 4,
+                   "varial-kickflip": 5, "inward-heelflip": 6, "varial-heelflip": 8,
+                   "hardflip": 9, "360-shove-it": 10, "360-flip": 11,
+                   "360-inward-heelflip": 12, "360-heelflip": 14, "360-hardflip": 15,
+                   "nollie": 16, "nollie-kickflip": 17, "nollie-heelflip": 18,
+                   "nollie-pop-shove-it": 19, "nollie-hardflip": 20, "nollie-varial-heelflip": 21,
+                   "nollie-varial-kickflip": 23, "nollie-inward-heelflip": 24,
+                   "nollie-360-hardflip": 26, "nollie-360-heelflip": 27,
+                   "nollie-360-shove-it": 28, "nollie-360-flip": 29, "nollie-360-inward-heelflip": 30}
+    wanted = identifiers.get(expected)
+    native = observation.get("flip", {})
+    if wanted is None or log_boundary is None or observation.get("evidence_gap") or native.get("dropped", 0):
+        return "UNVERIFIED"
+    seen = {row["id"] for row in native.get("samples", []) if row.get("valid") and row["id"] > 0}
+    return "PASS" if wanted in seen else "FAIL" if seen else "UNVERIFIED"
+
+
 def perform_case(plan, case, env):
     env.integrity(plan)
     baseline = env.wait_idle(case["reset_ms"])
@@ -150,8 +169,8 @@ def perform_case(plan, case, env):
                             "heartbeat_state_sequence": "PASS" if heartbeat_match else "UNVERIFIED",
                             "physics_state_sequence": "PASS" if physics_match else "UNVERIFIED",
                             "returned_to_idle": "PASS" if reset is not None else "FAIL",
-                            "named_trick": "UNVERIFIED"}, neutralized=True)
-    # State numbers alone cannot distinguish named flips. No false trick PASS.
+                            "named_trick": named_flip_result(case["expected"].get("trick"), obs, log_boundary)}, neutralized=True)
+    # Named success requires an independent native identifier from this trial.
     return result
 
 

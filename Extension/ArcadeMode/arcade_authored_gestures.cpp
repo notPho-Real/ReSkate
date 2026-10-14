@@ -77,6 +77,7 @@ std::vector<AuthoredGesture> read_authored_gestures(const std::filesystem::path&
         if (id < 1 || id > 63) continue;
         AuthoredGesture base{};
         base.native_id = static_cast<std::uint8_t>(id);
+        base.source_tokens = authored_name_tokens(name);
         base.nollie = field<bool>(object, "IsNollie");
         base.context = name.ends_with("_fromgrind") ? GestureContext::from_grind :
             name.ends_with("_underflip") ? GestureContext::underflip : GestureContext::ground;
@@ -84,21 +85,21 @@ std::vector<AuthoredGesture> read_authored_gestures(const std::filesystem::path&
         base.hold_end = number(object, "HoldPatternMaxAngleDeg", -3600, 3600);
         base.hold_minimum = number(object, "HoldPatternMinMagnitude", 0, 1);
         const auto& patterns = field<ebx::Value::Array>(object, "Patterns");
-        if (patterns.size() > 32) throw std::runtime_error("Too many authored gesture patterns");
+        if (patterns.size() > 32) throw ParseFailure{7, 2};
         for (const auto& pattern_value : patterns) {
             const auto& pattern = object_of(pattern_value);
             if (field<std::int64_t>(pattern, "Mode") != 1) continue;
             const auto& arcs = field<ebx::Value::Array>(pattern, "Arcs");
             if (arcs.empty()) continue;
             if (arcs.size() > 32 || result.size() >= 256)
-                throw std::runtime_error("Authored gesture catalog exceeds bounds");
+                throw ParseFailure{9, 2};
             auto gesture = base;
             for (const auto& arc_value : arcs) {
                 const auto& arc = object_of(arc_value);
                 AuthoredArc item{number(arc, "StartAngle", -3600, 3600),
                     number(arc, "EndAngle", -3600, 3600), number(arc, "MinMagnitude", 0, 1),
                     number(arc, "MaxMagnitude", 0, 2), number(arc, "OverrideMaxTimeWaitingForArc", -1, 10)};
-                if (item.minimum > item.maximum) throw std::runtime_error("Authored gesture magnitude order");
+                if (item.minimum > item.maximum) throw ParseFailure{13, 2};
                 gesture.arcs.push_back(item);
             }
             result.push_back(std::move(gesture));

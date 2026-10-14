@@ -135,6 +135,21 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result["criteria"]["returned_to_idle"], "FAIL")
         self.assertEqual(env.integrity.call_count, 2)
 
+    def test_named_flip_requires_exact_fresh_independent_identifier(self):
+        observed = {"flip": {"samples": [{"ms": 12, "valid": True, "id": 2}], "dropped": 0}}
+        self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "PASS")
+        self.assertEqual(batch.named_flip_result("heelflip", observed, 100), "FAIL")
+        self.assertEqual(batch.named_flip_result("double-kickflip", observed, 100), "UNVERIFIED")
+        self.assertEqual(batch.named_flip_result("kickflip", observed, None), "UNVERIFIED")
+        observed["evidence_gap"] = "tail_limit"
+        self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "UNVERIFIED")
+        observed.pop("evidence_gap")
+        observed["flip"]["dropped"] = 1
+        self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "UNVERIFIED")
+        observed["flip"]["dropped"] = 0
+        observed["flip"]["samples"][0]["valid"] = False
+        self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "UNVERIFIED")
+
     def test_combo_capture_is_bounded_and_not_named_from_state(self):
         text = "private unrelated log\n" + "\n".join(
             "ARCADE COMBO SAMPLE: ms=%d state=100 mode=1 words=%s." %

@@ -16,16 +16,40 @@ SSH signatures verify locally; GitHub reports unknown_key until public signing-k
 registration. Do not enforce signatures yet. See SECURITY.md for the two account
 actions and the access audit.
 
-Current installed source is 3fa4a43b68d0730063297c1e80130d715a99ab36, all five
-gates passed in run 38567765136. DLL SHA-256:
-cff15b9c8d14ba8c28f91450f9cbe6145f99f411fe4db3fefee08c0370e9cdd5.
+Current installed source is d799c63d477dc42a649c83dfbde548e376aaea22, all five
+gates passed in run 38573131328. DLL SHA-256:
+4435d96d0c786bdfa897e1bc18824eaf8fbfc6f2604b29dbbfe095548313eed3.
 The game and stock backup hashes are unchanged, updates are off, and no recovery
-is pending. Reviewed runner v13 and lifecycle helper pins match this target.
-The native flip observer returns valid -1 baseline readings; this is not a named
-trick result. The authored catalog failed to load (status 3, no entries), so no
-authored trick support is claimed. A first six-case observer batch skipped every
-case because the map menu had not activated; no input was sent or success counted.
-The fixed Stadium1 click is correcting setup before the next batch.
+is pending. Reviewed runner v14 and lifecycle helper v12 pins match this target.
+The necessary DLL restart completed. The loader now reports 92 authored patterns,
+including ground, nollie and grind-exit contexts. Four rejected assets leave the
+catalog explicitly partial (stage 7, error 3). Native IDs 36–39 also have authored
+ground patterns; their exact semantic names are not yet established. See
+research/authored-flip-catalog.json. New control/camera acceptance remains open.
+The first authored batch produced native Ollie ID 1 twice from A hold/release,
+but Kickflip/Heelflip requests produced opposite IDs 3/2. The full eight-direction
+matrix continued without stuck input and recorded further mapping failures;
+unsupported Up emitted no native trick. No authored flip is accepted. A local
+follow-up reflects lateral authored coordinates for the measured clear-bit stance,
+reusing the existing guarded stance flag; other stance contexts remain unverified.
+See research/authored-control-results.json. The method matrix is now maintained
+in research/native-method-matrix.json; null classification means source review is
+still incomplete, not evidence that an exact equivalent does not exist.
+
+On the preceding 3fa4a43 build, independent native IDs confirmed two Ollies,
+twelve Kickflips and twelve Heelflips in the current flat Stadium1 context.
+All valid trials neutralized and returned to idle without gaps or drops.
+This is below the per-trick repeatability/context gate. D-pad trials opened the
+native Social menu and are excluded. Two delayed Back presses closed its settings
+and parent panel; fresh gameplay eligibility preceded the valid left-stick trials.
+Both adapters now consume gameplay D-pad modifiers locally; menus/OFF preserve
+native direction input. That correction is awaiting the next build. See
+research/native-flip-results.json and research/TRICK_FINDINGS.md.
+
+The authored catalog failed to load on 3fa4a43 (status 3, no entries), so no
+authored trick support is claimed. The current build adds bounded diagnostics
+to identify that failure. A first observer batch skipped all six cases while the
+map menu remained open; no input or success was counted.
 
 Local integration now prepares exact authored A hold/release and directional/repeated
 X selection, with LT as nollie context. The existing timed adapter remains the
@@ -33,7 +57,7 @@ fallback until a prepared catalog exists. Repeated variants without an establish
 exact mapping do not fall back to single flips. Physical right stick is camera
 when the authored adapter is active, using the existing guarded native camera lease
 with separate Arcade ownership, menu/OFF restoration and priority for party viewing.
-These new controls/camera are not yet deployed or verified on the Deck. Native
+These new controls/camera are deployed but not yet verified on the Deck. Native
 camera collision behavior and restoration remain acceptance items.
 
 The loader follow-up rejects malformed assets individually, retains only fully
@@ -43,7 +67,7 @@ a claim that the observed load failure is fixed. Stages: 1 archives, 2 TOC,
 3 bundle, 4 payload, 5 EBX, 6 fields, 7 finished. Field IDs follow the fixed list
 in arcade_authored_gestures.cpp. Errors: 1 type/missing, 2 numeric bounds,
 3 resource/other failure, 4 no usable gestures.
-Local validation: 157 Python tests, 33,406 C++ sanitizer checks, strict header
+Local validation: 159 Python tests, 33,452 C++ sanitizer checks, strict header
 conversion/shadow checks and parser syntax checks pass.
 
 Previous installed source d93dcef1822d1a0eccb660bb7b9508e86d666059 passed all five hosted

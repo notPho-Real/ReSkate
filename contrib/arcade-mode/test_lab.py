@@ -59,6 +59,17 @@ class ComboTraceTests(unittest.TestCase):
                     row.replace('rejected=1', 'rejected=65536'), row.replace('stage=6', 'stage=8')):
             self.assertIsNone(probe.parse_authored_catalog(bad)['diagnostic'])
 
+    def test_authored_label_tokens_are_bounded_and_conflicts_invalidate_catalog(self):
+        entry = 'ARCADE AUTHORED GESTURE: index=0 total=1 id=36 nollie=false context=0 arcs=8.\n'
+        label = 'ARCADE AUTHORED LABEL: index=0 tokens=33.\n'
+        ready = 'ARCADE AUTHORED STATUS: state=2.'
+        result = probe.parse_authored_catalog(entry + label + ready)
+        self.assertTrue(result['complete'])
+        self.assertEqual(result['entries'][0]['source_tokens'], 33)
+        self.assertFalse(probe.parse_authored_catalog(entry + label + label.replace('33', '1') + ready)['complete'])
+        for bad in (label.replace('33', '1024'), label.replace('index=0', 'index=256'), label.rstrip() + ' private\n'):
+            self.assertNotIn('source_tokens', probe.parse_authored_catalog(entry + bad + ready)['entries'][0])
+
     def test_source_pad_observation_is_separate_and_bounded(self):
         row = 'ARCADE PAD SOURCE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0.'
         result = probe.parse_pad_samples((row + '\n') * 130)

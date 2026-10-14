@@ -54,6 +54,7 @@ public:
             active_ = NativeTrick::none; consumed_ = 0; armed_ = false;
             return out;
         }
+        out.buttons &= ~15;
         // A held command across a menu/focus boundary must be released first.
         if (!armed_) { if (!pressed) armed_ = true; return out; }
         consumed_ &= pressed;
@@ -118,13 +119,13 @@ public:
             bool game_input, bool may_start, bool may_push = false, float speed = 0,
             bool triggers_held = false, bool may_toggle_board = false,
             bool authored = false, std::uint64_t tick = 0, bool nollie = false,
-            std::span<const PreparedGesture> catalog = {}) noexcept {
+            std::span<const PreparedGesture> catalog = {}, bool mirror_x = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         NativeGesture::Output out{};
         bool busy{};
         if (authored) {
-            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog);
+            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog, mirror_x);
             out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
                 classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};

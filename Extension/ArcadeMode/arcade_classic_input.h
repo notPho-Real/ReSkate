@@ -44,10 +44,11 @@ public:
     bool busy() const noexcept { return playback_.busy() || count_; }
     Output poll(std::uint64_t now, std::uint64_t tick, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, bool game_input, bool may_start, bool nollie,
-            std::span<const PreparedGesture> catalog) noexcept {
+            std::span<const PreparedGesture> catalog, bool mirror_x = false) noexcept {
         Output out{buttons};
         if (!game_input) { cancel(); return out; }
-        out.buttons &= ~(a | x);
+        // Directional trick modifiers must not open native gameplay menus.
+        out.buttons &= ~(a | x | 15);
         if (clocked_ && (now < last_now_ || tick < last_tick_)) { cancel(); return out; }
         clocked_ = true; last_now_ = now; last_tick_ = tick;
         const auto held = static_cast<std::uint16_t>(buttons & (a | x));
@@ -57,7 +58,7 @@ public:
         if (!armed_) { if (!held) armed_ = true; return out; }
         if (count_ && now < tap_at_) { cancel(); return out; }
         if ((edges & a) && may_start && !playback_.busy()) {
-            holding_ = begin(nollie ? 16 : 1, nollie, true, tick, catalog, out);
+            holding_ = begin(nollie ? 16 : 1, nollie, true, tick, catalog, out, mirror_x);
         }
         if ((edges & x) && ((may_start && !playback_.busy()) || holding_)) {
             const auto direction = classic_direction(buttons, lx, ly);
@@ -72,7 +73,7 @@ public:
             const auto id = native_flip_id(trick, nollie_);
             const bool hold = holding_;
             if (may_start || holding_) {
-                if (!begin(id, nollie_, hold, tick, catalog, out)) {
+                if (!begin(id, nollie_, hold, tick, catalog, out, mirror_x)) {
                     playback_.cancel(); holding_ = false;
                 } else holding_ = hold;
             }
@@ -91,10 +92,10 @@ public:
     }
 private:
     bool begin(std::uint8_t id, bool nollie, bool hold, std::uint64_t tick,
-               std::span<const PreparedGesture> catalog, Output& out) noexcept {
+               std::span<const PreparedGesture> catalog, Output& out, bool mirror_x) noexcept {
         if (id) for (const auto& gesture : catalog) {
             if (gesture.native_id != id || gesture.nollie != nollie || gesture.context != GestureContext::ground) continue;
-            if (playback_.start(gesture.steps, tick, hold)) { out.requested_id = id; return true; }
+            if (playback_.start(gesture.steps, tick, hold, mirror_x)) { out.requested_id = id; return true; }
         }
         out.unsupported = true;
         return false;
