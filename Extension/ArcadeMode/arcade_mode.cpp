@@ -110,21 +110,21 @@ void on_client_tick() noexcept {
         const auto now = GetTickCount64();
         // Drain a fixed maximum per tick; explicitly report lost evidence.
         std::array<ComboSample, 16> samples{};
-        std::size_t count{};
+        std::size_t sample_count{};
         std::uint64_t dropped{};
         {
             std::lock_guard lock(combo_samples_mutex);
-            count = std::min(samples.size(), combo_count);
-            for (std::size_t i = 0; i < count; ++i)
+            sample_count = std::min(samples.size(), combo_count);
+            for (std::size_t i = 0; i < sample_count; ++i)
                 samples[i] = combo_samples[(combo_head + i) % combo_samples.size()];
-            combo_head = (combo_head + count) % combo_samples.size();
-            combo_count -= count;
+            combo_head = (combo_head + sample_count) % combo_samples.size();
+            combo_count -= sample_count;
             dropped = combo_dropped;
             combo_dropped = 0;
         }
         if (dropped) logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE COMBO GAP: dropped={}.", dropped);
-        for (std::size_t i = 0; i < count; ++i) {
+        for (std::size_t i = 0; i < sample_count; ++i) {
             const auto& s = samples[i];
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE COMBO SAMPLE: ms={} state={} mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",

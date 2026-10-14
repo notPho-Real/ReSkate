@@ -36,6 +36,12 @@ balance correction/meter geometry (horizontal grind, vertical up-positive manual
 These are not connected to gameplay or a rendered HUD yet. No input filter slot
 changed. Waiting for first diagnostic CI before native manual candidate batch;
 do not deploy an unverified local DLL or call partial geometry an integrated HUD.
+Checkpoint31dedcc preserves raw axes/helper plus30,493 sanitizer checks.
+First Windows run38501933776 FAILED: MSVC C4456 /WX, observer sample count
+shadowed existing button count. Renamed to sample_count. Neither8cd48cc nor
+97f071f/31dedcc is deployable until a fixed source passes every CI gate.
+No diagnostic DLL reached the Deck; it still runs f669926. Latest real evidence
+is successful exit-hub recipe and on-board screenshot, not combo acceptance.
 Verified repository observations: air 200–299, wipeout300, upstream measured
 grind400–499 (especially401). Manual and revert identities are unverified;
 button intent must not substitute for those events. Exact next action: implement
