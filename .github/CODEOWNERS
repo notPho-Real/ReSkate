@@ -1,0 +1,5 @@
+# Sensitive integration and execution boundaries require fork-owner review.
+/.github/ @notPho-Real
+/.codex/ @notPho-Real
+/contrib/arcade-mode/ @notPho-Real
+/Extension/ArcadeMode/ @notPho-Real

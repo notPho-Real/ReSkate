@@ -10,7 +10,9 @@ jobs:
     if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
       - name: Fetch native dependencies required at configure time
         run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
@@ -28,7 +30,7 @@ jobs:
           "$hash  ReSkate.dll" | Set-Content artifacts/arcade-dev/ReSkate.dll.sha256 -Encoding ascii
           $env:GITHUB_SHA | Set-Content artifacts/arcade-dev/commit.txt -Encoding ascii
       - name: Upload development DLL
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ReSkate-arcade-dev-${{ github.sha }}
           path: |
@@ -42,9 +44,15 @@ jobs:
     if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
       - name: Deck, lab and bounded trick-batch simulations
         run: python3 contrib/arcade-mode/lab/controller.py self-test
+      - name: Neutral repository naming
+        run: |
+          git log -1 --format=%B > "$RUNNER_TEMP/arcade-commit-message.txt"
+          python3 contrib/arcade-mode/lab/naming_guard.py --message-file "$RUNNER_TEMP/arcade-commit-message.txt"
       - name: Shell syntax
         run: find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
 
@@ -52,7 +60,9 @@ jobs:
     if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
       - name: Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)
         run: python3 contrib/arcade-mode/lab/controller.py self-test
       - name: Python and shell syntax
@@ -64,15 +74,14 @@ jobs:
     needs: [build, linux-tests, macos-lab]
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
-    concurrency:
-      group: arcade-deck-publish
-      cancel-in-progress: false
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
       - name: Test installer and updater
         run: python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: ReSkate-arcade-dev-${{ github.sha }}
           path: artifacts/runtime
@@ -83,13 +92,28 @@ jobs:
           test "$(tr -d '\r\n' < commit.txt)" = "$GITHUB_SHA"
           cd ../..
           python3 contrib/arcade-mode/package_deck_installer.py artifacts/runtime/ReSkate.dll "$GITHUB_SHA" artifacts/Install-ReSkate-Arcade.desktop
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ReSkate-Arcade-Deck-${{ github.sha }}
           path: |
             artifacts/Install-ReSkate-Arcade.desktop
             artifacts/channel.json
           if-no-files-found: error
+
+  publish:
+    needs: [build, linux-tests, macos-lab, deck]
+    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: arcade-deck-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ReSkate-Arcade-Deck-${{ github.sha }}
+          path: artifacts
       - name: Publish tested Deck update
         if: github.ref == 'refs/heads/arcade-mode'
         env:
@@ -104,11 +128,11 @@ jobs:
               --title "Arcade Mode tested build ${GITHUB_SHA:0:7}" \
               --notes "Windows x64 DLL/model, Linux installer/updater and hosted macOS Arcade Lab simulations passed. Hardware acceptance is separate; these gates do not deploy to any Deck."
           else
-            # Keep versioned downloads immutable on workflow retries.
+            # A retry may only reuse byte-identical published artifacts.
             mkdir -p artifacts/existing
-            gh release download "$tag" --pattern Install-ReSkate-Arcade.desktop --dir artifacts/existing
-            python3 -c 'import hashlib,json,pathlib; p=pathlib.Path("artifacts/channel.json"); c=json.loads(p.read_text()); c["sha256"]=hashlib.sha256(pathlib.Path("artifacts/existing/Install-ReSkate-Arcade.desktop").read_bytes()).hexdigest(); p.write_text(json.dumps(c,indent=2)+"\n")'
-            cp artifacts/existing/Install-ReSkate-Arcade.desktop artifacts/Install-ReSkate-Arcade.desktop
+            gh release download "$tag" --pattern Install-ReSkate-Arcade.desktop --pattern channel.json --dir artifacts/existing
+            cmp artifacts/channel.json artifacts/existing/channel.json
+            cmp artifacts/Install-ReSkate-Arcade.desktop artifacts/existing/Install-ReSkate-Arcade.desktop
           fi
           # An older build finishing late must not replace the current update channel.
           head=$(gh api "repos/$GH_REPO/git/ref/heads/arcade-mode" --jq .object.sha)

@@ -1,5 +1,15 @@
 # Arcade Mode persistent project state
 
+## Security-first sequence — 2026-10-14
+
+Active work follows SECURITY.md, then live Arcade Mode toggle, automatic skating,
+board chord, exact controls and native-method integration, revert, persistent
+HIL, readable balance HUD, and finally combo acceptance. Earlier combo experiments
+below are evidence, not permission to skip these gates. cat pouch
+
+The real game remains running with the development DLL; no stock restore.
+Use the reviewed external lab runner, never persistent approval of checkout code.
+
 ## Combo/balance implementation in progress — 2026-10-13
 
 08ab first runtime batch completed6 candidates: neutral no events, manual/nose
@@ -443,16 +453,15 @@ The mirror upper-right (+28000,+28000) produced **Kickflip Sketchy**. Four
 private Gamescope frames per run; the named HUD is visible in frame 2 of each
 `artifacts/flip-candidate-left-01` and `...right-01`. These are REAL Deck
 observations, but each is one attempt and "Sketchy" means the current timing
-may need refinement. The classic THPS mapping is left X=Kickflip/right
-X=Heelflip, so the native right-stick **direction is opposite** the THPS
+may need refinement. The Classic Controls mapping is left X=Kickflip/right
+X=Heelflip, so the native right-stick **direction is opposite** the Arcade
 direction for these two names. No X runtime build has been deployed.
 
 ## Active X flip-trick milestone (2026-10-12 Pacific)
 
 Starting HEAD `970b2d93048d46c41506ed35a8a5df05076aefaf`, branch
-`arcade-mode`, clean at start. User requested actual THUG/THPS flip tricks on
-X plus left stick or D-pad. Activision's official THPS1+2 controls table
-(https://support.activision.com/tony-hawks-pro-skater-1-2/articles/controls-and-tricks-in-tony-hawks-pro-skater-1-2)
+`arcade-mode`, clean at start. User requested exact Arcade flip tricks on
+X plus left stick or D-pad. The Arcade control table
 specifies Xbox X + left/right/up/down = Kickflip/Heelflip/Impossible/Pop
 Shove-It, and top-left/top-right/bottom-left/bottom-right = Hardflip/Inward
 Heelflip/Varial Kickflip/Varial Heelflip. This is a verified classic input

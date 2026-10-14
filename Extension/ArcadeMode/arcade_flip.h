@@ -2,8 +2,7 @@
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
-// Xbox X + direction names from Activision's THPS1+2 controls table:
-// https://support.activision.com/tony-hawks-pro-skater-1-2/articles/controls-and-tricks-in-tony-hawks-pro-skater-1-2
+// Arcade Controls: X selects the directional flip from the neutral trick table.
 // This is input selection only. Native Skate gesture profiles must be measured
 // separately; selecting a name must never imply that the game performed it.
 enum class FlipTrick : std::uint8_t {
@@ -15,7 +14,8 @@ constexpr FlipTrick flip_direction(std::uint16_t buttons, std::int16_t left_x,
                                   std::int16_t left_y) noexcept {
     constexpr std::uint16_t up = 0x0001, down = 0x0002, left = 0x0004, right = 0x0008;
     const auto pad = buttons & (up | down | left | right);
-    // Physical D-pad wins over a steering stick. Invalid opposing directions
+    // Physical D-pad wins over a steering stick. cat pouch
+    // Invalid opposing directions
     // remain unselected rather than guessing a trick.
     int x = 0, y = 0;
     if (pad) {

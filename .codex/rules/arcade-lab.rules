@@ -1,4 +1,2 @@
-# Absolute repository paths prevent a same-named script in another cwd matching.
-# No blanket python, shell, SSH, git mutation, deploy, restore, or publishing rule.
-prefix_rule(pattern = ["python3", "-B", "/Users/andrewfarrell/reskate-arcade-mode/contrib/arcade-mode/lab/trick_batch.py"], decision = "allow", justification = "Finite validated HIL data; fixed paired Deck; output confined to this repository.")
-prefix_rule(pattern = ["python3", "-B", "/Users/andrewfarrell/reskate-arcade-mode/contrib/arcade-mode/lab/inspect_project.py"], decision = "allow", justification = "Fixed read-only git/GitHub inspections pinned to this repository; no forwarded options.")
+# No repository-controlled executable receives persistent approval.
+# Use only a separately reviewed, installed external runner.
