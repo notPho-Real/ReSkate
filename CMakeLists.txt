@@ -358,10 +358,11 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
         Extension/ArcadeMode/Test/arcade_playback_tests.cpp)
     target_compile_definitions(dingosdk_arcade_mode_tests PRIVATE ARCADE_PLAYBACK_COMBINED_TESTS)
     target_compile_definitions(dingosdk_arcade_mode_tests PRIVATE ARCADE_PLUMBING_COMBINED_TESTS
-        ARCADE_REVERT_COMBINED_TESTS ARCADE_ACTION_OBSERVATION_COMBINED_TESTS ARCADE_BALANCE_LAYOUT_COMBINED_TESTS)
+        ARCADE_REVERT_COMBINED_TESTS ARCADE_ACTION_OBSERVATION_COMBINED_TESTS ARCADE_BALANCE_LAYOUT_COMBINED_TESTS
+        ARCADE_SCORE_EVENT_COMBINED_TESTS)
     target_include_directories(dingosdk_arcade_mode_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_mode COMMAND dingosdk_arcade_mode_tests)
-    foreach(component action_dispatch revert action_observation balance_layout)
+    foreach(component action_dispatch action_runtime revert action_observation balance_layout manual score_event)
         target_sources(dingosdk_arcade_mode_tests PRIVATE Extension/ArcadeMode/Test/arcade_${component}_tests.cpp)
     endforeach()
 endif()

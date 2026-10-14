@@ -1,5 +1,41 @@
 # Arcade Mode persistent project state
 
+## Current runtime integration checkpoint — 2026-10-14
+
+Continues `c1e2a79c51d92f0575232462767d3f299be0492a`. The formerly preserved
+manual implementation is now reviewed and integrated, including fixes preventing
+balance corrections from becoming fresh manual commands and cancelling on native
+takeoff/bail/grind/opposite manual or conflicting controls.
+
+The unsaved `arcadeactions off|observe|grabs|revert-fs|revert-bs` selector
+requires Arcade Mode OFF to change and defaults to `off`. Candidate B grabs and
+RT reverts reach the actual remap through explicit channel ownership and packet
+progression; A/X/manual/board owners take precedence. Only the inspected clear-bit
+stance is admitted. A separate native-state freshness gate preserves revert
+playback through crouch state 103. Native recognition is not inferred from requests.
+Delivered action axes, triggers, packets and request/result fields enter the
+existing bounded evidence queue and sanitized lab collector.
+
+The score observer tracks fresh allowlisted label appearances continuously,
+separate from its capped schema diagnostics. Baselines, gaps, coalesced changes
+and persistent text cannot create repeated trick events. These are collected as
+label evidence only; combo continuation remains disconnected until HUD slot roles
+and real native revert outcomes are verified. No score amounts are invented.
+
+The trusted read-only Deck status retry still failed. A paired no-op SSH check
+confirmed `steamdeck.local` still cannot resolve. No input, deployment,
+restart or restore occurred. Recorded installed source/DLL remain those below.
+The previous source's hosted simulated Deck suite passed; its Windows development
+build was still running when inspected. Flip A/B remains the next hardware task,
+followed by native action candidates and manual transition checks. External runner
+updates have not been installed. Persistent stream transport, native grind/spin
+integration, physical balance failure and final chain/stress acceptance remain open.
+
+Local validation: 41 runtime action checks, 75 manual checks and 19 label-occurrence
+checks pass with sanitizers, alongside the prior C++ suites and 33,500 model checks.
+All 195 Python tests pass, including action/score-edge parsing, serialization and
+proof that delivered request evidence cannot satisfy native trick criteria.
+
 ## Current plumbing checkpoint — 2026-10-14 evening
 
 Continues source `3a3baebeae7a3f97105f2f1ace32ee0e492b2239`; the recorded

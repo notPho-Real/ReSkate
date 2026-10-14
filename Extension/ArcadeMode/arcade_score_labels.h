@@ -12,6 +12,12 @@ constexpr std::array<std::string_view, 20> score_labels{
     "Method", "Rocket Air", "Stiffy", "One Foot Tailgrab", "One Foot Japan", "Judo", "Sacktap", "Christ Air"
 };
 constexpr std::uint32_t score_label_id(std::string_view text) noexcept {
+    // Exact current-game guide spellings, sharing the same semantic IDs.
+    if (text == "Nose Grab") return 6;
+    if (text == "Tail Grab") return 8;
+    if (text == "Japan Air") return 9;
+    if (text == "One-Foot Tail Grab") return 16;
+    if (text == "Judo Air") return 18;
     for (std::size_t i = 0; i < score_labels.size(); ++i)
         if (text == score_labels[i]) return static_cast<std::uint32_t>(i + 1);
     return 0;

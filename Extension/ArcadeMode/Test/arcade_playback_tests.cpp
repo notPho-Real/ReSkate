@@ -16,6 +16,9 @@ int run_arcade_action_dispatch_tests();
 int run_arcade_revert_tests();
 int run_arcade_action_observation_tests();
 int run_arcade_balance_layout_tests();
+int run_arcade_action_runtime_tests();
+int run_arcade_manual_tests();
+int run_arcade_score_event_tests();
 #endif
 int run_arcade_playback_tests() {
 #ifdef ARCADE_PLUMBING_COMBINED_TESTS
@@ -23,6 +26,9 @@ int run_arcade_playback_tests() {
     run_arcade_revert_tests();
     run_arcade_action_observation_tests();
     run_arcade_balance_layout_tests();
+    run_arcade_action_runtime_tests();
+    run_arcade_manual_tests();
+    run_arcade_score_event_tests();
 #endif
     using namespace dingosdk::arcade_mode;
     constexpr std::array<AuthoredStickStep, 6> steps{{

@@ -27,7 +27,7 @@
       "method_source": "authored-flip-catalog.json: numeric source tokens and AnimationEnum",
       "native_id": 36,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact authored labels identified on f47; mapping added after that build",
+      "hil_status": "FAIL on 535 and d0: all eight regular/nollie requests produced shove-it IDs 4/19. Authored arc delivery investigation remains active.",
       "review_pending": false,
       "nollie_native_id": 38
     },
@@ -72,7 +72,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 9,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED on f47: exact native ID 9 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
+      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
       "nollie_native_id": 20
     },
@@ -87,7 +87,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 6,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED on f47: exact native ID 6 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
+      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
       "nollie_native_id": 24
     },
@@ -102,7 +102,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 5,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED on f47: exact native ID 5 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
+      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
       "nollie_native_id": 23
     },
@@ -117,7 +117,7 @@
       "method_source": "ReSkate Style Editor f6d7e5a929f9e2b046ea6b1192b1fac2487079c7; arcade_authored_gestures.cpp and arcade_authored_playback.h",
       "native_id": 8,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "DISCOVERED on f47: exact native ID 8 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
+      "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
       "nollie_native_id": 21
     },
@@ -301,17 +301,18 @@
         "presses": 1
       },
       "semantic_action": "Melon",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: hold RT, then right stick up",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -321,17 +322,18 @@
         "presses": 1
       },
       "semantic_action": "Nosegrab",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick down, then RT",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -355,17 +357,18 @@
         "presses": 1
       },
       "semantic_action": "Tailgrab",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick up, then LT",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -375,17 +378,18 @@
         "presses": 1
       },
       "semantic_action": "Japan",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick right, then RT, then right stick left",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -409,17 +413,18 @@
         "presses": 1
       },
       "semantic_action": "Benihana",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick up, then LT, then native X",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -429,17 +434,18 @@
         "presses": 1
       },
       "semantic_action": "Airwalk",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick down, then RT, then native B",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -449,17 +455,18 @@
         "presses": 2
       },
       "semantic_action": "Method",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: hold RT, then right stick right",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -469,17 +476,18 @@
         "presses": 2
       },
       "semantic_action": "Rocket Air",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick down, then both triggers",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -489,17 +497,18 @@
         "presses": 2
       },
       "semantic_action": "Stiffy",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: hold LT, then right stick left",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -509,17 +518,18 @@
         "presses": 2
       },
       "semantic_action": "One Foot Tailgrab",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: right stick up, then LT, then native A",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -543,17 +553,18 @@
         "presses": 2
       },
       "semantic_action": "Judo",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: hold RT, then native X",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -577,17 +588,18 @@
         "presses": 2
       },
       "semantic_action": "Christ Air",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Airborne: hold RT, then native B",
+      "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
-      "classification": null,
-      "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "classification": "GAME DATA AVAILABLE",
+      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "review_pending": false,
       "implementation_plumbing": {
-        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_action_plan.h",
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
       }
     },
     {
@@ -937,8 +949,14 @@
       "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
       "native_id": null,
       "classification": "RE-SKATE METHOD AVAILABLE",
-      "hil_status": "Native pose observed; sequence adapter not integrated",
-      "review_pending": false
+      "hil_status": "Measured native pose exists. Direction-sequence adapter prepared with bounded confirmation timeout; live adapter acceptance pending.",
+      "review_pending": false,
+      "implementation_plumbing": {
+        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; HIL PENDING",
+        "source": "Extension/ArcadeMode/arcade_manual_input.h",
+        "local_checks": 75,
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Down then Up",
@@ -947,8 +965,14 @@
       "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
       "native_id": null,
       "classification": "RE-SKATE METHOD AVAILABLE",
-      "hil_status": "Native pose observed; sequence adapter not integrated",
-      "review_pending": false
+      "hil_status": "Measured native pose exists. Direction-sequence adapter prepared with bounded confirmation timeout; live adapter acceptance pending.",
+      "review_pending": false,
+      "implementation_plumbing": {
+        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; HIL PENDING",
+        "source": "Extension/ArcadeMode/arcade_manual_input.h",
+        "local_checks": 75,
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Manual then A release",
@@ -968,7 +992,7 @@
       "native_id": 1,
       "nollie_native_id": 16,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "Authored A hold/release: ID 1 observed twice, DISCOVERED; repeatability and short-release envelope remain open",
+      "hil_status": "Twenty controlled A hold/release trials passed on f47 across 200/500/1500 ms holds; two d0 regression trials passed. Flat stationary context only.",
       "review_pending": false
     },
     {
@@ -1050,10 +1074,11 @@
       },
       "review_pending": false,
       "implementation_plumbing": {
-        "status": "BOUNDED RECIPE ONLY; RT NOT WIRED",
+        "status": "EXPERIMENTAL RT RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_revert_input.h",
         "duration_ms": 235,
-        "deck_trials": 0
+        "deck_trials": 0,
+        "runtime_selector": "arcadeactions revert-fs or revert-bs; inspected clear-bit stance only"
       }
     }
   ],

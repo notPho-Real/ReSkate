@@ -29,6 +29,75 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_score_edges_are_bounded_numeric_label_appearances(self):
+        row = 'ARCADE SCORE EDGE: seq=3 observed=125 sampled=120 labels=1048575 uncertainty=5.'
+        result = probe.parse_score_edges('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['samples'][0]['seq'], 2)
+        self.assertEqual(result['samples'][-1], dict(seq=129, observed=125, sampled=120, labels=1048575, uncertainty=5))
+        for field in ('seq', 'observed', 'sampled'):
+            maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
+            self.assertEqual(probe.parse_score_edges(maximum)['samples'][0][field], 18446744073709551615)
+            self.assertEqual(probe.parse_score_edges(maximum.replace('18446744073709551615',
+                '18446744073709551616'))['samples'], [])
+        for bad in (row + ' private', row.replace('labels=1048575', 'labels=1048576'),
+                    row.replace('labels=1048575', 'labels=-1'), row.replace('uncertainty=5', 'uncertainty=6'),
+                    row.replace('sampled=120', 'sampled=-1'), row.replace('observed=125', 'observed=true')):
+            self.assertEqual(probe.parse_score_edges(bad), dict(samples=[], dropped=0))
+        for value in range(6):
+            self.assertEqual(probe.parse_score_edges(row.replace('uncertainty=5', f'uncertainty={value}'))
+                             ['samples'][0]['uncertainty'], value)
+
+    def test_score_edge_batch_exposure_does_not_establish_native_identity(self):
+        from lab import trick_batch
+        result = trick_batch.observations('ARCADE SCORE EDGE: seq=3 observed=125 sampled=120 labels=8 uncertainty=0.')
+        self.assertEqual(result['score_edges']['samples'][0]['labels'], 8)
+        self.assertEqual(result['score_edges']['dropped'], 0)
+        self.assertEqual(trick_batch.named_flip_result('kickflip', result, 0), 'UNVERIFIED')
+
+    def test_action_trace_numeric_limits_tail_loss_and_booleans(self):
+        row = ('ARCADE ACTION SAMPLE: seq=3 ms=125 tick=7 user=3 mode=4 requested=true '
+               'kind=4 trick=53 result=5 owned=false lx=-32768 ly=32767 lt=0 rt=255 packet=4294967295.')
+        result = probe.parse_action_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(result['samples'][0]['seq'], 2)
+        self.assertEqual(result['samples'][-1], dict(seq=129, ms=125, tick=7, user=3, mode=4,
+            requested=True, kind=4, trick=53, result=5, owned=False, lx=-32768, ly=32767, lt=0, rt=255,
+            packet=4294967295))
+        for field in ('seq', 'ms', 'tick'):
+            maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
+            self.assertEqual(probe.parse_action_samples(maximum)['samples'][0][field], 18446744073709551615)
+            self.assertEqual(probe.parse_action_samples(maximum.replace('18446744073709551615',
+                '18446744073709551616'))['samples'], [])
+        for field in ('requested', 'owned'):
+            for value in ('true', 'false'):
+                changed = re.sub(rf'{field}=(true|false)', f'{field}={value}', row)
+                self.assertIs(probe.parse_action_samples(changed)['samples'][0][field], value == 'true')
+        for field, old, bad in (
+                ('user', '3', '4'), ('mode', '4', '5'), ('kind', '4', '5'), ('trick', '53', '54'),
+                ('result', '5', '6'), ('requested', 'true', '1'), ('owned', 'false', 'True'),
+                ('lx', '-32768', '-32769'), ('ly', '32767', '32768'), ('lt', '0', '-1'),
+                ('rt', '255', '256'), ('packet', '4294967295', '4294967296'), ('seq', '3', '-1')):
+            with self.subTest(field=field):
+                self.assertEqual(probe.parse_action_samples(row.replace(f'{field}={old}', f'{field}={bad}')),
+                                 dict(samples=[], dropped=0))
+        self.assertEqual(probe.parse_action_samples(row + ' private')['samples'], [])
+        self.assertEqual(probe.parse_action_samples(row[:-1])['samples'], [])
+
+    def test_action_trace_is_joinable_dispatch_evidence_not_native_success(self):
+        from lab import trick_batch
+        text = ('ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=12000 y=20000 phase=1.\n'
+                'ARCADE ACTION SAMPLE: seq=3 ms=125 tick=7 user=0 mode=2 requested=true '
+                'kind=1 trick=21 result=0 owned=true lx=0 ly=0 lt=0 rt=255 packet=11.')
+        result = trick_batch.observations(text)
+        action, stick = result['actions']['samples'][0], result['stick']['samples'][0]
+        self.assertEqual(tuple(action[key] for key in ('seq', 'ms', 'tick', 'user')),
+                         tuple(stick[key] for key in ('seq', 'ms', 'tick', 'user')))
+        self.assertEqual(trick_batch.named_flip_result('kickflip', result, 0), 'UNVERIFIED')
+        self.assertEqual(result['actions']['dropped'], 0)
+
     def test_playback_trace_preserves_cadence_and_packet_bounds_with_explicit_loss(self):
         row = 'ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=2 input_packet=0 output_packet=4294967295.'
         result = probe.parse_playback_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
@@ -804,6 +873,8 @@ class NativeTraceIntegrationTests(Fixture):
                  "ARCADE NATIVE CAPTURE: id=1 end=true samples=1.\n"
                  "ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=12000 y=20000 phase=1.\n"
                  "ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=2 input_packet=10 output_packet=11.\n"
+                 "ARCADE ACTION SAMPLE: seq=3 ms=125 tick=7 user=0 mode=2 requested=true kind=1 trick=21 result=0 owned=true lx=0 ly=0 lt=0 rt=255 packet=11.\n"
+                 "ARCADE SCORE EDGE: seq=4 observed=126 sampled=125 labels=8 uncertainty=0.\n"
                  "private unrelated text\n")
         report = self.lab.remote("trace")
         self.assertEqual(report["source_commit"], self.commit)
@@ -813,6 +884,13 @@ class NativeTraceIntegrationTests(Fixture):
         stick = report['stick_observations']['samples'][0]
         self.assertEqual((playback['seq'], playback['tick']), (stick['seq'], stick['tick']))
         self.assertEqual(playback['output_packet'], 11)
+        action = report['action_observations']['samples'][0]
+        self.assertEqual((action['seq'], action['ms'], action['tick']), (stick['seq'], stick['ms'], stick['tick']))
+        self.assertTrue(action['requested'])
+        self.assertTrue(action['owned'])
+        self.assertEqual(action['packet'], 11)
+        self.assertEqual(report['score_edge_observations']['samples'][0],
+                         dict(seq=4, observed=126, sampled=125, labels=8, uncertainty=0))
         self.assertNotIn("private", json.dumps(report))
         (self.game / "ReSkate.dll").write_bytes(b"wrong DLL")
         with self.assertRaises(ValueError):

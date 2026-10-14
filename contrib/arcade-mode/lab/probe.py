@@ -387,6 +387,47 @@ def parse_playback_samples(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_action_samples(text):
+    """Numeric input-dispatch evidence only; seq joins the independent stick row."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE ACTION SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) mode=([0-4]) requested=(true|false) kind=([0-4]) trick=([0-9]{1,2}) result=([0-5]) owned=(true|false) lx=(-?[0-9]{1,5}) ly=(-?[0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) packet=([0-9]{1,10})\.$', line)
+        if not row:
+            continue
+        names = ('seq', 'ms', 'tick', 'user', 'mode', 'requested', 'kind', 'trick',
+                 'result', 'owned', 'lx', 'ly', 'lt', 'rt', 'packet')
+        sample = {key: value == 'true' if key in ('requested', 'owned') else int(value)
+                  for key, value in zip(names, row.groups())}
+        # ArcadeTrick::darkslide is 53. result is DispatchResult, never native success.
+        if (max(sample['seq'], sample['ms'], sample['tick']) > 0xffffffffffffffff or
+                sample['trick'] > 53 or sample['packet'] > 0xffffffff or
+                not (-32768 <= sample['lx'] <= 32767 and -32768 <= sample['ly'] <= 32767) or
+                max(sample['lt'], sample['rt']) > 255):
+            continue
+        samples.append(sample)
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
+def parse_score_edges(text):
+    """Numeric label appearances; slot roles and native action identity remain unverified."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE SCORE EDGE: seq=([0-9]{1,20}) observed=([0-9]{1,20}) sampled=([0-9]{1,20}) labels=([0-9]{1,7}) uncertainty=([0-5])\.$', line)
+        if not row:
+            continue
+        seq, observed, sampled, labels, uncertainty = map(int, row.groups())
+        if max(seq, observed, sampled) > 0xffffffffffffffff or labels > 1048575:
+            continue
+        samples.append(dict(seq=seq, observed=observed, sampled=sampled, labels=labels, uncertainty=uncertainty))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
@@ -463,4 +504,6 @@ def native_trace(request, **kwargs):
             "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
             "stick_observations": parse_stick_samples(text[start:] if start >= 0 else ""),
             "playback_observations": parse_playback_samples(text[start:] if start >= 0 else ""),
+            "action_observations": parse_action_samples(text[start:] if start >= 0 else ""),
+            "score_edge_observations": parse_score_edges(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

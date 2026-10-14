@@ -56,6 +56,9 @@ std::atomic<std::uint64_t> ollie_eligible_until{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
 std::atomic<std::uint64_t> push_eligible_until{};
 std::atomic<std::uint64_t> board_eligible_until{};
+std::atomic<std::uint64_t> manual_eligible_until{};
+std::atomic<std::uint64_t> action_eligible_until{};
+std::atomic<SkatePose> manual_observed{SkatePose::unknown};
 std::atomic<float> push_speed{};
 std::atomic<bool> authored_mirror_x{};
 ArcadeInput arcade_input;
@@ -64,6 +67,8 @@ std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
 bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
 std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
+std::atomic<ActionExperiment> action_mode{ActionExperiment::off};
+std::array<ActionRuntime, 4> action_inputs;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 struct PadEvidence {
     std::uint64_t sequence{}, ms{};
@@ -74,6 +79,10 @@ struct PadEvidence {
     bool playback_sample{};
     unsigned playback_mode{}, input_packet{}, output_packet{};
     std::uint64_t poll{};
+    bool action_sample{}, action_requested{}, action_owned{};
+    unsigned action_mode{}, action_kind{}, action_trick{}, action_result{};
+    short left_x{}, left_y{};
+    unsigned output_lt{}, output_rt{};
 };
 std::array<PadEvidence, 64> pad_evidence{};
 std::array<PadEvidence, 4> previous_pad{};
@@ -139,6 +148,12 @@ void update_combo(const NativeRequestSample& native, const ControllerInput& inpu
     const auto pose = observed_pose({valid,
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
+    manual_observed.store(pose, std::memory_order_relaxed);
+    const bool manual_safe = valid && !bail &&
+        ((native.state == 100 && native.crouch_mode == 1) || (native.state >= 200 && native.state < 300));
+    manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
+    action_eligible_until.store(action_input_eligible({valid, false, false, bail, native.state,
+        native.crouch_mode, 0}) ? now + 150 : 0, std::memory_order_release);
     const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
     combo_tick_at = now;
     const auto kind = combo_session.model().state().balance_kind;
@@ -303,6 +318,15 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
 PlaybackExperiment playback_experiment() noexcept {
     return playback_mode.load(std::memory_order_acquire);
 }
+ActionExperiment action_experiment() noexcept { return action_mode.load(std::memory_order_acquire); }
+bool set_action_experiment(ActionExperiment value) noexcept {
+    if (value > ActionExperiment::revert_backside) return false;
+    std::lock_guard lock(ollie_mutex);
+    if (mode_enabled.load(std::memory_order_acquire)) return false;
+    for (auto& input : action_inputs) input.reset();
+    action_mode.store(value, std::memory_order_release);
+    return true;
+}
 bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcept {
     if (value != PlaybackExperiment::delivery && value != PlaybackExperiment::timeline &&
         value != PlaybackExperiment::reference) return false;
@@ -320,16 +344,21 @@ void set_enabled(bool value, bool persist) noexcept {
     {
         std::lock_guard lock(ollie_mutex);
         arcade_input.enable(value);
+        for (auto& input : action_inputs) input.reset();
         mode_enabled.store(value, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
+        manual_eligible_until.store(0, std::memory_order_release);
+        action_eligible_until.store(0, std::memory_order_release);
+        manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
         previous_pad = {};
         previous_source_pad = {};
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
+    reset_score_label_occurrences();
     combo_tick_at = 0;
     previous_pose = SkatePose::unknown;
     had_combo_owner = false;
@@ -434,11 +463,24 @@ void on_client_tick() noexcept {
             if (p.poll) logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE PLAYBACK SAMPLE: seq={} poll={} tick={} mode={} input_packet={} output_packet={}.",
                 p.sequence, p.poll, p.tick, p.playback_mode, p.input_packet, p.output_packet);
+            if (p.action_sample) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE ACTION SAMPLE: seq={} ms={} tick={} user={} mode={} requested={} kind={} trick={} result={} owned={} lx={} ly={} lt={} rt={} packet={}.",
+                p.sequence, p.ms, p.tick, p.user, p.action_mode, p.action_requested, p.action_kind,
+                p.action_trick, p.action_result, p.action_owned, p.left_x, p.left_y, p.output_lt, p.output_rt, p.output_packet);
         }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
+        const auto score_edge = take_score_label_occurrence(now);
+        if (gameplay && score_edge.valid && score_edge.labels) {
+            // Read-only evidence until the HUD slot roles are verified on Deck.
+            // An appearing label is not yet permission to extend the combo.
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",
+                score_edge.sequence, score_edge.observed_at, score_edge.sampled_at, score_edge.labels,
+                static_cast<unsigned>(score_edge.uncertainty));
+        }
         // Drain a fixed maximum per tick; explicitly report lost evidence.
         std::array<ComboSample, 16> samples{};
         std::size_t sample_count{};
@@ -482,6 +524,9 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         if (gameplay) update_combo(native, input, watch.valid, watch.wipeouts, now);
         else {
+            manual_eligible_until.store(0, std::memory_order_release);
+            action_eligible_until.store(0, std::memory_order_release);
+            manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
             combo_session.invalidate();
             combo_tick_at = 0;
             publish_balance_hud({}, 0);
@@ -570,6 +615,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto physical_buttons = buttons;
     const auto physical_right_x = right_x, physical_right_y = right_y;
     const auto physical_left_trigger = left_trigger, physical_right_trigger = right_trigger;
+    const ActionPhysicalPad action_physical{buttons, left_x, left_y, left_trigger, right_trigger};
     const auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
@@ -579,6 +625,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
     const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
     const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
+    const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
+    const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
+    const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
+    const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
     NativeGesture::Output result{};
     const auto prepared = prepared_catalog.load(std::memory_order_acquire);
     const bool authored = prepared && !prepared->empty();
@@ -586,22 +636,39 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     std::uint32_t packet_mask{};
     {
         std::lock_guard lock(ollie_mutex);
+        const bool auxiliary_busy = action_inputs[user].busy();
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start, may_push, push_speed.load(std::memory_order_relaxed),
+            game_input, may_start, may_push && !auxiliary_busy, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
-            authored_mirror_x.load(std::memory_order_acquire));
+            authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
+            manual_observed.load(std::memory_order_relaxed));
+        const auto action_experiment = action_mode.load(std::memory_order_relaxed);
+        // The inspected guide stance has a clear native switch bit, also the
+        // stance needing authored flip reflection. Do not invert this for grabs.
+        // Revert mirroring outside that baseline remains a separate native test.
+        const auto action = action_inputs[user].poll(action_experiment, now, action_physical,
+            mode_enabled.load(std::memory_order_acquire), action_safe,
+            manual_observed.load(std::memory_order_relaxed), authored_mirror_x.load(std::memory_order_acquire),
+            result.command_busy);
+        result.buttons &= ~action.consume_buttons;
+        if (action.consume_rt) right_trigger = 0;
+        if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
+        if (action.pad.owns_left_stick) { left_x = action.pad.left_x; left_y = action.pad.left_y; }
+        if (action.pad.owns_triggers) { left_trigger = action.pad.left_trigger; right_trigger = action.pad.right_trigger; }
+        if (action.pad.owns_face_buttons) result.buttons = (result.buttons & ~0xf000u) | action.pad.face_buttons;
         const auto experiment = playback_mode.load(std::memory_order_relaxed);
         const bool reference = experiment == PlaybackExperiment::reference && result.authored_playback;
         const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && left_trigger != 0;
         // The reference arm matches upstream's complete scripted pad during the
         // active flip. The timeline arm isolates scheduling with ordinary masking.
         if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
-        else if (consume_nollie) left_trigger = 0;
+        else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
-        const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask, reference);
+        const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
+            reference || action.owned || action.consume_rt || action.consume_buttons);
         packet_mask = physical_packet ^ output_packet;
         const auto poll = ++playback_polls[user];
         const auto& old = previous_pad[user];
@@ -611,11 +678,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (mode_enabled.load(std::memory_order_acquire) &&
             ((diagnostic && old.tick != tick) || old.buttons != physical_buttons || old.lt != physical_left_trigger || old.rt != physical_right_trigger ||
              old.output != result.buttons || old.phase != result.phase ||
-             old.right_x != result.right_x || old.right_y != result.right_y)) {
-            const PadEvidence row{++pad_sequence, now, user, physical_buttons, physical_left_trigger,
+             old.right_x != result.right_x || old.right_y != result.right_y || action.requested ||
+             ((action_experiment != ActionExperiment::off || old.action_sample) &&
+              (old.tick != tick || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
+               old.output_rt != right_trigger || old.action_owned != action.owned)))) {
+            PadEvidence row{++pad_sequence, now, user, physical_buttons, physical_left_trigger,
                 physical_right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y,
                 playback_diagnostics && result.authored_playback, static_cast<unsigned>(experiment),
                 physical_packet, output_packet, diagnostic ? poll : 0};
+            row.action_sample = action_experiment != ActionExperiment::off || old.action_sample;
+            row.action_requested = action.requested; row.action_owned = action.owned;
+            row.action_mode = static_cast<unsigned>(action_experiment); row.action_kind = action.request_kind;
+            row.action_trick = static_cast<unsigned>(action.trick); row.action_result = static_cast<unsigned>(action.result);
+            row.left_x = left_x; row.left_y = left_y; row.output_lt = left_trigger; row.output_rt = right_trigger;
             previous_pad[user] = row;
             if (pad_count == pad_evidence.size()) ++pad_dropped;
             else {

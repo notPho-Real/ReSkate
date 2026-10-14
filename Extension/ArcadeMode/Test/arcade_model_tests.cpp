@@ -35,8 +35,54 @@ int main() {
 #endif
     using namespace dingosdk::arcade_mode;
     {
+        ManualGesture manual;
+        auto poll = [&](std::uint64_t ms, short y, SkatePose pose = SkatePose::riding,
+                        bool safe = true, bool conflict = false, bool gameplay = true) {
+            return manual.poll(ms, 0, 0, y, gameplay, safe, pose, conflict);
+        };
+        poll(0, 25000); poll(100, -25000);
+        check(!poll(150, 0).owns_stick, "held direction on enable cannot form a manual request");
+        poll(200, 25000);
+        auto out = poll(350, -25000);
+        check(out.owns_stick && out.y == -20000 && !out.confirmed,
+            "up down requests the measured manual stick position without claiming native success");
+        out = poll(400, 0, SkatePose::manual);
+        check(out.confirmed && out.y == -20000, "only the observed matching pose confirms a manual");
+        check(poll(540, 25000, SkatePose::unknown).owns_stick, "short observation gaps preserve native manual hold");
+        check(!poll(550, -25000, SkatePose::riding).owns_stick, "an observed manual exit releases after bounded grace");
+        poll(600, 0); poll(650, -25000); out = poll(850, 25000);
+        check(out.owns_stick && out.y == 20000 && !out.confirmed,
+            "down up requests the distinct nose manual position");
+        check(!poll(900, 0, SkatePose::manual).confirmed, "an opposite native pose cannot confirm the request");
+        check(!poll(2050, 0).owns_stick, "unconfirmed requests expire and neutralize");
+        poll(2100, 0); poll(2150, 25000);
+        check(!poll(2501, -25000).owns_stick, "late directional pairs are not manual commands");
+        manual.cancel(); poll(3000, 0); poll(3050, 25000);
+        check(!poll(3100, -25000, SkatePose::bail, false).owns_stick,
+            "unsafe native state cancels a pending manual sequence");
+        poll(3200, 0); poll(3250, 25000); poll(3300, -25000);
+        check(!poll(3350, 0, SkatePose::manual, true, true).owns_stick,
+            "a conflicting synthetic gesture immediately releases manual ownership");
+        poll(3400, 0); poll(3450, 25000); poll(3500, -25000);
+        check(!poll(3550, 0, SkatePose::manual, true, false, false).owns_stick,
+            "menus immediately cancel a native manual hold");
+        poll(3600, 0); poll(3650, 25000); poll(3700, -25000);
+        check(!poll(3699, 0).owns_stick, "backwards time clears manual latches");
+        manual.cancel(); poll(4000, 0);
+        manual.poll(4050, 1, 0, 0, true, true, SkatePose::riding, false);
+        out = manual.poll(4100, 2, 0, 0, true, true, SkatePose::riding, false);
+        check(out.owns_stick && out.y == -20000, "D-pad sequences use the same exact manual request");
+        manual.cancel(); poll(4200, 0); poll(4250, 25000);
+        manual.poll(4300, 3, 0, 0, true, true, SkatePose::riding, false);
+        check(!poll(4350, -25000).owns_stick, "contradictory directions break a pending manual sequence");
+    }
+    {
         check(score_label_id("Manual") == 1 && score_label_id("BS Revert") == 4,
             "existing score label IDs remain stable");
+        check(score_label_id("Nose Grab") == 6 && score_label_id("Tail Grab") == 8 && score_label_id("Japan Air") == 9,
+            "exact native guide spellings share their semantic diagnostic IDs");
+        check(score_label_id("One-Foot Tail Grab") == 16 && score_label_id("Judo Air") == 18,
+            "native one-foot guide spellings use the requested semantic identity");
         for (std::size_t i = 0; i < score_labels.size(); ++i)
             check(score_label_id(score_labels[i]) == i + 1, "score labels have distinct diagnostic IDs");
         check(score_label_id("private player text") == 0 && score_label_id("Melon private") == 0 &&
@@ -129,6 +175,23 @@ int main() {
             true, true, false, 0, false, true, true, 204, false, catalog);
         check(packet.phase == 0 && packet.buttons == ClassicGesture::a && packet.right_x == -9000 && packet.right_y == 12000,
             "disabling during authored crouch immediately restores physical buttons and axes");
+        integrated.enable(true);
+        const auto manual_packet = [&](std::uint64_t ms, short ly, std::uint16_t buttons = 0,
+                                       SkatePose pose = SkatePose::riding) {
+            return integrated.poll(0, ms, buttons, 0, ly, 9000, 12000, true, true, true, 0,
+                false, true, true, ms / 16, false, catalog, false, true, pose);
+        };
+        manual_packet(4000, 0); manual_packet(4100, 25000);
+        packet = manual_packet(4200, -25000);
+        check(packet.phase == 1 && packet.right_x == 0 && packet.right_y == -20000 && !packet.buttons,
+            "manual request owns the synthetic stick and suppresses automatic push");
+        packet = manual_packet(4300, 0, ClassicGesture::a, SkatePose::manual);
+        check(packet.requested_id == 1 && packet.right_y == -32767,
+            "authored ollie takes priority over a manual hold");
+        integrated.enable(false);
+        packet = manual_packet(4400, -25000);
+        check(packet.phase == 0 && packet.right_x == 9000 && packet.right_y == 12000,
+            "manual cancellation on mode OFF restores physical camera axes unchanged");
     }
     {
         check(authored_name_tokens("gameplay/input/gestures/fliptricks/gesture_fliptrick_impossible") == 1 &&

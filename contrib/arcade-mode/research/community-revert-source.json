@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "classification": "COMMUNITY METHOD AVAILABLE",
-  "implementation_status": "INDEPENDENT BOUNDED RECIPE IMPLEMENTED; RT WIRING AND NATIVE TEST PENDING",
+  "implementation_status": "EXPERIMENTAL RT CANDIDATE ROUTING IMPLEMENTED; NATIVE TEST PENDING",
   "repository": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate",
   "revision": "7c28aade77293d0ec269eb5567ffff7314cf8007",
   "source": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/blob/7c28aade77293d0ec269eb5567ffff7314cf8007/dualstick_translator.py#L1632",
@@ -42,13 +42,15 @@
   },
   "verification_caveat": "Community verification is human D-pad confirmation, not native telemetry. FS/BS must be established from independent score labels/state on this pinned game build.",
   "verified_deck_results": [],
-  "next": "Evaluate this raw native recipe with native right-stick control available, then integrate RT only after observing real revert identity. Current batch runner requires Arcade ON, which redirects physical RS to camera; an OFF-native trial needs a separately reviewed bounded runner context, not blind playback through the current ON gate.",
+  "next": "Verify built artifact and live installation, run controlled flip A/B first, then evaluate delivered235ms revert candidate and independent native label/state outcome. Production RT remains unaccepted. External runner update and experiment selection require existing reviewed workflow.",
   "implementation": {
     "source": "Extension/ArcadeMode/arcade_revert_input.h",
     "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",
     "runtime_enabled": false,
     "local_checks": 192,
     "deck_trials": 0,
-    "delivery_caveat": "Absolute millisecond sampling may skip 5 ms positions under slower XInput polling; real delivered trajectory and stance contexts require observation."
+    "delivery_caveat": "Absolute millisecond sampling may skip 5 ms positions under slower XInput polling; real delivered trajectory and stance contexts require observation.",
+    "runtime_selector": "arcadeactions revert-fs or revert-bs (unsaved; change with Arcade Mode OFF)",
+    "runtime_context": "Inspected clear-bit stance only; native100/103 riding state with fresh observation. Alternate stance mirroring pending."
   }
 }

@@ -9,6 +9,12 @@ struct NativeComboObservation {
     bool valid{}, score_valid{}, score_active{}, bailed{};
     unsigned state{}, mode{}, contacts{};
 };
+inline bool action_input_eligible(const NativeComboObservation& sample) noexcept {
+    if (!sample.valid || sample.bailed) return false;
+    // Revert setup may enter native crouch before its rotation finishes.
+    return ((sample.state == 100 || sample.state == 103) && sample.mode == 1) ||
+        (sample.state >= 200 && sample.state < 300);
+}
 inline SkatePose observed_pose(const NativeComboObservation& sample) noexcept {
     if (!sample.valid) return SkatePose::unknown;
     if (sample.bailed) return SkatePose::bail;

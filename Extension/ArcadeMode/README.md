@@ -39,8 +39,13 @@ that result while testing interactions with later controls.
 
 ## Remaining action plumbing
 
-The following portable components are compiled and tested by the existing Arcade
-test target. They are integration scaffolding, **not active B/Y/RT bindings**:
+The components below are tested by the existing Arcade test target. Experimental
+B/RT routing now reaches XInput through the unsaved
+`arcadeactions off|observe|grabs|revert-fs|revert-bs` selector. Change it with Arcade
+Mode OFF, then enable Arcade Mode. Startup selects `off`; this is a native test
+entry point, not accepted gameplay. `observe` reports B/Y intent without changing
+those bindings; `grabs` consumes B for candidates; the two revert modes consume
+RT for the selected candidate. Y native actuation remains missing.
 
 - `arcade_aux_controls.h` selects exact single/double B and Y requests, including
   double directional taps. Simultaneous commands, stale input and menu transitions
@@ -53,16 +58,28 @@ test target. They are integration scaffolding, **not active B/Y/RT bindings**:
   stance/nollie context. It emits no native recognition or combo credit.
 - `arcade_action_dispatch.h` arbitrates these candidates with explicit ownership
   for sticks, triggers and face buttons. It defaults disabled and cancels on stale
-  context, landing, conflicting ownership or time reversal. The future runtime
-  adapter must restore physical input on every unowned channel, apply packet
-  progression, and preserve the physical right stick for camera handling.
+  context, landing, conflicting ownership or time reversal. `arcade_action_runtime.h`
+  connects it to the remap with packet progression and ordinary input on unowned
+  channels, preserving the physical camera path. The inspected clear-bit stance
+  is required. Native crouch state 103 stays eligible during revert setup; manual
+  eligibility has its own deadline so it cannot accidentally cancel that setup.
 - `arcade_action_observation.h` correlates bounded requests with independent native
   events. Event sequence numbers must describe actual native occurrences, not
   repeated polling of a persistent selection. Only an observed revert may feed
   the existing combo continuation hook; request delivery never does.
 
+`arcade_manual_input.h` now connects directional manual commands to the existing
+pose observer. Balance corrections cannot start a new manual while already in
+one; confirmed takeoff, incompatible poses and competing commands release
+ownership. New command repeatability and combined gameplay still need Deck tests.
+
+Continuous sanitized HUD-label appearance tracking supplies independent evidence.
+Persistent rereads never emit another occurrence; ambiguous histories, coalesced
+edges and stale samples are explicit. These edges are collected but do not yet
+extend combos: native HUD slot semantics still need verification.
+
 No grind actuator or physical balance-failure action is established by this
-scaffold. LB/RB spins, RT context selection, native score amounts and persistent
+scaffold. LB/RB spins, production RT context selection, native score amounts and persistent
 telemetry transport still require integration. The existing model remains in
 place. The HUD now uses 30% axis lengths and visible danger zones, driven by its
 published balance position; full Gamescope screenshots remain required.

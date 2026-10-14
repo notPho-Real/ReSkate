@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "arcade_action_runtime.h"
 
 namespace dingosdk::arcade_mode {
 // Development observer and guarded native-input gesture on this branch.
@@ -11,6 +12,9 @@ void set_enabled(bool value, bool persist = true) noexcept;
 enum class PlaybackExperiment : unsigned { delivery, timeline, reference };
 bool set_playback_experiment(PlaybackExperiment value, bool diagnostics = true) noexcept;
 PlaybackExperiment playback_experiment() noexcept;
+// Unsaved, explicit lab-only action selection; requires Arcade Mode OFF.
+bool set_action_experiment(ActionExperiment value) noexcept;
+ActionExperiment action_experiment() noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Uses the existing validated native camera lease on the client thread.
