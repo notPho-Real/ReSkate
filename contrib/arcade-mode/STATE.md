@@ -5,12 +5,34 @@
 Active work follows SECURITY.md, then live Arcade Mode toggle, automatic skating,
 board chord, exact controls and native-method integration, revert, persistent
 HIL, readable balance HUD, and finally combo acceptance. Earlier combo experiments
-below are evidence, not permission to skip these gates. cat pouch
+below are evidence, not permission to skip these gates.
 
 The real game remains running with the development DLL; no stock restore.
 Use the reviewed external lab runner, never persistent approval of checkout code.
 
+Security checkpoint 451a5ce passed all hosted jobs in run 38527591836, including
+the isolated publisher. GitHub rulesets are active and the owner push path works.
+SSH signatures verify locally; GitHub reports unknown_key until public signing-key
+registration. Do not enforce signatures yet. See SECURITY.md for the two account
+actions and the access audit.
+
+Live menu toggle and native-menu suppression are committed at becfa5d; Windows
+run 38529029254 must finish before deployment. C++ sanitizer tests: 30,843 checks
+passed. Lab/security/installer tests including deterministic package retries:
+144 passed. No real toggle ON/OFF acceptance has occurred yet.
+
+The current installed source remains 08ab7dc, with original game and stock hashes
+verified. External runner trusted-v3 accepts bounded plans plus enumerated menu
+actions. Worker digests are independent of checkout contents. The separately
+reviewed one-build deployment helper targets becfa5d only and cannot restore stock.
+Native Hub → Mod Options → Player is now visually confirmed on Deck. Virtual
+trigger taps alone did not change subtabs; focusing the exact game window and
+holding the pointer press for 200 ms did. Last private capture:
+artifacts/player-focused-baseline.png. The game remains open on Player, on-board.
+
 ## Combo/balance implementation in progress — 2026-10-13
+
+Keep baseline captures at the normal display size. cat pouch
 
 08ab first runtime batch completed6 candidates: neutral no events, manual/nose
 pose4/5 detected, long neutral and LY12000 each failed Arcade combo after6.833s,
