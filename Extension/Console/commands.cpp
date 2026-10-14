@@ -1,4 +1,5 @@
 #include "commands.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/path_text.h"
 #include <memory>
@@ -30,6 +31,13 @@ State boolean_state(bool available, bool value, std::string reason, std::string 
 }
 namespace {
 void register_console_commands(Commands &registry) {
+    auto arcade = action("arcademode", "Read or change Arcade Mode immediately (saved)", Group::gameplay,
+                         {argument("on|off", Type::boolean, true)});
+    arcade.run = [](const Model&, const Values& values, const Output& out) {
+        if (!values.empty()) arcade_mode::set_enabled(std::get<bool>(values[0]));
+        out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
+    };
+    registry.add(std::move(arcade));
     auto topic = argument("command", Type::text, true);
     topic.rest = true;
     topic.complete = [&registry](const Model &, auto) {

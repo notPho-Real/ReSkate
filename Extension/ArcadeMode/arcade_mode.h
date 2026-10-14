@@ -4,6 +4,9 @@
 namespace dingosdk::arcade_mode {
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
+bool enabled() noexcept;
+// Game update thread, via the normal menu/console command dispatcher.
+void set_enabled(bool value, bool persist = true) noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Called only for the game's XInput reads, after normal menu input capture.

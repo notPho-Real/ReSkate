@@ -20,6 +20,34 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    {
+        ArcadeInput input;
+        auto poll = [&](unsigned user, std::uint64_t now, std::uint16_t buttons, short rx = 0, short ry = 0) {
+            return input.poll(user, now, buttons, 0, 0, rx, ry, true, true);
+        };
+        auto out = poll(0, 0, NativeGesture::a, 12000, -9000);
+        check(out.buttons == NativeGesture::a && out.right_x == 12000 && out.right_y == -9000 && !out.phase,
+              "disabled input is physical input unchanged");
+        for (unsigned cycle = 0; cycle < 20; ++cycle) {
+            const auto now = 5000ull * cycle;
+            input.enable(true);
+            for (unsigned user = 0; user < 4; ++user) {
+                check(poll(user, now, NativeGesture::a).started == NativeTrick::none,
+                      "enabling with A held does not manufacture a press");
+                poll(user, now + 1, 0);
+                check(poll(user, now + 2, NativeGesture::a).started == NativeTrick::ollie,
+                      "release rearms each controller");
+                check(poll(user, now + 1100, NativeGesture::a).right_y == -32768,
+                      "enabled gesture reaches synthetic setup");
+            }
+            input.enable(false);
+            for (unsigned user = 0; user < 4; ++user) {
+                out = poll(user, now + 1101, NativeGesture::a, 4000, 5000);
+                check(out.buttons == NativeGesture::a && out.right_x == 4000 && out.right_y == 5000 && !out.phase,
+                      "turning off cancels every synthetic gesture and preserves native axes and buttons");
+            }
+        }
+    }
     check(observed_pose({true, true, true, false, 100, 1, 0x4000}) == SkatePose::manual,
           "measured scoring plus tail contact identifies manual");
     check(observed_pose({true, true, true, false, 100, 1, 0x8000}) == SkatePose::nose_manual,

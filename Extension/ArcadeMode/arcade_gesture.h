@@ -26,6 +26,12 @@ public:
         NativeTrick started;
         unsigned phase;
     };
+    void cancel() noexcept {
+        active_ = NativeTrick::none;
+        previous_ = consumed_ = 0;
+        began_ = 0;
+        armed_ = false;
+    }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx,
                 std::int16_t ly, std::int16_t rx, std::int16_t ry,
                 bool game_input, bool may_start) noexcept {
@@ -83,5 +89,25 @@ private:
     std::uint16_t previous_{}, consumed_{};
     std::uint64_t began_{};
     bool armed_{true};
+};
+
+// Own only synthetic state. Every poll starts with the caller's physical input.
+class ArcadeInput {
+public:
+    void enable(bool value) noexcept {
+        if (enabled_ == value) return;
+        enabled_ = value;
+        for (auto& gesture : gestures_) gesture.cancel();
+    }
+    NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
+            std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
+            bool game_input, bool may_start) noexcept {
+        if (!enabled_ || user >= gestures_.size())
+            return {buttons, rx, ry, NativeTrick::none, 0};
+        return gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
+    }
+private:
+    bool enabled_{};
+    std::array<NativeGesture, 4> gestures_{};
 };
 }

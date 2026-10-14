@@ -1,4 +1,5 @@
 #include "overlay_internal.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "skate_style.h"
 #include "cursor.h"
 #include "input_capture.h"
@@ -1160,6 +1161,8 @@ void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
         Column list(ui, hash("player"), a, ImVec2(a.x + column_width, z.y));
         const auto &d = m.debug;
         list.heading("SKATE YOUR WAY");
+        if (list.setting("Arcade Mode", arcade_mode::enabled() ? "ON" : "OFF", console))
+            run(arcade_mode::enabled() ? "arcademode off" : "arcademode on");
         if (list.setting("Noclip", on_off(d.noclip), (d.noclip_available || d.noclip) && debugging)) debug({DebugAction::set_noclip, !d.noclip});
         if (list.setting("No bail", on_off(d.no_bail), (d.no_bail_available || d.no_bail) && debugging)) debug({DebugAction::set_no_bail, !d.no_bail});
         if (list.setting("Hall of Meat", on_off(m.hall_of_meat.enabled), m.hall_of_meat.available && console)) act("hall-of-meat");

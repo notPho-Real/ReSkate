@@ -1,4 +1,5 @@
 #include "skate_menu_internal.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 
 #include <array>
 #include <cmath>
@@ -144,6 +145,12 @@ void camera_controls(SkateMenu& menu, const Model& model, const CallbacksV3& cal
 
 void movement_controls(SkateMenu& menu, const Model& model, const CallbacksV3& callbacks) {
     const auto& debug = model.debug;
+    begin_card(menu, "arcade-mode", "ARCADE MODE");
+    bool arcade = arcade_mode::enabled();
+    if (toggle_row(menu, "Arcade Mode", "Use Arcade Controls. Changes apply immediately.", arcade,
+            callbacks.queue_console_command != nullptr, arcade ? "ON" : "OFF"))
+        send_console(menu, callbacks, arcade ? "arcademode on" : "arcademode off");
+    end_card();
     begin_card(menu, "movement", "FLIGHT & BAILS");
     bool noclip = debug.noclip;
     if (toggle_row(menu, "Noclip", "Fly with the normal player camera. Includes No Bail; uses the Freecam flight speed.", noclip,
