@@ -27,6 +27,26 @@ from test_deck_installer import fake_dll, game_at
 STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
+class ComboTraceTests(unittest.TestCase):
+    def test_numeric_allowlist(self):
+        row = 'ARCADE COMBO SAMPLE: ms=12 state=401 mode=1 words=' + ','.join(['00000001'] * 8) + '.'
+        result = probe.parse_combo_samples('password=secret /home/personal\n' + row)
+        self.assertEqual(result['samples'], [{'ms': 12, 'state': 401, 'mode': 1, 'words': [1] * 8}])
+        self.assertNotIn('secret', json.dumps(result))
+        self.assertEqual(result['native_event_identity'], 'UNVERIFIED')
+
+    def test_bounds_and_gaps(self):
+        row = 'ARCADE COMBO SAMPLE: ms=12 state=401 mode=1 words=' + ','.join(['00000001'] * 8) + '.'
+        result = probe.parse_combo_samples((row + '\n') * 500 + 'ARCADE COMBO GAP: dropped=17.')
+        self.assertEqual(len(result['samples']), 128)
+        self.assertEqual(result['dropped'], 17)
+
+    def test_malformed_rejected(self):
+        row = 'ARCADE COMBO SAMPLE: ms=12 state=9999999999 mode=1 words=' + ','.join(['00000001'] * 8) + '.'
+        self.assertEqual(probe.parse_combo_samples(row)['samples'], [])
+        self.assertEqual(probe.parse_combo_samples(row.replace('9999999999', '401') + ' private')['samples'], [])
+
+
 class Fixture(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

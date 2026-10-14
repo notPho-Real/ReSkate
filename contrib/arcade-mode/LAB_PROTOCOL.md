@@ -181,6 +181,15 @@ batches, failed hypotheses and handoffs. Restore only on explicit user request,
 declared end of development, or recovery/integrity conditions that require it.
 These current instructions supersede historical restore-after-each-run notes.
 
+Combo/balance work follows pure-model tests -> native event observation -> HUD
+and raw-input integration -> repeated hardware chains. Manual/revert input intent
+is not event evidence. See [COMBO_EVENTS.md](research/COMBO_EVENTS.md). Current
+model simulation results live in research/balance-envelope.json and are explicitly
+SIMULATED. Physics-step probe output is numeric and bounded; gaps invalidate
+inferences. A successful model test or moving HUD cannot count as native failure,
+native revert, or successful rail/manual integration. Keep active development
+installed while resolving these unknowns; failed candidates continue the batch.
+
 Use `lab/trick_batch.py` and [its data protocol](lab/TRICK_BATCH.md) instead of
 asking between candidates. Run local tests and Windows/Linux/macOS CI before
 using new runner code on hardware. Failed state/trick criteria continue; exact

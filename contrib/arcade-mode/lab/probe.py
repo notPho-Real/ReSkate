@@ -221,6 +221,21 @@ def parse_native_captures(text):
     return captures
 
 
+def parse_combo_samples(text):
+    """Numeric allowlist only; no unrelated text or memory addresses returned."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        gap = re.search(r'ARCADE COMBO GAP: dropped=([0-9]{1,20})\.$', line)
+        if gap:
+            dropped = min(0xffffffffffffffff, dropped + int(gap[1]))
+        match = re.search(r'ARCADE COMBO SAMPLE: ms=([0-9]{1,20}) state=([0-9]{1,10}) mode=([0-9]{1,10}) words=([0-9a-f]{8}(?:,[0-9a-f]{8}){7})\.$', line)
+        if match and int(match[1]) <= 0xffffffffffffffff and max(int(match[2]), int(match[3])) <= 0xffffffff:
+            samples.append({"ms": int(match[1]), "state": int(match[2]), "mode": int(match[3]),
+                            "words": [int(word, 16) for word in match[4].split(',')]})
+            samples = samples[-128:]
+    return {"samples": samples, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
+
+
 def native_trace(request, **kwargs):
     verified = evidence(request, **kwargs)
     if not verified["fresh_log"]:
@@ -237,4 +252,4 @@ def native_trace(request, **kwargs):
     captures = parse_native_captures(text[start:] if start >= 0 else "")
     return {"schema": 1, "kind": "native_request_trace",
             **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
-            "captures": captures}
+            "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else "")}

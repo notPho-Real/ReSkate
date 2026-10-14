@@ -44,3 +44,18 @@ ticks; invalid dt is ignored and individual calls clamp to1s. Correction is
 signed[-1,1]. No raw controller/game pointer enters the model. Seeded phase,
 low-frequency summed sine, inertia, reduced damping/control and edge instability
 are deterministic. The default curve is simulation-tested, NOT Deck-tuned.
+
+## Measured simulation envelope
+
+`Extension/ArcadeMode/Test/balance_envelope.cpp` emits the27 runs in
+`balance-envelope.json`: ages0/10/30s ×30/60/120Hz × neutral, wrong-way hold,
+simple proportional/velocity feedback. At60Hz neutral fails at5.75/3.33/2.57s;
+wrong-way hold at1.57/1.43/1.28s. Feedback delays failure to16.6/13.83/14.6s.
+The non-monotonic last pair reflects disturbance phase, not lower difficulty;
+initial effective difficulty is0.078/0.598/0.65. Failure timing varies by at most
+one30Hz input frame across sampled rates. These are deterministic simulations,
+not human ability, native rail physics, or proof of acceptable Deck feel.
+
+Reproduce from repository root:
+`c++ -std=c++20 -I. Extension/ArcadeMode/Test/balance_envelope.cpp -o /tmp/arcade_balance_envelope`
+then `/tmp/arcade_balance_envelope`.

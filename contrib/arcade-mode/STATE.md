@@ -21,6 +21,13 @@ stock5512a15e... match prior evidence. Game/launcher running, updatesfalse.
 Private screenshot artifacts/combo-start shows Hub menu. Existing tested
 exit-hub robot recipe ran and neutralized; resulting context not yet reviewed.
 No deployment or stock restore occurred.
+Checkpoint8cd48cc pushed; CI38501933776 Windows building, Linux/macOS green;
+separate Deck CI38501933781 green. Exit-hub screenshot verified on-board skating.
+Follow-up local work: balance entry now adds link fatigue once (continuous entry
+still idempotent);27 deterministic envelope runs saved,483 C++ checks and122
+Python tests pass (three new strict numeric combo-trace sanitizer tests).
+Python compileall, all shell syntax and diff checks passed. Manual/revert mapping,
+HUD/runtime driving and native physical failure remain unverified/incomplete.
 Verified repository observations: air 200–299, wipeout300, upstream measured
 grind400–499 (especially401). Manual and revert identities are unverified;
 button intent must not substitute for those events. Exact next action: implement

@@ -104,8 +104,9 @@ public:
     void bail() noexcept { reset(); }
     void begin_balance(BalanceKind kind, float initial_balance = 0.0f) noexcept {
         if (kind != BalanceKind::grind && kind != BalanceKind::manual) return;
-        if (!state_.combo_active) trick(0); // real fresh balance can start a combo
         if (state_.balance_kind == kind) return; // continuous state is not a new link
+        if (!state_.combo_active) trick(0); // real fresh balance can start a combo
+        else link(); // genuine mode entry contributes fatigue, never per-frame points
         state_.balance_kind = kind;
         consume_grace();
         state_.balance = bounded(initial_balance, -1.0f, 1.0f);
