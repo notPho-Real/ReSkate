@@ -71,13 +71,15 @@ public:
         std::copy(steps.begin(), steps.end(), steps_.begin());
         if (mirror_x) for (std::size_t i = 0; i < steps.size(); ++i)
             steps_[i].x = static_cast<std::int16_t>(std::clamp(-static_cast<int>(steps_[i].x), -32768, 32767));
-        size_ = steps.size(); began_ = last_ = tick; holding_ = hold_setup;
+        size_ = steps.size(); began_ = last_ = step_at_ = tick; holding_ = hold_setup;
+        for (std::size_t i = 0; i < size_; ++i)
+            if (steps_[i].x || steps_[i].y) last_non_neutral_ = i;
         return true;
     }
     void release(std::uint64_t tick) noexcept {
         if (!holding_ || !size_) return;
         if (tick < last_) { cancel(); return; }
-        holding_ = false; released_ = true; began_ = last_ = tick;
+        holding_ = false; released_ = true; began_ = last_ = step_at_ = tick;
     }
     Output sample(std::uint64_t tick) noexcept {
         if (!size_) return {};
@@ -86,17 +88,29 @@ public:
         if (holding_) return {true, steps_[0].x, steps_[0].y};
         const auto elapsed = tick - began_;
         if (elapsed >= 180) { cancel(); return {}; }
-        const auto at = elapsed + (released_ ? 18 : 0);
-        if (at >= steps_[size_ - 1].tick) { cancel(); return {}; }
-        while (index_ + 1 < size_ && steps_[index_ + 1].tick <= at) ++index_;
+        const auto since_step = tick - step_at_;
+        if (index_ >= last_non_neutral_ &&
+            since_step >= steps_[size_ - 1].tick - steps_[index_].tick) {
+            cancel(); return {};
+        }
+        if (index_ + 1 < size_) {
+            const auto spacing = steps_[index_ + 1].tick - steps_[index_].tick;
+            const auto due = released_ ? (spacing > 18 ? spacing - 18 : 0) : spacing;
+            if (since_step >= due) {
+                // A late input poll must deliver the next arc, never jump over it.
+                // Schedule later arcs from this delivery; same-tick reads are stable.
+                ++index_; step_at_ = tick; released_ = false;
+            }
+        }
+        if (index_ + 1 == size_) { cancel(); return {}; }
         return {true, steps_[index_].x, steps_[index_].y};
     }
-    void cancel() noexcept { size_ = index_ = 0; holding_ = released_ = false; }
+    void cancel() noexcept { size_ = index_ = last_non_neutral_ = 0; holding_ = released_ = false; }
     bool busy() const noexcept { return size_ != 0; }
 private:
     std::array<AuthoredStickStep, 128> steps_{};
-    std::size_t size_{}, index_{};
-    std::uint64_t began_{}, last_{};
+    std::size_t size_{}, index_{}, last_non_neutral_{};
+    std::uint64_t began_{}, last_{}, step_at_{};
     bool holding_{}, released_{};
 };
 }

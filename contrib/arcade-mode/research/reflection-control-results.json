@@ -541,5 +541,1116 @@
       "gap": null,
       "dropped": 0
     }
-  ]
+  ],
+  "variant_matrix": [
+    {
+      "name": "nollie-classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        17
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        18
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        19
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        20
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "native_ids": [
+        16
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        23
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        21
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "variant-360-shove-it",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        10
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "variant-360-hardflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        15
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "variant-360-inward-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        12
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "variant-360-flip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        11
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "variant-360-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        14
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-shove-it",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        28
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-hardflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        26
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-inward-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "native_ids": [
+        16
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-flip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        29
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        27
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-a-200",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        16
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-a-1000",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "native_ids": [
+        16
+      ],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "unsupported-double-kickflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "native_ids": [],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "unsupported-double-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "native_ids": [],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "unsupported-triple-kickflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "native_ids": [],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "unsupported-triple-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "native_ids": [],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "unsupported-540-shove-it",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "PASS",
+        "named_trick": "UNVERIFIED"
+      },
+      "native_ids": [],
+      "neutralized": true,
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "variant_result": "17/19 mapped requests produced exact native IDs; nollie inward heelflip and nollie 360 inward heelflip produced plain Nollie ID 16. Five unsupported exact variants produced no positive native flip ID. All 24 neutralized, returned to idle and had no gaps/drops. Repeatability pending.",
+  "repeat_batch_one": [
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        9
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        9
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        1
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        6
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        5
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        5
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-left",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        8
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        24
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-classic-up-right",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "FAIL"
+      },
+      "neutralized": true,
+      "native_ids": [
+        16
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "nollie-360-inward-heelflip",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        30
+      ],
+      "gap": null,
+      "dropped": 0
+    }
+  ],
+  "repeat_result": "Primary repeated batch: 17/21 exact IDs; each diagonal had one simpler-result failure. Targeted inward-nollie retries: 2/3 exact IDs, including the formerly failing nollie 360 inward heelflip. All 24 neutralized and returned to idle without gaps/drops. This exposes intermittent recognition, not established repeatability.",
+  "repeat_batch_two": [
+    {
+      "name": "classic-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        2
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-right-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        3
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "PASS",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-down-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "PASS",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "PASS",
+        "returned_to_idle": "PASS",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        4
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left-dpad",
+      "outcome": "OBSERVED",
+      "criteria": {
+        "native_state_sequence": "UNVERIFIED",
+        "heartbeat_state_sequence": "UNVERIFIED",
+        "physics_state_sequence": "UNVERIFIED",
+        "returned_to_idle": "FAIL",
+        "named_trick": "PASS"
+      },
+      "neutralized": true,
+      "native_ids": [
+        9
+      ],
+      "gap": null,
+      "dropped": 0
+    },
+    {
+      "name": "classic-up-left-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-up-left-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-up-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-left-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "classic-down-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "nollie-classic-up-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "nollie-classic-up-right-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    },
+    {
+      "name": "nollie-360-inward-heelflip-dpad",
+      "outcome": "SKIPPED_CONTEXT",
+      "criteria": null,
+      "neutralized": null,
+      "native_ids": [],
+      "gap": null,
+      "dropped": null
+    }
+  ],
+  "repeat_two_context": "Nine D-pad trials passed exact native IDs and returned to idle. The next Hardflip produced ID 9 but ended in native offboard state 504; full-frame evidence shows a collision/bail among spawn barriers. Fourteen subsequent cases skipped without input because no stable on-board baseline returned. These skips are not trick failures or successful neutralization trials."
 }

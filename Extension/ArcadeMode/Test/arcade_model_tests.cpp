@@ -183,6 +183,23 @@ int main() {
         check(playback.sample(930).x == -20000 && playback.sample(930).y == 25000 && lateral[1].x == 20000,
             "stance reflection preserves authored timing and the immutable catalog");
         check(!playback.sample(940).owns_stick, "reflected authored input returns to neutral completion");
+        const std::array<AuthoredStickStep, 6> short_arcs{{
+            {0, 0, -32767}, {18, 12000, 20000}, {19, 26000, 9000},
+            {20, -22000, 15000}, {24, 0, 0}, {56, 0, 0}}};
+        playback.start(short_arcs, 1000, false);
+        check(playback.sample(1018).x == 12000 && playback.sample(1020).x == 26000,
+            "a missed input poll cannot skip a one-tick authored arc");
+        check(playback.sample(1020).x == 26000 && playback.sample(1021).x == -22000,
+            "catch-up never collapses distinct arcs into repeated reads of one game tick");
+        check(playback.sample(1025).x == 0 && !playback.sample(1057).owns_stick,
+            "delayed arc delivery retains bounded neutral release and completion");
+        playback.start(short_arcs, 2000, true);
+        playback.sample(2050);
+        playback.release(2051);
+        check(playback.sample(2051).x == 12000 && playback.sample(2053).x == 26000 &&
+            playback.sample(2054).x == -22000,
+            "held A release also delivers every short authored arc after a missed poll");
+        check(!playback.sample(2231).owns_stick, "late playback still expires at its absolute safety bound");
         authored.arcs.push_back({-10, 10, .8f, 1, 0});
         const auto turning = compile_authored_flick(authored);
         check(turning.size() >= 6 && turning[2].tick + 1 == turning[3].tick,

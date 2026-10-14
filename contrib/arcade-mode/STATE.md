@@ -31,8 +31,25 @@ seven 200 ms, seven 500 ms, six 1500 ms holds, all native Ollie ID 1.
 Every trial neutralized and returned to idle, with no evidence gaps or dropped
 flip rows. This establishes A repeatability in the stationary test context;
 flips remain discovered until repetition and practical context variation pass.
-See research/reflection-control-results.json. The 24-case nollie/repeated-input
-matrix is in progress. No repeated-variant or nollie success is claimed yet.
+See research/reflection-control-results.json. The nollie/repeated-input matrix
+produced 17 exact results from 19 mapped requests. Two inward-nollie requests
+produced plain Nollie ID 16, but both later succeeded on retry. Five unmapped
+exact double/triple variants produced no substitute native flip.
+
+Repetition exposed intermittent diagonal failures: 17/21 primary requests passed;
+four produced simpler tricks. D-pad timing variation passed nine initial trials,
+then Hardflip produced ID 9 but collided with spawn barriers and bailed (504).
+Fourteen subsequent cases skipped without input because the riding baseline was
+lost. A map reset is recovering those cases without restarting the process.
+
+A local playback regression explains one possible cause: absolute catch-up could
+skip a one-tick authored arc when input polling missed a game tick. The correction
+delivers each arc on a distinct observed tick, preserves release spacing and the
+absolute expiry bound, and passes 33,480 sanitizer checks plus strict warnings.
+The defect is reproduced locally; its role in the Deck failures is not yet proven.
+The correction still requires hosted build and Deck deployment. Do not promote flip repeatability.
+53593c4672c565c84e459eeae38555be51ecb93b (Impossible and score-label observer)
+is pushed and in CI; f47 remains the installed target until all gates pass.
 
 The catalog contains 92 valid patterns. Four rejected assets have an arc minimum
 above its maximum (stage 7, field 13, error 2), so the catalog remains partial.
