@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "verification": "REAL_HARDWARE",
+  "source_commit": "823c3adb6255b3879381edb1027f0e39fe68144f",
+  "batch": "trick-batch-20261013T224006-49526",
+  "attempts": 20,
+  "expected_score_contact_sequence": 19,
+  "interrupted_by_truck_collision": 1,
+  "tail_complete": 10,
+  "nose_complete": 9,
+  "native_event_identity": "EXPERIMENTAL_COMBINED_OBSERVATION",
+  "limits": [
+    "Near stationary; one road location",
+    "250ms score polling missed the short pre-collision nose-manual interval",
+    "No revert or grind acceptance"
+  ]
+}

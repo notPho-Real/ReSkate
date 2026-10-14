@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_model.h"
 #include "Extension/ArcadeMode/arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_native_events.h"
 #include "Extension/ArcadeMode/arcade_balance_input.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
@@ -19,6 +20,22 @@ void check(bool passed, const char* description) {
 }
 int main() {
     using namespace dingosdk::arcade_mode;
+    check(observed_pose({true, true, true, false, 100, 1, 0x4000}) == SkatePose::manual,
+          "measured scoring plus tail contact identifies manual");
+    check(observed_pose({true, true, true, false, 100, 1, 0x8000}) == SkatePose::nose_manual,
+          "measured scoring plus nose contact identifies nose manual");
+    check(observed_pose({true, true, false, false, 100, 1, 0x4000}) == SkatePose::riding,
+          "turn contact without scoring is not manual");
+    check(observed_pose({true, true, true, false, 201, 2, 0}) == SkatePose::air,
+          "ollie scoring activity is not manual");
+    check(observed_pose({true, true, true, false, 100, 1, 0xc000}) == SkatePose::riding,
+          "stale scoring after two-wheel landing is not manual");
+    check(observed_pose({true, false, false, false, 100, 1, 0x4000}) == SkatePose::unknown,
+          "missing score observation cannot invent a manual");
+    check(observed_pose({false, true, true, false, 100, 1, 0x4000}) == SkatePose::unknown,
+          "lost owner invalidates balance observation");
+    check(observed_pose({true, true, true, true, 100, 1, 0x4000}) == SkatePose::bail,
+          "actual native bail overrides stale balance fields");
     for (const auto first : {SkatePose::grind, SkatePose::manual}) {
         ComboSession session;
         const auto other = first == SkatePose::grind ? SkatePose::manual : SkatePose::grind;

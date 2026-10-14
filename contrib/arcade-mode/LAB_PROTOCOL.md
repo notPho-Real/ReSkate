@@ -209,3 +209,12 @@ Project `.codex/` requests workspace-write with automatic approval review and
 only fixed bounded command exceptions. Managed policy still wins; reload a
 trusted project to activate config. No global or unrelated repository policy
 is changed. No new runner hardware validation is implied by simulation passes.
+
+Combo/balance development: runtime adapter uses measured native scoring activity
+plus riding/contact state, never face-button intent. A score flag alone also fires
+for ollies; contact alone also occurs in turns. Invalidate on missing ownership,
+score freshness, menu/focus loss, off-board state or long client tick. Native
+revert remains unverified; never synthesize a revert event from its input recipe.
+Current native physical balance failure is unverified; combo loss and a hidden
+meter must not be reported as a native bail. Keep development installed while
+these integration gates are tested.

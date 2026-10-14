@@ -3,6 +3,7 @@
 #include "Engine/Core/Profiling/profiler.h"
 #include "overlay_internal.h"
 #include "Extension/Trainer/trainer_page.h"
+#include "Extension/ArcadeMode/arcade_balance_hud.h"
 #include "Extension/HallOfMeat/hall_of_meat_overlay.h"
 #include "park_previews.h"
 #include "chat_emotes.h"
@@ -711,6 +712,7 @@ void render(IDXGISwapChain* presented, UINT flags) {
     draw_skate_hud();
     draw_perf_hud();
     draw_trainer_hud();
+    dingosdk::arcade_mode::draw_balance_hud();
     draw_notices();
     draw_item_browser();
     draw_chat();

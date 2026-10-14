@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "source_commit": "823c3adb6255b3879381edb1027f0e39fe68144f",
+  "dll_sha256": "e3d3b895c824fae315a88ad3f3156607096d97e5770552f4bce9e6352ef12b92",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "tail-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 10
+    },
+    {
+      "name": "nose-confirm",
+      "family": "manual-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": -20000
+        },
+        {
+          "ms": 4000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 10
+    }
+  ]
+}

@@ -28,6 +28,16 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_runtime_combo_events_are_bounded_and_sanitized(self):
+        row = ('ARCADE COMBO EVENT: ms=12 pose=4 active=true failed=false '
+               'fatigue=0.5 grind=0.2 manual=0.3 native_failure_verified=false.')
+        events = probe.parse_combo_samples((row + '\n') * 200 + 'secret')['events']
+        self.assertEqual(len(events), 128)
+        self.assertEqual(events[-1]['pose'], 4)
+        self.assertFalse(events[-1]['native_failure_verified'])
+        for bad in (row + ' private', row.replace('0.5', '1e999'), row.replace('pose=4', 'pose=9')):
+            self.assertEqual(probe.parse_combo_samples(bad)['events'], [])
+
     def test_nested_score_probe_is_numeric_bounded_and_private(self):
         rows = ('ARCADE SCORE NODE: path=9b74fc7c.12345678 kind=10 size=1.\n'
                 'ARCADE SCORE VALUE: ms=99 path=9b74fc7c.12345678 value=1.\n') * 500

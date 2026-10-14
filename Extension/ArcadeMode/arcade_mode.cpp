@@ -3,6 +3,9 @@
 #include "arcade_native_probe.h"
 #include "arcade_gesture.h"
 #include "arcade_score_probe.h"
+#include "arcade_native_events.h"
+#include "arcade_balance_input.h"
+#include "arcade_balance_hud.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Extension/Skater/no_bail.h"
@@ -32,6 +35,36 @@ std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
 std::array<NativeGesture, 4> ollie_gestures{};
 std::mutex ollie_mutex;
+ComboSession combo_session;
+std::uint64_t combo_tick_at{};
+std::uint64_t observed_wipeouts{};
+bool had_combo_owner{};
+SkatePose previous_pose{SkatePose::unknown};
+void update_combo(const NativeRequestSample& native, const ControllerInput& input,
+                  bool watch_valid, std::uint64_t wipeouts, std::uint64_t now) noexcept {
+    const auto score = score_activity();
+    const bool valid = native.valid && input.available && watch_valid;
+    const bool bail = valid && had_combo_owner && wipeouts != observed_wipeouts;
+    had_combo_owner = valid;
+    observed_wipeouts = wipeouts;
+    const auto pose = observed_pose({valid,
+        score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
+        score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
+    const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
+    combo_tick_at = now;
+    const auto kind = combo_session.model().state().balance_kind;
+    const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available);
+    const bool failed = combo_session.step(pose, dt, correction);
+    if (pose != previous_pose || failed) {
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE COMBO EVENT: ms={} pose={} active={} failed={} fatigue={} grind={} manual={} native_failure_verified=false.",
+            now, static_cast<unsigned>(pose), combo_session.model().state().combo_active, failed,
+            combo_session.model().state().fatigue, combo_session.model().state().grind_fatigue,
+            combo_session.model().state().manual_fatigue);
+        previous_pose = pose;
+    }
+    publish_balance_hud(combo_session.model().state(), combo_session.model().danger());
+}
 // Read-only physics-step evidence. A short revert can disappear between client
 // ticks; keep bounded transitions, not full memory dumps or guessed event IDs.
 struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; };
@@ -137,6 +170,7 @@ void on_client_tick() noexcept {
                 s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
         }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        update_combo(native, input, watch.valid, watch.wipeouts, now);
         // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
         // checks without injecting an A press merely to arm a capture.
         if (now >= hil_heartbeat_at && now - hil_heartbeat_at >= 250) {

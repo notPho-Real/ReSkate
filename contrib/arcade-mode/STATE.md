@@ -2,6 +2,16 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+Runtime wiring checkpoint (local, NOT deployed): combined native activity+contact
+classifier,50ms score read, ComboSession, raw LX/LY correction and original
+horizontal grind/vertical manual HUD.131 Python tests and30,520 sanitizer model
+checks PASS. Revert NOT wired; native balance failure NOT actuated (combo loss only),
+so not integrated/complete. Twenty observer repetitions:19 normal correlations,
+last interrupted by truck collision (private trial019/1.png); off-board504 clears
+adapter. Results research/manual-score-repeat-results.json. Current real install
+still823c3ad. Next: CI runtime build, safe ground reset away from traffic, deploy
+only full-green build, validate actual manual HUD/correction/failure/reentry.
+
 Current HEAD13d2f334485c7a3abf0efc4cb287ea4f41818755 pushed; Linux/macOS
 PASS, Windows still pending. Installed823c3ad fully CI verified, restarted and
 healthy. Six native scoring trials completed at artifacts/trick-batch-20261013T222500-48096;

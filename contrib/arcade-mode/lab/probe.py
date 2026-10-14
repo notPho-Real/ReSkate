@@ -223,8 +223,20 @@ def parse_native_captures(text):
 
 def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
-    samples, dropped = [], 0
+    samples, events, dropped = [], [], 0
     for line in text.splitlines():
+        event = re.search(r'ARCADE COMBO EVENT: ms=([0-9]{1,20}) pose=([0-6]) active=(true|false) failed=(true|false) fatigue=([0-9.eE+-]{1,24}) grind=([0-9.eE+-]{1,24}) manual=([0-9.eE+-]{1,24}) native_failure_verified=false\.$', line)
+        if event and int(event[1]) <= 0xffffffffffffffff:
+            try:
+                fatigue = [float(event[i]) for i in (5, 6, 7)]
+                if all(0 <= value <= 1 for value in fatigue):
+                    events.append({"ms": int(event[1]), "pose": int(event[2]),
+                        "active": event[3] == "true", "failed": event[4] == "true",
+                        "fatigue": fatigue[0], "grind_fatigue": fatigue[1],
+                        "manual_fatigue": fatigue[2], "native_failure_verified": False})
+                    events = events[-128:]
+            except ValueError:
+                pass
         gap = re.search(r'ARCADE COMBO GAP: dropped=([0-9]{1,20})\.$', line)
         if gap:
             dropped = min(0xffffffffffffffff, dropped + int(gap[1]))
@@ -233,7 +245,7 @@ def parse_combo_samples(text):
             samples.append({"ms": int(match[1]), "state": int(match[2]), "mode": int(match[3]),
                             "words": [int(word, 16) for word in match[4].split(',')]})
             samples = samples[-128:]
-    return {"samples": samples, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
+    return {"samples": samples, "events": events, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
 
 
 def parse_score_samples(text):

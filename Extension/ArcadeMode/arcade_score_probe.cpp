@@ -15,6 +15,8 @@ namespace build = game::build::v20260929;
 std::map<std::string, std::uint32_t> previous;
 std::set<std::string> described;
 std::uint64_t next_poll{};
+std::uint64_t next_description{};
+ScoreActivity activity{};
 unsigned emitted{};
 std::uintptr_t previous_manager{};
 data::Value score_model{};
@@ -74,9 +76,11 @@ void inspect(const data::Context& context, data::Value value, const std::string&
         "ARCADE SCORE LIMIT: reached=true.");
 }
 }
+ScoreActivity score_activity() noexcept { return activity; }
 void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
-    if (!base || now < next_poll || emitted >= 4096) return;
-    next_poll = now + 250;
+    if (!base || now < next_poll) return;
+    next_poll = now + 50;
+    activity = {};
     try {
         const auto& functions = game::native_data().models;
         if (!functions.lock || !functions.unlock || !functions.value || !functions.field) return;
@@ -91,8 +95,17 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
             if (roots.empty()) return;
             score_model = roots.front().model;
         }
-        unsigned budget = 256;
-        inspect(context, score_model, "9b74fc7c", 0, budget, now);
+        const auto flag = context.field(score_model, 0x7aab675c);
+        data::require(data::kind(flag.type) == 10 && data::size(flag.type) == 1,
+                      "native scoring activity schema differs");
+        const auto active = data::read<std::uint8_t>(context.address(flag));
+        data::require(active <= 1, "native scoring activity is not boolean");
+        activity = {true, active != 0, now};
+        if (now >= next_description && emitted < 4096) {
+            next_description = now + 250;
+            unsigned budget = 256;
+            inspect(context, score_model, "9b74fc7c", 0, budget, now);
+        }
     } catch (...) { /* unavailable schema leaves all gameplay untouched */ }
 }
 }
