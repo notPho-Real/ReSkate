@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "classification": "COMMUNITY METHOD AVAILABLE",
-  "implementation_status": "BEHAVIORAL RECIPE VERIFIED IN SOURCE; NATIVE TEST PENDING",
+  "implementation_status": "INDEPENDENT BOUNDED RECIPE IMPLEMENTED; RT WIRING AND NATIVE TEST PENDING",
   "repository": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate",
   "revision": "7c28aade77293d0ec269eb5567ffff7314cf8007",
   "source": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/blob/7c28aade77293d0ec269eb5567ffff7314cf8007/dualstick_translator.py#L1632",
@@ -14,8 +14,14 @@
   "recipe": {
     "native_input_setting": "Classic Flick Mode",
     "coordinates": "XInput, up-positive Y; invert Y when constructing Linux HIL phases",
-    "rs_regular": [0, -1],
-    "rs_nollie": [0, 1],
+    "rs_regular": [
+      0,
+      -1
+    ],
+    "rs_nollie": [
+      0,
+      1
+    ],
     "lead_ms": 30,
     "ls_magnitude": 1,
     "circle_nominal_ms": 160,
@@ -36,5 +42,13 @@
   },
   "verification_caveat": "Community verification is human D-pad confirmation, not native telemetry. FS/BS must be established from independent score labels/state on this pinned game build.",
   "verified_deck_results": [],
-  "next": "Evaluate this raw native recipe with native right-stick control available, then integrate RT only after observing real revert identity. Current batch runner requires Arcade ON, which redirects physical RS to camera; an OFF-native trial needs a separately reviewed bounded runner context, not blind playback through the current ON gate."
+  "next": "Evaluate this raw native recipe with native right-stick control available, then integrate RT only after observing real revert identity. Current batch runner requires Arcade ON, which redirects physical RS to camera; an OFF-native trial needs a separately reviewed bounded runner context, not blind playback through the current ON gate.",
+  "implementation": {
+    "source": "Extension/ArcadeMode/arcade_revert_input.h",
+    "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",
+    "runtime_enabled": false,
+    "local_checks": 192,
+    "deck_trials": 0,
+    "delivery_caveat": "Absolute millisecond sampling may skip 5 ms positions under slower XInput polling; real delivered trajectory and stance contexts require observation."
+  }
 }

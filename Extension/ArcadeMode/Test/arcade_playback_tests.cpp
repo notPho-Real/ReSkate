@@ -11,7 +11,19 @@ void check(bool passed, const char* description) {
 }
 }
 
+#ifdef ARCADE_PLUMBING_COMBINED_TESTS
+int run_arcade_action_dispatch_tests();
+int run_arcade_revert_tests();
+int run_arcade_action_observation_tests();
+int run_arcade_balance_layout_tests();
+#endif
 int run_arcade_playback_tests() {
+#ifdef ARCADE_PLUMBING_COMBINED_TESTS
+    run_arcade_action_dispatch_tests();
+    run_arcade_revert_tests();
+    run_arcade_action_observation_tests();
+    run_arcade_balance_layout_tests();
+#endif
     using namespace dingosdk::arcade_mode;
     constexpr std::array<AuthoredStickStep, 6> steps{{
         {0, -3000, -32767}, {18, 12000, 20000}, {19, 26000, 9000},

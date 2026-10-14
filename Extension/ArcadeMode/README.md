@@ -14,10 +14,11 @@ native air/landing sequence in both ON trials and stayed native while OFF. See
 
 ## Controls under development
 
-The current A adapter uses the previously observed timed native crouch/flick
-recipe. Physical X supports the measured basic flip candidates; this is not the
-complete exact trick table. Hold/release ollie, remaining controls and final
-combo chaining still have their ordered acceptance gates ahead.
+The A/X adapter uses the game's authored gestures. A hold/release has recorded
+20-trial acceptance; several exact native flip IDs are discovered, but flip
+repeatability remains incomplete. The unsaved `arcadeplayback` experiment compares
+delivery, timeline and reference scheduling. See the current checkpoint for
+installed source identity and the pending controlled Deck comparison.
 
 Automatic skating uses left-stick movement intent and the existing guarded
 board-root velocity reader. It emits bounded native push-button pulses below
@@ -33,7 +34,45 @@ the current checkpoint.
 LB+RB within 120 ms requests one native board toggle from a verified safe riding
 or grounded offboard state. Both bumpers must release before another request;
 held or late chords cannot repeat. Individual bumpers retain native behavior.
-This adapter is locally tested and awaits its hosted build and real 20-cycle batch.
+Recorded board-toggle evidence includes 20 long and five quick cycles; preserve
+that result while testing interactions with later controls.
+
+## Remaining action plumbing
+
+The following portable components are compiled and tested by the existing Arcade
+test target. They are integration scaffolding, **not active B/Y/RT bindings**:
+
+- `arcade_aux_controls.h` selects exact single/double B and Y requests, including
+  double directional taps. Simultaneous commands, stale input and menu transitions
+  cancel pending intent. Neutral Y needs a rail relationship supplied by geometry.
+- `arcade_action_plan.h` contains 12 independently written grab candidates from
+  the installed native guide. Ordering is documented; 50 ms stages and 300 ms holds
+  are experimental timing, not measured acceptance. Missing named methods and
+  uninspected stances remain unavailable.
+- `arcade_revert_input.h` emits the sourced 235 ms native revert candidate with
+  stance/nollie context. It emits no native recognition or combo credit.
+- `arcade_action_dispatch.h` arbitrates these candidates with explicit ownership
+  for sticks, triggers and face buttons. It defaults disabled and cancels on stale
+  context, landing, conflicting ownership or time reversal. The future runtime
+  adapter must restore physical input on every unowned channel, apply packet
+  progression, and preserve the physical right stick for camera handling.
+- `arcade_action_observation.h` correlates bounded requests with independent native
+  events. Event sequence numbers must describe actual native occurrences, not
+  repeated polling of a persistent selection. Only an observed revert may feed
+  the existing combo continuation hook; request delivery never does.
+
+No grind actuator or physical balance-failure action is established by this
+scaffold. LB/RB spins, RT context selection, native score amounts and persistent
+telemetry transport still require integration. The existing model remains in
+place. The HUD now uses 30% axis lengths and visible danger zones, driven by its
+published balance position; full Gamescope screenshots remain required.
+
+`contrib/arcade-mode/lab/chain_report.py` grades the eight mandatory chain evidence
+contracts offline. It requires observed native outcomes, continuous event
+sequences, coherent combo/fatigue/banking state, recovery, and at least 20 passing
+trials across two contexts per chain. The live semantic telemetry adapter is
+pending; the synthetic fixtures test the grader only. Existing raw trial logs
+cannot be promoted to chain acceptance by supplying requested action names.
 
 ## Read-only observations
 

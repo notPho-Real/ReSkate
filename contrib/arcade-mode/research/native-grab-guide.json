@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "source": "Installed current-game Skatepedia, Grabs category",
+  "inspection_source_commit": "d0c835c18af48cee21554453a12c41998706dee8",
+  "context": "Same Deck and character as the measured clear-bit stance; opposite stance remains unverified",
+  "status": "GAME DATA AVAILABLE; guide instructions are not proof of a performed native result",
+  "axis_convention": "Native XInput right stick: x right-positive, y up-positive; use full directional deflection",
+  "methods": [
+    {"action": "Melon", "sequence": "Airborne: hold RT, then right stick up", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Nosegrab", "native_label": "Nose Grab", "sequence": "Airborne: right stick down, then RT", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Tailgrab", "native_label": "Tail Grab", "sequence": "Airborne: right stick up, then LT", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Japan", "native_label": "Japan Air", "sequence": "Airborne: right stick right, then RT, then right stick left", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Method", "sequence": "Airborne: hold RT, then right stick right", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Rocket Air", "sequence": "Airborne: right stick down, then both triggers", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Stiffy", "sequence": "Airborne: hold LT, then right stick left", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Benihana", "sequence": "Airborne: right stick up, then LT, then native X", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Airwalk", "sequence": "Airborne: right stick down, then RT, then native B", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "One Foot Tailgrab", "native_label": "One-Foot Tail Grab", "sequence": "Airborne: right stick up, then LT, then native A", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Judo", "native_label": "Judo Air", "sequence": "Airborne: hold RT, then native X", "native_id": null, "hil_status": "UNVERIFIED"},
+    {"action": "Christ Air", "sequence": "Airborne: hold RT, then native B", "native_id": null, "hil_status": "UNVERIFIED"}
+  ],
+  "notes": [
+    "The native guide explicitly separates basic FS/BS grabs from Melon and other modified grabs. Do not promote a generic grab as a requested named result.",
+    "Capture and trigger timing still require bounded native-result trials.",
+    "Screenshots remain private local artifacts. No player text or image data is committed."
+  ]
+}

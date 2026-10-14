@@ -306,7 +306,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -320,7 +326,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -348,7 +360,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -362,7 +380,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -390,7 +414,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -404,7 +434,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -418,7 +454,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -432,7 +474,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -446,7 +494,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -460,7 +514,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -488,7 +548,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -516,7 +582,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "CANDIDATE ONLY; NOT RUNTIME WIRED",
+        "source": "Extension/ArcadeMode/arcade_action_plan.h",
+        "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -530,7 +602,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -544,7 +622,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -558,7 +642,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -572,7 +662,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -586,7 +682,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -600,7 +702,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -614,7 +722,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -628,7 +742,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -642,7 +762,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -656,7 +782,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -670,7 +802,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -684,7 +822,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -698,7 +842,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -712,7 +862,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -726,7 +882,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -740,7 +902,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": "Left Stick",
@@ -811,7 +979,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": "Y perpendicular",
@@ -821,7 +995,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": "Up,Up + Y",
@@ -831,7 +1011,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": "Down,Down + Y",
@@ -841,7 +1027,13 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "implementation_plumbing": {
+        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "source": "Extension/ArcadeMode/arcade_aux_controls.h",
+        "requires": "Fresh rail approach geometry and independently observed exact identity",
+        "deck_trials": 0
+      }
     },
     {
       "arcade_input": "RT",
@@ -856,7 +1048,13 @@
         "trials": 0,
         "exact": 0
       },
-      "review_pending": false
+      "review_pending": false,
+      "implementation_plumbing": {
+        "status": "BOUNDED RECIPE ONLY; RT NOT WIRED",
+        "source": "Extension/ArcadeMode/arcade_revert_input.h",
+        "duration_ms": 235,
+        "deck_trials": 0
+      }
     }
   ],
   "schema": 1,

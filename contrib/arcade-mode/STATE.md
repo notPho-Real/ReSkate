@@ -1,5 +1,47 @@
 # Arcade Mode persistent project state
 
+## Current plumbing checkpoint — 2026-10-14 evening
+
+Continues source `3a3baebeae7a3f97105f2f1ace32ee0e492b2239`; the recorded
+installed DLL and hardware blocker below are unchanged. No Deck input or
+deployment was performed. Flip A/B remains the first hardware experiment.
+
+At the user's request, offline implementation now also covers:
+
+- Exact B/Y command selection and repeated direction handling, with missing
+  geometry/methods reported explicitly.
+- Twelve bounded grab candidates from the existing native guide and the
+  independently written community revert candidate. A default-disabled dispatcher
+  reserves input channels, excludes other owners, and cancels on stale context,
+  incompatible native state, conflicts or reversed time. These are not live B/Y/RT
+  bindings and cannot prove native success. Grab timings remain experimental.
+- Independent native-event/request correlation, with epoch/sequence freshness,
+  one-shot observed revert handoff, and reset/bail invalidation. A native occurrence
+  adapter is still needed; polling a persistent selected ID is not a new event.
+- A larger model-driven HUD: horizontal grind and vertical manual tracks span
+  30% of the respective display dimension, with warning/severe zones and stronger
+  cursor, center and boundary marks. Gamescope screenshots remain unverified.
+- An offline A–H chain evidence grader requiring independent native events,
+  coherent combo/fatigue/banking state, recovery and repeated contexts. Its live
+  semantic telemetry adapter is pending; synthetic grader fixtures are not Deck
+  trials. Missing evidence cannot pass. See `lab/chain_report.py`.
+
+The existing manual runtime changes remain in the working tree, preserved from
+recovery. They pass the combined local model tests but are not promoted to Deck
+acceptance. Existing combo dynamics, trusted runner, security configuration and
+playback default are unchanged. Native grind actuation, spins, physical balance
+failure consequences, score values and persistent stream transport remain open.
+
+Validation: 124 dispatcher/command checks, 192 revert recipe checks, 41 event
+handoff checks, 122 HUD geometry checks, 40 playback checks and 33,500 working-tree
+model checks pass with address/undefined-behavior sanitizers. HUD syntax passes
+against the bundled ImGui. All 191 Python tests pass, including ten chain-grader
+contract tests. All new C++ suites are included in the existing hosted
+Arcade test target. Native repeatability denominators for the new candidates are
+zero; no milestone is marked DISCOVERED or ACCEPTED from these local tests.
+The staged source without the preserved manual edits also passes all new suites
+and 33,480 existing model checks with sanitizers.
+
 ## Current resumption checkpoint — 2026-10-14 afternoon
 
 This section supersedes the historical status below. Security work is complete
