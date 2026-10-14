@@ -21,6 +21,18 @@ void check(bool passed, const char* description) {
 int main() {
     using namespace dingosdk::arcade_mode;
     {
+        constexpr std::uint32_t physical_packet = 123;
+        const std::array packets{
+            physical_packet ^ synthetic_packet_mask(0, false),
+            physical_packet ^ synthetic_packet_mask(0, true),
+            physical_packet ^ synthetic_packet_mask(1, true),
+            physical_packet ^ synthetic_packet_mask(2, true)};
+        for (std::size_t i = 0; i < packets.size(); ++i)
+            for (std::size_t j = i + 1; j < packets.size(); ++j)
+                check(packets[i] != packets[j], "every synthetic phase and native restoration changes an unchanged physical packet");
+        check(synthetic_packet_mask(0, false) == 0, "disabled native packet remains unmodified");
+    }
+    {
         ArcadeInput input;
         auto poll = [&](unsigned user, std::uint64_t now, std::uint16_t buttons, short rx = 0, short ry = 0) {
             return input.poll(user, now, buttons, 0, 0, rx, ry, true, true);

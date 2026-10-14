@@ -314,7 +314,7 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
-        if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
+        output->dwPacketNumber ^= phase;
     }
     return result;
 }
@@ -625,7 +625,7 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY);
-        if (phase) output->dwPacketNumber ^= phase == 1 ? 0x40000000u : 0x20000000u;
+        output->dwPacketNumber ^= phase;
     }
     return result;
 }

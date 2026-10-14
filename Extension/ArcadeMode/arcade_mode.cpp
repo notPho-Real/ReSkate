@@ -275,6 +275,7 @@ void on_client_tick() noexcept {
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                       short& right_y, bool game_input, short left_x, short left_y) noexcept {
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
+    const auto physical_buttons = buttons;
     const auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
@@ -294,6 +295,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     if (result.started == NativeTrick::kickflip || result.started == NativeTrick::heelflip)
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE FLIP: X started candidate={} (experimental).", static_cast<unsigned>(result.started));
-    return result.phase;
+    return synthetic_packet_mask(result.phase, buttons != physical_buttons);
 }
 }

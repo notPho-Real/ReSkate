@@ -7,6 +7,11 @@ namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 struct GesturePhase { unsigned duration_ms; std::int16_t x, y; bool owns_stick; };
 struct GestureProfile { std::array<GesturePhase, 3> phases; };
+// Distinguish button masking, stick setup and flick from the native packet.
+// Restoration must also be visible when the physical packet has not changed.
+constexpr std::uint32_t synthetic_packet_mask(unsigned phase, bool masked_buttons) noexcept {
+    return phase == 1 ? 0x40000000u : phase == 2 ? 0x20000000u : masked_buttons ? 0x60000000u : 0u;
+}
 // XInput Y is up-positive. Flip endpoints are DISCOVERED Deck observations,
 // not a claim of repeatability, airborne chaining or stance independence.
 constexpr GestureProfile profile(NativeTrick trick) noexcept {
