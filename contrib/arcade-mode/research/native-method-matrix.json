@@ -1,5 +1,5 @@
 {
-  "status": "INCOMPLETE: pinned source survey found scoring, grind observation and physical-bail methods; exact action acceptance remains separate",
+  "status": "INCOMPLETE: every action reviewed for fallback sources; external native line events, held-flip data and additional controller methods found. Source availability never substitutes for Deck acceptance.",
   "rows": [
     {
       "arcade_input": {
@@ -14,7 +14,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED on f47: exact native ID 2 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
-      "nollie_native_id": 17
+      "nollie_native_id": 17,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -29,7 +40,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "FAIL on 535 and d0: all eight regular/nollie requests produced shove-it IDs 4/19. Authored arc delivery investigation remains active.",
       "review_pending": false,
-      "nollie_native_id": 38
+      "nollie_native_id": 38,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -44,7 +66,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED on f47: exact native ID 3 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
-      "nollie_native_id": 18
+      "nollie_native_id": 18,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -59,7 +92,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED on f47: exact native ID 4 verified in the measured clear-bit stance; all neutralized and returned to idle. Seven primary flips passed; repeated and nollie contexts pending. See reflection-control-results.json.",
       "review_pending": false,
-      "nollie_native_id": 19
+      "nollie_native_id": 19,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -74,7 +118,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
-      "nollie_native_id": 20
+      "nollie_native_id": 20,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -89,7 +144,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
-      "nollie_native_id": 24
+      "nollie_native_id": 24,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -104,7 +170,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
-      "nollie_native_id": 23
+      "nollie_native_id": 23,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -119,7 +196,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "DISCOVERED exact ID on f47 and d0, but repeated trials intermittently produce simpler native tricks. See reflection-control-results.json and playback-regression-results.json.",
       "review_pending": false,
-      "nollie_native_id": 21
+      "nollie_native_id": 21,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -133,7 +221,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -147,7 +247,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -161,7 +273,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -176,7 +300,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
       "review_pending": false,
-      "nollie_native_id": 28
+      "nollie_native_id": 28,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -191,7 +326,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
       "review_pending": false,
-      "nollie_native_id": 26
+      "nollie_native_id": 26,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -206,7 +352,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
       "review_pending": false,
-      "nollie_native_id": 30
+      "nollie_native_id": 30,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -221,7 +378,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
       "review_pending": false,
-      "nollie_native_id": 29
+      "nollie_native_id": 29,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -236,7 +404,18 @@
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
       "review_pending": false,
-      "nollie_native_id": 27
+      "nollie_native_id": 27,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin"
+        ],
+        "finding": "Authored playback remains primary. Alternatives supply candidates, not stronger native repeatability; exact multi-flip counts are not in their action tables.",
+        "next": "Run paired native delivery/reference trials; use alternate recipes only after demonstrated delivery parity.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -250,7 +429,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -264,7 +455,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -278,7 +481,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -292,7 +507,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "held-flip-and-composite-record"
+        ],
+        "finding": "Held native flips and composite held-flip data are available. A missing separate FlipTrickType does not establish unsupported double/triple/540 behavior.",
+        "next": "Inspect held/catch settings and native composite units, then bounded hold-and-catch trials with exact rotation/score-label observation; keep unsupported in runtime until exact mapping is established.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -305,7 +532,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -313,6 +540,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -326,7 +565,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -334,6 +573,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -348,7 +599,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -361,7 +624,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -369,6 +632,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -382,7 +657,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -390,6 +665,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -404,7 +691,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -417,7 +716,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -425,6 +724,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -438,7 +749,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -446,6 +757,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -459,7 +782,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -467,6 +790,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -480,7 +815,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -488,6 +823,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -501,7 +848,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -509,6 +856,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -522,7 +881,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -530,6 +889,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -544,7 +915,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -557,7 +940,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -565,6 +948,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -579,7 +974,19 @@
       "native_id": null,
       "classification": null,
       "hil_status": "UNVERIFIED",
-      "review_pending": true
+      "review_pending": true,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -592,7 +999,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: exact native guide recipe identified; translation and native-result trials pending",
+      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -600,6 +1007,18 @@
         "timing": "Experimental 50 ms ordering stages and 300 ms hold; not measured",
         "deck_trials": 0,
         "runtime_selector": "arcadeactions grabs; Arcade Mode OFF required to select"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Twelve recipes already come from installed native guide. External translators only map hand triggers; they do not supply missing named equivalence.",
+        "next": "Test guide recipe with actual pose and sanitized native labels. For missing Indy/Madonna/One Foot Japan/Sacktap inspect remaining installed guide/data; never substitute generic hand grab.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -621,7 +1040,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -642,7 +1072,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -663,7 +1104,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -684,7 +1136,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -705,7 +1168,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -726,7 +1200,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -747,7 +1232,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -768,7 +1264,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -789,7 +1296,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -810,7 +1328,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -831,7 +1360,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -852,7 +1392,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -873,7 +1424,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -894,7 +1456,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -915,7 +1488,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": {
@@ -924,19 +1508,31 @@
         "presses": 2
       },
       "semantic_action": "Darkslide",
-      "native_method": null,
-      "method_source": null,
+      "native_method": "Native RB dark catch around an actual flip, then rail/ledge contact; native lean or flip exit",
+      "method_source": "native-darkslide-guide in upstream-method-survey.json; official update0.30.1",
       "native_id": null,
-      "classification": null,
+      "classification": "GAME DATA AVAILABLE",
       "hil_status": "UNVERIFIED",
-      "review_pending": true,
+      "review_pending": false,
       "implementation_plumbing": {
         "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment",
+          "native-darkslide-guide"
+        ],
+        "finding": "Official current-game input recipe established. Experimental Y semantic selection exists, native RB ownership/geometry actuation still missing.",
+        "next": "Integrate bounded RB owner with flip/rail approach, disambiguate spin/board chord, observe actual native Darkslide and repeat.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Left Stick",
@@ -946,7 +1542,15 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "hil_status": "21 clean flat repetitions; broader contexts open",
-      "review_pending": false
+      "review_pending": false,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings"
+        ],
+        "finding": "Existing real Deck evidence retained; external controller architecture is not a reason to replace passing behavior.",
+        "next": "Verify only newly affected ownership conflicts and final mixed gameplay.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "LB+RB",
@@ -956,7 +1560,15 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "hil_status": "20 long and 5 quick cycles; partial-trigger suppression 20/20",
-      "review_pending": false
+      "review_pending": false,
+      "reuse_review": {
+        "source_ids": [
+          "native-control-settings"
+        ],
+        "finding": "Existing real Deck evidence retained; external controller architecture is not a reason to replace passing behavior.",
+        "next": "Verify only newly affected ownership conflicts and final mixed gameplay.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Up then Down",
@@ -971,6 +1583,18 @@
         "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; HIL PENDING",
         "source": "Extension/ArcadeMode/arcade_manual_input.h",
         "local_checks": 75,
+        "new_deck_trials": 0
+      },
+      "reuse_review": {
+        "source_ids": [
+          "manual-pop",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-score-known-failures"
+        ],
+        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
+        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
         "new_deck_trials": 0
       }
     },
@@ -988,6 +1612,18 @@
         "source": "Extension/ArcadeMode/arcade_manual_input.h",
         "local_checks": 75,
         "new_deck_trials": 0
+      },
+      "reuse_review": {
+        "source_ids": [
+          "manual-pop",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-score-known-failures"
+        ],
+        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
+        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
+        "new_deck_trials": 0
       }
     },
     {
@@ -998,7 +1634,19 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "hil_status": "20 native Manual to Ollie chains in one context; Classic adapter integration open",
-      "review_pending": false
+      "review_pending": false,
+      "reuse_review": {
+        "source_ids": [
+          "manual-pop",
+          "community-full-translator",
+          "controller-source-attachment",
+          "dual-stick-rail-and-spin",
+          "native-score-known-failures"
+        ],
+        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
+        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "A hold / release",
@@ -1009,7 +1657,15 @@
       "nollie_native_id": 16,
       "classification": "GAME DATA AVAILABLE",
       "hil_status": "Twenty controlled A hold/release trials passed on f47 across 200/500/1500 ms holds; two d0 regression trials passed. Flat stationary context only.",
-      "review_pending": false
+      "review_pending": false,
+      "reuse_review": {
+        "source_ids": [
+          "playback-and-stage"
+        ],
+        "finding": "20 controlled A hold/release trials plus2 regression trials already exist. No need to replace accepted context.",
+        "next": "Only targeted regression and movement/stance/combined-context extension.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Y parallel",
@@ -1026,7 +1682,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Y perpendicular",
@@ -1043,7 +1710,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Up,Up + Y",
@@ -1060,7 +1738,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "Down,Down + Y",
@@ -1077,7 +1766,18 @@
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
       },
-      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
+      "reuse_review": {
+        "source_ids": [
+          "grind-state",
+          "grind-exit",
+          "dual-stick-rail-and-spin",
+          "controller-source-attachment"
+        ],
+        "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
+        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "new_deck_trials": 0
+      }
     },
     {
       "arcade_input": "RT",
@@ -1099,6 +1799,16 @@
         "duration_ms": 235,
         "deck_trials": 0,
         "runtime_selector": "arcadeactions revert-fs or revert-bs; inspected clear-bit stance only"
+      },
+      "reuse_review": {
+        "source_ids": [
+          "community-full-translator",
+          "dual-stick-rail-and-spin",
+          "native-line-events"
+        ],
+        "finding": "Prepared235ms candidate remains first. A materially different680ms LS-only alternative preserves manual pressure; stance change alone cannot identify FS/BS.",
+        "next": "Test native label/state for prepared candidate; use LS-only fallback if delivered input is correct but recognition fails.",
+        "new_deck_trials": 0
       }
     }
   ],
@@ -1146,6 +1856,501 @@
       "implementation_status": "Owner-filtered launch diagnostics available; existing successful manual behavior preserved",
       "native_id": null,
       "deck_trials": 0
+    },
+    {
+      "requested_action": "Observe actual native line/sequence score events",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "native-line-events",
+      "implementation_status": "Pinned source-author native evidence; read-only local adapter pending",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Spin wind-up and alternate manual-compatible revert",
+      "classification": "COMMUNITY METHOD AVAILABLE",
+      "source_id": "dual-stick-rail-and-spin",
+      "implementation_status": "Source recipes and offline tests; no Arcade native acceptance",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Exact repeated flip counts",
+      "classification": "GAME DATA AVAILABLE",
+      "source_id": "held-flip-and-composite-record",
+      "implementation_status": "Held native mechanic/composite fields found; count units and exact equivalents unresolved",
+      "native_id": null,
+      "deck_trials": 0
     }
-  ]
+  ],
+  "requirement_coverage": [
+    {
+      "id": "toggle",
+      "requested_action": "Live ON/OFF and restoration without restarting",
+      "implementation_status": "Existing live acceptance retained; see toggle-live-results.json and live-toggle-authored-results.json",
+      "source_ids": [],
+      "remaining": "New action owners and camera/manual state must cancel in combined play.",
+      "next": "Target affected owner cancellation then mixed stress; do not rerun all historical toggle tests.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "automatic-skating",
+      "requested_action": "Automatic skating in actual combined movement",
+      "implementation_status": "21 flat repetitions plus exclusion/reset tests; broader integration open",
+      "source_ids": [
+        "native-control-settings"
+      ],
+      "remaining": "Inclines, steering, obstacles and all new action conflicts.",
+      "next": "Preserve accepted flat behavior; add varied integration contexts.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "steering-directions",
+      "requested_action": "LS steering; LS/D-pad modifiers; physical RS remains camera",
+      "implementation_status": "Input routing implemented; complete moving/conflict matrix unverified",
+      "source_ids": [
+        "native-control-settings",
+        "dual-stick-rail-and-spin"
+      ],
+      "remaining": "Board-input translators use both sticks and cannot replace our camera routing.",
+      "next": "Verify moving steering and equivalent LS/D-pad choices while independent camera input is held.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "camera",
+      "requested_action": "RS camera in motion, collision, hotplug and OFF recovery",
+      "implementation_status": "DISCOVERED:6 recorded stationary trials; camera-results.json",
+      "source_ids": [],
+      "remaining": "Yaw worked; moderate pitch did not, stronger pitch after activation did. Repeated restoration and moving contexts open.",
+      "next": "Reuse existing camera/native follow code; targeted Deck trials rather than importing foot-stick camera conflicts.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "ollie",
+      "requested_action": "A hold/release crouch and Ollie",
+      "implementation_status": "20 controlled native trials across3 holds plus2 regression trials",
+      "source_ids": [
+        "playback-and-stage"
+      ],
+      "remaining": "Movement, nollie and combined ownership variation.",
+      "next": "Preserve method; extend relevant contexts.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "flip-parity",
+      "requested_action": "Exact supported X table and repeatability",
+      "implementation_status": "Authored92-pattern loader and A/B modes integrated;16/24 latest repeat exact,24/24 neutral/idle",
+      "source_ids": [
+        "playback-and-stage",
+        "community-full-translator",
+        "controller-source-attachment"
+      ],
+      "remaining": "First-attempt native accuracy, complex arcs, regular/nollie; Impossible failed8 regular/nollie requests.",
+      "next": "Same60Hz simulation/stance/location/settings paired delivery/reference trials, then20 per supported action.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "held-flips",
+      "requested_action": "Double/triple flips and540 Shove-It",
+      "implementation_status": "Semantic selection; exact native equivalents not yet established",
+      "source_ids": [
+        "held-flip-and-composite-record"
+      ],
+      "remaining": "Native held-count units and exact catch timing, including Impossible.",
+      "next": "Use held/catch mechanic and composite observation before treating missing enum as unsupported.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "grabs",
+      "requested_action": "All16 requested B mappings",
+      "implementation_status": "12 native-guide candidates routed behind unsaved experiment flag",
+      "source_ids": [
+        "native-control-settings",
+        "controller-source-attachment",
+        "dual-stick-rail-and-spin",
+        "native-line-events"
+      ],
+      "remaining": "Every named result unverified;4 exact equivalents unresolved.",
+      "next": "Observe actual native grab/label; inspect missing guide entries, then repeat supported ones.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "grinds",
+      "requested_action": "Contextual primary/repeated Y and lip entries",
+      "implementation_status": "Semantic selector only; native actuation missing",
+      "source_ids": [
+        "grind-state",
+        "grind-exit",
+        "dual-stick-rail-and-spin",
+        "native-darkslide-guide"
+      ],
+      "remaining": "Approach geometry, named enum mapping, exact repeated-Y variants and usable entry control.",
+      "next": "Read/map native grind evidence, integrate continuous board pressure and native Darkslide route; preserve collisions.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "grind-exits",
+      "requested_action": "Grind to flip, manual or riding",
+      "implementation_status": "Existing exit hook and authored from_grind patterns; Classic start gate excludes grind",
+      "source_ids": [
+        "grind-exit",
+        "dual-stick-rail-and-spin",
+        "held-flip-and-composite-record"
+      ],
+      "remaining": "Shared input ownership and verified transition identity.",
+      "next": "Enable only native-confirmed grind context and reuse current exit hook; no competing singleton hooks.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "spins",
+      "requested_action": "LB/RB spin and spin cancellation",
+      "implementation_status": "Classic bumper translation missing",
+      "source_ids": [
+        "dual-stick-rail-and-spin",
+        "controller-source-attachment"
+      ],
+      "remaining": "Native signed/accumulated rotation, low-air settings, stance and board-chord conflict.",
+      "next": "Adapt bounded prewind/LS spin recipe, observe actual rotation, cancel correctly on release/landing.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "board-chord",
+      "requested_action": "LB+RB mount/dismount",
+      "implementation_status": "20 long+5 quick cycles and20 partial-trigger exclusions retained",
+      "source_ids": [],
+      "remaining": "New spin/darkcatch/action owners must not break chord.",
+      "next": "Target ownership conflicts; preserve existing native chord implementation.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "nollie-switch",
+      "requested_action": "LT nollie and RT switch/revert contexts",
+      "implementation_status": "Authored nollie data; restricted stance runtime gating",
+      "source_ids": [
+        "community-full-translator",
+        "dual-stick-rail-and-spin",
+        "controller-source-attachment"
+      ],
+      "remaining": "Full stance mapping, motion/foot-leading agreement and transition resync.",
+      "next": "Cross-check native stance with geometry; test regular/nollie/switch without importing weak owner heuristics.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "manuals",
+      "requested_action": "Directional Manual/Nose Manual, Up/Down correction, clean exits",
+      "implementation_status": "Native pose evidence;75 local directional-adapter checks; integrated adapter unverified on Deck",
+      "source_ids": [
+        "manual-pop",
+        "community-full-translator",
+        "dual-stick-rail-and-spin"
+      ],
+      "remaining": "New sequence binding, correction isolation, moving contexts and transitions.",
+      "next": "Preserve existing partial-hold/pose method, verify only new routing and combined movement.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "reverts",
+      "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
+      "implementation_status": "235ms runtime candidate gated off by default",
+      "source_ids": [
+        "community-full-translator",
+        "dual-stick-rail-and-spin"
+      ],
+      "remaining": "No accepted native revert; human command/stance change insufficient.",
+      "next": "Prepared recipe first;680ms LS-only fallback if needed; independent FS/BS evidence and20-trial contexts.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "input-recovery",
+      "requested_action": "No stuck synthetic input under toggles, bail, menu, stale state, controller loss",
+      "implementation_status": "Bounded owners, cancellation, neutralization and offline tests",
+      "source_ids": [
+        "controller-source-attachment",
+        "dual-stick-rail-and-spin"
+      ],
+      "remaining": "Combined real actions/controller recovery not stress-tested.",
+      "next": "Retain stronger local ownership; execute native failures and next-fresh-action recovery.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hud-grind",
+      "requested_action": "Readable horizontal grind meter driven by model",
+      "implementation_status": "30% axis geometry, contrast/danger/cursor implemented;122 local geometry checks",
+      "source_ids": [
+        "score-hud"
+      ],
+      "remaining": "Full-size Gamescope captures at-0.8,-0.4,0,+0.4,+0.8 and normal Deck viewing.",
+      "next": "Capture exact model positions; no independent cosmetic animation or code-only acceptance.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hud-manual",
+      "requested_action": "Readable vertical manual meter driven by model",
+      "implementation_status": "30% axis geometry implemented; historical native HUD failed before resize",
+      "source_ids": [
+        "score-hud"
+      ],
+      "remaining": "Same5 full-size captures and moving gameplay readability.",
+      "next": "Verify new geometry visually on Deck; old failure is not superseded by local geometry tests.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "balance",
+      "requested_action": "Inertia, disturbance, damping, correction and difficulty",
+      "implementation_status": "Existing model and30/60/120Hz deterministic envelope",
+      "source_ids": [],
+      "remaining": "Human correction, tuning and native physical consequences.",
+      "next": "Keep tested model; vary balance context and correlate actual state/correction.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "physical-failure",
+      "requested_action": "Balance boundary produces actual gameplay failure",
+      "implementation_status": "Native consequence not implemented",
+      "source_ids": [
+        "native-bail-minimal",
+        "native-bail-scoped"
+      ],
+      "remaining": "One-shot request, native acknowledgement, rejection and reset.",
+      "next": "Adapt existing native bail request; preserve No Bail policy/native rejection, observe actual ragdoll entry.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "fatigue",
+      "requested_action": "Global/grind/manual fatigue persists across modes and resets on bank/bail",
+      "implementation_status": "Deterministic model implemented; chainF native acceptance absent",
+      "source_ids": [],
+      "remaining": "Second grind/manual harder in one unbanked native combo; no premature reset.",
+      "next": "Retain model and verify chainF with per-mode fatigue/difficulty telemetry.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "native-score-events",
+      "requested_action": "Native occurrence, score, line completion and bail evidence",
+      "implementation_status": "HUD label/numeric observer integrated; genuine event source now found",
+      "source_ids": [
+        "native-line-events",
+        "score-hud",
+        "held-flip-and-composite-record"
+      ],
+      "remaining": "Read-only extraction, local attribution, duplicate/recursive events and amount semantics.",
+      "next": "Prioritize source-backed expression payload capture over HUD lifetime inference.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "combo-lifecycle",
+      "requested_action": "No phantom combos; air/grind/manual linking and clean bank",
+      "implementation_status": "Existing deterministic engine; native air starts zero-point placeholder",
+      "source_ids": [
+        "native-line-events"
+      ],
+      "remaining": "Scored native event feed and correct link/bank timing; no every-frame starts.",
+      "next": "Connect validated events once to existing ComboSession; distinguish native line and Arcade combo lifetime.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "revert-abuse",
+      "requested_action": "One valid revert opportunity; no repeated grace/multiplier farming",
+      "implementation_status": "Model450ms opportunity/consume/expiry tests pass",
+      "source_ids": [
+        "native-line-events",
+        "community-full-translator"
+      ],
+      "remaining": "Native revert acknowledgement not connected.",
+      "next": "Require native revert then actual next-action event; run chainG repeated RT negative control.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "bank-bail",
+      "requested_action": "Bank clean/expired combo; lose unbanked score on bail; clear HUD/fatigue",
+      "implementation_status": "Model implemented; native event integration missing",
+      "source_ids": [
+        "native-line-events",
+        "native-bail-scoped"
+      ],
+      "remaining": "Correct scores/ownership and fresh recovery; source1-UP bail policy differs.",
+      "next": "Use native end reasons as evidence, retain Arcade loss semantics; chainH then new combo.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hil-session",
+      "requested_action": "Hot game and one persistent controller per bounded batch",
+      "implementation_status": "ExperimentSession implemented;208 Python checks across lab project",
+      "source_ids": [
+        "playback-and-stage"
+      ],
+      "remaining": "Reviewed external bundle refresh and actual persistent-session acceptance.",
+      "next": "Keep established runner; validate exact source/DLL pins, then use persistent batch.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hil-ready-reset",
+      "requested_action": "Event-driven safe baseline/action/neutral/idle progression",
+      "implementation_status": "Existing fresh-idle predicates; still log-tail polling and fixed recovery intervals",
+      "source_ids": [
+        "playback-and-stage",
+        "deck-practice-map"
+      ],
+      "remaining": "Stream-driven readiness and controlled simulation/context.",
+      "next": "Reuse recorder readiness/state machine; use stock practice baseline first and retain protective timeouts.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hil-stream",
+      "requested_action": "Nonblocking persistent sanitized telemetry with identities/timestamps/drops",
+      "implementation_status": "Bounded queues exist; mutex/log writes still block; persistent sender incomplete",
+      "source_ids": [
+        "native-line-events"
+      ],
+      "remaining": "Game-thread fixed event queue, background sender, persistent receiver/NDJSON and explicit drop accounting.",
+      "next": "Reuse existing trace worker/SSH lifecycle concepts, not their locking/per-message reconnect; no raw dumps.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "hil-batch-results",
+      "requested_action": "Record ordinary failures and recover without aborting full matrix",
+      "implementation_status": "Persistent batch already continues ordinary recognition/reset failures",
+      "source_ids": [],
+      "remaining": "Real hot-session reset reliability and complete event evidence.",
+      "next": "Retain bounds/integrity stops; preserve every denominator and distinguish command/delivery/native/environment failure.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "stress",
+      "requested_action": "Mixed skating/tricks/grabs/grinds/manuals/reverts/banks/failures/toggles/board",
+      "implementation_status": "No final mixed stress acceptance",
+      "source_ids": [
+        "native-score-known-failures"
+      ],
+      "remaining": "Continuous sanitized telemetry, repeated recovery and failure envelope.",
+      "next": "Run one hot session after supported primitives pass, fix reproducible failures and repeat affected cases.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "deck-operation",
+      "requested_action": "Reliable Deck gameplay and library update/restore controls",
+      "implementation_status": "Established deployment/Proton path preserved; library GUI acceptance remains open",
+      "source_ids": [
+        "deck-fork",
+        "deck-practice-map"
+      ],
+      "remaining": "Reachable paired device and verification of actual installed state; stock-map stability.",
+      "next": "Wake/reconnect existing Deck, read-only status first; no routine restarts or infrastructure redesign.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "build-gate",
+      "requested_action": "Verified runtime artifact before installation",
+      "implementation_status": "Current2f94137 source locally tested; fresh Windows gate unavailable",
+      "source_ids": [],
+      "remaining": "Existing workflow dispatch rejected: Actions disabled for repository.",
+      "next": "Resume unchanged build gates after owner restores availability. Do not deploy unverified artifact or change security settings.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-A",
+      "requested_action": "Ollie -> Kickflip -> Grind",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-B",
+      "requested_action": "Air Trick -> Land -> RT Revert -> Manual",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-C",
+      "requested_action": "Kickflip -> Manual -> Ollie -> Flip -> Land",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-D",
+      "requested_action": "Grind -> Flip Out -> Land",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-E",
+      "requested_action": "Grind -> Flip Out -> Manual",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-F",
+      "requested_action": "Grind -> Flip -> Manual -> Flip -> Grind -> Flip -> Manual",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-G",
+      "requested_action": "Land -> Revert -> Revert -> Revert -> Wait",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    },
+    {
+      "id": "chain-H",
+      "requested_action": "Active Multi-Action Combo -> Bail -> Fresh Combo",
+      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "source_ids": [
+        "native-line-events",
+        "grind-exit",
+        "community-full-translator"
+      ],
+      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
+      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
+      "new_deck_trials": 0
+    }
+  ],
+  "coverage_checked_at": "2026-10-14",
+  "coverage_policy": "Every action row has a reuse review. Broader requirements below extend the same matrix. Source method availability, source-author gameplay reports, our DISCOVERED/REPEATABLE/INTEGRATED/ACCEPTED maturity and newly changed adapters are separate. No reviewed source proves our Deck acceptance; no-method-found is not exact-equivalent-unsupported."
 }

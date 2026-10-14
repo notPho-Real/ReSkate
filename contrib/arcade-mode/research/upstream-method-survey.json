@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "checked_at": "2026-10-14",
-  "baseline_commit": "55a6303f062c2832cdc93409970e2d37d99b29a9",
+  "baseline_commit": "2f941376a3ec9f3972e2095fb5d8171022ee0a3a",
   "upstream": {
     "repository": "Dingo-Shenanigans/ReSkate",
     "revision": "6c45e9666dcdea6577248f6ab7f3111de48b6039"
@@ -18,7 +18,10 @@
     "comparison_errors": 0,
     "truncated_comparison_file_lists": 0,
     "method": "Inventoried every returned public fork excluding our own for branch reads; compared unique heads against checkout ancestry and pinned upstream. Screened changed paths, commit descriptions and targeted added-code terms, then inspected relevant implementations. This is not an exhaustive line-by-line audit of every fork or proof that an unlocated exact method does not exist.",
-    "evidence": "Private source snapshots and comparison responses: artifacts/source-survey/. No fork code was executed."
+    "evidence": "Private source snapshots and comparison responses: artifacts/source-survey/. No fork code was executed.",
+    "standalone_repository_search_results": 53,
+    "upstream_non_pr_issues_screened": 127,
+    "extended_method": "Cross-checked every native-method row and all remaining control, HIL, HUD, balance, combo and acceptance requirements. Extended beyond forks to standalone repositories, source attachments and official current-game documentation. Search results are leads, not proof every repository was deeply reviewed."
   },
   "findings": [
     {
@@ -162,25 +165,217 @@
       "url": "https://github.com/GamerNationinc/ReSkate-Steamdeck-/commit/4f256f562152fc524247ad0ddcd79dcc8618e6b5",
       "finding": "Fork changes are support plan and Proton launch script with injection/overlay/world-load baseline.",
       "disposition": "No missing Arcade mechanics or replacement HIL system found; preserve our existing accepted Deck infrastructure."
+    },
+    {
+      "id": "community-full-translator",
+      "classification": "COMMUNITY METHOD AVAILABLE",
+      "repository": "EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate",
+      "revision": "7c28aade77293d0ec269eb5567ffff7314cf8007",
+      "url": "https://github.com/EterrnaWasTaken/Eterrna-s-Dual-Stick-Mod-for-Reskate/tree/7c28aade77293d0ec269eb5567ffff7314cf8007",
+      "license": "No compatible copying grant; notice restricts redistribution. Independently implement behavior; do not copy embedded recordings.",
+      "available": "Basic and complex regular/nollie flip candidates, human-recorded complex paths, Impossible recordings, manuals and the existing235ms revert candidate.",
+      "details": [
+        "Regular Hardflip/Varial defaults prefer human recordings over COMBO_OUT. Replay speed3.51, minimum26ms for capped long holds; static positions alone do not reproduce normal playback.",
+        "Impossible command is not delivered motion: two recordings have nearly neutral LS, RS angular travel about -484/+472 degrees and scheduled275.2/379.0ms durations. Native Impossible variant is not established.",
+        "Production scheduler accumulates deadlines and catches up unless over50ms late. Human verify loop instead schedules from now; verification and production timing differ.",
+        "Manual RS Y is -0.60, nose+0.60; manual-to-flip uses40ms full setup then35ms flip with170ms reentry exclusion. These do not supersede our actual native pose evidence."
+      ],
+      "limits": [
+        "Human D-pad confirmation is not native-ID observation or repeatability.",
+        "No exact multi-flip counts, named grab/grind table, balance, camera preservation, combo or HIL implementation."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "controller-source-attachment",
+      "classification": "COMMUNITY METHOD AVAILABLE",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/issues/197",
+      "archive": "https://github.com/user-attachments/files/33316485/SessionSticks-0.6.1-source.zip",
+      "sha256": "b6d7c9dfec2cbdec45128f172ab99344857f3bd30fd94580fbe411c8433c78c8",
+      "version": "0.6.1",
+      "license": "Core source and README explicitly GPL-3.0-or-later; no standalone LICENSE file.",
+      "available": "Tail/nose flip paths, partial-stick manuals, per-foot rail pressure, LS spin, trigger grabs, geometric stance cross-check and cancellation patterns.",
+      "evidence": "Author reports ReSkate2.0.2 / Steam25414733, one Xbox-pad tester and243 offline checks. Source says trick tables were not checked in-game. No native-ID matrix or denominator.",
+      "limits": [
+        "No Impossible, exact multi-flips, revert, named grab/grind selection, balance/HUD or combo.",
+        "QPC timeline can skip points at sparse XInput polling; not a playback parity solution.",
+        "Do not import loader, obsolete hook chaining, ownership inference or full lifecycle; disable clears only part of transient state."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "dual-stick-rail-and-spin",
+      "classification": "COMMUNITY METHOD AVAILABLE",
+      "repository": "GoalTrains/reskatedualstick",
+      "revision": "1181aa819bea2eb49042b3f67e6ff5c7c9c4e348",
+      "release": {
+        "tag": "5.128",
+        "revision": "bd6bd33f6cf944205552c30147f9a684bd0be9d4"
+      },
+      "url": "https://github.com/GoalTrains/reskatedualstick/tree/1181aa819bea2eb49042b3f67e6ff5c7c9c4e348",
+      "license": "GPL-3.0",
+      "source": "src/translate.h; src/version_proxy.c; test/grind_entry_hold.c",
+      "available": "Distinct LS-only revert shape, spin wind-up, continuous air-to-rail board input and bounded rail/lip exits.",
+      "revert_fallback": "Default shape5: center-to-right0-40ms, right-to-down40-200ms, down-to-left15degrees above horizontal200-310ms, hold310-580ms, neutral580-680ms. Other command mirrorsX. RS may retain manual lean. Test after the already-prepared Eterrna recipe, not instead of it.",
+      "spin_candidate": "Ollie: center-to-LSdown24ms, then toward(+/-0.8,-0.6) over36ms at magnitude0.97; settle horizontal+/-0.97 at90ms. Nollie reversesY. Hold through takeoff and cancel on release/landing/abandoned setup.",
+      "rail_candidate": "RS from front-minus-back lateral and absolute nose-minus-tail pressure, gain1.2 and radial clamp. Preserve unchanged input across rail contact; opposite-foot fresh flick requests pop-out;250ms LS exit bump.",
+      "evidence": "Published source/release and offline regression tests. Native selector addresses match pinned-build contracts. Source refers to stock recordings, but no exact native-ID matrices or repeatability denominators supplied.",
+      "limits": [
+        "Default DLL forces pure=1/direct=0; legacy authored tables are not production playback evidence.",
+        "Legacy playback stops at every unseen point and stretches under sparse polling; recognizer tests omit timing constraints.",
+        "Revert success only checks stance change, insufficient for FS/BS identity.",
+        "No orientation-aware named Y selector, full grab table, exact double/triple counts, RS camera, fatigue or combo.",
+        "Do not import standalone loader, speed-stopping pose resets or native ownership inference."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "empty-translator-port",
+      "repository": "Eterrna8/Eterrnas-Xbox-Dual-Stick-Mod-for-Reskate",
+      "url": "https://github.com/Eterrna8/Eterrnas-Xbox-Dual-Stick-Mod-for-Reskate",
+      "finding": "Empty repository: size0, no HEAD/branches/source/license/releases. Recent pushed_at is not an implementation.",
+      "disposition": "No fallback method supplied."
+    },
+    {
+      "id": "native-darkslide-guide",
+      "classification": "GAME DATA AVAILABLE",
+      "url": "https://forums.ea.com/blog/skate-game-info-hub-en/skate-0-30-1-patch-notes/13243824",
+      "available": "Official native method: hold RB before or immediately after a flip, then contact a rail/ledge while dark-catching. Native lean and grind adjustment remain available; flip or lean to exit.",
+      "integration": "Add a bounded native RB owner around an actual flip/rail approach. Resolve conflict with Classic RB spin and LB+RB board chord in existing dispatcher; preserve physical RS camera.",
+      "limits": [
+        "Feature documentation predates pinned build but does not verify our exact Y command, geometry, settings or native ID.",
+        "Do not create a label-only Darkslide or set grind state directly."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "held-flip-and-composite-record",
+      "classification": "GAME DATA AVAILABLE",
+      "url": "https://www.ea.com/es/games/skate/skate/news/update-029-1",
+      "source": "Existing Extension/Throwdowns/skate_trick_rule.cpp:46-65; throwdown_lab.cpp Skate_SubmitAttempt payload; Trainer heldflip catch settings.",
+      "available": "Official update documents held/late Impossible variants and manual/grind exits. Existing current-build CompositeTrickRecord carries stance0x0, direction0x4, spins0x8, held_flip floatbits0xc, late0x10, scorable0x14, held_category0x18.",
+      "integration": "Investigate held/catch behavior and exact rotation amounts for double/triple flips and540Shove-It after single-flip delivery is reliable. Do not require an invented new FlipTrickType enum for each repetition.",
+      "limits": [
+        "Existing record reader is specific to a Throwdown setter attempt, not a free-roam event stream.",
+        "Raw held_flip field does not yet establish units, exact count, catch timing or a supported exact requested equivalent.",
+        "Do not import no-repeat game rules or state writes. Missing separate enum is not evidence of unsupported trick."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "native-control-settings",
+      "classification": "GAME DATA AVAILABLE",
+      "urls": [
+        "https://www.ea.com/games/skate/skate/news/get-control",
+        "https://www.ea.com/able/resources/skate"
+      ],
+      "available": "Official native steering/board/hand-grab controls, held tricks, sensitivity, catch assist, streamlined gestures, low-air-spin prevention and grind assist settings.",
+      "integration": "Record relevant settings in controlled-trial context. A display refresh rate is not simulation frequency. Keep identical settings across A/B; do not silently tune global assists.",
+      "limits": [
+        "Official settings are environment controls, not an exact named trick implementation or acceptance result."
+      ]
+    },
+    {
+      "id": "native-score-known-failures",
+      "url": "https://www.ea.com/de/games/skate/skate/news/update-032-5",
+      "published": "2026-10-12",
+      "finding": "Later update fixes scoring of manual-to-flip while grabbing, previous flips suppressed by One-foot Ollies, and score for absent body flips. It also changes multipliers during Block Parties.",
+      "integration": "Include targeted negative controls for manual/flip/grab and one-foot transitions; separate actual trick performance from score credit. Keep pinned build; do not infer that these fixes already apply.",
+      "limits": [
+        "Later game patch is failure-envelope evidence, not permission to update executable or use newer addresses."
+      ]
+    },
+    {
+      "id": "deck-practice-map",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/issues/184",
+      "finding": "Author reports repeated custom-map load/collision failures on Steam25414733 / Deck Proton while stock maps play.",
+      "integration": "Prefer our known stock practice baseline for delivery A/B. Do not confound new custom-map streaming with input recognition.",
+      "limits": [
+        "Single external issue, not evidence our installation has that failure. No setup reconfiguration needed."
+      ]
+    },
+    {
+      "id": "native-line-events",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "SmokeyDawg58/reskate-custom-mods",
+      "revision": "de837826417b55e2a5756c303f4805ae6a39ae89",
+      "url": "https://github.com/SmokeyDawg58/reskate-custom-mods/tree/de837826417b55e2a5756c303f4805ae6a39ae89",
+      "license": "GPL-3.0; inspect source attribution when adapting.",
+      "source": "src/Extension/Throwdowns/one_up_native.cpp; src/Engine/Game/Build/20260929/one_up_scoring.h; src/ONE-UP-VALIDATION.txt",
+      "available": "Actual native scoring line start/end and sequence-ended expression payloads, reflected final score, line-end reason and sequence success. Does not depend on HUD text.",
+      "evidence": "Source-author validation records native timer bank22 independently player-confirmed, deliberate bail reason7/score840 discarded, another2388-point finalized line, and11 landed sequence scores totaling18518 matching the native display. These historical Windows observations are not a20-trial denominator or our Deck evidence.",
+      "graph_contracts": [
+        {
+          "event": "line_start",
+          "hash": "0xa4d1121c",
+          "frame": "0x40",
+          "constants": "0x48",
+          "words": "0x7b"
+        },
+        {
+          "event": "line_end",
+          "hash": "0x69843dad",
+          "frame": "0x70",
+          "constants": "0x2d0",
+          "words": "0x408",
+          "input_page1_payload": 40
+        },
+        {
+          "event": "stats_line_end",
+          "hash": "0xe2d57480",
+          "frame": "0x50",
+          "constants": "0x0",
+          "words": "0x21",
+          "input_page1_payload": 16
+        },
+        {
+          "event": "sequence_end",
+          "hash": "0xafef12e9",
+          "frame": "0x470",
+          "constants": "0x908",
+          "words": "0xffe",
+          "input_page1_payload": 1080
+        }
+      ],
+      "integration": "Extract read-only observer into existing expression hooks before native consumption, pc==0, retaining graph/schema/client/world guards. Reuse existing native_type_scan binding. No UI/assets or match needed for free-roam capture. Feed sanitized events through bounded transport before connecting existing ComboSession.",
+      "limits": [
+        "Source checks client realm/world, not payload local-skater identity; local attribution must be proven.",
+        "Line start/end logical identity suppresses duplicate end listeners; sequence-end still lacks native occurrence ID and needs recursion/duplicate analysis.",
+        "Reasons1/6 are source bank candidates,7 observed bail; all reason semantics need local correlation.",
+        "Do not copy DisableLineMultiplierRule/stale-multiplier writes or source policy retaining earlier landed tricks after bail. Arcade must lose all unbanked score.",
+        "Do not copy mutex/vector allocation/logging into game-thread producer; record drops and invalidation.",
+        "Native scoring-line lifetime is not automatically the desired Arcade combo/link grace lifetime."
+      ],
+      "deck_trials": 0,
+      "secondary_observer": "Same source game_modes.cpp groups UI writes by entry handle and members0x0002=name,0x009c=FS/BS,0x0034=landing. Scope to validated scoring-root membership and label allowlist before reuse; its broad string tap and inferred landing success are not authoritative."
+    },
+    {
+      "id": "inferred-game-modes-rejected",
+      "repository": "skate4leakz-lab/ReSkate-GameModes",
+      "revision": "af443deb881d60dbea0de1f28b4ef800e8c24f6c",
+      "url": "https://github.com/skate4leakz-lab/ReSkate-GameModes/tree/af443deb881d60dbea0de1f28b4ef800e8c24f6c",
+      "license": "GPL-3.0 in archive despite absent API license metadata",
+      "finding": "Published archive contains binaries/installers/docs; README derives points from Trainer jump metrics and explicitly lacks grind/manual scoring.",
+      "disposition": "Not an authoritative native combo/event fallback. Do not execute or import binaries."
     }
   ],
   "build_compatibility": "Source contracts for scoring, trainer state readers and native bail candidates target 20260929. Scoring and bail forks explicitly match pinned Steam build25414733 / executable SHA fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9. This is source compatibility, not installed/native acceptance.",
   "unresolved": [
-    "Exact Y grind/lip entry and stance/approach selection",
-    "Named grind enum mapping",
-    "Exact missing grab equivalents and repeatability",
-    "Native revert recognition and combined context integration",
-    "Banking/score semantics and occurrence identities",
-    "Signed/accumulated native rotation verification",
-    "Persistent nonblocking sanitized stream",
-    "Real Deck HUD, chains A-H and mixed stress acceptance"
+    "Controlled delivery/reference A/B and repeated native flip recognition",
+    "Exact held-flip counts and four missing named grab equivalents",
+    "Approach/stance-aware Y selection, named grind enums and repeated-Y equivalents",
+    "Native FS/BS revert and spin verification across stance/landing/manual contexts",
+    "Local attribution/occurrence identities and Arcade combo semantics for native scoring events",
+    "Bounded physical balance-failure actuation and native acknowledgement",
+    "Nonblocking persistent stream and live refreshed HIL bundle",
+    "Full-size Deck HUD captures, all eight chain tests and mixed stress acceptance"
   ],
   "next": [
-    "Reconnect and verify installed Deck state; finish prepared controlled flip A/B.",
-    "Correlate numeric scoring snapshot and labels with actual local native results.",
-    "Integrate bounded grind-state observation before novel classifier research.",
-    "Add/test bounded native balance-failure request preserving native rejection.",
-    "Reuse from_grind authored catalog and existing exit hook for grind-to-flip transitions."
+    "Reconnect Deck and verify installed identity; finish prepared flip A/B first. Existing Actions workflow is disabled externally, so new runtime build gates are blocked.",
+    "Prioritize read-only native-line/sequence observer extraction over further HUD guessing; preserve native scoring and existing combo policy.",
+    "Test existing Eterrna revert candidate; use pinned GoalTrains LS-only shape only as discriminating fallback.",
+    "Integrate named-grind observation, native Darkslide candidate, spin wind-up and existing from_grind playback with shared input ownership.",
+    "Finish exact-equivalent review through held-flip data and installed Skatepedia before declaring unsupported or starting novel reverse engineering."
   ],
-  "hardware": "No hardware input, deployment, restart or restore in this survey. Existing recorded installation unchanged."
+  "hardware": "No hardware input, deployment, restart or restore. Recorded installed6a8db43/DLL8bcf84f8 unchanged; Deck remains uncontacted. Workflow dispatch for2f94137 rejected because repository Actions are disabled; settings left unchanged."
 }

@@ -1,5 +1,45 @@
 # Arcade Mode persistent project state
 
+## Full unfinished-requirement source review — 2026-10-14
+
+Continues source `2f941376a3ec9f3972e2095fb5d8171022ee0a3a`. Expanded the existing
+PR/fork survey to standalone repositories, upstream issue attachments and official
+native documentation. Every63 action row now has a source/fallback review; the same
+native-method matrix covers40 broader requirements, including all eight chains.
+This checkpoint changes documentation and source classification, not runtime code.
+
+Strongest new reuse path: GPL-3 native line/sequence event capture from
+`SmokeyDawg58/reskate-custom-mods@de837826417b55e2a5756c303f4805ae6a39ae89`.
+Its validation records actual native22-point bank, rejected840-point bail and11
+sequence amounts totaling18,518. This is external Windows evidence on the pinned
+game build, not our Deck acceptance. Extract the read-only expression observer;
+omit multiplier writes and its different bail policy. Local attribution, event
+deduplication and Arcade lifecycle integration remain required.
+
+GPL-3 `GoalTrains/reskatedualstick@1181aa819bea2eb49042b3f67e6ff5c7c9c4e348`
+adds concrete fallback recipes for an LS-only revert, spin wind-up and rail input
+continuity. The existing235ms revert remains first to test. Official native
+Darkslide input and held-flip/composite-record data reduce the need for new research.
+No reviewed source supplies the complete exact named Y table or four missing grabs.
+The additional source attachment has mostly offline evidence; an apparent second
+translator port is empty. All distinctions and license limits are in the existing
+survey. Missing methods remain unresolved, not falsely declared unsupported.
+
+Fresh development workflow dispatch for2f94137 was rejected by GitHub because
+Actions is disabled for the repository. No settings were changed. The earlier
+Windows test-warning fix has local verification only; a fresh Windows/package gate
+is still required before deployment. Deck reachability and recorded installation
+remain unchanged: source6a8db43, DLL
+`8bcf84f8affa3961d9422e4958babd93ae88e600e91b01aca956a154dad353b5`.
+No controller session, deployment, restart or restore occurred. Current live game
+state is unknown; the last installation receipt reported game/launcher stopped.
+
+Next hardware task is still controlled flip A/B after fresh identity/build checks.
+Next source integration is the bounded read-only native score-event path, followed
+by native grind observation/bail requests and the pinned control recipes. HUD,
+physical balance failure, real combo/fatigue chains and mixed stress are unaccepted.
+No full gameplay completion is claimed.
+
 ## Current source reuse checkpoint — 2026-10-14
 
 Continues `55a6303f062c2832cdc93409970e2d37d99b29a9`. Surveyed 20 open PRs,

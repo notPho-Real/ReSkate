@@ -21,7 +21,8 @@ its own installer/updater code as well as the DLL.
 
 ## SSH deployment from this Mac
 
-Default host: `deck@steamdeck.local`. Current connectivity and pairing are unverified.
+Default host: `deck@steamdeck.local`. Pairing was established; the latest connection
+attempt could not resolve the host. See STATE.md for the current recovery checkpoint.
 The Deck must be awake and reachable from the Mac. A sleeping/unreachable Deck
 cannot be installed remotely. No need to switch to Desktop Mode for SSH.
 
@@ -72,6 +73,10 @@ invalid files, locks, running games, write rollback, desktop payload execution,
 update-to-latest, already-current detection, restore-then-update, failed downloads,
 checksum mismatch, wrong commit and wrong download origin.
 
-Actual Steam Deck GUI/controller behavior, Steam library import and SSH pairing
-must be checked with the Deck awake. The Windows DLL is observer-only: A/B/X/Y
-produce development notices, with no trick injection or gameplay changes.
+Steam library import and its controller operation still need on-device acceptance.
+The development DLL includes automatic skating, native A/X gestures, directional
+manual input, camera routing, balance models and an experimental HUD. Guarded
+grab/revert candidates are available through an unsaved experiment selector;
+named Y actuation and final combo integration remain incomplete. Source code and
+offline checks do not establish native repeatability. Read STATE.md and the
+native-method matrix for feature-specific evidence before deploying or testing.

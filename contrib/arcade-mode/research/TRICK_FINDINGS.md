@@ -1,5 +1,33 @@
 # Native trick findings
 
+## Current source reuse checkpoint — 2026-10-14
+
+The older exploratory notes below are historical. Current source is based on
+`2f941376a3ec9f3972e2095fb5d8171022ee0a3a`: the92-pattern authored loader,
+directional X table, playback A/B modes and guarded action/manual adapters already
+exist. Do not restart endpoint searches or parser work from the earlier sections.
+See `native-method-matrix.json` for all63 action rows and40 broader requirements,
+and `upstream-method-survey.json` for exact source pins, licenses and evidence.
+
+Prepared delivery/reference A/B remains the first Deck experiment. The full
+community translator review found that default complex flips use recordings,
+and its human verification scheduler differs from production. Neither it nor
+the two additional controller implementations supplies stronger repeated native
+acceptance than our current observations.
+
+GoalTrains supplies a distinct LS-only revert fallback, spin prewind and rail
+input continuity. Test the already-prepared community revert first. The official
+native Darkslide method uses RB dark catch around a flip followed by rail contact;
+our Y selector still needs actual actuation and shared bumper ownership.
+
+Held flips deserve explicit review before declaring exact multiple flips absent.
+The installed native guide already says holding adds rotations. Official native
+documentation includes held Impossible variants, and the existing Throwdowns
+composite record contains held-flip amount in addition to base trick identity.
+Exact count units, release timing and free-roam observation remain unverified.
+No reviewed source supplies the complete named Y table or the four unresolved
+grab equivalents. Absence from these sources is not proof of native absence.
+
 ## Evidence standard
 
 DISCOVERED is one named hardware observation; REPEATABLE requires controlled
@@ -50,7 +78,7 @@ and stance, rather than assuming 250 ms is universally correct.
 `x-guide-fs-shove-02/0.png` names FS Pop-Shuvit and shows a large curved scoop
 from down toward toeside/up. This is guidance, not an executed shove-it.
 
-## Current implementation and unanswered questions
+## Historical implementation and unanswered questions
 
 Shared profiles in arcade_gesture.h preserve A timing. Experimental X neutral
 or left selects the discovered kickflip endpoint; X right selects heelflip.

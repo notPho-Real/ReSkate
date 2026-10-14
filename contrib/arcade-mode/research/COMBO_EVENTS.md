@@ -1,6 +1,45 @@
 # Combo event evidence
 
-Status: discovery instrumentation; runtime balance integration is NOT complete.
+Status: native observation and balance plumbing exist; scored combo integration,
+physical balance failure and real chain acceptance remain incomplete.
+
+## Current source reuse checkpoint — 2026-10-14
+
+The chronological notes below retain earlier observations, not current work order.
+Native pose-qualified manual observation and20 manual-to-Ollie trials already
+exist. Do not repeat the initial manual discovery matrix. The current directional
+adapter needs combined-play acceptance, and the prepared community RT recipe
+precedes further speculative revert arcs.
+
+A concrete native scoring-event implementation was found in
+[reskate-custom-mods at de837826](https://github.com/SmokeyDawg58/reskate-custom-mods/tree/de837826417b55e2a5756c303f4805ae6a39ae89),
+under GPL-3. Its `one_up_native.cpp` observes actual line-start, line-end and
+sequence-ended expression inputs on the same supported build. The source author's
+recorded game evidence includes a22-point expiry bank confirmed by the player,
+a rejected840-point bailed line, and11 finalized sequence scores totaling18,518
+matching the native display. These are external Windows observations, not our
+Deck repeatability. Contract hashes and extraction limits are pinned in
+`upstream-method-survey.json` under `native-line-events`.
+
+The next score integration should extract that read-only event path through the
+existing expression hooks and schema binder. No extra game mode or UI is needed.
+Keep native scoring settings unchanged; omit its multiplier-rule writes and
+policy retaining previously landed points after a bail. Our unbanked combo must
+be lost. Sequence scores may already include multipliers; do not multiply twice.
+
+Before using these observations as combo truth, establish local ownership,
+world lifetime, duplicate/recursive delivery and occurrence identity. Client realm
+alone does not establish local ownership. The two line-end listeners must not
+bank twice, and sequence payloads do not expose a demonstrated native serial.
+Publish bounded sanitized records without game-thread logging or allocation,
+report drops, then connect the existing combo engine. Native line timing and
+Arcade link grace remain distinct until their integration is tested.
+
+The existing strict numeric HUD observer remains a useful independent cross-check.
+Its presentation lifetime and persistent labels are not a banking oracle. Physical
+failure can reuse pinned native bail-request methods; no new combo engine is needed.
+
+## Historical native observations
 
 Native UI observation verified on276a396: score-schema-276a396.json records28
 fields from the actual ScoringHUDViewModel. Boolean kind10/size1 and integer
