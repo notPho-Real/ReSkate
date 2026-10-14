@@ -1,8 +1,9 @@
 # Arcade Mode persistent project state
 
-## Current runtime integration checkpoint — 2026-10-14
+## Current runtime and HIL integration checkpoint — 2026-10-14
 
-Continues `c1e2a79c51d92f0575232462767d3f299be0492a`. The formerly preserved
+Runtime source is `53b13bb519858e07087d70f5f4c3c1e4d9a57ca8`, continuing
+`c1e2a79c51d92f0575232462767d3f299be0492a`. The formerly preserved
 manual implementation is now reviewed and integrated, including fixes preventing
 balance corrections from becoming fresh manual commands and cancelling on native
 takeoff/bail/grind/opposite manual or conflicting controls.
@@ -22,10 +23,20 @@ and persistent text cannot create repeated trick events. These are collected as
 label evidence only; combo continuation remains disconnected until HUD slot roles
 and real native revert outcomes are verified. No score amounts are invented.
 
+The repository's HIL batch path now reuses one virtual controller, kernel/SDL
+observers and capture preflight. Trials retain identity checks, fresh idle
+baselines, independent evidence, neutralization and bounded reset checks. Ordinary
+recognition/reset failures remain recorded results and do not abort the batch;
+integrity/transport failures close the session. Each replay retains its 25-second
+guard, with at most 24 trials and an absolute 1,100-second device lifetime under
+the existing 1,200-second transport timeout. Single-run behavior stays bounded
+to 25 seconds. The frozen external runner has not been changed: a reviewed bundle
+refresh and live verification are still required before using this improvement.
+
 The trusted read-only Deck status retry still failed. A paired no-op SSH check
 confirmed `steamdeck.local` still cannot resolve. No input, deployment,
 restart or restore occurred. Recorded installed source/DLL remain those below.
-The previous source's hosted simulated Deck suite passed; its Windows development
+This runtime source's hosted simulated Deck suite passed; its Windows development
 build was still running when inspected. Flip A/B remains the next hardware task,
 followed by native action candidates and manual transition checks. External runner
 updates have not been installed. Persistent stream transport, native grind/spin
@@ -33,8 +44,9 @@ integration, physical balance failure and final chain/stress acceptance remain o
 
 Local validation: 41 runtime action checks, 75 manual checks and 19 label-occurrence
 checks pass with sanitizers, alongside the prior C++ suites and 33,500 model checks.
-All 195 Python tests pass, including action/score-edge parsing, serialization and
-proof that delivered request evidence cannot satisfy native trick criteria.
+All 206 Python tests pass, including action/score-edge parsing, serialization,
+persistent-session cleanup and the actual trusted batch entry point. Delivered
+request evidence cannot satisfy native trick criteria. The naming guard passes.
 
 ## Current plumbing checkpoint — 2026-10-14 evening
 

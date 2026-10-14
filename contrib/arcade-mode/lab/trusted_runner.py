@@ -116,18 +116,10 @@ else:
         print(json.dumps(result))
         sys.exit(0)
     plan = validate_plan(request['plan'])
-    results = []
-    for case in plan['candidates']:
-        for repetition in range(case.get('repeat', 1)):
-            try:
-                result = perform_case(plan, case, DeckEnvironment())
-                results.append(result)
-            except Exception:
-                results.append({'hard_stop': True, 'reason': 'integrity_or_transport_failure'})
-                break
-        if results and results[-1].get('hard_stop'):
-            break
-    result = {'trials': results}
+    # One neutral device and its observers survive the whole validated batch.
+    # Existing identity checks and per-trial integrity/reset checks stay in force.
+    with ExperimentSession(max_seconds=1100) as session:
+        result = perform_batch(plan, DeckEnvironment(session=session))
 print(json.dumps(result))
 '''
 

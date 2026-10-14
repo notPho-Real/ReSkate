@@ -318,6 +318,146 @@ class RobotTests(unittest.TestCase):
             self.assertEqual(robot.periodic(12, 16, stop), [])
         shot.assert_not_called()
 
+    def test_persistent_session_reuses_device_and_neutralizes_between_trials(self):
+        ready = {"ready": True, "gamescope_pids": [12]}
+        pad = self.pad()
+        pad.attach_sdl_observer = Mock()
+        def replay(device, events, duration, alive):
+            device.frame([(1, robot.BUTTONS['A'], 1)])
+        with patch.object(robot, 'capabilities', return_value=ready), \
+             patch.object(robot, 'Gamepad', return_value=pad) as create, \
+             patch.object(robot.time, 'sleep') as sleep, patch.object(robot, 'screenshot') as shot, \
+             patch.object(robot, 'periodic', return_value=[{}] * 4), patch.object(robot, 'replay', side_effect=replay), \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession(max_seconds=1100) as session:
+                for name in ('ordinary-miss', 'next-attempt'):
+                    result = session.run(name, [], 3)
+                    self.assertEqual(result['game_response'], 'UNVERIFIED')
+                    self.assertEqual(self.closed, [])
+                    self.assertTrue(all(row[-1] == 0 for row in robot.EVENT.iter_unpack(self.writes[-1])))
+            create.assert_called_once_with(observe_kernel=True)
+            sleep.assert_called_once_with(2)
+            shot.assert_called_once_with(12)
+            pad.attach_sdl_observer.assert_called_once()
+        self.assertEqual(sum(call[1] == robot.CREATE for call in self.calls), 1)
+        self.assertEqual(sum(call[1] == robot.DESTROY for call in self.calls), 1)
+        self.assertEqual(self.closed, [7])
+
+    def test_session_observer_samples_reset_and_results_are_independent_snapshots(self):
+        pad = self.pad()
+        trial = [0]
+        def replay(device, *unused):
+            trial[0] += 1
+            device.kernel_pad['samples'].append({'ns': trial[0], 'lt': 0, 'rt': 0})
+            device.sdl_observation['samples'].append({'ns': trial[0], 'lt': 0, 'rt': 0})
+        with patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
+             patch.object(robot, 'replay', side_effect=replay), \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                first = session.run('first', [], 3)
+                second = session.run('second', [], 3)
+                for key in ('kernel_pad', 'sdl_pad'):
+                    self.assertEqual([row['ns'] for row in first[key]['samples']], [1])
+                    self.assertEqual([row['ns'] for row in second[key]['samples']], [2])
+                pad.kernel_pad['samples'][0]['ns'] = 999
+                self.assertEqual(second['kernel_pad']['samples'][0]['ns'], 2)
+
+    def test_session_capture_failure_neutralizes_closes_and_cannot_retry(self):
+        pad = self.pad()
+        with patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', side_effect=RuntimeError('capture failed')), \
+             patch.object(robot, 'replay') as replay, \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                with self.assertRaisesRegex(RuntimeError, 'capture failed'):
+                    session.run('first', [], 3)
+                self.assertEqual(self.closed, [7])
+                self.assertTrue(all(row[-1] == 0 for row in robot.EVENT.iter_unpack(self.writes[-1])))
+                with self.assertRaisesRegex(RuntimeError, 'not active'):
+                    session.run('second', [], 3)
+                replay.assert_called_once()
+        self.assertEqual(self.closed, [7])
+
+    def test_session_safety_failure_stops_before_next_trial(self):
+        pad = self.pad()
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        with patch.object(robot, 'capabilities', side_effect=[ready, ready, {'ready': False}]), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
+             patch.object(robot, 'replay') as replay, \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                session.run('first', [], 3)
+                with self.assertRaisesRegex(RuntimeError, 'context changed'):
+                    session.run('second', [], 3)
+                self.assertEqual(self.closed, [7])
+                replay.assert_called_once()
+
+    def test_session_idle_alarm_closes_neutral_device_and_restores_handlers(self):
+        pad = self.pad()
+        with patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
+             patch.object(robot, 'replay'), patch.object(robot.time, 'monotonic', return_value=0), \
+             patch.object(robot.signal, 'alarm') as alarm, patch.object(robot.signal, 'signal') as handlers:
+            with robot.ExperimentSession(max_seconds=1100) as session:
+                session.run('first', [], 3)
+                self.assertEqual(alarm.call_args.args, (1100,))
+                with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                    session._interrupted(signal.SIGALRM, None)
+                self.assertEqual(self.closed, [7])
+                self.assertEqual(alarm.call_args.args, (0,))
+                self.assertEqual(handlers.call_count, 8)
+                with self.assertRaises(RuntimeError):
+                    session.run('after-deadline', [], 3)
+        self.assertEqual(self.closed, [7])
+
+    def test_session_deadline_and_trial_limits_remain_bounded(self):
+        for seconds in (0, 1101, True, 2.5):
+            with self.assertRaises(ValueError):
+                robot.ExperimentSession(max_seconds=seconds)
+        for count in (0, 25, True):
+            with self.assertRaises(ValueError):
+                robot.ExperimentSession(max_trials=count)
+        for exhausted in ('time', 'trials', 'insufficient_time'):
+            now = [0]
+            pad = self.pad()
+            with patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+                 patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+                 patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
+                 patch.object(robot, 'replay') as replay, patch.object(robot.time, 'monotonic', side_effect=lambda: now[0]), \
+                 patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+                with robot.ExperimentSession(max_seconds=1100, max_trials=1 if exhausted == 'trials' else 24) as session:
+                    session.run('first', [], 3)
+                    if exhausted == 'time':
+                        now[0] = 1100
+                    elif exhausted == 'insufficient_time':
+                        now[0] = 1099
+                    with self.assertRaises((ValueError, RuntimeError)):
+                        session.run('over-limit', [], 3)
+                    replay.assert_called_once()
+                    self.assertEqual(self.closed, [7])
+                with self.assertRaises(RuntimeError):
+                    session.__enter__()
+
+    def test_session_neutral_write_failure_still_destroys_device(self):
+        pad = self.pad()
+        with patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
+             patch.object(robot, 'replay'), patch.object(robot.signal, 'alarm') as alarm, \
+             patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                pad.neutral = Mock(side_effect=RuntimeError('neutral failed'))
+                with self.assertRaisesRegex(RuntimeError, 'neutral failed'):
+                    session.run('broken-device', [], 3)
+                self.assertEqual(self.closed, [7])
+                self.assertEqual(self.calls[-1][1], robot.DESTROY)
+                self.assertEqual(alarm.call_args.args, (0,))
+
     def test_capabilities_fake_proc_handler_and_ambiguity(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

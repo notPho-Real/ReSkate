@@ -177,8 +177,29 @@ def perform_case(plan, case, env):
     return result
 
 
+def perform_batch(plan, env):
+    """Reuse one environment; ordinary recognition failures never abort a batch."""
+    validate_plan(plan)
+    results = []
+    for case in plan["candidates"]:
+        for repetition in range(case.get("repeat", 1)):
+            try:
+                result = perform_case(plan, case, env)
+                result["repetition"] = repetition + 1
+                results.append(result)
+            except Exception:
+                results.append({"hard_stop": True, "reason": "integrity_or_transport_failure"})
+                break
+        if results and results[-1].get("hard_stop"):
+            break
+    return {"trials": results}
+
+
 class DeckEnvironment:
     """Uses only trusted robot/probe functions supplied by the remote payload."""
+    def __init__(self, session=None):
+        self.session = session
+
     def integrity(self, plan):
         current = snapshot({})
         required = (current.get("safe_paths"), all(current.get("files", {}).values()),
@@ -243,7 +264,8 @@ class DeckEnvironment:
         return None
 
     def gesture(self, case):
-        return experiment_events(case["name"], phase_events(case), case["timeout_ms"] / 1000)
+        run = self.session.run if self.session is not None else experiment_events
+        return run(case["name"], phase_events(case), case["timeout_ms"] / 1000)
 
 
 # LOCAL TRANSPORT: excluded from the remote payload.

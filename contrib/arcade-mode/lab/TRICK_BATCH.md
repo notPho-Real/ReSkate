@@ -17,7 +17,7 @@ STATE` heartbeat, launch Skate and return to ordinary on-board skating first.
 Older builds without that observable produce SKIPPED_CONTEXT, never blind input.
 
 Each phase is a full controller state; omitted axes/buttons are neutral. `ms`
-is relative to controller hotplug settling. Stick axes range -32768..32767,
+is relative to that trial's replay start after controller readiness. Stick axes range -32768..32767,
 triggers 0..255, dpad -1..1; Linux Y is down-positive. Buttons are A/B/X/Y/LB/RB.
 Labels contain only lowercase letters, digits and hyphens. Unknown fields,
 commands, host overrides and code are rejected. Up to 24 total trials, 64 phases
@@ -30,9 +30,23 @@ not proof of a specific location or speed. Invalid context consumes a candidate
 as SKIPPED_CONTEXT and sends no input. Reset waits for the same observable;
 it does not teleport, guess menu navigation or blindly respawn the skater.
 
-Every trial uses the existing locked, alarm-bounded virtual controller and its
-finally cleanup. Success, replay failure and interrupts neutralize and destroy
-the device. A lost acknowledgement is never replayed: input may have happened.
+The trusted batch dispatch now uses one `ExperimentSession`: a single locked
+virtual controller, kernel/SDL observers and capture preflight survive all trials.
+Hotplug settling occurs once. Each trial neutralizes before screenshot completion
+and reset waiting; observer samples are cleared and copied per trial. Ordinary
+recognition or reset failures remain recorded results and the next baseline is
+checked before proceeding. Infrastructure failure or interruption closes the
+session immediately. The existing single-run wrapper still destroys its device
+at the end of its one trial.
+
+The session admits at most 24 trials and has a 1,100-second total watchdog,
+including neutral idle time. Each input trial retains its 25-second watchdog.
+The existing 1,200-second outer transport timeout and all source/DLL/game/stock
+identity checks remain unchanged. This repository implementation must enter the
+externally reviewed frozen bundle before hardware use; editing the checkout does
+not change an installed trusted runner. No external bundle is updated by these tests.
+
+A lost acknowledgement is never replayed: input may have happened.
 Read-only SSH preflight retries three times. Missing game/HIL readiness gets a
 bounded recovery wait; this version does not automatically click the launcher.
 Unrecoverable readiness, hash/backup/path integrity or unconfirmed neutralization

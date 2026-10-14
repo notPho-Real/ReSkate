@@ -6,10 +6,12 @@ The remote worker is sent in memory. Linux x86_64 uinput ABI is deliberate.
 import argparse
 import base64
 import concurrent.futures
+import copy
 import ctypes
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -435,47 +437,140 @@ def experiment(name):
     return experiment_events(name, events, duration)
 
 
-def experiment_events(name, events, duration):
-    """Repository-generated, validated batch events share single-run cleanup."""
-    status = capabilities()
-    if not status.get("ready"):
-        raise RuntimeError("Input/capture preflight failed; no input sent: " + json.dumps(status))
-    def interrupted(signum, frame):
-        raise RuntimeError("Bounded experiment interrupted")
-    handlers = {sig: signal.signal(sig, interrupted) for sig in
-                (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGALRM)}
-    signal.alarm(25)  # Device lifetime stays bounded even if the SSH client disappears.
-    try:
-        with Gamepad(observe_kernel=True) as pad:
-            time.sleep(2)  # Allow Steam's controller hotplug path to settle.
-            if pad.observer_fd is None:
-                pad.attach_observer()  # Device permissions can settle after creation.
-            pad.attach_sdl_observer()
-            # Prove screenshot transport before any non-neutral gameplay input.
-            screenshot(status["gamescope_pids"][0])
+class ExperimentSession:
+    """One neutral-idle controller for a bounded batch, never a persistent daemon."""
+    def __init__(self, max_seconds=600, max_trials=24):
+        if type(max_seconds) is not int or not 1 <= max_seconds <= 1100:
+            raise ValueError("Session duration must be 1..1100 seconds")
+        if type(max_trials) is not int or not 1 <= max_trials <= 24:
+            raise ValueError("Session trial limit must be 1..24")
+        self.max_seconds, self.max_trials = max_seconds, max_trials
+        self.pad, self.manager, self.handlers = None, None, {}
+        self.deadline = self.last_clock = self.armed_until = None
+        self.used = False
+        self.trials = 0
+        self.stop = None
+
+    def _clock(self):
+        now = time.monotonic()
+        if self.last_clock is not None and now < self.last_clock:
+            raise RuntimeError("Session clock moved backwards")
+        self.last_clock = now
+        if self.deadline is not None and now >= self.deadline:
+            raise RuntimeError("Bounded session deadline reached")
+        return now
+
+    def _arm(self, deadline):
+        now = self._clock()
+        if deadline != self.armed_until:
+            signal.alarm(max(1, math.ceil(deadline - now)))
+            self.armed_until = deadline
+
+    def _interrupted(self, signum, frame):
+        try:
+            self.close()
+        finally:
+            raise RuntimeError("Bounded experiment interrupted")
+
+    def __enter__(self):
+        if self.used:
+            raise RuntimeError("Experiment session cannot be reopened")
+        self.used = True
+        status = capabilities()
+        if not status.get("ready"):
+            raise RuntimeError("Input/capture preflight failed; no input sent: " + json.dumps(status))
+        self.pid = status["gamescope_pids"][0]
+        self.deadline = self._clock() + self.max_seconds
+        try:
+            for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGALRM):
+                self.handlers[sig] = signal.signal(sig, self._interrupted)
+            self._arm(min(self.deadline, self._clock() + 25))
+            self.manager = Gamepad(observe_kernel=True)
+            self.pad = self.manager.__enter__()
+            time.sleep(2)  # Hotplug settles once for the entire batch.
+            if self.pad.observer_fd is None:
+                self.pad.attach_observer()
+            self.pad.attach_sdl_observer()
+            screenshot(self.pid)  # Prove capture before any gameplay input.
+            self._arm(self.deadline)
+            return self
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self):
+        if self.stop is not None:
+            self.stop.set()
+        pad, manager = self.pad, self.manager
+        self.pad = self.manager = None
+        try:
+            if pad is not None:
+                manager.__exit__(None, None, None)
+        finally:
+            if self.handlers:
+                signal.alarm(0)
+                for sig, handler in self.handlers.items():
+                    signal.signal(sig, handler)
+                self.handlers = {}
+                self.armed_until = None
+
+    def __exit__(self, *unused):
+        self.close()
+
+    def run(self, name, events, duration):
+        """Run validated events; native outcomes remain independently UNVERIFIED."""
+        if self.pad is None:
+            raise RuntimeError("Experiment session is not active")
+        try:
+            if (type(duration) not in (int, float) or not math.isfinite(duration) or
+                    not 0 < duration <= 20 or self.trials >= self.max_trials):
+                raise ValueError("Invalid or exhausted bounded trial")
+            now = self._clock()
+            if duration > self.deadline - now:
+                raise RuntimeError("Insufficient session time for trial")
+            status = capabilities()
+            if not status.get("ready") or status.get("gamescope_pids") != [self.pid]:
+                raise RuntimeError("Session input/capture context changed")
+            self._arm(min(self.deadline, now + 25))
+            self.trials += 1
+            pad = self.pad
+            for observation in (pad.kernel_pad, pad.sdl_observation):
+                if isinstance(observation, dict):
+                    observation['samples'] = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                stop = threading.Event()
-                future = pool.submit(periodic, status["gamescope_pids"][0], duration, stop)
+                self.stop = stop = threading.Event()
+                future = pool.submit(periodic, self.pid, duration, stop)
                 def alive():
+                    self._clock()
                     if future.done():
                         future.result()  # Stop input if capture failed.
-                    return capabilities().get("ready", False)
+                    current = capabilities()
+                    return current.get("ready", False) and current.get("gamescope_pids") == [self.pid]
                 try:
                     replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.
                     frames = future.result()
                 finally:
-                    # Neutralize BEFORE joining the screenshot worker, otherwise
-                    # a failed replay could leave a button held until its next frame.
+                    # Always release before joining the capture worker, including
+                    # when replay fails. A signal may already have closed the pad.
                     stop.set()
-                    pad.neutral()
-        return {"schema": 1, "recipe": name, "input_sent": True,
-                "game_response": "UNVERIFIED", "frames": frames, "kernel_pad": pad.kernel_pad,
-                "sdl_pad": pad.sdl_observation}
-    finally:
-        signal.alarm(0)
-        for sig, handler in handlers.items():
-            signal.signal(sig, handler)
+                    if self.pad is not None:
+                        pad.neutral()
+            self.stop = None
+            self._arm(self.deadline)  # Idle time between trials stays bounded too.
+            return {"schema": 1, "recipe": name, "input_sent": True,
+                    "game_response": "UNVERIFIED", "frames": frames,
+                    "kernel_pad": copy.deepcopy(pad.kernel_pad),
+                    "sdl_pad": copy.deepcopy(pad.sdl_observation)}
+        except BaseException:
+            self.close()  # Infrastructure failures cannot reuse the controller.
+            raise
+
+
+def experiment_events(name, events, duration):
+    """Single-run compatibility wrapper with the original 25-second lifetime."""
+    with ExperimentSession(max_seconds=25, max_trials=1) as session:
+        return session.run(name, events, duration)
 
 
 def remote_source(operation, name):

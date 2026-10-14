@@ -1,5 +1,8 @@
 """Offline batch validation, transport and cleanup regressions. No real Deck."""
 import copy
+import contextlib
+import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -23,6 +26,65 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_persistent_batch_reuses_environment_after_ordinary_failure(self):
+        value = plan()
+        value["candidates"][0]["repeat"] = 3
+        environment = object()
+        outcomes = [{"criteria": {"named_trick": "FAIL"}},
+                    {"criteria": {"returned_to_idle": "FAIL"}},
+                    {"criteria": {"named_trick": "PASS"}}]
+        with patch.object(batch, "perform_case", side_effect=outcomes) as run:
+            result = batch.perform_batch(value, environment)
+        self.assertEqual(len(result["trials"]), 3)
+        self.assertEqual([r["repetition"] for r in result["trials"]], [1, 2, 3])
+        self.assertTrue(all(call.args[2] is environment for call in run.call_args_list))
+        self.assertEqual(result["trials"][0]["criteria"]["named_trick"], "FAIL")
+
+    def test_persistent_batch_stops_for_infrastructure_failure(self):
+        value = plan()
+        value["candidates"][0]["repeat"] = 3
+        with patch.object(batch, "perform_case", side_effect=batch.HardStop("neutralization")) as run:
+            result = batch.perform_batch(value, object())
+        self.assertEqual(run.call_count, 1)
+        self.assertTrue(result["trials"][0]["hard_stop"])
+
+    def test_deck_environment_uses_existing_session(self):
+        session = Mock()
+        case = plan()["candidates"][0]
+        environment = batch.DeckEnvironment(session=session)
+        environment.gesture(case)
+        session.run.assert_called_once_with(case["name"], batch.phase_events(case), case["timeout_ms"] / 1000)
+
+    def test_trusted_batch_dispatch_uses_one_context_for_all_trials(self):
+        spec = importlib.util.spec_from_file_location("batch_runner_test", Path(batch.__file__).with_name("trusted_runner.py"))
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        value = plan()
+        value["candidates"][0]["repeat"] = 3
+        pins = {k: value[k] for k in ("source_commit", "dll_sha256", "stock_sha256")}
+        request = {"operation": "batch", "plan": value, "pins": pins, "game_sha256": "d" * 64}
+        session = Mock()
+        session.__enter__ = Mock(return_value=session)
+        session.__exit__ = Mock(return_value=False)
+        factory = Mock(return_value=session)
+        namespace = {"json": json, "sys": sys, "Path": Path, "HardStop": batch.HardStop,
+                     "snapshot": lambda _: {"safe_paths": True, "game": "/fixture",
+                         "installed_commit": pins["source_commit"], "dll_sha256": pins["dll_sha256"],
+                         "backup_sha256": pins["stock_sha256"]},
+                     "sha": lambda _: "d" * 64, "validate_plan": batch.validate_plan,
+                     "ExperimentSession": factory, "DeckEnvironment": lambda session: session,
+                     "perform_batch": batch.perform_batch}
+        output = io.StringIO()
+        with patch.object(sys, "stdin", io.StringIO(json.dumps(request))), contextlib.redirect_stdout(output), \
+             patch.object(batch, "perform_case", side_effect=lambda *_: {"criteria": {"named_trick": "FAIL"}}) as run:
+            exec(compile(runner.REMOTE, "trusted-batch-dispatch", "exec"), namespace)
+        factory.assert_called_once_with(max_seconds=1100)
+        session.__enter__.assert_called_once()
+        session.__exit__.assert_called_once()
+        self.assertEqual(run.call_count, 3)
+        self.assertTrue(all(call.args[2] is session for call in run.call_args_list))
+        self.assertEqual(len(json.loads(output.getvalue())["trials"]), 3)
+
     def test_inspections_have_no_forwarded_arguments(self):
         self.assertIn("notPho-Real/ReSkate", inspect_project.command("runs"))
         self.assertIn("arcade-mode", inspect_project.command("runs"))
