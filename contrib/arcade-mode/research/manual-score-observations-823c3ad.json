@@ -1,0 +1,203 @@
+{
+  "schema": 1,
+  "source_commit": "823c3adb6255b3879381edb1027f0e39fe68144f",
+  "verification": "REAL_HARDWARE",
+  "event_identity": "UNVERIFIED",
+  "trials": [
+    {
+      "name": "neutral-control",
+      "repeat": 1,
+      "values": [],
+      "evidence_gap": null
+    },
+    {
+      "name": "neutral-control",
+      "repeat": 2,
+      "values": [],
+      "evidence_gap": null
+    },
+    {
+      "name": "tail-confirm",
+      "repeat": 1,
+      "values": [
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.84db5623.369babfe",
+          "value": 1
+        },
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.84db5623.3b14d43c",
+          "value": 1
+        },
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.1a93e458.369babfe",
+          "value": 1
+        },
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 1
+        },
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.7aab675c",
+          "value": 1
+        },
+        {
+          "ms": 59292403,
+          "path": "9b74fc7c.3aa2f739",
+          "value": 1
+        },
+        {
+          "ms": 59295605,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 0
+        },
+        {
+          "ms": 59295605,
+          "path": "9b74fc7c.7aab675c",
+          "value": 0
+        },
+        {
+          "ms": 59295605,
+          "path": "9b74fc7c.a0bfc5b4",
+          "value": 1
+        },
+        {
+          "ms": 59295605,
+          "path": "9b74fc7c.2a7d50b4",
+          "value": 1
+        }
+      ],
+      "evidence_gap": null
+    },
+    {
+      "name": "tail-confirm",
+      "repeat": 2,
+      "values": [
+        {
+          "ms": 59315869,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 1
+        },
+        {
+          "ms": 59315869,
+          "path": "9b74fc7c.7aab675c",
+          "value": 1
+        },
+        {
+          "ms": 59315869,
+          "path": "9b74fc7c.3aa2f739",
+          "value": 1
+        },
+        {
+          "ms": 59319336,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 0
+        },
+        {
+          "ms": 59319336,
+          "path": "9b74fc7c.7aab675c",
+          "value": 0
+        },
+        {
+          "ms": 59319336,
+          "path": "9b74fc7c.a0bfc5b4",
+          "value": 1
+        },
+        {
+          "ms": 59319336,
+          "path": "9b74fc7c.2a7d50b4",
+          "value": 1
+        }
+      ],
+      "evidence_gap": null
+    },
+    {
+      "name": "nose-confirm",
+      "repeat": 1,
+      "values": [
+        {
+          "ms": 59340136,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 1
+        },
+        {
+          "ms": 59340136,
+          "path": "9b74fc7c.7aab675c",
+          "value": 1
+        },
+        {
+          "ms": 59340136,
+          "path": "9b74fc7c.3aa2f739",
+          "value": 1
+        },
+        {
+          "ms": 59343069,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 0
+        },
+        {
+          "ms": 59343069,
+          "path": "9b74fc7c.7aab675c",
+          "value": 0
+        },
+        {
+          "ms": 59343069,
+          "path": "9b74fc7c.a0bfc5b4",
+          "value": 1
+        },
+        {
+          "ms": 59343069,
+          "path": "9b74fc7c.2a7d50b4",
+          "value": 1
+        }
+      ],
+      "evidence_gap": null
+    },
+    {
+      "name": "nose-confirm",
+      "repeat": 2,
+      "values": [
+        {
+          "ms": 59364936,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 1
+        },
+        {
+          "ms": 59364936,
+          "path": "9b74fc7c.7aab675c",
+          "value": 1
+        },
+        {
+          "ms": 59364936,
+          "path": "9b74fc7c.3aa2f739",
+          "value": 1
+        },
+        {
+          "ms": 59367603,
+          "path": "9b74fc7c.7f3e74e7",
+          "value": 0
+        },
+        {
+          "ms": 59367603,
+          "path": "9b74fc7c.7aab675c",
+          "value": 0
+        },
+        {
+          "ms": 59367603,
+          "path": "9b74fc7c.a0bfc5b4",
+          "value": 1
+        },
+        {
+          "ms": 59367603,
+          "path": "9b74fc7c.2a7d50b4",
+          "value": 1
+        }
+      ],
+      "evidence_gap": null
+    }
+  ]
+}

@@ -2,6 +2,15 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+Current HEAD13d2f334485c7a3abf0efc4cb287ea4f41818755 pushed; Linux/macOS
+PASS, Windows still pending. Installed823c3ad fully CI verified, restarted and
+healthy. Six native scoring trials completed at artifacts/trick-batch-20261013T222500-48096;
+turn/ollie controls at artifacts/trick-batch-20261013T222836-48224. Score bool7aab675c
+and int7f3e74e7 are GENERAL trick activity (also ollie), not manual identity.
+158-node schema and sanitized values saved in research. Next small diagnostic
+adds read-only kind15/size4 scalar values in existing bounded schema walk; needs
+CI before deployment. Runtime combo/HUD remains NOT integrated. Keep dev installed.
+
 823c3ad CI38513539193 ALL FOUR gates PASS. Twenty-trial manual-pop batch
 completed candidates_exhausted:20/20 native HUD Manual→Ollie confirmed in reviewed
 frame2,11 Clean/7 Sketchy/2 unqualified. Same near-stationary flat sidewalk only;

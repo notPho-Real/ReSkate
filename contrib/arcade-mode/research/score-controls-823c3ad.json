@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "source_commit": "823c3adb6255b3879381edb1027f0e39fe68144f",
+  "dll_sha256": "e3d3b895c824fae315a88ad3f3156607096d97e5770552f4bce9e6352ef12b92",
+  "stock_sha256": "5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039",
+  "candidates": [
+    {
+      "name": "left-arc-800",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": -30000
+        },
+        {
+          "ms": 1200,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "ly": 30000
+        },
+        {
+          "ms": 1600,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1800,
+          "lx": 30000
+        },
+        {
+          "ms": 2000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    },
+    {
+      "name": "right-arc-800",
+      "family": "revert-observation",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "lx": 30000
+        },
+        {
+          "ms": 1200,
+          "lx": 21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1400,
+          "ly": 30000
+        },
+        {
+          "ms": 1600,
+          "lx": -21213,
+          "ly": 21213
+        },
+        {
+          "ms": 1800,
+          "lx": -30000
+        },
+        {
+          "ms": 2000
+        }
+      ],
+      "expected": {
+        "states": []
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    },
+    {
+      "name": "native-ollie-control",
+      "family": "score-negative-control",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 1000,
+          "ry": 32767
+        },
+        {
+          "ms": 1600,
+          "ry": -32768
+        },
+        {
+          "ms": 1750
+        }
+      ],
+      "expected": {
+        "states": [
+          201,
+          100
+        ]
+      },
+      "timeout_ms": 6000,
+      "reset_ms": 5000,
+      "repeat": 2
+    }
+  ]
+}

@@ -118,3 +118,15 @@ not human ability, native rail physics, or proof of acceptable Deck feel.
 Reproduce from repository root:
 `c++ -std=c++20 -I. Extension/ArcadeMode/Test/balance_envelope.cpp -o /tmp/arcade_balance_envelope`
 then `/tmp/arcade_balance_envelope`.
+
+## Nested scoring controls on823c3ad
+
+Six real neutral/manual/nose trials completed, followed by turn/ollie controls.
+Fields7f3e74e7 and7aab675c activate for BOTH manuals and ollies, so neither alone
+is a manual identity. Neutral and ordinary left-stick turns leave them unchanged.
+The158-node schema exposes ten kind15/size4 scalar fields inside the two80-byte
+structures84db5623/1a93e458; these were omitted by the initial value allowlist.
+Next diagnostic reads those bounded32-bit scalars, without assigning semantics
+until controlled traces distinguish them. No native pointer calls or writes.
+Manual→ollie repetition evidence:20/20 named chains in one flat near-stationary
+context,11 Clean/7 Sketchy/2 unqualified; not Arcade model integration.

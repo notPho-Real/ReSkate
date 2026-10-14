@@ -61,7 +61,8 @@ void inspect(const data::Context& context, data::Value value, const std::string&
     else if (kind == 10 && size == 1) {
         current = data::read<std::uint8_t>(context.address(value));
         if (current > 1) return;
-    } else if (kind == 8 && size == 4) current = data::read<std::uint32_t>(context.address(value));
+    } else if ((kind == 8 || kind == 15) && size == 4)
+        current = data::read<std::uint32_t>(context.address(value));
     else return; // no references, pointers, floats, arbitrary strings or objects
     if (const auto found = previous.find(path); found != previous.end() && found->second == current) return;
     if (previous.size() >= 256 && !previous.contains(path)) return;
