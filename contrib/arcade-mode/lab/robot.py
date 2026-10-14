@@ -407,10 +407,13 @@ def screenshot(pid, tmp=Path("/tmp"), sleep=time.sleep, clock=time.monotonic):
         os.close(fd)
 
 
-def periodic(pid, duration, stop):
+def periodic(pid, duration, stop, capture_frames=4):
+    if type(capture_frames) is not int or capture_frames not in (1, 4):
+        raise ValueError("Capture count must be one or four")
     frames = []
     start = time.monotonic()
-    for offset in (0, duration / 3, duration * 2 / 3, duration):
+    offsets = (duration,) if capture_frames == 1 else (0, duration / 3, duration * 2 / 3, duration)
+    for offset in offsets:
         if stop.wait(max(0, offset - (time.monotonic() - start))):
             break
         format_name, data = screenshot(pid)
@@ -517,13 +520,14 @@ class ExperimentSession:
     def __exit__(self, *unused):
         self.close()
 
-    def run(self, name, events, duration):
+    def run(self, name, events, duration, capture_frames=4):
         """Run validated events; native outcomes remain independently UNVERIFIED."""
         if self.pad is None:
             raise RuntimeError("Experiment session is not active")
         try:
             if (type(duration) not in (int, float) or not math.isfinite(duration) or
-                    not 0 < duration <= 20 or self.trials >= self.max_trials):
+                    not 0 < duration <= 20 or self.trials >= self.max_trials or
+                    type(capture_frames) is not int or capture_frames not in (1, 4)):
                 raise ValueError("Invalid or exhausted bounded trial")
             now = self._clock()
             if duration > self.deadline - now:
@@ -539,7 +543,7 @@ class ExperimentSession:
                     observation['samples'] = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 self.stop = stop = threading.Event()
-                future = pool.submit(periodic, self.pid, duration, stop)
+                future = pool.submit(periodic, self.pid, duration, stop, capture_frames)
                 def alive():
                     self._clock()
                     if future.done():
@@ -567,10 +571,10 @@ class ExperimentSession:
             raise
 
 
-def experiment_events(name, events, duration):
+def experiment_events(name, events, duration, capture_frames=4):
     """Single-run compatibility wrapper with the original 25-second lifetime."""
     with ExperimentSession(max_seconds=25, max_trials=1) as session:
-        return session.run(name, events, duration)
+        return session.run(name, events, duration, capture_frames)
 
 
 def remote_source(operation, name):

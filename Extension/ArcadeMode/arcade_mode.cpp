@@ -3,6 +3,7 @@
 #include "arcade_native_probe.h"
 #include "arcade_gesture.h"
 #include "arcade_score_probe.h"
+#include "arcade_native_score.h"
 #include "arcade_native_events.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
@@ -472,6 +473,7 @@ void on_client_tick() noexcept {
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
+        native_score_tick(score_probe_base, now, gameplay);
         const auto score_edge = take_score_label_occurrence(now);
         if (gameplay && score_edge.valid && score_edge.labels) {
             // Read-only evidence until the HUD slot roles are verified on Deck.

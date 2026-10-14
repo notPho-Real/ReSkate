@@ -19,6 +19,20 @@ from lab import robot, controller
 
 
 class RobotTests(unittest.TestCase):
+    def test_single_capture_waits_until_trial_end_and_keeps_full_image_hash(self):
+        stop = Mock()
+        stop.wait.return_value = False
+        with patch.object(robot, "screenshot", return_value=("avif", b"image")) as shot:
+            rows = robot.periodic(12, 5, stop, 1)
+        shot.assert_called_once_with(12)
+        self.assertEqual(len(rows), 1)
+        self.assertGreater(stop.wait.call_args.args[0], 4.9)
+        self.assertEqual(rows[0]["sha256"], hashlib.sha256(b"image").hexdigest())
+        self.assertEqual(base64.b64decode(rows[0]["image_base64"]), b"image")
+        for count in (0, 2, True, "1"):
+            with self.assertRaises(ValueError):
+                robot.periodic(12, 5, stop, count)
+
     def pad(self):
         self.calls = []
         self.closed = []
@@ -309,7 +323,7 @@ class RobotTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 robot.experiment("observer")
         self.assertEqual(sequence, ["neutral", "join"])
-        self.assertTrue(pool.submit.call_args.args[-1].is_set())
+        self.assertTrue(pool.submit.call_args.args[-2].is_set())
 
     def test_cancelled_periodic_capture_sends_no_signal(self):
         stop = robot.threading.Event()

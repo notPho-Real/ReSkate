@@ -1,5 +1,53 @@
 # Arcade Mode persistent project state
 
+## Live Deck resumption and score observer — 2026-10-14
+
+Deck reconnected. Installed the newest fully gate-passed artifact, source
+`c1e2a79c51d92f0575232462767d3f299be0492a` (CI `38636563486`), DLL
+`7ce21465ecbf83234ecdd2b191d715d20a58a5eae09c77c666092f1324cf2834`.
+Stock backup remains
+`5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039`;
+game remains build25414733, executable
+`fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9`.
+Updates remain disabled, recovery is clear. Game is running; root owns hardware.
+Frozen external `trusted-v18` uses one controller per batch, exact current pins,
+and the locally validated208-test persistent runner. `maintenance-v20` supplies
+fixed reviewed console operations. Deployment receipt is in external
+`plumbing-deploy-v1/deployment-result.json`.
+
+Console independently reported forced simulation30 and time scale1. Changed
+forced simulation to60 to match upstream recorder, with console confirmation.
+Current controlled baseline is mounted, stationary on the Blue Light Beach spawn
+sidewalk, physical LS/triggers neutral. Both eight-trial A/B blocks completed: delivery5/8 exact IDs; reference5/8
+exact IDs, including one inconclusive final off-board/reset failure with tail
+overflow. First15 trials have complete timing and no dropped rows; matching
+relative tick/XY trajectories exclude schedule stretching in this baseline.
+No playback default promoted. See research/playback-parity.json.
+
+Loaded Stadium1 for clear follow-up. The map transition reset forced simulation
+from60 to30, independently confirmed in console; reapply60 before comparable
+trials. External trusted-v19 adds the reviewed optional end-only screenshot and
+256KiB bounded evidence window (211 offline Python tests pass). Identity checks,
+neutralization and timeouts remain unchanged. Preserve the running game/DLL.
+
+The pinned GPL-3 native line/sequence observer is now implemented locally with
+exact graph/schema validation, bounded resumable worker discovery, nonblocking
+fixed queue and background sanitized logging. All66 sanitizer checks pass,
+including40,000 concurrent publications. Capture serials are not native event
+IDs; two line-end routes can duplicate events, sequence category and ownership
+remain unverified. No score writes or combo decisions are added.
+
+Stadium reference follow-up:6/8 exact IDs, both Impossibles selected4; all8
+neutralized/reset with complete timing. End-only screenshots reduced artifact
+size to25MB. A24-trial reference repeat block for Kickflip/Hardflip/Varial Kickflip
+is running. Upstream recorder accepts onlyIDs1..32, so its27/27 evidence cannot
+cover Impossible36. Read-only grind asset/page plumbing also passes45 sanitizer
+checks; runtime discovery/wiring and named enum mappings remain pending.
+
+Newer runtime code, including grab/revert/manual plumbing and the score observer,
+is not installed. Actions remains externally disabled, so fresh Windows/package
+verification is blocked; no settings were changed and no unverified DLL deployed.
+
 ## Full unfinished-requirement source review — 2026-10-14
 
 Continues source `2f941376a3ec9f3972e2095fb5d8171022ee0a3a`. Expanded the existing

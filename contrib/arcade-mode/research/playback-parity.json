@@ -1,15 +1,21 @@
 {
   "schema": 1,
-  "status": "IMPLEMENTED FOR CONTROLLED A/B; NOT DECK VERIFIED",
+  "status": "CONTROLLED DECK A/B COMPLETE; NO RELIABILITY FIX ESTABLISHED",
   "baseline_commit": "6a8db432d3d90f4179f55a50d7d3413eabd59cf8",
   "upstream": {
     "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/230",
     "repository": "worthlessnorms/ReSkate",
     "revision": "f6d7e5a929f9e2b046ea6b1192b1fac2487079c7",
     "license": "GPL-3.0; compatible with this repository",
-    "files": ["Extension/UI/Overlay/scripted_pad.cpp", "Extension/Style/trick_gestures.cpp", "Extension/Style/trick_pad.cpp", "Extension/Style/trick_recorder.cpp"],
+    "files": [
+      "Extension/UI/Overlay/scripted_pad.cpp",
+      "Extension/Style/trick_gestures.cpp",
+      "Extension/Style/trick_pad.cpp",
+      "Extension/Style/trick_recorder.cpp"
+    ],
     "recorder_retry_limit": 3,
-    "caveat": "27/27 recorded tricks is not a first-attempt repeatability denominator."
+    "caveat": "27/27 recorded tricks is not a first-attempt repeatability denominator.",
+    "impossible_coverage": "Pinned style_model.h has33 entries and is_flip_trick accepts only IDs1..32; trick_recorder.cpp rejects IDs outside that range. Therefore the reported27/27 recorder evidence does not cover Impossible36 or its38 nollie variant."
   },
   "demonstrated_differences": {
     "compiler": "Same 18-tick setup, arc midpoint/interpolation, later 90-degree subdivision, release and end spacing; parser is reused unchanged.",
@@ -28,14 +34,1154 @@
   "selection": "With Arcade Mode OFF, use arcadeplayback delivery|timeline|reference|off in the existing console, then enable Arcade Mode. Selection is unsaved; startup defaults to ordinary delivery. Mode changes while enabled are rejected.",
   "analysis": "Run python3 contrib/arcade-mode/lab/playback_report.py RESULT.json on sanitized trial or batch evidence. It joins sampled cadence and stick rows, checks reference packet deltas against cumulative polls, and reports measured timing and native IDs separately from neutralization/reset. It never infers trick success from requested input. Old artifacts without new timing evidence remain incomplete.",
   "controlled_trials": {
-    "gestures": ["Kickflip", "Hardflip", "Varial Kickflip", "Impossible"],
-    "expected_regular_ids": [2, 9, 5, 36],
+    "gestures": [
+      "Kickflip",
+      "Hardflip",
+      "Varial Kickflip",
+      "Impossible"
+    ],
+    "expected_regular_ids": [
+      2,
+      9,
+      5,
+      36
+    ],
     "first_comparison": "Reference versus delivery in paired blocks on the same installed DLL and same authored catalog; timeline arm isolates a demonstrated discrepancy.",
     "baseline": "Same safe stationary location and clear-bit stance, at least 500 ms measured stable riding, identical 600 ms preparation, neutral physical LS and triggers, D-pad plus single X. Do not compare held-A setup in the first experiment.",
     "rate": "Match the reference's 60 Hz simulation and normal time scale through existing local setting controls; measure tick/ms cadence and do not infer simulation rate from display refresh.",
     "evidence": "Join bounded playback and delivered-stick rows by seq; retain native FlipTrickType, timestamps, poll/tick/packet progression, gaps/drops, neutralization and reset. Cadence rows sample each active game tick and every changed output; cumulative poll counts expose additional same-tick reads without logging every identical poll. Reject incomplete timing evidence rather than promoting a partial trace.",
     "acceptance": "No promotion from local tests. Preserve all native misrecognitions. After selecting a proven change, at least 20 controlled trials per supported action with relevant context variation and no unexplained stuck states are required."
   },
-  "deck_trials_this_checkpoint": 0,
-  "blocker": "steamdeck.local did not resolve on paired SSH checks, including after a bounded wake request. Existing runner pins still target d0c835c despite the later recorded 6a8db43 install; re-read status and review exact target pins before any input."
+  "deck_trials_this_checkpoint": 24,
+  "blocker": null,
+  "deck_ab": {
+    "date": "2026-10-14",
+    "source_commit": "c1e2a79c51d92f0575232462767d3f299be0492a",
+    "dll_sha256": "7ce21465ecbf83234ecdd2b191d715d20a58a5eae09c77c666092f1324cf2834",
+    "game_build": 25414733,
+    "location": "Blue Light Beach spawn sidewalk",
+    "physical_input": "Neutral LS and triggers; single X with D-pad; 600ms preparation; mounted and near-zero speed",
+    "simulation": {
+      "prior_forced_rate": 30,
+      "forced_rate": 60,
+      "timescale": 1,
+      "confirmed_by_console": true
+    },
+    "blocks": [
+      {
+        "mode": "delivery",
+        "external_evidence": "trusted-v18/results/1792019334444359000.json",
+        "trials": [
+          {
+            "name": "delivery-kickflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              2
+            ],
+            "ms_per_tick": 16.462962962962962,
+            "maximum_tick_gap": 1,
+            "polls": 223,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -13847,
+                "y": -29696
+              },
+              {
+                "tick": 18,
+                "ms": 288,
+                "x": 21282,
+                "y": 12287
+              },
+              {
+                "tick": 22,
+                "ms": 352,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-kickflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              2
+            ],
+            "ms_per_tick": 16.685185185185187,
+            "maximum_tick_gap": 1,
+            "polls": 226,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -13847,
+                "y": -29696
+              },
+              {
+                "tick": 18,
+                "ms": 300,
+                "x": 21282,
+                "y": 12287
+              },
+              {
+                "tick": 22,
+                "ms": 368,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-hardflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              9
+            ],
+            "ms_per_tick": 16.5,
+            "maximum_tick_gap": 1,
+            "polls": 232,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 23169,
+                "y": -23169
+              },
+              {
+                "tick": 18,
+                "ms": 288,
+                "x": 0,
+                "y": -24575
+              },
+              {
+                "tick": 19,
+                "ms": 308,
+                "x": 8688,
+                "y": -3598
+              },
+              {
+                "tick": 20,
+                "ms": 324,
+                "x": 17377,
+                "y": 17377
+              },
+              {
+                "tick": 24,
+                "ms": 388,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-hardflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "FAIL"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              1
+            ],
+            "ms_per_tick": 16.517857142857142,
+            "maximum_tick_gap": 1,
+            "polls": 232,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 23169,
+                "y": -23169
+              },
+              {
+                "tick": 18,
+                "ms": 293,
+                "x": 0,
+                "y": -24575
+              },
+              {
+                "tick": 19,
+                "ms": 309,
+                "x": 8688,
+                "y": -3598
+              },
+              {
+                "tick": 20,
+                "ms": 329,
+                "x": 17377,
+                "y": 17377
+              },
+              {
+                "tick": 24,
+                "ms": 393,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-varial-kickflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              5
+            ],
+            "ms_per_tick": 16.714285714285715,
+            "maximum_tick_gap": 1,
+            "polls": 235,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -25100,
+                "y": -21062
+              },
+              {
+                "tick": 18,
+                "ms": 301,
+                "x": 1322,
+                "y": -30280
+              },
+              {
+                "tick": 19,
+                "ms": 320,
+                "x": 8409,
+                "y": -6684
+              },
+              {
+                "tick": 20,
+                "ms": 337,
+                "x": 15495,
+                "y": 16910
+              },
+              {
+                "tick": 24,
+                "ms": 400,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-varial-kickflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              5
+            ],
+            "ms_per_tick": 16.535714285714285,
+            "maximum_tick_gap": 1,
+            "polls": 232,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -25100,
+                "y": -21062
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 1322,
+                "y": -30280
+              },
+              {
+                "tick": 19,
+                "ms": 308,
+                "x": 8409,
+                "y": -6684
+              },
+              {
+                "tick": 20,
+                "ms": 324,
+                "x": 15495,
+                "y": 16910
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-impossible",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "FAIL"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              4
+            ],
+            "ms_per_tick": 16.533333333333335,
+            "maximum_tick_gap": 1,
+            "polls": 249,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 0,
+                "y": -32767
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 20273,
+                "y": -20273
+              },
+              {
+                "tick": 19,
+                "ms": 312,
+                "x": 27694,
+                "y": -7420
+              },
+              {
+                "tick": 20,
+                "ms": 328,
+                "x": 27694,
+                "y": 7420
+              },
+              {
+                "tick": 21,
+                "ms": 344,
+                "x": 20273,
+                "y": 20273
+              },
+              {
+                "tick": 22,
+                "ms": 360,
+                "x": 7420,
+                "y": 27694
+              },
+              {
+                "tick": 23,
+                "ms": 376,
+                "x": -6784,
+                "y": 25320
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": -17377,
+                "y": 17377
+              },
+              {
+                "tick": 28,
+                "ms": 460,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "delivery-impossible",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "PASS",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "FAIL"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              4
+            ],
+            "ms_per_tick": 16.666666666666668,
+            "maximum_tick_gap": 1,
+            "polls": 251,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 0,
+                "y": -32767
+              },
+              {
+                "tick": 18,
+                "ms": 300,
+                "x": 20273,
+                "y": -20273
+              },
+              {
+                "tick": 19,
+                "ms": 320,
+                "x": 27694,
+                "y": -7420
+              },
+              {
+                "tick": 20,
+                "ms": 332,
+                "x": 27694,
+                "y": 7420
+              },
+              {
+                "tick": 21,
+                "ms": 352,
+                "x": 20273,
+                "y": 20273
+              },
+              {
+                "tick": 22,
+                "ms": 368,
+                "x": 7420,
+                "y": 27694
+              },
+              {
+                "tick": 23,
+                "ms": 384,
+                "x": -6784,
+                "y": 25320
+              },
+              {
+                "tick": 24,
+                "ms": 404,
+                "x": -17377,
+                "y": 17377
+              },
+              {
+                "tick": 28,
+                "ms": 468,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "reference",
+        "external_evidence": "trusted-v18/results/1792019467267700000.json",
+        "trials": [
+          {
+            "name": "reference-kickflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              2
+            ],
+            "ms_per_tick": 16.444444444444443,
+            "maximum_tick_gap": 1,
+            "polls": 223,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -13847,
+                "y": -29696
+              },
+              {
+                "tick": 18,
+                "ms": 288,
+                "x": 21282,
+                "y": 12287
+              },
+              {
+                "tick": 22,
+                "ms": 356,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-kickflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              2
+            ],
+            "ms_per_tick": 16.59259259259259,
+            "maximum_tick_gap": 1,
+            "polls": 225,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -13847,
+                "y": -29696
+              },
+              {
+                "tick": 18,
+                "ms": 296,
+                "x": 21282,
+                "y": 12287
+              },
+              {
+                "tick": 22,
+                "ms": 364,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-hardflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              9
+            ],
+            "ms_per_tick": 16.589285714285715,
+            "maximum_tick_gap": 1,
+            "polls": 233,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 23169,
+                "y": -23169
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 0,
+                "y": -24575
+              },
+              {
+                "tick": 19,
+                "ms": 312,
+                "x": 8688,
+                "y": -3598
+              },
+              {
+                "tick": 20,
+                "ms": 328,
+                "x": 17377,
+                "y": 17377
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-hardflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              9
+            ],
+            "ms_per_tick": 16.571428571428573,
+            "maximum_tick_gap": 1,
+            "polls": 233,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 23169,
+                "y": -23169
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 0,
+                "y": -24575
+              },
+              {
+                "tick": 19,
+                "ms": 312,
+                "x": 8688,
+                "y": -3598
+              },
+              {
+                "tick": 20,
+                "ms": 328,
+                "x": 17377,
+                "y": 17377
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-varial-kickflip",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "FAIL"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              2
+            ],
+            "ms_per_tick": 16.5,
+            "maximum_tick_gap": 1,
+            "polls": 232,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -25100,
+                "y": -21062
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 1322,
+                "y": -30280
+              },
+              {
+                "tick": 19,
+                "ms": 310,
+                "x": 8409,
+                "y": -6684
+              },
+              {
+                "tick": 20,
+                "ms": 324,
+                "x": 15495,
+                "y": 16910
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-varial-kickflip",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "PASS"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              5
+            ],
+            "ms_per_tick": 16.5,
+            "maximum_tick_gap": 1,
+            "polls": 232,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": -25100,
+                "y": -21062
+              },
+              {
+                "tick": 18,
+                "ms": 288,
+                "x": 1322,
+                "y": -30280
+              },
+              {
+                "tick": 19,
+                "ms": 306,
+                "x": 8409,
+                "y": -6684
+              },
+              {
+                "tick": 20,
+                "ms": 324,
+                "x": 15495,
+                "y": 16910
+              },
+              {
+                "tick": 24,
+                "ms": 388,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-impossible",
+            "repetition": 1,
+            "criteria": {
+              "native_state_sequence": "PASS",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "PASS",
+              "returned_to_idle": "PASS",
+              "named_trick": "FAIL"
+            },
+            "evidence_complete": true,
+            "incomplete_reasons": [],
+            "fresh_native_ids": [
+              4
+            ],
+            "ms_per_tick": 16.6,
+            "maximum_tick_gap": 1,
+            "polls": 250,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 0,
+                "y": -32767
+              },
+              {
+                "tick": 18,
+                "ms": 292,
+                "x": 20273,
+                "y": -20273
+              },
+              {
+                "tick": 19,
+                "ms": 308,
+                "x": 27694,
+                "y": -7420
+              },
+              {
+                "tick": 20,
+                "ms": 324,
+                "x": 27694,
+                "y": 7420
+              },
+              {
+                "tick": 21,
+                "ms": 344,
+                "x": 20273,
+                "y": 20273
+              },
+              {
+                "tick": 22,
+                "ms": 364,
+                "x": 7420,
+                "y": 27694
+              },
+              {
+                "tick": 23,
+                "ms": 376,
+                "x": -6784,
+                "y": 25320
+              },
+              {
+                "tick": 24,
+                "ms": 392,
+                "x": -17377,
+                "y": 17377
+              },
+              {
+                "tick": 28,
+                "ms": 460,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "name": "reference-impossible",
+            "repetition": 2,
+            "criteria": {
+              "native_state_sequence": "UNVERIFIED",
+              "heartbeat_state_sequence": "UNVERIFIED",
+              "physics_state_sequence": "UNVERIFIED",
+              "returned_to_idle": "FAIL",
+              "named_trick": "UNVERIFIED"
+            },
+            "evidence_complete": false,
+            "incomplete_reasons": [
+              "evidence_gap"
+            ],
+            "fresh_native_ids": [
+              4
+            ],
+            "ms_per_tick": 16.7,
+            "maximum_tick_gap": 1,
+            "polls": 251,
+            "dropped": {
+              "playback": 0,
+              "stick": 0,
+              "flip": 0,
+              "pad": 0
+            },
+            "delivered_trajectory": [
+              {
+                "tick": 0,
+                "ms": 0,
+                "x": 0,
+                "y": -32767
+              },
+              {
+                "tick": 18,
+                "ms": 300,
+                "x": 20273,
+                "y": -20273
+              },
+              {
+                "tick": 19,
+                "ms": 316,
+                "x": 27694,
+                "y": -7420
+              },
+              {
+                "tick": 20,
+                "ms": 336,
+                "x": 27694,
+                "y": 7420
+              },
+              {
+                "tick": 21,
+                "ms": 352,
+                "x": 20273,
+                "y": 20273
+              },
+              {
+                "tick": 22,
+                "ms": 368,
+                "x": 7420,
+                "y": 27694
+              },
+              {
+                "tick": 23,
+                "ms": 384,
+                "x": -6784,
+                "y": 25320
+              },
+              {
+                "tick": 24,
+                "ms": 400,
+                "x": -17377,
+                "y": 17377
+              },
+              {
+                "tick": 28,
+                "ms": 468,
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "conclusion": "Delivery5/8 exact; reference5/8 exact with final trial inconclusive after off-board reset and 64KiB tail overflow. First15 trials have complete joined timing and no dropped rows, no skipped ticks. Both modes delivered corresponding compiled trajectories on the same relative ticks; per-poll packets and full pad masking alone did not solve misrecognition. No default promoted. Final incomplete sample is not an exact native success/failure claim.",
+    "next": "Clear Stadium1 follow-up with longer bounded evidence window and reduced screenshot transfer; evaluate remaining phase/stance/context difference before novel classifier research."
+  },
+  "stadium_followup": {
+    "external_evidence": "trusted-v19/results/1792019978285016000.json",
+    "trials": [
+      {
+        "name": "stadium-reference-kickflip",
+        "repetition": 1,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          2
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.666666666666668
+      },
+      {
+        "name": "stadium-reference-kickflip",
+        "repetition": 2,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "PASS",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          2
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.59259259259259
+      },
+      {
+        "name": "stadium-reference-hardflip",
+        "repetition": 1,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          9
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.446428571428573
+      },
+      {
+        "name": "stadium-reference-hardflip",
+        "repetition": 2,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          9
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.571428571428573
+      },
+      {
+        "name": "stadium-reference-varial-kickflip",
+        "repetition": 1,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          5
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.535714285714285
+      },
+      {
+        "name": "stadium-reference-varial-kickflip",
+        "repetition": 2,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "PASS"
+        },
+        "fresh_native_ids": [
+          5
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.571428571428573
+      },
+      {
+        "name": "stadium-reference-impossible",
+        "repetition": 1,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "FAIL"
+        },
+        "fresh_native_ids": [
+          4
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.466666666666665
+      },
+      {
+        "name": "stadium-reference-impossible",
+        "repetition": 2,
+        "criteria": {
+          "native_state_sequence": "PASS",
+          "heartbeat_state_sequence": "UNVERIFIED",
+          "physics_state_sequence": "PASS",
+          "returned_to_idle": "PASS",
+          "named_trick": "FAIL"
+        },
+        "fresh_native_ids": [
+          4
+        ],
+        "evidence_complete": true,
+        "ms_per_tick": 16.666666666666668
+      }
+    ],
+    "capture_frames": 1,
+    "bytes": 25184120,
+    "rate_reset_on_map_load": true,
+    "rate_reapplied": 60,
+    "conclusion": "6/8 exact; both Impossible requests still selected4; all8 reset and complete timing."
+  }
 }

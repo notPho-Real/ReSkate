@@ -34,7 +34,7 @@ def validate_plan(plan):
         raise ValueError("Batch must contain 1..24 candidates")
     names, trials = set(), 0
     for case in cases:
-        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"), ("repeat",))
+        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"), ("repeat", "capture_frames"))
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
@@ -42,6 +42,8 @@ def validate_plan(plan):
             raise ValueError("Duplicate candidate")
         names.add(case["name"])
         trials += integer(case.get("repeat", 1), 1, 20)
+        if integer(case.get("capture_frames", 4), 1, 4) not in (1, 4):
+            raise ValueError("Capture count must be one or four")
         timeout = integer(case["timeout_ms"], 3000, 12000)
         integer(case["reset_ms"], 2000, 10000)
         keys(case["expected"], ("states",), ("trick",))

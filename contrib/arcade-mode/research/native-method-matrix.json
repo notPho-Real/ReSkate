@@ -1829,7 +1829,7 @@
       "requested_action": "Observe grind identity",
       "classification": "RE-SKATE METHOD AVAILABLE",
       "source_id": "grind-state",
-      "implementation_status": "Pinned read route available; bounded adapter and enum mapping pending",
+      "implementation_status": "Read-only candidate discovery and native page reader implemented locally,45 sanitizer checks pass. Runtime resident-page feeder/wiring, semantic enum mapping and Deck verification remain pending; no Y actuation.",
       "native_id": null,
       "deck_trials": 0
     },
@@ -1861,7 +1861,7 @@
       "requested_action": "Observe actual native line/sequence score events",
       "classification": "RE-SKATE METHOD AVAILABLE",
       "source_id": "native-line-events",
-      "implementation_status": "Pinned source-author native evidence; read-only local adapter pending",
+      "implementation_status": "Read-only bounded schema adapter and native expression hooks integrated locally; fixed nonblocking queue and background diagnostic drain. 66 sanitizer checks pass. Windows build, Deck capture, local attribution and duplicate-route handling remain unverified; no combo policy consumes these events.",
       "native_id": null,
       "deck_trials": 0
     },
@@ -2126,13 +2126,13 @@
     {
       "id": "native-score-events",
       "requested_action": "Native occurrence, score, line completion and bail evidence",
-      "implementation_status": "HUD label/numeric observer integrated; genuine event source now found",
+      "implementation_status": "Read-only exact graph/schema adapter implemented locally; native callbacks publish to a fixed nonblocking queue and worker drains sanitized events. 66 sanitizer checks pass; no Windows/Deck verification yet.",
       "source_ids": [
         "native-line-events",
         "score-hud",
         "held-flip-and-composite-record"
       ],
-      "remaining": "Read-only extraction, local attribution, duplicate/recursive events and amount semantics.",
+      "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before combo score/bank integration; build and capture on Deck.",
       "next": "Prioritize source-backed expression payload capture over HUD lifetime inference.",
       "new_deck_trials": 0
     },

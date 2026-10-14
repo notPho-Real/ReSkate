@@ -18,7 +18,9 @@ The A/X adapter uses the game's authored gestures. A hold/release has recorded
 20-trial acceptance; several exact native flip IDs are discovered, but flip
 repeatability remains incomplete. The unsaved `arcadeplayback` experiment compares
 delivery, timeline and reference scheduling. See the current checkpoint for
-installed source identity and the pending controlled Deck comparison.
+installed source identity and the controlled Deck comparison. Delivery and
+reference each produced five exact IDs in eight initial trials; one reference
+trial had incomplete evidence. Neither mode has repeatability acceptance.
 
 Automatic skating uses left-stick movement intent and the existing guarded
 board-root velocity reader. It emits bounded native push-button pulses below
@@ -207,3 +209,10 @@ revert -> manual, and
 natural grind release/failure. Later controls may use B for grab and Y for grind/context action.
 Future knockdown should be a host-authoritative ATTACK/KNOCKDOWN event plus native bail, rather
 than rigid-body player collision. Long unbanked combos should become increasingly unstable.
+
+The read-only native score-event adapter validates four pinned graph/schema
+contracts and publishes bounded line/sequence observations through a nonblocking
+queue. Discovery and diagnostic logging run on a background worker. Ownership,
+sequence category and duplicate line-end routes are unresolved, so these
+observations do not award or bank Arcade points. Windows/Deck verification is
+pending; local sanitizer checks do not establish native acceptance.

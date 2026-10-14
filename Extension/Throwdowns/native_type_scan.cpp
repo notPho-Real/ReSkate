@@ -57,7 +57,8 @@ std::size_t scan_region(std::uintptr_t begin, std::size_t size, NativeTypeQuery*
 // committed page makes the kernel fault it in: a zero page never touched, or one
 // paged out to disk. Type records are written when registered, so they are
 // resident unless the system is short of memory (then a scan may miss them).
-std::size_t scan_resident(std::uintptr_t begin, std::size_t size, NativeTypeQuery* wanted, std::size_t count) noexcept {
+std::size_t scan_resident(std::uintptr_t begin, std::size_t size, NativeTypeQuery* wanted, std::size_t count,
+    bool fallback = true) noexcept {
     constexpr std::size_t page = 4096, batch = 512;
     PSAPI_WORKING_SET_EX_INFORMATION pages[batch];
     std::size_t found{};
@@ -66,7 +67,7 @@ std::size_t scan_resident(std::uintptr_t begin, std::size_t size, NativeTypeQuer
         if (!n) break;
         for (std::size_t i = 0; i < n; ++i) pages[i].VirtualAddress = reinterpret_cast<void*>(at + i * page);
         if (!QueryWorkingSetEx(GetCurrentProcess(), pages, static_cast<DWORD>(n * sizeof(pages[0])))) {
-            found += scan_region(at, n * page, wanted, count);
+            if (fallback) found += scan_region(at, n * page, wanted, count);
         } else {
             for (std::size_t i = 0; i < n;) {
                 if (!pages[i].VirtualAttributes.Valid) { ++i; continue; }
@@ -102,6 +103,34 @@ std::size_t find_native_types(std::span<NativeTypeQuery> wanted, bool background
         at = base + info.RegionSize;
     }
     if (lowered) SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
+    return missing;
+}
+
+std::size_t find_native_types_step(std::span<NativeTypeQuery> wanted,
+    NativeTypeScanCursor& cursor, std::size_t byte_budget, unsigned region_budget) noexcept {
+    std::size_t missing{};
+    for (const auto& query : wanted) missing += query.object ? 0 : 1;
+    constexpr std::uintptr_t limit = 0x00007fffffff0000ULL;
+    byte_budget &= ~std::size_t{4095};
+    MEMORY_BASIC_INFORMATION info{};
+    while (missing && !cursor.complete && byte_budget && region_budget--) {
+        if (cursor.next >= limit || !VirtualQuery(reinterpret_cast<void*>(cursor.next), &info, sizeof(info))) {
+            cursor.complete = true; break;
+        }
+        const auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
+        if (!info.RegionSize || base > limit || info.RegionSize > limit - base) {
+            cursor.complete = true; break;
+        }
+        const auto end = base + info.RegionSize;
+        if (end <= cursor.next) { cursor.complete = true; break; }
+        if (readable(info) && info.Type == MEM_PRIVATE && (info.Protect & PAGE_READWRITE) && info.RegionSize <= (1ULL << 30)) {
+            const auto size = std::min<std::size_t>(end - cursor.next, byte_budget);
+            missing -= scan_resident(cursor.next, size, wanted.data(), wanted.size(), false);
+            cursor.next += size;
+            byte_budget -= size;
+        } else cursor.next = end;
+    }
+    if (!missing || cursor.next >= limit) cursor.complete = true;
     return missing;
 }
 }

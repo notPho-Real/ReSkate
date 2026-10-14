@@ -12,4 +12,12 @@ struct NativeTypeQuery { std::uint32_t hash{}; std::uintptr_t object{}; std::uin
 // and takes minutes). background: for a worker thread only; the scan runs at background
 // priority, yields between regions and skips pages outside the working set.
 std::size_t find_native_types(std::span<NativeTypeQuery> wanted, bool background = false) noexcept;
+// Worker-only incremental alternative. Each call visits at most region_budget
+// regions and byte_budget resident-page candidates (rounded down to 4 KiB).
+// A failed working-set query is skipped, never faulted in. Callers may cancel
+// between steps by discarding the cursor and query objects. No partial binding
+// should be exposed to game threads. Existing full-scan callers are unchanged.
+struct NativeTypeScanCursor { std::uintptr_t next{0x10000}; bool complete{}; };
+std::size_t find_native_types_step(std::span<NativeTypeQuery> wanted,
+    NativeTypeScanCursor& cursor, std::size_t byte_budget, unsigned region_budget) noexcept;
 }

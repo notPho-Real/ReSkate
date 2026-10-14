@@ -45,7 +45,7 @@ def validate_plan(plan):
         raise ValueError("Batch must contain 1..24 candidates")
     names, trials = set(), 0
     for case in cases:
-        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"), ("repeat",))
+        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"), ("repeat", "capture_frames"))
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
@@ -53,6 +53,8 @@ def validate_plan(plan):
             raise ValueError("Duplicate candidate")
         names.add(case["name"])
         trials += integer(case.get("repeat", 1), 1, 20)
+        if integer(case.get("capture_frames", 4), 1, 4) not in (1, 4):
+            raise ValueError("Capture count must be one or four")
         timeout = integer(case["timeout_ms"], 3000, 12000)
         integer(case["reset_ms"], 2000, 10000)
         keys(case["expected"], ("states",), ("trick",))
@@ -229,14 +231,14 @@ class DeckEnvironment:
         try:
             with self.log.open("rb") as stream:
                 size = self.log.stat().st_size
-                start = max(0, size - 65536)
+                start = max(0, size - 262144)
                 if since is not None:
                     if since > size:
                         return {"states": [], "buttons": [], "log_end": size,
                                 "evidence_gap": "log_truncated"}
                     start = max(start, since)
                 stream.seek(start)
-                data = stream.read(65536)
+                data = stream.read(262144)
                 result = observations(data.decode(errors="replace"))
                 result["log_end"] = start + len(data)
                 result["evidence_gap"] = "tail_limit" if since is not None and start > since else None
@@ -265,7 +267,8 @@ class DeckEnvironment:
 
     def gesture(self, case):
         run = self.session.run if self.session is not None else experiment_events
-        return run(case["name"], phase_events(case), case["timeout_ms"] / 1000)
+        return run(case["name"], phase_events(case), case["timeout_ms"] / 1000,
+                   capture_frames=case.get("capture_frames", 4))
 
 
 # LOCAL TRANSPORT: excluded from the remote payload.

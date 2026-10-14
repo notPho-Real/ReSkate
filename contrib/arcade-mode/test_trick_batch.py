@@ -26,6 +26,33 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_bounded_capture_policy_and_session_forwarding(self):
+        value = plan()
+        case = value["candidates"][0]
+        for count in (1, 4):
+            case["capture_frames"] = count
+            batch.validate_plan(value)
+            session = Mock()
+            batch.DeckEnvironment(session=session).gesture(case)
+            self.assertEqual(session.run.call_args.kwargs["capture_frames"], count)
+        for count in (0, 2, 3, 5, True, "1"):
+            case["capture_frames"] = count
+            with self.assertRaises(ValueError):
+                batch.validate_plan(value)
+
+    def test_failure_window_retains_more_than_old_tail_and_still_marks_overflow(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "ReSkate.log"
+            marker = "ARCADE HIL STATE: seq=1 valid=true state=100 mode=1.\n"
+            path.write_text(marker + "x" * 70000)
+            env = batch.DeckEnvironment()
+            env.log = path
+            result = env.observe(since=0)
+            self.assertEqual(len(result["states"]), 1)
+            self.assertIsNone(result["evidence_gap"])
+            path.write_text(marker + "x" * 270000)
+            self.assertEqual(env.observe(since=0)["evidence_gap"], "tail_limit")
+
     def test_persistent_batch_reuses_environment_after_ordinary_failure(self):
         value = plan()
         value["candidates"][0]["repeat"] = 3
@@ -53,7 +80,7 @@ class BatchTests(unittest.TestCase):
         case = plan()["candidates"][0]
         environment = batch.DeckEnvironment(session=session)
         environment.gesture(case)
-        session.run.assert_called_once_with(case["name"], batch.phase_events(case), case["timeout_ms"] / 1000)
+        session.run.assert_called_once_with(case["name"], batch.phase_events(case), case["timeout_ms"] / 1000, capture_frames=4)
 
     def test_trusted_batch_dispatch_uses_one_context_for_all_trials(self):
         spec = importlib.util.spec_from_file_location("batch_runner_test", Path(batch.__file__).with_name("trusted_runner.py"))
