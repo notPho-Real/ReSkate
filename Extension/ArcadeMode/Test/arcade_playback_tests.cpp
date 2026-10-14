@@ -19,6 +19,7 @@ int run_arcade_balance_layout_tests();
 int run_arcade_action_runtime_tests();
 int run_arcade_manual_tests();
 int run_arcade_score_event_tests();
+int run_arcade_score_numbers_tests();
 #endif
 int run_arcade_playback_tests() {
 #ifdef ARCADE_PLUMBING_COMBINED_TESTS
@@ -29,6 +30,7 @@ int run_arcade_playback_tests() {
     run_arcade_action_runtime_tests();
     run_arcade_manual_tests();
     run_arcade_score_event_tests();
+    run_arcade_score_numbers_tests();
 #endif
     using namespace dingosdk::arcade_mode;
     constexpr std::array<AuthoredStickStep, 6> steps{{

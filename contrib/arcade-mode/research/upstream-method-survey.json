@@ -1,0 +1,186 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-14",
+  "baseline_commit": "55a6303f062c2832cdc93409970e2d37d99b29a9",
+  "upstream": {
+    "repository": "Dingo-Shenanigans/ReSkate",
+    "revision": "6c45e9666dcdea6577248f6ab7f3111de48b6039"
+  },
+  "coverage": {
+    "open_prs": 20,
+    "closed_prs_screened": 103,
+    "public_forks_returned": 180,
+    "external_forks_with_branch_inventory": 179,
+    "branches": 362,
+    "unique_heads": 264,
+    "heads_already_in_checkout_history": 124,
+    "heads_with_ahead_changes": 138,
+    "comparison_errors": 0,
+    "truncated_comparison_file_lists": 0,
+    "method": "Inventoried every returned public fork excluding our own for branch reads; compared unique heads against checkout ancestry and pinned upstream. Screened changed paths, commit descriptions and targeted added-code terms, then inspected relevant implementations. This is not an exhaustive line-by-line audit of every fork or proof that an unlocated exact method does not exist.",
+    "evidence": "Private source snapshots and comparison responses: artifacts/source-survey/. No fork code was executed."
+  },
+  "findings": [
+    {
+      "id": "score-hud",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "indicouchcoding/ReSkate-UI-2.0",
+      "revision": "d5b3d978763c1a279e21ac47fc2b2003746a0a0a",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/217",
+      "license": "GPL-3.0; pinned LICENSE matches repository",
+      "source": "Extension/Scoring/scoring_hud.cpp; Engine/Game/Build/20260929/hud_corner.h",
+      "available": "Native ScoringHUDViewModel line score, multiplier and trick-history presenter rows.",
+      "integration": "Adapted score/multiplier mappings into existing arcade_score_probe, preserving independent validity and emitting sanitized numeric telemetry. Forty strict parser checks and batch evidence tests added. No HUD replacement imported.",
+      "limits": [
+        "Presentation lifetime includes a 2600 ms visual linger; never use it for combo grace or banking.",
+        "Local skater ownership and score semantics still need Deck correlation.",
+        "History rows linger and are not occurrence IDs; history traversal remains a follow-up.",
+        "Unknown formatting remains invalid rather than silently producing zero or multiplier one."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "grind-state",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "andrewnakas/reskate-trainer",
+      "revision": "606ba5ab68f96d08f750dfbcc8d4ae5122f250aa",
+      "url": "https://github.com/andrewnakas/reskate-trainer/blob/606ba5ab68f96d08f750dfbcc8d4ae5122f250aa/Extension/Trainer/trainer_gamestate.cpp",
+      "license": "GPL-3.0; pinned LICENSE matches repository",
+      "available": "Read-only local AntDriven state-page resolver for CurrentGrindType, CurrentSkateGrindType, CurrentFlipTrick and physical lip/handplant fields.",
+      "integration": "Reuse only bounded whitelisted state readers with owner/generation, timestamps, field-validity bits and reset handling; correlate against native grind physics and known labeled trials.",
+      "limits": [
+        "No enum-to-named-grind mapping, supported numeric range or occurrence counter supplied.",
+        "read_grind_control and read_transition_state have no caller in inspected trainer source.",
+        "Enum.Intent.Manual and active input/control fields describe intent, not performed mechanics.",
+        "Discovery can scan writable regions for seconds; do not import whole tuning scan or state-writing hooks."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "native-bail-minimal",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "lebigtee/ReSkate-BIGT-Fork",
+      "revision": "d5f6e47ec4c527720da0f02ae5534d9e43bfe72d",
+      "url": "https://github.com/lebigtee/ReSkate-BIGT-Fork/blob/d5f6e47ec4c527720da0f02ae5534d9e43bfe72d/Extension/Skater/no_bail.cpp",
+      "license": "GPL-3.0; pinned LICENSE matches repository",
+      "available": "knock_local_skater revalidates complete owner at selector delivery, requests native impact bit15 and records native cause13, then preserves original selector result.",
+      "integration": "Candidate for balance failure inside existing no_bail hook. Add one-shot serial ticket, expiry/cancel and independent native result acknowledgement before enabling.",
+      "limits": [
+        "Original pending window can be refreshed and native consumption owns flag cleanup.",
+        "No success acknowledgement in this implementation.",
+        "Native 504 alone also means ordinary walking, not necessarily bail."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "native-bail-scoped",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "gBGYo/ReSkate",
+      "revision": "a2a3ee5fabf8cd3445015fb5b50f87955aff843e",
+      "url": "https://github.com/gBGYo/ReSkate/blob/a2a3ee5fabf8cd3445015fb5b50f87955aff843e/Extension/Skater/manual_bail_request.h",
+      "license": "GPL-3.0; pinned LICENSE matches repository",
+      "available": "Bounded serial request, scoped impact/animation bits across native consumers, full-owner checks, real ragdoll-entry observation and an authored wipeout predicate route.",
+      "integration": "Use request lifecycle and native entry observation as reference for physical balance consequences. Start with minimal native request; preserve native rejection and existing No Bail policy.",
+      "limits": [
+        "Simulated bridge tests are not Deck acceptance.",
+        "Do not import momentum writes, feature UI/scoring, packaging or unrelated ownership changes.",
+        "Authored predicate route has additional expression-hook dependencies; only consider if minimal request fails in measured context."
+      ],
+      "deck_trials": 0
+    },
+    {
+      "id": "forced-bail-rejected",
+      "repository": "HelloGoobie/ReSkate",
+      "revision": "f8533c1bf51de00557c17b46c55bb30709033b63",
+      "url": "https://github.com/HelloGoobie/ReSkate/blob/f8533c1bf51de00557c17b46c55bb30709033b63/Extension/Skater/no_bail.cpp",
+      "license": "GPL-3.0",
+      "finding": "force_bail overrides the original selector result to wipeout300 when native selection rejects it; delivery also uses independently stored owner pointers.",
+      "disposition": "Do not copy the forced-state fallback or the whole plugin API. Prefer the native-request candidates above."
+    },
+    {
+      "id": "grind-exit",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "Belcross-Dev/ReSkate",
+      "revision": "72aa7b87c00cbf29c9fe382c1dfabc1132518430",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/232",
+      "license": "GPL-3.0; pinned LICENSE matches repository",
+      "finding": "Current PR diff changes only PlayStation HID input filtering. No new curved-rail algorithm, Deck XInput change, grind entry or named Y selector.",
+      "existing_method": "Merged PR192 exit control already exists locally: post-entry six-step rail tangent, stance/travel exit side, native cross-rail launch modifier, trigger/lean guards. PR216 pop-strength work is also in upstream history.",
+      "integration": "Reuse existing hook and authored from_grind gestures for exit experiments. Current ClassicGesture hardfilters ground and start eligibility excludes grind; no new parser needed.",
+      "limits": [
+        "Post-entry velocity tangent is not approaching rail geometry.",
+        "Gamepad filter and trajectory modifier setters are singletons; no competing hook.",
+        "Filter precedes Arcade remap and can consume LT/RT or LX.",
+        "Y entry/selection and independent named-grind observation remain open."
+      ]
+    },
+    {
+      "id": "manual-pop",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "chasmlol/ReSkate",
+      "revision": "e1f4a4563a7378fd0924ad210b1f1695c6395e2d",
+      "url": "https://github.com/chasmlol/ReSkate/commit/e1f4a4563a7378fd0924ad210b1f1695c6395e2d",
+      "license": "GPL-3.0; LICENSE blob matches repository",
+      "available": "Local-owner check for shared trajectory calls and manual-pop launch diagnostics/height scaling.",
+      "integration": "If manual-to-air classification needs another signal, reuse owner-filtered launch observation; retain native launch height.",
+      "limits": [
+        "It scales an existing launch, does not trigger a manual or pop.",
+        "Its broad riding-state heuristic needs actual manual pose evidence before attributing a manual exit.",
+        "No need to import the slider or change gameplay tuning."
+      ]
+    },
+    {
+      "id": "playback-and-stage",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "repository": "worthlessnorms/ReSkate",
+      "revision": "f6d7e5a929f9e2b046ea6b1192b1fac2487079c7",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/230",
+      "license": "GPL-3.0; unchanged compatible pin",
+      "finding": "PR head unchanged. Older style-layer branch has no newer scripted playback fix.",
+      "available": "Persistent 60 m practice stage, verified arrival/return, map-generation guards, falling/streaming recovery; 60 Hz recorder, stable riding preparation and bounded retries.",
+      "integration": "Prepared flip playback A/B remains first hardware task. Reuse the isolated stage only if ordinary practice baseline is unstable; requires small missing stage-object API integration.",
+      "limits": [
+        "Native flip reader is still the same persistent selection field; no occurrence counter.",
+        "Animation TrickTracker is not a scoring/banking oracle.",
+        "27/27 recordings with retries is not first-attempt repeatability.",
+        "No new exact grab/grind/revert result adapter found."
+      ]
+    },
+    {
+      "id": "trainer-hardcore",
+      "repository": "miflow13/ReSkate",
+      "revision": "f0a6cf7b4ac4156de6c47fe4019d344d8eeeede8",
+      "url": "https://github.com/Dingo-Shenanigans/ReSkate/pull/185",
+      "license": "GPL-3.0",
+      "finding": "Preset changes native friction, landing angles, grind lock distances and wipeout thresholds.",
+      "disposition": "Do not apply global tuning as a substitute for targeted balance failure or exact Y mechanics."
+    },
+    {
+      "id": "deck-fork",
+      "repository": "GamerNationinc/ReSkate-Steamdeck-",
+      "revision": "4f256f562152fc524247ad0ddcd79dcc8618e6b5",
+      "url": "https://github.com/GamerNationinc/ReSkate-Steamdeck-/commit/4f256f562152fc524247ad0ddcd79dcc8618e6b5",
+      "finding": "Fork changes are support plan and Proton launch script with injection/overlay/world-load baseline.",
+      "disposition": "No missing Arcade mechanics or replacement HIL system found; preserve our existing accepted Deck infrastructure."
+    }
+  ],
+  "build_compatibility": "Source contracts for scoring, trainer state readers and native bail candidates target 20260929. Scoring and bail forks explicitly match pinned Steam build25414733 / executable SHA fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9. This is source compatibility, not installed/native acceptance.",
+  "unresolved": [
+    "Exact Y grind/lip entry and stance/approach selection",
+    "Named grind enum mapping",
+    "Exact missing grab equivalents and repeatability",
+    "Native revert recognition and combined context integration",
+    "Banking/score semantics and occurrence identities",
+    "Signed/accumulated native rotation verification",
+    "Persistent nonblocking sanitized stream",
+    "Real Deck HUD, chains A-H and mixed stress acceptance"
+  ],
+  "next": [
+    "Reconnect and verify installed Deck state; finish prepared controlled flip A/B.",
+    "Correlate numeric scoring snapshot and labels with actual local native results.",
+    "Integrate bounded grind-state observation before novel classifier research.",
+    "Add/test bounded native balance-failure request preserving native rejection.",
+    "Reuse from_grind authored catalog and existing exit hook for grind-to-flip transitions."
+  ],
+  "hardware": "No hardware input, deployment, restart or restore in this survey. Existing recorded installation unchanged."
+}

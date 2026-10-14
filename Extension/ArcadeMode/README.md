@@ -78,6 +78,14 @@ Persistent rereads never emit another occurrence; ambiguous histories, coalesced
 edges and stale samples are explicit. These edges are collected but do not yet
 extend combos: native HUD slot semantics still need verification.
 
+The source-derived score observer also reads line score and multiplier from native
+HUD fields identified in upstream PR #217. Only validated numbers and per-field
+availability enter telemetry. Local ownership, formatting on Deck and score/bank
+semantics remain unverified; presentation values do not create combo events.
+The pinned fork survey also found reusable grind-state readers and native bail
+requests. See `contrib/arcade-mode/research/upstream-method-survey.json` before
+starting new reverse engineering of those mechanics.
+
 No grind actuator or physical balance-failure action is established by this
 scaffold. LB/RB spins, production RT context selection, native score amounts and persistent
 telemetry transport still require integration. The existing model remains in

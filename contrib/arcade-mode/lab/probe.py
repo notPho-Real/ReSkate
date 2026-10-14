@@ -428,6 +428,29 @@ def parse_score_edges(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_score_numbers(text):
+    """Native HUD presentation values, never proof of ownership, a bank, or a trick."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE SCORE NUMBERS: ms=([0-9]{1,20}) sampled=([0-9]{1,20}) score_valid=(true|false) score=([0-9]{1,20}) multiplier_valid=(true|false) multiplier=([0-9]{1,20}) owner_verified=false\.$', line)
+        if not row:
+            continue
+        ms, sampled, score_valid, score, multiplier_valid, multiplier = row.groups()
+        ms, sampled, score, multiplier = map(int, (ms, sampled, score, multiplier))
+        if (max(ms, sampled, score, multiplier) > 0xffffffffffffffff or sampled > ms or
+                (score_valid == 'false' and score != 0) or
+                (multiplier_valid == 'false' and multiplier != 0) or
+                (multiplier_valid == 'true' and multiplier == 0)):
+            continue
+        samples.append(dict(ms=ms, sampled=sampled, score_valid=score_valid == 'true', score=score,
+                            multiplier_valid=multiplier_valid == 'true', multiplier=multiplier,
+                            owner_verified=False, fresh=ms - sampled <= 150))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return {'samples': samples, 'dropped': dropped}
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
@@ -506,4 +529,5 @@ def native_trace(request, **kwargs):
             "playback_observations": parse_playback_samples(text[start:] if start >= 0 else ""),
             "action_observations": parse_action_samples(text[start:] if start >= 0 else ""),
             "score_edge_observations": parse_score_edges(text[start:] if start >= 0 else ""),
+            "score_number_observations": parse_score_numbers(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

@@ -1,5 +1,6 @@
 #include "arcade_score_probe.h"
 #include "arcade_score_labels.h"
+#include "arcade_score_numbers.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/hud_corner.h"
@@ -18,12 +19,23 @@ std::set<std::string> described;
 std::uint64_t next_poll{};
 std::uint64_t next_description{};
 ScoreActivity activity{};
+ScoreHudNumbers numbers{};
 ScoreLabelEdges label_edges{};
 std::uint64_t last_poll{};
 bool polled{};
 unsigned emitted{};
 std::uintptr_t previous_manager{};
 data::Value score_model{};
+// Field mapping from indicouchcoding/ReSkate-UI-2.0 (GPL-3.0), revision
+// d5b3d978763c1a279e21ac47fc2b2003746a0a0a:
+// Engine/Game/Build/20260929/hud_corner.h and Extension/Scoring/scoring_hud.cpp.
+// Only detached numeric observations are retained; this never replaces the HUD.
+ScoreDisplayNumber read_display_number(const data::Context& context, std::uint32_t field, bool multiplier) {
+    const auto text = context.field(context.field(score_model, field), 0x4d8e01b9);
+    data::require(data::kind(text.type) == 7 && data::size(text.type) == 8,
+                  "native numeric score text schema differs");
+    return parse_score_display_number(context.text(text, 32), multiplier);
+}
 std::uint32_t read_label_presence(const data::Context& context) {
     // These twelve string slots were observed in score-schema-823c3ad.json.
     // Their individual presentation roles remain unverified; use their union
@@ -98,10 +110,11 @@ void inspect(const data::Context& context, data::Value value, const std::string&
 }
 }
 ScoreActivity score_activity() noexcept { return activity; }
+ScoreHudNumbers score_hud_numbers() noexcept { return numbers; }
 ScoreLabelOccurrence take_score_label_occurrence(std::uint64_t now) noexcept { return label_edges.take(now); }
 void reset_score_label_occurrences() noexcept { label_edges.invalidate(); }
 void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
-    if (!base) { activity = {}; label_edges.invalidate(); return; }
+    if (!base) { activity = {}; numbers = {}; label_edges.invalidate(); return; }
     if (polled && now < last_poll) {
         next_poll = next_description = 0;
         label_edges.invalidate(ScoreLabelUncertainty::clock_reset);
@@ -110,6 +123,7 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
     polled = true; last_poll = now;
     next_poll = now + 50;
     activity = {};
+    numbers = {};
     try {
         const auto& functions = game::native_data().models;
         if (!functions.lock || !functions.unlock || !functions.value || !functions.field) {
@@ -135,6 +149,18 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
         const auto active = data::read<std::uint8_t>(context.address(flag));
         data::require(active <= 1, "native scoring activity is not boolean");
         activity = {true, active != 0, now};
+        // Optional presentation fields cannot invalidate native activity or labels.
+        numbers.sampled_at = now;
+        try {
+            const auto score = read_display_number(context, 0x7d1e237c, false);
+            numbers.score_valid = score.valid;
+            numbers.score = score.value;
+        } catch (...) { /* a missing or unsupported score remains unavailable */ }
+        try {
+            const auto multiplier = read_display_number(context, 0x9acb7cf0, true);
+            numbers.multiplier_valid = multiplier.valid;
+            numbers.multiplier = multiplier.value;
+        } catch (...) { /* the other fields remain independently observable */ }
         // Continuous bounded observation is independent of the discovery log cap.
         try { label_edges.observe(read_label_presence(context), true, now); }
         catch (...) { label_edges.invalidate(); }

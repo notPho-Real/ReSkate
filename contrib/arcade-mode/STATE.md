@@ -1,5 +1,32 @@
 # Arcade Mode persistent project state
 
+## Current source reuse checkpoint — 2026-10-14
+
+Continues `55a6303f062c2832cdc93409970e2d37d99b29a9`. Surveyed 20 open PRs,
+103 closed PRs and the 180 returned public forks; inventoried 362 branches across
+179 external forks, deduplicated 264 heads and screened their differences. Relevant
+implementations and licenses are pinned in `research/upstream-method-survey.json`.
+This is targeted source review, not line-by-line review of every fork.
+
+PR #217 supplied native line-score/multiplier mappings. The existing observer now
+reads them with independent validity, strict full-consumption parsing and bounded
+sanitized telemetry; no raw UI strings or fabricated scores. These are presentation
+snapshots, not bank/trick events, and local ownership remains unverified. Forty new
+C++ parser checks pass with sanitizers; all 208 Python tests pass.
+
+Other concrete reuse paths: Trainer state-page readers for native grind enums;
+bounded native bail requests and actual ragdoll-entry observation; existing authored
+from-grind playback plus the already-integrated grind exit hook. Exact named Y
+selection, enum mapping and native acceptance remain open. PR #232's actual current
+diff only affects PlayStation HID; it does not solve Deck grind selection. PR #230
+is unchanged, so prepared flip A/B remains the first hardware task.
+
+Baseline Windows run `38639254535` failed on a narrowing warning in a manual test;
+the test now uses an explicitly typed button array and passes strict local checks.
+A fresh Windows/package gate is required for this change. No new DLL was deployed,
+no Deck trials occurred, and the recorded installation/network blocker below is
+unchanged. No frozen runner, security settings or native gameplay tuning changed.
+
 ## Current runtime and HIL integration checkpoint — 2026-10-14
 
 Runtime source is `53b13bb519858e07087d70f5f4c3c1e4d9a57ca8`, continuing

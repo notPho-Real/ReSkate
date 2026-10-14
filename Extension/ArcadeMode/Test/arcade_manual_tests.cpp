@@ -66,7 +66,8 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 30, 0, pose).owns_stick,
             "independent incompatible native pose releases even if external eligibility lags");
     }
-    for (std::uint16_t button : {0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0010u, 0x0020u, 0x0300u}) {
+    constexpr std::uint16_t conflicting_buttons[]{0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0010u, 0x0020u, 0x0300u};
+    for (const auto button : conflicting_buttons) {
         ManualGesture manual;
         start(manual);
         check(!poll(manual, 30, 0, SkatePose::manual, button).owns_stick,

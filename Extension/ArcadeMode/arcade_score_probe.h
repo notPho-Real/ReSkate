@@ -8,6 +8,14 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept;
 struct ScoreActivity { bool valid{}, active{}; std::uint64_t sampled_at{}; };
 // Client-thread snapshot; consumers must enforce freshness and native ownership.
 ScoreActivity score_activity() noexcept;
+struct ScoreHudNumbers {
+    bool score_valid{}, multiplier_valid{};
+    std::uint64_t score{}, multiplier{}, sampled_at{};
+};
+// Client-thread presentation snapshot. Local skater ownership is unverified;
+// callers must enforce freshness. These values are not trick, bank, or combo
+// events. Unsupported text formatting has a false per-field validity flag.
+ScoreHudNumbers score_hud_numbers() noexcept;
 // One client-thread consumer. Only fresh transitions in allowlisted native HUD
 // text are returned; baseline/gaps/coalesced edges are explicitly uncertain.
 // This is label evidence, not a score amount or proof of an unseen repeated trick.

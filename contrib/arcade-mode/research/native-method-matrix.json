@@ -1,5 +1,5 @@
 {
-  "status": "INCOMPLETE: authored flip catalog available; remaining exact methods still under source review",
+  "status": "INCOMPLETE: pinned source survey found scoring, grind observation and physical-bail methods; exact action acceptance remains separate",
   "rows": [
     {
       "arcade_input": {
@@ -620,7 +620,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -640,7 +641,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -660,7 +662,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -680,7 +683,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -700,7 +704,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -720,7 +725,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -740,7 +746,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -760,7 +767,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -780,7 +788,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -800,7 +809,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -820,7 +830,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -840,7 +851,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -860,7 +872,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -880,7 +893,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -900,7 +914,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": {
@@ -920,7 +935,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": "Left Stick",
@@ -1009,7 +1025,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": "Y perpendicular",
@@ -1025,7 +1042,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": "Up,Up + Y",
@@ -1041,7 +1059,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": "Down,Down + Y",
@@ -1057,7 +1076,8 @@
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
         "deck_trials": 0
-      }
+      },
+      "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping"
     },
     {
       "arcade_input": "RT",
@@ -1084,5 +1104,48 @@
   ],
   "schema": 1,
   "catalog_source": "authored-flip-catalog.json",
-  "classification_policy": "Null classification means source review remains incomplete; it is not permission to begin novel reverse engineering or evidence an exact equivalent is absent."
+  "classification_policy": "Null classification means source review remains incomplete; it is not permission to begin novel reverse engineering or evidence an exact equivalent is absent.",
+  "source_survey": "upstream-method-survey.json",
+  "supporting_methods": [
+    {
+      "requested_action": "Read native line score and multiplier",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "score-hud",
+      "implementation_status": "Read-only numeric adapter integrated; native ownership and bank semantics unverified",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Observe grind identity",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "grind-state",
+      "implementation_status": "Pinned read route available; bounded adapter and enum mapping pending",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Physical balance-failure consequence",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "native-bail-minimal / native-bail-scoped",
+      "implementation_status": "Native request candidates reviewed; integration and independent result verification pending",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Grind to flip exit",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "grind-exit",
+      "implementation_status": "Exit hook and authored from_grind catalog already present; Classic playback context gating still excludes grind",
+      "native_id": null,
+      "deck_trials": 0
+    },
+    {
+      "requested_action": "Observe manual to pop transition",
+      "classification": "RE-SKATE METHOD AVAILABLE",
+      "source_id": "manual-pop",
+      "implementation_status": "Owner-filtered launch diagnostics available; existing successful manual behavior preserved",
+      "native_id": null,
+      "deck_trials": 0
+    }
+  ]
 }

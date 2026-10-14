@@ -29,6 +29,33 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_score_numbers_preserve_invalid_unknown_and_stale_evidence(self):
+        row = ('ARCADE SCORE NUMBERS: ms=200 sampled=100 score_valid=true score=500 '
+               'multiplier_valid=true multiplier=2 owner_verified=false.')
+        result = probe.parse_score_numbers('\n'.join(row.replace('ms=200', f'ms={i + 200}') for i in range(130)))
+        self.assertEqual((len(result['samples']), result['dropped']), (128, 2))
+        self.assertEqual(result['samples'][0]['ms'], 202)
+        self.assertTrue(result['samples'][0]['fresh'])
+        self.assertFalse(result['samples'][-1]['fresh'])
+        self.assertFalse(result['samples'][-1]['owner_verified'])
+        invalid = row.replace('score_valid=true score=500', 'score_valid=false score=0')
+        self.assertFalse(probe.parse_score_numbers(invalid)['samples'][0]['score_valid'])
+        for field in ('ms', 'score', 'multiplier'):
+            maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
+            self.assertEqual(probe.parse_score_numbers(maximum)['samples'][0][field], 18446744073709551615)
+            self.assertEqual(probe.parse_score_numbers(maximum.replace('18446744073709551615', '18446744073709551616'))['samples'], [])
+        for bad in (row + ' raw text', row.replace('sampled=100', 'sampled=201'),
+                    row.replace('score_valid=true', 'score_valid=false'), row.replace('score=500', 'score=-1'),
+                    row.replace('multiplier=2', 'multiplier=0'), row.replace('multiplier_valid=true', 'multiplier_valid=false'),
+                    row.replace('owner_verified=false', 'owner_verified=true')):
+            self.assertEqual(probe.parse_score_numbers(bad)['samples'], [])
+
+    def test_score_numbers_never_establish_native_trick_identity(self):
+        from lab import trick_batch
+        result = trick_batch.observations('ARCADE SCORE NUMBERS: ms=200 sampled=100 score_valid=true score=500 multiplier_valid=true multiplier=2 owner_verified=false.')
+        self.assertEqual(result['score_numbers']['samples'][0]['score'], 500)
+        self.assertEqual(trick_batch.named_flip_result('kickflip', result, 0), 'UNVERIFIED')
+
     def test_score_edges_are_bounded_numeric_label_appearances(self):
         row = 'ARCADE SCORE EDGE: seq=3 observed=125 sampled=120 labels=1048575 uncertainty=5.'
         result = probe.parse_score_edges('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))

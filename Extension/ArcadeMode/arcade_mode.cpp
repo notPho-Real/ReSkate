@@ -541,6 +541,11 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE PUSH OBSERVATION: seq={} ms={} valid={} eligible={} speed={} contacts={}.",
                 hil_heartbeat_id, now, speed_valid, push_valid, speed, native.words[1] & 0xc000u);
+            const auto score_numbers = score_hud_numbers();
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE NUMBERS: ms={} sampled={} score_valid={} score={} multiplier_valid={} multiplier={} owner_verified=false.",
+                now, score_numbers.sampled_at, score_numbers.score_valid, score_numbers.score,
+                score_numbers.multiplier_valid, score_numbers.multiplier);
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE AUTHORED STATUS: state={}.", authored_status.load(std::memory_order_acquire));
             logging::log(logging::Level::info, logging::Channel::skater,
