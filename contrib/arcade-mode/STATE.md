@@ -1,5 +1,32 @@
 # Arcade Mode persistent project state
 
+## Combo/balance implementation in progress — 2026-10-13
+
+Starting HEAD 0979224 on arcade-mode, origin notPho-Real/ReSkate; clean
+worktree before this task. Preserve A/X gestures and the active development
+installation. No stock restore between experiments. New scope is combo links,
+native revert/manual observation, persistent grind/manual fatigue, inertial
+balance and its HUD. Pure model is being extended first; runtime integration
+and hardware acceptance are NOT complete. Existing model's informational grace
+and linear cursor drift do not meet this task's specification.
+Phase1 local result: 483 C++ checks passed with strict warnings,119 Python
+tests passed, git diff --check passed. Implemented automatic grace banking,
+single-use revert window, persistent normalized mode/global fatigue, seeded
+240Hz inertial dynamics and tunable difficulty/edges. Runtime still does not
+drive the model. Added bounded read-only physics-step transition instrumentation
+to identify manual/revert; details in research/COMBO_EVENTS.md. Windows compile
+and release CI are the next gate before deploying this observer.
+Real Deck preflight succeeded; installed f669926/hash c67bb9dd... and preserved
+stock5512a15e... match prior evidence. Game/launcher running, updatesfalse.
+Private screenshot artifacts/combo-start shows Hub menu. Existing tested
+exit-hub robot recipe ran and neutralized; resulting context not yet reviewed.
+No deployment or stock restore occurred.
+Verified repository observations: air 200–299, wipeout300, upstream measured
+grind400–499 (especially401). Manual and revert identities are unverified;
+button intent must not substitute for those events. Exact next action: implement
+and test deterministic lifecycle/dynamics, then inspect minimal native event
+instrumentation. No real Deck changes in this task so far.
+
 ## Wake helper — 2026-10-13
 
 User explicitly approved narrow administrator changes to enable Wi-Fi wake.

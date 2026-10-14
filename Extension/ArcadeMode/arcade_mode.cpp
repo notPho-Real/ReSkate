@@ -30,6 +30,28 @@ std::uint64_t hil_heartbeat_at{}, hil_heartbeat_id{};
 std::atomic<std::uint64_t> ollie_eligible_until{};
 std::array<NativeGesture, 4> ollie_gestures{};
 std::mutex ollie_mutex;
+// Read-only physics-step evidence. A short revert can disappear between client
+// ticks; keep bounded transitions, not full memory dumps or guessed event IDs.
+struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; };
+std::array<ComboSample, 64> combo_samples{};
+std::mutex combo_samples_mutex;
+std::size_t combo_head{}, combo_count{};
+std::uint64_t combo_dropped{};
+NativeRequestSample combo_previous{};
+void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
+    using namespace game::build::v20260929::arcade_native_probe;
+    NativeRequestSample sample{};
+    if (!memory::peek(owner.context + request_words, sample.words) ||
+        !memory::peek(owner.context + selected_state, sample.state) ||
+        !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) return;
+    sample.valid = true;
+    std::lock_guard lock(combo_samples_mutex);
+    if (sample == combo_previous) return;
+    combo_previous = sample;
+    if (combo_count == combo_samples.size()) { ++combo_dropped; return; }
+    combo_samples[(combo_head + combo_count) % combo_samples.size()] = {sample, GetTickCount64()};
+    ++combo_count;
+}
 
 bool validate_request_probe(std::uintptr_t base) noexcept {
     using namespace game::build::v20260929::arcade_native_probe;
@@ -59,6 +81,9 @@ bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
     request_probe_ready = validate_request_probe(image_base);
+    const bool combo_observer = request_probe_ready && add_no_bail_step_listener(observe_combo_step);
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE COMBO OBSERVER: available={} read_only=true queue_limit=64.", combo_observer);
     logging::log(logging::Level::info, logging::Channel::skater,
         "ARCADE NATIVE PROBE: available={} read_only=true duration_ms=5000 limit=128.", request_probe_ready);
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -83,6 +108,30 @@ void on_client_tick() noexcept {
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
         const auto now = GetTickCount64();
+        // Drain a fixed maximum per tick; explicitly report lost evidence.
+        std::array<ComboSample, 16> samples{};
+        std::size_t count{};
+        std::uint64_t dropped{};
+        {
+            std::lock_guard lock(combo_samples_mutex);
+            count = std::min(samples.size(), combo_count);
+            for (std::size_t i = 0; i < count; ++i)
+                samples[i] = combo_samples[(combo_head + i) % combo_samples.size()];
+            combo_head = (combo_head + count) % combo_samples.size();
+            combo_count -= count;
+            dropped = combo_dropped;
+            combo_dropped = 0;
+        }
+        if (dropped) logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE COMBO GAP: dropped={}.", dropped);
+        for (std::size_t i = 0; i < count; ++i) {
+            const auto& s = samples[i];
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE COMBO SAMPLE: ms={} state={} mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
+                s.ms, s.sample.state, s.sample.crouch_mode,
+                s.sample.words[0], s.sample.words[1], s.sample.words[2], s.sample.words[3],
+                s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
+        }
         const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
         // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
         // checks without injecting an A press merely to arm a capture.

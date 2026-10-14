@@ -9,7 +9,9 @@
 #include <limits>
 
 namespace {
+unsigned checks{};
 void check(bool passed, const char* description) {
+    ++checks;
     if (!passed) { std::cerr << "FAIL: " << description << '\n'; std::exit(1); }
 }
 }
@@ -182,7 +184,7 @@ int main() {
     for (float sign : {-1.0f, 1.0f}) {
         combo.trick(1);
         combo.begin_balance(BalanceKind::grind, sign * 0.99f);
-        check(combo.tick(0.1f, 0.0f, sign) && !combo.state().combo_active, "both balance limits bail");
+        check(combo.tick(1.0f, 0.0f, sign) && !combo.state().combo_active, "both balance limits bail");
     }
     combo.trick(1);
     combo.begin_balance(BalanceKind::manual, 1.0f);
@@ -197,9 +199,11 @@ int main() {
     combo.tick(0.1f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity());
     check(std::isfinite(combo.state().balance), "nonfinite controls sanitized");
     combo.end_balance();
+    combo.landing();
     combo.tick(100.0f);
-    check(combo.state().combo_active && combo.state().link_grace_s == 0.0f &&
-        combo.state().combo_age_s < 2.0f, "time bounded; expired grace does not silently settle score");
+    check(!combo.state().combo_active && combo.take_banked_points() == 1,
+        "expired landing grace banks score exactly once");
+    check(combo.take_banked_points() == 0, "bank notification consumed once");
     Tuning invalid;
     invalid.fatigue_per_second = std::numeric_limits<float>::quiet_NaN();
     invalid.balance_drift_rate = -2.0f;
@@ -209,6 +213,93 @@ int main() {
     safe.tick(1.0f);
     check(safe.state().fatigue == 0.0f && safe.state().balance == 0.0f, "unsafe tuning sanitized");
     for (int i = 0; i < 1000; ++i) safe.link();
-    check(safe.state().fatigue == 10.0f, "fatigue bounded");
-    std::cout << "Arcade Mode model tests passed\n";
+    check(safe.state().fatigue == 1.0f, "fatigue bounded");
+    for (bool continuation : {false, true}) {
+        Model m;
+        m.trick(100);
+        m.tick(1);
+        check(m.state().combo_active, "airborne combo has no landing timeout");
+        check(!m.revert(), "early revert rejected");
+        m.landing();
+        m.tick(0.3f);
+        check(m.revert(), "revert in landing grace accepted");
+        const auto points = m.state().raw_points;
+        const auto multiplier = m.state().multiplier;
+        for (int i = 0; i < 20; ++i) {
+            check(!m.revert(), "repeat revert cannot refresh grace");
+            m.tick(0.01f);
+        }
+        check(m.state().raw_points == points && m.state().multiplier == multiplier, "revert does not farm score");
+        if (continuation) m.begin_balance(BalanceKind::manual);
+        m.tick(0.3f);
+        check(m.state().combo_active == continuation, "only actual continuation consumes pending revert");
+        if (!continuation) check(m.take_banked_points() == 100 && !m.revert(), "expired revert banks and late revert rejected");
+    }
+    for (auto kind : {BalanceKind::grind, BalanceKind::manual}) {
+        Model m;
+        m.trick(10);
+        m.begin_balance(kind);
+        const auto first = m.difficulty();
+        m.tick(1, 0, 0);
+        m.tick(1, 0, 0);
+        const auto mode_fatigue = kind == BalanceKind::grind ? m.state().grind_fatigue : m.state().manual_fatigue;
+        m.trick(10);
+        m.begin_balance(kind == BalanceKind::grind ? BalanceKind::manual : BalanceKind::grind);
+        m.tick(1, 0, 0);
+        m.trick(10);
+        m.begin_balance(kind);
+        check(m.difficulty() > first, "second balance section harder across other mode");
+        check((kind == BalanceKind::grind ? m.state().grind_fatigue : m.state().manual_fatigue) == mode_fatigue,
+              "mode fatigue persists through other mode");
+        const auto count = m.state().multiplier;
+        for (int i = 0; i < 100; ++i) m.begin_balance(kind);
+        check(m.state().multiplier == count, "continuous balance entry cannot farm multiplier");
+        m.bank();
+        check(m.state().fatigue == 0 && m.state().grind_fatigue == 0 && m.state().manual_fatigue == 0,
+              "bank resets all fatigue");
+    }
+    float positions[3]{};
+    unsigned index = 0;
+    for (int hz : {30, 60, 120}) {
+        Model m({}, 42), identical({}, 42);
+        m.trick(1); identical.trick(1);
+        m.begin_balance(BalanceKind::manual); identical.begin_balance(BalanceKind::manual);
+        for (int i = 0; i < hz * 3; ++i) {
+            m.tick(1.0f / static_cast<float>(hz), -0.05f);
+            identical.tick(1.0f / static_cast<float>(hz), -0.05f);
+        }
+        check(m.state().combo_active && m.state().balance == identical.state().balance, "same seed reproduces exact run");
+        positions[index++] = m.state().balance;
+    }
+    check(std::abs(positions[0] - positions[1]) < 0.00001f && std::abs(positions[1] - positions[2]) < 0.00001f,
+          "30/60/120 Hz materially equivalent");
+    {
+        Model m;
+        for (int i = 0; i < 100000; ++i) m.trick(std::numeric_limits<std::uint32_t>::max());
+        check(m.bank() == std::numeric_limits<std::uint64_t>::max(), "score product saturates without overflow");
+        m.begin_balance(BalanceKind::grind);
+        check(m.state().combo_active, "observed fresh grind starts a combo");
+        m.tick(0.2f, 1);
+        const auto x = m.state().balance;
+        m.tick(0.02f, 0, 0);
+        check(m.state().balance > x, "velocity persists after correction releases");
+        m.bail();
+        check(m.state().fatigue == 0 && m.state().grind_fatigue == 0 && m.state().manual_fatigue == 0 &&
+              !m.state().revert_pending && m.take_banked_points() == 0, "bail resets every fatigue and loses score");
+    }
+    {
+        Model fresh_model, tired_model;
+        fresh_model.trick(1); tired_model.trick(1);
+        for (int i = 0; i < 20; ++i) tired_model.link();
+        fresh_model.begin_balance(BalanceKind::grind, 0.5f);
+        tired_model.begin_balance(BalanceKind::grind, 0.5f);
+        fresh_model.tick(0.25f, -1, 0); tired_model.tick(0.25f, -1, 0);
+        check(fresh_model.state().balance < tired_model.state().balance, "fatigue reduces recovery authority");
+        Model neutral;
+        neutral.begin_balance(BalanceKind::manual);
+        bool failed = false;
+        for (int i = 0; i < 3600 && !failed; ++i) failed = neutral.tick(1.0f / 60.0f);
+        check(failed && !neutral.state().combo_active, "uncorrected balance eventually fails deterministically");
+    }
+    std::cout << "Arcade Mode tests: " << checks << " checks passed, 0 failed\n";
 }
