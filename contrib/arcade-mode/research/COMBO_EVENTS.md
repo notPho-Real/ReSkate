@@ -9,7 +9,7 @@ Status: discovery instrumentation; runtime balance integration is NOT complete.
 | Landing | Deck ollie201→100 | Candidate landing transition; ownership gaps invalidate it |
 | Grind | Build20260929/grind_exit.h measured400–499, especially401 | Upstream measured; reproduce on this Deck |
 | Bail | no_bail selector300 and wipeout counter | Use actual wipeout, not requested bail |
-| Manual / nose manual | No verified identity | Do not infer from stick position |
+| Manual / nose manual | Real Deck trials3/6 confirmed by user; trial3 native HUD says Manual; selector remains100/mode1 | Both DISCOVERED; numeric identity still unverified, do not infer from stick position |
 | Revert | No verified identity | Do not infer from button/trigger position |
 
 `ARCADE COMBO SAMPLE` adds a read-only listener through the existing multi-listener
@@ -20,6 +20,15 @@ not invoke a native function, force a selector, award points, or drive a HUD.
 Reads are not transactional. Numeric changes are evidence, not named events.
 Owner loss/menu/respawn and any queue gap must invalidate an inferred sequence.
 
+Correction from real six-trial batch: +20000 Linux right-Y produced manual on
+trial3; -20000 produced nose manual on trial6 (user watching actual Deck).
+Private trial002/1.png also clearly displays native "Manual" scoring text.
+State100/mode1 persisted, so that coarse selector cannot distinguish manuals
+from ordinary riding. These are successful discoveries, not failed gestures.
+Three-second holds, neutral before/after; repeatability and numeric event
+identity remain unverified. Do not discard these successes or require speed
+as a prerequisite without evidence. Fix observation and correlate repetitions.
+
 Next bounded experiments: compare neutral riding against half-magnitude positive
 and negative right-Y holds, then inspect actual manual animation/HUD plus state
 transitions; repeat only identified candidates. For revert, compare an ordinary
@@ -27,6 +36,27 @@ landing with the game's documented native revert action and inspect physics-step
 changes. No new Arcade revert button. Capture private screenshots, retain only
 sanitized result tables in the repository. Native balance failure actuation is
 UNVERIFIED; do not present combo loss as a physical bail.
+
+Real Deck guide inspection (2026-10-13, old f669926 still installed): Skatepedia
+Riding entry18 describes a small downward RIGHT-stick hold for a tail manual;
+entry16 is FS Revert, with a LEFT-stick curved gesture and180-degree stance
+change. This is documentation of native intent, NOT observed successful manual
+or revert state evidence. Private captures: artifacts/combo-guide-riding-18 and
+artifacts/combo-guide-fs-revert. No new revert button is warranted. Native X is
+back-foot push, also confirmed in that guide; experimental Arcade X overrides it
+only where its gesture eligibility/cancellation permits.
+Repeatable guide navigation: Escape (Hub), Tab (side menu), Down twice, Return
+(Skatepedia), Riding tab; Down18 for Manual, Up twice for FS Revert. Use350–500ms
+between keys. The existing virtual Start recipe did not open Hub on this trial;
+targeted Escape on the verified Skate window did. No settings were modified.
+Additional private guide captures confirm nose manual uses slight upward RIGHT
+stick; manual revert uses a quick LEFT-stick rotation while holding the manual.
+BS Revert mirrors the FS curved-stick icon. Paths: combo-guide-nose-manual,
+combo-guide-manual-revert, combo-guide-bs-revert. First manual discovery matrix:
+RIGHT-Y Linux magnitudes12000/16000/20000 with both signs, hold3s, neutral before
+and after, six candidates; then refine only candidates with animation AND native
+state evidence. Revert matrix follows measured manual identities, using left-stick
+arcs rather than inventing a face-button mapping.
 
 ## Pure model contract
 

@@ -126,7 +126,9 @@ public:
         remainder_ += static_cast<double>(dt);
         constexpr double step = 1.0 / 240.0;
         constexpr float h = static_cast<float>(step);
-        while (remainder_ + 1e-9 >= step) {
+        // float callers cannot represent e.g.450ms exactly. A sub-microsecond
+        // tolerance prevents an extra simulation step of grace at that boundary.
+        while (remainder_ + 1e-7 >= step) {
             remainder_ -= step;
             elapsed_ = std::min(86400.0, elapsed_ + step);
             state_.combo_age_s = static_cast<float>(elapsed_);

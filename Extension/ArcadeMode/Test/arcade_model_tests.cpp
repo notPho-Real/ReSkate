@@ -265,6 +265,7 @@ int main() {
         m.trick(10);
         m.begin_balance(kind == BalanceKind::grind ? BalanceKind::manual : BalanceKind::grind);
         m.tick(1, 0, 0);
+        m.tick(1, 0, 0);
         m.trick(10);
         m.begin_balance(kind);
         check(m.difficulty() > first, "second balance section harder across other mode");
@@ -319,6 +320,19 @@ int main() {
         bool failed = false;
         for (int i = 0; i < 3600 && !failed; ++i) failed = neutral.tick(1.0f / 60.0f);
         check(failed && !neutral.state().combo_active, "uncorrected balance eventually fails deterministically");
+    }
+    {
+        Model early, late, direct;
+        early.trick(10); late.trick(10); direct.trick(10);
+        early.landing(); late.landing(); direct.landing();
+        early.tick(0.449f); late.tick(0.45f); direct.tick(0.3f);
+        check(early.revert() && !late.revert(), "449ms revert links; 450ms boundary has banked");
+        direct.begin_balance(BalanceKind::manual);
+        direct.tick(0.3f, 0, 0);
+        check(direct.state().combo_active && !direct.state().landing_grace, "direct landing-to-manual consumes grace");
+        const auto remaining = early.state().link_grace_s;
+        early.landing();
+        check(early.state().link_grace_s == remaining && early.state().revert_pending, "repeated landing cannot refresh pending revert");
     }
     {
         Model m;

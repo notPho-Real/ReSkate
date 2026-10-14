@@ -129,6 +129,27 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result["criteria"]["returned_to_idle"], "FAIL")
         self.assertEqual(env.integrity.call_count, 2)
 
+    def test_combo_capture_is_bounded_and_not_named_from_state(self):
+        text = "private unrelated log\n" + "\n".join(
+            "ARCADE COMBO SAMPLE: ms=%d state=100 mode=1 words=%s." %
+            (i, ",".join(["00000000"] * 8)) for i in range(200))
+        value = batch.observations(text)
+        self.assertEqual(len(value["combo"]["samples"]), 128)
+        self.assertEqual(value["combo"]["native_event_identity"], "UNVERIFIED")
+        self.assertNotIn("private", json.dumps(value))
+
+    def test_combo_capture_excludes_previous_candidate(self):
+        env = Mock()
+        env.wait_idle.side_effect = [1, 3]
+        env.gesture.return_value = {"input_sent": True, "frames": []}
+        env.observe.side_effect = [
+            {"combo": {"samples": [{"ms": 100}]}},
+            {"states": [], "combo": {"samples": [{"ms": 99}, {"ms": 100}, {"ms": 101}]}}]
+        value = plan()
+        result = batch.perform_case(value, value["candidates"][0], env)
+        self.assertEqual(result["observations"]["combo"]["samples"], [{"ms": 101}])
+        self.assertEqual(result["criteria"]["named_trick"], "UNVERIFIED")
+
     def test_invalid_context_sends_no_input(self):
         env = Mock()
         env.wait_idle.return_value = None

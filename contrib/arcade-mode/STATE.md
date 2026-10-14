@@ -2,6 +2,44 @@
 
 ## Combo/balance implementation in progress — 2026-10-13
 
+Capture correction checkpoint: per-trial batch evidence now includes bounded
+numeric physics samples, delimited by a pre-input timestamp watermark. This
+does not label manuals from input or selector100.124 offline Python tests pass
+(two new capture regressions); diff check passes. Saved sanitized discoveries in
+research/manual-observations-35d933e.json. New runner changes must pass CI before
+real use. Next: repeat known +/-20000 holds with per-trial native samples and
+correlate actual manual/nose-manual evidence; both already happened on Deck.
+
+LATEST HARDWARE CHECKPOINT: CI38504144171 passed ALL four gates for35d933e
+(Windows/model, Linux, macOS, tested release); separate Deck CI38504144182 passed.
+Explicit standing-authorized development update completed to
+35d933e919c405132e8fa948f30de2eadb2511d9, installed DLL SHA256
+9a79deffb6c6104c131f20e15666475a29def3b32d6ba27ef2905b688a3bb17a.
+Stock backup remains5512a15eacd074d8c03972467af82975fe033a0d5d5a5cf9001c4520fc1f8039;
+updatesfalse, recoveryfalse. Game and launcher were confirmed stopped before
+installer deployment; destination verified afterward. Relauch through existing
+Steam shortcut initiated. DO NOT restore stock between experiments.
+Next: enter Skate, verify fresh heartbeat/probe; run six manual candidates from
+COMBO_EVENTS.md and inspect numeric traces plus private screenshots. Runtime
+model/HUD/native failure are still NOT integrated. Local uncommitted450ms float
+boundary fix passes30,496 sanitizer checks but is not part of deployed35d933e.
+Diagnostic launch succeeded; fresh source-bound physics traces received, zero
+queue drops. On-foot504/mode0 matched screenshot; existing Y recipe mounted the
+board. First six-candidate manual matrix completed with neutralization and idle
+return PASS for all six, but every heartbeat remained100/mode1. No manual native
+identity established. This does NOT mean no manual occurred: user confirmed
+trial3 tail manual (+20000 Linux RY) and trial6 nose manual (-20000 RY).
+Trial002/1.png independently shows Skate's native "Manual" label. Both are
+DISCOVERED on real hardware, not yet repeatability/integration validated.
+The coarse100/mode1 detector missed the distinction; fix observation rather
+than reject working gestures. Private batch artifacts/trick-batch-20261013T203914-30124;
+tracked plan research/manual-discovery-35d933e.json; sanitized trace private
+artifacts/combo-manual-neutral-trace.json. A positive control subsequently
+produced native "Ollie Sketchy" and100/103/200/201 transitions. Next correlate
+the known-working +/-20000 holds with a minimal actual manual-state observable.
+Do not require a new selector ID or infer actual state from stick intent.
+No rolling-speed variant ran. Keep35d933e installed and stock backup untouched.
+
 Starting HEAD 0979224 on arcade-mode, origin notPho-Real/ReSkate; clean
 worktree before this task. Preserve A/X gestures and the active development
 installation. No stock restore between experiments. New scope is combo links,

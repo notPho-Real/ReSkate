@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "source_commit": "35d933e919c405132e8fa948f30de2eadb2511d9",
+  "installed_dll_sha256": "9a79deffb6c6104c131f20e15666475a29def3b32d6ba27ef2905b688a3bb17a",
+  "verification": "REAL_HARDWARE",
+  "batch": "trick-batch-20261013T203914-30124",
+  "observations": [
+    {
+      "trial": 3,
+      "linux_ry": 20000,
+      "hold_ms": 3000,
+      "result": "manual",
+      "status": "DISCOVERED",
+      "evidence": ["user observed live Deck", "trial-002/1.png native HUD reads Manual"],
+      "confirmed_successes": 1
+    },
+    {
+      "trial": 6,
+      "linux_ry": -20000,
+      "hold_ms": 3000,
+      "result": "nose-manual",
+      "status": "DISCOVERED",
+      "evidence": ["user observed live Deck"],
+      "confirmed_successes": 1
+    }
+  ],
+  "coarse_heartbeat": {"state": 100, "mode": 1},
+  "native_manual_event_identity": "UNVERIFIED",
+  "repeatability": "UNVERIFIED",
+  "combo_integration": "UNVERIFIED",
+  "correction": "Unchanged coarse heartbeat is not evidence that a manual failed."
+}

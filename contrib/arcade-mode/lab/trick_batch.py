@@ -97,7 +97,8 @@ def observations(text):
     rows = [{"seq": int(m[1]), "valid": m[2] == "true", "state": int(m[3]), "mode": int(m[4])}
             for m in HIL_ROW.finditer(text)]
     buttons = [{"button": m[1], "count": int(m[2])} for m in BUTTON_ROW.finditer(text)]
-    return {"states": rows[-128:], "buttons": buttons[-32:]}
+    return {"states": rows[-128:], "buttons": buttons[-32:],
+            "combo": parse_combo_samples(text)}
 
 
 def subsequence(expected, rows):
@@ -114,12 +115,22 @@ def perform_case(plan, case, env):
     if baseline is None:
         return {"name": case["name"], "outcome": "SKIPPED_CONTEXT", "input_sent": False,
                 "reason": "No fresh stable on-board heartbeat", "frames": [], "observations": {}}
+    before = env.observe().get("combo", {}).get("samples", [])
+    watermark = before[-1]["ms"] if before else None
     result = env.gesture(case)
     # Gesture's finally neutralizes BEFORE waiting on screenshots or reset.
     env.integrity(plan)
     reset = env.wait_idle(case["reset_ms"])
     obs = env.observe()
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
+    combo = obs.get("combo", {})
+    # Changed-state samples need their own timestamp watermark: heartbeat seq
+    # cannot delimit them. Without a baseline do not attribute historical rows.
+    combo["samples"] = [r for r in combo.get("samples", [])
+                        if watermark is not None and r["ms"] > watermark]
+    combo["baseline_available"] = watermark is not None
+    combo["native_event_identity"] = "UNVERIFIED"
+    obs["combo"] = combo
     wanted = case["expected"]["states"]
     state_result = ("UNVERIFIED" if not wanted else "PASS" if subsequence(wanted, obs["states"]) else "FAIL")
     result.update(name=case["name"], outcome="OBSERVED", observations=obs,
@@ -194,6 +205,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
+from probe import parse_combo_samples
 
 
 def remote_payload(plan, case):
