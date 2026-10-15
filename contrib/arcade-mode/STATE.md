@@ -1,12 +1,13 @@
 ## Native grind fixture checkpoint — 2026-10-14
 
-Gameplay installed:2c3b4c2a110f059661a134545808d888ffe53365, DLL
-8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620.
-All five CI38692885145 gates passed; balance-failure-deploy-v1 receipt preserves
+Gameplay installed:7c7d168da22c4ced6a99efc19008ae37d8490a02, DLL
+f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314.
+All five CI38701577381 gates passed; landing-evidence-deploy-v1 receipt preserves
 stock/game hashes, updates off and recovery clear. Game running; saved Stadium
 rail loaded/adopted with observed8/8 guard, editor/console/map overlay closed,
 Arcade Mode ON, auxiliary actions OFF and simulation60 restored.
-Root owns hardware. Frozen HIL37 and maintenance43 pin this installation.
+Root owns hardware. Frozen HIL38 and maintenance44 pin this installation. HIL38 manifest
+cb7948d4328b95703c7ca963d5572287ef8a52bd031d2c9df064faa847a9e6dd.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Preserve grab code/tests/guide and input-ownership fix. Limited practical airtime
@@ -172,15 +173,19 @@ consumer-lock discard path; pinned upstream native trick-history presenter reade
 with legacy fallback/rebaseline and four exact observed grind/slam label IDs21–24.
 No named grind enum mapping inferred. Existing grabs remain deferred/unchanged.
 Source7c7d168da22c4ced6a99efc19008ae37d8490a02 is pushed; CI38701577381 passed
-Linux/Mac, Windows build still running. Local33616 model checks,84 manual checks,
+all five gates. Verified immutable DLL
+f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314 fetched;
+deployment pending the controlled restart. Local33616 model checks,84 manual checks,
 22 score-edge checks and40057 grind observer/concurrent checks pass under sanitizers.
 Do not deploy until all gates pass; installed2c3b4c2 remains unchanged.
 
 Failure repeat1792050652355691000 passed12/12 native one-shot failures and4/4
 fresh exact exits, all16 complete/reset. Aggregate20/20 native failures across
 contexts (10 manual-mode,10 grind-mode),11 fresh recovery chains. Monetary score
-loss remains unverified. Per-mode20-trial completion batch is now running on
-HIL37; no other hardware owner. Inspect its result before any restart/deployment.
+loss remains unverified. Follow-up1792051238136143000 completed22/22 trials:
+10 manual-mode and10 grind-mode native failures,2 fresh exact exits. Aggregate
+20/20 per balance mode and13/13 fresh recovery chains; all complete/neutral/reset.
+Physical failure is REPEATABLE in these contexts; no active hardware batch.
 
 Host-only optional expected.chain grading now requires one active lifecycle,
 native IDs at each matched takeoff, minimum balance duration, monotonic fatigue,
@@ -191,6 +196,16 @@ into HIL37. Next:verify7c7 CI, deploy once batch completes, restore fixture,
 retry original manual composition and observe exact rail labels. Scoring/banking,
 broader chain repeatability and mixed stress remain open; actual HUD range verified.
 Existing rotation/manual evidence below remains valid within its recorded scope.
+
+Installed7c7d168 / HIL38 pilot1792052795903153000 passed6/6 complete chains:
+3 grind/Ollie/manual/Ollie and3 Kickflip/grind/Kickflip. All exact takeoff IDs,
+continuous active lifecycle, retained fatigue,450–464ms final grace and safe
+neutral/reset. One manual trial reproduced17ms contact plus150ms rebound and
+recovered, directly exercising the landing repair. Native grind enums remain
+unavailable after restart; native400–499 evidence is complete. No newly observed
+exact rail-label edges; history-reader recognition remains unverified.
+17 additional manual-chain trials now running on HIL38; inspect before another
+hardware operation. Pending next:17 Kickflip chains, then update repeatability.
 
 ## Rotation results and verified grind installation — 2026-10-14
 

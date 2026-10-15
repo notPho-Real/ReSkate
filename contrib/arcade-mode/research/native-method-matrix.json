@@ -2102,13 +2102,13 @@
     {
       "id": "input-recovery",
       "requested_action": "No stuck synthetic input under toggles, bail, menu, stale state, controller loss",
-      "implementation_status": "Bounded owners, cancellation, neutralization and offline tests",
+      "implementation_status": "Bounded owners/cancellation plus40/40 physical balance failures and13/13 fresh recovery chains, all neutralized/reset.",
       "source_ids": [
         "controller-source-attachment",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "Combined real actions/controller recovery not stress-tested.",
-      "next": "Retain stronger local ownership; execute native failures and next-fresh-action recovery.",
+      "remaining": "Combined mixed gameplay, menu/toggle/controller-loss stress.",
+      "next": "Preserve physical failure acceptance; cover remaining mixed gameplay transitions.",
       "new_deck_trials": 0
     },
     {
@@ -2118,11 +2118,11 @@
       "source_ids": [
         "score-hud"
       ],
-      "remaining": "Native physical balance failure and moving combined gameplay acceptance.",
-      "next": "CI-approved native impact actuator: verify actual bail, HUD clear, fatigue reset and fresh combo.",
+      "remaining": "Moving combined gameplay acceptance and broader rail contexts.",
+      "next": "Verify grind-based composition on repaired landing build.",
       "new_deck_trials": 27,
       "evidence": "grind-exit-results.json",
-      "maturity": "INTEGRATED:actual native rail HUD range; physical failure pending"
+      "maturity": "INTEGRATED: readable native rail HUD;20/20 grind physical boundary failures verified"
     },
     {
       "id": "hud-manual",
@@ -2131,33 +2131,33 @@
       "source_ids": [
         "score-hud"
       ],
-      "remaining": "Moving combined gameplay and native physical failure verification.",
-      "next": "Verify native failure/clear/recovery after CI-approved actuator deployment.",
+      "remaining": "Moving combined gameplay acceptance.",
+      "next": "Verify prepared manual landing repair in repeated grind/manual/Ollie chains.",
       "new_deck_trials": 5,
       "evidence": "grind-exit-results.json",
-      "maturity": "INTEGRATED:stationary native manual HUD range; broader gameplay acceptance pending"
+      "maturity": "INTEGRATED: readable native manual HUD;20/20 manual-mode physical boundary failures verified"
     },
     {
       "id": "balance",
       "requested_action": "Inertia, disturbance, damping, correction and difficulty",
-      "implementation_status": "Existing model and30/60/120Hz deterministic envelope",
+      "implementation_status": "Existing inertial model, native correction/HUD range verified;20/20 native physical failure trials per balance mode.",
       "source_ids": [],
-      "remaining": "Human correction, tuning and native physical consequences.",
-      "next": "Keep tested model; vary balance context and correlate actual state/correction.",
+      "remaining": "Human correction tuning and repeated balance-mode difficulty across longer chains.",
+      "next": "Verify fatigue persistence and second-entry difficulty in combined gameplay.",
       "new_deck_trials": 0
     },
     {
       "id": "physical-failure",
       "requested_action": "Balance boundary produces actual gameplay failure",
-      "implementation_status": "Installed2c3b4c2; manual1/1 and grind1/1 boundary pilots produce native impact selector300, independent wipeout counter/pose6, actual Slam/ragdoll, HUD clear/fatigue zero and verified reset/remount.",
+      "implementation_status": "Installed2c3b4c2:20/20 manual-mode and20/20 grind-mode failures; one-shot native impact selector acknowledgement, independent wipeout pose, HUD/fatigue clear, neutral/reset.13/13 fresh recovery chains.",
       "source_ids": [
         "native-bail-minimal",
         "native-bail-scoped"
       ],
-      "remaining": "Context repeatability, fresh action after each failure, actual unbanked-score loss.",
-      "next": "Six-context native failure/recovery batch; keep native rejection/protection and no forced state.",
-      "new_deck_trials": 2,
-      "maturity": "DISCOVERED",
+      "remaining": "Actual unbanked-score loss and broader moving combo acceptance.",
+      "next": "Verify repaired landing composition, then native scoring ownership/banking.",
+      "new_deck_trials": 40,
+      "maturity": "REPEATABLE",
       "evidence": "grind-exit-results.json"
     },
     {

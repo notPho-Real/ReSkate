@@ -3695,5 +3695,3344 @@
       }
     ],
     "verified": "12/12 native failures,4/4 fresh exact grind exits,16/16 complete/reset. Aggregate20/20 one-shot native failures(10 manual-mode,10 grind-mode),11 fresh recovery chains including initial pilot. No latch/repeated request. Monetary score loss not verified."
+  },
+  "failure_repeat_22": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "dll_sha256": "8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620",
+    "runner": "trusted-v37",
+    "result": "1792051238136143000.json",
+    "sha256": "2195f5e6ffdba61760fdf9ae2526d51b9de98af0f81e4959aab035c8dc13b360",
+    "rows": [
+      {
+        "name": "balance-mode-repeat-1",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136190785,
+            "kind": 2,
+            "request": 21
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136190785,
+            "request": 21,
+            "result": 1
+          },
+          {
+            "ms": 136190802,
+            "request": 21,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-1",
+        "repetition": 2,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136207819,
+            "kind": 2,
+            "request": 22
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136207819,
+            "request": 22,
+            "result": 1
+          },
+          {
+            "ms": 136207835,
+            "request": 22,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-1",
+        "repetition": 3,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136227336,
+            "kind": 2,
+            "request": 23
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136227336,
+            "request": 23,
+            "result": 1
+          },
+          {
+            "ms": 136227352,
+            "request": 23,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-3",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136244635,
+            "kind": 2,
+            "request": 24
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136244635,
+            "request": 24,
+            "result": 1
+          },
+          {
+            "ms": 136244652,
+            "request": 24,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-3",
+        "repetition": 2,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136264169,
+            "kind": 2,
+            "request": 25
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136264169,
+            "request": 25,
+            "result": 1
+          },
+          {
+            "ms": 136264185,
+            "request": 25,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-3",
+        "repetition": 3,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136281185,
+            "kind": 2,
+            "request": 26
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136281185,
+            "request": 26,
+            "result": 1
+          },
+          {
+            "ms": 136281202,
+            "request": 26,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-5",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136298335,
+            "kind": 2,
+            "request": 27
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136298335,
+            "request": 27,
+            "result": 1
+          },
+          {
+            "ms": 136298352,
+            "request": 27,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-5",
+        "repetition": 2,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136317885,
+            "kind": 2,
+            "request": 28
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136317885,
+            "request": 28,
+            "result": 1
+          },
+          {
+            "ms": 136317902,
+            "request": 28,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-5",
+        "repetition": 3,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136334785,
+            "kind": 2,
+            "request": 29
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136334785,
+            "request": 29,
+            "result": 1
+          },
+          {
+            "ms": 136334802,
+            "request": 29,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-5",
+        "repetition": 4,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136354419,
+            "kind": 2,
+            "request": 30
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136354419,
+            "request": 30,
+            "result": 1
+          },
+          {
+            "ms": 136354435,
+            "request": 30,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-6",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      },
+      {
+        "name": "balance-mode-repeat-7",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136390369,
+            "kind": 1,
+            "request": 31
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136390369,
+            "request": 31,
+            "result": 1
+          },
+          {
+            "ms": 136390387,
+            "request": 31,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-7",
+        "repetition": 2,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136412386,
+            "kind": 1,
+            "request": 32
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136412386,
+            "request": 32,
+            "result": 1
+          },
+          {
+            "ms": 136412402,
+            "request": 32,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-7",
+        "repetition": 3,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136431919,
+            "kind": 1,
+            "request": 33
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136431919,
+            "request": 33,
+            "result": 1
+          },
+          {
+            "ms": 136431936,
+            "request": 33,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-7",
+        "repetition": 4,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136453919,
+            "kind": 1,
+            "request": 34
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136453919,
+            "request": 34,
+            "result": 1
+          },
+          {
+            "ms": 136453935,
+            "request": 34,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-7",
+        "repetition": 5,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136473452,
+            "kind": 1,
+            "request": 35
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136473452,
+            "request": 35,
+            "result": 1
+          },
+          {
+            "ms": 136473469,
+            "request": 35,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-9",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136497236,
+            "kind": 1,
+            "request": 36
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136497236,
+            "request": 36,
+            "result": 1
+          },
+          {
+            "ms": 136497252,
+            "request": 36,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-9",
+        "repetition": 2,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136519302,
+            "kind": 1,
+            "request": 37
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136519302,
+            "request": 37,
+            "result": 1
+          },
+          {
+            "ms": 136519319,
+            "request": 37,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-9",
+        "repetition": 3,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136541286,
+            "kind": 1,
+            "request": 38
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136541286,
+            "request": 38,
+            "result": 1
+          },
+          {
+            "ms": 136541302,
+            "request": 38,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-9",
+        "repetition": 4,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136562869,
+            "kind": 1,
+            "request": 39
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136562869,
+            "request": 39,
+            "result": 1
+          },
+          {
+            "ms": 136562886,
+            "request": 39,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-9",
+        "repetition": 5,
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 136587302,
+            "kind": 1,
+            "request": 40
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 136587302,
+            "request": 40,
+            "result": 1
+          },
+          {
+            "ms": 136587319,
+            "request": 40,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "balance-mode-repeat-12",
+        "repetition": 1,
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      }
+    ],
+    "verified": "20/20 one-shot native failures and2/2 fresh exact exits;22/22 complete/neutral/reset. Aggregate20/20 manual-mode and20/20 grind-mode failures,13/13 fresh recovery chains. Physical failure REPEATABLE in tested contexts; monetary score loss UNVERIFIED."
+  },
+  "landing_repair_pilot_6": {
+    "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+    "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+    "runner": "trusted-v38",
+    "result": "1792052795903153000",
+    "sha256": "f5d24534d1843e09bf9e240d3ed0be00c962d283de3ae7bc14aba8aeeebe8c2b",
+    "trials": [
+      {
+        "name": "grind-ollie-manual-ollie",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5054
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 464
+        },
+        "native_combo_events": [
+          {
+            "ms": 137752457,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137753173,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137753540,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3263337,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137754340,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5103348,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137754873,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.55299836,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.042666607,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137755257,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7039961,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.042666607,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137755990,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.88232523,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.042666607,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137756009,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.8839918,
+            "grind_fatigue": 0.029333336,
+            "manual_fatigue": 0.044333264,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137756473,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137751282,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751778,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751830,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751879,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751931,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751946,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137751996,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752030,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752289,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752302,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752345,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752363,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752378,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752430,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752446,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752467,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752480,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137752612,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752644,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752673,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752684,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752779,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752968,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137752997,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753164,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753180,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753197,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753230,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753346,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753446,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753467,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753480,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753514,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753530,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753546,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753564,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753578,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137753663,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753679,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753697,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137753897,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754055,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754130,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754332,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754345,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754363,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754445,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137754777,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755179,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755199,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755231,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755245,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755264,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755279,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137755414,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755430,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755464,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755478,
+            "valid": true,
+            "id": 0
+          },
+          {
+            "ms": 137755496,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755796,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755896,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755932,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755980,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137755997,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137756014,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137756097,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137757963,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137758031,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137758980,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137758996,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 1,
+            "ms": 137754825,
+            "epoch": 21,
+            "route": 4,
+            "score": 35.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 2,
+            "ms": 137754848,
+            "epoch": 21,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 3,
+            "ms": 137756027,
+            "epoch": 21,
+            "route": 4,
+            "score": 2.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "grind-ollie-manual-ollie",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5050
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 2,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "native_combo_events": [
+          {
+            "ms": 137772323,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137773040,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137773406,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.32633367,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137774123,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5040013,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137774140,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.62533456,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.0013333333,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137774290,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7573337,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.0013333333,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137774723,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.79199785,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.035999976,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137775123,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.94399554,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.035999976,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137775858,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.035999976,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137775873,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.029000003,
+            "manual_fatigue": 0.037333302,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137776323,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137771164,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771663,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771712,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771763,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771812,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771831,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771879,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137771911,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772146,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772163,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772211,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772231,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772245,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772297,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772313,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772331,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772345,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137772481,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772496,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772542,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772553,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772645,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772831,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137772864,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773030,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773046,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773072,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773099,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773212,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773332,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773347,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773379,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773396,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773413,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773429,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773445,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773464,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773480,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137773530,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773546,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773564,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773778,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773912,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773931,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137773978,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774112,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774132,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774145,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774164,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774179,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774280,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774297,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774314,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774330,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774396,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137774645,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775045,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775063,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775097,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775112,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775132,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775145,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137775278,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775297,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775330,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775346,
+            "valid": true,
+            "id": 0
+          },
+          {
+            "ms": 137775363,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775664,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775763,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775796,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775847,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775866,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775881,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137775963,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137777379,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137777845,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137778845,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137778864,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 4,
+            "ms": 137774694,
+            "epoch": 31,
+            "route": 4,
+            "score": 32.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 5,
+            "ms": 137774708,
+            "epoch": 31,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 6,
+            "ms": 137775893,
+            "epoch": 31,
+            "route": 4,
+            "score": 1.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "grind-ollie-manual-ollie",
+        "repetition": 3,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 381,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5043
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "native_combo_events": [
+          {
+            "ms": 137791889,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137792606,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137792989,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.32800037,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137793790,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.51200145,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137794273,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5506653,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.03866663,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137794690,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.70399624,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.03866663,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137795423,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.88265866,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.03866663,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137795440,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.8839919,
+            "grind_fatigue": 0.03066667,
+            "manual_fatigue": 0.039999954,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137795890,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137790712,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791212,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791264,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791313,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791365,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791379,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791430,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791463,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137791713,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791731,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791778,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791796,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791811,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791863,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791879,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791897,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137791912,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792046,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792063,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792097,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792112,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792211,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792397,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792429,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792597,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792614,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792630,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792664,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792779,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792879,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137792913,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792932,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792946,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792964,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792978,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137792997,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137793015,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137793031,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137793111,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793131,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793146,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793345,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793479,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793563,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793582,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793779,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793797,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793811,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137793897,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137794211,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137794612,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794629,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794662,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794678,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794696,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794711,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 137794844,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137794863,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137794896,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137794912,
+            "valid": true,
+            "id": 0
+          },
+          {
+            "ms": 137794930,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795230,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795330,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795363,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795413,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795430,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795446,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137795532,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137797396,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137797463,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137798412,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137798430,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 7,
+            "ms": 137794260,
+            "epoch": 39,
+            "route": 4,
+            "score": 37.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 8,
+            "ms": 137794275,
+            "epoch": 39,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 9,
+            "ms": 137795460,
+            "epoch": 39,
+            "route": 4,
+            "score": 2.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "kickflip-grind-kickflip-out",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 335,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4962
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "native_combo_events": [
+          {
+            "ms": 137811490,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137812206,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137812540,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.32400033,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137813356,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.38900143,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137813806,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137810279,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810779,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810829,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810878,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810930,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810944,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137810996,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137811030,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137811280,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811297,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811378,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811397,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811462,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811478,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811497,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811511,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811711,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811763,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137811779,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137811897,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812030,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812045,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812196,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812221,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812233,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812246,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812331,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812473,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812483,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812497,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812512,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812531,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812545,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812564,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812580,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812763,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812811,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137812830,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137812945,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813044,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813129,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813329,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813347,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813363,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813378,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813464,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813678,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137813945,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137814145,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137815081,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137815580,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137815596,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 10,
+            "ms": 137813393,
+            "epoch": 47,
+            "route": 4,
+            "score": 30.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 11,
+            "ms": 137813409,
+            "epoch": 47,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "kickflip-grind-kickflip-out",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 334,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4968
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 2,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "native_combo_events": [
+          {
+            "ms": 137827706,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137828424,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137828756,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3240003,
+            "grind_fatigue": 0.02666667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137829573,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.38933474,
+            "grind_fatigue": 0.02666667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137830023,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137826497,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137826996,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827045,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827099,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827146,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827163,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827212,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827245,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137827497,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827511,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827597,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827612,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827678,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827696,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827713,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827730,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827930,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827978,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137827997,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828111,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828244,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828263,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828412,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828432,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828445,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828463,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828563,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828665,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137828679,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828697,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828712,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828731,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828746,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828763,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828779,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828797,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137828812,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137829145,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137829245,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137829263,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137829278,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829344,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829412,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829429,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829530,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829545,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829564,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829579,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829599,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829678,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137829864,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137830132,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137830311,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137831263,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137831797,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137831812,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 12,
+            "ms": 137829609,
+            "epoch": 55,
+            "route": 4,
+            "score": 30.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 13,
+            "ms": 137829626,
+            "epoch": 55,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "kickflip-grind-kickflip-out",
+        "repetition": 3,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 315,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4969
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "native_combo_events": [
+          {
+            "ms": 137846790,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137847506,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137847823,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.32233363,
+            "grind_fatigue": 0.025333336,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137848623,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.38633472,
+            "grind_fatigue": 0.025333336,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 137849073,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_flip_samples": [
+          {
+            "ms": 137845579,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846079,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846133,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846178,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846230,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846246,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846296,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846330,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137846579,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846597,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846678,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846696,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846762,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846778,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846796,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137846811,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847012,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847064,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847078,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847196,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847330,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847345,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847497,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847513,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847530,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847553,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847647,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137847746,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847763,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847779,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847796,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847812,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847829,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847845,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137847863,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137848044,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137848096,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 137848111,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848229,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848363,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848412,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848613,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848630,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848647,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848730,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137848944,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137849212,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137849412,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137850345,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137850878,
+            "valid": true,
+            "id": -1
+          },
+          {
+            "ms": 137850898,
+            "valid": true,
+            "id": -1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 14,
+            "ms": 137848660,
+            "epoch": 63,
+            "route": 4,
+            "score": 30.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 15,
+            "ms": 137848676,
+            "epoch": 63,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Raw grind enum bindings unavailable in this run; independent400-499 state is primary evidence. No exact named grind inferred."
   }
 }
