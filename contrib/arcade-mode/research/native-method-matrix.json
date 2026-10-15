@@ -1970,13 +1970,13 @@
         "native-line-events"
       ],
       "remaining": "Every named result unverified;4 exact equivalents unresolved.",
-      "next": "Observe actual native grab/label; inspect missing guide entries, then repeat supported ones.",
+      "next": "DEFERRED until rotation, grinding, HUD and basic combo integration. Preserve recipes and evidence; practical airtime remains an unresolved context limitation.",
       "new_deck_trials": 0
     },
     {
       "id": "grinds",
       "requested_action": "Contextual primary/repeated Y and lip entries",
-      "implementation_status": "Semantic selector only; native actuation missing",
+      "implementation_status": "Basic Y native board alignment and partial nose/tail pressure implemented; Deck rail-contact tests pending",
       "source_ids": [
         "grind-state",
         "grind-exit",
@@ -1984,20 +1984,20 @@
         "native-darkslide-guide"
       ],
       "remaining": "Approach geometry, named enum mapping, exact repeated-Y variants and usable entry control.",
-      "next": "Read/map native grind evidence, integrate continuous board pressure and native Darkslide route; preserve collisions.",
+      "next": "Verify basic Y entry, native400-series state, balance, natural exit and A/X out before named variants. Native geometry selects the actual grind; no forced state or identity.",
       "new_deck_trials": 0
     },
     {
       "id": "grind-exits",
       "requested_action": "Grind to flip, manual or riding",
-      "implementation_status": "Existing exit hook and authored from_grind patterns; Classic start gate excludes grind",
+      "implementation_status": "Classic A/X now selects existing from_grind patterns only in observed native grind context; no ground fallback; Deck verification pending",
       "source_ids": [
         "grind-exit",
         "dual-stick-rail-and-spin",
         "held-flip-and-composite-record"
       ],
       "remaining": "Shared input ownership and verified transition identity.",
-      "next": "Enable only native-confirmed grind context and reuse current exit hook; no competing singleton hooks.",
+      "next": "Observe native grind-to-air and exact Ollie/Kickflip identity; preserve existing exit hook without competing hooks or velocity changes.",
       "new_deck_trials": 0
     },
     {

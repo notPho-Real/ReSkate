@@ -648,8 +648,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         std::lock_guard lock(ollie_mutex);
         const bool auxiliary_busy = action_inputs[user].busy();
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
+        const auto observed = manual_observed.load(std::memory_order_relaxed);
+        const bool may_exit_grind = game_input && observed == SkatePose::grind;
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start, may_push && !auxiliary_busy, push_speed.load(std::memory_order_relaxed),
+            game_input, may_start || may_exit_grind, may_push && !auxiliary_busy, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,

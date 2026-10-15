@@ -35,6 +35,85 @@ int main() {
     run_arcade_playback_tests();
 #endif
     using namespace dingosdk::arcade_mode;
+    {
+        GrindInput grind;
+        check(!grind.poll(0x8000, 0, 0, true, SkatePose::air, false).owns_stick,
+            "held Y across mode enable cannot inherit grind ownership");
+        grind.poll(0, 0, 0, true, SkatePose::riding, false);
+        check(!grind.poll(0x8000, 0, 0, true, SkatePose::riding, false).owns_stick,
+            "ground Y never forces rail engagement or pop input");
+        auto air = grind.poll(0x8000, 0, 0, true, SkatePose::air, false);
+        auto rail = grind.poll(0x8000, 0, 0, true, SkatePose::grind, false);
+        check(air.owns_stick && rail.owns_stick && air.y == 0 && rail.y == 0,
+            "neutral board request remains unchanged across physical rail contact");
+        check(!grind.poll(0x8000, 0, 0, true, SkatePose::riding, false).owns_stick,
+            "rail exit to ground immediately releases synthetic board hold");
+        grind.poll(0, 0, 0, true, SkatePose::air, false);
+        air = grind.poll(0x8001, 0, 0, true, SkatePose::air, false);
+        rail = grind.poll(0x8000, 24000, -24000, true, SkatePose::grind, false);
+        check(air.y == 20000 && rail.y == 20000,
+            "direction is captured once and later balance corrections do not select another grind");
+        check(!grind.poll(0x9000, 0, 0, true, SkatePose::grind, true).owns_stick,
+            "native pop out preempts held Y board adjustment");
+        grind.poll(0, 0, 0, true, SkatePose::air, false);
+        air = grind.poll(0x8002, 0, 0, true, SkatePose::air, false);
+        check(air.owns_stick && air.y == -20000, "down Y supplies distinct partial tail tilt");
+        check(!grind.poll(0x8002, 0, 0, true, SkatePose::bail, false).owns_stick,
+            "bail clears held grind input");
+        check(!grind.poll(0x8002, 0, 0, true, SkatePose::air, false).owns_stick,
+            "bail requires Y released before another request");
+        grind.poll(0, 0, 0, true, SkatePose::air, false);
+        auto unsupported = grind.poll(0x8005, 0, 0, true, SkatePose::air, false);
+        check(unsupported.unsupported && !unsupported.owns_stick,
+            "unintegrated diagonal never silently becomes neutral grind input");
+        check(!grind.poll(0x8005, 0, 0, true, SkatePose::air, false).unsupported,
+            "unsupported held Y reports once rather than flooding evidence");
+        grind.poll(0, 0, 0, true, SkatePose::air, false);
+        grind.poll(0x8000, 0, 0, true, SkatePose::air, false);
+        check(!grind.poll(0x8000, 0, 0, false, SkatePose::air, false).owns_stick,
+            "menus and mode OFF release grind input");
+    }
+    {
+        const std::array catalog{
+            PreparedGesture{1, false, GestureContext::ground, {{0, 0, -32767}, {18, 0, 32767}, {19, 0, 0}}},
+            PreparedGesture{1, false, GestureContext::from_grind, {{0, 0, -28000}, {6, 0, 28000}, {7, 0, 0}}},
+            PreparedGesture{2, false, GestureContext::from_grind, {{0, 1000, -28000}, {6, 28000, 28000}, {7, 0, 0}}}};
+        ClassicGesture gesture;
+        const auto poll = [&](std::uint64_t tick, std::uint16_t buttons) {
+            return gesture.poll(tick * 17, tick, buttons, 0, 0, true, true, false, catalog, false, GestureContext::from_grind);
+        };
+        poll(0, 0);
+        auto pop = poll(1, ClassicGesture::a);
+        check(pop.requested_id == 1 && pop.right_y == -28000,
+            "rail Ollie chooses the existing from-grind pattern instead of ground playback");
+        gesture.cancel(); poll(100, 0); poll(101, ClassicGesture::x | 4);
+        pop = poll(112, 0);
+        check(pop.requested_id == 2 && pop.right_x == 1000,
+            "rail X selects authored from-grind flip data");
+        gesture.cancel(); poll(200, 0);
+        const std::span ground_only(catalog.data(), 1);
+        pop = gesture.poll(3500, 201, ClassicGesture::a, 0, 0, true, true, false,
+            ground_only, false, GestureContext::from_grind);
+        check(pop.unsupported && !pop.owns_stick, "missing rail pattern never falls back silently to a ground gesture");
+        ArcadeInput input; input.enable(true);
+        const auto integrated = [&](unsigned tick, std::uint16_t buttons, SkatePose pose) {
+            return input.poll(0, tick * 17, buttons, 0, 0, 9000, 10000, true, true,
+                false, 0, false, true, true, tick, false, catalog, false, false, pose);
+        };
+        integrated(0, 0, SkatePose::riding);
+        auto board = integrated(1, 0x8000, SkatePose::riding);
+        check(!board.buttons && !board.command_busy, "ground Y is masked without forcing a board or rail state");
+        board = integrated(2, 0x8300, SkatePose::riding);
+        check(board.phase != 3 && !(board.buttons & 0x8000),
+            "masked Y cannot turn a three-button press into a valid board chord");
+        integrated(3, 0, SkatePose::riding);
+        board = integrated(4, BoardChord::pair, SkatePose::riding);
+        check(board.phase == 3 && (board.buttons & 0x8000), "native board pulse survives the Y grind mask");
+        integrated(20, 0, SkatePose::grind);
+        board = integrated(21, ClassicGesture::a | 0x8000, SkatePose::grind);
+        check(board.requested_id == 1 && board.right_y == -28000 && !board.buttons,
+            "integrated A out preempts Y using the exact native rail pattern");
+    }
     for (const auto shoulder : {BoardChord::lb, BoardChord::rb}) {
         AirRotation spin;
         const auto poll = [&](std::uint64_t ms, std::uint16_t buttons, SkatePose pose = SkatePose::air,

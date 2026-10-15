@@ -88,8 +88,11 @@ The pinned fork survey also found reusable grind-state readers and native bail
 requests. See `contrib/arcade-mode/research/upstream-method-survey.json` before
 starting new reverse engineering of those mechanics.
 
-No grind actuator or physical balance-failure action is established by this
-scaffold. LB/RB now translate continuous airborne rotation and crouched prewind
+Basic Y now holds native neutral alignment or partial nose/tail pressure through
+air-to-rail contact. A/X out selects the existing authored from-grind patterns;
+there is no ground-pattern fallback. Actual engagement, named variants and exit
+reliability still require Deck verification. Physical balance-failure actuation
+remains outstanding. LB/RB translate continuous airborne rotation and crouched prewind
 to native LS, after the existing120ms board-chord window. A held pair wins;
 release, landing, bail, menus and conflicting owners release rotation. The
 native method produced BS/FS180s and360s on Deck (six trials, all sketchy);

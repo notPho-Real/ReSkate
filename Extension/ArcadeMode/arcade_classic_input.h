@@ -50,7 +50,8 @@ public:
     }
     Output poll(std::uint64_t now, std::uint64_t tick, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, bool game_input, bool may_start, bool nollie,
-            std::span<const PreparedGesture> catalog, bool mirror_x = false) noexcept {
+            std::span<const PreparedGesture> catalog, bool mirror_x = false,
+            GestureContext context = GestureContext::ground) noexcept {
         Output out{buttons};
         if (!game_input) { cancel(); return out; }
         // Directional trick modifiers must not open native gameplay menus.
@@ -64,11 +65,15 @@ public:
         if (!armed_) { if (!held) armed_ = true; return out; }
         if (count_ && now < tap_at_) { cancel(); return out; }
         if ((edges & a) && may_start && !playback_.busy()) {
-            holding_ = begin(nollie ? 16 : 1, nollie, true, tick, catalog, out, mirror_x);
+            context_ = context;
+            holding_ = begin(nollie ? 16 : 1, nollie, true, tick, catalog, out, mirror_x, context_);
         }
         if ((edges & x) && ((may_start && !playback_.busy()) || holding_)) {
             const auto direction = classic_direction(buttons, lx, ly);
-            if (!count_) { direction_ = direction; nollie_ = nollie; count_ = 1; }
+            if (!count_) {
+                direction_ = direction; nollie_ = nollie; count_ = 1;
+                if (!holding_) context_ = context;
+            }
             else if (direction == direction_ && nollie == nollie_ && now - tap_at_ <= 180)
                 count_ = std::min(count_ + 1, 3u);
             else { count_ = 0; out.unsupported = true; }
@@ -79,7 +84,7 @@ public:
             const auto id = native_flip_id(trick, nollie_);
             const bool hold = holding_;
             if (may_start || holding_) {
-                if (!begin(id, nollie_, hold, tick, catalog, out, mirror_x)) {
+                if (!begin(id, nollie_, hold, tick, catalog, out, mirror_x, context_)) {
                     playback_.cancel(); holding_ = false;
                 } else holding_ = hold;
             }
@@ -98,9 +103,9 @@ public:
     }
 private:
     bool begin(std::uint8_t id, bool nollie, bool hold, std::uint64_t tick,
-               std::span<const PreparedGesture> catalog, Output& out, bool mirror_x) noexcept {
+               std::span<const PreparedGesture> catalog, Output& out, bool mirror_x, GestureContext context) noexcept {
         if (id) for (const auto& gesture : catalog) {
-            if (gesture.native_id != id || gesture.nollie != nollie || gesture.context != GestureContext::ground) continue;
+            if (gesture.native_id != id || gesture.nollie != nollie || gesture.context != context) continue;
             if (playback_.start(gesture.steps, tick, hold, mirror_x)) { out.requested_id = id; return true; }
         }
         out.unsupported = true;
@@ -113,5 +118,6 @@ private:
     std::uint64_t tap_at_{};
     std::uint64_t last_now_{}, last_tick_{};
     TrickDirection direction_{TrickDirection::none};
+    GestureContext context_{GestureContext::ground};
 };
 }

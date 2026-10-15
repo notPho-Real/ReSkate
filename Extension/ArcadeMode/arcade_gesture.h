@@ -4,6 +4,7 @@
 #include "arcade_board.h"
 #include "arcade_classic_input.h"
 #include "arcade_manual_input.h"
+#include "arcade_grind_input.h"
 #include <array>
 #include <cstdint>
 
@@ -120,6 +121,7 @@ public:
         for (auto& manual : manuals_) manual.cancel();
         for (auto& push : pushes_) push.reset();
         for (auto& chord : chords_) chord.reset();
+        for (auto& grind : grinds_) grind.reset();
     }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
@@ -136,7 +138,10 @@ public:
         if (authored) {
             if (game_input && experimental_grabs && observed == SkatePose::air && (buttons & 0x2000))
                 classic_[user].finish_neutral_tail();
-            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog, mirror_x);
+            if (game_input && (observed == SkatePose::air || observed == SkatePose::grind) &&
+                (buttons & GrindInput::y_button)) classic_[user].finish_neutral_tail();
+            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog, mirror_x,
+                observed == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground);
             out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
                 classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};
@@ -148,12 +153,18 @@ public:
                 out.right_x = 0; out.right_y = manual.y; out.phase = 1;
                 busy = true;
             }
+            const auto grind = grinds_[user].poll(buttons, lx, ly, game_input, observed, busy || triggers_held);
+            if (game_input) out.buttons &= ~GrindInput::y_button;
+            out.unsupported = out.unsupported || grind.unsupported;
+            if (grind.owns_stick) {
+                out.right_x = grind.x; out.right_y = grind.y; out.phase = 1; busy = true;
+            }
         } else {
             out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
             busy = gestures_[user].busy();
         }
         const auto board = chords_[user].poll(now, out.buttons, game_input,
-            may_toggle_board && !busy && !triggers_held);
+            may_toggle_board && !busy && !triggers_held && !(buttons & ~BoardChord::pair));
         out.buttons = board.buttons;
         if (board.pulse) out.phase = 3;
         const bool conflict = buttons || triggers_held || busy ||
@@ -170,5 +181,6 @@ private:
     std::array<ManualGesture, 4> manuals_{};
     std::array<AutomaticPush, 4> pushes_{};
     std::array<BoardChord, 4> chords_{};
+    std::array<GrindInput, 4> grinds_{};
 };
 }
