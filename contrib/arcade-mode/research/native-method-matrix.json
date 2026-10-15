@@ -1786,18 +1786,32 @@
       "method_source": "community-revert-source.json; EterrnaWasTaken revision 7c28aade77293d0ec269eb5567ffff7314cf8007",
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
-      "implementation_status": "Source behavior established; no compatible copying license; independent native recipe test pending",
-      "hil_status": "DISCOVERED: c1e2a79 moving community recipe produced independently visible FS Revert and Switch FS Revert in2/2 trials; both reset. Stationary controls did not confirm revert; HIL235ms delivery now measured. Direction/stance mapping,20-trial repeatability and RT integration remain pending. See community-revert-source.json.",
+      "implementation_status": "Independent native recipe integrated behind existing RT selector. Exact base-label reader and bounded native-confirmed combo continuation implemented; new runtime window awaits verified deployment and Deck acceptance.",
+      "hil_status": "DISCOVERED:7c7 frozen trials independently show FS Revert1/1 and BS Revert1/1.08d2a3a numeric diagnostics confirm exact base Revert in2 moving controls and1 moving grind-exit trial; base label does not prove side. Native acknowledgement delay454-471ms; moving grind-exit observation633ms after landing. Stationary delivery did not confirm revert. Not20-trial repeatability.",
       "repeatability": {
-        "trials": 0,
-        "exact": 0
+        "status": "NOT ESTABLISHED",
+        "side_controls": {
+          "frontside": {
+            "trials": 1,
+            "exact": 1
+          },
+          "backside": {
+            "trials": 1,
+            "exact": 1
+          }
+        },
+        "generic_native_confirmation": {
+          "trials": 3,
+          "exact": 3,
+          "scope": "Selected moving controls on08d2a3a; does not include stationary or rejected-context attempts"
+        }
       },
       "review_pending": false,
       "implementation_plumbing": {
-        "status": "EXPERIMENTAL RT RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
+        "status": "RT NATIVE ACTION DISCOVERED; COMBO CONTINUATION ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_revert_input.h",
         "duration_ms": 235,
-        "deck_trials": 0,
+        "deck_trials": 5,
         "runtime_selector": "arcadeactions revert-fs or revert-bs; inspected clear-bit stance only"
       },
       "reuse_review": {
@@ -1807,9 +1821,13 @@
           "native-line-events"
         ],
         "finding": "Prepared235ms candidate remains first. A materially different680ms LS-only alternative preserves manual pressure; stance change alone cannot identify FS/BS.",
-        "next": "Test native label/state for prepared candidate; use LS-only fallback if delivered input is correct but recognition fails.",
+        "next": "Verify new750ms runtime window against native label edges, matched no-RT control, manual continuation and repeated-RT expiry.",
         "new_deck_trials": 0
-      }
+      },
+      "evidence": [
+        "community-revert-source.json",
+        "grind-exit-results.json"
+      ]
     }
   ],
   "schema": 1,
@@ -2319,15 +2337,16 @@
     {
       "id": "chain-B",
       "requested_action": "Air Trick -> Land -> RT Revert -> Manual",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "Native moving grind-exit/Ollie/landing/RT revert observed; label633ms after landing exceeds former450ms grace. Native-label acknowledgement and measured750ms runtime window implemented, pending verified Deck installation.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
       "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "next": "Matched native RT/no-RT tests followed by actual Manual and repeated-revert expiry.",
+      "new_deck_trials": 0,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "chain-C",
@@ -2359,15 +2378,16 @@
     {
       "id": "chain-E",
       "requested_action": "Grind -> Flip Out -> Manual",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "Native subset implemented and observed. Regular five-action chain19/20 attempts on7c7 (one incomplete bail trace); later08d Nose/Nollie chain18/20 complete chains, two failures preserved. All actual native rail and air/manual observations; no full acceptance claim.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "remaining": "Resolve final landing bail and slower-approach rail recontact; establish supported combined repeatability and monetary banking.",
+      "next": "Use fixed rail and measured approach/exit evidence; preserve failures and exact native identities.",
+      "new_deck_trials": 0,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "chain-F",

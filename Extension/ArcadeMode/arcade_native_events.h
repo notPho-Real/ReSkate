@@ -9,6 +9,9 @@ constexpr Tuning native_combo_tuning() noexcept {
     // landing (179ms player delay +454ms native recognition). Keep one bounded
     // window that admits that observation without accepting synthetic intent.
     tuning.combo_link_grace_s = 0.75f;
+    // Three moving controls require933-984ms from native revert label to native
+    // Manual, including completion of101 and actual manual recognition latency.
+    tuning.revert_link_grace_s = 1.1f;
     return tuning;
 }
 // Build-specific adapter, separate from combo dynamics. The scoring activity

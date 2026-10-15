@@ -1217,12 +1217,20 @@ int main() {
         check(observed.model().state().combo_active && !control.model().state().combo_active,
             "native acknowledgement extends once beyond the ordinary750ms landing window");
         const auto multiplier = observed.model().state().multiplier;
-        for (int i = 0; i < 3; ++i) observed.step(SkatePose::riding, 0.15f, 0, true);
+        for (int i = 0; i < 6; ++i) observed.step(SkatePose::riding, 0.15f, 0, true);
         check(observed.model().state().multiplier == multiplier,
             "repeated revert observations do not increase the multiplier");
-        observed.step(SkatePose::riding, 0.16f, 0, true);
+        observed.step(SkatePose::riding, 0.06f, 0, true);
         check(!observed.model().state().combo_active,
-            "repeated native acknowledgements still expire after the single750ms continuation");
+            "repeated native acknowledgements still expire after the single1100ms continuation");
+        ComboSession manual(native_combo_tuning());
+        manual.step(SkatePose::air, 0, 0);
+        manual.step(SkatePose::riding, 0.1f, 0, true);
+        for (int i = 0; i < 4; ++i) manual.step(SkatePose::riding, 0.2f, 0);
+        manual.step(SkatePose::manual, 0.184f, 0);
+        check(manual.model().state().combo_active && !manual.model().state().revert_pending &&
+            manual.model().state().balance_kind == BalanceKind::manual,
+            "measured984ms native manual consumes the bounded continuation");
     }
     {
         Model m;

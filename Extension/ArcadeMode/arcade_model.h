@@ -8,6 +8,7 @@ namespace dingosdk::arcade_mode {
 enum class BalanceKind : std::uint8_t { none, grind, manual };
 struct Tuning {
     float combo_link_grace_s{0.45f};
+    float revert_link_grace_s{0.45f};
     float fatigue_per_second{0.08f};
     float fatigue_per_link{0.12f};
     float balance_restore_rate{1.8f};
@@ -40,6 +41,7 @@ class Model {
 public:
     explicit Model(Tuning tuning = {}, std::uint32_t seed = 1) noexcept : tuning_(tuning), seed_(seed) {
         tuning_.combo_link_grace_s = bounded(tuning_.combo_link_grace_s, 0.0f, 10.0f);
+        tuning_.revert_link_grace_s = bounded(tuning_.revert_link_grace_s, 0.0f, 10.0f);
         tuning_.fatigue_per_second = bounded(tuning_.fatigue_per_second, 0.0f, 10.0f);
         tuning_.fatigue_per_link = bounded(tuning_.fatigue_per_link, 0.0f, 10.0f);
         tuning_.balance_restore_rate = bounded(tuning_.balance_restore_rate, 0.0f, 10.0f);
@@ -77,7 +79,7 @@ public:
         if (!state_.combo_active || !state_.landing_grace || state_.revert_pending || state_.link_grace_s <= 0) return false;
         state_.landing_grace = false;
         state_.revert_pending = true;
-        state_.link_grace_s = tuning_.combo_link_grace_s;
+        state_.link_grace_s = tuning_.revert_link_grace_s;
         return true;
     }
     void trick(std::uint32_t points) noexcept {

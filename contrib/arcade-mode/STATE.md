@@ -150,13 +150,18 @@ Measured native revert follow-up (still installed08d2a3a):
  454ms after input. Actual101 starts before the label, after old grace expired.
 Runtime follow-up therefore sets existing model tuning to750ms, allowing the
 measured native acknowledgement plus a bounded reaction margin. No event comes
-from input intent; one native label grants one750ms continuation, repeated
-reverts cannot refresh it. Default pure-model450ms tests remain intact.
-33635 model sanitizer checks pass. New runtime window still needs Deck acceptance.
+from input intent. Further native controls1792062678538132000 produce3/3 actual
+Revert then Manual, all complete/neutral/reset; native manual begins933–984ms
+after the label because101 must finish and manual recognition takes time.
+The same existing model now has separate bounded revert-window tuning:runtime
+landing750ms, one confirmed revert continuation1100ms. Repeated reverts cannot
+refresh either window. Both default pure-model windows remain450ms.
+33636 model sanitizer checks pass; native full-link acceptance remains pending.
 Host grader also recognizes the independent native wipeout edge when brief300
 is missed, with fresh baseline/complete-stream guards;243 Python tests pass.
 The next combined verified deployment must include this window and transition
-gate;58d6955 and prior frozen native-label-link helpers are superseded targets.
+gate and separate continuation timing;58d6955/5dd2728 and prior frozen
+native-label-link helpers are superseded targets. No intermediate DLL installed.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position
