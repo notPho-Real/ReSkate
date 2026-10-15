@@ -382,6 +382,8 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
     add_executable(dingosdk_arcade_native_score_tests Extension/ArcadeMode/Test/arcade_native_score_tests.cpp)
     target_include_directories(dingosdk_arcade_native_score_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_native_score COMMAND dingosdk_arcade_native_score_tests)
+    add_test(NAME arcade_native_score_replay COMMAND dingosdk_arcade_native_score_tests --replay-unowned
+        "${PROJECT_SOURCE_DIR}/contrib/arcade-mode/research/score-lifecycle-captures.tsv")
     add_executable(dingosdk_arcade_grind_observer_tests Extension/ArcadeMode/Test/arcade_grind_observer_tests.cpp)
     target_include_directories(dingosdk_arcade_grind_observer_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_grind_observer COMMAND dingosdk_arcade_grind_observer_tests)
