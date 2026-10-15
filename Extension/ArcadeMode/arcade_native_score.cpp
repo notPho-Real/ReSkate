@@ -98,8 +98,10 @@ void run_worker(Runtime& r) noexcept {
             for (std::size_t i = 0; i < count; ++i) {
                 const auto& row = rows[i];
                 const auto delivered_at = GetTickCount64();
-                const auto disposition = native_score_capture_status(row, r.epoch.load(), delivered_at,
-                    delivered_at <= r.expires.load());
+                const auto delivered_epoch = r.epoch.load();
+                const auto expiry = r.expires.load();
+                const auto disposition = native_score_capture_status(row, delivered_epoch, delivered_at,
+                    expiry && delivered_at <= expiry && delivered_epoch == r.epoch.load());
                 if (disposition == ScoreDecision::stale) ++r.stale;
                 // Preserve rejected diagnostics, but explicitly mark their
                 // freshness. The game thread never formats or waits on this.

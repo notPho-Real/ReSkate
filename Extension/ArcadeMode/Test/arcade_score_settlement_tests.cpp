@@ -140,6 +140,20 @@ int run_arcade_score_settlement_tests() {
         Fixture f; ComboSession session;
         session.step(SkatePose::air, 0, 0); session.begin_score_evidence(f.context, 0);
         session.observe_score(f.event, f.proof, f.context);
+        f.next(ScoreMeaning::clean_end, 100); session.observe_score(f.event, f.proof, f.context);
+        session.step(SkatePose::riding, .1f, 0); expire(session);
+        session.step(SkatePose::unknown, .1f, 0);
+        session.step(SkatePose::air, .1f, 0);
+        ++f.context.combo;
+        check(!session.begin_score_evidence(f.context, f.event.serial), "undrained bank cannot be overwritten by a new baseline");
+        const auto bank = session.take_score_settlement();
+        check(bank && bank->points == 100 && bank->kind == SettlementKind::bank &&
+              !session.take_score_settlement(), "confirmed bank survives later invalidation and drains once");
+    }
+    {
+        Fixture f; ComboSession session;
+        session.step(SkatePose::air, 0, 0); session.begin_score_evidence(f.context, 0);
+        session.observe_score(f.event, f.proof, f.context);
         session.step(SkatePose::grind, .1f, 0); session.step(SkatePose::bail, .1f, 0);
         const auto serial = session.model().last_settlement().sequence;
         for (int i = 0; i < 20; ++i) session.step(SkatePose::bail, .02f, 0);
