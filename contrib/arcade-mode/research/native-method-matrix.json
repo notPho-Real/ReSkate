@@ -2212,14 +2212,14 @@
     {
       "id": "native-score-events",
       "requested_action": "Native occurrence, score, line completion and bail evidence",
-      "implementation_status": "Installed guarded exact-schema observer captures native sequence scores/start events in23/23 complete repaired-build composition trials; no score policy consumes them.",
+      "implementation_status": "Installed observer evidence preserved. Offline source now classifies stale/invalid drain records and malformed telemetry; bounded ScoreBoundary rejects missing ownership, occurrence, semantics, generations, ordering, capture loss and conflicting duplicates. No production monetary adapter enabled.",
       "source_ids": [
         "native-line-events",
         "score-hud",
         "held-flip-and-composite-record"
       ],
       "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before monetary integration.",
-      "next": "Use captured native payloads and pinned source; do not infer bank from HUD lifetime.",
+      "next": "Prove local payload owner and canonical occurrence with supported-build hardware; current captures remain UNVERIFIED.",
       "new_deck_trials": 23
     },
     {
@@ -2248,13 +2248,13 @@
     {
       "id": "bank-bail",
       "requested_action": "Bank clean/expired combo; lose unbanked score on bail; clear HUD/fatigue",
-      "implementation_status": "Model implemented; native event integration missing",
+      "implementation_status": "Offline ScoreSettlement composes with existing ComboSession/Model: verified action-slot credits, no duplicate takeoff multiplier, complete-action requirement, deferred clean bank, explicit bail-loss amount and fatigue reset. Synthetic admission/model tests only; current native source cannot authorize points.",
       "source_ids": [
         "native-line-events",
         "native-bail-scoped"
       ],
-      "remaining": "Correct scores/ownership and fresh recovery; source1-UP bail policy differs.",
-      "next": "Use native end reasons as evidence, retain Arcade loss semantics; chainH then new combo.",
+      "remaining": "Native ownership, occurrence-to-action mapping and raw-point semantics remain unverified; no new Deck bank/loss acceptance.",
+      "next": "Resume HIL41 after supported recovery, then measure the missing native proof without changing scoring settings.",
       "new_deck_trials": 0
     },
     {

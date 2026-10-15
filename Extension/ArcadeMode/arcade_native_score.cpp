@@ -1,5 +1,6 @@
 #include "arcade_native_score.h"
 #include "arcade_native_score_buffer.h"
+#include "arcade_score_boundary.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -24,6 +25,7 @@ struct Runtime {
     std::atomic<std::uint64_t> rejected{}, contended{};
     // Client-thread lifecycle. These addresses are never published or logged.
     NoBailSkater owner{};
+    std::uint64_t last_tick{};
     bool worker_started{};
     // Worker-only counters and schedule.
     std::uint64_t next_scan{}, report_at{}, stale{};
@@ -95,7 +97,15 @@ void run_worker(Runtime& r) noexcept {
             const auto count = r.events.take(rows);
             for (std::size_t i = 0; i < count; ++i) {
                 const auto& row = rows[i];
-                if (row.epoch != r.epoch.load()) { ++r.stale; continue; }
+                const auto delivered_at = GetTickCount64();
+                const auto disposition = native_score_capture_status(row, r.epoch.load(), delivered_at,
+                    delivered_at <= r.expires.load());
+                if (disposition == ScoreDecision::stale) ++r.stale;
+                // Preserve rejected diagnostics, but explicitly mark their
+                // freshness. The game thread never formats or waits on this.
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE NATIVE SCORE GUARD: seq={} epoch={} delivered={} decision={} authoritative=false.",
+                    row.serial, row.epoch, delivered_at, static_cast<unsigned>(disposition));
                 logging::log(logging::Level::info, logging::Channel::skater,
                     "ARCADE NATIVE SCORE: seq={} ms={} epoch={} route={} score={} reason={} success={} owner_verified=false.",
                     row.serial, row.sampled_at, row.epoch, static_cast<unsigned>(row.route), row.payload.score,
@@ -122,12 +132,14 @@ void native_score_tick(std::uintptr_t base, std::uint64_t now, bool gameplay) no
         NoBailSkater owner{};
         if (!gameplay || !no_bail_skater(owner) || owner.base != base) owner = {};
         const auto prior_expiry = r->expires.load();
-        if (!same_owner(owner, r->owner) || (prior_expiry && now > prior_expiry)) {
+        if (!same_owner(owner, r->owner) || (prior_expiry && now > prior_expiry) ||
+            (r->last_tick && now < r->last_tick)) {
             r->expires.store(0);
             r->epoch.fetch_add(1);
             r->binding_epoch.store(0);
             r->owner = owner;
         }
+        r->last_tick = now;
         r->base.store(base);
         r->expires.store(owner.entity ? now + 150 : 0);
         if (!r->worker_started) {

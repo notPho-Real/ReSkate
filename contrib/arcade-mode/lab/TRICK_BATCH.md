@@ -68,6 +68,34 @@ addition to `combo_chain_result`, neutralization and reset checks. It does not
 prove monetary banking, multiplier behavior or frontside/backside identity.
 This consumes existing HIL41 output without changing the frozen hardware runner.
 
+Offline monetary replay uses `score_replay.py research/score-lifecycle-replay-input.json
+--output <local-result.json>` from `contrib/arcade-mode`. The input preserves selected
+sanitized fields from seven original trials, with each original result hash,
+source/DLL identity and trial index. Five explicitly synthetic fault mutations
+per trial exercise duplicates, missing events, drops and interrupted/truncated
+transitions. Original mechanic PASS/FAIL/UNVERIFIED grades are retained separately.
+No captured score in this schema proves local ownership or a bank/loss amount.
+
+The C++ `ScoreBoundary` requires an independent local owner, generation, combo,
+canonical native occurrence, semantic proof and a complete capture-health baseline.
+Equal scores and different listeners are not occurrence identity. `ScoreSettlement`
+attaches verified raw points to existing observed action slots without changing
+their multiplier, balance or grace. Every action slot must have points evidence,
+including explicit zero; a missing slot cannot produce a partial bank. Model
+expiry and independent clean completion must both occur before a bank receipt;
+bail receipts retain the lost amount separately. Missing evidence produces no
+settlement, rather than an authoritative zero. The current native observer has
+none of the required payload-owner/occurrence/raw-point proofs, so production
+monetary admission remains dormant. Native line/sequence totals are never fed
+through this interface by guessing those proofs.
+
+The smallest remaining native measurement is ownership of the scoring receiver
+or payload relative to the validated local skater, canonical identity across the
+line-end listeners, and the relationship between sequence totals and per-action
+base points with native multipliers unchanged. The pinned community source
+changes those multipliers for its own policy; that policy has not been copied.
+Observer epoch is a local lifetime guard, not proof of native world ownership.
+
 A lost acknowledgement is never replayed: input may have happened.
 Read-only SSH preflight retries three times. Missing game/HIL readiness gets a
 bounded recovery wait; this version does not automatically click the launcher.

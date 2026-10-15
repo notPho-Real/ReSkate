@@ -493,8 +493,17 @@ def parse_score_numbers(text):
 
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
-    samples, status, dropped, status_dropped = [], [], 0, 0
+    samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
     for line in text.splitlines():
+        prior_counts = (len(samples) + dropped, len(status) + status_dropped, len(guards) + guard_dropped)
+        guard = re.search(r'ARCADE NATIVE SCORE GUARD: seq=([0-9]{1,20}) epoch=([0-9]{1,20}) delivered=([0-9]{1,20}) decision=([235]) authoritative=false\.$', line)
+        if guard:
+            seq, epoch, delivered, decision = map(int, guard.groups())
+            if seq and epoch and max(seq, epoch, delivered) <= 0xffffffffffffffff:
+                guards.append(dict(seq=seq, epoch=epoch, delivered=delivered, decision=decision, authoritative=False))
+                if len(guards) > 128:
+                    guards.pop(0)
+                    guard_dropped += 1
         row = re.search(r'ARCADE NATIVE SCORE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) epoch=([0-9]{1,20}) route=([1-4]) score=([0-9.eE+-]{1,32}) reason=([0-8]) success=(true|false) owner_verified=false\.$', line)
         if row:
             seq, ms, epoch, route, score, reason, success = row.groups()
@@ -502,11 +511,13 @@ def parse_native_score_events(text):
             try:
                 score = float(score)
             except ValueError:
+                malformed += 1
                 continue
             if (not seq or not epoch or max(seq, ms, epoch) > 0xffffffffffffffff or
                     not math.isfinite(score) or not 0 <= score <= 2147483647 or
                     (route == 1 and (score or reason or success != 'false')) or
                     (route in (2, 3) and success != 'false') or (route == 4 and reason)):
+                malformed += 1
                 continue
             samples.append(dict(seq=seq, ms=ms, epoch=epoch, route=route, score=score,
                                 reason=reason, success=success == 'true', owner_verified=False))
@@ -519,6 +530,7 @@ def parse_native_score_events(text):
             epoch, lost, rejected, contended, stale = map(int, (epoch, lost, rejected, contended, stale))
             if (not epoch or max(epoch, lost, rejected, contended, stale) > 0xffffffffffffffff or
                     (active == 'false' and bound == 'true')):
+                malformed += 1
                 continue
             status.append(dict(epoch=epoch, active=active == 'true', bound=bound == 'true',
                                dropped=lost, rejected=rejected, contended=contended, stale=stale,
@@ -526,7 +538,12 @@ def parse_native_score_events(text):
             if len(status) > 32:
                 status.pop(0)
                 status_dropped += 1
-    return dict(samples=samples, status=status, dropped=dropped, status_dropped=status_dropped,
+        if ('ARCADE NATIVE SCORE:' in line or 'ARCADE NATIVE SCORE STATUS:' in line or
+                'ARCADE NATIVE SCORE GUARD:' in line) and prior_counts == (
+                    len(samples) + dropped, len(status) + status_dropped, len(guards) + guard_dropped):
+            malformed += 1
+    return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
+                guard_dropped=guard_dropped, malformed=malformed,
                 native_event_identity='UNVERIFIED')
 
 

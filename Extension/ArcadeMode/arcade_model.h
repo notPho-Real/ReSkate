@@ -6,6 +6,12 @@
 
 namespace dingosdk::arcade_mode {
 enum class BalanceKind : std::uint8_t { none, grind, manual };
+enum class SettlementKind : std::uint8_t { none, bank, bail };
+struct ModelSettlement {
+    std::uint64_t sequence{}, points{};
+    SettlementKind kind{SettlementKind::none};
+    unsigned actions{};
+};
 struct Tuning {
     float combo_link_grace_s{0.45f};
     float revert_link_grace_s{0.45f};
@@ -59,6 +65,7 @@ public:
         tuning_.severe_edge = std::max(tuning_.danger_edge, bounded(tuning_.severe_edge, 0.1f, 0.99f));
     }
     const State& state() const noexcept { return state_; }
+    const ModelSettlement& last_settlement() const noexcept { return settlement_; }
     void reset() noexcept { state_ = {}; remainder_ = 0; elapsed_ = 0; }
     std::uint64_t take_banked_points() noexcept { const auto p = banked_; banked_ = 0; return p; }
     float difficulty() const noexcept {
@@ -87,23 +94,33 @@ public:
         state_.combo_active = true;
         end_balance();
         consume_grace();
-        const auto maximum = std::numeric_limits<std::uint64_t>::max();
-        state_.raw_points += std::min<std::uint64_t>(points, maximum - state_.raw_points);
+        credit_points(points);
         if (state_.multiplier < std::numeric_limits<unsigned>::max()) ++state_.multiplier;
     }
+    // Late verified points attach to an already observed action. They must not
+    // count its takeoff twice, end an ongoing manual, or refresh link grace.
+    bool credit_points(std::uint32_t points) noexcept {
+        if (!state_.combo_active) return false;
+        const auto maximum = std::numeric_limits<std::uint64_t>::max();
+        state_.raw_points += std::min<std::uint64_t>(points, maximum - state_.raw_points);
+        return true;
+    }
+    void discard_unverified_points() noexcept { state_.raw_points = 0; }
     void link() noexcept {
         if (!state_.combo_active) return;
         state_.fatigue = std::min(1.0f, state_.fatigue + tuning_.fatigue_per_link);
         consume_grace();
     }
     std::uint64_t bank() noexcept {
-        const auto maximum = std::numeric_limits<std::uint64_t>::max();
-        const auto points = state_.multiplier && state_.raw_points > maximum / state_.multiplier
-            ? maximum : state_.raw_points * state_.multiplier;
+        const auto points = total_points();
+        if (state_.combo_active) record_settlement(SettlementKind::bank, points);
         reset();
         return points;
     }
-    void bail() noexcept { reset(); }
+    void bail() noexcept {
+        if (state_.combo_active) record_settlement(SettlementKind::bail, total_points());
+        reset();
+    }
     void begin_balance(BalanceKind kind, float initial_balance = 0.0f) noexcept {
         if (kind != BalanceKind::grind && kind != BalanceKind::manual) return;
         if (state_.balance_kind == kind) return; // continuous state is not a new link
@@ -163,6 +180,16 @@ public:
         return false;
     }
 private:
+    std::uint64_t total_points() const noexcept {
+        const auto maximum = std::numeric_limits<std::uint64_t>::max();
+        return state_.multiplier && state_.raw_points > maximum / state_.multiplier
+            ? maximum : state_.raw_points * state_.multiplier;
+    }
+    void record_settlement(SettlementKind kind, std::uint64_t points) noexcept {
+        if (settlement_.sequence != UINT64_MAX) ++settlement_.sequence;
+        settlement_.kind = kind; settlement_.points = points;
+        settlement_.actions = state_.multiplier;
+    }
     void consume_grace() noexcept {
         state_.landing_grace = state_.revert_pending = false;
         state_.link_grace_s = 0;
@@ -175,5 +202,6 @@ private:
     std::uint32_t seed_;
     double remainder_{}, elapsed_{};
     std::uint64_t banked_{};
+    ModelSettlement settlement_{};
 };
 }
