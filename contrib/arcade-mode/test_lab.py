@@ -29,6 +29,29 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_native_score_events_are_bounded_numeric_and_keep_unknown_identity(self):
+        from lab import trick_batch
+        row = 'ARCADE NATIVE SCORE: seq=1 ms=200 epoch=3 route=2 score=840.5 reason=7 success=false owner_verified=false.'
+        health = 'ARCADE NATIVE SCORE STATUS: epoch=3 active=true bound=true dropped=2 rejected=1 contended=3 stale=4 owner_verified=false.'
+        result = trick_batch.observations('\n'.join([row] * 130 + [health] * 34))
+        native = result['native_score']
+        self.assertEqual((len(native['samples']), native['dropped'], len(native['status']), native['status_dropped']), (128, 2, 32, 2))
+        self.assertEqual(native['samples'][0]['score'], 840.5)
+        self.assertFalse(native['samples'][0]['owner_verified'])
+        self.assertEqual(native['native_event_identity'], 'UNVERIFIED')
+        self.assertEqual(native['status'][0]['dropped'], 2)
+        self.assertEqual(trick_batch.named_flip_result('kickflip', result, 0), 'UNVERIFIED')
+        for bad in (row + ' raw text', row.replace('score=840.5', 'score=1e309'),
+                    row.replace('score=840.5', 'score=-1'), row.replace('score=840.5', 'score=2147483648'),
+                    row.replace('epoch=3', 'epoch=18446744073709551616'), row.replace('seq=1', 'seq=0'),
+                    row.replace('owner_verified=false', 'owner_verified=true'), row.replace('reason=7', 'reason=9'),
+                    row.replace('route=2', 'route=1'), row.replace('route=2', 'route=4'),
+                    row.replace('success=false', 'success=true')):
+            self.assertEqual(probe.parse_native_score_events(bad)['samples'], [])
+        self.assertEqual(probe.parse_native_score_events(health.replace('active=true', 'active=false'))['status'], [])
+        sequence = row.replace('route=2', 'route=4').replace('reason=7', 'reason=0').replace('success=false', 'success=true')
+        self.assertTrue(probe.parse_native_score_events(sequence)['samples'][0]['success'])
+
     def test_score_numbers_preserve_invalid_unknown_and_stale_evidence(self):
         row = ('ARCADE SCORE NUMBERS: ms=200 sampled=100 score_valid=true score=500 '
                'multiplier_valid=true multiplier=2 owner_verified=false.')

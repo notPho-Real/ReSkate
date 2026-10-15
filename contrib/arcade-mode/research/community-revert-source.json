@@ -117,15 +117,61 @@
       "reset_pass": 2,
       "neutralized": 2,
       "limits": "Direction labels do not establish a fixed side mapping across changing stance. Native100/101 alone is insufficient identity. Native score parser produced no named label rows; full-size Gamescope images provide independent positive identity. RT binding and20-trial repeatability remain unaccepted."
+    },
+    {
+      "evidence": "trusted-v22/results/1792022334623041000.json",
+      "requested_trials": 4,
+      "candidate": "moving-regular-counterclockwise",
+      "native_revert_confirmed": 2,
+      "visual_labels": [
+        "Switch FS Revert",
+        "BS Revert",
+        null,
+        null
+      ],
+      "reset_pass": 4,
+      "neutralized": 4,
+      "failure_envelope": "Last two trials remained native100 at the dumpster; no new label. Collision-blocked forward motion is a confound, not an accepted revert. Earlier two entered101 and returned100. Full-size frames preserved.",
+      "maturity": "DISCOVERED for both native sides; not REPEATABLE"
+    },
+    {
+      "evidence": "trusted-v22/results/1792023537480107000.json",
+      "requested_trials": 4,
+      "executed_trials": 2,
+      "skipped_context": 2,
+      "candidate": "moving-nollie-clockwise",
+      "native_revert_confirmed": 2,
+      "visual_labels": [
+        "FS Revert",
+        "Switch BS Revert"
+      ],
+      "reset_pass": 2,
+      "neutralized": 2,
+      "limits": "Counterclockwise cases never sent input: later moving baseline left native riding.800ms B braking reduced speed but did not stop coasting; idle heartbeat alone is not stationary readiness. Avoid treating skipped trials as recipe failures or passes."
+    },
+    {
+      "source": "f1ce40c22a0a908480a891661b3f1d0bbe19427f",
+      "evidence": "trusted-v23/results/1792024652125144000.json",
+      "method": "Classic RT, frontside experiment, short automatic push",
+      "requested_trials": 2,
+      "native_revert_confirmed": 1,
+      "independent_visual_native_results": [
+        "FS Revert, score5, line5",
+        "No fresh revert; previous label remains"
+      ],
+      "native_score_events": "First trial: sequence end5, success true, then line start; observer bound, owner identity unverified",
+      "reset_pass": 2,
+      "neutralized": 2,
+      "limitation": "Both input traces exceeded tail limits because idle action cadence logged every game tick on two controller slots. Second request cannot be classified as delivered or rejected. Not repeatability acceptance."
     }
   ],
-  "next": "Evaluate unchanged recipe with bounded native push, then production RT after restored Windows/package CI passes.",
+  "next": "Fresh verified runtime: test RT and continuous native scoring/label observation. Add a genuinely stationary/moving-context baseline contract; the current riding-only reset does not arrest drift.",
   "implementation": {
     "source": "Extension/ArcadeMode/arcade_revert_input.h",
     "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",
     "runtime_enabled": false,
     "local_checks": 192,
-    "deck_trials": 14,
+    "deck_trials": 20,
     "delivery_caveat": "Absolute millisecond sampling may skip 5 ms positions under slower XInput polling; real delivered trajectory and stance contexts require observation.",
     "runtime_selector": "arcadeactions revert-fs or revert-bs (unsaved; change with Arcade Mode OFF)",
     "runtime_context": "Inspected clear-bit stance only; native100/103 riding state with fresh observation. Alternate stance mirroring pending."

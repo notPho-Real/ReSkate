@@ -76,6 +76,8 @@ int run_arcade_score_event_tests() {
         "exact existing label allowlist remains the only text-to-ID conversion");
     check(score_label_id("Switch FS Revert") == 3 && score_label_id("Switch FS Revert private text") == 0,
         "observed switch revert spelling retains exact matching and semantic identity");
+    check(score_label_id("Switch BS Revert") == 4 && score_label_id("Switch BS Revert private text") == 0,
+        "observed switch backside spelling retains exact matching and semantic identity");
     std::cout << checks << " score label occurrence checks passed\n";
     return 0;
 }

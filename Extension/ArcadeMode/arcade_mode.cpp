@@ -682,12 +682,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool diagnostic = playback_diagnostics && (result.authored_playback || old.playback_sample);
         // Keep one cadence row per game tick plus every changed output. The
         // cumulative poll count exposes extra reads without logging each one.
+        // Action cadence is useful only while owning input. Idle rows from
+        // multiple controller slots otherwise evict the actual trial evidence.
         if (mode_enabled.load(std::memory_order_acquire) &&
             ((diagnostic && old.tick != tick) || old.buttons != physical_buttons || old.lt != physical_left_trigger || old.rt != physical_right_trigger ||
              old.output != result.buttons || old.phase != result.phase ||
              old.right_x != result.right_x || old.right_y != result.right_y || action.requested ||
              ((action_experiment != ActionExperiment::off || old.action_sample) &&
-              (old.tick != tick || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
+              (((action.owned || old.action_owned) && old.tick != tick) || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
                old.output_rt != right_trigger || old.action_owned != action.owned)))) {
             PadEvidence row{++pad_sequence, now, user, physical_buttons, physical_left_trigger,
                 physical_right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y,

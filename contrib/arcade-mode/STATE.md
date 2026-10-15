@@ -1,5 +1,43 @@
 # Arcade Mode persistent project state
 
+## Verified native runtime installed — 2026-10-14
+
+Source and installed commit `f1ce40c22a0a908480a891661b3f1d0bbe19427f`;
+DLL `3bb57725475257d26e1d1912ef7d821b3ea1fbf3bc292446bb6437c56a3b726c`.
+Development CI38657376204 passed all five gates; hosted Deck simulations38657376177
+also passed. Existing game and stock hashes below remain unchanged, updates off,
+recovery clear. Receipt: external native-actions-deploy-v1/deployment-result.json.
+Trusted-v23 and maintenance-v28 now pin this installed identity. One necessary
+restart for the verified update; no stock restore. Root owns hardware.
+
+Native community method has6 independently visible revert results in8 executed
+moving trials: FS, BS, Switch FS and Switch BS labels. Two regular attempts at an
+obstacle produced no verified revert. Nollie-clockwise2/2 produced FS and Switch BS;
+two counterclockwise cases were skipped when riding context was lost. These are
+source-method discovery, not20-trial repeatability or Classic RT acceptance.
+Eight subsequent raw grab cases were all skipped: no gameplay claim from them.
+
+Short native B braking does not stop coasting (observed2.38m/s after reset), so a
+riding heartbeat must not be called stationary readiness. Walking near stadium
+props did not establish a useful baseline. Two rejected Trainer position candidates
+were tried; game returned to the clear native stadium entrance. Do not reuse those
+coordinates as an accepted practice reset. Full external artifacts are preserved.
+
+Pending local collector changes expose bounded native scoring events/status and
+HUD amounts, with owner/event identity explicitly unverified;216 Python tests pass.
+First Classic RT block:1/2 new native FS Revert labels (score5);2/2 neutralized
+and returned to riding. Second trial retained the prior label, not a second success.
+The native score observer bound and captured sequence amount5 plus line start;
+local ownership remains unverified. Evidence trusted-v23/results/1792024652125144000.json.
+Idle action cadence on two controller slots crowded out input evidence in both
+trials. The local fix retains changed values and cadence during actual ownership.
+Switch BS Revert exact label alias added from the earlier native screenshot;
+21 score-edge sanitizer checks and216 Python tests pass.
+Next: manual-to-Ollie trials on installed f1; build the diagnostic fix before
+repeatable RT/grab delivery analysis. Keep game hot
+between trials and preserve all current result denominators.
+
+
 ## Native revert discovery and HIL timing repair — 2026-10-14
 
 Source checkpoint continues `2ea4337710ea7fb7fa6281f3dcbe4229e6345be8`.

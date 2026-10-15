@@ -5,6 +5,7 @@ The same functions run against temporary fake Decks in tests.
 """
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -451,6 +452,45 @@ def parse_score_numbers(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_native_score_events(text):
+    """Read-only expression payloads; serials are not deduplicated native identities."""
+    samples, status, dropped, status_dropped = [], [], 0, 0
+    for line in text.splitlines():
+        row = re.search(r'ARCADE NATIVE SCORE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) epoch=([0-9]{1,20}) route=([1-4]) score=([0-9.eE+-]{1,32}) reason=([0-8]) success=(true|false) owner_verified=false\.$', line)
+        if row:
+            seq, ms, epoch, route, score, reason, success = row.groups()
+            seq, ms, epoch, route, reason = map(int, (seq, ms, epoch, route, reason))
+            try:
+                score = float(score)
+            except ValueError:
+                continue
+            if (not seq or not epoch or max(seq, ms, epoch) > 0xffffffffffffffff or
+                    not math.isfinite(score) or not 0 <= score <= 2147483647 or
+                    (route == 1 and (score or reason or success != 'false')) or
+                    (route in (2, 3) and success != 'false') or (route == 4 and reason)):
+                continue
+            samples.append(dict(seq=seq, ms=ms, epoch=epoch, route=route, score=score,
+                                reason=reason, success=success == 'true', owner_verified=False))
+            if len(samples) > 128:
+                samples.pop(0)
+                dropped += 1
+        row = re.search(r'ARCADE NATIVE SCORE STATUS: epoch=([0-9]{1,20}) active=(true|false) bound=(true|false) dropped=([0-9]{1,20}) rejected=([0-9]{1,20}) contended=([0-9]{1,20}) stale=([0-9]{1,20}) owner_verified=false\.$', line)
+        if row:
+            epoch, active, bound, lost, rejected, contended, stale = row.groups()
+            epoch, lost, rejected, contended, stale = map(int, (epoch, lost, rejected, contended, stale))
+            if (not epoch or max(epoch, lost, rejected, contended, stale) > 0xffffffffffffffff or
+                    (active == 'false' and bound == 'true')):
+                continue
+            status.append(dict(epoch=epoch, active=active == 'true', bound=bound == 'true',
+                               dropped=lost, rejected=rejected, contended=contended, stale=stale,
+                               owner_verified=False))
+            if len(status) > 32:
+                status.pop(0)
+                status_dropped += 1
+    return dict(samples=samples, status=status, dropped=dropped, status_dropped=status_dropped,
+                native_event_identity='UNVERIFIED')
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
@@ -530,4 +570,5 @@ def native_trace(request, **kwargs):
             "action_observations": parse_action_samples(text[start:] if start >= 0 else ""),
             "score_edge_observations": parse_score_edges(text[start:] if start >= 0 else ""),
             "score_number_observations": parse_score_numbers(text[start:] if start >= 0 else ""),
+            "native_score_observations": parse_native_score_events(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

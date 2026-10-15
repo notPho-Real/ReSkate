@@ -104,7 +104,8 @@ def observations(text):
             "push": parse_push_samples(text), "pad": parse_pad_samples(text),
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
-            "score_edges": parse_score_edges(text), "score_numbers": parse_score_numbers(text)}
+            "score_edges": parse_score_edges(text), "score_numbers": parse_score_numbers(text),
+            "native_score": parse_native_score_events(text)}
 
 
 def subsequence(expected, rows):
@@ -277,7 +278,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers, parse_native_score_events
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree
 # during analysis must never change the remote implementation mid-batch.
