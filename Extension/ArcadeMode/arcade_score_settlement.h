@@ -72,7 +72,10 @@ public:
     std::optional<ModelSettlement> take() noexcept { auto value = output_; output_.reset(); return value; }
     bool unverified() const noexcept { return !started_ || uncertain_ || !credited_ || (pending_ && !emitted_); }
     void invalidate(Model& model) noexcept {
-        uncertain_ = true; pending_.reset(); output_.reset();
+        uncertain_ = true; pending_.reset();
+        // A confirmed terminal is immutable once published, even if the menu,
+        // owner or next combo changes before its consumer drains the receipt.
+        if (!emitted_) output_.reset();
         if (started_ && !emitted_) model.discard_unverified_points();
     }
 private:
