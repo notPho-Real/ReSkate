@@ -173,9 +173,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available);
     const bool was_active = combo_session.model().state().combo_active;
     const bool had_revert = combo_session.model().state().revert_pending;
-    const bool native_revert = valid && !owner_changed && !bail && pose == SkatePose::riding &&
-        native.state == 100 && score.valid && now >= score.sampled_at && now - score.sampled_at <= 150 &&
-        observed_revert_label(label, now);
+    const bool native_revert = observed_native_revert({valid && !owner_changed,
+        score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
+        score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
     const bool failed = combo_session.step(pose, dt, correction, native_revert);
     if (native_revert) {
         const auto& linked = combo_session.model().state();

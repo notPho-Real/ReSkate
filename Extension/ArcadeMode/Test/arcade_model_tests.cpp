@@ -751,7 +751,22 @@ int main() {
         check(session.model().state().combo_active && session.model().state().landing_grace &&
             !session.model().state().revert_pending && session.model().state().multiplier == multiplier,
             "native101 preserves existing grace without confirming a revert or awarding score");
-        session.step(SkatePose::riding, 0.05f, 0, true);
+        const ScoreLabelOccurrence label{true, score_label_bit(25), 1, 300, 300, ScoreLabelUncertainty::none};
+        check(observed_native_revert(transition, label, 300),
+            "native revert label arriving during101 is accepted before return to100");
+        check(!observed_native_revert(transition, {}, 300) &&
+            !observed_native_revert(transition, label, 451),
+            "native101 alone or a stale label cannot acknowledge a revert");
+        for (const NativeComboObservation rejected : {
+            NativeComboObservation{false, true, true, false, 101, 1, 0xc000},
+            NativeComboObservation{true, false, true, false, 101, 1, 0xc000},
+            NativeComboObservation{true, true, true, true, 101, 1, 0xc000},
+            NativeComboObservation{true, true, true, false, 201, 1, 0xc000},
+            NativeComboObservation{true, true, true, false, 401, 1, 0xc000},
+            NativeComboObservation{true, true, true, false, 100, 1, 0x4000}})
+            check(!observed_native_revert(rejected, label, 300),
+                "revert acknowledgement retains owner, freshness, bail and riding guards");
+        session.step(observed_pose(transition), 0.05f, 0, observed_native_revert(transition, label, 300));
         check(session.model().state().revert_pending, "independent native label grants one continuation");
         for (int i = 0; i < 5; ++i) session.step(SkatePose::riding, 0.1f, 0, true);
         check(!session.model().state().combo_active, "repeated native acknowledgements cannot extend grace indefinitely");

@@ -116,9 +116,16 @@ A follow-up source change publishes immutable grind bindings once per generation
 instead of taking the foreground guard every25ms indefinitely. It retains all
 rejection/drop detection; effect on actual contention still needs Deck evidence.
 40061 grind observer sanitizer checks pass.
-Current hardware batch:four native exit controls using established1100ms setup
-and2650ms exit setup, after measured grind entries near2.4s.
-artifacts/fixture-later-chain-controls-4.json, HIL40; inspect before more hardware.
+Later controls1792061323418617000:4/4 complete native chains (two Ollie/manual,
+two Kickflip/Nose Manual/LT Nollie Kickflip), one rail entry/exit each.
+Repeat1792061493757663000:18/18 complete native grinds/exits,16/18 complete
+Nose chains. With two pilot controls:18/20 full Nose chains, not acceptance.
+Trial1 links through Nose Manual then bails on final landing;trial5 recontacts
+rail, obtains only33ms Nose Manual, and expires before final air. All18
+neutral/reset; the independent combo pose6 records the bail even though the
+coarser grind rubric missed it. No missing evidence or stream loss.
+Established1100ms setup/2650ms exit remains narrower at roughly3.95m/s
+than4.52m/s. Geometry and physics are unchanged. Hardware batch complete.
 
 Follow-up source NOT installed:allow exact base labels25(Revert)/26(50-50 Grind),
 without inferring side; native101 preserves existing grounded grace without
@@ -126,9 +133,11 @@ itself confirming a revert. One fresh unambiguous native revert-label edge can
 consume the existing model's single continuation opportunity on observed riding;
 repeated/stale/coalesced labels cannot refresh it. Numeric link telemetry added.
 32 score-edge sanitizer checks,33623 model checks and243 Python tests pass.
-Source7efe5ea27d07c2fd0fb11f911b0da1c416a0ebe5 is pushed; CI38722277300
-is building. The binding-publication follow-up must be included in the next
-verified combined install. Actual landing→RT→manual/abuse trials remain required.
+Source follow-up also accepts the fresh native revert-label edge during101:
+measured labels in1792059876270789000 precede the return to100. The prior
+100-only gate would discard those edges. Owner, score freshness, bail, riding
+and label-integrity guards remain tested. The binding-publication change
+must be included in the next verified combined install. Actual landing→RT→manual/abuse trials remain required.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position

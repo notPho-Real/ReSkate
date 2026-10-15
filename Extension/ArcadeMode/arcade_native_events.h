@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_combo_session.h"
+#include "arcade_score_event.h"
 
 namespace dingosdk::arcade_mode {
 // Build-specific adapter, separate from combo dynamics. The scoring activity
@@ -44,5 +45,13 @@ inline SkatePose observed_pose(const NativeComboObservation& sample) noexcept {
     // the observed takeoff consumes it. It is not itself a new trick.
     if (sample.state == 103 && sample.mode == 1) return SkatePose::riding;
     return SkatePose::unknown;
+}
+inline bool observed_native_revert(const NativeComboObservation& sample,
+    const ScoreLabelOccurrence& label, std::uint64_t now) noexcept {
+    // The measured base-label edge arrives during101, before return to100.
+    // Neither physics state alone nor an input request acknowledges a revert.
+    return sample.valid && sample.score_valid && !sample.bailed &&
+        (sample.state == 100 || sample.state == 101) &&
+        observed_pose(sample) == SkatePose::riding && observed_revert_label(label, now);
 }
 }
