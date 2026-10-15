@@ -1,3 +1,58 @@
+## Rotation results and verified grind installation — 2026-10-14
+
+Current source/installed commit5ed2d873e3b2434c9999557ec656ad74aa7c43ac.
+All five CI38667662491 gates passed; DLL
+92bc4e858098b6070c0ba0f68d7831cdc9af0996fd2f37c165ad514b190eba41.
+External grind-deploy-v1/deployment-result.json verifies unchanged stock/game
+hashes, updates off and recovery clear. Frozen trusted-v26/maintenance-v30.
+Game launch requested after the necessary verified DLL restart. Root owns Deck.
+
+Rotation f297 batch1792030218835535000:20/20 executed, neutralized and idle
+resets; no evidence gaps. Full-size native screenshots independently show:
+180ms shoulder holds4/4 partial BS/FS Ollies;300/600ms holds8/8 BS/FS180;
+prewind8/8 BS/FS360. Four right180 landings Clean; other16 Sketchy.
+Delivered owned spans36–52ms,164–168ms,416–420ms and864–892ms respectively.
+All ended unowned with neutral LS. This establishes functional shoulder rotation
+in the stationary Stadium context, not moving/ramp/540 acceptance. Chord/OFF,
+menu and bail regression remain outstanding. First capture4 attempt completed
+one partial BS Ollie, then stopped before trial2 with input_readiness_lost;
+end-only capture retry completed20. Capture load is not a proven root cause.
+
+Next: restore Stadium1 at60Hz, native mount with Arcade OFF, enable Arcade,
+targeted board-chord/OFF regression, then actual Y rail contact and A/X exits.
+Y board holds/from-grind catalog selection are installed but still unverified
+in native rail gameplay. Physical balance failure and combo acceptance remain
+incomplete. Grabs remain deferred; retain their source and all prior evidence.
+
+5ed targeted chord regression1792031590223483000:3/3 native100-504-100
+round trips,2/2 single-shoulder exclusions,5 neutral/reset passes, no gaps or
+rotation ownership. Native Y mount also worked with Arcade OFF before enabling.
+Two native approach/brake trials1792031754413996000 and1792032569411147000
+passed neutral/reset but remained outside the course behind crowd barriers;
+no grind attempt or grind success claimed. Trainer where independently read
+(-47.37,47.03,39.00),heading63,speed0. Reviewed maintenance-v31 adds only
+fixed native ground reset(-40,55), a nearby candidate inside the course;
+visual verification pending. No jump-height, velocity or grind-state forcing.
+
+## Earlier rotation installation checkpoint — 2026-10-14
+
+Source f29721f8ad0b56a4f1dffa1255d0c91fe607c976 installed after all five
+CI38665858009 gates passed. DLL
+199f9bdd38d080f473d7ee22b460c3451533f3631fd02bba3d503defcb5f4271.
+Stock/game hashes unchanged, updates off, recovery clear. Receipt external
+rotation-deploy-v1/deployment-result.json. One necessary DLL restart; no stock
+restore. Frozen trusted-v25 and maintenance-v29 pin this exact installation.
+Game launch requested; restore the Stadium practice baseline and simulation60
+before shoulder-rotation-f297.json. Root owns hardware; no active grab work.
+
+Latest pushed source5ed2d873e3b2434c9999557ec656ad74aa7c43ac adds basic Y
+and authored rail exits; CI38667662491 pending. This newer grind source is NOT
+installed. Rotation native acceptance is first. The native forward/brake pilot
+1792028815212335000 reached Stadium center barriers, then stopped cleanly using
+2 seconds B: max8.46m/s, final0, neutral/reset PASS. One earlier attempt was
+skipped off-board after map travel; no input sent. Use an actual low rail/ramp
+for grind acceptance, not a crowd barrier or fabricated engagement.
+
 ## Active priorities and hot Deck checkpoint — 2026-10-14
 
 Rotation source f29721f is pushed; CI38665858009 Windows build pending,

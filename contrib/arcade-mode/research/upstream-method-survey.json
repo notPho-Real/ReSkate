@@ -227,7 +227,48 @@
         "No orientation-aware named Y selector, full grab table, exact double/triple counts, RS camera, fatigue or combo.",
         "Do not import standalone loader, speed-stopping pose resets or native ownership inference."
       ],
-      "deck_trials": 0
+      "deck_trials": 6,
+      "deck_result": {
+        "source": "f1ce40c22a0a908480a891661b3f1d0bbe19427f",
+        "result": "trusted-v24/results/1792027415513923000.json",
+        "method": "A Ollie with native LS horizontal hold or pinned prewind; simulation60, stationary Stadium1",
+        "native_outcomes": [
+          "BS Ollie180",
+          "BS Ollie180",
+          "BS Ollie360",
+          "FS Ollie180",
+          "FS Ollie180",
+          "FS Ollie360"
+        ],
+        "observed": 6,
+        "executed": 6,
+        "neutral_reset": 6,
+        "limitation": "All landings Sketchy. Generic heartbeat missed brief air in some trials; native physics transitions and screenshots corroborate outcomes. No shoulder integration acceptance from these raw LS trials."
+      },
+      "shoulder_rotation_result": {
+        "source": "f29721f8ad0b56a4f1dffa1255d0c91fe607c976",
+        "result": "trusted-v25/results/1792030218835535000.json",
+        "trials": 20,
+        "neutralized": 20,
+        "idle_resets": 20,
+        "evidence_gaps": 0,
+        "native_screenshot_results": {
+          "180ms_hold": "4/4 partial BS/FS Ollie",
+          "300_and_600ms_hold": "8/8 BS/FS Ollie180",
+          "prewind": "8/8 BS/FS Ollie360"
+        },
+        "landing_quality": {
+          "clean": 4,
+          "sketchy": 16
+        },
+        "limits": "Stationary Stadium60Hz only. Chord/OFF, menu/bail, moving/ramp and540 acceptance pending.",
+        "prior_stopped_batch": {
+          "result": "1792029919332293000.json",
+          "completed": 1,
+          "planned": 20,
+          "reason": "input_readiness_lost before trial2"
+        }
+      }
     },
     {
       "id": "empty-translator-port",

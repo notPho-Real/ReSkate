@@ -2003,23 +2003,23 @@
     {
       "id": "spins",
       "requested_action": "LB/RB spin and spin cancellation",
-      "implementation_status": "Native method DISCOVERED6/6; Classic bumper translation implemented locally, not yet Deck-verified",
+      "implementation_status": "Functional native LB/RB rotation in20 controlled stationary trials; integration acceptance incomplete",
       "source_ids": [
         "dual-stick-rail-and-spin",
         "controller-source-attachment"
       ],
-      "remaining": "New LB/RB mapping awaits verified build/install and Deck trials; short partial turns, clean landings, stance contexts and board-chord regression remain unaccepted.",
-      "next": "Verify integrated shoulder holds/prewind after CI. Native method6/6 observed BS/FS180 and360, all Sketchy, all neutral/reset. Installed f1; trusted-v24/results/1792027415513923000.json. Local AirRotation implements120ms chord arbitration and release/landing/menu/bail cancellation.",
-      "new_deck_trials": 6
+      "remaining": "Chord/OFF and menu/bail regression, clean landing consistency, moving/ramp/stance and540 contexts.",
+      "next": "Target chord/OFF regression on5ed, then basic Y grinding. f297 batch1792030218835535000:4 partial,8 native180,8 native360;20 neutral/reset;4 Clean,16 Sketchy. Earlier batch1 completed then readiness stop before second trial.",
+      "new_deck_trials": 27
     },
     {
       "id": "board-chord",
       "requested_action": "LB+RB mount/dismount",
-      "implementation_status": "20 long+5 quick cycles and20 partial-trigger exclusions retained",
+      "implementation_status": "Prior20 long+5 quick cycles retained;5ed targeted regression3/3 native100-504-100 round trips and2/2 single-shoulder exclusions, all neutral/reset",
       "source_ids": [],
       "remaining": "New spin/darkcatch/action owners must not break chord.",
-      "next": "Target ownership conflicts; preserve existing native chord implementation.",
-      "new_deck_trials": 0
+      "next": "Preserve120ms window/release-to-rearm; mixed gameplay regression remains.",
+      "new_deck_trials": 5
     },
     {
       "id": "nollie-switch",
