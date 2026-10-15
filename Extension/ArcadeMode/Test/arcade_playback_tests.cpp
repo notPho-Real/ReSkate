@@ -60,6 +60,18 @@ int run_arcade_playback_tests() {
         "delivery completion preserves the existing shifted timing");
 
     for (const auto schedule : {AuthoredPlaybackSchedule::delivery_relative, AuthoredPlaybackSchedule::absolute_ticks}) {
+        AuthoredPlayback handoff;
+        handoff.set_schedule(schedule);
+        handoff.start(steps, 0, true);
+        check(!handoff.finish_neutral_tail(), "held setup cannot yield to an airborne action");
+        handoff.release(100);
+        handoff.sample(100);
+        check(!handoff.finish_neutral_tail(), "active authored arcs cannot yield to an airborne action");
+        for (unsigned tick = 101; tick <= 106; ++tick) handoff.sample(tick);
+        check(handoff.busy() && handoff.finish_neutral_tail() && !handoff.busy(),
+            "delivered neutral tail permits immediate airborne action ownership");
+        check(!handoff.sample(107).owns_stick && !handoff.finish_neutral_tail(),
+            "handoff releases once and never resumes stale authored input");
         AuthoredPlayback playback;
         playback.set_schedule(schedule);
         check(playback.start(steps, 0, true, true), "held reflected script starts near tick zero");

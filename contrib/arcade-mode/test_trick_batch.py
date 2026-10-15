@@ -26,6 +26,53 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_hard_stop_reports_only_allowlisted_cause_and_trial(self):
+        value = plan()
+        for message, reason in [("Skate exited; test stopped", "input_readiness_lost"),
+                                ("No fresh Gamescope PNG/AVIF; capture interface unverified", "capture_timeout"),
+                                ("private path and arbitrary output", "integrity_or_transport_failure")]:
+            with patch.object(batch, "perform_case", side_effect=RuntimeError(message)):
+                result = batch.perform_batch(value, object())["trials"]
+            self.assertEqual(result, [dict(hard_stop=True, reason=reason, name="kickflip", repetition=1)])
+
+    def test_stationary_baseline_requires_matching_fresh_speed(self):
+        observation = {"states": [dict(seq=i, valid=True, state=100, mode=1) for i in range(1, 4)],
+                       "push": [dict(seq=i, valid=True, speed=0.1, contacts=0xc000) for i in range(1, 4)]}
+        self.assertEqual(batch.ready_baseline(observation, 0, 100), 3)
+        self.assertIsNone(batch.ready_baseline(observation, 1, 100))
+        for change in ({"speed": 2.38}, {"speed": float("nan")}, {"speed": -1},
+                       {"seq": 0}, {"valid": False}, {"contacts": 0x4000}):
+            bad = copy.deepcopy(observation)
+            bad["push"][1].update(change)
+            self.assertIsNone(batch.ready_baseline(bad, 0, 100))
+            self.assertEqual(batch.ready_baseline(bad, 0), 3)
+        observation.pop("push")
+        self.assertIsNone(batch.ready_baseline(observation, 0, 100))
+
+    def test_speed_bound_is_validated_and_applies_to_reset(self):
+        value = plan()
+        case = value["candidates"][0]
+        for bound in (0, 100, 20000):
+            case["baseline_max_speed_mm_s"] = bound
+            batch.validate_plan(value)
+        for bound in (-1, 20001, True, "100", 0.1):
+            case["baseline_max_speed_mm_s"] = bound
+            with self.assertRaises(ValueError):
+                batch.validate_plan(value)
+        case["baseline_max_speed_mm_s"] = 100
+        env = Mock()
+        env.wait_idle.side_effect = [1, None]
+        env.gesture.return_value = {"input_sent": True, "frames": []}
+        env.observe.return_value = {"states": [], "buttons": []}
+        result = batch.perform_case(value, case, env)
+        self.assertEqual(result["criteria"]["returned_to_idle"], "FAIL")
+        self.assertTrue(all(call.kwargs == {"max_speed_mm_s": 100} for call in env.wait_idle.call_args_list))
+        env.reset_mock()
+        env.wait_idle.side_effect = [None]
+        result = batch.perform_case(value, case, env)
+        self.assertEqual(result["outcome"], "SKIPPED_CONTEXT")
+        env.gesture.assert_not_called()
+
     def test_bounded_capture_policy_and_session_forwarding(self):
         value = plan()
         case = value["candidates"][0]

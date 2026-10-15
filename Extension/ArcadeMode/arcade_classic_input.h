@@ -42,6 +42,7 @@ public:
         playback_.cancel(); previous_ = 0; count_ = 0; holding_ = false; armed_ = false; clocked_ = false;
     }
     bool busy() const noexcept { return playback_.busy() || count_; }
+    bool finish_neutral_tail() noexcept { return !count_ && playback_.finish_neutral_tail(); }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
         if (playback_.schedule() == schedule) return;
         cancel();

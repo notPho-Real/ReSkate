@@ -644,13 +644,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     {
         std::lock_guard lock(ollie_mutex);
         const bool auxiliary_busy = action_inputs[user].busy();
+        const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start, may_push && !auxiliary_busy, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
-            manual_observed.load(std::memory_order_relaxed));
-        const auto action_experiment = action_mode.load(std::memory_order_relaxed);
+            manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs);
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.

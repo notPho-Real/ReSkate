@@ -532,7 +532,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
+      "hil_status": "UNVERIFIED: two Classic B trials each on f1; no confirmed named grab. Idle diagnostic overflow prevents dispatch attribution; authored neutral-tail ownership conflict identified in code, targeted fix awaits Deck retest. See native-grab-guide.json.",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -565,7 +565,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
+      "hil_status": "UNVERIFIED: two Classic B trials each on f1; no confirmed named grab. Idle diagnostic overflow prevents dispatch attribution; authored neutral-tail ownership conflict identified in code, targeted fix awaits Deck retest. See native-grab-guide.json.",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",
@@ -624,7 +624,7 @@
       "method_source": "native-grab-guide.json: current-game Skatepedia in measured stance",
       "native_id": null,
       "classification": "GAME DATA AVAILABLE",
-      "hil_status": "UNVERIFIED: guide-derived candidate reaches guarded experimental B routing; no native-result or repeatability trials yet",
+      "hil_status": "UNVERIFIED: two Classic B trials each on f1; no confirmed named grab. Idle diagnostic overflow prevents dispatch attribution; authored neutral-tail ownership conflict identified in code, targeted fix awaits Deck retest. See native-grab-guide.json.",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "EXPERIMENTAL B RUNTIME ROUTING; NATIVE ACCEPTANCE PENDING",

@@ -123,6 +123,13 @@ public:
     }
     void cancel() noexcept { size_ = index_ = last_non_neutral_ = 0; holding_ = released_ = false; }
     bool busy() const noexcept { return size_ != 0; }
+    bool finish_neutral_tail() noexcept {
+        // A completed flick has already delivered neutral before a following
+        // airborne action may take ownership. Never truncate an authored arc.
+        if (!size_ || holding_ || index_ <= last_non_neutral_) return false;
+        cancel();
+        return true;
+    }
 private:
     std::array<AuthoredStickStep, 128> steps_{};
     std::size_t size_{}, index_{}, last_non_neutral_{};

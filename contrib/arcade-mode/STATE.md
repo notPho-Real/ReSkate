@@ -1,3 +1,22 @@
+## Grab ownership and HIL readiness fixes — 2026-10-14
+
+Latest pushed source1d90357; installed f1 remains hot in Stadium1, Arcade ON,
+actions=grabs, simulation60 requested. Hardware root only. Diagnostic fix19776cf
+passed all CI gates38661373108; combined preparation fix38662070079 still builds.
+Six stationary Classic B trials completed (Melon/Nosegrab/Tailgrab twice),
+0 independently verified named grabs,6 neutral/reset passes. Generic infrastructure
+stop occurred before a seventh result; game/launcher and installed hashes were
+confirmed intact afterward. Preserve trusted-v23/results/1792025749679033000.json.
+The runtime retains authored ownership for32 neutral settling ticks, preventing
+airborne B handoff. Local fix yields only an already-delivered neutral tail to
+B in observed air with experimental grabs enabled; unchanged for ordinary flips.
+33,510 model and48 playback sanitizer checks pass. Native retest still required.
+HIL now has optional matching-heartbeat speed bounds for setup AND reset, plus
+allowlisted stop reasons/trial identity. These local changes are not yet frozen
+into the trusted runner. Keep pending changes separate from installed claims.
+Next: complete CI for the combined fixes, verified deployment, then RT/grab and
+manual-chain retests from the clear Stadium baseline. No city moving acceptance.
+
 # Arcade Mode persistent project state
 
 ## Ground-preparation combo regression found — 2026-10-14

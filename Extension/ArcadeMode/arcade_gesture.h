@@ -127,12 +127,15 @@ public:
             bool triggers_held = false, bool may_toggle_board = false,
             bool authored = false, std::uint64_t tick = 0, bool nollie = false,
             std::span<const PreparedGesture> catalog = {}, bool mirror_x = false,
-            bool manual_safe = false, SkatePose observed = SkatePose::unknown) noexcept {
+            bool manual_safe = false, SkatePose observed = SkatePose::unknown,
+            bool experimental_grabs = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         NativeGesture::Output out{};
         bool busy{};
         if (authored) {
+            if (game_input && experimental_grabs && observed == SkatePose::air && (buttons & 0x2000))
+                classic_[user].finish_neutral_tail();
             const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog, mirror_x);
             out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,

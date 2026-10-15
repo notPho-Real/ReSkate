@@ -45,7 +45,8 @@ def validate_plan(plan):
         raise ValueError("Batch must contain 1..24 candidates")
     names, trials = set(), 0
     for case in cases:
-        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"), ("repeat", "capture_frames"))
+        keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s"))
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
@@ -57,6 +58,8 @@ def validate_plan(plan):
             raise ValueError("Capture count must be one or four")
         timeout = integer(case["timeout_ms"], 3000, 12000)
         integer(case["reset_ms"], 2000, 10000)
+        if "baseline_max_speed_mm_s" in case:
+            integer(case["baseline_max_speed_mm_s"], 0, 20000)
         keys(case["expected"], ("states",), ("trick",))
         states = case["expected"]["states"]
         if not isinstance(states, list) or len(states) > 12:
@@ -138,17 +141,20 @@ def named_flip_result(expected, observation, log_boundary):
 
 def perform_case(plan, case, env):
     env.integrity(plan)
-    baseline = env.wait_idle(case["reset_ms"])
+    readiness = ({"max_speed_mm_s": case["baseline_max_speed_mm_s"]}
+                 if "baseline_max_speed_mm_s" in case else {})
+    baseline = env.wait_idle(case["reset_ms"], **readiness)
     if baseline is None:
         return {"name": case["name"], "outcome": "SKIPPED_CONTEXT", "input_sent": False,
-                "reason": "No fresh stable on-board heartbeat", "frames": [], "observations": {}}
+                "reason": "No fresh on-board baseline satisfying the requested speed bound" if readiness else
+                          "No fresh stable on-board heartbeat", "frames": [], "observations": {}}
     baseline_observation = env.observe()
     before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
     result = env.gesture(case)
     # Gesture's finally neutralizes BEFORE waiting on screenshots or reset.
     env.integrity(plan)
-    reset = env.wait_idle(case["reset_ms"])
+    reset = env.wait_idle(case["reset_ms"], **readiness)
     log_boundary = baseline_observation.get("log_end")
     obs = env.observe(since=log_boundary)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
@@ -180,6 +186,26 @@ def perform_case(plan, case, env):
     return result
 
 
+def stop_reason(error):
+    # Retain only exact reviewed categories, never exception text containing
+    # process information, paths, command output, or player data.
+    categories = {
+        "installation_integrity": "installation_integrity",
+        "stock_backup_integrity": "stock_backup_integrity",
+        "log_path_integrity": "log_path_integrity",
+        "game_or_hil_unavailable_after_recovery_wait": "game_or_hil_unavailable",
+        "Skate exited; test stopped": "input_readiness_lost",
+        "Readiness inspection did not stop": "readiness_worker_timeout",
+        "Session input/capture context changed": "input_capture_context_changed",
+        "Gamescope changed; screenshot refused": "capture_owner_changed",
+        "No fresh Gamescope PNG/AVIF; capture interface unverified": "capture_timeout",
+        "Bounded experiment interrupted": "watchdog_or_interruption",
+        "Bounded session deadline reached": "session_deadline",
+        "Incomplete uinput write": "input_write_incomplete",
+    }
+    return categories.get(str(error), "integrity_or_transport_failure")
+
+
 def perform_batch(plan, env):
     """Reuse one environment; ordinary recognition failures never abort a batch."""
     validate_plan(plan)
@@ -190,12 +216,29 @@ def perform_batch(plan, env):
                 result = perform_case(plan, case, env)
                 result["repetition"] = repetition + 1
                 results.append(result)
-            except Exception:
-                results.append({"hard_stop": True, "reason": "integrity_or_transport_failure"})
+            except Exception as error:
+                results.append({"hard_stop": True, "reason": stop_reason(error),
+                                "name": case["name"], "repetition": repetition + 1})
                 break
         if results and results[-1].get("hard_stop"):
             break
     return {"trials": results}
+
+
+def ready_baseline(observation, watermark, max_speed_mm_s=None):
+    rows = [r for r in observation["states"] if r["seq"] > watermark]
+    if len(rows) < 3 or not all(r["valid"] and r["state"] == 100 and r["mode"] == 1 for r in rows[-3:]):
+        return None
+    if max_speed_mm_s is not None:
+        # The two observers share a heartbeat sequence. Old speed samples or
+        # an idle pose while coasting cannot establish a stationary baseline.
+        speeds = {r["seq"]: r for r in observation.get("push", [])}
+        for row in rows[-3:]:
+            speed = speeds.get(row["seq"])
+            if (not speed or not speed["valid"] or speed["contacts"] != 0xc000 or
+                    not 0 <= speed["speed"] * 1000 <= max_speed_mm_s):
+                return None
+    return rows[-1]["seq"]
 
 
 class DeckEnvironment:
@@ -247,7 +290,7 @@ class DeckEnvironment:
         except OSError:
             return {"states": [], "buttons": []}
 
-    def wait_idle(self, milliseconds):
+    def wait_idle(self, milliseconds, max_speed_mm_s=None):
         before = self.observe()["states"]
         watermark = before[-1]["seq"] if before else 0
         deadline = time.monotonic() + milliseconds / 1000
@@ -260,9 +303,9 @@ class DeckEnvironment:
                 time.sleep(1)
                 continue
             unavailable = 0
-            rows = [r for r in self.observe()["states"] if r["seq"] > watermark]
-            if len(rows) >= 3 and all(r["valid"] and r["state"] == 100 and r["mode"] == 1 for r in rows[-3:]):
-                return rows[-1]["seq"]
+            ready = ready_baseline(self.observe(), watermark, max_speed_mm_s)
+            if ready is not None:
+                return ready
             time.sleep(0.25)
         return None
 

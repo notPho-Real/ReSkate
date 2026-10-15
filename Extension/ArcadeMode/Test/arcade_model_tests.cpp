@@ -34,6 +34,25 @@ int main() {
     run_arcade_playback_tests();
 #endif
     using namespace dingosdk::arcade_mode;
+    for (unsigned context = 0; context < 3; ++context) {
+        const std::array catalog{PreparedGesture{1, false, GestureContext::ground,
+            {{0, 0, -32767}, {18, 0, 32767}, {19, 0, 0}, {54, 0, 0}}}};
+        ArcadeInput input;
+        input.enable(true);
+        const auto poll = [&](unsigned tick, std::uint16_t buttons, SkatePose pose) {
+            return input.poll(0, tick * 17, buttons, 0, 0, 0, 0, true, true, false, 0,
+                false, false, true, tick, false, catalog, false, false, pose, context != 0);
+        };
+        poll(0, 0, SkatePose::riding);
+        poll(1, ClassicGesture::a, SkatePose::riding);
+        poll(30, 0, SkatePose::air);
+        const auto neutral = poll(31, 0, SkatePose::air);
+        check(neutral.command_busy && neutral.authored_playback && neutral.right_y == 0,
+              "authored neutral was delivered before grab handoff");
+        const auto next = poll(32, 0x2000, context == 1 ? SkatePose::riding : SkatePose::air);
+        check(next.command_busy == (context != 2) && next.authored_playback == (context != 2),
+              "only enabled airborne B can end the neutral authored tail");
+    }
     {
         ManualGesture manual;
         auto poll = [&](std::uint64_t ms, short y, SkatePose pose = SkatePose::riding,

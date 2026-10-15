@@ -6,22 +6,101 @@
   "status": "GAME DATA AVAILABLE; guide instructions are not proof of a performed native result",
   "axis_convention": "Native XInput right stick: x right-positive, y up-positive; use full directional deflection",
   "methods": [
-    {"action": "Melon", "sequence": "Airborne: hold RT, then right stick up", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Nosegrab", "native_label": "Nose Grab", "sequence": "Airborne: right stick down, then RT", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Tailgrab", "native_label": "Tail Grab", "sequence": "Airborne: right stick up, then LT", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Japan", "native_label": "Japan Air", "sequence": "Airborne: right stick right, then RT, then right stick left", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Method", "sequence": "Airborne: hold RT, then right stick right", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Rocket Air", "sequence": "Airborne: right stick down, then both triggers", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Stiffy", "sequence": "Airborne: hold LT, then right stick left", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Benihana", "sequence": "Airborne: right stick up, then LT, then native X", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Airwalk", "sequence": "Airborne: right stick down, then RT, then native B", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "One Foot Tailgrab", "native_label": "One-Foot Tail Grab", "sequence": "Airborne: right stick up, then LT, then native A", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Judo", "native_label": "Judo Air", "sequence": "Airborne: hold RT, then native X", "native_id": null, "hil_status": "UNVERIFIED"},
-    {"action": "Christ Air", "sequence": "Airborne: hold RT, then native B", "native_id": null, "hil_status": "UNVERIFIED"}
+    {
+      "action": "Melon",
+      "sequence": "Airborne: hold RT, then right stick up",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Nosegrab",
+      "native_label": "Nose Grab",
+      "sequence": "Airborne: right stick down, then RT",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Tailgrab",
+      "native_label": "Tail Grab",
+      "sequence": "Airborne: right stick up, then LT",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Japan",
+      "native_label": "Japan Air",
+      "sequence": "Airborne: right stick right, then RT, then right stick left",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Method",
+      "sequence": "Airborne: hold RT, then right stick right",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Rocket Air",
+      "sequence": "Airborne: right stick down, then both triggers",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Stiffy",
+      "sequence": "Airborne: hold LT, then right stick left",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Benihana",
+      "sequence": "Airborne: right stick up, then LT, then native X",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Airwalk",
+      "sequence": "Airborne: right stick down, then RT, then native B",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "One Foot Tailgrab",
+      "native_label": "One-Foot Tail Grab",
+      "sequence": "Airborne: right stick up, then LT, then native A",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Judo",
+      "native_label": "Judo Air",
+      "sequence": "Airborne: hold RT, then native X",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    },
+    {
+      "action": "Christ Air",
+      "sequence": "Airborne: hold RT, then native B",
+      "native_id": null,
+      "hil_status": "UNVERIFIED"
+    }
   ],
   "notes": [
     "The native guide explicitly separates basic FS/BS grabs from Melon and other modified grabs. Do not promote a generic grab as a requested named result.",
     "Capture and trigger timing still require bounded native-result trials.",
     "Screenshots remain private local artifacts. No player text or image data is committed."
-  ]
+  ],
+  "runtime_checkpoint": {
+    "source": "f1ce40c22a0a908480a891661b3f1d0bbe19427f",
+    "evidence": "trusted-v23/results/1792025749679033000.json",
+    "planned": 8,
+    "completed": 6,
+    "native_named_grabs_verified": 0,
+    "reset_pass": 6,
+    "neutralized_completed_trials": 6,
+    "hard_stop": "Generic infrastructure stop before seventh result; exact cause unavailable in that runner. Subsequent status confirmed game alive and all installed pins unchanged.",
+    "location": "Stadium1 entrance, stationary Ollies, forced simulation60",
+    "cases": "Melon, Nosegrab, Tailgrab twice each; no Method result",
+    "evidence_limit": "Every input trace exceeded the tail limit from idle cadence. No runtime dispatch conclusion from missing rows.",
+    "code_finding": "Authored playback retains neutral stick ownership for32 ticks; auxiliary B conflicts with that ownership. Narrow experimental B handoff now permits ending only an already-delivered neutral tail in observed air; no authored arcs changed. Real Deck retest pending."
+  }
 }
