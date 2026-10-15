@@ -106,9 +106,19 @@ Entry controls1792060345476559000:900ms setup2/3 grinds; previously successful
 1100ms setup3/3. All complete/neutral/reset, raw enums on5/5 actual grinds.
 Observed entries near2.2–2.4s; the prior2250ms exit command can precede contact
 or pop too early, leading to rail recontact. Do not change geometry or physics.
-Current hardware batch:17 repeats of1100ms setup to establish20 attempts in this
-context, artifacts/fixture-later-entry-repeat-17.json on HIL40. Inspect completion
-before another Deck operation.
+Later-approach repeat1792060804904761000:15 complete native grinds/exits,
+then trial16 observed a grind but the rejection counter increased1→2.
+No stream overflow; neutral/reset passed. HIL correctly stopped with
+grind_evidence_incomplete. The final planned trial did not execute; the stop
+record is not an extra trial. With the earlier3 controls:18 complete successes
+from19 executed attempts, one incomplete, not20/20.
+A follow-up source change publishes immutable grind bindings once per generation
+instead of taking the foreground guard every25ms indefinitely. It retains all
+rejection/drop detection; effect on actual contention still needs Deck evidence.
+40061 grind observer sanitizer checks pass.
+Current hardware batch:four native exit controls using established1100ms setup
+and2650ms exit setup, after measured grind entries near2.4s.
+artifacts/fixture-later-chain-controls-4.json, HIL40; inspect before more hardware.
 
 Follow-up source NOT installed:allow exact base labels25(Revert)/26(50-50 Grind),
 without inferring side; native101 preserves existing grounded grace without
@@ -116,7 +126,9 @@ itself confirming a revert. One fresh unambiguous native revert-label edge can
 consume the existing model's single continuation opportunity on observed riding;
 repeated/stale/coalesced labels cannot refresh it. Numeric link telemetry added.
 32 score-edge sanitizer checks,33623 model checks and243 Python tests pass.
-Windows build and actual landing→RT→manual/abuse trials remain required.
+Source7efe5ea27d07c2fd0fb11f911b0da1c416a0ebe5 is pushed; CI38722277300
+is building. The binding-publication follow-up must be included in the next
+verified combined install. Actual landing→RT→manual/abuse trials remain required.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position

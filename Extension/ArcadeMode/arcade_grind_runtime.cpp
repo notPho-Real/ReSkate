@@ -40,7 +40,7 @@ bool visit(void* context, std::uintptr_t begin, std::size_t bytes) noexcept {
     return !r.candidates.objects[0] || !r.candidates.objects[1];
 }
 void worker(Runtime& r) noexcept {
-    std::uint64_t scan_generation{}, report_at{}, retry_at{};
+    std::uint64_t scan_generation{}, published_generation{}, report_at{}, retry_at{};
     std::uintptr_t scan_base{};
     for (;;) {
         try {
@@ -66,8 +66,15 @@ void worker(Runtime& r) noexcept {
                     r.cursor = {}; retry_at = now + 1000;
                 }
             }
-            if (r.candidates.objects[0] && r.candidates.objects[1] && !r.guard.test_and_set(std::memory_order_acquire)) {
-                if (r.generation.load() == generation && now <= r.expires.load()) r.bindings = r.candidates;
+            // A generation's immutable binding needs one publication. Taking
+            // the foreground guard every25ms after discovery needlessly makes
+            // valid physics observations contend with a background reader.
+            if (published_generation != generation && r.candidates.objects[0] && r.candidates.objects[1] &&
+                !r.guard.test_and_set(std::memory_order_acquire)) {
+                if (r.generation.load() == generation && now <= r.expires.load()) {
+                    r.bindings = r.candidates;
+                    published_generation = generation;
+                }
                 r.guard.clear(std::memory_order_release);
             }
             std::array<GrindRow, 64> rows{};
