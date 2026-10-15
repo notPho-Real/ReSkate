@@ -4,10 +4,10 @@ Installed source:7c7d168da22c4ced6a99efc19008ae37d8490a02.
 DLL:f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314.
 All five CI38701577381 gates passed; frozen landing-evidence-deploy-v1 receipt
 confirms unchanged stock/game hashes, updates off and recovery clear.
-Game is hot at the saved Stadium rail; Arcade ON, auxiliary actions OFF, sim60,
+Game is hot at the saved Stadium rail; Arcade ON, RT frontside experiment selected (grabs OFF), sim60,
 editor/console/map overlay closed. Root owns hardware; serialize all operations.
-Frozen HIL38 and maintenance44 pin the installed DLL. HIL38 manifest:
-cb7948d4328b95703c7ca963d5572287ef8a52bd031d2c9df064faa847a9e6dd.
+Frozen HIL39 and maintenance44 pin the installed DLL. HIL39 manifest:
+df0e2369fde3e7b5cf0a4c2f479e5adef999722ccabfabb955ee257735a31a46.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Preserve grab implementation/tests/guide and synthetic-input ownership fix.
@@ -39,17 +39,23 @@ Verified milestones (full sanitized results/hashes in research/grind-exit-result
   repeat1792053383541871000. Basic native exits are REPEATABLE in this fixture.
 - Longer Kickflip→Grind→Kickflip Out→Manual→Kickflip pilot1792053729215656000:
   3/3 complete native chains, exact IDs, retained fatigue,450ms grace/reset.
-  Additional17 repeats plus3 Nose Manual variations currently running on HIL38
-  from artifacts/fixture-flip-manual-composition-20.json. Inspect result before
-  any further hardware operation. No simultaneous hardware owner.
+  Repeat1792054829820135000:16/17 regular chains passed;first native landing bail
+  also lost16 host flip rows at128-row cap. Aggregate19 successes/20 attempts,
+  one UNVERIFIED incomplete chain. Nose variants0/3:one broken link after brief
+  opposite-wheel contact, two continuous chains produce native16 instead of2.
+  All20 neutral/reset. Do not promote these variants or hide the failed attempt.
+  RT pilot4 now running on HIL39:artifacts/fixture-native-rt-pilot-4.json; inspect
+  before another hardware action. No simultaneous hardware owner.
 
 Failure envelope preserved:old2c3 build manual chain9/10; failed contact17ms then
 150ms rebound canceled hold. Later command timing0/5 missed grace. Installed7c7
 holds only the bounded initial landing settle (200ms rebound within250ms),
 retaining intentional-trick/menu/bail cancellation. Prior Kickflip repeat6 lost
 one native queue row and stopped safely:INCOMPLETE, no success credit.7c7 removes
-the consumer-lock discard path; all43 completed new-build chains have full
-evidence so far. Old source9a96/956 native exit data remain separately recorded;
+the consumer-lock discard path. New host overflow above is separate:fixed2048
+flip rows cover12s+10s at60Hz; loss still invalidates. HIL39 also stops after safe
+reset on required flip/combo evidence loss. HIL38 incorrectly continued after
+the first lost flip trace; later trial baselines/results are retained independently. Old source9a96/956 native exit data remain separately recorded;
 Ollie repeat6 on956 lacks post-entry ID and is not credited an exact exit.
 
 Outstanding limitations:scored native payloads are captured but owner_verified=false;
@@ -66,7 +72,9 @@ resets, revalidate GUID/name/live handles into fresh generation bindings, and
 publish bounded numeric discovery status (binding bits/pages/passes). Current
 worker otherwise restarts discovery every trial; carryover removes that starvation
 path without reusing owner-bound snapshots.40061 grind sanitizer checks and240
-Python tests pass. CI and targeted Deck enum recovery still required; gameplay
+Python tests passed for9813a88; latest host repair241 tests pass. CI38710098358
+for9813a88d78443d14d4cbf480430cc0865866f10b passed Linux/Mac, Windows pending.
+Targeted Deck enum recovery still required; gameplay
 remains on verified7c7. Do not repeat the completed50-trial matrix for this change.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native

@@ -347,6 +347,7 @@ def stop_reason(error):
         "fixture_window_invalid": "fixture_window_invalid",
         "fixture_reset_unverified": "fixture_reset_unverified",
         "grind_evidence_incomplete": "grind_evidence_incomplete",
+        "chain_evidence_incomplete": "chain_evidence_incomplete",
     }
     return categories.get(str(error), "integrity_or_transport_failure")
 
@@ -366,6 +367,14 @@ def perform_batch(plan, env):
                 if case.get('fixture_reset') and (not result.get('input_sent') or
                         result.get('observations', {}).get('grind_result', {}).get('evidence') != 'COMPLETE'):
                     raise HardStop('grind_evidence_incomplete')
+                observation = result.get('observations', {})
+                # Ordinary missed actions continue. Lost required native evidence
+                # must stop after safe neutralization/reset, even if rail rows survived.
+                if (observation.get('evidence_gap') or
+                        observation.get('combo', {}).get('dropped') or
+                        (('trick' in case['expected'] or 'chain' in case['expected']) and
+                         observation.get('flip', {}).get('dropped'))):
+                    raise HardStop('chain_evidence_incomplete')
             except Exception as error:
                 stopped = {"hard_stop": True, "reason": stop_reason(error),
                            "name": case["name"], "repetition": repetition + 1}

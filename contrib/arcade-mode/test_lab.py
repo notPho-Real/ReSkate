@@ -302,8 +302,12 @@ class ComboTraceTests(unittest.TestCase):
     def test_flip_identifiers_are_numeric_bounded_and_do_not_infer_tricks(self):
         row = 'ARCADE FLIP OBSERVATION: ms=123 valid=true id=2.'
         result = probe.parse_flip_observations((row + '\n') * 130)
-        self.assertEqual(len(result['samples']), 128)
-        self.assertEqual(result['dropped'], 2)
+        self.assertEqual(len(result['samples']), 130)
+        self.assertEqual(result['dropped'], 0)
+        full_window = probe.parse_flip_observations((row + '\n') * 1320)
+        self.assertEqual((len(full_window['samples']), full_window['dropped']), (1320, 0))
+        overflow = probe.parse_flip_observations((row + '\n') * 2049)
+        self.assertEqual((len(overflow['samples']), overflow['dropped']), (2048, 1))
         self.assertEqual(result['samples'][-1], {'ms': 123, 'valid': True, 'id': 2})
         for bad in (row + ' private', row.replace('id=2', 'id=64'), row.replace('id=2', 'id=-2'),
                     row.replace('123', '18446744073709551616')):

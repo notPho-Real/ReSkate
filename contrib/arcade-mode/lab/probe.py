@@ -352,13 +352,15 @@ def parse_push_samples(text):
 
 
 def parse_flip_observations(text):
+    # Changed physics words can repeat a selected flip during a native bail.
+    # Cover the bounded12s trial plus10s recovery at60Hz without losing its start.
     samples, dropped = [], 0
     for line in text.splitlines():
         row = re.search(r'ARCADE FLIP OBSERVATION: ms=([0-9]{1,20}) valid=(true|false) id=(-?[0-9]{1,2})\.$', line)
         if not row or int(row[1]) > 0xffffffffffffffff or not -1 <= int(row[3]) <= 63:
             continue
         samples.append({'ms': int(row[1]), 'valid': row[2] == 'true', 'id': int(row[3])})
-        if len(samples) > 128:
+        if len(samples) > 2048:
             samples.pop(0)
             dropped += 1
     return {'samples': samples, 'dropped': dropped}

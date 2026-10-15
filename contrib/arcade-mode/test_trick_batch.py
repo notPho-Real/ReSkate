@@ -106,6 +106,22 @@ class BatchTests(unittest.TestCase):
             self.assertEqual(results[-1]['reason'], reason)
             self.assertIn('observations', results[0])
 
+    def test_native_chain_evidence_loss_stops_after_preserving_failed_trial(self):
+        value = plan()
+        value['candidates'][0]['repeat'] = 3
+        for loss in ({'flip': {'dropped': 16}}, {'combo': {'dropped': 1}},
+                     {'evidence_gap': 'log_truncated'}):
+            trial = dict(input_sent=True, neutralized=True, observations=loss)
+            with patch.object(batch, 'perform_case', return_value=trial) as run:
+                result = batch.perform_batch(value, object())['trials']
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(result[0]['observations'], loss)
+            self.assertTrue(result[0]['neutralized'])
+            self.assertEqual(result[-1]['reason'], 'chain_evidence_incomplete')
+        with patch.object(batch, 'perform_case', return_value=dict(input_sent=True,
+                observations={'flip': {'dropped': 0}, 'chain_result': {'continuous': 'FAIL'}})) as run:
+            self.assertEqual(len(batch.perform_batch(value, object())['trials']), 3)
+
     def test_fixture_reset_neutralizes_and_requires_fresh_native_confirmation(self):
         session = Mock()
         env = batch.DeckEnvironment(session)
