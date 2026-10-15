@@ -8,7 +8,9 @@
 
 namespace dingosdk::console {
 namespace {
-constexpr auto rail_item = "own_bkrails_flat_00001";
+// Standard round steel rail from the pinned 25414733 authored catalog.
+// The shorter key in the category unit-test fixture is not a live asset.
+constexpr auto rail_item = "own_bkrails_generic_flatrailround_00002";
 // One added object, retained by the existing Park Editor document and save path.
 // No layout clearing, physics tuning, collision overrides or direct skater writes.
 struct Fixture {

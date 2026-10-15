@@ -1,5 +1,13 @@
 ## Native grind fixture priority — 2026-10-14
 
+Installed fixture source0caed0e9fb7270ee220a33a29e60ad2a9dc6da0b after all five
+CI38676253606 gates passed. DLL3ae927602b042134007bb8b3474252f1ac934ac374c0df3ff5eafbf405fdeb98.
+Receipt external fixture-deploy-v1/deployment-result.json confirms unchanged
+stock/game hashes, updates off and recovery clear. Frozen HIL27/maintenance32
+now pin this build. Game launch requested after the required DLL restart.
+Latest source ed553d7 contains the tested HIL additions; no native fixture
+placement, reset acceptance or grind success claimed yet. Root owns hardware.
+
 Stop ad hoc approaches. Next milestone is a saved straight Park Editor rail,
 measured native reset/heading/speed, native positive controls, then50 controlled
 trials(10 native,20 Y variations,10 approaches,10 best-candidate repeats).
@@ -9,7 +17,7 @@ generation/owner checks, independent delivered-pad samples and bounded nonblocki
 queues drained by a worker. It also observes Arcade OFF positive controls.
 Raw enums remain UNKNOWN. Missing enum bindings do not erase valid physics.
 56 observer/capture sanitizer checks and 225 Python tests pass locally. Observer
-CI38675120210 passed all five gates; combined fixture CI38676253606 is building.
+Observer CI38675120210 and combined fixture CI38676253606 passed all five gates.
 Installed runtime verification remains pending. No grind success claimed.
 
 Reject maintenance-v31 ground(-40,55) as a fixture reset: the native topmost
@@ -18,7 +26,7 @@ Capture1792033069939264000 verifies the failure. Native map recovery returned
 the skater to the Stadium entrance on foot, confirmed by capture1792035562147649000.
 Game is alive and neutral, no test batch active. Do not reuse the roof candidate
 or count it as a valid approach. Entrance terrain still needs fixture validation.
-Installed source remains5ed2d873 and DLL92bc4e85 below; no new source deployed.
+The prior roof/entrance evidence used source5ed2d873 and DLL92bc4e85 below.
 
 Fixture source0caed0e9fb7270ee220a33a29e60ad2a9dc6da0b is pushed. New fixture command
 uses only the existing Park Editor transaction/save APIs and native Trainer
@@ -33,7 +41,7 @@ readiness, before/after reset measurements and zero-screenshot trials. Missing
 delivered input, dropped events, generation changes or unsafe reset stop a fixture
 batch; ordinary misses and recoverable bails remain recorded results. Capture
 the rail transform once and retain measured entry speed. Local tests pass;
-external frozen HIL27 is staged, not installed. No50-trial matrix executed yet.
+external frozen HIL27 is installed. No50-trial matrix executed yet.
 
 ## Rotation results and verified grind installation — 2026-10-14
 

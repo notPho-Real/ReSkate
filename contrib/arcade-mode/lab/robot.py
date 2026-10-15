@@ -442,15 +442,15 @@ def fixture_console(operation):
     if proc.stat().st_uid != os.getuid() or not any(a.replace('\\', '/').rsplit('/', 1)[-1].lower() == 'skate.exe' for a in argv):
         raise RuntimeError('fixture_window_invalid')
     run('windowfocus', '--sync', window)
-    run('key', '--clearmodifiers', '--delay', '30', 'grave')
+    run('key', '--clearmodifiers', '--delay', '100', 'grave')
     try:
-        time.sleep(.05)  # One UI handoff; native reset completion is observed below.
-        run('key', '--clearmodifiers', 'ctrl+a')
-        run('type', '--clearmodifiers', '--delay', '1', '--', 'arcadefixture ' + operation)
-        run('key', '--clearmodifiers', 'Return')
-        time.sleep(.05)
+        time.sleep(.1)  # One UI handoff; native reset completion is observed below.
+        run('key', '--clearmodifiers', '--delay', '100', 'ctrl+a')
+        run('type', '--clearmodifiers', '--delay', '100', '--', 'arcadefixture ' + operation)
+        run('key', '--clearmodifiers', '--delay', '100', 'Return')
+        time.sleep(.1)
     finally:
-        run('key', '--clearmodifiers', 'Escape')
+        run('key', '--clearmodifiers', '--delay', '100', 'Escape')
 
 
 def periodic(pid, duration, stop, capture_frames=4):
