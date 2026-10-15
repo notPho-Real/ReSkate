@@ -76,13 +76,13 @@ class BatchTests(unittest.TestCase):
     def test_bounded_capture_policy_and_session_forwarding(self):
         value = plan()
         case = value["candidates"][0]
-        for count in (1, 4):
+        for count in (0, 1, 4):
             case["capture_frames"] = count
             batch.validate_plan(value)
             session = Mock()
             batch.DeckEnvironment(session=session).gesture(case)
             self.assertEqual(session.run.call_args.kwargs["capture_frames"], count)
-        for count in (0, 2, 3, 5, True, "1"):
+        for count in (2, 3, 5, True, "1"):
             case["capture_frames"] = count
             with self.assertRaises(ValueError):
                 batch.validate_plan(value)

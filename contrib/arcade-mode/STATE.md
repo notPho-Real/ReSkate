@@ -18,6 +18,17 @@ neutral, no test batch active. Return via existing native map spawn before
 fixture placement. Do not use that candidate or count it as a valid approach.
 Installed source remains5ed2d873 and DLL92bc4e85 below; no new source deployed.
 
+Observer source edecff71da4342a0b50b002a06d919274208a890 is pushed;
+CI38675120210 Linux/macOS pass, Windows build pending. New fixture command
+uses only the existing Park Editor transaction/save APIs and native Trainer
+teleport. Exact installed catalog key own_bkrails_flat_00001 must be available;
+no guessed substitute. Start lane uses short near-ground collision probes,
+rail8m ahead, scale1, identity or quarter-turn orientation. Placement, spawned
+object, reset heading/speed and actual native grinding still require Deck tests.
+Saved fixture can be adopted after loading its existing park mod. HIL now accepts
+zero screenshots while retaining input readiness and automatic neutralization.
+Fixture reset automation and the50-trial matrix are not yet executed.
+
 ## Rotation results and verified grind installation — 2026-10-14
 
 Current source/installed commit5ed2d873e3b2434c9999557ec656ad74aa7c43ac.

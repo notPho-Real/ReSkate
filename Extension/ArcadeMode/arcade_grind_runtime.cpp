@@ -42,7 +42,13 @@ void worker(Runtime& r) noexcept {
         try {
             const auto now = GetTickCount64(), generation = r.generation.load();
             if (generation != scan_generation) {
+                const auto hints = r.candidates.objects;
                 scan_generation = generation; r.cursor = {}; r.candidates = {{}, generation}; retry_at = 0;
+                // Global asset addresses are discovery hints only. Re-read each
+                // full GUID/name/live handle into new-generation bindings;
+                // never publish the old owner-bound snapshot after a reset.
+                for (const auto hint : hints) if (hint > 0x10010)
+                    inspect_grind_candidates(Read{}, hint - 0x10, 4, generation, r.candidates);
             }
             if (now <= r.expires.load() && now >= retry_at &&
                 (!r.candidates.objects[0] || !r.candidates.objects[1])) {

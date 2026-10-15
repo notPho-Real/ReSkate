@@ -54,8 +54,8 @@ def validate_plan(plan):
             raise ValueError("Duplicate candidate")
         names.add(case["name"])
         trials += integer(case.get("repeat", 1), 1, 20)
-        if integer(case.get("capture_frames", 4), 1, 4) not in (1, 4):
-            raise ValueError("Capture count must be one or four")
+        if integer(case.get("capture_frames", 4), 0, 4) not in (0, 1, 4):
+            raise ValueError("Capture count must be zero, one or four")
         timeout = integer(case["timeout_ms"], 3000, 12000)
         integer(case["reset_ms"], 2000, 10000)
         if "baseline_max_speed_mm_s" in case:

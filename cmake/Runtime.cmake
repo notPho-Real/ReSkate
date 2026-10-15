@@ -146,6 +146,7 @@ add_library(dingosdk_runtime SHARED
     Extension/ArcadeMode/arcade_score_probe.cpp
     Extension/ArcadeMode/arcade_native_score.cpp
     Extension/ArcadeMode/arcade_grind_runtime.cpp
+    Extension/ArcadeMode/arcade_grind_fixture.cpp
     Extension/ArcadeMode/arcade_balance_hud.cpp
     Extension/HallOfMeat/hall_of_meat.cpp
     Extension/HallOfMeat/hall_of_meat_card.cpp

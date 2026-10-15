@@ -420,11 +420,11 @@ def screenshot(pid, tmp=Path("/tmp"), sleep=time.sleep, clock=time.monotonic):
 
 
 def periodic(pid, duration, stop, capture_frames=4):
-    if type(capture_frames) is not int or capture_frames not in (1, 4):
-        raise ValueError("Capture count must be one or four")
+    if type(capture_frames) is not int or capture_frames not in (0, 1, 4):
+        raise ValueError("Capture count must be zero, one or four")
     frames = []
     start = time.monotonic()
-    offsets = (duration,) if capture_frames == 1 else (0, duration / 3, duration * 2 / 3, duration)
+    offsets = () if capture_frames == 0 else (duration,) if capture_frames == 1 else (0, duration / 3, duration * 2 / 3, duration)
     for offset in offsets:
         if stop.wait(max(0, offset - (time.monotonic() - start))):
             break
@@ -575,7 +575,7 @@ class ExperimentSession:
         try:
             if (type(duration) not in (int, float) or not math.isfinite(duration) or
                     not 0 < duration <= 20 or self.trials >= self.max_trials or
-                    type(capture_frames) is not int or capture_frames not in (1, 4)):
+                    type(capture_frames) is not int or capture_frames not in (0, 1, 4)):
                 raise ValueError("Invalid or exhausted bounded trial")
             now = self._clock()
             if duration > self.deadline - now:

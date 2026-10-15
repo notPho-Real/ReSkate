@@ -29,7 +29,10 @@ class RobotTests(unittest.TestCase):
         self.assertGreater(stop.wait.call_args.args[0], 4.9)
         self.assertEqual(rows[0]["sha256"], hashlib.sha256(b"image").hexdigest())
         self.assertEqual(base64.b64decode(rows[0]["image_base64"]), b"image")
-        for count in (0, 2, True, "1"):
+        with patch.object(robot, "screenshot") as shot:
+            self.assertEqual(robot.periodic(12, 5, stop, 0), [])
+            shot.assert_not_called()
+        for count in (2, True, "1"):
             with self.assertRaises(ValueError):
                 robot.periodic(12, 5, stop, count)
 

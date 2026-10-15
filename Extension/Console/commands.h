@@ -20,6 +20,7 @@ void register_graphics_commands(Commands &);
 void register_progression_commands(Commands &);
 void register_object_commands(Commands &);
 void register_park_editor_commands(Commands &);
+void register_arcade_fixture_commands(Commands &);
 void register_multiplayer_commands(Commands &);
 void register_perf_commands(Commands &);
 // perf_commands.cpp: starts `perf memory`'s trace with the game when RESKATE_MEMORY_TRACE asks for it.

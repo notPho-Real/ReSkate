@@ -267,6 +267,7 @@ const Commands &game_commands() {
         register_progression_commands(*result);
         register_object_commands(*result);
         register_park_editor_commands(*result);
+        register_arcade_fixture_commands(*result);
         register_multiplayer_commands(*result);
         register_perf_commands(*result);
         register_item_commands(*result);
