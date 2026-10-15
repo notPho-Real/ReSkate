@@ -1,9 +1,12 @@
 #include "Extension/ArcadeMode/arcade_native_score_buffer.h"
+#include "Extension/ArcadeMode/arcade_score_boundary.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <thread>
+#include <fstream>
+#include <sstream>
 
 namespace {
 using namespace dingosdk::arcade_mode::native_score_detail;
@@ -50,7 +53,35 @@ struct Fixture {
     }
 };
 }
-int main() {
+int main(int argc, char** argv) {
+    if (argc == 3 && std::string_view(argv[1]) == "--replay-unowned") {
+        std::ifstream input(argv[2]);
+        check(input.good(), "recorded capture file available");
+        std::string line; unsigned count{};
+        while (std::getline(input, line)) {
+            check(++count <= 4096, "recorded replay bounded");
+            std::istringstream row(line);
+            unsigned trial{}, route{}, success{}, owner{}; Event event{};
+            check(static_cast<bool>(row >> trial >> event.serial >> event.sampled_at >> event.epoch >> route >>
+                event.payload.score >> event.payload.reason >> success >> owner), "exact numeric capture columns");
+            row >> std::ws;
+            check(row.eof() && trial < 64 && route >= 1 && route <= 4 && success <= 1 && owner == 0 &&
+                  event.serial && event.epoch && score_valid(event.payload.score), "unmodified unowned capture schema");
+            event.route = static_cast<Route>(route); event.payload.success = success != 0;
+            event.owner_verified = false;
+            // The recordings provide no current ownership, native occurrence or
+            // raw-point proof. Missing context stays missing; capture time is
+            // not repurposed as a freshly measured delivery timestamp.
+            dingosdk::arcade_mode::ScoreBoundary gate;
+            const auto receipt = gate.observe(event, {}, {});
+            check(receipt.decision != dingosdk::arcade_mode::ScoreDecision::valid && !receipt.points,
+                  "recorded native score cannot cross the monetary boundary without proof");
+        }
+        check(input.eof() && count > 0, "recorded replay complete and nonempty");
+        std::cout << count << " recorded native captures rejected as monetary authority; ownership remains UNVERIFIED\n";
+        return 0;
+    }
+    check(argc == 1, "only tests or recorded replay supported");
     for (const auto& g : graphs) {
         check(graph_for(g.hash) == &g && contract(g, g.frame, g.constants, g.words), "exact graph accepted");
         check(!contract(g, g.frame + 1, g.constants, g.words), "changed frame rejected");

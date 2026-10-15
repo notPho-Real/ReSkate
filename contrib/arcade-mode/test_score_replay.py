@@ -77,6 +77,20 @@ class ScoreReplayTests(unittest.TestCase):
         self.assertEqual(result['revert_link'], score_replay.native_revert_link_result(trial['observations']))
         self.assertNotEqual(result['revert_link']['revert_continuation'], 'PASS')
 
+    def test_cpp_replay_columns_exactly_match_the_original_captures(self):
+        expected = []
+        for index, item in enumerate(self.evidence['trials']):
+            for row in item['trial']['observations'].get('native_score', {}).get('samples', []):
+                expected.append([index, row['seq'], row['ms'], row['epoch'], row['route'],
+                                 row['score'], row['reason'], int(row['success']), int(row['owner_verified'])])
+        lines = (ROOT / 'research/score-lifecycle-captures.tsv').read_text().splitlines()
+        actual = []
+        for line in lines:
+            columns = line.split('\t')
+            self.assertEqual(len(columns), 9)
+            actual.append([float(value) if i == 5 else int(value) for i, value in enumerate(columns)])
+        self.assertEqual(actual, expected)
+
 
 if __name__ == '__main__':
     unittest.main()

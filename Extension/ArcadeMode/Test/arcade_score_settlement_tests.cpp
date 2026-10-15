@@ -59,7 +59,7 @@ int run_arcade_score_settlement_tests() {
         check(gate.observe(f.event, f.proof, f.context).decision == ScoreDecision::ambiguous && gate.tainted(),
               "conflicting duplicate is never silently accepted");
     }
-    for (unsigned failure = 0; failure < 18; ++failure) {
+    for (unsigned failure = 0; failure < 20; ++failure) {
         Fixture f; ScoreBoundary gate; gate.begin(f.context, 0);
         auto expected = ScoreDecision::ambiguous;
         switch (failure) {
@@ -80,10 +80,21 @@ int run_arcade_score_settlement_tests() {
         case 14: ++f.context.rejected; expected = ScoreDecision::incomplete; break;
         case 15: ++f.context.contended; expected = ScoreDecision::incomplete; break;
         case 16: ++f.context.stale; expected = ScoreDecision::incomplete; break;
-        default: f.context.health_complete = false; expected = ScoreDecision::incomplete; break;
+        case 17: f.context.health_complete = false; expected = ScoreDecision::incomplete; break;
+        case 18: --f.event.sampled_at; expected = ScoreDecision::stale; break;
+        default: f.proof.meaning = static_cast<ScoreMeaning>(255); break;
         }
         check(gate.observe(f.event, f.proof, f.context).decision == expected && gate.tainted(),
               "uncertain or incomplete evidence closes authority");
+    }
+    {
+        Fixture f; ScoreBoundary gate; gate.begin(f.context, 0);
+        f.context.now += 50;
+        check(gate.observe(f.event, f.proof, f.context).decision == ScoreDecision::valid,
+              "fresh queued event may precede worker delivery");
+        f.next(); f.event.sampled_at -= 40;
+        check(gate.observe(f.event, f.proof, f.context).decision == ScoreDecision::valid,
+              "batch uses original baseline, not previous delivery time, as lower bound");
     }
     {
         Fixture f; ScoreBoundary gate; gate.begin(f.context, 0);

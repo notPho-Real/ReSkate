@@ -56,7 +56,8 @@ public:
     static constexpr std::uint64_t freshness_ms = 150;
     static constexpr std::size_t capacity = 256;
     void begin(const ScoreContext& context, std::uint64_t last_serial) noexcept {
-        context_ = context; serial_ = last_serial; sampled_ = 0; size_ = 0; closed_ = have_last_ = false;
+        context_ = context; began_at_ = context.now; serial_ = last_serial; sampled_ = 0;
+        size_ = 0; closed_ = have_last_ = false;
         tainted_ = !context.available || !context.health_complete || !context.owner ||
             !context.generation || !context.combo;
     }
@@ -71,7 +72,7 @@ public:
             return reject(ScoreDecision::incomplete);
         if (context.generation != context_.generation || context.owner != context_.owner ||
             context.combo != context_.combo || event.epoch != context.generation ||
-            context.now < context_.now || event.sampled_at > context.now ||
+            context.now < context_.now || event.sampled_at < began_at_ || event.sampled_at > context.now ||
             context.now - event.sampled_at > freshness_ms)
             return reject(ScoreDecision::stale);
         if (context.dropped != context_.dropped || context.rejected != context_.rejected ||
@@ -93,7 +94,8 @@ public:
         if (tainted_) return {ScoreDecision::incomplete};
         if (!event.owner_verified || !proof.local_owner || !proof.native_identity || !proof.semantics ||
             !proof.occurrence || proof.owner != context.owner || proof.generation != context.generation ||
-            proof.combo != context.combo || proof.meaning == ScoreMeaning::unknown)
+            proof.combo != context.combo || proof.meaning == ScoreMeaning::unknown ||
+            static_cast<unsigned>(proof.meaning) > static_cast<unsigned>(ScoreMeaning::line_start))
             return reject(ScoreDecision::ambiguous);
         const auto route = event.route;
         using native_score_detail::Route;
@@ -138,7 +140,7 @@ private:
     ScoreContext context_{};
     std::array<Entry, capacity> journal_{};
     native_score_detail::Event last_{};
-    std::uint64_t serial_{}, sampled_{};
+    std::uint64_t serial_{}, sampled_{}, began_at_{};
     std::size_t size_{};
     bool tainted_{true}, closed_{}, have_last_{};
 };
