@@ -541,14 +541,16 @@ def parse_fixture_status(text):
 
 def parse_grind_observations(text):
     """Fixed numeric records only. Raw enums deliberately have no named mapping."""
-    result = dict(samples=[], pad=[], status=[], dropped=0, native_identity='UNKNOWN')
+    result = dict(samples=[], pad=[], status=[], discovery=[], dropped=0, native_identity='UNKNOWN')
     patterns = {
         'samples': (r'ARCADE GRIND STATE: seq=(\d{1,20}) ms=(\d{1,20}) generation=(\d{1,20}) valid=(true|false) state=(\d{1,10}) edge=([0-3]) duration=(\d{1,20}) grind_valid=(true|false) grind=(\d{1,10}) skate_valid=(true|false) skate=(\d{1,10}) speed_valid=(true|false) speed_mm_s=(\d{1,7}) arcade=(true|false) dropped=(\d{1,20})\.$',
                     'seq ms generation valid state edge duration grind_valid grind skate_valid skate speed_valid speed_mm_s arcade dropped'),
         'pad': (r'ARCADE GRIND PAD: seq=(\d{1,20}) ms=(\d{1,20}) generation=(\d{1,20}) user=([0-3]) y=(true|false) x=(-?\d{1,5}) ry=(-?\d{1,5}) arcade=(true|false) dropped=(\d{1,20})\.$',
                 'seq ms generation user requested_y x y arcade dropped'),
         'status': (r'ARCADE GRIND STATUS: generation=(\d{1,20}) active=(true|false) dropped=(\d{1,20}) rejected=(\d{1,20})\.$',
-                   'generation active dropped rejected')}
+                   'generation active dropped rejected'),
+        'discovery': (r'ARCADE GRIND DISCOVERY: generation=(\d{1,20}) bound=([0-3]) pages=(\d{1,20}) passes=(\d{1,20})\.$',
+                      'generation bound pages passes')}
     for line in text.splitlines():
         for kind, (pattern, fields) in patterns.items():
             match = re.search(pattern, line)

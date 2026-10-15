@@ -1868,20 +1868,22 @@
     },
     {
       "requested_action": "Physical balance-failure consequence",
-      "classification": "RE-SKATE METHOD AVAILABLE",
+      "classification": "VERIFIED ON OUR DECK",
       "source_id": "native-bail-minimal / native-bail-scoped",
-      "implementation_status": "Native impact request integrated in source with serial/expiry/full-owner checks, original selector result, protection/cancel guards and numeric acknowledgement; local tests pass. NOT installed or Deck verified.",
+      "implementation_status": "Native guarded impact request:20/20 manual-mode and20/20 grind-mode boundary failures; native selector acknowledgement and independent wipeout, HUD/fatigue clear, neutral/reset.13/13 fresh recovery chains. Monetary score loss remains unverified.",
       "native_id": null,
-      "deck_trials": 0
+      "deck_trials": 40,
+      "maturity": "REPEATABLE",
+      "evidence": "grind-exit-results.json"
     },
     {
       "requested_action": "Grind to flip exit",
       "classification": "VERIFIED ON OUR DECK",
       "source_id": "grind-exit",
-      "implementation_status": "3/3 native Ollie and3/3 Kickflip exits; authored from_grind patterns, independent401\u2192200 and post-entry IDs1/2, then landing/reset.",
+      "implementation_status": "On verified7c7:20/20 native Ollie exits continuing through Manual/Ollie,20/20 Kickflip exits following Kickflip entry. Exact native IDs after observed rail entry, continuous fatigue/lifecycle, clean land/grace/neutral/reset.",
       "native_id": null,
-      "deck_trials": 6,
-      "maturity": "DISCOVERED",
+      "deck_trials": 40,
+      "maturity": "REPEATABLE",
       "evidence": "grind-exit-results.json"
     },
     {
@@ -1896,9 +1898,10 @@
       "requested_action": "Observe actual native line/sequence score events",
       "classification": "RE-SKATE METHOD AVAILABLE",
       "source_id": "native-line-events",
-      "implementation_status": "Read-only bounded schema adapter and native expression hooks integrated locally; fixed nonblocking queue and background diagnostic drain. 66 sanitizer checks pass. Windows build, Deck capture, local attribution and duplicate-route handling remain unverified; no combo policy consumes these events.",
+      "implementation_status": "Installed read-only exact-schema capture produces native sequence scores/start events in23/23 complete repaired-build composition trials. Payload local ownership and occurrence/duplicate-route semantics remain unverified; not consumed by combo score policy.",
       "native_id": null,
-      "deck_trials": 0
+      "deck_trials": 23,
+      "evidence": "grind-exit-results.json"
     },
     {
       "requested_action": "Spin wind-up and alternate manual-compatible revert",
@@ -2018,8 +2021,8 @@
         "dual-stick-rail-and-spin",
         "native-darkslide-guide"
       ],
-      "remaining": "Named enum mapping, broader rails/speeds/stances, repeated-Y variants and physical balance-failure consequences.",
-      "next": "Native A/X exit and actual HUD verification, followed by bounded701 handoff repair acceptance; fixture matrix is complete.",
+      "remaining": "Named enum mapping, broader rails/speeds/stances and repeated-Y variants.",
+      "next": "Preserve completed50-trial fixture and physical failure/HUD acceptance; extend native grind-based compositions.",
       "new_deck_trials": 40,
       "native_control_trials": 10,
       "native_control_successes": 10,
@@ -2029,16 +2032,17 @@
     {
       "id": "grind-exits",
       "requested_action": "Grind to flip, manual or riding",
-      "implementation_status": "DISCOVERED:3/3 native Ollie exits and3/3 Kickflip exits;401 to200, native IDs1/2 after grind entry, landing and reset, no bails.",
+      "implementation_status": "On verified7c7:20/20 native Ollie exits continuing through Manual/Ollie,20/20 Kickflip exits following Kickflip entry. Exact native IDs after observed rail entry, continuous fatigue/lifecycle, clean land/grace/neutral/reset.",
       "source_ids": [
         "grind-exit",
         "dual-stick-rail-and-spin",
         "held-flip-and-composite-record"
       ],
-      "remaining": "Shared input ownership and verified transition identity.",
-      "next": "Repeat on combo-handoff repair, then combined manual/fatigue chains.",
-      "new_deck_trials": 6,
-      "evidence": "grind-exit-results.json"
+      "remaining": "Broader geometry/stance contexts and monetary scoring integration.",
+      "next": "Complete longer flip/grind/manual composition; preserve50-trial entry acceptance.",
+      "new_deck_trials": 40,
+      "evidence": "grind-exit-results.json",
+      "maturity": "REPEATABLE"
     },
     {
       "id": "spins",
@@ -2172,26 +2176,26 @@
     {
       "id": "native-score-events",
       "requested_action": "Native occurrence, score, line completion and bail evidence",
-      "implementation_status": "Read-only exact graph/schema adapter implemented locally; native callbacks publish to a fixed nonblocking queue and worker drains sanitized events. 66 sanitizer checks pass; no Windows/Deck verification yet.",
+      "implementation_status": "Installed guarded exact-schema observer captures native sequence scores/start events in23/23 complete repaired-build composition trials; no score policy consumes them.",
       "source_ids": [
         "native-line-events",
         "score-hud",
         "held-flip-and-composite-record"
       ],
-      "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before combo score/bank integration; build and capture on Deck.",
-      "next": "Prioritize source-backed expression payload capture over HUD lifetime inference.",
-      "new_deck_trials": 0
+      "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before monetary integration.",
+      "next": "Use captured native payloads and pinned source; do not infer bank from HUD lifetime.",
+      "new_deck_trials": 23
     },
     {
       "id": "combo-lifecycle",
       "requested_action": "No phantom combos; air/grind/manual linking and clean bank",
-      "implementation_status": "Existing deterministic engine; native air starts zero-point placeholder",
+      "implementation_status": "Native grind/Ollie/manual/Ollie20/20 and Kickflip/grind/Kickflip20/20 continuous chains on7c7, retained fatigue and448\u2013466ms grace/reset. No actual points awarded yet.",
       "source_ids": [
         "native-line-events"
       ],
-      "remaining": "Scored native event feed and correct link/bank timing; no every-frame starts.",
-      "next": "Connect validated events once to existing ComboSession; distinguish native line and Arcade combo lifetime.",
-      "new_deck_trials": 0
+      "remaining": "Native scored occurrence/ownership feed, phantom short contact filtering, correct monetary bank/loss.",
+      "next": "Use exact native score event ownership/category data; do not count HUD lifetime or synthetic intent.",
+      "new_deck_trials": 40
     },
     {
       "id": "revert-abuse",
@@ -2334,15 +2338,16 @@
     {
       "id": "chain-D",
       "requested_action": "Grind -> Flip Out -> Land",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "Native mechanic subset20/20 Kickflip/grind/Kickflip/land on7c7: independent grind, exact post-entry ID2, retained fatigue, clean grace/neutral/reset.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "remaining": "Monetary score/bank acceptance and broader context variation.",
+      "next": "Preserve native chain evidence and connect verified native scoring.",
+      "new_deck_trials": 20,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "chain-E",
@@ -2386,15 +2391,16 @@
     {
       "id": "chain-H",
       "requested_action": "Active Multi-Action Combo -> Bail -> Fresh Combo",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "Native failure subset20/20 grind-mode and20/20 manual-mode; acknowledged wipeout, HUD/fatigue clear,13/13 fresh recovery chains.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "remaining": "Actual unbanked monetary score loss and full multi-action scoring acceptance.",
+      "next": "Retain native consequence evidence while completing score ownership/policy.",
+      "new_deck_trials": 40,
+      "evidence": "grind-exit-results.json"
     }
   ],
   "coverage_checked_at": "2026-10-14",

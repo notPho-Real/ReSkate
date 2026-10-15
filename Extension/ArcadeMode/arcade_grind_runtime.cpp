@@ -12,6 +12,7 @@ namespace dingosdk::arcade_mode {
 namespace {
 struct Read { template<class T> bool operator()(std::uintptr_t p, T& v) const noexcept { return memory::peek(p, v); } };
 struct Runtime {
+    std::atomic<std::uintptr_t> image_base{};
     std::atomic<std::uint64_t> generation{1}, expires{}, rejected{};
     std::atomic_flag guard = ATOMIC_FLAG_INIT, step_guard = ATOMIC_FLAG_INIT;
     GrindObserverOwner owner{};
@@ -25,6 +26,7 @@ struct Runtime {
     // Discovery and logging belong exclusively to the background worker.
     multiplayer::NativeTypeScanCursor cursor{};
     GrindStateBindings candidates{};
+    std::uint64_t scanned_pages{}, completed_scans{};
 };
 std::atomic<Runtime*> runtime{};
 GrindObserverOwner owner_of(const NoBailSkater& owner, std::uint64_t generation, std::uint64_t now) noexcept {
@@ -33,22 +35,26 @@ GrindObserverOwner owner_of(const NoBailSkater& owner, std::uint64_t generation,
 bool visit(void* context, std::uintptr_t begin, std::size_t bytes) noexcept {
     auto& r = *static_cast<Runtime*>(context);
     if (r.candidates.generation != r.generation.load() || GetTickCount64() > r.expires.load()) return false;
+    ++r.scanned_pages;
     inspect_grind_candidates(Read{}, begin, bytes, r.candidates.generation, r.candidates);
     return !r.candidates.objects[0] || !r.candidates.objects[1];
 }
 void worker(Runtime& r) noexcept {
     std::uint64_t scan_generation{}, report_at{}, retry_at{};
+    std::uintptr_t scan_base{};
     for (;;) {
         try {
             const auto now = GetTickCount64(), generation = r.generation.load();
+            const auto base = r.image_base.load();
+            if (base != scan_base) {
+                scan_base = base; r.cursor = {}; r.candidates = {}; scan_generation = 0;
+            }
             if (generation != scan_generation) {
-                const auto hints = r.candidates.objects;
-                scan_generation = generation; r.cursor = {}; r.candidates = {{}, generation}; retry_at = 0;
-                // Global asset addresses are discovery hints only. Re-read each
-                // full GUID/name/live handle into new-generation bindings;
-                // never publish the old owner-bound snapshot after a reset.
-                for (const auto hint : hints) if (hint > 0x10010)
-                    inspect_grind_candidates(Read{}, hint - 0x10, 4, generation, r.candidates);
+                scan_generation = generation; retry_at = 0;
+                r.candidates = refresh_grind_candidates(Read{}, r.candidates, generation);
+                // Keep only the global page traversal position across fixture
+                // resets. Restarting it every trial can starve late assets.
+                // Bindings are independently revalidated for the new generation.
             }
             if (now <= r.expires.load() && now >= retry_at &&
                 (!r.candidates.objects[0] || !r.candidates.objects[1])) {
@@ -56,6 +62,7 @@ void worker(Runtime& r) noexcept {
                 multiplayer::visit_native_pages_step(r.cursor, 2 * 1024 * 1024, 64, visit, &r);
                 if (lowered) SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
                 if (r.cursor.complete && (!r.candidates.objects[0] || !r.candidates.objects[1])) {
+                    ++r.completed_scans;
                     r.cursor = {}; retry_at = now + 1000;
                 }
             }
@@ -80,6 +87,10 @@ void worker(Runtime& r) noexcept {
                 logging::log(logging::Level::info, logging::Channel::skater,
                     "ARCADE GRIND STATUS: generation={} active={} dropped={} rejected={}.",
                     generation, now <= r.expires.load(), r.queue.dropped(), r.rejected.load());
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE GRIND DISCOVERY: generation={} bound={} pages={} passes={}.",
+                    generation, unsigned(r.candidates.objects[0] != 0) | (unsigned(r.candidates.objects[1] != 0) << 1),
+                    r.scanned_pages, r.completed_scans);
             }
         } catch (...) { /* Logging never blocks or throws into a physics/input producer. */ }
         Sleep(25);
@@ -94,6 +105,7 @@ void grind_observer_tick(std::uintptr_t base, std::uint64_t now, bool gameplay,
     try {
         static auto* r = [] { auto* p = new Runtime; std::thread([p] { worker(*p); }).detach(); return p; }();
         runtime.store(r, std::memory_order_release);
+        r->image_base.store(base);
         NoBailSkater current{};
         const bool valid = gameplay && no_bail_skater(current) && current.base == base;
         if (r->guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return; }

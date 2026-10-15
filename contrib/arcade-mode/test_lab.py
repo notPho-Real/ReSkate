@@ -100,6 +100,19 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(trick_batch.grind_result({'grind': only_physics}, {'grind': parsed}, True)['evidence'], 'INCOMPLETE')
         self.assertEqual(result['entry_speed_mm_s'], [5000])
 
+    def test_grind_discovery_status_is_numeric_and_not_grind_evidence(self):
+        from lab import trick_batch
+        row = 'ARCADE GRIND DISCOVERY: generation=7 bound=3 pages=48000 passes=1.'
+        parsed = probe.parse_grind_observations(row)
+        self.assertEqual(parsed['discovery'], [dict(generation=7, bound=3, pages=48000, passes=1)])
+        self.assertEqual(trick_batch.grind_result({'grind': parsed}, {'grind': parsed}, True)['native_grind'], 'UNVERIFIED')
+        for bad in (row + ' pointer=123', row.replace('bound=3', 'bound=4'),
+                    row.replace('generation=7', 'generation=0'),
+                    row.replace('pages=48000', 'pages=18446744073709551616')):
+            self.assertEqual(probe.parse_grind_observations(bad)['discovery'], [])
+        capped = probe.parse_grind_observations('\n'.join([row] * 257))
+        self.assertEqual((len(capped['discovery']), capped['dropped']), (256, 1))
+
     def test_native_score_events_are_bounded_numeric_and_keep_unknown_identity(self):
         from lab import trick_batch
         row = 'ARCADE NATIVE SCORE: seq=1 ms=200 epoch=3 route=2 score=840.5 reason=7 success=false owner_verified=false.'

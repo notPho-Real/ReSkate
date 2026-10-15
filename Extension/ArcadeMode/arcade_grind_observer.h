@@ -139,6 +139,17 @@ template<class Read> unsigned inspect_grind_candidates(Read&& read, std::uintptr
     return found;
 }
 
+// Global assets may survive a skater reset, but their previous bindings do not.
+// Treat addresses only as hints and repeat exact GUID/name/live-handle checks.
+template<class Read> GrindStateBindings refresh_grind_candidates(Read&& read,
+    const GrindStateBindings& previous, std::uint64_t generation) noexcept {
+    GrindStateBindings next{{}, generation};
+    if (!generation) return next;
+    for (const auto hint : previous.objects) if (hint > 0x10010)
+        inspect_grind_candidates(read, hint - 0x10, 4, generation, next);
+    return next;
+}
+
 // Read supplies guarded copies; ResolveOwner freshly resolves the existing local
 // owner each call. This does no discovery/allocations/writes. Keep it diagnostic;
 // independent bounded reads do not constitute an atomic physics snapshot.

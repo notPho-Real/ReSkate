@@ -137,6 +137,19 @@ int main() {
           "bounded discovery identifies exact two asset candidates");
     check(f.reads < 1000, "small discovery span stays bounded");
     check(inspect_grind_candidates(f, candidate_start, 512, 1, found) == 0, "live bindings are retained across duplicate candidates");
+    auto refreshed = refresh_grind_candidates(f, found, 2);
+    check(refreshed.generation == 2 && refreshed.objects == f.objects,
+          "new generation validates global asset hints without old owner bindings");
+    bad = f; bad.blocked = f.objects[0] - 0x10;
+    refreshed = refresh_grind_candidates(bad, found, 2);
+    check(!refreshed.objects[0] && refreshed.objects[1] == f.objects[1],
+          "unreadable reset hint cannot survive rebinding");
+    bad = f; bad.put<std::uint32_t>(f.objects[0] + 0x28, 0);
+    refreshed = refresh_grind_candidates(bad, found, 2);
+    check(!refreshed.objects[0] && refreshed.objects[1] == f.objects[1],
+          "unregistered reset hint cannot survive rebinding");
+    check(refresh_grind_candidates(f, found, 0).objects == std::array<std::uintptr_t, 2>{},
+          "reset hint refresh requires a live generation");
     found = f.bindings();
     check(inspect_grind_candidates(f, f.owner.entity, 4, 2, found) == 0 && found.generation == 2 && !found.objects[0],
           "generation change clears discovery candidates");
