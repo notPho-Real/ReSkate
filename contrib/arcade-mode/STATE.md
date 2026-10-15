@@ -171,11 +171,25 @@ cancellation unchanged); per-slot bounded multi-producer grind queue removes the
 consumer-lock discard path; pinned upstream native trick-history presenter reader
 with legacy fallback/rebaseline and four exact observed grind/slam label IDs21–24.
 No named grind enum mapping inferred. Existing grabs remain deferred/unchanged.
-Local33616 model checks,84 manual checks,22 score-edge checks and40057 grind
-observer/concurrent checks pass under sanitizers; Python238 tests pass. CI/Deck
-verification still required. Next commit/build these targeted repairs, then retry
-original manual composition and observe exact rail labels. Physical-failure
-repeatability, scoring/banking and mixed stress remain open; actual HUD range verified.
+Source7c7d168da22c4ced6a99efc19008ae37d8490a02 is pushed; CI38701577381 passed
+Linux/Mac, Windows build still running. Local33616 model checks,84 manual checks,
+22 score-edge checks and40057 grind observer/concurrent checks pass under sanitizers.
+Do not deploy until all gates pass; installed2c3b4c2 remains unchanged.
+
+Failure repeat1792050652355691000 passed12/12 native one-shot failures and4/4
+fresh exact exits, all16 complete/reset. Aggregate20/20 native failures across
+contexts (10 manual-mode,10 grind-mode),11 fresh recovery chains. Monetary score
+loss remains unverified. Per-mode20-trial completion batch is now running on
+HIL37; no other hardware owner. Inspect its result before any restart/deployment.
+
+Host-only optional expected.chain grading now requires one active lifecycle,
+native IDs at each matched takeoff, minimum balance duration, monotonic fatigue,
+and bounded final landing-grace expiry; score_banking remains UNVERIFIED.239
+Python tests pass. Offline grading reproduces measured successes and rejects
+the broken links/incomplete row. Documented in lab/TRICK_BATCH.md; not yet frozen
+into HIL37. Next:verify7c7 CI, deploy once batch completes, restore fixture,
+retry original manual composition and observe exact rail labels. Scoring/banking,
+broader chain repeatability and mixed stress remain open; actual HUD range verified.
 Existing rotation/manual evidence below remains valid within its recorded scope.
 
 ## Rotation results and verified grind installation — 2026-10-14

@@ -62,7 +62,25 @@ def validate_plan(plan):
         integer(case["reset_ms"], 2000, 10000)
         if "baseline_max_speed_mm_s" in case:
             integer(case["baseline_max_speed_mm_s"], 0, 20000)
-        keys(case["expected"], ("states",), ("trick", "after_grind"))
+        keys(case["expected"], ("states",), ("trick", "after_grind", "chain"))
+        if 'chain' in case['expected']:
+            chain = case['expected']['chain']
+            keys(chain, ('poses', 'air_ids'), ('minimum_balance_ms', 'grace_ms'))
+            if not isinstance(chain['poses'], list) or not 2 <= len(chain['poses']) <= 12:
+                raise ValueError('Invalid native chain poses')
+            for pose in chain['poses']:
+                integer(pose, 1, 5)
+            if (not isinstance(chain['air_ids'], list) or
+                    len(chain['air_ids']) != chain['poses'].count(2)):
+                raise ValueError('Native air identities must match chain takeoffs')
+            for identity in chain['air_ids']:
+                integer(identity, 1, 63)
+            integer(chain.get('minimum_balance_ms', 200), 0, 2000)
+            grace = chain.get('grace_ms', [350, 650])
+            if not isinstance(grace, list) or len(grace) != 2:
+                raise ValueError('Invalid lifecycle grace window')
+            integer(grace[0], 0, 2000)
+            integer(grace[1], grace[0], 2000)
         if "after_grind" in case["expected"] and (type(case["expected"]["after_grind"]) is not bool or
                 "trick" not in case["expected"]):
             raise ValueError("Post-grind identity requires a boolean scope and named trick")
@@ -192,6 +210,58 @@ def grind_result(observation, baseline, reset_ok):
                 bail=any(r['valid'] and r['state'] == 300 for r in rows), reset='PASS' if reset_ok else 'FAIL')
 
 
+def combo_chain_result(expected, observation):
+    """Qualify one observed lifecycle, never stitch successes across a bank/bail."""
+    result = dict(continuous='UNVERIFIED', native_air_ids='UNVERIFIED',
+                  fatigue='UNVERIFIED', lifecycle_grace='UNVERIFIED', score_banking='UNVERIFIED')
+    combo, flip = observation.get('combo', {}), observation.get('flip', {})
+    events = combo.get('events', [])
+    if (observation.get('evidence_gap') or not combo.get('baseline_available') or combo.get('dropped') or flip.get('dropped') or
+            observation.get('grind_result', {}).get('evidence') != 'COMPLETE' or not events or
+            any(b['ms'] < a['ms'] for a, b in zip(events, events[1:]))):
+        return result
+    first = next((i for i, e in enumerate(events) if e['active']), None)
+    if first is None:
+        result['continuous'] = 'FAIL'
+        return result
+    end = next((i for i in range(first + 1, len(events)) if not events[i]['active']), len(events))
+    segment = events[first:end]
+    matched, cursor = [], 0
+    minimum = expected.get('minimum_balance_ms', 200)
+    for pose in expected['poses']:
+        found = None
+        for i in range(cursor, len(segment)):
+            event = segment[i]
+            following = next((e['ms'] for e in events[first + i + 1:] if e['pose'] != pose or not e['active']), event['ms'])
+            if event['pose'] == pose and (pose not in (3, 4, 5) or following - event['ms'] >= minimum):
+                found = i
+                break
+        if found is None:
+            result['continuous'] = 'FAIL'
+            return result
+        matched.append(segment[found])
+        cursor = found + 1
+    result['continuous'] = 'FAIL' if any(e['failed'] for e in segment) else 'PASS'
+    modes = ('fatigue', 'grind_fatigue', 'manual_fatigue')
+    result['fatigue'] = 'PASS' if all(b[k] + 1e-6 >= a[k] for a, b in zip(segment, segment[1:]) for k in modes) else 'FAIL'
+    if result['fatigue'] == 'FAIL':
+        result['continuous'] = 'FAIL' # Bank/restart can happen within one sampled tick.
+    grades = []
+    for event, wanted in zip((e for e in matched if e['pose'] == 2), expected['air_ids']):
+        # Native selection precedes the observed pop; never credit a much older approach ID.
+        seen = {r['id'] for r in flip.get('samples', []) if r.get('valid') and r['id'] > 0 and
+                event['ms'] - 200 <= r['ms'] <= event['ms'] + 150}
+        grades.append('PASS' if wanted in seen else 'FAIL' if seen else 'UNVERIFIED')
+    result['native_air_ids'] = 'FAIL' if 'FAIL' in grades else 'UNVERIFIED' if 'UNVERIFIED' in grades else 'PASS'
+    if end < len(events) and matched[-1]['pose'] == 1:
+        delay = events[end]['ms'] - matched[-1]['ms']
+        low, high = expected.get('grace_ms', [350, 650])
+        result['lifecycle_grace'] = 'PASS' if (low <= delay <= high and not events[end]['failed'] and
+                                            all(events[end][k] == 0 for k in modes)) else 'FAIL'
+        result['grace_ms'] = delay
+    return result
+
+
 def perform_case(plan, case, env):
     env.integrity(plan)
     fixture_start = None
@@ -229,6 +299,8 @@ def perform_case(plan, case, env):
     combo["baseline_available"] = log_boundary is not None or watermark is not None
     combo["native_event_identity"] = "UNVERIFIED"
     obs["combo"] = combo
+    if 'chain' in case['expected']:
+        obs['chain_result'] = combo_chain_result(case['expected']['chain'], obs)
     wanted = case["expected"]["states"]
     heartbeat_match = bool(wanted) and subsequence(wanted, obs["states"])
     physics = [{"valid": True, "state": row["state"]} for row in combo["samples"]]

@@ -92,6 +92,22 @@ when the preceding reset is still valid. `capture_frames: 0` retains input
 readiness checks and numeric evidence.
 Missing grind telemetry or an unverified reset stops this fixture batch.
 
+For rail exits, `expected.after_grind: true` scopes `expected.trick` to native
+identity after the last observed grind entry, with a confirmed native exit.
+An approach Ollie cannot satisfy that exit requirement.
+
+Optional `expected.chain` qualifies a complete observed lifecycle, for example:
+`{"poses":[2,3,2,4,2,1],"air_ids":[1,1,1],"minimum_balance_ms":200,"grace_ms":[350,650]}`.
+Poses are riding1, air2, grind3, manual4 and nose manual5. The example requires
+air/grind/air/manual/air/riding within one active combo, native Ollie ID1 at each
+matched takeoff, at least200ms in each balance section, persistent fatigue and
+final lifecycle expiry350–650ms after landing. Native IDs must occur within
+200ms before to150ms after their matched takeoff. Brief wheel-contact bounces,
+an earlier approach identity, or a later fresh combo cannot complete the chain.
+These are explicit acceptance criteria, not changes to game physics or timing.
+Incomplete evidence remains UNVERIFIED. `score_banking` remains UNVERIFIED:
+correct lifecycle expiry is not proof of correct monetary scoring.
+
 `python3 contrib/arcade-mode/lab/grind_report.py BATCH_1.json BATCH_2.json`
 summarizes the sanitized external results without sending input. Supply the four
 acceptance batches for the 10/20/10/10 denominator; keep setup pilots separate.

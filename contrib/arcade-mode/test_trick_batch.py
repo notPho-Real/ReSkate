@@ -26,6 +26,49 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_combo_chain_requires_one_lifecycle_and_native_ids_at_each_takeoff(self):
+        expected = {'poses': [2, 3, 2, 4, 2, 1], 'air_ids': [1, 1, 1]}
+        events = []
+        for i, (ms, pose) in enumerate([(0, 2), (1000, 3), (1500, 2), (2300, 4),
+                                        (2800, 1), (3200, 2), (4000, 1), (4450, 1)]):
+            active = i < 7
+            events.append(dict(ms=ms, pose=pose, active=active, failed=False,
+                               fatigue=i * .1 if active else 0,
+                               grind_fatigue=.05 if active and i >= 2 else 0,
+                               manual_fatigue=.04 if active and i >= 4 else 0))
+        observation = {'combo': {'events': events, 'dropped': 0, 'baseline_available': True},
+                       'flip': {'samples': [dict(ms=ms, id=1, valid=True) for ms in (0, 1500, 3200)], 'dropped': 0},
+                       'grind_result': {'evidence': 'COMPLETE'}}
+        result = batch.combo_chain_result(expected, observation)
+        self.assertTrue(all(result[k] == 'PASS' for k in ('continuous', 'native_air_ids', 'fatigue', 'lifecycle_grace')))
+        self.assertEqual(result['score_banking'], 'UNVERIFIED')
+        missing = copy.deepcopy(observation)
+        missing['flip']['samples'].pop()
+        self.assertEqual(batch.combo_chain_result(expected, missing)['native_air_ids'], 'UNVERIFIED')
+        restarted = copy.deepcopy(observation)
+        restarted['combo']['events'][4]['active'] = False
+        self.assertEqual(batch.combo_chain_result(expected, restarted)['continuous'], 'FAIL')
+        silent_restart = copy.deepcopy(observation)
+        silent_restart['combo']['events'][4]['grind_fatigue'] = 0
+        self.assertEqual(batch.combo_chain_result(expected, silent_restart)['continuous'], 'FAIL')
+        bounce = copy.deepcopy(observation)
+        bounce['combo']['events'][4]['ms'] = 2317
+        self.assertEqual(batch.combo_chain_result(expected, bounce)['continuous'], 'FAIL')
+        lost = copy.deepcopy(observation)
+        lost['grind_result']['evidence'] = 'INCOMPLETE'
+        self.assertEqual(batch.combo_chain_result(expected, lost)['continuous'], 'UNVERIFIED')
+        early_bank = copy.deepcopy(observation)
+        early_bank['combo']['events'][-1]['ms'] = 4100
+        self.assertEqual(batch.combo_chain_result(expected, early_bank)['lifecycle_grace'], 'FAIL')
+        value = plan()
+        value['candidates'][0]['expected']['chain'] = expected
+        batch.validate_plan(value)
+        for bad in ({'poses': [True, 1], 'air_ids': []}, {'poses': [2, 1], 'air_ids': []},
+                    {'poses': [2, 1], 'air_ids': [64]}, {'poses': [2, 1], 'air_ids': [1], 'grace_ms': [650, 350]}):
+            value['candidates'][0]['expected']['chain'] = bad
+            with self.assertRaises(ValueError):
+                batch.validate_plan(value)
+
     def test_fixture_baseline_reuses_only_fresh_confirmed_reset(self):
         env = batch.DeckEnvironment(Mock())
         ready = dict(reset_ready=True, present=True, failed=False, editor_open=False)

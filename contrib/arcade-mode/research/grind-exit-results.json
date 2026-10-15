@@ -1996,7 +1996,15 @@
               false
             ],
             "max_grind_fatigue": 0.03066667,
-            "max_manual_fatigue": 0.042666607
+            "max_manual_fatigue": 0.042666607,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 448
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2040,7 +2048,15 @@
               false
             ],
             "max_grind_fatigue": 0.025333336,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           }
         ]
       },
@@ -2098,7 +2114,15 @@
               false
             ],
             "max_grind_fatigue": 0.029333336,
-            "max_manual_fatigue": 0.041666612
+            "max_manual_fatigue": 0.041666612,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2150,7 +2174,15 @@
               false
             ],
             "max_grind_fatigue": 0.029333336,
-            "max_manual_fatigue": 0.041999944
+            "max_manual_fatigue": 0.041999944,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2202,7 +2234,15 @@
               false
             ],
             "max_grind_fatigue": 0.029333336,
-            "max_manual_fatigue": 0.043999933
+            "max_manual_fatigue": 0.043999933,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2254,7 +2294,15 @@
               false
             ],
             "max_grind_fatigue": 0.029333336,
-            "max_manual_fatigue": 0.04333327
+            "max_manual_fatigue": 0.04333327,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2310,7 +2358,14 @@
               false
             ],
             "max_grind_fatigue": 0.028000003,
-            "max_manual_fatigue": 0.0026666669
+            "max_manual_fatigue": 0.0026666669,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2362,7 +2417,15 @@
               false
             ],
             "max_grind_fatigue": 0.029333336,
-            "max_manual_fatigue": 0.043999933
+            "max_manual_fatigue": 0.043999933,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2414,7 +2477,15 @@
               false
             ],
             "max_grind_fatigue": 0.02766667,
-            "max_manual_fatigue": 0.03866663
+            "max_manual_fatigue": 0.03866663,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2466,7 +2537,15 @@
               false
             ],
             "max_grind_fatigue": 0.03066667,
-            "max_manual_fatigue": 0.041666612
+            "max_manual_fatigue": 0.041666612,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2518,7 +2597,15 @@
               false
             ],
             "max_grind_fatigue": 0.029000003,
-            "max_manual_fatigue": 0.041666612
+            "max_manual_fatigue": 0.041666612,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 451
+            }
           },
           {
             "name": "grind-ollie-manual-ollie",
@@ -2570,7 +2657,15 @@
               false
             ],
             "max_grind_fatigue": 0.025333336,
-            "max_manual_fatigue": 0.043999933
+            "max_manual_fatigue": 0.043999933,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2614,7 +2709,15 @@
               false
             ],
             "max_grind_fatigue": 0.025333336,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2658,7 +2761,15 @@
               false
             ],
             "max_grind_fatigue": 0.028000003,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2702,7 +2813,15 @@
               false
             ],
             "max_grind_fatigue": 0.028000003,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2746,7 +2865,15 @@
               false
             ],
             "max_grind_fatigue": 0.02666667,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2790,7 +2917,15 @@
               false
             ],
             "max_grind_fatigue": 0.02666667,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "PASS",
+              "native_air_ids": "PASS",
+              "fatigue": "PASS",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 466
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2834,7 +2969,14 @@
               false
             ],
             "max_grind_fatigue": 0.027000003,
-            "max_manual_fatigue": 0.0
+            "max_manual_fatigue": 0.0,
+            "automated_chain_grade": {
+              "continuous": "UNVERIFIED",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "kickflip-grind-kickflip-out",
@@ -2846,7 +2988,14 @@
             "pose_sequence": [],
             "active_sequence": [],
             "max_grind_fatigue": 0,
-            "max_manual_fatigue": 0
+            "max_manual_fatigue": 0,
+            "automated_chain_grade": {
+              "continuous": "UNVERIFIED",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           }
         ]
       },
@@ -2908,7 +3057,14 @@
               false
             ],
             "max_grind_fatigue": 0.029000003,
-            "max_manual_fatigue": 0.02666667
+            "max_manual_fatigue": 0.02666667,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "grind-manual-link-after-contact",
@@ -2968,7 +3124,14 @@
               false
             ],
             "max_grind_fatigue": 0.053333215,
-            "max_manual_fatigue": 0.02666667
+            "max_manual_fatigue": 0.02666667,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "grind-manual-link-after-contact",
@@ -3022,7 +3185,14 @@
               false
             ],
             "max_grind_fatigue": 0.028000003,
-            "max_manual_fatigue": 0.0026666669
+            "max_manual_fatigue": 0.0026666669,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "grind-manual-link-after-contact",
@@ -3076,7 +3246,14 @@
               false
             ],
             "max_grind_fatigue": 0.028000003,
-            "max_manual_fatigue": 0.0026666669
+            "max_manual_fatigue": 0.0026666669,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "UNVERIFIED",
+              "fatigue": "UNVERIFIED",
+              "lifecycle_grace": "UNVERIFIED",
+              "score_banking": "UNVERIFIED"
+            }
           },
           {
             "name": "grind-manual-link-after-contact",
@@ -3130,12 +3307,393 @@
               false
             ],
             "max_grind_fatigue": 0.029000003,
-            "max_manual_fatigue": 0.029333336
+            "max_manual_fatigue": 0.029333336,
+            "automated_chain_grade": {
+              "continuous": "FAIL",
+              "native_air_ids": "PASS",
+              "fatigue": "FAIL",
+              "lifecycle_grace": "PASS",
+              "score_banking": "UNVERIFIED",
+              "grace_ms": 450
+            }
           }
         ]
       }
     ],
     "verified": "Pilots1/1 each. Repeat batch:9/10 grind/Ollie/manual/Ollie chains stay active with both fatigue values retained; repetition5 loses prepared manual on17ms contact then150ms airborne rebound and banks before next Ollie. Kickflip/grind/Kickflip5/5 fully observed repeats; repetition6 incomplete with one newly dropped native queue record, safely reset then stopped. No success credited to incomplete trial. Later manual timing attempt0/5 sustained chains, missed grace; original timing retained.",
     "limits": "Exact exit identity does not prove every link. Named chain remains below20-trial repeatability. New bounded initial-manual landing settle and queue publication fixes require CI and Deck tests."
+  },
+  "failure_repeat_16": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "runner": 37,
+    "result": "1792050652355691000",
+    "sha256": "0502b897f9b005dbc6413f62d41d1782161ee627a355fefbfee0a25761181f2a",
+    "trials": [
+      {
+        "name": "native-failure-repeat-1",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135601752,
+            "kind": 2,
+            "request": 9
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135601752,
+            "request": 9,
+            "result": 1
+          },
+          {
+            "ms": 135601769,
+            "request": 9,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-2",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135619136,
+            "kind": 2,
+            "request": 10
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135619136,
+            "request": 10,
+            "result": 1
+          },
+          {
+            "ms": 135619153,
+            "request": 10,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-3",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135638786,
+            "kind": 2,
+            "request": 11
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135638786,
+            "request": 11,
+            "result": 1
+          },
+          {
+            "ms": 135638802,
+            "request": 11,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "fresh-chain-recovery-3",
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      },
+      {
+        "name": "native-failure-repeat-4",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135675336,
+            "kind": 1,
+            "request": 12
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135675336,
+            "request": 12,
+            "result": 1
+          },
+          {
+            "ms": 135675352,
+            "request": 12,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-5",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135697002,
+            "kind": 1,
+            "request": 13
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135697002,
+            "request": 13,
+            "result": 1
+          },
+          {
+            "ms": 135697019,
+            "request": 13,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-6",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135717286,
+            "kind": 1,
+            "request": 14
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135717286,
+            "request": 14,
+            "result": 1
+          },
+          {
+            "ms": 135717302,
+            "request": 14,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "fresh-chain-recovery-6",
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      },
+      {
+        "name": "native-failure-repeat-7",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135750569,
+            "kind": 2,
+            "request": 15
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135750569,
+            "request": 15,
+            "result": 1
+          },
+          {
+            "ms": 135750586,
+            "request": 15,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-8",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135770269,
+            "kind": 2,
+            "request": 16
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135770269,
+            "request": 16,
+            "result": 1
+          },
+          {
+            "ms": 135770286,
+            "request": 16,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-9",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135789636,
+            "kind": 2,
+            "request": 17
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135789636,
+            "request": 17,
+            "result": 1
+          },
+          {
+            "ms": 135789652,
+            "request": 17,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "fresh-chain-recovery-9",
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      },
+      {
+        "name": "native-failure-repeat-10",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135830552,
+            "kind": 1,
+            "request": 18
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135830552,
+            "request": 18,
+            "result": 1
+          },
+          {
+            "ms": 135830569,
+            "request": 18,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-11",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135851636,
+            "kind": 1,
+            "request": 19
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135851636,
+            "request": 19,
+            "result": 1
+          },
+          {
+            "ms": 135851652,
+            "request": 19,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "native-failure-repeat-12",
+        "evidence": "COMPLETE",
+        "failure_requests": [
+          {
+            "ms": 135873969,
+            "kind": 1,
+            "request": 20
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 135873969,
+            "request": 20,
+            "result": 1
+          },
+          {
+            "ms": 135873986,
+            "request": 20,
+            "result": 3
+          }
+        ],
+        "independent_wipeout": true,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "UNVERIFIED"
+      },
+      {
+        "name": "fresh-chain-recovery-12",
+        "evidence": "COMPLETE",
+        "failure_requests": [],
+        "bail_results": [],
+        "independent_wipeout": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "fresh_exit_identity": "PASS"
+      }
+    ],
+    "verified": "12/12 native failures,4/4 fresh exact grind exits,16/16 complete/reset. Aggregate20/20 one-shot native failures(10 manual-mode,10 grind-mode),11 fresh recovery chains including initial pilot. No latch/repeated request. Monetary score loss not verified."
   }
 }
