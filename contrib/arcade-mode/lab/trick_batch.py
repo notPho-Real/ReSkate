@@ -62,7 +62,10 @@ def validate_plan(plan):
         integer(case["reset_ms"], 2000, 10000)
         if "baseline_max_speed_mm_s" in case:
             integer(case["baseline_max_speed_mm_s"], 0, 20000)
-        keys(case["expected"], ("states",), ("trick",))
+        keys(case["expected"], ("states",), ("trick", "after_grind"))
+        if "after_grind" in case["expected"] and (type(case["expected"]["after_grind"]) is not bool or
+                "trick" not in case["expected"]):
+            raise ValueError("Post-grind identity requires a boolean scope and named trick")
         states = case["expected"]["states"]
         if not isinstance(states, list) or len(states) > 12:
             raise ValueError("Invalid expected states")
@@ -122,7 +125,7 @@ def subsequence(expected, rows):
     return index == len(expected)
 
 
-def named_flip_result(expected, observation, log_boundary):
+def named_flip_result(expected, observation, log_boundary, after_grind=False):
     # Exact current-game FlipTrickType values from the reviewed native mapping.
     identifiers = {"ollie": 1, "kickflip": 2, "heelflip": 3, "pop-shove-it": 4,
                    "varial-kickflip": 5, "inward-heelflip": 6, "varial-heelflip": 8,
@@ -138,7 +141,20 @@ def named_flip_result(expected, observation, log_boundary):
     native = observation.get("flip", {})
     if wanted is None or log_boundary is None or observation.get("evidence_gap") or native.get("dropped", 0):
         return "UNVERIFIED"
-    seen = {row["id"] for row in native.get("samples", []) if row.get("valid") and row["id"] > 0}
+    after_ms = -1
+    if after_grind:
+        grade = observation.get('grind_result', {})
+        if grade.get('evidence') != 'COMPLETE' or grade.get('native_grind') != 'PASS':
+            return 'UNVERIFIED'
+        rows = observation.get('grind', {}).get('samples', [])
+        entries = [r['ms'] for r in rows if r.get('valid') and r.get('edge') == 1]
+        if not entries:
+            return 'UNVERIFIED'
+        after_ms = max(entries)
+        if not any(r.get('valid') and r.get('edge') == 2 and r['ms'] > after_ms for r in rows):
+            return 'UNVERIFIED'
+    seen = {row["id"] for row in native.get("samples", []) if row.get("valid") and row["id"] > 0
+            and (not after_grind or row.get('ms', -1) > after_ms)}
     return "PASS" if wanted in seen else "FAIL" if seen else "UNVERIFIED"
 
 
@@ -227,7 +243,8 @@ def perform_case(plan, case, env):
                             "heartbeat_state_sequence": "PASS" if heartbeat_match else "UNVERIFIED",
                             "physics_state_sequence": "PASS" if physics_match else "UNVERIFIED",
                             "returned_to_idle": "PASS" if reset is not None else "FAIL",
-                            "named_trick": named_flip_result(case["expected"].get("trick"), obs, log_boundary)}, neutralized=True)
+                            "named_trick": named_flip_result(case["expected"].get("trick"), obs, log_boundary,
+                                                            case['expected'].get('after_grind', False))}, neutralized=True)
     if case.get('fixture_reset'):
         # Preserve trial evidence before the console/native reset changes owner generation.
         result['fixture_start'] = fixture_start

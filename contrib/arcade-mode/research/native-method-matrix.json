@@ -2149,14 +2149,16 @@
     {
       "id": "physical-failure",
       "requested_action": "Balance boundary produces actual gameplay failure",
-      "implementation_status": "Source2c3b4c2 implements bounded native impact request, full owner/NoBail checks, one-shot acknowledgement, expiry/cancellation and synthetic neutralization; not installed.",
+      "implementation_status": "Installed2c3b4c2; manual1/1 and grind1/1 boundary pilots produce native impact selector300, independent wipeout counter/pose6, actual Slam/ragdoll, HUD clear/fatigue zero and verified reset/remount.",
       "source_ids": [
         "native-bail-minimal",
         "native-bail-scoped"
       ],
-      "remaining": "CI completion and independent native300/actual failure plus next-fresh-action recovery.",
-      "next": "Deploy only verified build, run manual failure pilot then slower native grind failure.",
-      "new_deck_trials": 0
+      "remaining": "Context repeatability, fresh action after each failure, actual unbanked-score loss.",
+      "next": "Six-context native failure/recovery batch; keep native rejection/protection and no forced state.",
+      "new_deck_trials": 2,
+      "maturity": "DISCOVERED",
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "fatigue",

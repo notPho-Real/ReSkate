@@ -673,5 +673,909 @@
       "verified": "Full-size frame reviewed: red cursor and severe DANGER border at left; native401 and BS Axle Stall. Moderate correction held longer, no synthetic HUD override."
     },
     "range_status": "All five requested approximate positions now captured during actual native rail engagement; one failed strong-left capture preserved separately."
+  },
+  "exit_repeatability_20": {
+    "source_commit": "956dd27f4a453a21ffcff94e867aee8533bcaa97",
+    "runner": 35,
+    "result": "1792047159459011000",
+    "sha256": "c9ebf155464cbe4bb0cb97d2405c4315ed61bb13668f48f4e2974e9a9f2ac7c5",
+    "trials": [
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 1,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 365,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5043
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 2,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 365,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5051
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 3,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 351,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5049
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 2,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 4,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5047
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 5,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 365,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5048
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 6,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 701,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5051
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 7,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 350,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5049
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 8,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5046
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 9,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5056
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 2,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repetition": 10,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 351,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          1
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 1,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 384,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5045
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 2,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 2,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 350,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5047
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 3,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 368,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 4,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 351,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 5,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 381,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5046
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 6,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5049
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 7,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 381,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5055
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 8,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 367,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5051
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 9,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 366,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5050
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repetition": 10,
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 382,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5051
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "post_entry_native_ids": [
+          2
+        ],
+        "landed": true,
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "verified": "20/20 native grind entries/exits/landings/neutralization/reset, no bails or evidence loss. Post-grind identities9/10 Ollie and10/10 Kickflip; Ollie repetition6 has no post-entry positive ID. Generic named criterion also sees approach Ollie and must not promote this missing exit identity.",
+    "maturity": "Current build13 controlled trials per exit including previous3; not20 each yet. Priorbuild3 each retained separately."
+  },
+  "physical_manual_failure_pilot": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "dll_sha256": "8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620",
+    "runner": 36,
+    "result": "1792048572454649000",
+    "sha256": "f0c402620a5b0b01cc601d62bf57c1a9396d363b2fcb3ecd3f5022d2e30fbdaa",
+    "evidence": "COMPLETE",
+    "failure_requests": [
+      {
+        "ms": 133530486,
+        "kind": 2,
+        "request": 1
+      }
+    ],
+    "bail_results": [
+      {
+        "ms": 133530486,
+        "request": 1,
+        "result": 1
+      },
+      {
+        "ms": 133530506,
+        "request": 1,
+        "result": 3
+      }
+    ],
+    "combo_events": [
+      {
+        "ms": 133528870,
+        "pose": 4,
+        "active": true,
+        "failed": false,
+        "fatigue": 0.0,
+        "grind_fatigue": 0.0,
+        "manual_fatigue": 0.0,
+        "native_failure_verified": false
+      },
+      {
+        "ms": 133530486,
+        "pose": 4,
+        "active": false,
+        "failed": true,
+        "fatigue": 0.0,
+        "grind_fatigue": 0.0,
+        "manual_fatigue": 0.0,
+        "native_failure_verified": false
+      },
+      {
+        "ms": 133530506,
+        "pose": 6,
+        "active": false,
+        "failed": false,
+        "fatigue": 0.0,
+        "grind_fatigue": 0.0,
+        "manual_fatigue": 0.0,
+        "native_failure_verified": false
+      },
+      {
+        "ms": 133530521,
+        "pose": 0,
+        "active": false,
+        "failed": false,
+        "fatigue": 0.0,
+        "grind_fatigue": 0.0,
+        "manual_fatigue": 0.0,
+        "native_failure_verified": false
+      }
+    ],
+    "neutralized": true,
+    "reset_ready": true,
+    "image": "artifacts/manual-native-failure.png",
+    "image_sha256": "bafeef4a1ec2e8f0e791ce5d3a637c4993f0e85e9180ddd050fba542537b93f6",
+    "verified": "One request, native selector returned300(result3), independent physics-selector wipeout counter caused pose6; HUD cleared and fatigue zero. Full-size frame shows native Harsh Slam/on-foot recovery. Native reset/remount passed.",
+    "limits": "One pilot. Slower state samples missed transient300 and generic sampled bail:false/state-sequenceUNVERIFIED are preserved, not promoted. Actual score loss and repeatability pending.",
+    "excluded_start": {
+      "result": "1792048375578477000",
+      "reason": "fixture_reset_unverified; map overlay remained open after travel; no trial action sent"
+    }
+  },
+  "physical_grind_failure_pilot": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "runner": 36,
+    "result": "1792048743400184000",
+    "sha256": "d956ab9debb894553ade7be727d2bba055da8e35d4df6f225ffb260c63023c5c",
+    "trials": [
+      {
+        "name": "fresh-ollie-grind-exit-after-failure",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 332,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            5044
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "failure_requests": [],
+        "bail_results": [],
+        "combo_events": [
+          {
+            "ms": 133694452,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133695169,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133695503,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3240003,
+            "grind_fatigue": 0.02666667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133696302,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.38800138,
+            "grind_fatigue": 0.02666667,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133696753,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "grind-physical-balance-failure",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 2448,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1501
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "failure_requests": [
+          {
+            "ms": 133715302,
+            "kind": 1,
+            "request": 2
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 133715302,
+            "request": 2,
+            "result": 1
+          },
+          {
+            "ms": 133715319,
+            "request": 2,
+            "result": 3
+          }
+        ],
+        "combo_events": [
+          {
+            "ms": 133712152,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133712869,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133715302,
+            "pose": 3,
+            "active": false,
+            "failed": true,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133715319,
+            "pose": 6,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 133715339,
+            "pose": 0,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "image": "artifacts/grind-native-failure.png",
+    "image_sha256": "0cbb6d9077436ba35d9a579cba4fd6fb4b1140eaeaaa8ea96f002aa362e4c451",
+    "verified": "Fresh Ollie/grind/Ollie exit after manual failure passed; landing-to-inactive451ms with fatigue reset. Grind failure then queued one request, native selector300 acknowledgement and independent wipeout counter/pose6, HUD cleared/fatigue zero, native reset/remount pass. Full-size capture shows physical ragdoll off rail.",
+    "limits": "DISCOVERED:one grind failure. Sampled state reader missed transient300; direct selector and wipeout-counter observations are the evidence. Monetary score/bank semantics still unverified."
   }
 }

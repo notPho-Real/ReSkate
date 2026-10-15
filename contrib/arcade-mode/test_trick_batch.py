@@ -423,6 +423,27 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result["criteria"]["returned_to_idle"], "FAIL")
         self.assertEqual(env.integrity.call_count, 2)
 
+    def test_exit_identity_cannot_be_satisfied_by_the_approach_ollie(self):
+        observed = {'flip': {'samples': [{'ms': 12, 'valid': True, 'id': 1}], 'dropped': 0},
+                    'grind_result': {'evidence': 'COMPLETE', 'native_grind': 'PASS'},
+                    'grind': {'samples': [{'ms': 20, 'valid': True, 'edge': 1},
+                                          {'ms': 30, 'valid': True, 'edge': 2}]}}
+        self.assertEqual(batch.named_flip_result('ollie', observed, 100, True), 'UNVERIFIED')
+        observed['flip']['samples'].append({'ms': 28, 'valid': True, 'id': 2})
+        self.assertEqual(batch.named_flip_result('ollie', observed, 100, True), 'FAIL')
+        self.assertEqual(batch.named_flip_result('kickflip', observed, 100, True), 'PASS')
+        observed['grind']['samples'].append({'ms': 40, 'valid': True, 'edge': 1})
+        self.assertEqual(batch.named_flip_result('kickflip', observed, 100, True), 'UNVERIFIED')
+        observed['grind_result']['evidence'] = 'INCOMPLETE'
+        self.assertEqual(batch.named_flip_result('kickflip', observed, 100, True), 'UNVERIFIED')
+        value = plan()
+        value['candidates'][0]['expected']['after_grind'] = True
+        batch.validate_plan(value)
+        for bad in (1, 'true', None):
+            value['candidates'][0]['expected']['after_grind'] = bad
+            with self.assertRaises(ValueError):
+                batch.validate_plan(value)
+
     def test_named_flip_requires_exact_fresh_independent_identifier(self):
         observed = {"flip": {"samples": [{"ms": 12, "valid": True, "id": 2}], "dropped": 0}}
         self.assertEqual(batch.named_flip_result("kickflip", observed, 100), "PASS")

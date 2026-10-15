@@ -1,12 +1,12 @@
 ## Native grind fixture checkpoint — 2026-10-14
 
-Gameplay installed:956dd27f4a453a21ffcff94e867aee8533bcaa97, DLL
-5878204dd48ac2ae4259c96c3b1562fd5bee60fbe94f1c7ba5a8ed0345c6afa7.
-All five CI38688434844 gates passed; grind-handoff-deploy-v1 receipt preserves
-stock/game hashes, updates off and recovery clear. Game is running after the
-necessary DLL restart; saved Stadium rail loaded/adopted, editor/console closed,
+Gameplay installed:2c3b4c2a110f059661a134545808d888ffe53365, DLL
+8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620.
+All five CI38692885145 gates passed; balance-failure-deploy-v1 receipt preserves
+stock/game hashes, updates off and recovery clear. Game running; saved Stadium
+rail loaded/adopted with observed8/8 guard, editor/console/map overlay closed,
 Arcade Mode ON, auxiliary actions OFF and simulation60 restored.
-Root owns hardware. Frozen HIL35 and maintenance42 pin this installation.
+Root owns hardware. Frozen HIL37 and maintenance43 pin this installation.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Preserve grab code/tests/guide and input-ownership fix. Limited practical airtime
@@ -92,7 +92,7 @@ be5f2ec1ac93d7e9ba578c5a1740311bb7adb6267e13bdc589e0e3cc5d74ca0a.
 Saved fixture and targeted exit regression are complete; game is hot, mounted and
 stopped at the fixture. No controller batch is running. Do not repeat50-trial entry matrix.
 
-New source work (NOT installed):bounded native impact request on actual model
+Installed2c3b4c2:bounded native impact request on actual model
 balance failure, full owner revalidation, existing No Bail protection, serial/300ms
 expiry/cancellation, native selector acknowledgement and synthetic-input release.
 No forced physics result or velocity change. Adds numeric request/result telemetry,
@@ -100,7 +100,7 @@ owner-change combo reset and active-state logging to expose grace expiry. Local
 33612 model/sanitizer checks pass. Source2c3b4c2 CI38692885145 has passed Linux/Mac
 tests; all five CI38692885145 gates have now passed. Immutable artifact fetched
 and verified:8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620.
-Not installed yet; physical bail validation remains required.
+Installed with receipt verification; physical pilots below now provide first native evidence.
 
 Manual HUD pilot1792045939110661000 (HIL34) captured a readable full-size vertical
 meter near-0.8 during native Manual, with danger indication. Trial is INCOMPLETE:
@@ -128,13 +128,32 @@ native mechanics. These are stationary manual/low-speed rail-stall range checks,
 not full moving gameplay or physical-failure acceptance. Sanitized grades/hashes
 are in research/grind-exit-results.json; full-size images are local artifacts.
 
-Exit repeatability batch is running on956dd27/HIL35. New immutable deployment
-helper balance-failure-deploy-v1, HIL36 and maintenance43 are frozen for2c3b4c2;
-do not use until the current batch ends and verified deployment completes.
-Next:CI-verify this physical failure build, native manual failure pilot, then grind
-failure using sufficient real rail duration; finish full-range HUD and combo scoring.
-Physical balance failure, HUD full-range captures, scoring/banking and mixed
-stress remain open.
+Exit repeatability1792047159459011000 on956dd27/HIL35:20/20 native grind exits,
+landings, neutralization and resets. Post-entry native IDs9/10 Ollie and10/10
+Kickflip; Ollie repetition6 lacks a post-entry positive ID. Generic whole-trial
+named PASS includes approach Ollie and is insufficient for exit identity.
+Current956 evidence totals13 controlled trials per exit; prior build3 per exit
+recorded separately. No bails/lost evidence. Game was safely reset before restart.
+Verified2c3b4c2 deployment is complete; use HIL36/maintenance43 going forward.
+Physical failure pilots on2c3b4c2:manual1792048572454649000 and grind
+1792048743400184000 each issue exactly one native impact request, receive native
+selector300 acknowledgement(result3), and independent wipeout counter/pose6.
+Actual Slam/off-board and grind ragdoll screenshots reviewed; HUD clears and
+fatigue becomes zero, reset/remount passes. Sampled300 is too brief for the slower
+trace, whose bail:false/UNVERIFIED remains preserved; direct selector/counter
+observations are the positive evidence. Both are DISCOVERED, not repeatable yet.
+First manual attempt1792048375578477000 stopped before trial input because map
+overlay remained open; close it after native travel. No gameplay failure counted.
+Fresh Ollie/grind/Ollie exit after manual failure passed, with landing grace
+ending451ms later and fatigue resetting. Actual score/bank amounts remain open.
+
+HIL37 manifest b80090ff915452c249e07438beb22feedb0cb12adbdd7d805593aa42d039f1fc
+adds explicit expected.after_grind scope: an approach Ollie cannot satisfy exit
+identity; complete native grind entry/exit plus subsequent native ID required.
+238 offline Python tests pass. Six-context failure/recovery batch is running on
+HIL37; no parallel hardware owner. Next inspect results, then basic grind/manual
+composition and scored-event integration. Physical-failure repeatability,
+scoring/banking and mixed stress remain open; actual HUD range is now verified.
 Existing rotation/manual evidence below remains valid within its recorded scope.
 
 ## Rotation results and verified grind installation — 2026-10-14
