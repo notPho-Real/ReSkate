@@ -383,7 +383,9 @@ class DeckEnvironment:
         raise HardStop('fixture_reset_unverified')
 
     def wait_grind_ready(self, milliseconds):
-        boundary = self.observe().get('log_end')
+        before = self.observe()
+        boundary = before.get('log_end')
+        health = before.get('grind', {}).get('status', [])[-1:]
         if boundary is None:
             raise HardStop('grind_evidence_incomplete')
         deadline = time.monotonic() + milliseconds / 1000
@@ -391,7 +393,12 @@ class DeckEnvironment:
             self.session._clock()
             observation = self.observe(since=boundary)
             grind = observation.get('grind', {})
-            rows, status = grind.get('samples', []), grind.get('status', [])
+            rows = grind.get('samples', [])
+            # Identical health lines may be coalesced by the existing logger.
+            # Fresh physics/pad rows must still match the same owner generation
+            # and loss counters; the trial's later health must also match them.
+            status = grind.get('status', []) or health
+            grind['status'] = status
             if len(rows) >= 3 and status and status[-1]['active']:
                 current = dict(observation, grind=dict(grind, samples=rows[-3:], status=status[-1:]))
                 if (all(r['valid'] and r['state'] == 100 for r in rows[-3:]) and

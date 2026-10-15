@@ -5,8 +5,28 @@ CI38676253606 gates passed. DLL3ae927602b042134007bb8b3474252f1ac934ac374c0df3ff
 Receipt external fixture-deploy-v1/deployment-result.json confirms unchanged
 stock/game hashes, updates off and recovery clear. Frozen HIL27/maintenance32
 now pin this build. Game launch requested after the required DLL restart.
-Latest source ed553d7 contains the tested HIL additions; no native fixture
+Latest source dd4fadb782ddd1cbc2df673ce91f27e0c48d3cba corrects the fixture
+asset to own_bkrails_generic_flatrailround_00002 (Flat, Rnd Steel), verified in
+the pinned 25414733 content cache, SHA01867746b29301eead35a473ae523f8c84aa43784c244fcfafe0057a113045f4.
+The previous own_bkrails_flat_00001 key was a category-test example, absent
+from the live catalog. Corrected-build CI38679378656 is pending; no fixture
 placement, reset acceptance or grind success claimed yet. Root owns hardware.
+
+Native observer check1792037115776721000 completed two neutral riding windows:
+39/36 physics samples,81/76 delivered-pad samples, native100 throughout,
+complete evidence, zero drops/rejections, neutral and idle resets passed.
+These are observer checks, not grind attempts. Raw enum bindings remain invalid.
+Native status1792036702592763000 confirms stopped Stadium1 position
+(-71.78515625,46.95006561279297,41.595703125), heading90.00125, editor available.
+The editor has289 available objects and52 matching Flat titles; no object placed.
+
+Fixture console1ms typing truncated input.100ms typing alone still lacked a
+confirmed response; the existing100ms key cadence produced a valid response.
+Maintenance35/36 uses that verified console path. Frozen HIL28 still has the
+old short key pulses; freeze the committed robot.py fix before fixture batches.
+Latest hardware capture1792037220141889000 shows the open editor and flat-rail
+library. Close the editor before gameplay. Game is running, native controls,
+auxiliary actions off, simulation60 requested, mounted, no active controller batch.
 
 Stop ad hoc approaches. Next milestone is a saved straight Park Editor rail,
 measured native reset/heading/speed, native positive controls, then50 controlled
@@ -16,7 +36,7 @@ Observer runtime now wires the existing guarded enum reader to physics steps,
 generation/owner checks, independent delivered-pad samples and bounded nonblocking
 queues drained by a worker. It also observes Arcade OFF positive controls.
 Raw enums remain UNKNOWN. Missing enum bindings do not erase valid physics.
-56 observer/capture sanitizer checks and 225 Python tests pass locally. Observer
+56 observer/capture sanitizer checks and 226 Python tests pass locally. Observer
 Observer CI38675120210 and combined fixture CI38676253606 passed all five gates.
 Installed runtime verification remains pending. No grind success claimed.
 
@@ -30,7 +50,7 @@ The prior roof/entrance evidence used source5ed2d873 and DLL92bc4e85 below.
 
 Fixture source0caed0e9fb7270ee220a33a29e60ad2a9dc6da0b is pushed. New fixture command
 uses only the existing Park Editor transaction/save APIs and native Trainer
-teleport. Exact installed catalog key own_bkrails_flat_00001 must be available;
+teleport. The exact corrected catalog key must be available in the live editor;
 no guessed substitute. Start lane uses short near-ground collision probes,
 rail8m ahead, scale1, identity or quarter-turn orientation. Placement, spawned
 object, reset heading/speed and actual native grinding still require Deck tests.

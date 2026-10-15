@@ -63,6 +63,23 @@ class BatchTests(unittest.TestCase):
                     robot.fixture_console(command)
             run.assert_not_called()
 
+    def test_fixture_readiness_accepts_coalesced_health_only_with_matching_fresh_rows(self):
+        status = dict(generation=8, active=True, dropped=0, rejected=0)
+        row = dict(generation=8, dropped=0, valid=True, state=100, edge=0, duration=0)
+        fresh = dict(log_end=200, grind=dict(samples=[dict(row) for _ in range(3)],
+                     pad=[dict(generation=8, dropped=0)], status=[], dropped=0))
+        env = batch.DeckEnvironment(Mock())
+        env.observe = Mock(side_effect=[dict(log_end=100, grind={'status': [status]}), fresh])
+        self.assertEqual(env.wait_grind_ready(1000)['log_end'], 200)
+        self.assertEqual(env.observe.call_args.kwargs, {'since': 100})
+        for change in ({'generation': 9}, {'dropped': 1}, {'active': False}):
+            old = dict(status, **change)
+            env.observe = Mock(side_effect=[dict(log_end=100, grind={'status': [old]}),
+                                           dict(fresh, grind=dict(fresh['grind'], status=[]))])
+            with patch.object(batch.time, 'monotonic', side_effect=[0, 0, 2]), patch.object(batch.time, 'sleep'), \
+                 self.assertRaises(batch.HardStop):
+                env.wait_grind_ready(1000)
+
     def test_hard_stop_reports_only_allowlisted_cause_and_trial(self):
         value = plan()
         for message, reason in [("Skate exited; test stopped", "input_readiness_lost"),
