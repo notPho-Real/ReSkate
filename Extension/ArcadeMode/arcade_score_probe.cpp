@@ -36,10 +36,10 @@ void observe_label_part(std::string_view text, LabelDiagnostics& diagnostics) no
 void report_labels(std::uint64_t now, unsigned source, const LabelDiagnostics& diagnostic,
                    std::uint32_t labels) {
     static std::uint64_t report_at{};
-    static std::array<unsigned, 5> previous{};
+    static std::array<unsigned, 5> previous_diagnostic{};
     const std::array<unsigned, 5> current{source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels};
-    if (current == previous && now < report_at) return;
-    previous = current; report_at = now + 1000;
+    if (current == previous_diagnostic && now < report_at) return;
+    previous_diagnostic = current; report_at = now + 1000;
     logging::log(logging::Level::info, logging::Channel::skater,
         "ARCADE SCORE PRESENCE: ms={} source={} rows={} stage={} parts={} labels={}.",
         now, source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels);

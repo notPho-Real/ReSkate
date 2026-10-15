@@ -88,12 +88,16 @@ no broader label allowlist or score policy.90 manual,33616 model and40061 grind
 sanitizer checks;242 Python tests pass. Combined Windows build/Deck verification
 required. Keep7c7 installed until verified combined artifact, avoiding two restarts.
 Combined source f8361140e05e7a8f5b9c0027dcfd791a33fb1cf3 is pushed; CI38713723096
-Mac/Linux passed, Windows pending. Next:verify all five gates, one controlled
+Mac/Linux passed; Windows failed C4459 (local diagnostic name shadowing the
+existing global previous map). Rename fixes the demonstrated warning; no failed
+artifact was installed. Next:verify all five corrected gates, one controlled
 deploy, restore fixture, then targeted enum/label/manual repair tests. No batch
 is running; game remains hot on7c7 with RT frontside experiment selected.
 Follow-up source removes the lifetime4096 balance-sample cap while retaining
 the250ms rate bound, so later hot-session fatigue trials retain numeric evidence.
-This telemetry-only change is not yet built or installed.
+This telemetry-only change5a638fc is not installed. Its queued build includes
+the same diagnostic warning; a following source fix is required. Frozenf836
+deploy helper is now superseded and must not be used.
 Prepared981 deploy helper is superseded; do not accidentally deploy its older target.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native

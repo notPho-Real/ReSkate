@@ -2297,7 +2297,7 @@
     {
       "id": "build-gate",
       "requested_action": "Verified runtime artifact before installation",
-      "implementation_status": "GitHub restored; installed7c7 passed all five CI gates38701577381. New observer/landing repairf836 CI38713723096 pending Windows build; Mac/Linux passed.",
+      "implementation_status": "Installed7c7 passed all five CI gates38701577381. Observer repairf836 Windows CI38713723096 failed C4459 diagnostic variable shadowing; corrected source queued for rebuild. No failed artifact installed.",
       "source_ids": [],
       "remaining": "Require all five gates and immutable source/DLL identity for next deployment.",
       "next": "Use unchanged trusted deployment workflow; no permissions or security changes.",
