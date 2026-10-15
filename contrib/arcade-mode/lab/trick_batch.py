@@ -172,7 +172,7 @@ def perform_case(plan, case, env):
     env.integrity(plan)
     fixture_start = None
     if case.get('fixture_reset'):
-        fixture_start = env.fixture_reset(case['reset_ms'])
+        fixture_start = env.fixture_baseline(case['reset_ms'])
     readiness = ({"max_speed_mm_s": case["baseline_max_speed_mm_s"]}
                  if "baseline_max_speed_mm_s" in case else {})
     baseline = env.wait_idle(case["reset_ms"], **readiness)
@@ -359,6 +359,27 @@ class DeckEnvironment:
                 return ready
             time.sleep(0.25)
         return None
+
+    def fixture_baseline(self, milliseconds):
+        if self.session is None or self.session.pad is None:
+            raise HardStop('fixture_reset_unverified')
+        self.session.pad.neutral()
+        boundary = self.observe().get('log_end')
+        if boundary is None:
+            raise HardStop('fixture_reset_unverified')
+        self.session._clock()
+        fixture_console('status')
+        observation = self.observe(since=boundary)
+        status = observation.get('fixture')
+        if not status or observation.get('evidence_gap'):
+            raise HardStop('fixture_reset_unverified')
+        if status['failed'] or status['editor_open'] or not status['present']:
+            raise HardStop('fixture_reset_unverified')
+        if status['reset_ready']:
+            # The preceding trial already reset. Revalidate instead of teleporting
+            # and remounting again; fresh idle and observer checks still follow.
+            return status
+        return self.fixture_reset(milliseconds)
 
     def fixture_reset(self, milliseconds):
         if self.session is None or self.session.pad is None:

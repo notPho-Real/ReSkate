@@ -82,3 +82,20 @@ device lock prevents overlapping controller use.
 Exhaustion, including all-skipped batches, is reported explicitly; it is not a
 hardware acceptance PASS. Interrupting the client saves its partial summary;
 the remote alarm/finally bounds cleanup, but an unconfirmed ACK remains a stop.
+
+For a saved native rail fixture, `fixture_reset: true` requests the existing
+native teleport, remounts once if the measured state is 504, and requires a fresh
+stationary riding status at the saved position and heading. Native controls use Y;
+Arcade Mode uses the established shoulder chord. The same controller remains
+connected. The next trial first rechecks fresh status and skips another teleport
+when the preceding reset is still valid. `capture_frames: 0` retains input
+readiness checks and numeric evidence.
+Missing grind telemetry or an unverified reset stops this fixture batch.
+
+`python3 contrib/arcade-mode/lab/grind_report.py BATCH_1.json BATCH_2.json`
+summarizes the sanitized external results without sending input. Supply the four
+acceptance batches for the 10/20/10/10 denominator; keep setup pilots separate.
+Native 400–499 samples establish grind activity. A miss versus contact without
+grinding remains unverified without an independent contact observation. Raw enums
+have no invented names. Bail, exit, neutralization and reset outcomes remain
+separate, and a failed post-trial reset does not hide an otherwise valid attempt.

@@ -1,12 +1,12 @@
 ## Native grind fixture priority — 2026-10-14
 
-Current source e060accff4f7ed89cd194db0beb52795926c8c0d. Installed gameplay
-source dd4fadb782ddd1cbc2df673ce91f27e0c48d3cba, DLL
-78bf01352178d165ae320440e2f40aba63dc611485eeea4fa5d0863343041cca.
-All five CI38679378656 gates passed. External fixture-key-deploy-v1 receipt
+Installed gameplay source9a96c69ff42c6fe0c75a06ccb180f6235582d34f, DLL
+10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54.
+All five CI38682971586 gates passed. External fixture-reset-deploy-v1 receipt
 verifies unchanged stock/game hashes, updates off and recovery clear.
-Frozen HIL29 and maintenance37/38 pin this installation. Root owns hardware.
-Game remains running; native controls, auxiliary actions off, simulation60.
+Frozen HIL30 and maintenance40 pin this installation. Root owns hardware.
+One necessary DLL restart; native launch is in progress. Restore Stadium, native
+controls, auxiliary actions off and simulation60 before fixture trials.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Keep all grab work and the synthetic-input ownership fix. Practical airtime
@@ -45,7 +45,15 @@ Source changes preserve the single rail while allowing relocation after new
 floor checks, record the actual riding start height, and add a bounded native
 remount after reset (Y when OFF; established shoulder chord when ON). Fresh
 native100/reset-ready is still required afterward. No state forcing. These fixes
-are not installed yet. Existing game remains hot, stopped on foot, editor closed.
+are installed after CI; real reset acceptance is pending. The native floor point
+beyond the barrier(-39.523663,46.950066,52.384575), heading0.005, is verified by
+1792039551485128000 and initial terrain capture1792039558901707000. Use the frozen
+fixture-floor native teleport, then mount and relocate the saved single rail.
+New offline grind report keeps valid-attempt denominators and independent native
+physics, exit, bail and reset outcomes separate.233 local Python tests pass.
+The next trial now revalidates fresh fixture status before deciding to teleport,
+avoiding a redundant reset/remount after an already successful post-trial reset.
+This host improvement still needs a reviewed frozen HIL31 before hardware use.
 
 Do not reuse the rejected topmost-surface ground(-40,55) reset: it landed on
 roof supports (1792033069939264000). Native map recovery restored the entrance.

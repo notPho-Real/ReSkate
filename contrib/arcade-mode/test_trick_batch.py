@@ -26,6 +26,27 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_fixture_baseline_reuses_only_fresh_confirmed_reset(self):
+        env = batch.DeckEnvironment(Mock())
+        ready = dict(reset_ready=True, present=True, failed=False, editor_open=False)
+        env.observe = Mock(side_effect=[{'log_end': 100}, {'fixture': ready}])
+        with patch.object(batch, 'fixture_console') as console, patch.object(env, 'fixture_reset') as reset:
+            self.assertEqual(env.fixture_baseline(1000), ready)
+            console.assert_called_once_with('status')
+            reset.assert_not_called()
+        self.assertEqual(env.observe.call_args.kwargs, {'since': 100})
+        env.observe = Mock(side_effect=[{'log_end': 100}, {'fixture': dict(ready, reset_ready=False)}])
+        with patch.object(batch, 'fixture_console'), patch.object(env, 'fixture_reset', return_value=ready) as reset:
+            self.assertEqual(env.fixture_baseline(1000), ready)
+            reset.assert_called_once_with(1000)
+        for observation in ({}, {'fixture': ready, 'evidence_gap': 'log_truncated'},
+                            {'fixture': dict(ready, present=False)}, {'fixture': dict(ready, editor_open=True)}):
+            env.observe = Mock(side_effect=[{'log_end': 100}, observation])
+            with patch.object(batch, 'fixture_console'), patch.object(env, 'fixture_reset') as reset, \
+                    self.assertRaises(batch.HardStop):
+                env.fixture_baseline(1000)
+            reset.assert_not_called()
+
     def test_fixture_trials_continue_misses_but_stop_lost_evidence_or_reset(self):
         value = plan()
         value['candidates'][0].update(fixture_reset=True, repeat=3)
