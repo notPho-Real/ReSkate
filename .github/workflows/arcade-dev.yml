@@ -16,11 +16,11 @@ jobs:
       - name: Fetch native dependencies required at configure time
         run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON
+        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_TRAINER_TESTS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON -DDINGOSDK_BUILD_MULTIPLAYER_TESTS=ON
       - name: Build
-        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests
+        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_trainer_session_tests dingosdk_trainer_landing_tests dingosdk_park_randomization_tests dingosdk_park_editor_transaction_tests dingosdk_playstation_report_tests dingosdk_mod_manager_tests dingosdk_depot_output_tests
       - name: Test
-        run: ctest --test-dir build/vs2022-x64 -C Release -R "^arcade_(mode|native_score(_replay)?|grind_observer)$" --output-on-failure
+        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(arcade_(mode|native_score(_replay)?|grind_observer)|trainer_(session_extras|landing)|park_(randomization|editor_transactions)|playstation_report|launcher_(mod_manager|depot_output))$" --output-on-failure
       - name: Stage development DLL
         shell: pwsh
         run: |
