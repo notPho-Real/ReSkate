@@ -26,6 +26,54 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_revert_link_requires_independent_label_and_unbroken_continuation(self):
+        def event(ms, pose=1, active=True, fatigue=.2):
+            return dict(ms=ms, pose=pose, active=active, failed=False,
+                        fatigue=fatigue, grind_fatigue=fatigue, manual_fatigue=0)
+        obs = {'combo': {'baseline_available': True, 'dropped': 0,
+                         'events': [event(1000), event(2000, 4)],
+                         'revert_links': [dict(ms=1100, sequence=3, labels=16777216,
+                                              accepted=True, remaining_ms=1100)]},
+               'score_edges': {'samples': [dict(seq=3, labels=16777216, uncertainty=0,
+                                                observed=1080, sampled=1090)], 'dropped': 0},
+               'grind_result': {'evidence': 'COMPLETE'}}
+        good = batch.native_revert_link_result(obs)
+        self.assertEqual(good['native_revert'], 'PASS')
+        self.assertEqual(good['revert_continuation'], 'PASS')
+        self.assertEqual(good['revert_to_action_ms'], 900)
+        for mutation in ('intent-only', 'missing-label', 'stale-label', 'future-label',
+                         'uncertain-label', 'coalesced-label', 'duplicate-label', 'dropped',
+                         'no-baseline', 'gap', 'incomplete'):
+            with self.subTest(mutation=mutation):
+                bad = copy.deepcopy(obs)
+                combo, edges = bad['combo'], bad['score_edges']
+                if mutation == 'intent-only': combo['revert_links'] = []
+                elif mutation == 'missing-label': edges['samples'] = []
+                elif mutation == 'stale-label': edges['samples'][0]['observed'] = 800
+                elif mutation == 'future-label': edges['samples'][0]['sampled'] = 1110
+                elif mutation == 'uncertain-label': edges['samples'][0]['uncertainty'] = 1
+                elif mutation == 'coalesced-label': edges['samples'][0]['labels'] |= 4
+                elif mutation == 'duplicate-label': edges['samples'] *= 2
+                elif mutation == 'dropped': edges['dropped'] = 1
+                elif mutation == 'no-baseline': combo['baseline_available'] = False
+                elif mutation == 'gap': bad['evidence_gap'] = True
+                else: bad['grind_result']['evidence'] = 'INCOMPLETE'
+                self.assertNotEqual(batch.native_revert_link_result(bad)['native_revert'], 'PASS')
+                self.assertNotEqual(batch.native_revert_link_result(bad)['revert_continuation'], 'PASS')
+        for mutation in ('expired', 'banked', 'fatigue-reset', 'duplicate-accept',
+                         'inactive-at-revert', 'overlong-grace', 'no-continuation'):
+            with self.subTest(mutation=mutation):
+                bad = copy.deepcopy(obs)
+                combo = bad['combo']
+                if mutation == 'expired': combo['events'][-1]['ms'] = 2201
+                elif mutation == 'banked': combo['events'].insert(1, event(1500, active=False, fatigue=0))
+                elif mutation == 'fatigue-reset': combo['events'][-1]['grind_fatigue'] = 0
+                elif mutation == 'duplicate-accept': combo['revert_links'] *= 2
+                elif mutation == 'inactive-at-revert': combo['events'][0]['active'] = False
+                elif mutation == 'overlong-grace': combo['revert_links'][0]['remaining_ms'] = 1101
+                else: combo['events'].pop()
+                self.assertEqual(batch.native_revert_link_result(bad)['revert_continuation'], 'FAIL')
+
     def test_combo_chain_requires_one_lifecycle_and_native_ids_at_each_takeoff(self):
         expected = {'poses': [2, 3, 2, 4, 2, 1], 'air_ids': [1, 1, 1]}
         events = []

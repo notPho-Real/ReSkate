@@ -219,6 +219,64 @@ def grind_result(observation, baseline, reset_ok):
                 reset='PASS' if reset_ok else 'FAIL')
 
 
+def native_revert_link_result(observation):
+    """Grade one landing/revert/balance link from HIL41 evidence, never RT intent.
+
+    This is a postprocessor for a single continuation trial. It does not assert
+    score ownership, side identity, or multiplier behavior.
+    """
+    result = dict(native_revert='UNVERIFIED', revert_continuation='UNVERIFIED')
+    combo = observation.get('combo', {})
+    edges = observation.get('score_edges', {})
+    events = combo.get('events', [])
+    if (observation.get('evidence_gap') or not combo.get('baseline_available') or
+            combo.get('dropped') != 0 or edges.get('dropped') != 0 or
+            observation.get('grind_result', {}).get('evidence') != 'COMPLETE' or
+            not events or any(b['ms'] < a['ms'] for a, b in zip(events, events[1:]))):
+        return result
+    links = [r for r in combo.get('revert_links', []) if r.get('accepted') is True]
+    if not links:
+        result['revert_continuation'] = 'FAIL'
+        return result
+    # A single landing grants one continuation. Duplicate acceptance is a failure,
+    # even if the later attempt happens to reach a manual before its new deadline.
+    if len(links) != 1:
+        result['revert_continuation'] = 'FAIL'
+        return result
+    link = links[0]
+    matching = [e for e in edges.get('samples', [])
+                if e.get('seq') == link.get('sequence') and e.get('seq', 0) > 0]
+    if len(matching) != 1:
+        return result
+    edge = matching[0]
+    if (edge.get('labels') not in (4, 8, 16777216) or
+            edge.get('labels') != link.get('labels') or edge.get('uncertainty') != 0 or
+            not 0 <= edge['sampled'] - edge['observed'] <= 150 or
+            not 0 <= link['ms'] - edge['sampled'] <= 150):
+        return result
+    result['native_revert'] = 'PASS'
+    if not 0 < link.get('remaining_ms', 0) <= 1100:
+        result['revert_continuation'] = 'FAIL'
+        return result
+    before = [e for e in events if e['ms'] <= link['ms']]
+    if not before or before[-1]['pose'] != 1 or not before[-1]['active']:
+        result['revert_continuation'] = 'FAIL'
+        return result
+    deadline = link['ms'] + link['remaining_ms']
+    following = [e for e in events if link['ms'] < e['ms'] <= deadline]
+    consumed = next((e for e in following if e['pose'] in (2, 3, 4, 5)), None)
+    if consumed is None:
+        result['revert_continuation'] = 'FAIL'
+        return result
+    segment = [before[-1]] + [e for e in following if e['ms'] <= consumed['ms']]
+    modes = ('fatigue', 'grind_fatigue', 'manual_fatigue')
+    continuous = (all(e['active'] and not e['failed'] for e in segment) and
+                  all(b[k] + 1e-6 >= a[k] for a, b in zip(segment, segment[1:]) for k in modes))
+    result['revert_continuation'] = 'PASS' if continuous else 'FAIL'
+    result['revert_to_action_ms'] = consumed['ms'] - link['ms']
+    return result
+
+
 def combo_chain_result(expected, observation):
     """Qualify one observed lifecycle, never stitch successes across a bank/bail."""
     result = dict(continuous='UNVERIFIED', native_air_ids='UNVERIFIED',

@@ -1,5 +1,35 @@
 ## Current native grind and combo checkpoint — 2026-10-15
 
+Recovery authorized; connection preflight currently BLOCKED before Steam login.
+Frozen recovery-inspect-v2 (333e6f1e96b7c2ec53257f4df738409aeef31bd3c3a39c8d4e52412938a826ac)
+returns SSH255: steamdeck.local cannot resolve. Existing configured three-packet
+wake sent via frozen recovery-wake-v1; subsequent checks still cannot resolve,
+and no matching cached neighbor was found. No Deck files/processes changed.
+The installed identities below are LAST VERIFIED, not a fresh connected check.
+The manifest has NOT been attempted or shown unavailable; no login was requested.
+
+Supported recovery confirmed in Launcher/gui_launcher.cpp and updater.cpp:
+app3354750/depot3354751/manifest4621099302092747785, differing-file download,
+optional full validation, then both game and steam_api fingerprints. Keep updates
+off to preserve verified DLL. README supports an empty folder outside Steam's
+managed installation; launcher resolves game paths beside its executable.
+However current HIL discovers the Steam library and the existing shortcut targets
+that directory. Separate installation is supported by the launcher, but Deck
+shortcut/prefix/HIL continuity must be checked before moving anything. No move
+or guessed alternate launch path has been made.
+
+Safe offline work: native_revert_link_result now grades HIL41 recorded evidence
+against fresh independent labels, sequence identity, one accepted continuation,
+observed deadline and continuous active/fatigue state. It rejects input-only,
+stale/coalesced/dropped evidence and expired/restarted links.244 Python tests pass
+(53 focused batch tests). Replay of the three recorded08d revert/manual trials
+correctly gives no continuation credit; no new Deck acceptance is claimed.
+Existing checkpoint recorder retains revert_links; summarize-native-links.py
+uses the new offline grade. Frozen HIL41 and runtime are unchanged. Resume with
+recovery-inspect-v2, supported launcher download/validation, full content and
+DLL/stock verification, saved Stadium fixture, then prepared seven integration
+trials. Do not rerun completed grind/HUD acceptance.
+
 Installed source:2bdf062c7e392350aa160653b25fbc6317d9409f.
 DLL:7a8b254e61cbab32ec113c3d4bf1aef86d5c9fc6b130fcc6bb2da9cbcd73f00e.
 All five CI38727430627 gates passed. Frozen native-label-link-deploy-v5

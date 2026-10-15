@@ -44996,6 +44996,25 @@
       "build": 25414733,
       "source": "README.md and Engine/Game/Build/supported_build.h"
     },
-    "resume": "Restore and verify pinned executable/content, use frozen maintenance46 to relaunch and restore saved Stadium rail, then HIL41 fixture-native-link-integration-7.json. Do not change pins to the updated executable."
+    "resume": "Restore and verify pinned executable/content, use frozen maintenance46 to relaunch and restore saved Stadium rail, then HIL41 fixture-native-link-integration-7.json. Do not change pins to the updated executable.",
+    "authorized_recovery_attempt": {
+      "target_build": 25414733,
+      "depot": 3354751,
+      "manifest": "4621099302092747785",
+      "stage": "connection_preflight",
+      "result": "BLOCKED",
+      "ssh_exit": 255,
+      "error": "Could not resolve hostname steamdeck.local: nodename nor servname provided, or not known",
+      "wake_packets_sent": 3,
+      "wake_confirmed": false,
+      "matching_cached_neighbor": false,
+      "steam_download_attempted": false,
+      "deck_mutations": false,
+      "native_guard_changed": false,
+      "helper": "recovery-inspect-v2",
+      "helper_sha256": "333e6f1e96b7c2ec53257f4df738409aeef31bd3c3a39c8d4e52412938a826ac",
+      "offline_tests": 244,
+      "next": "Restore authenticated connection, inspect preserved artifacts, use supported launcher recovery and full validation, verify content and DLL/stock hashes, restore Stadium fixture, run prepared HIL41 integration seven."
+    }
   }
 }

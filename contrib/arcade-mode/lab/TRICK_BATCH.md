@@ -58,6 +58,16 @@ identity checks remain unchanged. This repository implementation must enter the
 externally reviewed frozen bundle before hardware use; editing the checkout does
 not change an installed trusted runner. No external bundle is updated by these tests.
 
+For the prepared HIL41 revert/manual trials, the offline
+`trick_batch.native_revert_link_result(observation)` postprocessor requires a
+fresh independent native score-label edge matching the accepted link sequence,
+exactly one accepted continuation, and an active, fatigue-preserving transition
+before the observed deadline (at most 1,100 ms). Missing or dropped evidence is
+UNVERIFIED; an expired, repeated or broken continuation fails. Apply this in
+addition to `combo_chain_result`, neutralization and reset checks. It does not
+prove monetary banking, multiplier behavior or frontside/backside identity.
+This consumes existing HIL41 output without changing the frozen hardware runner.
+
 A lost acknowledgement is never replayed: input may have happened.
 Read-only SSH preflight retries three times. Missing game/HIL readiness gets a
 bounded recovery wait; this version does not automatically click the launcher.
