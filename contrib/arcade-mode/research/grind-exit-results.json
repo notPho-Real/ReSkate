@@ -317,5 +317,361 @@
       "Natural exits briefly report manual pose4 on landing. Exact native manual identity during that transient remains unverified.",
       "Grace-expiry banking did not emit a pose-change event in this build; source now logs active-state changes. Native awarded score integration remains unverified."
     ]
+  },
+  "manual_hud_range": {
+    "source_commit": "956dd27f4a453a21ffcff94e867aee8533bcaa97",
+    "runner": 35,
+    "result": "1792046565110110000",
+    "sha256": "2a74e5b2114b0828b909c94c542675633b2fa8c263c062a4c80e3e7d804d8840",
+    "trials": [
+      {
+        "name": "manual-hud-negative-08",
+        "evidence": "COMPLETE",
+        "native_manual": true,
+        "image_sha256": "c98a088bc2a22f6b2abf8885cd873dc6b744425ea61916e0ee1537175ed21f09",
+        "image": "artifacts/manual-hud-negative-08-complete.png",
+        "cursor_position_approx_from_full_size_frame": -0.81,
+        "neutralized": true,
+        "fixture_reset_ready": true,
+        "host_dropped": 0
+      },
+      {
+        "name": "manual-hud-negative-04",
+        "evidence": "COMPLETE",
+        "native_manual": true,
+        "image_sha256": "772b6121f090ea254d80bce12507fd2f39cd1df135812d282d98dd40ad54477c",
+        "image": "artifacts/manual-hud-negative-04-complete.png",
+        "cursor_position_approx_from_full_size_frame": -0.42,
+        "neutralized": true,
+        "fixture_reset_ready": true,
+        "host_dropped": 0
+      },
+      {
+        "name": "manual-hud-center",
+        "evidence": "COMPLETE",
+        "native_manual": true,
+        "image_sha256": "a4c5e94e000f30ddacb4609bf7751f4e31bd88e23dd3b1c6f53ae31330a10d43",
+        "image": "artifacts/manual-hud-center-complete.png",
+        "cursor_position_approx_from_full_size_frame": -0.025,
+        "neutralized": true,
+        "fixture_reset_ready": true,
+        "host_dropped": 0
+      },
+      {
+        "name": "manual-hud-positive-04",
+        "evidence": "COMPLETE",
+        "native_manual": true,
+        "image_sha256": "7abaf51546e8bd675d4a26a481bbc65b4ed725e40b3f31d4b06ee5d2a44171ff",
+        "image": "artifacts/manual-hud-positive-04-complete.png",
+        "cursor_position_approx_from_full_size_frame": 0.375,
+        "neutralized": true,
+        "fixture_reset_ready": true,
+        "host_dropped": 0
+      },
+      {
+        "name": "manual-hud-positive-08",
+        "evidence": "COMPLETE",
+        "native_manual": true,
+        "image_sha256": "9153ec289acdb9abb7b256a8f13dc77c80ffe41020639eba16bc6234523003dc",
+        "image": "artifacts/manual-hud-positive-08-complete.png",
+        "cursor_position_approx_from_full_size_frame": 0.75,
+        "neutralized": true,
+        "fixture_reset_ready": true,
+        "host_dropped": 0
+      }
+    ],
+    "verified": "All five full-size1280x800 frames reviewed: native Manual label/pose, live model-driven cursor, readable track/center/limits, warning and severe danger. Targets are approximate positions, not cosmetic overrides.",
+    "limits": "Stationary native manuals. Pre-fixture idle remains FAIL because manual persists; separate native reset passed5/5. Physical balance failure is not implemented in this installed build."
+  },
+  "manual_hud_incomplete_pilot": {
+    "runner": 34,
+    "result": "1792045939110661000",
+    "evidence": "INCOMPLETE",
+    "reason": "host pad256 cap discarded30 rows during10s post-action wait; native dropped0/rejected0",
+    "reset_ready": true
+  },
+  "slower_native_approach": {
+    "source_commit": "956dd27f4a453a21ffcff94e867aee8533bcaa97",
+    "runner": 35,
+    "result": "1792046691083888000",
+    "sha256": "aaeefa41821807e00344ab3c407e7b694b2c758da8c7e2585f950e0f363ae65b",
+    "protocol": {
+      "name": "arcade-slow-rail-approach",
+      "family": "arcade-y-grind",
+      "phases": [
+        {
+          "ms": 0
+        },
+        {
+          "ms": 300,
+          "ly": -32767
+        },
+        {
+          "ms": 1300,
+          "buttons": [
+            "B"
+          ]
+        },
+        {
+          "ms": 1900,
+          "buttons": [
+            "A"
+          ]
+        },
+        {
+          "ms": 2300,
+          "buttons": [
+            "Y"
+          ]
+        },
+        {
+          "ms": 4700
+        },
+        {
+          "ms": 5000,
+          "buttons": [
+            "B"
+          ]
+        },
+        {
+          "ms": 7000
+        }
+      ],
+      "expected": {
+        "states": [
+          100,
+          200,
+          100
+        ]
+      },
+      "timeout_ms": 8500,
+      "reset_ms": 10000,
+      "repeat": 1,
+      "capture_frames": 0,
+      "baseline_max_speed_mm_s": 100,
+      "fixture_reset": true
+    },
+    "grade": {
+      "evidence": "COMPLETE",
+      "native_grind": "PASS",
+      "entries": 1,
+      "exits": 1,
+      "duration_ms": 2250,
+      "raw_enum_pairs": [
+        [
+          null,
+          null
+        ]
+      ],
+      "entry_speed_mm_s": [
+        1391
+      ],
+      "named_identity": "UNKNOWN",
+      "contact_without_grind": "UNVERIFIED",
+      "stale_health_rows": 1,
+      "bail": false,
+      "reset": "PASS"
+    },
+    "reset_ready": true,
+    "maturity": "DISCOVERED:1 controlled trial; same geometry, native brake only; no physics tuning"
+  },
+  "grind_hud_range": {
+    "source_commit": "956dd27f4a453a21ffcff94e867aee8533bcaa97",
+    "runner": 35,
+    "result": "1792046847730988000",
+    "sha256": "07adab0d352ed0378c9824c22b025b22275bbd508ba3315e6db60bc8919fb21e",
+    "trials": [
+      {
+        "name": "grind-hud-negative-08",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 899,
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1506
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "hud_range_capture": false,
+        "cursor_position_approx_from_full_size_frame": null,
+        "image_sha256": "2b6a120a4070a45034495abeb8b8055f5c05ab6e39ca5d61302005f5cac787ec",
+        "image": "artifacts/grind-hud-negative-08-actual.png",
+        "neutralized": true,
+        "fixture_reset_ready": true
+      },
+      {
+        "name": "grind-hud-negative-04",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 0,
+          "duration_ms": 5001,
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1387
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "hud_range_capture": true,
+        "cursor_position_approx_from_full_size_frame": -0.36,
+        "image_sha256": "4d4ebd6ebe1d854d2e3a994eb0261b484b2b7613e77f23c19594c0e889167cd9",
+        "image": "artifacts/grind-hud-negative-04-actual.png",
+        "neutralized": true,
+        "fixture_reset_ready": true
+      },
+      {
+        "name": "grind-hud-center",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 0,
+          "duration_ms": 4967,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1500
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "hud_range_capture": true,
+        "cursor_position_approx_from_full_size_frame": 0.04,
+        "image_sha256": "a129c90ac78252eca6b4e862ff3a48e85f7d82ad67dec0d80a9459470fa09eb8",
+        "image": "artifacts/grind-hud-center-actual.png",
+        "neutralized": true,
+        "fixture_reset_ready": true
+      },
+      {
+        "name": "grind-hud-positive-04",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 0,
+          "duration_ms": 4917,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1501
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "hud_range_capture": true,
+        "cursor_position_approx_from_full_size_frame": 0.43,
+        "image_sha256": "0494fd3a099eaa1d07646a1ebc69c4b0f0cb7ef1058b7ad399e86eb4f4cf5ff5",
+        "image": "artifacts/grind-hud-positive-04-actual.png",
+        "neutralized": true,
+        "fixture_reset_ready": true
+      },
+      {
+        "name": "grind-hud-positive-08",
+        "grade": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 0,
+          "duration_ms": 4867,
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ]
+          ],
+          "entry_speed_mm_s": [
+            1508
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "hud_range_capture": true,
+        "cursor_position_approx_from_full_size_frame": 0.8,
+        "image_sha256": "9403d076a633d072d6c7df0f441fb93f29e11079f24c2373ff465857f73ef94f",
+        "image": "artifacts/grind-hud-positive-08-actual.png",
+        "neutralized": true,
+        "fixture_reset_ready": true
+      }
+    ],
+    "verified": "4/5 targets readable during native401/rail stall. Full-size1280x800 frames reviewed; real balance model, native BS50-50 and BS Axle Stall labels. Negative0.8 attempt exited rail899ms and had no HUD at capture; not a pass.",
+    "limits": "Native low-speed stall, not sustained moving grind. Native physical failure remains absent on installed956; post-action idleFAIL distinct from5/5 verified native fixture resets.",
+    "negative_limit_retry": {
+      "result": "1792047037488038000",
+      "sha256": "448fa2ef84c03d653700c8911aa76309e3f88155d62742035dd0e396dd18d513",
+      "grade": {
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "entries": 1,
+        "exits": 0,
+        "duration_ms": 6549,
+        "raw_enum_pairs": [
+          [
+            20,
+            20
+          ]
+        ],
+        "entry_speed_mm_s": [
+          1505
+        ],
+        "named_identity": "UNKNOWN",
+        "contact_without_grind": "UNVERIFIED",
+        "stale_health_rows": 1,
+        "bail": false,
+        "reset": "FAIL"
+      },
+      "image_sha256": "8cc0c93f3c019d2a0240c60dd4ceac0d7974398defd39dc326e8e67440a7fdca",
+      "image": "artifacts/grind-hud-negative-08-longer.png",
+      "cursor_position_approx_from_full_size_frame": -0.83,
+      "fixture_reset_ready": true,
+      "verified": "Full-size frame reviewed: red cursor and severe DANGER border at left; native401 and BS Axle Stall. Moderate correction held longer, no synthetic HUD override."
+    },
+    "range_status": "All five requested approximate positions now captured during actual native rail engagement; one failed strong-left capture preserved separately."
   }
 }

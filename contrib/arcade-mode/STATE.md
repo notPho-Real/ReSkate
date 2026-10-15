@@ -98,7 +98,9 @@ expiry/cancellation, native selector acknowledgement and synthetic-input release
 No forced physics result or velocity change. Adds numeric request/result telemetry,
 owner-change combo reset and active-state logging to expose grace expiry. Local
 33612 model/sanitizer checks pass. Source2c3b4c2 CI38692885145 has passed Linux/Mac
-tests; Windows build and real physical bail validation remain required.
+tests; all five CI38692885145 gates have now passed. Immutable artifact fetched
+and verified:8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620.
+Not installed yet; physical bail validation remains required.
 
 Manual HUD pilot1792045939110661000 (HIL34) captured a readable full-size vertical
 meter near-0.8 during native Manual, with danger indication. Trial is INCOMPLETE:
@@ -109,7 +111,26 @@ full native reset budget, and raises bounded pad capacity to512 for the permitte
 12s input+10s recovery window. Overflow still invalidates evidence.237 Python
 tests pass. Frozen HIL35 manifest
 85668cd131c2e4d138f0dc975eafef4fc5a2ea4733b537efb32f383d00934c94.
-Five-position manual HUD retry is running; no other hardware work may overlap it.
+Manual range retry1792046565110110000 passed5/5 complete captures and native
+fixture resets. Full-size1280x800 frames show actual Manual, model cursor near
+-0.8,-0.4,0,+0.4,+0.8, readable track/center/limits and danger indication.
+Native manual persists before reset, so ordinary idleFAIL is retained separately.
+
+Slower native approach1792046691083888000:entry1.391m/s,2250ms native grind,
+exit/reset passed, unchanged rail and physics. Native B brake1300–1900ms,
+A1900–2300ms then Y. Holding Y can remain in a native401 rail stall.
+Horizontal range1792046847730988000:4/5 readable targets at1280x800 during real
+rail engagement. Strong left correction(-0.96) caused native exit after899ms;
+its absent HUD capture is a FAIL. Moderate-0.59 held longer then captured-0.83
+with severe danger in1792047037488038000, complete native401 evidence/reset.
+Both orientations now have all5 approximate positions captured during actual
+native mechanics. These are stationary manual/low-speed rail-stall range checks,
+not full moving gameplay or physical-failure acceptance. Sanitized grades/hashes
+are in research/grind-exit-results.json; full-size images are local artifacts.
+
+Exit repeatability batch is running on956dd27/HIL35. New immutable deployment
+helper balance-failure-deploy-v1, HIL36 and maintenance43 are frozen for2c3b4c2;
+do not use until the current batch ends and verified deployment completes.
 Next:CI-verify this physical failure build, native manual failure pilot, then grind
 failure using sufficient real rail duration; finish full-range HUD and combo scoring.
 Physical balance failure, HUD full-range captures, scoring/banking and mixed

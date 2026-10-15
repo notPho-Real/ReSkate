@@ -2114,25 +2114,28 @@
     {
       "id": "hud-grind",
       "requested_action": "Readable horizontal grind meter driven by model",
-      "implementation_status": "Actual horizontal balance active in20/20 Y trials;1280x800 gameplay capture1792044001340239000 shows readable30%-width meter near center during native BS50-50 Grind.",
+      "implementation_status": "Native400-499 drives horizontal HUD. All five requested approximate positions captured at1280x800 during rail engagement/stall; severe danger visible both sides, correction changes model. One strong-left input caused early native exit and is preserved as failed capture.",
       "source_ids": [
         "score-hud"
       ],
-      "remaining": "Full-size Gamescope captures at-0.8,-0.4,0,+0.4,+0.8 and normal Deck viewing.",
-      "next": "Verify correction, full position range and physical balance-failure consequence.",
-      "new_deck_trials": 20,
-      "evidence": "grind-exit-results.json"
+      "remaining": "Native physical balance failure and moving combined gameplay acceptance.",
+      "next": "CI-approved native impact actuator: verify actual bail, HUD clear, fatigue reset and fresh combo.",
+      "new_deck_trials": 27,
+      "evidence": "grind-exit-results.json",
+      "maturity": "INTEGRATED:actual native rail HUD range; physical failure pending"
     },
     {
       "id": "hud-manual",
       "requested_action": "Readable vertical manual meter driven by model",
-      "implementation_status": "30% axis geometry implemented; historical native HUD failed before resize",
+      "implementation_status": "Actual native manual5/5 full-size1280x800 captures near-0.8,-0.4,0,+0.4,+0.8; readable30%-height meter follows balance state, warning/severe danger visible.",
       "source_ids": [
         "score-hud"
       ],
-      "remaining": "Same5 full-size captures and moving gameplay readability.",
-      "next": "Verify new geometry visually on Deck; old failure is not superseded by local geometry tests.",
-      "new_deck_trials": 0
+      "remaining": "Moving combined gameplay and native physical failure verification.",
+      "next": "Verify native failure/clear/recovery after CI-approved actuator deployment.",
+      "new_deck_trials": 5,
+      "evidence": "grind-exit-results.json",
+      "maturity": "INTEGRATED:stationary native manual HUD range; broader gameplay acceptance pending"
     },
     {
       "id": "balance",
@@ -2146,13 +2149,13 @@
     {
       "id": "physical-failure",
       "requested_action": "Balance boundary produces actual gameplay failure",
-      "implementation_status": "Native consequence not implemented",
+      "implementation_status": "Source2c3b4c2 implements bounded native impact request, full owner/NoBail checks, one-shot acknowledgement, expiry/cancellation and synthetic neutralization; not installed.",
       "source_ids": [
         "native-bail-minimal",
         "native-bail-scoped"
       ],
-      "remaining": "One-shot request, native acknowledgement, rejection and reset.",
-      "next": "Adapt existing native bail request; preserve No Bail policy/native rejection, observe actual ragdoll entry.",
+      "remaining": "CI completion and independent native300/actual failure plus next-fresh-action recovery.",
+      "next": "Deploy only verified build, run manual failure pilot then slower native grind failure.",
       "new_deck_trials": 0
     },
     {
