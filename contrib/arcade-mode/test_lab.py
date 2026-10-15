@@ -136,6 +136,21 @@ class ComboTraceTests(unittest.TestCase):
         sequence = row.replace('route=2', 'route=4').replace('reason=7', 'reason=0').replace('success=false', 'success=true')
         self.assertTrue(probe.parse_native_score_events(sequence)['samples'][0]['success'])
 
+    def test_score_presence_diagnostics_do_not_promote_partial_names(self):
+        from lab import trick_batch
+        row = 'ARCADE SCORE PRESENCE: ms=120 source=1 rows=2 stage=0 parts=3 labels=4.'
+        parsed = probe.parse_score_presence(row)
+        self.assertEqual(parsed['samples'], [dict(ms=120, source=1, rows=2, stage=0, parts=3, labels=4)])
+        self.assertEqual(parsed['native_identity'], 'UNVERIFIED')
+        self.assertEqual(trick_batch.observations(row)['score_edges']['samples'], [])
+        self.assertEqual(trick_batch.named_flip_result('kickflip', trick_batch.observations(row), 0), 'UNVERIFIED')
+        for bad in (row + ' private', row.replace('rows=2', 'rows=17'), row.replace('source=1', 'source=3'),
+                    row.replace('stage=0', 'stage=6'), row.replace('parts=3', 'parts=32'),
+                    row.replace('labels=4', 'labels=16777216'), row.replace('ms=120', 'ms=18446744073709551616')):
+            self.assertEqual(probe.parse_score_presence(bad)['samples'], [])
+        bounded = probe.parse_score_presence('\n'.join([row] * 257))
+        self.assertEqual((len(bounded['samples']), bounded['dropped']), (256, 1))
+
     def test_score_numbers_preserve_invalid_unknown_and_stale_evidence(self):
         row = ('ARCADE SCORE NUMBERS: ms=200 sampled=100 score_valid=true score=500 '
                'multiplier_valid=true multiplier=2 owner_verified=false.')

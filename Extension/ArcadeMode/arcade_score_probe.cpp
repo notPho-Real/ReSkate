@@ -27,6 +27,23 @@ unsigned emitted{};
 std::uintptr_t previous_manager{};
 data::Value score_model{};
 unsigned label_source{};
+struct LabelDiagnostics { unsigned rows{}, stage{}; std::uint32_t parts{}; };
+void observe_label_part(std::string_view text, LabelDiagnostics& diagnostics) noexcept {
+    // Diagnostic components only: a split label does not establish FS/BS identity.
+    constexpr std::array<std::string_view, 5> parts{"Revert", "FS", "BS", "50-50 Grind", "Axle Stall"};
+    for (unsigned i = 0; i < parts.size(); ++i) if (text == parts[i]) diagnostics.parts |= 1u << i;
+}
+void report_labels(std::uint64_t now, unsigned source, const LabelDiagnostics& diagnostic,
+                   std::uint32_t labels) {
+    static std::uint64_t report_at{};
+    static std::array<unsigned, 5> previous{};
+    const std::array<unsigned, 5> current{source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels};
+    if (current == previous && now < report_at) return;
+    previous = current; report_at = now + 1000;
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE SCORE PRESENCE: ms={} source={} rows={} stage={} parts={} labels={}.",
+        now, source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels);
+}
 // Field mapping from indicouchcoding/ReSkate-UI-2.0 (GPL-3.0), revision
 // d5b3d978763c1a279e21ac47fc2b2003746a0a0a:
 // Engine/Game/Build/20260929/hud_corner.h and Extension/Scoring/scoring_hud.cpp.
@@ -37,7 +54,7 @@ ScoreDisplayNumber read_display_number(const data::Context& context, std::uint32
                   "native numeric score text schema differs");
     return parse_score_display_number(context.text(text, 32), multiplier);
 }
-std::uint32_t read_legacy_label_presence(const data::Context& context) {
+std::uint32_t read_legacy_label_presence(const data::Context& context, LabelDiagnostics& diagnostic) {
     // These twelve string slots were observed in score-schema-823c3ad.json.
     // Their individual presentation roles remain unverified; use their union
     // so moving one label between slots cannot manufacture a second occurrence.
@@ -49,7 +66,9 @@ std::uint32_t read_legacy_label_presence(const data::Context& context) {
     auto read_text = [&](data::Value value) {
         data::require(data::kind(value.type) == 7 && data::size(value.type) == 8,
                       "native score label schema differs");
-        labels |= score_label_bit(score_label_id(context.text(value, 96)));
+        const auto text = context.text(value, 96);
+        observe_label_part(text, diagnostic);
+        labels |= score_label_bit(score_label_id(text));
     };
     for (const auto parent : paired) {
         const auto group = context.field(score_model, parent);
@@ -59,27 +78,36 @@ std::uint32_t read_legacy_label_presence(const data::Context& context) {
         read_text(context.field(context.field(context.field(score_model, parent), 0x2358a817), 0x187bbd85));
     return labels;
 }
-std::uint32_t read_history_label_presence(const data::Context& context) {
+std::uint32_t read_history_label_presence(const data::Context& context, LabelDiagnostics& diagnostic) {
     // Same pinned GPL-3.0 reader as above: history items contain presenters,
     // not embedded text fields. Keep only exact allowlisted labels. cat pouch
     namespace corner = build::hud_corner;
     constexpr std::uint32_t trick_history = 0x84db5623, trick_name = 0x53bac52d;
+    diagnostic.stage = 1;
     const auto items = context.field(context.field(score_model, trick_history), corner::stack_items);
     unsigned count{}, stride{};
+    diagnostic.stage = 2;
     (void)context.array(items, 16, count, stride);
+    diagnostic.rows = count;
     std::uint32_t labels{};
     for (unsigned i = 0; i < count; ++i) {
+        diagnostic.stage = 3;
         const auto presenter = context.field(context.element(items, i), corner::item_content);
         const auto widget = data::read<data::Widget>(context.address(presenter));
         if (!widget.data.handle) continue;
+        diagnostic.stage = 4;
         const auto type = context.type_of(widget.data.handle);
         data::require(type != 0, "native trick presenter type unavailable");
         const data::Value row{widget.data.handle, type};
+        diagnostic.stage = 5;
         const auto text = context.field(context.field(row, trick_name), 0x4d8e01b9);
         data::require(data::kind(text.type) == 7 && data::size(text.type) == 8,
                       "native trick history text schema differs");
-        labels |= score_label_bit(score_label_id(context.text(text, 96)));
+        const auto value = context.text(text, 96);
+        observe_label_part(value, diagnostic);
+        labels |= score_label_bit(score_label_id(value));
     }
+    diagnostic.stage = 0;
     return labels;
 }
 void inspect(const data::Context& context, data::Value value, const std::string& path,
@@ -186,16 +214,18 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
             numbers.multiplier = multiplier.value;
         } catch (...) { /* the other fields remain independently observable */ }
         // Continuous bounded observation is independent of the discovery log cap.
+        LabelDiagnostics diagnostic;
         try {
             std::uint32_t labels{};
             unsigned source = 1;
-            try { labels = read_history_label_presence(context); }
-            catch (...) { labels = read_legacy_label_presence(context); source = 2; }
+            try { labels = read_history_label_presence(context, diagnostic); }
+            catch (...) { labels = read_legacy_label_presence(context, diagnostic); source = 2; }
             // Switching presentation paths cannot manufacture an occurrence.
             if (source != label_source) label_edges.invalidate();
             label_source = source;
             label_edges.observe(labels, true, now);
-        } catch (...) { label_edges.invalidate(); label_source = 0; }
+            report_labels(now, source, diagnostic, labels);
+        } catch (...) { label_edges.invalidate(); label_source = 0; report_labels(now, 0, diagnostic, 0); }
         if (now >= next_description && emitted < 4096) {
             next_description = now + 250;
             unsigned budget = 256;

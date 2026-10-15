@@ -442,6 +442,23 @@ def parse_score_edges(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_score_presence(text):
+    """Bounded reader diagnostics; split components are not named native outcomes."""
+    samples, dropped = [], 0
+    for line in text.splitlines():
+        match = re.search(r'ARCADE SCORE PRESENCE: ms=(\d{1,20}) source=([0-2]) rows=(\d{1,2}) stage=([0-5]) parts=(\d{1,2}) labels=(\d{1,8})\.$', line)
+        if not match:
+            continue
+        ms, source, rows, stage, parts, labels = map(int, match.groups())
+        if ms > 0xffffffffffffffff or rows > 16 or parts > 31 or labels > 16777215:
+            continue
+        samples.append(dict(ms=ms, source=source, rows=rows, stage=stage, parts=parts, labels=labels))
+        if len(samples) > 256:
+            samples.pop(0)
+            dropped += 1
+    return dict(samples=samples, dropped=dropped, native_identity='UNVERIFIED')
+
+
 def parse_score_numbers(text):
     """Native HUD presentation values, never proof of ownership, a bank, or a trick."""
     samples, dropped = [], 0
@@ -650,6 +667,7 @@ def native_trace(request, **kwargs):
             "playback_observations": parse_playback_samples(text[start:] if start >= 0 else ""),
             "action_observations": parse_action_samples(text[start:] if start >= 0 else ""),
             "score_edge_observations": parse_score_edges(text[start:] if start >= 0 else ""),
+            "score_label_observations": parse_score_presence(text[start:] if start >= 0 else ""),
             "score_number_observations": parse_score_numbers(text[start:] if start >= 0 else ""),
             "native_score_observations": parse_native_score_events(text[start:] if start >= 0 else ""),
             "grind_observations": parse_grind_observations(text[start:] if start >= 0 else ""),

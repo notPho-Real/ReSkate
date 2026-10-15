@@ -137,6 +137,33 @@ int run_arcade_manual_tests() {
               "unknown evidence retains the original150ms limit");
     }
     {
+        auto prepare_nose = [](ManualGesture& manual) {
+            poll(manual, 0, 0, SkatePose::air);
+            poll(manual, 10, -25000, SkatePose::air);
+            poll(manual, 20, 25000, SkatePose::air);
+        };
+        ManualGesture manual; prepare_nose(manual);
+        auto out = poll(manual, 100, 0, SkatePose::manual);
+        check(out.owns_stick && !out.confirmed && out.y == 20000,
+              "opposite first wheel contact retains prepared input without claiming a match");
+        check(poll(manual, 117, 0, SkatePose::air).owns_stick &&
+              poll(manual, 317, 0, SkatePose::nose_manual).confirmed,
+              "measured17ms wrong contact plus200ms rebound can reach the requested native pose");
+        check(!poll(manual, 318, 0, SkatePose::manual).owns_stick,
+              "opposite pose after actual confirmation still releases immediately");
+        manual.cancel(); prepare_nose(manual); poll(manual, 100, 0, SkatePose::manual);
+        check(poll(manual, 149, 0, SkatePose::manual).owns_stick &&
+              !poll(manual, 150, 0, SkatePose::manual).owns_stick,
+              "sustained wrong wheel contact expires at50ms");
+        manual.cancel(); prepare_nose(manual); poll(manual, 100, 0, SkatePose::manual);
+        check(poll(manual, 349, 0, SkatePose::air).owns_stick &&
+              !poll(manual, 350, 0, SkatePose::air).owns_stick,
+              "missing desired contact expires250ms after first wrong wheel");
+        manual.cancel(); prepare_nose(manual); poll(manual, 100, 0, SkatePose::manual);
+        check(!poll(manual, 117, 0, SkatePose::air, 0x1000).owns_stick,
+              "intentional trick cancels even during initial wrong-wheel recovery");
+    }
+    {
         ManualGesture manual;
         const auto base = std::numeric_limits<std::uint64_t>::max() - 1300;
         start(manual, base);

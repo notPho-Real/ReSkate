@@ -163,9 +163,277 @@
       "reset_pass": 2,
       "neutralized": 2,
       "limitation": "Both input traces exceeded tail limits because idle action cadence logged every game tick on two controller slots. Second request cannot be classified as delivered or rejected. Not repeatability acceptance."
+    },
+    {
+      "source": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+      "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+      "evidence": "trusted-v39/results/1792055621478241000.json",
+      "sha256": "2da89072af3eeb2a6bdfffb355f33bf6954821d99869b298780b038358cd9f84",
+      "method": "Existing235ms RT frontside candidate; fixed native fixture reset, known short push and full-speed contexts.",
+      "requested_trials": 4,
+      "native_revert_confirmed": 0,
+      "trials": [
+        {
+          "name": "native-rt-known-moving",
+          "repetition": 1,
+          "requested": 1,
+          "delivered_owned_span_ms": 220,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 169,
+              "ms": 140572693,
+              "epoch": 547,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 170,
+              "ms": 140572708,
+              "epoch": 547,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": []
+        },
+        {
+          "name": "native-rt-known-moving",
+          "repetition": 2,
+          "requested": 1,
+          "delivered_owned_span_ms": 220,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 171,
+              "ms": 140587226,
+              "epoch": 555,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 172,
+              "ms": 140587242,
+              "epoch": 555,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": []
+        },
+        {
+          "name": "native-rt-full-speed",
+          "repetition": 1,
+          "requested": 1,
+          "delivered_owned_span_ms": 232,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 173,
+              "ms": 140604842,
+              "epoch": 563,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 174,
+              "ms": 140604859,
+              "epoch": 563,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": []
+        },
+        {
+          "name": "native-rt-full-speed",
+          "repetition": 2,
+          "requested": 1,
+          "delivered_owned_span_ms": 220,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 175,
+              "ms": 140619493,
+              "epoch": 571,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 176,
+              "ms": 140619509,
+              "epoch": 571,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": []
+        }
+      ],
+      "finding": "One full-size capture independently shows FS Revert, Clean,5 points; same trial has native101 and sequence5. Label observer emitted no edges. Other four101/score5 trials are compatible but not exact FS/BS confirmations. No inputs changed, no repeatability promotion.",
+      "image": null
+    },
+    {
+      "source": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+      "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+      "evidence": "trusted-v39/results/1792055790699018000.json",
+      "sha256": "aea53f4441802eed2c9cdd66472927c10b40521246a0cf950acb4563cbfc928d",
+      "method": "Existing235ms RT frontside candidate; fixed native fixture reset, known short push and full-speed contexts.",
+      "requested_trials": 1,
+      "native_revert_confirmed": 1,
+      "trials": [
+        {
+          "name": "native-rt-label-correlation",
+          "repetition": 1,
+          "requested": 1,
+          "delivered_owned_span_ms": 220,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 177,
+              "ms": 140744293,
+              "epoch": 579,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 178,
+              "ms": 140744308,
+              "epoch": 579,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": [
+            "934b29a5f9066590771385b1c89e6986d1a30d5fbb332659dabdcb251d4a1605"
+          ]
+        }
+      ],
+      "finding": "One full-size capture independently shows FS Revert, Clean,5 points; same trial has native101 and sequence5. Label observer emitted no edges. Other four101/score5 trials are compatible but not exact FS/BS confirmations. No inputs changed, no repeatability promotion.",
+      "image": "artifacts/rt-label-current.png"
     }
   ],
-  "next": "Fresh verified runtime: test RT and continuous native scoring/label observation. Add a genuinely stationary/moving-context baseline contract; the current riding-only reset does not arrest drift.",
+  "next": "Diagnose bounded native label reader source/row/stage before automated side identity or combo continuation; preserve5 delivered/reset trials and1 independently confirmed FS Revert on7c7.",
   "implementation": {
     "source": "Extension/ArcadeMode/arcade_revert_input.h",
     "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",

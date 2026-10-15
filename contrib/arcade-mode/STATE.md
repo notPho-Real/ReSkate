@@ -44,8 +44,15 @@ Verified milestones (full sanitized results/hashes in research/grind-exit-result
   one UNVERIFIED incomplete chain. Nose variants0/3:one broken link after brief
   opposite-wheel contact, two continuous chains produce native16 instead of2.
   All20 neutral/reset. Do not promote these variants or hide the failed attempt.
-  RT pilot4 now running on HIL39:artifacts/fixture-native-rt-pilot-4.json; inspect
-  before another hardware action. No simultaneous hardware owner.
+  HIL39 RT pilot1792055621478241000:4/4 delivered101/score5/reset, no label edges.
+  Single correlation1792055790699018000 independently shows FS Revert Clean5
+  at1280x800 (artifacts/rt-label-current.png). Only1 exact side confirmation;
+  telemetry label reader remains unresolved. Grabs remain OFF.
+  Nose LT rail pilot1792056218140808000:0/3 complete chains;two miss rail and
+  one loses manual. Isolated Nose Manual pop1792056450177578000:LT native17
+  chains2/2 pass;standard context2/2 gives16 instead of requested2.
+  Current batch:18 longer-hold LT repeats plus2 standard controls on HIL39,
+  artifacts/fixture-nose-pop-repeat-20.json. Inspect before another hardware action.
 
 Failure envelope preserved:old2c3 build manual chain9/10; failed contact17ms then
 150ms rebound canceled hold. Later command timing0/5 missed grace. Installed7c7
@@ -67,15 +74,19 @@ remain open. Existing rotation/manual/chord evidence below stays valid in scope.
 Raw grind enums are unavailable in the new-build chains; primary400–499 evidence
 is complete. Exact rail-label history recognition is also not yet verified.
 
-New source, NOT installed:keep global asset scan cursor across fixture owner
-resets, revalidate GUID/name/live handles into fresh generation bindings, and
-publish bounded numeric discovery status (binding bits/pages/passes). Current
-worker otherwise restarts discovery every trial; carryover removes that starvation
-path without reusing owner-bound snapshots.40061 grind sanitizer checks and240
-Python tests passed for9813a88; latest host repair241 tests pass. CI38710098358
-for9813a88d78443d14d4cbf480430cc0865866f10b passed Linux/Mac, Windows pending.
-Targeted Deck enum recovery still required; gameplay
-remains on verified7c7. Do not repeat the completed50-trial matrix for this change.
+New source, NOT installed:global grind-asset scan progress retained across
+fixture resets with fresh binding validation; numeric discovery diagnostics.
+9813a88d78443d14d4cbf480430cc0865866f10b CI38710098358 passed all five gates.
+Newer combined repair adds bounded initial wrong-wheel preparation (50ms wrong
+contact,250ms to desired pose, no false confirmation) for the observed Nose
+Manual17ms/200ms rebound. Adds numeric label reader source/row/stage/component
+diagnostics to distinguish missing history, fallback and split native labels;
+no broader label allowlist or score policy.90 manual,33616 model and40061 grind
+sanitizer checks;242 Python tests pass. Combined Windows build/Deck verification
+required. Keep7c7 installed until verified combined artifact, avoiding two restarts.
+Next after current batch:commit/build combined source, verify all gates, one
+controlled deploy, restore fixture, then targeted enum/label/manual repair tests.
+Prepared981 deploy helper is superseded; do not accidentally deploy its older target.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position

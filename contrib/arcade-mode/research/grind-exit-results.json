@@ -14482,5 +14482,1043 @@
     ],
     "limits": "Native monetary ownership/banking remains UNVERIFIED. Raw grind enum bindings unavailable in this run; independent400-499 state is primary evidence. No exact named grind inferred.",
     "verified": "16/17 Manual chains passed;first trial independently observed bail and host flip tail lost16 rows (128-row cap), chain UNVERIFIED despite complete grind rows. Aggregate19/20 attempts including3 pilots. Batch incorrectly continued after flip evidence loss;host hard-stop repaired separately. Nose variants0/3:one broken link after opposite-wheel contact/tiny Nose Manual;two continuous chains pop native16 instead of requested2. All20 neutralized/reset. No success credit for failed/unverified rows."
+  },
+  "nose_manual_lt_rail_pilot_3": {
+    "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+    "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+    "runner": "trusted-v39",
+    "result": "1792056218140808000",
+    "sha256": "e44e1b2e85e0af0cd6af1c21cd4b31c4033c2a06d0b3deecac3a270667b65871",
+    "trials": [
+      {
+        "name": "nose-manual-native-nollie-kickflip-exit",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "FAIL"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141170106,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141170829,
+            "pose": 6,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141170842,
+            "pose": 0,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141170030,
+            "valid": true,
+            "id": 2
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 179,
+            "ms": 141170876,
+            "epoch": 589,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "nose-manual-native-nollie-kickflip-exit",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141193473,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141194240,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.061333172,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141194273,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.18399982,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141194290,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.18533318,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0013333333,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141194740,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141195773,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141195824,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.004,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.004,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141196239,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.15699998,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.004,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141196906,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.21033421,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.004,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141197356,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141193265,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 141196164,
+            "valid": true,
+            "id": 17
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 180,
+            "ms": 141194275,
+            "epoch": 597,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 181,
+            "ms": 141194295,
+            "epoch": 597,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 182,
+            "ms": 141195811,
+            "epoch": 597,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 183,
+            "ms": 141196943,
+            "epoch": 597,
+            "route": 4,
+            "score": 22.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "nose-manual-native-nollie-kickflip-exit",
+        "repetition": 3,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 333,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4548
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141214590,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141215306,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141215640,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.32400033,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141216290,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.4960012,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141216306,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.61700124,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0009999999,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141216424,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6266672,
+            "grind_fatigue": 0.027000003,
+            "manual_fatigue": 0.0009999999,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141216874,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141217490,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141218273,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.062333167,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141218723,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141214383,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 141215564,
+            "valid": true,
+            "id": 2
+          },
+          {
+            "ms": 141217289,
+            "valid": true,
+            "id": 17
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 184,
+            "ms": 141216460,
+            "epoch": 605,
+            "route": 4,
+            "score": 47.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 185,
+            "ms": 141216475,
+            "epoch": 605,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 186,
+            "ms": 141218310,
+            "epoch": 605,
+            "route": 4,
+            "score": 22.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Raw grind enum bindings unavailable in this run; independent400-499 state is primary evidence. No exact named grind inferred."
+  },
+  "nose_manual_pop_controls_4": {
+    "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+    "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+    "runner": "trusted-v39",
+    "result": "1792056450177578000",
+    "sha256": "a8fc04e65c031e2ef8668d32adca4e5c0a9835b2b0f589d0f1d4e2ca5bea8678",
+    "trials": [
+      {
+        "name": "nose-manual-standard-pop-control",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141398840,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141399023,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.014333335,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141399090,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.14,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141399806,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.19700097,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141400256,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141399013,
+            "valid": true,
+            "id": 16
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 187,
+            "ms": 141399842,
+            "epoch": 615,
+            "route": 4,
+            "score": 6.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 188,
+            "ms": 141399859,
+            "epoch": 615,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "nose-manual-standard-pop-control",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141413906,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141414089,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.014333335,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141414156,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.14,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141414873,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.1973343,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.014333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141415323,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141414079,
+            "valid": true,
+            "id": 16
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 189,
+            "ms": 141414909,
+            "epoch": 625,
+            "route": 4,
+            "score": 6.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 190,
+            "ms": 141414926,
+            "epoch": 625,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "nose-manual-lt-pop-control",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 466
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141429023,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141429290,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.021333335,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.021333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141429673,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17199989,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.021333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141430373,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34800082,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.021333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141430390,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34933418,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.022666669,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141430856,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141429597,
+            "valid": true,
+            "id": 17
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 191,
+            "ms": 141429242,
+            "epoch": 633,
+            "route": 4,
+            "score": 5.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 192,
+            "ms": 141429259,
+            "epoch": 633,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 193,
+            "ms": 141430409,
+            "epoch": 633,
+            "route": 4,
+            "score": 20.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "nose-manual-lt-pop-control",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 449
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 141446407,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141446639,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.018333334,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.018333334,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141447023,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.16899991,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.018333334,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141447723,
+            "pose": 5,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34500086,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.018333334,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141447740,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34633422,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.019666668,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 141448189,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 141446945,
+            "valid": true,
+            "id": 17
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 194,
+            "ms": 141446593,
+            "epoch": 641,
+            "route": 4,
+            "score": 5.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 195,
+            "ms": 141446609,
+            "epoch": 641,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 196,
+            "ms": 141447759,
+            "epoch": 641,
+            "route": 4,
+            "score": 20.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Raw grind enum bindings unavailable in this run; independent400-499 state is primary evidence. No exact named grind inferred."
   }
 }

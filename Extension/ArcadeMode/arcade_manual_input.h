@@ -11,7 +11,7 @@ public:
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; };
     void cancel() noexcept {
-        armed_ = clocked_ = confirmed_ = air_prepared_ = false;
+        armed_ = clocked_ = confirmed_ = air_prepared_ = wrong_contact_ = false;
         first_ = previous_ = requested_ = 0;
     }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
@@ -44,7 +44,17 @@ public:
             // still cancel above, and established manual takeoffs release.
             const bool settling_air = confirmed_ && air_prepared_ && observed == SkatePose::air &&
                 now - first_confirmed_at_ < 250;
-            if (observed == opposite || (confirmed_ && observed == SkatePose::air && !settling_air)) {
+            // The Nose Manual fixture first touched the opposite wheel17ms,
+            // rebounded200ms, then reached the requested pose. Keep only that
+            // initial unconfirmed preparation; never call the wrong pose a match.
+            if (observed == opposite && air_prepared_ && !confirmed_ && !wrong_contact_) {
+                wrong_contact_ = true; wrong_contact_at_ = now;
+            }
+            const bool brief_wrong_contact = air_prepared_ && !confirmed_ && wrong_contact_ &&
+                now - wrong_contact_at_ < 50;
+            if ((observed == opposite && !brief_wrong_contact) ||
+                (wrong_contact_ && !confirmed_ && now - wrong_contact_at_ >= 250) ||
+                (confirmed_ && observed == SkatePose::air && !settling_air)) {
                 cancel(); return {};
             }
             if (observed == wanted) {
@@ -73,8 +83,8 @@ public:
         return {};
     }
 private:
-    bool armed_{}, clocked_{}, confirmed_{}, air_prepared_{};
+    bool armed_{}, clocked_{}, confirmed_{}, air_prepared_{}, wrong_contact_{};
     int first_{}, previous_{}, requested_{};
-    std::uint64_t last_{}, first_at_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{};
+    std::uint64_t last_{}, first_at_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };
 }
