@@ -111,6 +111,32 @@ int run_arcade_manual_tests() {
             "native eligibility loss cancels synthetic ownership");
     }
     {
+        auto prepare = [](ManualGesture& manual) {
+            poll(manual, 0, 0, SkatePose::air);
+            poll(manual, 10, 25000, SkatePose::air);
+            poll(manual, 20, -25000, SkatePose::air);
+            check(poll(manual, 100, 0, SkatePose::manual).confirmed, "native initial wheel contact confirms prepared landing");
+        };
+        ManualGesture manual;
+        prepare(manual);
+        check(poll(manual, 117, 0, SkatePose::air).owns_stick &&
+              poll(manual, 267, 0, SkatePose::manual).confirmed,
+              "measured17ms contact and150ms rebound preserve the initial landing request");
+        check(!poll(manual, 268, 0, SkatePose::manual, 0x1000).owns_stick,
+              "intentional Ollie immediately wins over landing-settle ownership");
+        manual.cancel(); prepare(manual);
+        check(poll(manual, 299, 0, SkatePose::air).owns_stick &&
+              !poll(manual, 300, 0, SkatePose::air).owns_stick,
+              "unconfirmed rebound releases at200ms without new contact");
+        manual.cancel(); prepare(manual);
+        poll(manual, 250, 0, SkatePose::manual);
+        check(!poll(manual, 350, 0, SkatePose::air).owns_stick,
+              "settle opportunity expires250ms after first contact even with later contact");
+        manual.cancel(); prepare(manual);
+        check(!poll(manual, 250, 0, SkatePose::unknown).owns_stick,
+              "unknown evidence retains the original150ms limit");
+    }
+    {
         ManualGesture manual;
         const auto base = std::numeric_limits<std::uint64_t>::max() - 1300;
         start(manual, base);

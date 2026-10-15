@@ -11,7 +11,7 @@ public:
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; };
     void cancel() noexcept {
-        armed_ = clocked_ = confirmed_ = false;
+        armed_ = clocked_ = confirmed_ = air_prepared_ = false;
         first_ = previous_ = requested_ = 0;
     }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
@@ -38,14 +38,23 @@ public:
         if (requested_) {
             const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;
             const auto opposite = requested_ < 0 ? SkatePose::nose_manual : SkatePose::manual;
-            if (observed == opposite || (confirmed_ && observed == SkatePose::air)) {
+            // A prepared landing can briefly touch one wheel then rebound. The
+            // fixture measured17ms contact followed by150ms air. Retain only
+            // that bounded initial landing request; intentional trick commands
+            // still cancel above, and established manual takeoffs release.
+            const bool settling_air = confirmed_ && air_prepared_ && observed == SkatePose::air &&
+                now - first_confirmed_at_ < 250;
+            if (observed == opposite || (confirmed_ && observed == SkatePose::air && !settling_air)) {
                 cancel(); return {};
             }
-            if (observed == wanted) { confirmed_ = true; confirmed_at_ = now; }
+            if (observed == wanted) {
+                if (!confirmed_) first_confirmed_at_ = now;
+                confirmed_ = true; confirmed_at_ = now;
+            }
             // Brief observer gaps must not drop a held native manual. A failed
             // request or an observed exit always has a bounded release path.
             if ((!confirmed_ && now - requested_at_ >= 1200) ||
-                (confirmed_ && now - confirmed_at_ >= 150)) {
+                (confirmed_ && now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }
             return {true, confirmed_, static_cast<std::int16_t>(requested_ * 20000)};
@@ -54,6 +63,7 @@ public:
         if (vertical && vertical != previous_) {
             if (first_ == -vertical && now - first_at_ <= 350) {
                 requested_ = vertical; requested_at_ = now; first_ = 0;
+                air_prepared_ = observed == SkatePose::air;
                 previous_ = vertical;
                 return {true, false, static_cast<std::int16_t>(requested_ * 20000)};
             }
@@ -63,8 +73,8 @@ public:
         return {};
     }
 private:
-    bool armed_{}, clocked_{}, confirmed_{};
+    bool armed_{}, clocked_{}, confirmed_{}, air_prepared_{};
     int first_{}, previous_{}, requested_{};
-    std::uint64_t last_{}, first_at_{}, requested_at_{}, confirmed_at_{};
+    std::uint64_t last_{}, first_at_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{};
 };
 }

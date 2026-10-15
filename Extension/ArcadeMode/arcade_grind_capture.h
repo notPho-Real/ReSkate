@@ -12,26 +12,47 @@ struct GrindRow {
     unsigned state{}, grind{}, skate{}, user{}, kind{};
     int speed_mm_s{}, x{}, y{};
 };
-// Nonblocking producer/consumer queue. Accepted rows have ordered sequences;
-// cumulative loss makes missing transitions explicit, including contention.
+// Two runtime producers, one background consumer. Per-slot publication prevents
+// a reader draining the queue from making a producer discard an otherwise valid
+// row. Reservation retries are bounded; full/contended loss remains explicit.
 template<std::size_t N> class GrindQueue {
-    std::atomic_flag busy_ = ATOMIC_FLAG_INIT;
-    std::array<GrindRow, N> rows_{};
-    std::size_t head_{}, size_{};
-    std::atomic<std::uint64_t> seq_{}, dropped_{};
+    static_assert(N >= 2 && std::atomic<std::uint64_t>::is_always_lock_free);
+    struct Slot { std::atomic<std::uint64_t> turn{}; GrindRow row{}; };
+    std::array<Slot, N> rows_{};
+    std::atomic<std::uint64_t> write_{}, dropped_{};
+    std::uint64_t read_{}; // Accessed only by the background consumer.
 public:
+    GrindQueue() noexcept {
+        for (std::size_t i = 0; i < N; ++i) rows_[i].turn.store(i, std::memory_order_relaxed);
+    }
     bool push(GrindRow row) noexcept {
-        if (busy_.test_and_set(std::memory_order_acquire)) { ++dropped_; return false; }
-        const bool accepted = size_ < N;
-        if (accepted) { row.seq = ++seq_; row.dropped = dropped_.load(); rows_[(head_ + size_++) % N] = row; }
-        else ++dropped_;
-        busy_.clear(std::memory_order_release); return accepted;
+        auto at = write_.load(std::memory_order_relaxed);
+        for (unsigned attempt = 0; attempt < 64; ++attempt) {
+            auto& slot = rows_[at % N];
+            const auto turn = slot.turn.load(std::memory_order_acquire);
+            if (turn < at) break; // Consumer has not released this slot: full.
+            if (turn == at && write_.compare_exchange_weak(at, at + 1, std::memory_order_relaxed)) {
+                row.seq = at + 1;
+                row.dropped = dropped_.load(std::memory_order_relaxed);
+                slot.row = row;
+                slot.turn.store(at + 1, std::memory_order_release);
+                return true;
+            }
+            at = write_.load(std::memory_order_relaxed);
+        }
+        ++dropped_;
+        return false;
     }
     std::size_t take(std::span<GrindRow> out) noexcept {
-        if (busy_.test_and_set(std::memory_order_acquire)) return 0;
         std::size_t n{};
-        while (n < out.size() && size_) { out[n++] = rows_[head_]; head_ = (head_ + 1) % N; --size_; }
-        busy_.clear(std::memory_order_release); return n;
+        while (n < out.size()) {
+            auto& slot = rows_[read_ % N];
+            if (slot.turn.load(std::memory_order_acquire) != read_ + 1) break;
+            out[n++] = slot.row;
+            slot.turn.store(read_ + N, std::memory_order_release);
+            ++read_;
+        }
+        return n;
     }
     std::uint64_t dropped() const noexcept { return dropped_.load(); }
 };

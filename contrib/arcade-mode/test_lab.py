@@ -157,12 +157,14 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['samples'][0]['seq'], 2)
         self.assertEqual(result['samples'][-1], dict(seq=129, observed=125, sampled=120, labels=1048575, uncertainty=5))
+        expanded = probe.parse_score_edges(row.replace('labels=1048575', 'labels=16777215'))
+        self.assertEqual(expanded['samples'][0]['labels'], 16777215)
         for field in ('seq', 'observed', 'sampled'):
             maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
             self.assertEqual(probe.parse_score_edges(maximum)['samples'][0][field], 18446744073709551615)
             self.assertEqual(probe.parse_score_edges(maximum.replace('18446744073709551615',
                 '18446744073709551616'))['samples'], [])
-        for bad in (row + ' private', row.replace('labels=1048575', 'labels=1048576'),
+        for bad in (row + ' private', row.replace('labels=1048575', 'labels=16777216'),
                     row.replace('labels=1048575', 'labels=-1'), row.replace('uncertainty=5', 'uncertainty=6'),
                     row.replace('sampled=120', 'sampled=-1'), row.replace('observed=125', 'observed=true')):
             self.assertEqual(probe.parse_score_edges(bad), dict(samples=[], dropped=0))
@@ -420,7 +422,8 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(len(result['labels']), 128)
         self.assertEqual(result['labels_dropped'], 72)
         self.assertEqual(result['labels'][-1]['id'], 20)
-        for bad in (row.replace('id=20', 'id=21'), row.replace('id=20', 'id=0'),
+        self.assertEqual(probe.parse_score_samples(row.replace('id=20', 'id=24'))['labels'][0]['id'], 24)
+        for bad in (row.replace('id=20', 'id=25'), row.replace('id=20', 'id=0'),
                     row + ' private', row.replace('ms=12', 'ms=99999999999999999999'),
                     row.replace('LABEL', 'VALUE')):
             self.assertEqual(probe.parse_score_samples(bad)['labels'], [])

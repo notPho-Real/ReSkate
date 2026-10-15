@@ -150,10 +150,32 @@ ending451ms later and fatigue resetting. Actual score/bank amounts remain open.
 HIL37 manifest b80090ff915452c249e07438beb22feedb0cb12adbdd7d805593aa42d039f1fc
 adds explicit expected.after_grind scope: an approach Ollie cannot satisfy exit
 identity; complete native grind entry/exit plus subsequent native ID required.
-238 offline Python tests pass. Six-context failure/recovery batch is running on
-HIL37; no parallel hardware owner. Next inspect results, then basic grind/manual
-composition and scored-event integration. Physical-failure repeatability,
-scoring/banking and mixed stress remain open; actual HUD range is now verified.
+Six-context failure/recovery1792048927704982000:6/6 one-shot native wipeouts and
+6/6 following fresh exact grind exits, all12 complete/reset. Manual both correction
+directions, Nose Manual, grind both directions. Total4 manual-mode and4 grind-mode
+failures including pilots; not20 per mode yet. No repeated requests or latches.
+
+Basic composition pilots1792049243567696000 pass1/1 each:grind/Ollie/manual/Ollie
+retains grind+manual fatigue until final grace; Kickflip/grind/Kickflip IDs observed
+before/after rail. Repeat1792049379083752000:9/10 manual chains continuous;
+trial5 has17ms manual contact then150ms air, cancels prepared hold, banks before
+next Ollie. Kickflip chain5/5 complete; sixth newly dropped one native queue row,
+reset passed and batch stopped. Preserve INCOMPLETE, no success credit.
+Later manual command1792050049431100000 gives0/5 continuous chains by missing
+grace; retain original command timing. All failures and denominators recorded in
+research/grind-exit-results.json. No batch currently active.
+
+New source changes NOT installed:bounded initial airborne-manual landing-settle
+hold (200ms rebound within first250ms contact; unknown150ms and intentional-trick
+cancellation unchanged); per-slot bounded multi-producer grind queue removes the
+consumer-lock discard path; pinned upstream native trick-history presenter reader
+with legacy fallback/rebaseline and four exact observed grind/slam label IDs21–24.
+No named grind enum mapping inferred. Existing grabs remain deferred/unchanged.
+Local33616 model checks,84 manual checks,22 score-edge checks and40057 grind
+observer/concurrent checks pass under sanitizers; Python238 tests pass. CI/Deck
+verification still required. Next commit/build these targeted repairs, then retry
+original manual composition and observe exact rail labels. Physical-failure
+repeatability, scoring/banking and mixed stress remain open; actual HUD range verified.
 Existing rotation/manual evidence below remains valid within its recorded scope.
 
 ## Rotation results and verified grind installation — 2026-10-14

@@ -6,10 +6,12 @@
 namespace dingosdk::arcade_mode {
 // Diagnostic IDs, separate from native animation IDs. Exact text matches only;
 // unknown labels and player-authored text never enter telemetry.
-constexpr std::array<std::string_view, 20> score_labels{
+constexpr std::array<std::string_view, 24> score_labels{
     "Manual", "Nose Manual", "FS Revert", "BS Revert",
     "Melon", "Nosegrab", "Indy", "Tailgrab", "Japan", "Madonna", "Benihana", "Airwalk",
-    "Method", "Rocket Air", "Stiffy", "One Foot Tailgrab", "One Foot Japan", "Judo", "Sacktap", "Christ Air"
+    "Method", "Rocket Air", "Stiffy", "One Foot Tailgrab", "One Foot Japan", "Judo", "Sacktap", "Christ Air",
+    // Exact labels observed in the native rail/failure fixture; not grind enums.
+    "BS 50-50 Grind", "BS Axle Stall", "Harsh Slam", "Slam"
 };
 constexpr std::uint32_t score_label_id(std::string_view text) noexcept {
     // Observed on Deck after a native revert changes riding context. This

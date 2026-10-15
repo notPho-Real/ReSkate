@@ -277,7 +277,7 @@ def parse_score_samples(text):
     labels, labels_dropped = [], 0
     for line in text.splitlines():
         label = re.search(r'ARCADE SCORE LABEL: ms=([0-9]{1,20}) path=([0-9a-f]{8}(?:\.[0-9a-f]{8}){0,3}) id=([0-9]{1,2})\.$', line)
-        if label and int(label[1]) <= 0xffffffffffffffff and 1 <= int(label[3]) <= 20:
+        if label and int(label[1]) <= 0xffffffffffffffff and 1 <= int(label[3]) <= 24:
             labels.append({"ms": int(label[1]), "path": label[2], "id": int(label[3])})
             if len(labels) > 128:
                 labels.pop(0)
@@ -427,11 +427,11 @@ def parse_score_edges(text):
     """Numeric label appearances; slot roles and native action identity remain unverified."""
     samples, dropped = [], 0
     for line in text.splitlines():
-        row = re.search(r'ARCADE SCORE EDGE: seq=([0-9]{1,20}) observed=([0-9]{1,20}) sampled=([0-9]{1,20}) labels=([0-9]{1,7}) uncertainty=([0-5])\.$', line)
+        row = re.search(r'ARCADE SCORE EDGE: seq=([0-9]{1,20}) observed=([0-9]{1,20}) sampled=([0-9]{1,20}) labels=([0-9]{1,8}) uncertainty=([0-5])\.$', line)
         if not row:
             continue
         seq, observed, sampled, labels, uncertainty = map(int, row.groups())
-        if max(seq, observed, sampled) > 0xffffffffffffffff or labels > 1048575:
+        if max(seq, observed, sampled) > 0xffffffffffffffff or labels > 16777215:
             continue
         samples.append(dict(seq=seq, observed=observed, sampled=sampled, labels=labels, uncertainty=uncertainty))
         if len(samples) > 128:

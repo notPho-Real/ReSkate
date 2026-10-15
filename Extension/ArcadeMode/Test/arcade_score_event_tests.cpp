@@ -69,7 +69,7 @@ int run_arcade_score_event_tests() {
         "backwards consumer clocks invalidate pending occurrences");
     edges.observe(1u << 31, true, 1500);
     check(!edges.take(1500).valid, "out-of-allowlist numeric labels are invalid evidence");
-    check(!score_label_bit(0) && !score_label_bit(21) && !result.contains(32),
+    check(!score_label_bit(0) && !score_label_bit(25) && !result.contains(32),
         "invalid diagnostic IDs cannot overflow bit selection");
     check(score_label_id("FS Revert") == 3 && score_label_id("BS Revert") == 4 &&
         score_label_id("FS Revert private text") == 0,
@@ -78,6 +78,10 @@ int run_arcade_score_event_tests() {
         "observed switch revert spelling retains exact matching and semantic identity");
     check(score_label_id("Switch BS Revert") == 4 && score_label_id("Switch BS Revert private text") == 0,
         "observed switch backside spelling retains exact matching and semantic identity");
+    check(score_label_id("BS 50-50 Grind") == 21 && score_label_id("BS Axle Stall") == 22 &&
+        score_label_id("Harsh Slam") == 23 && score_label_id("Slam") == 24 &&
+        score_label_id("BS 50-50 Grind private") == 0,
+        "observed grind and failure labels retain exact sanitized identities");
     std::cout << checks << " score label occurrence checks passed\n";
     return 0;
 }

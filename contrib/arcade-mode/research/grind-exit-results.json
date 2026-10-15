@@ -1577,5 +1577,1565 @@
     "image_sha256": "0cbb6d9077436ba35d9a579cba4fd6fb4b1140eaeaaa8ea96f002aa362e4c451",
     "verified": "Fresh Ollie/grind/Ollie exit after manual failure passed; landing-to-inactive451ms with fatigue reset. Grind failure then queued one request, native selector300 acknowledgement and independent wipeout counter/pose6, HUD cleared/fatigue zero, native reset/remount pass. Full-size capture shows physical ragdoll off rail.",
     "limits": "DISCOVERED:one grind failure. Sampled state reader missed transient300; direct selector and wipeout-counter observations are the evidence. Monetary score/bank semantics still unverified."
+  },
+  "failure_recovery_contexts": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "runner": 37,
+    "result": "1792048927704982000",
+    "sha256": "5ed9a8abbce479d75535a746840aca93f5bb3b5f6942e3f2ca1eaad82b80287d",
+    "trials": [
+      {
+        "name": "balance-failure-context-1",
+        "evidence": "COMPLETE",
+        "native_grind": "FAIL",
+        "failure_requests": [
+          {
+            "ms": 133876952,
+            "kind": 2,
+            "request": 3
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 133876952,
+            "request": 3,
+            "result": 1
+          },
+          {
+            "ms": 133876969,
+            "request": 3,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          4,
+          4,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-1",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "balance-failure-context-2",
+        "evidence": "COMPLETE",
+        "native_grind": "FAIL",
+        "failure_requests": [
+          {
+            "ms": 133910902,
+            "kind": 2,
+            "request": 4
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 133910902,
+            "request": 4,
+            "result": 1
+          },
+          {
+            "ms": 133910919,
+            "request": 4,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          4,
+          4,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-2",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "balance-failure-context-3",
+        "evidence": "COMPLETE",
+        "native_grind": "FAIL",
+        "failure_requests": [
+          {
+            "ms": 133947319,
+            "kind": 2,
+            "request": 5
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 133947319,
+            "request": 5,
+            "result": 1
+          },
+          {
+            "ms": 133947335,
+            "request": 5,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          5,
+          5,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-3",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "balance-failure-context-4",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [
+          {
+            "ms": 133983235,
+            "kind": 1,
+            "request": 6
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 133983235,
+            "request": 6,
+            "result": 1
+          },
+          {
+            "ms": 133983252,
+            "request": 6,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          2,
+          3,
+          3,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-4",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "balance-failure-context-5",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [
+          {
+            "ms": 134026435,
+            "kind": 1,
+            "request": 7
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 134026435,
+            "request": 7,
+            "result": 1
+          },
+          {
+            "ms": 134026453,
+            "request": 7,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          2,
+          3,
+          3,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-5",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "balance-failure-context-6",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [
+          {
+            "ms": 134063169,
+            "kind": 1,
+            "request": 8
+          }
+        ],
+        "bail_results": [
+          {
+            "ms": 134063169,
+            "request": 8,
+            "result": 1
+          },
+          {
+            "ms": 134063185,
+            "request": 8,
+            "result": 3
+          }
+        ],
+        "pose_sequence": [
+          2,
+          3,
+          3,
+          6,
+          0
+        ],
+        "failed_fatigue": [
+          {
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0
+          }
+        ],
+        "named_exit": "UNVERIFIED",
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "fresh-exit-after-failure-6",
+        "evidence": "COMPLETE",
+        "native_grind": "PASS",
+        "failure_requests": [],
+        "bail_results": [],
+        "pose_sequence": [
+          2,
+          3,
+          2,
+          1,
+          1
+        ],
+        "failed_fatigue": [],
+        "named_exit": "PASS",
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "verified": "6/6 one-shot native wipeout acknowledgements and independent counter/pose6 across Manual both corrections, Nose Manual, and grind both corrections.6/6 following fresh grind exits have exact post-grind native identity; all12 complete/reset, no latches. Aggregate pilots+batch:4 manual-mode and4 grind-mode failures, not20 per mode."
+  },
+  "basic_composition": {
+    "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+    "runner": 37,
+    "batches": [
+      {
+        "result": "1792049243567696000",
+        "sha256": "8bce37f83d917b6b7e89738dcd6632973b3027789928f03c6ddadcb22b10b3d8",
+        "trials": [
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 1,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 383,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5047
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 1,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.03066667,
+            "max_manual_fatigue": 0.042666607
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 1,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 319,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4975
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.025333336,
+            "max_manual_fatigue": 0.0
+          }
+        ]
+      },
+      {
+        "result": "1792049379083752000",
+        "sha256": "6d3a8d7962e65e43db6a69747cead3c387e6eed7ccab1f2a752b058254be4092",
+        "trials": [
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 1,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 366,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5053
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029333336,
+            "max_manual_fatigue": 0.041666612
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 2,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 367,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5048
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 1,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029333336,
+            "max_manual_fatigue": 0.041999944
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 3,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 367,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5046
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029333336,
+            "max_manual_fatigue": 0.043999933
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 4,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 366,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5047
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029333336,
+            "max_manual_fatigue": 0.04333327
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 5,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 348,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5044
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              2,
+              4,
+              1,
+              1,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.028000003,
+            "max_manual_fatigue": 0.0026666669
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 6,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 367,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5053
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029333336,
+            "max_manual_fatigue": 0.043999933
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 7,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 351,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5057
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.02766667,
+            "max_manual_fatigue": 0.03866663
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 8,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 386,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5049
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.03066667,
+            "max_manual_fatigue": 0.041666612
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 9,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 366,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5056
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029000003,
+            "max_manual_fatigue": 0.041666612
+          },
+          {
+            "name": "grind-ollie-manual-ollie",
+            "repetition": 10,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 318,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5045
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.025333336,
+            "max_manual_fatigue": 0.043999933
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 1,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 315,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4969
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.025333336,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 2,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 351,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4968
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.028000003,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 3,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 352,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4964
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.028000003,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 4,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 333,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4966
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.02666667,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 5,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 331,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4970
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.02666667,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 6,
+            "reason": null,
+            "grade": {
+              "evidence": "INCOMPLETE",
+              "native_grind": "UNVERIFIED",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 331,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                4970
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "UNVERIFIED",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.027000003,
+            "max_manual_fatigue": 0.0
+          },
+          {
+            "name": "kickflip-grind-kickflip-out",
+            "repetition": 6,
+            "reason": "grind_evidence_incomplete",
+            "grade": null,
+            "named_exit": null,
+            "reset_ready": null,
+            "pose_sequence": [],
+            "active_sequence": [],
+            "max_grind_fatigue": 0,
+            "max_manual_fatigue": 0
+          }
+        ]
+      },
+      {
+        "result": "1792050049431100000",
+        "sha256": "1ace5bfdb50b563f5dbf880e10dddb68aaf07b56bdf5ca0bf5865100187a756c",
+        "trials": [
+          {
+            "name": "grind-manual-link-after-contact",
+            "repetition": 1,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 366,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5055
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 1,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              1,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029000003,
+            "max_manual_fatigue": 0.02666667
+          },
+          {
+            "name": "grind-manual-link-after-contact",
+            "repetition": 2,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 684,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5043
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              7,
+              2,
+              4,
+              1,
+              1,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.053333215,
+            "max_manual_fatigue": 0.02666667
+          },
+          {
+            "name": "grind-manual-link-after-contact",
+            "repetition": 3,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 348,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5054
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 0,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              2,
+              1,
+              1,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.028000003,
+            "max_manual_fatigue": 0.0026666669
+          },
+          {
+            "name": "grind-manual-link-after-contact",
+            "repetition": 4,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 347,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5052
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 2,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              4,
+              2,
+              1,
+              1,
+              2,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.028000003,
+            "max_manual_fatigue": 0.0026666669
+          },
+          {
+            "name": "grind-manual-link-after-contact",
+            "repetition": 5,
+            "reason": null,
+            "grade": {
+              "evidence": "COMPLETE",
+              "native_grind": "PASS",
+              "entries": 1,
+              "exits": 1,
+              "duration_ms": 365,
+              "raw_enum_pairs": [
+                [
+                  null,
+                  null
+                ]
+              ],
+              "entry_speed_mm_s": [
+                5048
+              ],
+              "named_identity": "UNKNOWN",
+              "contact_without_grind": "UNVERIFIED",
+              "stale_health_rows": 1,
+              "bail": false,
+              "reset": "PASS"
+            },
+            "named_exit": "PASS",
+            "reset_ready": true,
+            "pose_sequence": [
+              2,
+              3,
+              2,
+              1,
+              4,
+              1,
+              2,
+              4,
+              1,
+              1
+            ],
+            "active_sequence": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false
+            ],
+            "max_grind_fatigue": 0.029000003,
+            "max_manual_fatigue": 0.029333336
+          }
+        ]
+      }
+    ],
+    "verified": "Pilots1/1 each. Repeat batch:9/10 grind/Ollie/manual/Ollie chains stay active with both fatigue values retained; repetition5 loses prepared manual on17ms contact then150ms airborne rebound and banks before next Ollie. Kickflip/grind/Kickflip5/5 fully observed repeats; repetition6 incomplete with one newly dropped native queue record, safely reset then stopped. No success credited to incomplete trial. Later manual timing attempt0/5 sustained chains, missed grace; original timing retained.",
+    "limits": "Exact exit identity does not prove every link. Named chain remains below20-trial repeatability. New bounded initial-manual landing settle and queue publication fixes require CI and Deck tests."
   }
 }

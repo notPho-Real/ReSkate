@@ -3,6 +3,8 @@
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
+#include <thread>
 
 namespace {
 using namespace dingosdk::arcade_mode;
@@ -169,5 +171,37 @@ int main() {
     std::array<GrindRow, 2> rows{};
     check(queue.take(rows) == 2 && rows[0].seq == 1 && rows[1].seq == 2, "ordered detached records");
     check(queue.push(row) && queue.take(rows) == 1 && rows[0].dropped == 1, "cumulative loss follows later records");
+    {
+        // Capacity exceeds the whole run, isolating contention from overflow.
+        auto concurrent = std::make_unique<GrindQueue<32768>>();
+        std::atomic<bool> start{};
+        std::atomic<unsigned> finished{};
+        auto produce = [&](unsigned user) {
+            while (!start.load(std::memory_order_acquire)) std::this_thread::yield();
+            for (unsigned i = 1; i <= 10000; ++i) {
+                GrindRow value{}; value.user = user; value.ms = i;
+                (void)concurrent->push(value);
+            }
+            finished.fetch_add(1, std::memory_order_release);
+        };
+        std::thread physics(produce, 0), pad(produce, 1);
+        start.store(true, std::memory_order_release);
+        std::array<GrindRow, 64> values{};
+        std::array<std::uint64_t, 2> last{};
+        std::uint64_t received{};
+        for (;;) {
+            const auto count = concurrent->take(values);
+            for (std::size_t i = 0; i < count; ++i) {
+                const auto& value = values[i];
+                check(value.seq == ++received && value.user < last.size(), "concurrent records retain reservation order");
+                check(value.ms == last[value.user] + 1, "each producer publishes complete ordered payloads");
+                last[value.user] = value.ms;
+            }
+            if (finished.load(std::memory_order_acquire) == 2 && received + concurrent->dropped() == 20000) break;
+            std::this_thread::yield();
+        }
+        physics.join(); pad.join();
+        check(received == 20000 && concurrent->dropped() == 0, "draining alongside two producers loses no records");
+    }
     std::cout << checks << " grind observer checks passed\n";
 }
