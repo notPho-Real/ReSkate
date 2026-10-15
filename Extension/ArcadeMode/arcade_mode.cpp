@@ -12,6 +12,7 @@
 #include "arcade_camera.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_hud.h"
+#include "arcade_grind_runtime.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
@@ -191,6 +192,7 @@ std::uint64_t combo_dropped{};
 NativeRequestSample combo_previous{};
 NativeFlipSelection flip_previous{};
 void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
+    observe_grind_step(owner);
     using namespace game::build::v20260929::arcade_native_probe;
     NativeRequestSample sample{};
     if (!memory::peek(owner.context + request_words, sample.words) ||
@@ -343,6 +345,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 }
 
 void set_enabled(bool value, bool persist) noexcept {
+    invalidate_grind_observer();
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
@@ -477,6 +480,10 @@ void on_client_tick() noexcept {
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
+        float grind_speed{};
+        const bool grind_speed_valid = native_board_speed(grind_speed);
+        grind_observer_tick(score_probe_base, now, request_probe_ready && ui.available && !ui.in_menu && input.available,
+            enabled(), grind_speed_valid, grind_speed);
         const auto score_edge = take_score_label_occurrence(now);
         if (gameplay && score_edge.valid && score_edge.labels) {
             // Read-only evidence until the HUD slot roles are verified on Deck.
@@ -686,6 +693,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Single shoulders must not leak to native catch/grab bindings.
         if (rotation_enabled) result.buttons &= ~BoardChord::pair;
         if (rotation.owns_left) { left_x = rotation.x; left_y = rotation.y; }
+        observe_grind_pad(user, now, (physical_buttons & GrindInput::y_button) != 0,
+            result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);

@@ -29,6 +29,30 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_grind_native_evidence_and_unknown_enum_semantics(self):
+        from lab import trick_batch
+        row = ('ARCADE GRIND STATE: seq=1 ms=200 generation=3 valid=true state=401 edge=1 duration=0 '
+               'grind_valid=true grind=42 skate_valid=false skate=0 speed_valid=true speed_mm_s=5000 arcade=true dropped=0.')
+        status = 'ARCADE GRIND STATUS: generation=3 active=true dropped=0 rejected=0.'
+        pad = 'ARCADE GRIND PAD: seq=2 ms=210 generation=3 user=0 y=true x=-32768 ry=32767 arcade=true dropped=0.'
+        parsed = probe.parse_grind_observations('\n'.join([row, status, pad]))
+        self.assertEqual(parsed['samples'][0]['grind'], 42)
+        self.assertTrue(parsed['pad'][0]['requested_y'])
+        result = trick_batch.grind_result({'grind': parsed}, {'grind': parsed}, True)
+        self.assertEqual((result['native_grind'], result['named_identity'], result['entries']), ('PASS', 'UNKNOWN', 1))
+        self.assertEqual(result['raw_enum_pairs'], [(42, None)])
+        for bad in (row + ' raw text', row.replace('state=401', 'state=4294967296'),
+                    row.replace('generation=3', 'generation=0'), row.replace('duration=0', 'duration=18446744073709551616')):
+            self.assertEqual(probe.parse_grind_observations(bad)['samples'], [])
+        self.assertEqual(probe.parse_grind_observations(pad.replace('ry=32767', 'ry=32768'))['pad'], [])
+        overflowing = probe.parse_grind_observations('\n'.join([row] * 257 + [status]))
+        self.assertEqual((len(overflowing['samples']), overflowing['dropped']), (256, 1))
+        self.assertEqual(trick_batch.grind_result({'grind': overflowing}, {'grind': parsed}, True)['native_grind'], 'UNVERIFIED')
+        lost = probe.parse_grind_observations('\n'.join([row.replace('dropped=0', 'dropped=1'), status]))
+        self.assertEqual(trick_batch.grind_result({'grind': lost}, {'grind': parsed}, True)['native_grind'], 'UNVERIFIED')
+        only_input = probe.parse_grind_observations('\n'.join([pad, status]))
+        self.assertEqual(trick_batch.grind_result({'grind': only_input}, {'grind': parsed}, True)['native_grind'], 'UNVERIFIED')
+
     def test_native_score_events_are_bounded_numeric_and_keep_unknown_identity(self):
         from lab import trick_batch
         row = 'ARCADE NATIVE SCORE: seq=1 ms=200 epoch=3 route=2 score=840.5 reason=7 success=false owner_verified=false.'

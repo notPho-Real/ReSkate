@@ -20,4 +20,9 @@ std::size_t find_native_types(std::span<NativeTypeQuery> wanted, bool background
 struct NativeTypeScanCursor { std::uintptr_t next{0x10000}; bool complete{}; };
 std::size_t find_native_types_step(std::span<NativeTypeQuery> wanted,
     NativeTypeScanCursor& cursor, std::size_t byte_budget, unsigned region_budget) noexcept;
+// Same bounded resident-page traversal for fixed asset-ID readers. Worker only;
+// visitor receives one readable4KiB span and returns false when finished.
+using NativePageVisitor = bool (*)(void*, std::uintptr_t, std::size_t) noexcept;
+void visit_native_pages_step(NativeTypeScanCursor& cursor, std::size_t byte_budget,
+    unsigned region_budget, NativePageVisitor visitor, void* context) noexcept;
 }

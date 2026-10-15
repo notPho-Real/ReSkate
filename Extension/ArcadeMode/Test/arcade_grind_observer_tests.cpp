@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_grind_observer.h"
+#include "Extension/ArcadeMode/arcade_grind_capture.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -144,5 +145,29 @@ int main() {
     check(inspect_grind_candidates(f, candidate_start, 4096, 1, found) == 2 && f.reads < 3000,
           "maximum accepted discovery span remains bounded");
     check(!detail::get(f, detail::highest - 2, 8, sample.physics_state), "address arithmetic cannot wrap into another object");
+    GrindTransitions transitions;
+    GrindRow row{}; row.valid = true; row.generation = 1; row.ms = 1000; row.state = 100;
+    check(transitions.sample(row).edge == GrindEdge::sample, "riding does not fabricate a grind entry");
+    row.ms += 16; row.state = 401;
+    check(transitions.sample(row).edge == GrindEdge::entry, "native400-series enters without enum availability");
+    row.ms += 100;
+    check(transitions.sample(row).duration_ms == 100, "duration follows native section");
+    row.ms += 16; row.state = 200;
+    auto exit = transitions.sample(row);
+    check(exit.edge == GrindEdge::exit && exit.duration_ms == 116, "airborne exit closes actual grind duration");
+    row.ms += 16; row.state = 401; transitions.sample(row);
+    row.ms += 151;
+    check(transitions.sample(row).edge == GrindEdge::invalidated, "observation gap cannot bridge duration");
+    row.ms += 16;
+    check(transitions.sample(row).edge == GrindEdge::entry, "new interval after evidence gap");
+    ++row.generation; row.ms += 16;
+    check(transitions.sample(row).edge == GrindEdge::invalidated, "owner generation change invalidates active section");
+    row.valid = false; row.ms += 16;
+    check(transitions.sample(row).edge == GrindEdge::invalidated, "failed read is not a natural exit");
+    GrindQueue<2> queue;
+    check(queue.push(row) && queue.push(row) && !queue.push(row) && queue.dropped() == 1, "bounded queue exposes overflow");
+    std::array<GrindRow, 2> rows{};
+    check(queue.take(rows) == 2 && rows[0].seq == 1 && rows[1].seq == 2, "ordered detached records");
+    check(queue.push(row) && queue.take(rows) == 1 && rows[0].dropped == 1, "cumulative loss follows later records");
     std::cout << checks << " grind observer checks passed\n";
 }

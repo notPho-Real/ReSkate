@@ -492,6 +492,34 @@ def parse_native_score_events(text):
                 native_event_identity='UNVERIFIED')
 
 
+def parse_grind_observations(text):
+    """Fixed numeric records only. Raw enums deliberately have no named mapping."""
+    result = dict(samples=[], pad=[], status=[], dropped=0, native_identity='UNKNOWN')
+    patterns = {
+        'samples': (r'ARCADE GRIND STATE: seq=(\d{1,20}) ms=(\d{1,20}) generation=(\d{1,20}) valid=(true|false) state=(\d{1,10}) edge=([0-3]) duration=(\d{1,20}) grind_valid=(true|false) grind=(\d{1,10}) skate_valid=(true|false) skate=(\d{1,10}) speed_valid=(true|false) speed_mm_s=(\d{1,7}) arcade=(true|false) dropped=(\d{1,20})\.$',
+                    'seq ms generation valid state edge duration grind_valid grind skate_valid skate speed_valid speed_mm_s arcade dropped'),
+        'pad': (r'ARCADE GRIND PAD: seq=(\d{1,20}) ms=(\d{1,20}) generation=(\d{1,20}) user=([0-3]) y=(true|false) x=(-?\d{1,5}) ry=(-?\d{1,5}) arcade=(true|false) dropped=(\d{1,20})\.$',
+                'seq ms generation user requested_y x y arcade dropped'),
+        'status': (r'ARCADE GRIND STATUS: generation=(\d{1,20}) active=(true|false) dropped=(\d{1,20}) rejected=(\d{1,20})\.$',
+                   'generation active dropped rejected')}
+    for line in text.splitlines():
+        for kind, (pattern, fields) in patterns.items():
+            match = re.search(pattern, line)
+            if not match:
+                continue
+            row = {key: value == 'true' if value in ('true', 'false') else int(value)
+                   for key, value in zip(fields.split(), match.groups())}
+            if (not row['generation'] or any(type(v) is int and not -32768 <= v <= 0xffffffffffffffff for v in row.values()) or
+                    any(row.get(k, 0) > 0xffffffff for k in ('state', 'grind', 'skate')) or
+                    any(not -32768 <= row.get(k, 0) <= 32767 for k in ('x', 'y')) or row.get('speed_mm_s', 0) > 1000000):
+                continue
+            result[kind].append(row)
+            if len(result[kind]) > 256:
+                result[kind].pop(0)
+                result['dropped'] += 1
+    return result
+
+
 def parse_authored_catalog(text):
     entries, status, total = {}, None, None
     labels = {}
@@ -572,4 +600,5 @@ def native_trace(request, **kwargs):
             "score_edge_observations": parse_score_edges(text[start:] if start >= 0 else ""),
             "score_number_observations": parse_score_numbers(text[start:] if start >= 0 else ""),
             "native_score_observations": parse_native_score_events(text[start:] if start >= 0 else ""),
+            "grind_observations": parse_grind_observations(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

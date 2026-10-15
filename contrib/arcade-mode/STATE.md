@@ -1,3 +1,23 @@
+## Native grind fixture priority — 2026-10-14
+
+Stop ad hoc approaches. Next milestone is a saved straight Park Editor rail,
+measured native reset/heading/speed, native positive controls, then50 controlled
+trials(10 native,20 Y variations,10 approaches,10 best-candidate repeats).
+Primary detector is native400–499 physics, not screenshots or Y intent.
+Observer runtime now wires the existing guarded enum reader to physics steps,
+generation/owner checks, independent delivered-pad samples and bounded nonblocking
+queues drained by a worker. It also observes Arcade OFF positive controls.
+Raw enums remain UNKNOWN. Missing enum bindings do not erase valid physics.
+56 observer/capture sanitizer checks and221 Python tests pass locally; Windows
+CI and installed runtime verification remain pending. No grind success claimed.
+
+Reject maintenance-v31 ground(-40,55) as a fixture reset: the native topmost
+surface path placed the skater on Stadium roof supports, not the skating floor.
+Capture1792033069939264000 verifies the failure. Game remains alive there,
+neutral, no test batch active. Return via existing native map spawn before
+fixture placement. Do not use that candidate or count it as a valid approach.
+Installed source remains5ed2d873 and DLL92bc4e85 below; no new source deployed.
+
 ## Rotation results and verified grind installation — 2026-10-14
 
 Current source/installed commit5ed2d873e3b2434c9999557ec656ad74aa7c43ac.

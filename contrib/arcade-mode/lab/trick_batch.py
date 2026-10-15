@@ -108,7 +108,7 @@ def observations(text):
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
             "score_edges": parse_score_edges(text), "score_numbers": parse_score_numbers(text),
-            "native_score": parse_native_score_events(text)}
+            "native_score": parse_native_score_events(text), "grind": parse_grind_observations(text)}
 
 
 def subsequence(expected, rows):
@@ -139,6 +139,29 @@ def named_flip_result(expected, observation, log_boundary):
     return "PASS" if wanted in seen else "FAIL" if seen else "UNVERIFIED"
 
 
+def grind_result(observation, baseline, reset_ok):
+    current, before = observation.get('grind', {}), baseline.get('grind', {})
+    rows = current.get('samples', [])
+    old_status, status = before.get('status', []), current.get('status', [])
+    old = old_status[-1] if old_status else None
+    generations = {r['generation'] for r in rows}
+    uncertain = (not rows or old is None or not status or observation.get('evidence_gap') or
+                 current.get('dropped', 0) or len(generations) != 1 or
+                 any(not r['valid'] or r['edge'] == 3 for r in rows) or
+                 any(r['generation'] != old['generation'] or r['dropped'] != old['dropped'] for r in rows) or
+                 any(s['generation'] != old['generation'] or s['dropped'] != old['dropped'] or
+                     s['rejected'] != old['rejected'] for s in status))
+    active = [r for r in rows if r['valid'] and 400 <= r['state'] < 500]
+    return dict(evidence='INCOMPLETE' if uncertain else 'COMPLETE',
+                native_grind='UNVERIFIED' if uncertain else 'PASS' if active else 'FAIL',
+                entries=sum(r['edge'] == 1 for r in rows), exits=sum(r['edge'] == 2 for r in rows),
+                duration_ms=max((r['duration'] for r in rows), default=0),
+                raw_enum_pairs=sorted({(r['grind'] if r['grind_valid'] else None,
+                                       r['skate'] if r['skate_valid'] else None) for r in active}, key=str),
+                named_identity='UNKNOWN', contact_without_grind='UNVERIFIED',
+                bail=any(r['valid'] and r['state'] == 300 for r in rows), reset='PASS' if reset_ok else 'FAIL')
+
+
 def perform_case(plan, case, env):
     env.integrity(plan)
     readiness = ({"max_speed_mm_s": case["baseline_max_speed_mm_s"]}
@@ -157,6 +180,8 @@ def perform_case(plan, case, env):
     reset = env.wait_idle(case["reset_ms"], **readiness)
     log_boundary = baseline_observation.get("log_end")
     obs = env.observe(since=log_boundary)
+    if 'grind' in obs:
+        obs['grind_result'] = grind_result(obs, baseline_observation, reset is not None)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
     combo = obs.get("combo", {})
     # Changed-state samples need their own timestamp watermark: heartbeat seq
@@ -321,7 +346,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers, parse_native_score_events
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers, parse_native_score_events, parse_grind_observations
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree
 # during analysis must never change the remote implementation mid-batch.

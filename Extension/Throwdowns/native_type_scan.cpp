@@ -133,4 +133,33 @@ std::size_t find_native_types_step(std::span<NativeTypeQuery> wanted,
     if (!missing || cursor.next >= limit) cursor.complete = true;
     return missing;
 }
+void visit_native_pages_step(NativeTypeScanCursor& cursor, std::size_t byte_budget,
+    unsigned region_budget, NativePageVisitor visitor, void* context) noexcept {
+    constexpr std::uintptr_t limit = 0x00007fffffff0000ULL;
+    byte_budget &= ~std::size_t{4095};
+    MEMORY_BASIC_INFORMATION info{};
+    while (visitor && !cursor.complete && byte_budget && region_budget--) {
+        if (cursor.next >= limit || !VirtualQuery(reinterpret_cast<void*>(cursor.next), &info, sizeof(info))) {
+            cursor.complete = true; break;
+        }
+        const auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
+        if (!info.RegionSize || base > limit || info.RegionSize > limit - base || base + info.RegionSize <= cursor.next) {
+            cursor.complete = true; break;
+        }
+        const auto end = base + info.RegionSize;
+        if (!readable(info) || info.Type != MEM_PRIVATE || !(info.Protect & PAGE_READWRITE) || info.RegionSize > (1ULL << 30)) {
+            cursor.next = end; continue;
+        }
+        const auto stop = cursor.next + std::min<std::size_t>(end - cursor.next, byte_budget);
+        while (cursor.next + 4096 <= stop) {
+            PSAPI_WORKING_SET_EX_INFORMATION page{};
+            page.VirtualAddress = reinterpret_cast<void*>(cursor.next);
+            const auto at = cursor.next;
+            cursor.next += 4096; byte_budget -= 4096;
+            if (QueryWorkingSetEx(GetCurrentProcess(), &page, sizeof(page)) && page.VirtualAttributes.Valid &&
+                !visitor(context, at, 4096)) { cursor.complete = true; return; }
+        }
+    }
+    if (cursor.next >= limit) cursor.complete = true;
+}
 }
