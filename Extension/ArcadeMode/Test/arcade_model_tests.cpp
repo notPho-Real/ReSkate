@@ -1206,10 +1206,10 @@ int main() {
             session->step(SkatePose::riding, 0.1f, 0);
             for (int i = 0; i < 3; ++i) session->step(SkatePose::riding, 0.2f, 0);
         }
-        const NativeComboObservation native{true, true, true, false, 101, 1, 0xc000};
+        const NativeComboObservation revert_native{true, true, true, false, 101, 1, 0xc000};
         const ScoreLabelOccurrence label{true, score_label_bit(25), 1, 633, 633, ScoreLabelUncertainty::none};
-        observed.step(observed_pose(native), 0.033f, 0, observed_native_revert(native, label, 633));
-        control.step(observed_pose(native), 0.033f, 0);
+        observed.step(observed_pose(revert_native), 0.033f, 0, observed_native_revert(revert_native, label, 633));
+        control.step(observed_pose(revert_native), 0.033f, 0);
         check(observed.model().state().revert_pending && !control.model().state().revert_pending,
             "measured633ms native acknowledgement links; identical physics without label does not");
         observed.step(SkatePose::riding, 0.15f, 0, true);

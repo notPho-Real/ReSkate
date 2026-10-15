@@ -5,7 +5,7 @@ DLL:27fe2b45bb2b3202e7d52ac498996896fe4e8c1f604ab63498cf199b837b5f50.
 All five CI38716252703 gates passed. External grind-observer-corrected-deploy-v1
 receipt verifies unchanged stock/game hashes, updates off and recovery clear.
 Game hot at saved Stadium rail; editor/map/console closed, Arcade ON,
-frontside RT experiment selected, grabs OFF, simulation60. Root owns hardware.
+backside RT experiment selected, grabs OFF, simulation60. Root owns hardware.
 Frozen HIL40 and maintenance45 pin this DLL. HIL40 manifest:
 8828300e2df2e059781ab0c9b4cb311fd339f552acfc2432e983f8657060b067.
 maintenance45 SHA9af32ddca8c8ed4e0aff02ef07f473fd4c3d67bee93c01f1d09cb4dad18dc14b.
@@ -162,6 +162,20 @@ is missed, with fresh baseline/complete-stream guards;243 Python tests pass.
 The next combined verified deployment must include this window and transition
 gate and separate continuation timing;58d6955/5dd2728 and prior frozen
 native-label-link helpers are superseded targets. No intermediate DLL installed.
+
+Native moving RT repeat1792062890271733000:18/18 state101 plus exact base
+Revert diagnostic, complete evidence/no stream loss, neutral/reset. Latency
+452–500ms after RT. With two matching controls1792059876270789000:20/20
+in this moving clear-bit fixture context. This establishes generic native
+revert repeatability, not FS/BS side or combo continuation acceptance.
+Current bounded hardware batch:20 native backside-selector moving controls,
+artifacts/fixture-native-bs-revert-repeat-20.json, frozen HIL40. Inspect this
+batch before any other Deck operation; restore frontside selector for prepared
+seven-trial native combo integration after the verified combined deployment.
+Final combined source6a1c1f4e384c4eb0d81302a4d5740d834938f12e,
+CI38725877835 pending; frozen native-label-link-deploy-v4 helper
+SHAb76b2baba5fa5ddaf1f3fa2c5217749d47727e139c9b869bf273f6a916ec94d1.
+Installed08d remains unchanged until all five gates pass.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position

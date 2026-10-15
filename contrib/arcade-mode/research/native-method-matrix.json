@@ -1787,9 +1787,9 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "implementation_status": "Independent native recipe integrated behind existing RT selector. Exact base-label reader and bounded native-confirmed combo continuation implemented; new runtime window awaits verified deployment and Deck acceptance.",
-      "hil_status": "DISCOVERED:7c7 frozen trials independently show FS Revert1/1 and BS Revert1/1.08d2a3a numeric diagnostics confirm exact base Revert in2 moving controls and1 moving grind-exit trial; base label does not prove side. Native acknowledgement delay454-471ms; moving grind-exit observation633ms after landing. Stationary delivery did not confirm revert. Not20-trial repeatability.",
+      "hil_status": "DISCOVERED:7c7 frozen trials independently show FS Revert1/1 and BS Revert1/1.08d2a3a numeric diagnostics confirm exact base Revert in2 moving controls and1 moving grind-exit trial; base label does not prove side. Native acknowledgement delay454-471ms; moving grind-exit observation633ms after landing. Stationary delivery did not confirm revert. Not20-trial repeatability. Subsequent matching repeat18/18 plus two controls establishes20/20 generic moving native Revert; exact side and full linking remain distinct.",
       "repeatability": {
-        "status": "NOT ESTABLISHED",
+        "status": "REPEATABLE generic native Revert in one moving fixture context; exact side and combined linking pending",
         "side_controls": {
           "frontside": {
             "trials": 1,
@@ -1801,9 +1801,17 @@
           }
         },
         "generic_native_confirmation": {
-          "trials": 3,
-          "exact": 3,
-          "scope": "Selected moving controls on08d2a3a; does not include stationary or rejected-context attempts"
+          "trials": 20,
+          "exact": 20,
+          "scope": "08d2a3a short-push clear-bit fixture controls2 plus repeat18; all complete/neutral/reset; base native label and101 do not establish side",
+          "results": [
+            "1792059876270789000",
+            "1792062890271733000"
+          ],
+          "repeat_latency_ms": [
+            452,
+            500
+          ]
         }
       },
       "review_pending": false,
