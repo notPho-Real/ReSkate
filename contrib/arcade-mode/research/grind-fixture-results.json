@@ -1,0 +1,1518 @@
+{
+  "schema": 1,
+  "batches": [
+    {
+      "trials": [
+        {
+          "name": "native-rail-control",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 847,
+          "entry_speed_mm_s": [
+            5021
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 848,
+          "entry_speed_mm_s": [
+            5039
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 848,
+          "entry_speed_mm_s": [
+            5040
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 4,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 850,
+          "entry_speed_mm_s": [
+            5033
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 5,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 848,
+          "entry_speed_mm_s": [
+            5027
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 6,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 852,
+          "entry_speed_mm_s": [
+            5033
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 7,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 846,
+          "entry_speed_mm_s": [
+            5029
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 8,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 852,
+          "entry_speed_mm_s": [
+            5028
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 9,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 833,
+          "entry_speed_mm_s": [
+            5028
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "native-rail-control",
+          "repetition": 10,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 851,
+          "entry_speed_mm_s": [
+            5031
+          ],
+          "raw_enum_pairs": [
+            [
+              0,
+              20
+            ],
+            [
+              20,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        }
+      ],
+      "hard_stops": []
+    },
+    {
+      "trials": [
+        {
+          "name": "arcade-y-neutral-delay-0",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 484,
+          "entry_speed_mm_s": [
+            4992
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-0",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 469,
+          "entry_speed_mm_s": [
+            5049
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-0",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 487,
+          "entry_speed_mm_s": [
+            4987
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-100",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 485,
+          "entry_speed_mm_s": [
+            4987
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-100",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 485,
+          "entry_speed_mm_s": [
+            4983
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-100",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 482,
+          "entry_speed_mm_s": [
+            4995
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-200",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 486,
+          "entry_speed_mm_s": [
+            4986
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-200",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 486,
+          "entry_speed_mm_s": [
+            4995
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-200",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 481,
+          "entry_speed_mm_s": [
+            4990
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-300",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 481,
+          "entry_speed_mm_s": [
+            4986
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-300",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 480,
+          "entry_speed_mm_s": [
+            4985
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-delay-300",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 486,
+          "entry_speed_mm_s": [
+            4993
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-up-delay-0",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 506,
+          "entry_speed_mm_s": [
+            4975
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              23,
+              20
+            ],
+            [
+              24,
+              20
+            ],
+            [
+              26,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-up-delay-0",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 506,
+          "entry_speed_mm_s": [
+            4974
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              23,
+              20
+            ],
+            [
+              26,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-up-delay-200",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 515,
+          "entry_speed_mm_s": [
+            4976
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              23,
+              20
+            ],
+            [
+              26,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-up-delay-200",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 514,
+          "entry_speed_mm_s": [
+            4977
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              23,
+              20
+            ],
+            [
+              26,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-down-delay-0",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 464,
+          "entry_speed_mm_s": [
+            4965
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ],
+            [
+              26,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-down-delay-0",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 481,
+          "entry_speed_mm_s": [
+            5017
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-down-delay-200",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 468,
+          "entry_speed_mm_s": [
+            5025
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-down-delay-200",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 468,
+          "entry_speed_mm_s": [
+            5018
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        }
+      ],
+      "hard_stops": []
+    },
+    {
+      "trials": [
+        {
+          "name": "arcade-y-approach-crouch-850",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 819,
+          "entry_speed_mm_s": [
+            5050
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-approach-crouch-900",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 752,
+          "entry_speed_mm_s": [
+            5048
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-approach-crouch-950",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 647,
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-approach-crouch-1000",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 601,
+          "entry_speed_mm_s": [
+            4980
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-approach-crouch-1100",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 467,
+          "entry_speed_mm_s": [
+            5051
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-alignment-left-16000",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 582,
+          "entry_speed_mm_s": [
+            5068
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-alignment-left-10000",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 566,
+          "entry_speed_mm_s": [
+            5007
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-alignment-right-0",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 485,
+          "entry_speed_mm_s": [
+            4989
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-alignment-right-10000",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 366,
+          "entry_speed_mm_s": [
+            4981,
+            4582
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-alignment-right-16000",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 582,
+          "entry_speed_mm_s": [
+            5006
+          ],
+          "raw_enum_pairs": [
+            [
+              24,
+              20
+            ],
+            [
+              3,
+              20
+            ],
+            [
+              7,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        }
+      ],
+      "hard_stops": []
+    },
+    {
+      "trials": [
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 1,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 767,
+          "entry_speed_mm_s": [
+            5054
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ],
+            [
+              7,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 2,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 752,
+          "entry_speed_mm_s": [
+            5047
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 3,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 767,
+          "entry_speed_mm_s": [
+            5044
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 4,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 685,
+          "entry_speed_mm_s": [
+            5045
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 5,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 752,
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 6,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 752,
+          "entry_speed_mm_s": [
+            5047
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 7,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 787,
+          "entry_speed_mm_s": [
+            5048
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 8,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 700,
+          "entry_speed_mm_s": [
+            5049
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 9,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 751,
+          "entry_speed_mm_s": [
+            5053
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        },
+        {
+          "name": "arcade-y-neutral-best-repeat",
+          "repetition": 10,
+          "input_sent": true,
+          "valid_attempt": true,
+          "native_grind": true,
+          "native_exit": true,
+          "riding_after_exit": true,
+          "bail": false,
+          "longest_grind_ms": 752,
+          "entry_speed_mm_s": [
+            5050
+          ],
+          "raw_enum_pairs": [
+            [
+              20,
+              20
+            ],
+            [
+              24,
+              20
+            ]
+          ],
+          "named_identity": "UNKNOWN",
+          "miss_vs_contact": "UNVERIFIED",
+          "neutralized": true,
+          "reset_ready": true
+        }
+      ],
+      "hard_stops": []
+    }
+  ],
+  "input_attempts": 50,
+  "valid_attempts": 50,
+  "excluded_attempts": 0,
+  "native_grinds": 50,
+  "native_grind_rate": 1.0,
+  "native_exits": 50,
+  "observed_bails": 0,
+  "neutralization_failures": 0,
+  "reset_failures": 0,
+  "contact_classification": "UNVERIFIED",
+  "named_enum_dictionary": "UNVERIFIED",
+  "source_commit": "9a96c69ff42c6fe0c75a06ccb180f6235582d34f",
+  "fixture_configuration": "grind-fixture.json",
+  "maturity": "REPEATABLE in the saved Stadium rail fixture; integrated balance failure and combo acceptance pending",
+  "evidence": [
+    {
+      "group": "native-controls-10",
+      "runner": 32,
+      "result": "1792041692611729000",
+      "sha256": "b6f7922d817ef2177efcbfb0d73e17cc8cb10521cabd41f10f54b2c54a46bf83"
+    },
+    {
+      "group": "y-variations-20",
+      "runner": 32,
+      "result": "1792042807619960000",
+      "sha256": "9532acb8da1f6016081a9a76991516d04eee8f2048cfa6445087627dd1dc2124"
+    },
+    {
+      "group": "approach-variations-10",
+      "runner": 32,
+      "result": "1792043198772064000",
+      "sha256": "b1bcec57638585b302a6238b1d7a2b39adeb3043d6df2682d0069e193406a1d4"
+    },
+    {
+      "group": "best-repeats-10",
+      "runner": 32,
+      "result": "1792043536440628000",
+      "sha256": "04810899cacb85293070712ca53d7db987d271609a68aa5539cd2fd463d51b4f"
+    }
+  ],
+  "excluded_setup_and_infrastructure": [
+    {
+      "result": "1792042271587844000",
+      "result_kind": "calibration miss",
+      "reason": "Ollie interrupted push before acceleration; max speed1.035m/s"
+    },
+    {
+      "result": "1792043423754846000",
+      "result_kind": "infrastructure hard stop",
+      "reason": "input_readiness_lost during capture trial; execution extent unknown, no valid native outcome; excluded from attempted-trial denominator, neutralization handled by runner cleanup"
+    }
+  ],
+  "limits": [
+    "Named grind identities are UNKNOWN despite valid raw native enums.",
+    "No independent rail-contact sensor; a failed grind alone would not distinguish missed rail from contact without engagement.",
+    "Approach timing and steering varied, but successful entry speeds remained approximately5m/s; wider speed envelope is unverified.",
+    "Fixture is one low straight rail on flat Stadium terrain, one observed stance at60Hz.",
+    "All20 Y timing trials activated horizontal balance;701 exit transition reset combo on installed build. Source956dd27 repairs bounded handoff, not yet Deck verified.",
+    "Physical balance-failure actuation and complete HUD range remain outstanding."
+  ]
+}

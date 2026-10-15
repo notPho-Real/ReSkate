@@ -1829,10 +1829,10 @@
       "requested_action": "Observe grind identity",
       "classification": "VERIFIED ON OUR DECK",
       "source_id": "grind-state",
-      "implementation_status": "Guarded runtime observer integrated with physics, input and bounded worker telemetry. Native401 observed in11/11 native controls including pilot. Raw enum pairs(0,20) and(20,20) available in10/10 matrix controls; named semantics remain UNKNOWN.",
+      "implementation_status": "Guarded observer verified in all50 matrix trials. Raw enum pairs preserved without named interpretation; independent physics400\u2013499 proves engagement.",
       "native_id": null,
-      "deck_trials": 11,
-      "maturity": "DISCOVERED",
+      "deck_trials": 50,
+      "maturity": "REPEATABLE",
       "raw_enum_pairs": [
         [
           0,
@@ -1841,10 +1841,30 @@
         [
           20,
           20
+        ],
+        [
+          23,
+          20
+        ],
+        [
+          24,
+          20
+        ],
+        [
+          26,
+          20
+        ],
+        [
+          3,
+          20
+        ],
+        [
+          7,
+          20
         ]
       ],
-      "native_enum_trials": 10,
-      "evidence": "trusted-v32/results/1792041692611729000.json; pilot1792041583599882000"
+      "native_enum_trials": 50,
+      "evidence": "grind-fixture-results.json"
     },
     {
       "requested_action": "Physical balance-failure consequence",
@@ -1856,11 +1876,13 @@
     },
     {
       "requested_action": "Grind to flip exit",
-      "classification": "RE-SKATE METHOD AVAILABLE",
+      "classification": "VERIFIED ON OUR DECK",
       "source_id": "grind-exit",
-      "implementation_status": "Existing exit hook preserved; Classic A/X selects authored from_grind gestures in observed native grind context. Installed in9a96; actual A/X exit acceptance still pending.",
+      "implementation_status": "3/3 native Ollie and3/3 Kickflip exits; authored from_grind patterns, independent401\u2192200 and post-entry IDs1/2, then landing/reset.",
       "native_id": null,
-      "deck_trials": 0
+      "deck_trials": 6,
+      "maturity": "DISCOVERED",
+      "evidence": "grind-exit-results.json"
     },
     {
       "requested_action": "Observe manual to pop transition",
@@ -1989,31 +2011,34 @@
     {
       "id": "grinds",
       "requested_action": "Contextual primary/repeated Y and lip entries",
-      "implementation_status": "Basic Y board holds installed. Saved native flat-rail fixture and reset proven; native controls10/10 grind/exit/no bail,833\u2013852ms. Arcade Y calibration is next.",
+      "implementation_status": "REPEATABLE basic native Y engagement in the saved Stadium rail fixture:40/40 Arcade Y trials, plus10/10 native positive controls. All exited, neutralized and reset; no bails or incomplete valid trials.",
       "source_ids": [
         "grind-state",
         "grind-exit",
         "dual-stick-rail-and-spin",
         "native-darkslide-guide"
       ],
-      "remaining": "Approach geometry, named enum mapping, exact repeated-Y variants and usable entry control.",
-      "next": "Calibrate Arcade A/Y on the unchanged fixture, then20 timing variations,10 approaches,10 best repeats; retain native401 and raw enum evidence, no invented named meanings.",
-      "new_deck_trials": 0,
+      "remaining": "Named enum mapping, broader rails/speeds/stances, repeated-Y variants and physical balance-failure consequences.",
+      "next": "Native A/X exit and actual HUD verification, followed by bounded701 handoff repair acceptance; fixture matrix is complete.",
+      "new_deck_trials": 40,
       "native_control_trials": 10,
-      "native_control_successes": 10
+      "native_control_successes": 10,
+      "evidence": "grind-fixture-results.json",
+      "maturity": "REPEATABLE"
     },
     {
       "id": "grind-exits",
       "requested_action": "Grind to flip, manual or riding",
-      "implementation_status": "Classic A/X now selects existing from_grind patterns only in observed native grind context; no ground fallback; Deck verification pending",
+      "implementation_status": "DISCOVERED:3/3 native Ollie exits and3/3 Kickflip exits;401 to200, native IDs1/2 after grind entry, landing and reset, no bails.",
       "source_ids": [
         "grind-exit",
         "dual-stick-rail-and-spin",
         "held-flip-and-composite-record"
       ],
       "remaining": "Shared input ownership and verified transition identity.",
-      "next": "Observe native grind-to-air and exact Ollie/Kickflip identity; preserve existing exit hook without competing hooks or velocity changes.",
-      "new_deck_trials": 0
+      "next": "Repeat on combo-handoff repair, then combined manual/fatigue chains.",
+      "new_deck_trials": 6,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "spins",
@@ -2089,13 +2114,14 @@
     {
       "id": "hud-grind",
       "requested_action": "Readable horizontal grind meter driven by model",
-      "implementation_status": "30% axis geometry, contrast/danger/cursor implemented;122 local geometry checks",
+      "implementation_status": "Actual horizontal balance active in20/20 Y trials;1280x800 gameplay capture1792044001340239000 shows readable30%-width meter near center during native BS50-50 Grind.",
       "source_ids": [
         "score-hud"
       ],
       "remaining": "Full-size Gamescope captures at-0.8,-0.4,0,+0.4,+0.8 and normal Deck viewing.",
-      "next": "Capture exact model positions; no independent cosmetic animation or code-only acceptance.",
-      "new_deck_trials": 0
+      "next": "Verify correction, full position range and physical balance-failure consequence.",
+      "new_deck_trials": 20,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "hud-manual",

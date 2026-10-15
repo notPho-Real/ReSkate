@@ -491,6 +491,7 @@ class ReadinessMonitor:
     def __init__(self, initial, pid, checked_at, check=capabilities, clock=time.monotonic):
         self.pid, self.check, self.clock = pid, check, clock
         self.snapshot = (checked_at, initial)
+        self.last_check = {}
         self.stop, self.failed = threading.Event(), threading.Event()
         self.thread = threading.Thread(target=self._run, daemon=True)
 
@@ -510,8 +511,17 @@ class ReadinessMonitor:
     def start(self):
         self.thread.start()
 
-    def ready(self, now):
+    def ready(self, now=None):
         sampled_at, current = self.snapshot
+        # Read the clock after the snapshot. The worker can publish between a
+        # caller's clock read and this read; that is not a backwards clock.
+        if now is None:
+            now = self.clock()
+        self.last_check = {
+            'age_ms': max(-100000, min(100000, round((now - sampled_at) * 1000))),
+            'failed': self.failed.is_set(),
+            'context_ready': bool(current.get('ready', False)),
+            'owner_matches': current.get('gamescope_pids') == [self.pid]}
         return (not self.failed.is_set() and 0 <= now - sampled_at <= 0.100
                 and current.get("ready", False) and current.get("gamescope_pids") == [self.pid])
 
@@ -635,7 +645,11 @@ class ExperimentSession:
                     if watch is None:
                         watch = ReadinessMonitor(status, self.pid, now, check=capabilities)
                         watch.start()
-                    return watch.ready(current_time)
+                    if not watch.ready():
+                        error = RuntimeError('Skate exited; test stopped')
+                        error.readiness = dict(watch.last_check, capture_pending=not future.done())
+                        raise error
+                    return True
                 try:
                     delivery_timing = replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.

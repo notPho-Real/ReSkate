@@ -145,6 +145,20 @@ class BatchTests(unittest.TestCase):
                 result = batch.perform_batch(value, object())["trials"]
             self.assertEqual(result, [dict(hard_stop=True, reason=reason, name="kickflip", repetition=1)])
 
+    def test_readiness_failure_diagnostic_is_numeric_and_bounded(self):
+        diagnostic = dict(age_ms=121, failed=False, context_ready=True,
+                          owner_matches=True, capture_pending=True)
+        for supplied, accepted in [(diagnostic, True), (dict(diagnostic, age_ms=100001), False),
+                                   (dict(diagnostic, path='private'), False),
+                                   (dict(diagnostic, failed='private'), False)]:
+            error = RuntimeError('Skate exited; test stopped')
+            error.readiness = supplied
+            with patch.object(batch, 'perform_case', side_effect=error):
+                stopped = batch.perform_batch(plan(), object())['trials'][0]
+            self.assertEqual('readiness' in stopped, accepted)
+            if accepted:
+                self.assertEqual(stopped['readiness'], diagnostic)
+
     def test_stationary_baseline_requires_matching_fresh_speed(self):
         observation = {"states": [dict(seq=i, valid=True, state=100, mode=1) for i in range(1, 4)],
                        "push": [dict(seq=i, valid=True, speed=0.1, contacts=0xc000) for i in range(1, 4)]}

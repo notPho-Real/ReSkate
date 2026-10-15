@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "source_commit": "9a96c69ff42c6fe0c75a06ccb180f6235582d34f",
+  "runner": 33,
+  "result": "1792043761767608000",
+  "sha256": "298414e8f8312cb8616722d0aacf848f03dff4f169d8da66071e044513318cff",
+  "maturity": "DISCOVERED:3/3 per exit, not20-trial repeatability or complete combo acceptance",
+  "trials": [
+    {
+      "name": "arcade-grind-exit-ollie",
+      "repeat": 1,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        1
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    },
+    {
+      "name": "arcade-grind-exit-ollie",
+      "repeat": 2,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        1
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    },
+    {
+      "name": "arcade-grind-exit-ollie",
+      "repeat": 3,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        1
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    },
+    {
+      "name": "arcade-grind-exit-kickflip",
+      "repeat": 1,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        2
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    },
+    {
+      "name": "arcade-grind-exit-kickflip",
+      "repeat": 2,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        2
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    },
+    {
+      "name": "arcade-grind-exit-kickflip",
+      "repeat": 3,
+      "native_grind": "PASS",
+      "native_exit_state": 200,
+      "after_entry_flip_ids": [
+        2
+      ],
+      "landed": true,
+      "bail": false,
+      "evidence": "COMPLETE",
+      "neutralized": true,
+      "reset_ready": true
+    }
+  ],
+  "capture_failure": {
+    "result": "1792043761767608000",
+    "trial": "arcade-grind-hud-visible",
+    "reason": "input_readiness_lost",
+    "native_outcome": "UNVERIFIED"
+  },
+  "actual_hud": {
+    "result": "1792044001340239000",
+    "image": "artifacts/actual-grind-hud-0.png",
+    "resolution": [
+      1280,
+      800
+    ],
+    "native_grind_duration_ms": 749,
+    "native_score_label": "BS 50-50 Grind",
+    "raw_enum_pair_during_capture": [
+      20,
+      20
+    ],
+    "named_identity_maturity": "DISCOVERED single visual correlation; no universal numeric dictionary asserted",
+    "balance_position_near": 0,
+    "readability": "PASS actual native grind:30% screen width, dark backing, high contrast track/cursor/center/danger limits, no zoom",
+    "remaining": "Other four horizontal positions; full vertical range; physical failure consequences"
+  },
+  "balance_correction": {
+    "result": "1792044354029696000",
+    "trials": 4,
+    "left_pass": 2,
+    "right_pass": 2,
+    "native_grind_duration_ms": [
+      746,
+      753
+    ],
+    "neutral_reset_pass": 4,
+    "native_bails": 0,
+    "left_model_positions_after_correction": [
+      -0.032741867,
+      -0.032102127
+    ],
+    "right_model_positions_after_correction": [
+      0.08753484,
+      0.08749944
+    ],
+    "physical_failure_acceptance": false
+  }
+}

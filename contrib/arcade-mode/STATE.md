@@ -1,111 +1,91 @@
-## Native grind fixture priority — 2026-10-14
+## Native grind fixture checkpoint — 2026-10-14
 
-Installed gameplay source9a96c69ff42c6fe0c75a06ccb180f6235582d34f, DLL
-10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54.
-All five CI38682971586 gates passed. External fixture-reset-deploy-v1 receipt
-verifies unchanged stock/game hashes, updates off and recovery clear.
-Frozen HIL32 and maintenance41 pin this installation. Root owns hardware.
-Game is running in Stadium1, Arcade Mode ON, auxiliary actions off, simulation60.
-Saved rail restored after the necessary DLL restart; editor is closed.
+Gameplay installed:956dd27f4a453a21ffcff94e867aee8533bcaa97, DLL
+5878204dd48ac2ae4259c96c3b1562fd5bee60fbe94f1c7ba5a8ed0345c6afa7.
+All five CI38688434844 gates passed; grind-handoff-deploy-v1 receipt preserves
+stock/game hashes, updates off and recovery clear. Game launch is requested after
+the necessary DLL restart; restore the saved Stadium fixture before trials.
+Root owns hardware. Frozen HIL34 and maintenance42 pin this installation.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
-Keep all grab work and the synthetic-input ownership fix. Practical airtime
-remains an unresolved context limitation, not evidence that recipes are wrong.
+Preserve grab code/tests/guide and input-ownership fix. Limited practical airtime
+is an unresolved gameplay context, not proof of incorrect grab recipes.
 
-The guarded read-only grind observer is integrated with physics steps, validated
-local owner/generation checks, delivered-pad sampling and a bounded nonblocking
-queue. Raw enum reads are deliberately gated to400–499: false enum validity in
-riding state100 is expected, not proof of a binding defect. Local checks:56
-observer/capture sanitizer checks and226 Python tests. HIL29 uses fresh rows
-with same-generation health when identical health log lines are coalesced.
+**The required native rail matrix is complete:50/50 valid grinds and exits.**
+-10 native controls:1792041692611729000.
+-20 Y timing/direction variations:1792042807619960000.
+-10 approach timing/alignment variations:1792043198772064000.
+-10 best-candidate repeats:1792043536440628000.
+All neutralized and reset, no bails or incomplete evidence. Basic Y grinding is
+REPEATABLE in this fixture; exact named variants and full gameplay acceptance
+are not established. Raw enum values remain unnamed. Entry speeds clustered
+near5m/s despite varied approach timings; wider speed coverage remains open.
+Full sanitized per-trial grades, source hashes and protocols are in
+research/grind-fixture-results.json and research/grind-fixture.json.
 
-Native observer check1792037115776721000:two neutral riding windows,39/36 physics
-samples and81/76 pad samples, state100, complete evidence, zero drops/rejections,
-neutral and idle reset passes. These are NOT grind attempts or enum acceptance.
+Fixture: saved Park Editor layout Arcade Rail Fixture, one unchanged-scale
+own_bkrails_generic_flatrailround_00002. Rail(-39.4061546,46.00006485,60.6163254),
+identity quaternion. Saved start(-39.4061546,47.0287361,52.6163254), heading0.
+Native teleport returns on foot504; verified native remount gives roughly
+(-39.28947,47.028736,52.84672), heading359.9895, stopped100. Reset spread<0.2mm.
+Physical rail capture1792041066703028000 validates clear flat geometry and closed
+editor. Native load/adopt1792040850547365000 and relocation1792040961694409000
+passed. No skater transform, velocity, collision or physics-state writes.
+Do not reuse rejected entrance/barrier locations or topmost ground(-40,55).
 
-Correct flat rail asset own_bkrails_generic_flatrailround_00002 (Flat, Rnd Steel)
-is verified in the pinned25414733 cache, SHA
-01867746b29301eead35a473ae523f8c84aa43784c244fcfafe0057a113045f4.
-Live status1792038509228697000 confirms asset available and editor ready.
-The previous shorter category-test key was not a live asset; superseded0ca build
-is not installed. Console key/text cadence100ms is verified;1ms text truncated.
-Maintenance38 changes only the fixed console filter to include fixture errors.
+Best current approach:neutral0, forward300ms, A900ms, release to Y1300ms,
+neutral3000ms, B brake3200ms, neutral5600ms. Final10 grinds lasted685–787ms.
+Early A800ms calibration1792042271587844000 interrupted push before acceleration
+and missed at1.035m/s. Unchanged push-only1792042684404723000 reached5m/s.
+These calibration pilots do not count toward50. Capture attempt1792043423754846000
+stopped on input_readiness_lost, extent of input unknown and no valid outcome;
+runner cleanup neutralizes. Capture-free retry then completed all10.
 
-First entrance placement was rejected for non-flat terrain; diagnostic
-1792038822177603000 preserves the reason. Native push/brake positioning
-1792038968064508000 passed neutralization/idle. The second location passed
-native floor probes and spawned the rail: status1792039050836198000 records
-start(-39.5236626,46.5000687,39.3845749), rail(-39.5236626,46.0000687,47.3845749),
-identity rotation, scale1. Saved through the existing park save path.
+Observer:validated local owner, physics-step state400–499, guarded raw enum reads,
+delivered pad, bounded nonblocking queue and sanitized telemetry. All20 Y timing
+trials activated horizontal balance. Their native403→701→200/201 exits crossed701
+for45–53ms and incorrectly reset the installed combo. Source956dd27 preserves
+this handoff only after grinding and for at most150ms, clearing balance/HUD without
+adding a trick. Owner loss, bail, unrelated701 and timeout still invalidate.
+33596 local model/sanitizer checks pass. CI38688434844 passed; runtime repair is
+installed but NOT Deck-accepted yet. Prior HEAD6c3437f CI passed.
 
-Native reset1792039122164893000 returned to the measured X/Z and heading0.005,
-but state504/on foot. Initial scene1792039128960100000 also shows a crowd barrier
-across the approach. Thus this is NOT an accepted fixture or grind attempt.
-Source changes preserve the single rail while allowing relocation after new
-floor checks, record the actual riding start height, and add a bounded native
-remount after reset (Y when OFF; established shoulder chord when ON). Fresh
-native100/reset-ready is still required afterward. No state forcing. These fixes
-are installed after CI; real reset acceptance is pending. The native floor point
-beyond the barrier(-39.523663,46.950066,52.384575), heading0.005, is verified by
-1792039551485128000 and initial terrain capture1792039558901707000. Use the frozen
-fixture-floor native teleport, then mount and relocate the saved single rail.
-New offline grind report keeps valid-attempt denominators and independent native
-physics, exit, bail and reset outcomes separate.233 local Python tests pass.
-The next trial now revalidates fresh fixture status before deciding to teleport,
-avoiding a redundant reset/remount after an already successful post-trial reset.
-Reviewed frozen HIL31 includes this improvement; host source9d758d661013e4a1b2610d6e0e8ffaa6176ff77c.
+Host-only readiness correction reads its snapshot before its clock, eliminating
+a race that could falsely report a future timestamp. The100ms freshness limit,
+owner checks and cleanup remain unchanged;234 Python tests pass. HIL33 manifest
+2ec42b78e3de2030355c6ba27146d5485e5ed368d14368dd80c4ee5b1e53caa7.
+This may explain the capture failure; do not claim that diagnosis proven yet.
+Delayed old-generation health handling from HIL32 remains bounded to already
+covered counters; fresh matching health/physics and no new loss are required.
 
-Do not reuse the rejected topmost-surface ground(-40,55) reset: it landed on
-roof supports (1792033069939264000). Native map recovery restored the entrance.
-Use native movement and near-ground collision validation; no raw skater transform,
-velocity or grind-state writes. Fixture helper uses existing Park Editor APIs,
-one unchanged-scale rail, native Trainer teleport and existing park save/adopt.
+HIL33 result1792043761767608000:3/3 native Ollie exits and3/3 Kickflip exits,
+401→200, exact post-grind IDs1/2, landing/reset, no bails or evidence gaps.
+The seventh HUD capture case again stopped on readiness loss and is not a valid
+trial. Single end-of-input capture1792044001340239000 then passed:real749ms grind,
+clean reset and a full-size1280x800 readable horizontal meter near center. Native
+label BS50-50 Grind is independently visible; raw pair(20,20) was present during
+capture, a single correlation rather than a universal enum dictionary.
+See research/grind-exit-results.json and artifacts/actual-grind-hud-0.png.
+Readiness failure diagnostics are now implemented in source (not frozen HIL33):
+only bounded age plus readiness/owner/capture flags, no process data;235 Python
+tests pass. Capture contention remains undiagnosed;100ms guard unchanged.
 
-Current saved fixture: native load/adopt1792040850547365000 passed. Relocation
-1792040961694409000 passed full floor checks: start(-39.4061546,47.0287361,52.6163254),
-rail(-39.4061546,46.00006485,60.6163254), identity quaternion, scale1. Full-size
-capture1792041066703028000 shows a physical straight rail along+Z on clear floor,
-with editor closed. Pilot1792041157347647000 completed2 neutral windows and2
-native mounted resets; the second window stopped the batch on delayed old-generation
-health(gen24 inactive after current-gen25 physics). All36physics/78pad rows remained
-valid gen25, no drops or rejected reads. Preserve this original incomplete result.
-The two reset poses differ by less than0.1mm; both heading359.9895 and nearzero speed.
-Measured remount displacement is about(+0.11675X,+0.23040Z) from the saved start.
-A host-only fix excludes older health only when its counters were already covered
-by the validated baseline and fresh matching health/physics remain complete.
-New owner generations, new loss, inactivity in the current owner, and mismatched
-physics still stop. Retry1792041489143174000 passed3/3 neutral/reset windows with complete evidence,
-no lost events or rejected samples. Safely classified delayed older health counts
-0/1/2. Reset poses vary<0.2mm, heading359.9890–359.9895, speed<0.00011m/s.
-These are reset checks, excluded from grind denominators. Native positive pilot
-1792041583599882000 passed: native401,800ms,entry5.020m/s, exit200 then100,
-no bail, complete evidence and reset. First enum binding was unavailable.
-Main native controls1792041692611729000 then passed10/10 real grinds and exits,
-833–852ms, entry5.021–5.040m/s;10neutral/reset passes, no bails/incomplete trials.
-Raw enum pairs(0,20) and(20,20) are valid in all10; meanings remain UNKNOWN.
-Arcade A/Y pilot1792042271587844000 missed at max1.035m/s: crouch interrupted
-the push before native acceleration. Push-only1792042684404723000 reached5m/s
-with unchanged automatic-push output. Waiting until1100ms to crouch and1500ms
-to release produced native grind401/403 in1792042748530552000:514ms, entry4.989m/s,
-exit and reset passed. Horizontal balance activated from observed native entry.
-These calibration pilots are excluded from the50-trial matrix. The20 Y timing/
-direction trials are running. A brief native701 exit transition currently resets
-the combo before200/201; preserve this demonstrated integration defect for repair.
-Source now preserves this handoff only after observed grinding, at most150ms,
-with balance/HUD cleared and no added trick event. Owner loss, bail, unrelated
-701 and timeout still invalidate.33596 local model/sanitizer checks and233 Python
-tests pass; runtime repair is NOT installed or Deck-accepted yet. CI for prior
-HEAD6c3437f passed (38685942356; installer38685942385).
-Next: finish20 Y,10 approach,10 best repeats; then grind exits/HUD/combo integration.
-Current required matrix denominators:10/0/0/0; native controls10/10 successful. Ordinary misses continue; missing telemetry,
-unsafe reset or integrity failure stops. Physics400–499 is primary; contact and
-named identity remain unknown without independent evidence. Zero-screenshot
-batches are supported. Preserve the fixture and game between batches.
+Correction result1792044354029696000:2/2 left and2/2 right, actual balance
+positions moved in the commanded direction while native grinds lasted746–753ms.
+All4 native exits/reset passed without bail. Physical boundary failure remains open.
 
-After repeatable Y engagement: actual horizontal balance activation, native
-Ollie/flip exits, readable grind/manual HUD and physical balance failure, then
-combo composition. These are not accepted yet. Existing rotation/manual evidence
-below remains valid in its documented contexts.
+CI38688434844 now passed all5 gates. Verified immutable956dd27 artifact SHA
+5878204dd48ac2ae4259c96c3b1562fd5bee60fbe94f1c7ba5a8ed0345c6afa7 downloaded
+by frozen grind-handoff-deploy-v1. Deployment receipt confirms all exact hashes, updates off and recovery clear.
+All trial batches ended; maintenance42 launch is requested. Use its play operation
+after the launcher is ready, then restore the fixture.
+Frozen HIL34/maintenance42 target956dd27. HIL34 manifest
+be5f2ec1ac93d7e9ba578c5a1740311bb7adb6267e13bdc589e0e3cc5d74ca0a.
+After installation, restore Stadium saved rail, adopt/verify native reset and run
+focused natural/A/X exit chains. Do not repeat the50-trial entry matrix.
+Physical balance failure, HUD full-range captures, scoring/banking and mixed
+stress remain open.
+Existing rotation/manual evidence below remains valid within its recorded scope.
 
 ## Rotation results and verified grind installation — 2026-10-14
 

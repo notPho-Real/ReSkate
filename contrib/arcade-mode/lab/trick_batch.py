@@ -276,8 +276,15 @@ def perform_batch(plan, env):
                         result.get('observations', {}).get('grind_result', {}).get('evidence') != 'COMPLETE'):
                     raise HardStop('grind_evidence_incomplete')
             except Exception as error:
-                results.append({"hard_stop": True, "reason": stop_reason(error),
-                                "name": case["name"], "repetition": repetition + 1})
+                stopped = {"hard_stop": True, "reason": stop_reason(error),
+                           "name": case["name"], "repetition": repetition + 1}
+                diagnostic = getattr(error, 'readiness', None)
+                flags = ('failed', 'context_ready', 'owner_matches', 'capture_pending')
+                if (isinstance(diagnostic, dict) and set(diagnostic) == {'age_ms', *flags} and
+                        type(diagnostic['age_ms']) is int and -100000 <= diagnostic['age_ms'] <= 100000 and
+                        all(type(diagnostic[key]) is bool for key in flags)):
+                    stopped['readiness'] = diagnostic
+                results.append(stopped)
                 break
         if results and results[-1].get("hard_stop"):
             break

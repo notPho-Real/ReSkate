@@ -281,6 +281,19 @@ class RobotTests(unittest.TestCase):
             release.set()
             monitor.close()
 
+    def test_readiness_clock_is_sampled_after_the_selected_snapshot(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        monitor = robot.ReadinessMonitor(ready, 12, .002, clock=lambda: .003)
+        self.assertFalse(monitor.ready(.001))  # Old caller timestamp predates publication.
+        self.assertTrue(monitor.ready())
+        def publish_during_clock_read():
+            monitor.snapshot = (.004, ready)
+            return .003
+        monitor.clock = publish_during_clock_read
+        self.assertTrue(monitor.ready())  # Uses the snapshot selected before the clock read.
+        monitor.clock = lambda: .105
+        self.assertFalse(monitor.ready())  # The same 100ms freshness bound still applies.
+
     def test_readiness_monitor_latches_failure_and_rejects_wrong_capture_owner(self):
         ready = {'ready': True, 'gamescope_pids': [12]}
         monitor = robot.ReadinessMonitor(ready, 12, 0,

@@ -1,0 +1,1074 @@
+{
+  "schema": 1,
+  "game_build": "20260929",
+  "steam_build": 25414733,
+  "source_commit": "9a96c69ff42c6fe0c75a06ccb180f6235582d34f",
+  "dll_sha256": "10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54",
+  "location": "Stadium1",
+  "saved_layout": "Arcade Rail Fixture",
+  "asset": "own_bkrails_generic_flatrailround_00002",
+  "rail_position": [
+    -39.40615463256836,
+    46.000064849853516,
+    60.61632537841797
+  ],
+  "rail_rotation": [
+    0,
+    0,
+    0,
+    1
+  ],
+  "rail_scale": 1,
+  "saved_riding_start": [
+    -39.40615463256836,
+    47.02873611450195,
+    52.61632537841797
+  ],
+  "measured_post_mount_start": [
+    -39.28947,
+    47.028736,
+    52.84672
+  ],
+  "heading_degrees": 359.9895,
+  "baseline_speed_max_m_s": 0.1,
+  "simulation_rate_hz": 60,
+  "reset": "Existing native Trainer teleport to saved start, then native mount; require fresh riding100, measured pose/heading/speed and reset_ready. Editor closed.",
+  "validation": {
+    "relocation": "1792040961694409000",
+    "physical_rail_full_size_capture": "1792041066703028000",
+    "mounted_reset_repeatability": "1792041489143174000",
+    "reset_repeats": 3,
+    "reset_position_spread_max_m": 0.0002
+  },
+  "axis_convention": "Linux Y down-positive; every phase is a full pad state, omitted controls neutral.",
+  "acceptance_plans": {
+    "native_controls_10": [
+      {
+        "name": "native-rail-control",
+        "family": "native-grind",
+        "phases": [
+          {
+            "ms": 0,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 500,
+            "ry": 32767
+          },
+          {
+            "ms": 900,
+            "ry": -32767
+          },
+          {
+            "ms": 1050
+          },
+          {
+            "ms": 2200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5200
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 6500,
+        "reset_ms": 10000,
+        "repeat": 10,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      }
+    ],
+    "y_variations_20": [
+      {
+        "name": "arcade-y-neutral-delay-0",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 3,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-neutral-delay-100",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500
+          },
+          {
+            "ms": 1600,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 3,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-neutral-delay-200",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500
+          },
+          {
+            "ms": 1700,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 3,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-neutral-delay-300",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500
+          },
+          {
+            "ms": 1800,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 3,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-up-delay-0",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ],
+            "dy": -1
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 2,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-up-delay-200",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500
+          },
+          {
+            "ms": 1700,
+            "buttons": [
+              "Y"
+            ],
+            "dy": -1
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 2,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-down-delay-0",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ],
+            "dy": 1
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 2,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-down-delay-200",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500
+          },
+          {
+            "ms": 1700,
+            "buttons": [
+              "Y"
+            ],
+            "dy": 1
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 2,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      }
+    ],
+    "approach_variations_10": [
+      {
+        "name": "arcade-y-approach-crouch-850",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 850,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1250,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-approach-crouch-900",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 900,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1300,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-approach-crouch-950",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 950,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1350,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-approach-crouch-1000",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1000,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1400,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-approach-crouch-1100",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-alignment-left-16000",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767,
+            "lx": -16000
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-alignment-left-10000",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767,
+            "lx": -10000
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-alignment-right-0",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767,
+            "lx": 0
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-alignment-right-10000",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767,
+            "lx": 10000
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      },
+      {
+        "name": "arcade-y-alignment-right-16000",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767,
+            "lx": 16000
+          },
+          {
+            "ms": 1100,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1500,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 1,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      }
+    ],
+    "best_repeats_10": [
+      {
+        "name": "arcade-y-neutral-best-repeat",
+        "family": "arcade-y-grind",
+        "phases": [
+          {
+            "ms": 0
+          },
+          {
+            "ms": 300,
+            "ly": -32767
+          },
+          {
+            "ms": 900,
+            "buttons": [
+              "A"
+            ]
+          },
+          {
+            "ms": 1300,
+            "buttons": [
+              "Y"
+            ]
+          },
+          {
+            "ms": 3000
+          },
+          {
+            "ms": 3200,
+            "buttons": [
+              "B"
+            ]
+          },
+          {
+            "ms": 5600
+          }
+        ],
+        "expected": {
+          "states": [
+            100,
+            200,
+            100
+          ]
+        },
+        "timeout_ms": 7000,
+        "reset_ms": 10000,
+        "repeat": 10,
+        "capture_frames": 0,
+        "baseline_max_speed_mm_s": 100,
+        "fixture_reset": true
+      }
+    ]
+  },
+  "best_candidate_rationale": "Crouch900ms, release1300ms: 100ms after the failed800ms crouch and50ms later than earliest successful850ms; longer native grind than1100ms approach."
+}
