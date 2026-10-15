@@ -2236,19 +2236,19 @@
     {
       "id": "revert-abuse",
       "requested_action": "One valid revert opportunity; no repeated grace/multiplier farming",
-      "implementation_status": "Model450ms opportunity/consume/expiry tests pass",
+      "implementation_status": "Native label-based continuation wired in2bdf062; installed source has no supported-build gameplay acceptance after Steam update. Existing deterministic and recorded revert-link grader tests pass.",
       "source_ids": [
         "native-line-events",
         "community-full-translator"
       ],
-      "remaining": "Native revert acknowledgement not connected.",
-      "next": "Require native revert then actual next-action event; run chainG repeated RT negative control.",
+      "remaining": "Validate installed native acknowledgement and single continuation on restored supported build; current historical trials do not establish accepted linking.",
+      "next": "Resume prepared HIL41 tests; repeated native RT must not refresh grace or multiplier indefinitely.",
       "new_deck_trials": 0
     },
     {
       "id": "bank-bail",
       "requested_action": "Bank clean/expired combo; lose unbanked score on bail; clear HUD/fatigue",
-      "implementation_status": "Offline ScoreSettlement composes with existing ComboSession/Model: verified action-slot credits, no duplicate takeoff multiplier, complete-action requirement, deferred clean bank, explicit bail-loss amount and fatigue reset. Synthetic admission/model tests only; current native source cannot authorize points.",
+      "implementation_status": "Offline ScoreSettlement composes with existing ComboSession/Model: verified action-slot credits, complete-action requirement, deferred clean bank, explicit bail-loss amount and fatigue reset. A fresh complete receipt/health snapshot is required after model terminal; losses during grace fail closed. Synthetic admission/model tests only; production monetary adapter remains dormant.",
       "source_ids": [
         "native-line-events",
         "native-bail-scoped"
