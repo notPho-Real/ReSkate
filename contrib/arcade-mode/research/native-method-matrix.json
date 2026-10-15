@@ -1870,7 +1870,7 @@
       "requested_action": "Physical balance-failure consequence",
       "classification": "RE-SKATE METHOD AVAILABLE",
       "source_id": "native-bail-minimal / native-bail-scoped",
-      "implementation_status": "Native request candidates reviewed; integration and independent result verification pending",
+      "implementation_status": "Native impact request integrated in source with serial/expiry/full-owner checks, original selector result, protection/cancel guards and numeric acknowledgement; local tests pass. NOT installed or Deck verified.",
       "native_id": null,
       "deck_trials": 0
     },

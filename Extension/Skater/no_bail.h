@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include "native_bail_request.h"
 
 namespace dingosdk {
 bool start_no_bail(std::uintptr_t image_base) noexcept;
@@ -32,8 +33,14 @@ void clear_no_bail_flight() noexcept;
 // (Hall of Meat): any thread, its ownership chain resolved again now.
 struct NoBailSkater {
     std::uintptr_t base{}, entity{}, core{}, context{}, rig{};
+    bool operator==(const NoBailSkater&) const = default;
 };
 bool no_bail_skater(NoBailSkater& skater) noexcept;
+// One native impact request for a measured Arcade balance failure. The complete
+// local owner is revalidated at queue and selector delivery; No Bail wins.
+std::uint64_t request_balance_bail(const NoBailSkater& observed) noexcept;
+void cancel_balance_bail() noexcept;
+NativeBailStatus balance_bail_status() noexcept;
 // Every physics step of that skater, whether or not No Bail protects it: No Bail's hook on the
 // skeleton response runs once per step, right after the step's body contacts, and hands it on after
 // its own filtering, so a wipeout it filtered never happened. `seconds` is the step's simulated time.

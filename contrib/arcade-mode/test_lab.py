@@ -372,6 +372,19 @@ class ComboTraceTests(unittest.TestCase):
         for bad in (row + ' private', row.replace('0.5', '1e999'), row.replace('pose=4', 'pose=9')):
             self.assertEqual(probe.parse_combo_samples(bad)['events'], [])
 
+    def test_physical_balance_failure_requests_and_native_results_stay_separate(self):
+        failure = 'ARCADE BALANCE FAILURE: ms=10 kind=2 request=7.'
+        result = 'ARCADE BALANCE BAIL: ms=20 request=7 result=3.'
+        parsed = probe.parse_combo_samples((failure + '\n' + result + '\n') * 200)
+        self.assertEqual(len(parsed['failure_requests']), 128)
+        self.assertEqual(len(parsed['bail_results']), 128)
+        self.assertEqual(parsed['bail_results'][-1], dict(ms=20, request=7, result=3))
+        self.assertEqual(parsed['samples'], [])  # A request/result log cannot fabricate physics rows.
+        for bad in (failure + ' private', failure.replace('kind=2', 'kind=9'),
+                    failure.replace('request=7', 'request=18446744073709551616')):
+            self.assertEqual(probe.parse_combo_samples(bad)['failure_requests'], [])
+        self.assertEqual(probe.parse_combo_samples(result.replace('result=3', 'result=9'))['bail_results'], [])
+
     def test_nested_score_probe_is_numeric_bounded_and_private(self):
         rows = ('ARCADE SCORE NODE: path=9b74fc7c.12345678 kind=10 size=1.\n'
                 'ARCADE SCORE VALUE: ms=99 path=9b74fc7c.12345678 value=1.\n') * 500

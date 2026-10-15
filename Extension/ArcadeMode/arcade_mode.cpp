@@ -139,15 +139,24 @@ ComboSession combo_session;
 std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
 bool had_combo_owner{};
+NoBailSkater combo_owner{};
+NativeBailStatus previous_balance_bail{};
 SkatePose previous_pose{SkatePose::unknown};
 std::uint64_t next_balance_sample{};
 unsigned balance_sample_count{};
-void update_combo(const NativeRequestSample& native, const ControllerInput& input,
+void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now) noexcept {
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid;
-    const bool bail = valid && had_combo_owner && wipeouts != observed_wipeouts;
+    const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
+    if (!valid || owner_changed) {
+        cancel_balance_bail();
+        combo_session.invalidate();
+        combo_tick_at = 0;
+    }
+    const bool bail = valid && had_combo_owner && !owner_changed && wipeouts != observed_wipeouts;
     had_combo_owner = valid;
+    combo_owner = valid ? owner : NoBailSkater{};
     observed_wipeouts = wipeouts;
     const auto pose = observed_pose({valid,
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
@@ -162,7 +171,19 @@ void update_combo(const NativeRequestSample& native, const ControllerInput& inpu
     combo_tick_at = now;
     const auto kind = combo_session.model().state().balance_kind;
     const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available);
+    const bool was_active = combo_session.model().state().combo_active;
     const bool failed = combo_session.step(pose, dt, correction);
+    if (failed) {
+        const auto serial = request_balance_bail(owner);
+        {
+            std::lock_guard lock(ollie_mutex);
+            arcade_input.cancel_commands();
+            for (auto& action : action_inputs) action.reset();
+            for (auto& rotation : rotations) rotation.reset();
+        }
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE BALANCE FAILURE: ms={} kind={} request={}.", now, static_cast<unsigned>(kind), serial);
+    }
     const auto& balance = combo_session.model().state();
     if (balance.balance_kind != BalanceKind::none && now >= next_balance_sample && balance_sample_count < 4096) {
         next_balance_sample = now + 250;
@@ -172,7 +193,7 @@ void update_combo(const NativeRequestSample& native, const ControllerInput& inpu
             now, static_cast<unsigned>(balance.balance_kind), balance.balance, balance.balance_velocity,
             correction, combo_session.model().difficulty(), input.left_x, input.left_y);
     }
-    if (pose != previous_pose || failed) {
+    if (pose != previous_pose || failed || was_active != balance.combo_active) {
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE COMBO EVENT: ms={} pose={} active={} failed={} fatigue={} grind={} manual={} native_failure_verified=false.",
             now, static_cast<unsigned>(pose), combo_session.model().state().combo_active, failed,
@@ -221,7 +242,7 @@ bool validate_request_probe(std::uintptr_t base) noexcept {
     return true;
 }
 
-NativeRequestSample native_request_sample() noexcept {
+NativeRequestSample native_request_sample(NoBailSkater& validated_owner) noexcept {
     using namespace game::build::v20260929::arcade_native_probe;
     NoBailSkater owner{}, after{};
     NativeRequestSample result;
@@ -232,6 +253,7 @@ NativeRequestSample native_request_sample() noexcept {
         !no_bail_skater(after) || owner.core != after.core || owner.context != after.context ||
         owner.rig != after.rig || owner.entity != after.entity) return {};
     result.valid = true;
+    validated_owner = after;
     return result; // Independent guarded reads, NOT an atomic physics snapshot.
 }
 
@@ -345,6 +367,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 }
 
 void set_enabled(bool value, bool persist) noexcept {
+    cancel_balance_bail();
     invalidate_grind_observer();
     if (value) prepare_authored_catalog();
     {
@@ -519,7 +542,8 @@ void on_client_tick() noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
         }
-        const auto native = input.available && request_probe_ready ? native_request_sample() : NativeRequestSample{};
+        NoBailSkater native_owner{};
+        const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
         // Reuse the existing guarded stance flag in request_words[0]. On this
         // Deck, the clear-bit stance needs lateral reflection: authored 2/3
         // otherwise produced native 3/2. Other stance contexts remain HIL gates.
@@ -534,14 +558,24 @@ void on_client_tick() noexcept {
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
         board_eligible_until.store(gameplay && watch.valid && native_board_toggle_safe(native) ? now + 150 : 0,
             std::memory_order_release);
-        if (gameplay) update_combo(native, input, watch.valid, watch.wipeouts, now);
+        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now);
         else {
+            cancel_balance_bail();
+            had_combo_owner = false;
+            combo_owner = {};
             manual_eligible_until.store(0, std::memory_order_release);
             action_eligible_until.store(0, std::memory_order_release);
             manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
             combo_session.invalidate();
             combo_tick_at = 0;
             publish_balance_hud({}, 0);
+        }
+        const auto failure_status = balance_bail_status();
+        if (failure_status.serial != previous_balance_bail.serial || failure_status.result != previous_balance_bail.result) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BALANCE BAIL: ms={} request={} result={}.", now, failure_status.serial,
+                static_cast<unsigned>(failure_status.result));
+            previous_balance_bail = failure_status;
         }
         // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
         // checks without injecting an A press merely to arm a capture.

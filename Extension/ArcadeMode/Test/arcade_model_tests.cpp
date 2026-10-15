@@ -15,6 +15,7 @@
 #include "Extension/ArcadeMode/arcade_classic_input.h"
 #include "Extension/ArcadeMode/arcade_camera.h"
 #include "Extension/ArcadeMode/arcade_score_labels.h"
+#include "Extension/Skater/native_bail_request.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -35,6 +36,43 @@ int main() {
     run_arcade_playback_tests();
 #endif
     using namespace dingosdk::arcade_mode;
+    {
+        using dingosdk::NativeBailRequest;
+        using dingosdk::NativeBailResult;
+        NativeBailRequest<unsigned> request;
+        const auto first = request.queue(7, 100);
+        const auto ticket = *request.ticket();
+        check(first && !request.queue(8, 101), "pending physical failure cannot be overwritten or extended");
+        check(request.take(ticket, 7, 200, false), "validated owner consumes one bounded request");
+        check(!request.queue(8, 201), "in-flight native selection cannot be replaced by another request");
+        check(!request.take(ticket, 7, 201, false), "physical request cannot repeat every physics step");
+        request.finish(first, true, 100);
+        check(request.status().result == NativeBailResult::rejected, "native rejection is preserved, never forced to bail");
+        auto serial = request.queue(7, 1000);
+        check(request.take(*request.ticket(), 7, 1001, false), "fresh failure can queue after prior outcome");
+        request.finish(first, true, 300);
+        check(request.status().result == NativeBailResult::delivered, "old acknowledgement cannot satisfy a new request");
+        request.finish(serial, true, 300);
+        check(request.status().result == NativeBailResult::observed_wipeout, "actual native300 acknowledges delivery");
+        request.queue(7, 2000);
+        check(!request.take(*request.ticket(), 7, 2300, false) && request.status().result == NativeBailResult::expired,
+              "expired impact request never reaches native memory");
+        request.queue(7, 3000);
+        check(!request.take(*request.ticket(), 8, 3001, false) && request.status().result == NativeBailResult::owner_lost,
+              "changed owner cannot inherit a balance failure");
+        request.queue(7, 4000);
+        check(!request.take(*request.ticket(), 7, 4001, true) && request.status().result == NativeBailResult::protected_skater,
+              "existing native protection blocks explicit balance impact");
+        request.queue(7, 5000);
+        const auto cancelled = *request.ticket();
+        request.cancel();
+        check(!request.ticket() && !request.take(cancelled, 7, 5001, false),
+              "menu or toggle cancellation removes pending impact");
+        serial = request.queue(7, 6000);
+        request.take(*request.ticket(), 7, 6001, false);
+        request.finish(serial, false, 300);
+        check(request.status().result == NativeBailResult::rejected, "failed request is not credited for unrelated native bail");
+    }
     {
         GrindInput grind;
         check(!grind.poll(0x8000, 0, 0, true, SkatePose::air, false).owns_stick,
@@ -72,6 +110,25 @@ int main() {
         grind.poll(0x8000, 0, 0, true, SkatePose::air, false);
         check(!grind.poll(0x8000, 0, 0, false, SkatePose::air, false).owns_stick,
             "menus and mode OFF release grind input");
+    }
+    {
+        ArcadeInput input;
+        input.enable(true);
+        const std::array catalog{PreparedGesture{1, false, GestureContext::ground,
+            {{0, 0, -32767}, {18, 0, 32767}, {22, 0, 0}, {55, 0, 0}}}};
+        const auto poll = [&](unsigned tick, unsigned short buttons) {
+            return input.poll(0, tick * 17, buttons, 0, 0, 0, 0, true, true,
+                              false, 0, false, false, true, tick, false, catalog);
+        };
+        poll(0, 0);
+        check(poll(1, ClassicGesture::a).right_y == -32767, "native setup owns input before cancellation");
+        input.cancel_commands();
+        const auto cancelled = poll(2, ClassicGesture::a);
+        check(!cancelled.phase && !cancelled.right_y && !cancelled.buttons,
+              "physical failure releases synthetic input and cannot replay a held command");
+        poll(3, 0);
+        check(poll(4, ClassicGesture::a).right_y == -32767,
+              "fresh command after failure still works without toggling Arcade Mode");
     }
     {
         const std::array catalog{

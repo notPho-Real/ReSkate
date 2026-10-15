@@ -224,8 +224,16 @@ def parse_native_captures(text):
 
 def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
-    samples, events, balance, dropped = [], [], [], 0
+    samples, events, balance, failures, bails, dropped = [], [], [], [], [], 0
     for line in text.splitlines():
+        failure = re.search(r'ARCADE BALANCE FAILURE: ms=([0-9]{1,20}) kind=([12]) request=([0-9]{1,20})\.$', line)
+        if failure and max(int(failure[1]), int(failure[3])) <= 0xffffffffffffffff:
+            failures.append(dict(ms=int(failure[1]), kind=int(failure[2]), request=int(failure[3])))
+            failures = failures[-128:]
+        bail = re.search(r'ARCADE BALANCE BAIL: ms=([0-9]{1,20}) request=([0-9]{1,20}) result=([0-8])\.$', line)
+        if bail and max(int(bail[1]), int(bail[2])) <= 0xffffffffffffffff:
+            bails.append(dict(ms=int(bail[1]), request=int(bail[2]), result=int(bail[3])))
+            bails = bails[-128:]
         event = re.search(r'ARCADE COMBO EVENT: ms=([0-9]{1,20}) pose=([0-7]) active=(true|false) failed=(true|false) fatigue=([0-9.eE+-]{1,24}) grind=([0-9.eE+-]{1,24}) manual=([0-9.eE+-]{1,24}) native_failure_verified=false\.$', line)
         if event and int(event[1]) <= 0xffffffffffffffff:
             try:
@@ -259,7 +267,9 @@ def parse_combo_samples(text):
             samples.append({"ms": int(match[1]), "state": int(match[2]), "mode": int(match[3]),
                             "words": [int(word, 16) for word in match[4].split(',')]})
             samples = samples[-128:]
-    return {"samples": samples, "events": events, "balance": balance, "dropped": dropped, "native_event_identity": "UNVERIFIED"}
+    return {"samples": samples, "events": events, "balance": balance,
+            "failure_requests": failures, "bail_results": bails,
+            "dropped": dropped, "native_event_identity": "UNVERIFIED"}
 
 
 def parse_score_samples(text):

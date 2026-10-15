@@ -135,5 +135,187 @@
       0.08749944
     ],
     "physical_failure_acceptance": false
+  },
+  "handoff_regression": {
+    "source_commit": "956dd27f4a453a21ffcff94e867aee8533bcaa97",
+    "runner": 34,
+    "result": "1792045121865734000",
+    "sha256": "3060b370c0df9d86a375177ec3ed58b69b667750db96c49536c01cbc1c761337",
+    "trials": [
+      {
+        "name": "arcade-natural-exit-combo",
+        "repeat": 1,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          7,
+          2,
+          4,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.05866652
+        ]
+      },
+      {
+        "name": "arcade-natural-exit-combo",
+        "repeat": 2,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          7,
+          2,
+          4,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.05466654
+        ]
+      },
+      {
+        "name": "arcade-natural-exit-combo",
+        "repeat": 3,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          7,
+          2,
+          4,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.05466654
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repeat": 1,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.029333336
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repeat": 2,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.03066667
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-ollie",
+        "repeat": 3,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.03066667
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repeat": 1,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.029333336
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repeat": 2,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.028000003
+        ]
+      },
+      {
+        "name": "arcade-grind-exit-kickflip",
+        "repeat": 3,
+        "native_grind": "PASS",
+        "native_bail": false,
+        "neutralized": true,
+        "reset_ready": true,
+        "poses": [
+          2,
+          3,
+          2,
+          1
+        ],
+        "active_at_every_observed_transition": true,
+        "grind_fatigue_at_landing": [
+          0.028000003
+        ]
+      }
+    ],
+    "result_summary": "9/9 native grind/exit/landing/reset; natural701 handoff keeps combo and grind fatigue; no unexplained inactive transitions.",
+    "limits": [
+      "Native enum binding still unavailable during this restarted-session batch; primary physics evidence complete.",
+      "Natural exits briefly report manual pose4 on landing. Exact native manual identity during that transient remains unverified.",
+      "Grace-expiry banking did not emit a pose-change event in this build; source now logs active-state changes. Native awarded score integration remains unverified."
+    ]
   }
 }

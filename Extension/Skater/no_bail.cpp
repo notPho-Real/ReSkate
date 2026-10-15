@@ -10,6 +10,7 @@
 #include <array>
 #include <atomic>
 #include <intrin.h>
+#include <utility>
 
 namespace dingosdk {
 namespace {
@@ -53,6 +54,7 @@ struct Protection {
     std::uintptr_t base{};
     bool mount_test{}; // the selector's mount request test is the known one
     BoardLock board;
+    NativeBailRequest<Owner> balance_bail;
     RecordCause cause_original{};
     ChooseState choose_original{};
     SkeletonResponse skeleton_original{};
@@ -150,6 +152,15 @@ bool cancel_request(std::uintptr_t context, std::uintptr_t offset, LONG mask) no
 bool cancel_impact_request(std::uintptr_t context) noexcept {
     return cancel_request(context, impact_request_offset, impact_request_mask);
 }
+bool emit_balance_impact(const Owner& owner) noexcept {
+    const auto address = owner.context + impact_request_offset;
+    if ((address & (alignof(LONG) - 1)) != 0) return false;
+    __try {
+        _InterlockedOr(reinterpret_cast<volatile LONG*>(address), impact_request_mask);
+        protection().cause_original(owner.causes, impact_bail_calls[0].reason, 0.0f);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 bool cancel_wipeout_requests(std::uintptr_t context) noexcept {
     return cancel_impact_request(context) &&
         cancel_request(context, animation_request_offset, animation_request_mask);
@@ -203,10 +214,30 @@ void hold_off_board(std::uintptr_t selector, std::uint32_t current) noexcept {
     if (!resolve(board.owner.client, board.owner.entity, current_owner) || current_owner != board.owner) return;
     (void)cancel_request(current_owner.context, animation_request_offset, mount_request_mask);
 }
+std::pair<std::uint64_t, bool> take_balance_bail(std::uintptr_t selector, std::uint32_t current) noexcept {
+    auto& p = protection();
+    if (!p.ready.load(std::memory_order_acquire)) return {};
+    AcquireSRWLockShared(&p.lock);
+    const auto ticket = p.balance_bail.ticket();
+    const auto lease = p.lease;
+    ReleaseSRWLockShared(&p.lock);
+    if (!ticket || selector != ticket->owner.selector) return {};
+    Owner owner{};
+    const bool valid = resolve(ticket->owner.client, ticket->owner.entity, owner);
+    const bool riding = (current >= 100 && current < 300) || (current >= 400 && current < 500);
+    AcquireSRWLockExclusive(&p.lock);
+    const bool take = p.balance_bail.take(*ticket, valid && riding ? owner : Owner{},
+                                         GetTickCount64(), lease.active(GetTickCount64()));
+    ReleaseSRWLockExclusive(&p.lock);
+    if (!take) return {};
+    return {ticket->serial, emit_balance_impact(owner)};
+}
 std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
+    std::pair<std::uint64_t, bool> balance_request{};
     {
         LastError error;
         hold_off_board(selector, current);
+        balance_request = take_balance_bail(selector, current);
     }
     // Clear shared requests before selection so native ground/air/walking
     // transitions can still run. Some contact tests return Wipeout directly;
@@ -215,6 +246,12 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
     const auto next = protection().choose_original(selector, current);
     LastError error;
     const auto chosen = filtered && next == wipeout_physics_state && protected_owner(selector, &Owner::selector) ? current : next;
+    if (balance_request.first) {
+        auto& p = protection();
+        AcquireSRWLockExclusive(&p.lock);
+        p.balance_bail.finish(balance_request.first, balance_request.second, chosen);
+        ReleaseSRWLockExclusive(&p.lock);
+    }
     auto& w = state_watch();
     if (selector == w.selector.load(std::memory_order_acquire) && GetTickCount64() < w.until.load(std::memory_order_acquire)) {
         if (const auto before = w.state.exchange(chosen, std::memory_order_acq_rel); before != chosen) {
@@ -427,9 +464,42 @@ void clear_no_bail() noexcept {
     auto& p = protection();
     AcquireSRWLockExclusive(&p.lock);
     p.lease = {};
+    p.balance_bail.cancel();
     ReleaseSRWLockExclusive(&p.lock);
 }
 bool no_bail_skater(NoBailSkater& skater) noexcept { return published_skater(0, skater); }
+std::uint64_t request_balance_bail(const NoBailSkater& observed) noexcept {
+    LastError error;
+    auto& p = protection();
+    if (!p.ready.load(std::memory_order_acquire)) return 0;
+    AcquireSRWLockShared(&p.lock);
+    const auto lease = p.lease;
+    ReleaseSRWLockShared(&p.lock);
+    Owner current{};
+    std::uint32_t state{};
+    const auto now = GetTickCount64();
+    if (lease.active(now) || !resolve(lease.owner.client, lease.owner.entity, current) || current != lease.owner ||
+        observed.base != p.base || observed.entity != current.entity || observed.core != current.core ||
+        observed.context != current.context || observed.rig != current.rig ||
+        !read(current.context + 0x1414, state) || (state != 100 && !(state >= 400 && state < 500))) return 0;
+    AcquireSRWLockExclusive(&p.lock);
+    const auto serial = p.lease.owner == current && !p.lease.active(now) ? p.balance_bail.queue(current, now) : 0;
+    ReleaseSRWLockExclusive(&p.lock);
+    return serial;
+}
+void cancel_balance_bail() noexcept {
+    auto& p = protection();
+    AcquireSRWLockExclusive(&p.lock);
+    p.balance_bail.cancel();
+    ReleaseSRWLockExclusive(&p.lock);
+}
+NativeBailStatus balance_bail_status() noexcept {
+    auto& p = protection();
+    AcquireSRWLockShared(&p.lock);
+    const auto status = p.balance_bail.status();
+    ReleaseSRWLockShared(&p.lock);
+    return status;
+}
 void set_no_bail_step_observer(NoBailStepObserver observer) noexcept {
     protection().step_observer.store(observer, std::memory_order_release);
 }

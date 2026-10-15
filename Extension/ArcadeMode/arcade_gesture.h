@@ -116,6 +116,9 @@ public:
     void enable(bool value) noexcept {
         if (enabled_ == value) return;
         enabled_ = value;
+        cancel_commands();
+    }
+    void cancel_commands() noexcept {
         for (auto& gesture : gestures_) gesture.cancel();
         for (auto& gesture : classic_) gesture.cancel();
         for (auto& manual : manuals_) manual.cancel();

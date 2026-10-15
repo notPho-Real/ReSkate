@@ -3,8 +3,9 @@
 Gameplay installed:956dd27f4a453a21ffcff94e867aee8533bcaa97, DLL
 5878204dd48ac2ae4259c96c3b1562fd5bee60fbe94f1c7ba5a8ed0345c6afa7.
 All five CI38688434844 gates passed; grind-handoff-deploy-v1 receipt preserves
-stock/game hashes, updates off and recovery clear. Game launch is requested after
-the necessary DLL restart; restore the saved Stadium fixture before trials.
+stock/game hashes, updates off and recovery clear. Game is running after the
+necessary DLL restart; saved Stadium rail loaded/adopted, editor/console closed,
+Arcade Mode ON, auxiliary actions OFF and simulation60 restored.
 Root owns hardware. Frozen HIL34 and maintenance42 pin this installation.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
@@ -77,12 +78,29 @@ All4 native exits/reset passed without bail. Physical boundary failure remains o
 CI38688434844 now passed all5 gates. Verified immutable956dd27 artifact SHA
 5878204dd48ac2ae4259c96c3b1562fd5bee60fbe94f1c7ba5a8ed0345c6afa7 downloaded
 by frozen grind-handoff-deploy-v1. Deployment receipt confirms all exact hashes, updates off and recovery clear.
-All trial batches ended; maintenance42 launch is requested. Use its play operation
-after the launcher is ready, then restore the fixture.
+Launch/play and native Stadium travel completed. Preload status1792044925347634000
+verified editor generation8/revision8, exact asset ready. Native saved-layout load
+and adoption requested, then editor closed and simulation60/actions-off restored.
+HIL34 result1792045121865734000 passed9/9 targeted natural/Ollie/Kickflip exit
+chains, native grind/exit/landing/reset and retained grind fatigue. Natural701
+handoff stayed active in3/3; all9 had no inactive transition or bail. Exact native
+enum bindings remained unavailable after restart; primary physics evidence complete.
+Natural landings briefly reported manual pose4; named native manual identity for
+that transient and actual score/bank semantics remain open.
 Frozen HIL34/maintenance42 target956dd27. HIL34 manifest
 be5f2ec1ac93d7e9ba578c5a1740311bb7adb6267e13bdc589e0e3cc5d74ca0a.
-After installation, restore Stadium saved rail, adopt/verify native reset and run
-focused natural/A/X exit chains. Do not repeat the50-trial entry matrix.
+Saved fixture and targeted exit regression are complete; game is hot, mounted and
+stopped at the fixture. No controller batch is running. Do not repeat50-trial entry matrix.
+
+New source work (NOT installed):bounded native impact request on actual model
+balance failure, full owner revalidation, existing No Bail protection, serial/300ms
+expiry/cancellation, native selector acknowledgement and synthetic-input release.
+No forced physics result or velocity change. Adds numeric request/result telemetry,
+owner-change combo reset and active-state logging to expose grace expiry. Local
+33612 model/sanitizer checks and236 Python tests pass; Windows CI and real physical
+bail validation remain required.
+Next:CI-verify this physical failure build, native manual failure pilot, then grind
+failure using sufficient real rail duration; finish full-range HUD and combo scoring.
 Physical balance failure, HUD full-range captures, scoring/banking and mixed
 stress remain open.
 Existing rotation/manual evidence below remains valid within its recorded scope.
