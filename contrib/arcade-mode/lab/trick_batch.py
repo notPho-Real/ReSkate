@@ -46,7 +46,9 @@ def validate_plan(plan):
     names, trials = set(), 0
     for case in cases:
         keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
-             ("repeat", "capture_frames", "baseline_max_speed_mm_s"))
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset"))
+        if "fixture_reset" in case and type(case["fixture_reset"]) is not bool:
+            raise ValueError("Fixture reset must be boolean")
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
@@ -108,7 +110,8 @@ def observations(text):
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
             "score_edges": parse_score_edges(text), "score_numbers": parse_score_numbers(text),
-            "native_score": parse_native_score_events(text), "grind": parse_grind_observations(text)}
+            "native_score": parse_native_score_events(text), "grind": parse_grind_observations(text),
+            "fixture": parse_fixture_status(text)}
 
 
 def subsequence(expected, rows):
@@ -164,6 +167,8 @@ def grind_result(observation, baseline, reset_ok):
 
 def perform_case(plan, case, env):
     env.integrity(plan)
+    if case.get('fixture_reset'):
+        env.fixture_reset(case['reset_ms'])
     readiness = ({"max_speed_mm_s": case["baseline_max_speed_mm_s"]}
                  if "baseline_max_speed_mm_s" in case else {})
     baseline = env.wait_idle(case["reset_ms"], **readiness)
@@ -172,6 +177,8 @@ def perform_case(plan, case, env):
                 "reason": "No fresh on-board baseline satisfying the requested speed bound" if readiness else
                           "No fresh stable on-board heartbeat", "frames": [], "observations": {}}
     baseline_observation = env.observe()
+    if case.get('fixture_reset'):
+        baseline_observation = env.wait_grind_ready(case['reset_ms'])
     before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
     result = env.gesture(case)
@@ -207,6 +214,12 @@ def perform_case(plan, case, env):
                             "physics_state_sequence": "PASS" if physics_match else "UNVERIFIED",
                             "returned_to_idle": "PASS" if reset is not None else "FAIL",
                             "named_trick": named_flip_result(case["expected"].get("trick"), obs, log_boundary)}, neutralized=True)
+    if case.get('fixture_reset'):
+        # Preserve trial evidence before the console/native reset changes owner generation.
+        try:
+            result['fixture_reset'] = env.fixture_reset(case['reset_ms'])
+        except Exception as error:
+            result['fixture_reset'] = {'reset_ready': False, 'reason': stop_reason(error)}
     # Named success requires an independent native identifier from this trial.
     return result
 
@@ -227,6 +240,9 @@ def stop_reason(error):
         "Bounded experiment interrupted": "watchdog_or_interruption",
         "Bounded session deadline reached": "session_deadline",
         "Incomplete uinput write": "input_write_incomplete",
+        "fixture_window_invalid": "fixture_window_invalid",
+        "fixture_reset_unverified": "fixture_reset_unverified",
+        "grind_evidence_incomplete": "grind_evidence_incomplete",
     }
     return categories.get(str(error), "integrity_or_transport_failure")
 
@@ -241,6 +257,11 @@ def perform_batch(plan, env):
                 result = perform_case(plan, case, env)
                 result["repetition"] = repetition + 1
                 results.append(result)
+                if case.get('fixture_reset') and not result.get('fixture_reset', {}).get('reset_ready'):
+                    raise HardStop('fixture_reset_unverified')
+                if case.get('fixture_reset') and (not result.get('input_sent') or
+                        result.get('observations', {}).get('grind_result', {}).get('evidence') != 'COMPLETE'):
+                    raise HardStop('grind_evidence_incomplete')
             except Exception as error:
                 results.append({"hard_stop": True, "reason": stop_reason(error),
                                 "name": case["name"], "repetition": repetition + 1})
@@ -334,6 +355,46 @@ class DeckEnvironment:
             time.sleep(0.25)
         return None
 
+    def fixture_reset(self, milliseconds):
+        if self.session is None or self.session.pad is None:
+            raise HardStop('fixture_reset_unverified')
+        self.session.pad.neutral()
+        boundary = self.observe().get('log_end')
+        if boundary is None:
+            raise HardStop('fixture_reset_unverified')
+        fixture_console('reset')
+        deadline = time.monotonic() + milliseconds / 1000
+        while time.monotonic() < deadline:
+            self.session._clock()
+            fixture_console('status')
+            observation = self.observe(since=boundary)
+            status = observation.get('fixture')
+            if status and not observation.get('evidence_gap') and status['reset_ready']:
+                return status
+            if status and (status['failed'] or status['editor_open'] or not status['present']):
+                break
+            boundary = observation.get('log_end', boundary)
+            time.sleep(.1)
+        raise HardStop('fixture_reset_unverified')
+
+    def wait_grind_ready(self, milliseconds):
+        boundary = self.observe().get('log_end')
+        if boundary is None:
+            raise HardStop('grind_evidence_incomplete')
+        deadline = time.monotonic() + milliseconds / 1000
+        while time.monotonic() < deadline:
+            self.session._clock()
+            observation = self.observe(since=boundary)
+            grind = observation.get('grind', {})
+            rows, status = grind.get('samples', []), grind.get('status', [])
+            if len(rows) >= 3 and status and status[-1]['active']:
+                current = dict(observation, grind=dict(grind, samples=rows[-3:], status=status[-1:]))
+                if (all(r['valid'] and r['state'] == 100 for r in rows[-3:]) and
+                        grind_result(current, current, True)['evidence'] == 'COMPLETE'):
+                    return observation
+            time.sleep(.1)
+        raise HardStop('grind_evidence_incomplete')
+
     def gesture(self, case):
         run = self.session.run if self.session is not None else experiment_events
         return run(case["name"], phase_events(case), case["timeout_ms"] / 1000,
@@ -346,7 +407,8 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers, parse_native_score_events, parse_grind_observations
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_numbers, parse_native_score_events, parse_grind_observations, parse_fixture_status
+from robot import fixture_console
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree
 # during analysis must never change the remote implementation mid-batch.

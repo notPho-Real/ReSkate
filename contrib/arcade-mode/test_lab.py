@@ -29,6 +29,24 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_fixture_status_is_numeric_allowlisted_and_rejects_invalid_context(self):
+        row = {k: False for k in ('configured', 'available', 'busy', 'failed', 'editor_open',
+                                  'asset_available', 'present', 'skater', 'reset_ready')}
+        row.update(configured=True, heading=0., speed=0., state=100, generation=3, revision=1,
+                   position=[1, 2, 3], start=[1, 2, 3], rail_position=[1, 2, 11])
+        def parse(value):
+            return probe.parse_fixture_status('ARCADE FIXTURE: ' + json.dumps(value))
+        self.assertEqual(parse(dict(row, private='never exported')), row)
+        for key, value in [('speed', -1), ('heading', float('nan')), ('state', 1.5),
+                           ('generation', True), ('revision', -1), ('start', [0, 0]),
+                           ('position', [0, 0, 100001]), ('present', 1)]:
+            self.assertIsNone(parse(dict(row, **{key: value})))
+        del row['reset_ready']
+        self.assertIsNone(parse(row))
+        row['configured'] = False
+        del row['start'], row['rail_position']
+        self.assertFalse(parse(row)['reset_ready'])
+
     def test_grind_native_evidence_and_unknown_enum_semantics(self):
         from lab import trick_batch
         row = ('ARCADE GRIND STATE: seq=1 ms=200 generation=3 valid=true state=401 edge=1 duration=0 '

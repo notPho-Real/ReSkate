@@ -492,6 +492,36 @@ def parse_native_score_events(text):
                 native_event_identity='UNVERIFIED')
 
 
+def parse_fixture_status(text):
+    result = None
+    booleans = ('configured', 'available', 'busy', 'failed', 'editor_open', 'asset_available', 'present', 'skater', 'reset_ready')
+    for line in text.splitlines():
+        match = re.search(r'ARCADE FIXTURE: (\{.{1,4096}\})$', line)
+        if not match:
+            continue
+        try:
+            row = json.loads(match[1])
+            if isinstance(row, dict) and row.get('configured') is False:
+                row.setdefault('reset_ready', False)
+                row.setdefault('start', [0, 0, 0])
+                row.setdefault('rail_position', [0, 0, 0])
+            if not isinstance(row, dict) or any(type(row.get(k)) is not bool for k in booleans):
+                continue
+            numeric = ('heading', 'speed', 'state', 'generation', 'revision')
+            if any(type(row.get(k)) not in (int, float) or not math.isfinite(row[k]) or abs(row[k]) > 1e12 for k in numeric):
+                continue
+            if any(type(row[k]) is not int or row[k] < 0 for k in ('state', 'generation', 'revision')) or row['speed'] < 0:
+                continue
+            if any(not isinstance(row.get(k), list) or len(row[k]) != 3 or
+                   any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 100000 for v in row[k])
+                   for k in ('position', 'start', 'rail_position')):
+                continue
+            result = {k: row[k] for k in (*booleans, *numeric, 'position', 'start', 'rail_position')}
+        except (ValueError, TypeError):
+            continue
+    return result
+
+
 def parse_grind_observations(text):
     """Fixed numeric records only. Raw enums deliberately have no named mapping."""
     result = dict(samples=[], pad=[], status=[], dropped=0, native_identity='UNKNOWN')
@@ -601,4 +631,5 @@ def native_trace(request, **kwargs):
             "score_number_observations": parse_score_numbers(text[start:] if start >= 0 else ""),
             "native_score_observations": parse_native_score_events(text[start:] if start >= 0 else ""),
             "grind_observations": parse_grind_observations(text[start:] if start >= 0 else ""),
+            "fixture": parse_fixture_status(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

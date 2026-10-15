@@ -26,6 +26,43 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_fixture_trials_continue_misses_but_stop_lost_evidence_or_reset(self):
+        value = plan()
+        value['candidates'][0].update(fixture_reset=True, repeat=3)
+        valid = dict(input_sent=True, fixture_reset={'reset_ready': True},
+                     observations={'grind_result': {'evidence': 'COMPLETE', 'native_grind': 'FAIL'}})
+        with patch.object(batch, 'perform_case', side_effect=lambda *_: copy.deepcopy(valid)) as run:
+            self.assertEqual(len(batch.perform_batch(value, object())['trials']), 3)
+            self.assertEqual(run.call_count, 3)
+        for failed, reason in [(dict(valid, fixture_reset={'reset_ready': False}), 'fixture_reset_unverified'),
+                               (dict(valid, observations={}), 'grind_evidence_incomplete')]:
+            with patch.object(batch, 'perform_case', return_value=failed) as run:
+                results = batch.perform_batch(value, object())['trials']
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(results[-1]['reason'], reason)
+            self.assertIn('observations', results[0])
+
+    def test_fixture_reset_neutralizes_and_requires_fresh_native_confirmation(self):
+        session = Mock()
+        env = batch.DeckEnvironment(session)
+        status = dict(reset_ready=True, present=True, failed=False, editor_open=False)
+        env.observe = Mock(side_effect=[{'log_end': 100}, {'log_end': 200, 'fixture': status}])
+        with patch.object(batch, 'fixture_console') as console:
+            self.assertEqual(env.fixture_reset(1000), status)
+        session.pad.neutral.assert_called_once()
+        self.assertEqual([c.args for c in console.call_args_list], [('reset',), ('status',)])
+        self.assertEqual(env.observe.call_args.kwargs, {'since': 100})
+        env.observe = Mock(side_effect=[{'log_end': 200}, {'fixture': dict(status, reset_ready=False, present=False)}])
+        with patch.object(batch, 'fixture_console'), self.assertRaises(batch.HardStop):
+            env.fixture_reset(1000)
+
+    def test_fixture_console_rejects_plan_commands_without_running_tools(self):
+        with patch.object(robot.subprocess, 'run') as run:
+            for command in ('place', 'save', 'reset; exit', 'status\nother'):
+                with self.assertRaises(ValueError):
+                    robot.fixture_console(command)
+            run.assert_not_called()
+
     def test_hard_stop_reports_only_allowlisted_cause_and_trial(self):
         value = plan()
         for message, reason in [("Skate exited; test stopped", "input_readiness_lost"),

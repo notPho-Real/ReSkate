@@ -419,6 +419,40 @@ def screenshot(pid, tmp=Path("/tmp"), sleep=time.sleep, clock=time.monotonic):
         os.close(fd)
 
 
+def fixture_console(operation):
+    """Two fixed practice operations only; never accept console text from a plan."""
+    if operation not in ('reset', 'status'):
+        raise ValueError('Unknown fixture operation')
+    environment = dict(os.environ, DISPLAY=':1', XAUTHORITY='/run/pressure-vessel/Xauthority')
+    def run(*args):
+        return subprocess.run(['/usr/bin/xdotool', *args], env=environment,
+                              capture_output=True, text=True, check=True, timeout=3).stdout.strip()
+    windows = run('search', '--onlyvisible', '--name', '^skate\\.$').splitlines()
+    if len(windows) != 1 or not windows[0].isdecimal() or run('getwindowname', windows[0]) != 'skate.':
+        raise RuntimeError('fixture_window_invalid')
+    window = windows[0]
+    geometry = run('getwindowgeometry', '--shell', window).splitlines()
+    if 'WIDTH=1280' not in geometry or 'HEIGHT=800' not in geometry:
+        raise RuntimeError('fixture_window_invalid')
+    pid = run('getwindowpid', window)
+    if not pid.isdecimal():
+        raise RuntimeError('fixture_window_invalid')
+    proc = Path('/proc') / pid
+    argv = (proc / 'cmdline').read_bytes().decode().split('\0')
+    if proc.stat().st_uid != os.getuid() or not any(a.replace('\\', '/').rsplit('/', 1)[-1].lower() == 'skate.exe' for a in argv):
+        raise RuntimeError('fixture_window_invalid')
+    run('windowfocus', '--sync', window)
+    run('key', '--clearmodifiers', '--delay', '30', 'grave')
+    try:
+        time.sleep(.05)  # One UI handoff; native reset completion is observed below.
+        run('key', '--clearmodifiers', 'ctrl+a')
+        run('type', '--clearmodifiers', '--delay', '1', '--', 'arcadefixture ' + operation)
+        run('key', '--clearmodifiers', 'Return')
+        time.sleep(.05)
+    finally:
+        run('key', '--clearmodifiers', 'Escape')
+
+
 def periodic(pid, duration, stop, capture_frames=4):
     if type(capture_frames) is not int or capture_frames not in (0, 1, 4):
         raise ValueError("Capture count must be zero, one or four")

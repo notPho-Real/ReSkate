@@ -35,7 +35,9 @@ def validate_plan(plan):
     names, trials = set(), 0
     for case in cases:
         keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
-             ("repeat", "capture_frames", "baseline_max_speed_mm_s"))
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset"))
+        if "fixture_reset" in case and type(case["fixture_reset"]) is not bool:
+            raise ValueError("Fixture reset must be boolean")
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
