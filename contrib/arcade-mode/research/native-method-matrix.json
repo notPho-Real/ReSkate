@@ -2096,14 +2096,14 @@
     {
       "id": "reverts",
       "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
-      "implementation_status": "Known235ms recipe evaluated on7c7:4/4 native101/sequence5 observations plus1 separately captured FS Revert Clean5. Label telemetry gap remains; exact side maturity DISCOVERED.",
+      "implementation_status": "Known235ms recipe evaluated on7c7:4 compatible native101/sequence5 trials, plus independently visible FS Revert Clean5 and BS Revert Clean5 controls. Exact side maturity DISCOVERED1/1 each; label telemetry gap remains.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
       "remaining": "Repeatable independent FS/BS identity and landing/manual/continuation integration; no combo credit from command intent.",
-      "next": "Use numeric label-reader diagnostics on verifiedf836 build before changing the working community recipe.",
-      "new_deck_trials": 5,
+      "next": "Use corrected08d2a3a numeric label-reader diagnostics before changing the known community recipe.",
+      "new_deck_trials": 6,
       "evidence": "community-revert-source.json",
       "maturity": "DISCOVERED"
     },
@@ -2285,7 +2285,7 @@
     {
       "id": "deck-operation",
       "requested_action": "Reliable Deck gameplay and library update/restore controls",
-      "implementation_status": "Deck hot at native saved Stadium rail, installed7c7/DLLf814 verified, stock/game hashes unchanged, updates off and recovery clear.",
+      "implementation_status": "Verified08d2a3a/DLL27fe2b45 installed after one controlled restart; native Stadium fixture restore in progress. Stock/game hashes unchanged, updates off, recovery clear.",
       "source_ids": [
         "deck-fork",
         "deck-practice-map"
@@ -2297,10 +2297,10 @@
     {
       "id": "build-gate",
       "requested_action": "Verified runtime artifact before installation",
-      "implementation_status": "Installed7c7 passed all five CI gates38701577381. Observer repairf836 Windows CI38713723096 failed C4459 diagnostic variable shadowing; corrected source queued for rebuild. No failed artifact installed.",
+      "implementation_status": "08d2a3a passed all five CI38716252703 gates and was installed by the frozen trusted helper. DLL27fe2b45; stock/game hashes unchanged, updates off and recovery clear.",
       "source_ids": [],
-      "remaining": "Require all five gates and immutable source/DLL identity for next deployment.",
-      "next": "Use unchanged trusted deployment workflow; no permissions or security changes.",
+      "remaining": "Focused Deck verification of the new observer/landing repairs; no unverified artifact deployed.",
+      "next": "Restore saved native fixture and run targeted observer/exit checks.",
       "new_deck_trials": 0
     },
     {

@@ -431,9 +431,71 @@
       ],
       "finding": "One full-size capture independently shows FS Revert, Clean,5 points; same trial has native101 and sequence5. Label observer emitted no edges. Other four101/score5 trials are compatible but not exact FS/BS confirmations. No inputs changed, no repeatability promotion.",
       "image": "artifacts/rt-label-current.png"
+    },
+    {
+      "source": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+      "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+      "evidence": "trusted-v39/results/1792058148684380000.json",
+      "sha256": "7305d691bf671f7a00b99227dff317ff6496d024bb75bd6cb917894bd465dcbd",
+      "method": "Existing235ms RT backside candidate, same native saved fixture and short-push control.",
+      "requested_trials": 1,
+      "native_revert_confirmed": 1,
+      "trials": [
+        {
+          "name": "native-rt-backside-label-correlation",
+          "requested": 1,
+          "delivered_owned_span_ms": 231,
+          "native_states": [
+            100,
+            101
+          ],
+          "native_score": [
+            {
+              "seq": 255,
+              "ms": 143099742,
+              "epoch": 811,
+              "route": 4,
+              "score": 5.0,
+              "reason": 0,
+              "success": true,
+              "owner_verified": false
+            },
+            {
+              "seq": 256,
+              "ms": 143099760,
+              "epoch": 811,
+              "route": 1,
+              "score": 0.0,
+              "reason": 0,
+              "success": false,
+              "owner_verified": false
+            }
+          ],
+          "label_edges": [],
+          "dropped": {
+            "combo": 0,
+            "pad": 0,
+            "flip": 0,
+            "stick": 0,
+            "playback": 0,
+            "actions": 0,
+            "score_edges": 0,
+            "score_numbers": 0,
+            "native_score": 0,
+            "grind": 0
+          },
+          "neutralized": true,
+          "reset_ready": true,
+          "frame_hashes": [
+            "bc133f0750a0a0c466157ef15170bd538c8b79011e5bd29dab674733746fa9d1"
+          ]
+        }
+      ],
+      "finding": "Full-size1280x800 capture shows BS Revert Clean5; native100/101 plus successfulsequence5,0loststreams,neutral/reset. Exact BS identity DISCOVERED1/1; label observer still emits no edge, no repeatability or combo acceptance.",
+      "image": "artifacts/rt-bs-label-current.png"
     }
   ],
-  "next": "Diagnose bounded native label reader source/row/stage before automated side identity or combo continuation; preserve5 delivered/reset trials and1 independently confirmed FS Revert on7c7.",
+  "next": "On corrected08d2a3a build, use bounded label source/row/stage diagnostics; FS and BS each have one independently visible native confirmation on7c7, not repeatability acceptance.",
   "implementation": {
     "source": "Extension/ArcadeMode/arcade_revert_input.h",
     "dispatcher": "Extension/ArcadeMode/arcade_action_dispatch.h",

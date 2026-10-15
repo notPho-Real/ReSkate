@@ -144,7 +144,8 @@ NativeBailStatus previous_balance_bail{};
 SkatePose previous_pose{SkatePose::unknown};
 std::uint64_t next_balance_sample{};
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
-                  bool watch_valid, std::uint64_t wipeouts, std::uint64_t now) noexcept {
+                  bool watch_valid, std::uint64_t wipeouts, std::uint64_t now,
+                  const ScoreLabelOccurrence& label) noexcept {
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid;
     const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
@@ -171,7 +172,18 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const auto kind = combo_session.model().state().balance_kind;
     const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available);
     const bool was_active = combo_session.model().state().combo_active;
-    const bool failed = combo_session.step(pose, dt, correction);
+    const bool had_revert = combo_session.model().state().revert_pending;
+    const bool native_revert = valid && !owner_changed && !bail && pose == SkatePose::riding &&
+        native.state == 100 && score.valid && now >= score.sampled_at && now - score.sampled_at <= 150 &&
+        observed_revert_label(label, now);
+    const bool failed = combo_session.step(pose, dt, correction, native_revert);
+    if (native_revert) {
+        const auto& linked = combo_session.model().state();
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
+            now, label.sequence, label.labels, !had_revert && linked.revert_pending,
+            static_cast<unsigned>(std::lround(linked.link_grace_s * 1000.0f)));
+    }
     if (failed) {
         const auto serial = request_balance_bail(owner);
         {
@@ -509,8 +521,8 @@ void on_client_tick() noexcept {
             enabled(), grind_speed_valid, grind_speed);
         const auto score_edge = take_score_label_occurrence(now);
         if (gameplay && score_edge.valid && score_edge.labels) {
-            // Read-only evidence until the HUD slot roles are verified on Deck.
-            // An appearing label is not yet permission to extend the combo.
+            // History base-name occurrences are independently observed native
+            // actions. Amounts and FS/BS context remain separate evidence.
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",
                 score_edge.sequence, score_edge.observed_at, score_edge.sampled_at, score_edge.labels,
@@ -558,7 +570,7 @@ void on_client_tick() noexcept {
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
         board_eligible_until.store(gameplay && watch.valid && native_board_toggle_safe(native) ? now + 150 : 0,
             std::memory_order_release);
-        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now);
+        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge);
         else {
             cancel_balance_bail();
             had_combo_owner = false;

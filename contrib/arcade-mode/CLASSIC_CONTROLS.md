@@ -106,8 +106,8 @@ does not become a fresh press. The preference persists normally.
 
 ## Acceptance order
 
-Security and the live toggle precede automatic skating and the board chord.
-This table then drives the native-method matrix and exact-result verification.
-Solved native methods are integrated before novel research. Revert, persistent
-HIL and readable HUD precede final combo-chain acceptance. See STATE.md for the
-current gate; this document is a target contract, not a completion report.
+Security is complete. Preserve the accepted toggle, automatic skating, board chord
+and rotation work. Basic native Y grinding, exits and balance HUD now have fixed-rail
+Deck evidence; finish their remaining integration before deferred grabs and exotic
+named variants. This table remains the target contract. STATE.md and the existing
+native-method matrix distinguish verified behavior from outstanding acceptance.

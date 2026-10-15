@@ -18,6 +18,13 @@ struct ScoreLabelOccurrence {
 constexpr std::uint32_t score_label_bit(std::uint32_t id) noexcept {
     return id && id <= score_labels.size() ? std::uint32_t{1} << (id - 1) : 0;
 }
+inline bool observed_revert_label(const ScoreLabelOccurrence& event, std::uint64_t now) noexcept {
+    const bool one_revert = event.labels == score_label_bit(3) ||
+        event.labels == score_label_bit(4) || event.labels == score_label_bit(25);
+    return event.valid && event.sequence && one_revert && event.uncertainty == ScoreLabelUncertainty::none &&
+        event.sampled_at >= event.observed_at && now >= event.sampled_at &&
+        now - event.observed_at <= 150;
+}
 
 // Tracks the union of sanitized labels across the observed HUD slots. A slot
 // move or persistent reread is not another trick. Same-label repetition without

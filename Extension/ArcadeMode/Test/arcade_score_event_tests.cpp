@@ -69,7 +69,7 @@ int run_arcade_score_event_tests() {
         "backwards consumer clocks invalidate pending occurrences");
     edges.observe(1u << 31, true, 1500);
     check(!edges.take(1500).valid, "out-of-allowlist numeric labels are invalid evidence");
-    check(!score_label_bit(0) && !score_label_bit(25) && !result.contains(32),
+    check(!score_label_bit(0) && !score_label_bit(27) && !result.contains(32),
         "invalid diagnostic IDs cannot overflow bit selection");
     check(score_label_id("FS Revert") == 3 && score_label_id("BS Revert") == 4 &&
         score_label_id("FS Revert private text") == 0,
@@ -82,6 +82,25 @@ int run_arcade_score_event_tests() {
         score_label_id("Harsh Slam") == 23 && score_label_id("Slam") == 24 &&
         score_label_id("BS 50-50 Grind private") == 0,
         "observed grind and failure labels retain exact sanitized identities");
+    check(score_label_id("Revert") == 25 && score_label_id("50-50 Grind") == 26 &&
+        score_label_id("Revert private") == 0 && score_label_id("FS 50-50 Grind") == 0,
+        "observed base labels do not invent separately displayed side context");
+    ScoreLabelEdges base;
+    base.observe(0, true, 100);
+    base.observe(score_label_bit(25), true, 150);
+    auto revert = base.take(150);
+    check(observed_revert_label(revert, 150) && !revert.contains(3) && !revert.contains(4),
+        "one fresh native base revert can acknowledge an action without claiming its side");
+    check(!observed_revert_label(base.take(150), 150), "drained revert cannot grant another link");
+    check(!observed_revert_label(revert, 149) && !observed_revert_label(revert, 301),
+        "future and stale revert occurrences cannot grant links");
+    for (auto uncertainty : {ScoreLabelUncertainty::baseline, ScoreLabelUncertainty::unavailable,
+        ScoreLabelUncertainty::stale, ScoreLabelUncertainty::clock_reset, ScoreLabelUncertainty::coalesced}) {
+        auto uncertain = revert; uncertain.uncertainty = uncertainty;
+        check(!observed_revert_label(uncertain, 150), "uncertain label occurrence cannot grant a link");
+    }
+    revert.labels = score_label_bit(26);
+    check(!observed_revert_label(revert, 150), "a real grind label is not a revert");
     std::cout << checks << " score label occurrence checks passed\n";
     return 0;
 }

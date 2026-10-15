@@ -224,8 +224,17 @@ def parse_native_captures(text):
 
 def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
-    samples, events, balance, failures, bails, dropped = [], [], [], [], [], 0
+    samples, events, balance, failures, bails, reverts, dropped = [], [], [], [], [], [], 0
     for line in text.splitlines():
+        revert = re.search(r'ARCADE REVERT LINK: ms=(\d{1,20}) sequence=(\d{1,20}) labels=(4|8|16777216) accepted=(true|false) remaining_ms=(\d{1,5})\.$', line)
+        if revert:
+            ms, sequence, labels, remaining = (int(revert[i]) for i in (1, 2, 3, 5))
+            if max(ms, sequence) <= 0xffffffffffffffff and sequence and remaining <= 10000:
+                reverts.append(dict(ms=ms, sequence=sequence, labels=labels,
+                                    accepted=revert[4] == 'true', remaining_ms=remaining))
+                if len(reverts) > 128:
+                    reverts.pop(0)
+                    dropped += 1
         failure = re.search(r'ARCADE BALANCE FAILURE: ms=([0-9]{1,20}) kind=([12]) request=([0-9]{1,20})\.$', line)
         if failure and max(int(failure[1]), int(failure[3])) <= 0xffffffffffffffff:
             failures.append(dict(ms=int(failure[1]), kind=int(failure[2]), request=int(failure[3])))
@@ -268,7 +277,7 @@ def parse_combo_samples(text):
                             "words": [int(word, 16) for word in match[4].split(',')]})
             samples = samples[-128:]
     return {"samples": samples, "events": events, "balance": balance,
-            "failure_requests": failures, "bail_results": bails,
+            "failure_requests": failures, "bail_results": bails, "revert_links": reverts,
             "dropped": dropped, "native_event_identity": "UNVERIFIED"}
 
 
@@ -277,7 +286,7 @@ def parse_score_samples(text):
     labels, labels_dropped = [], 0
     for line in text.splitlines():
         label = re.search(r'ARCADE SCORE LABEL: ms=([0-9]{1,20}) path=([0-9a-f]{8}(?:\.[0-9a-f]{8}){0,3}) id=([0-9]{1,2})\.$', line)
-        if label and int(label[1]) <= 0xffffffffffffffff and 1 <= int(label[3]) <= 24:
+        if label and int(label[1]) <= 0xffffffffffffffff and 1 <= int(label[3]) <= 26:
             labels.append({"ms": int(label[1]), "path": label[2], "id": int(label[3])})
             if len(labels) > 128:
                 labels.pop(0)
@@ -433,7 +442,7 @@ def parse_score_edges(text):
         if not row:
             continue
         seq, observed, sampled, labels, uncertainty = map(int, row.groups())
-        if max(seq, observed, sampled) > 0xffffffffffffffff or labels > 16777215:
+        if max(seq, observed, sampled) > 0xffffffffffffffff or labels > 67108863:
             continue
         samples.append(dict(seq=seq, observed=observed, sampled=sampled, labels=labels, uncertainty=uncertainty))
         if len(samples) > 128:
@@ -450,7 +459,7 @@ def parse_score_presence(text):
         if not match:
             continue
         ms, source, rows, stage, parts, labels = map(int, match.groups())
-        if ms > 0xffffffffffffffff or rows > 16 or parts > 31 or labels > 16777215:
+        if ms > 0xffffffffffffffff or rows > 16 or parts > 31 or labels > 67108863:
             continue
         samples.append(dict(ms=ms, source=source, rows=rows, stage=stage, parts=parts, labels=labels))
         if len(samples) > 256:

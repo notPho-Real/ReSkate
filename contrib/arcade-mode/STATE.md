@@ -1,13 +1,15 @@
 ## Current native grind and combo checkpoint — 2026-10-15
 
-Installed source:7c7d168da22c4ced6a99efc19008ae37d8490a02.
-DLL:f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314.
-All five CI38701577381 gates passed; frozen landing-evidence-deploy-v1 receipt
-confirms unchanged stock/game hashes, updates off and recovery clear.
-Game is hot at the saved Stadium rail; Arcade ON, RT frontside experiment selected (grabs OFF), sim60,
-editor/console/map overlay closed. Root owns hardware; serialize all operations.
-Frozen HIL39 and maintenance44 pin the installed DLL. HIL39 manifest:
-df0e2369fde3e7b5cf0a4c2f479e5adef999722ccabfabb955ee257735a31a46.
+Installed source:08d2a3a67bea23f715f0965afb4d37c9847feaa8.
+DLL:27fe2b45bb2b3202e7d52ac498996896fe4e8c1f604ab63498cf199b837b5f50.
+All five CI38716252703 gates passed. External grind-observer-corrected-deploy-v1
+receipt verifies unchanged stock/game hashes, updates off and recovery clear.
+Game hot at saved Stadium rail; editor/map/console closed, Arcade ON,
+frontside RT experiment selected, grabs OFF, simulation60. Root owns hardware.
+Frozen HIL40 and maintenance45 pin this DLL. HIL40 manifest:
+8828300e2df2e059781ab0c9b4cb311fd339f552acfc2432e983f8657060b067.
+maintenance45 SHA9af32ddca8c8ed4e0aff02ef07f473fd4c3d67bee93c01f1d09cb4dad18dc14b.
+Earlier7c7/2c3 acceptance below retains its original source scope.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Preserve grab implementation/tests/guide and synthetic-input ownership fix.
@@ -48,6 +50,9 @@ Verified milestones (full sanitized results/hashes in research/grind-exit-result
   Single correlation1792055790699018000 independently shows FS Revert Clean5
   at1280x800 (artifacts/rt-label-current.png). Only1 exact side confirmation;
   telemetry label reader remains unresolved. Grabs remain OFF.
+  Backside control1792058148684380000 independently shows BS Revert Clean5
+  at1280x800 (artifacts/rt-bs-label-current.png), native100/101, sequence5,
+  zero lost streams, neutral/reset. Exact FS and BS each DISCOVERED1/1.
   Nose LT rail pilot1792056218140808000:0/3 complete chains;two miss rail and
   one loses manual. Isolated Nose Manual pop1792056450177578000:LT native17
   chains2/2 pass;standard context2/2 gives16 instead of requested2.
@@ -77,28 +82,41 @@ remain open. Existing rotation/manual/chord evidence below stays valid in scope.
 Raw grind enums are unavailable in the new-build chains; primary400–499 evidence
 is complete. Exact rail-label history recognition is also not yet verified.
 
-New source, NOT installed:global grind-asset scan progress retained across
-fixture resets with fresh binding validation; numeric discovery diagnostics.
-9813a88d78443d14d4cbf480430cc0865866f10b CI38710098358 passed all five gates.
-Newer combined repair adds bounded initial wrong-wheel preparation (50ms wrong
-contact,250ms to desired pose, no false confirmation) for the observed Nose
-Manual17ms/200ms rebound. Adds numeric label reader source/row/stage/component
-diagnostics to distinguish missing history, fallback and split native labels;
-no broader label allowlist or score policy.90 manual,33616 model and40061 grind
-sanitizer checks;242 Python tests pass. Combined Windows build/Deck verification
-required. Keep7c7 installed until verified combined artifact, avoiding two restarts.
-Combined source f8361140e05e7a8f5b9c0027dcfd791a33fb1cf3 is pushed; CI38713723096
-Mac/Linux passed; Windows failed C4459 (local diagnostic name shadowing the
-existing global previous map). Rename fixes the demonstrated warning; no failed
-artifact was installed. Next:verify all five corrected gates, one controlled
-deploy, restore fixture, then targeted enum/label/manual repair tests. No batch
-is running; game remains hot on7c7 with RT frontside experiment selected.
-Follow-up source removes the lifetime4096 balance-sample cap while retaining
-the250ms rate bound, so later hot-session fatigue trials retain numeric evidence.
-This telemetry-only change5a638fc is not installed. Its queued build includes
-the same diagnostic warning; a following source fix is required. Frozenf836
-deploy helper is now superseded and must not be used.
-Prepared981 deploy helper is superseded; do not accidentally deploy its older target.
+Installed observer/landing repair:
+- Global grind-asset scan progress survives fixture resets with fresh binding
+  validation; numeric discovery diagnostics identify scan progress.
+- Bounded initial wrong-wheel preparation (50ms wrong contact,250ms to desired
+  pose, no false confirmation) targets observed Nose Manual17ms/200ms rebound.
+- Numeric label reader source/row/stage/component diagnostics distinguish
+  missing history, fallback and split labels without logging arbitrary text.
+- Balance samples retain250ms rate bound without lifetime4096-event cutoff.
+90 manual,33616 model and40061 grind sanitizer checks;242 Python tests passed
+before CI. f836 Windows failure C4459 was fixed in08d2a3a; no failed artifact
+was installed. Older981/f836 frozen deployment helpers are superseded.
+08d2a3a pilot1792059876270789000:all6 complete/neutral/reset. Three of four
+rail attempts enter native grind; Kickflip/grind/Kickflip and one Nose Manual
+chain pass. Ollie entry misses; other Nose chain recontacts rail and loses link.
+The passing Nose chain includes34ms opposite-wheel contact then118ms air before
+desired pose515ms, confirming bounded recovery once; not repeatability acceptance.
+Grind discovery progresses0→1→3 over6 passes, then retains both bindings across
+resets. Raw enums recover; mappings remain unknown. Native history exposes exact
+base strings "Revert" and "50-50 Grind" (numeric diagnostic bits1/8); displayed
+FS/BS is separate, explaining missing full-label matches.
+Entry controls1792060345476559000:900ms setup2/3 grinds; previously successful
+1100ms setup3/3. All complete/neutral/reset, raw enums on5/5 actual grinds.
+Observed entries near2.2–2.4s; the prior2250ms exit command can precede contact
+or pop too early, leading to rail recontact. Do not change geometry or physics.
+Current hardware batch:17 repeats of1100ms setup to establish20 attempts in this
+context, artifacts/fixture-later-entry-repeat-17.json on HIL40. Inspect completion
+before another Deck operation.
+
+Follow-up source NOT installed:allow exact base labels25(Revert)/26(50-50 Grind),
+without inferring side; native101 preserves existing grounded grace without
+itself confirming a revert. One fresh unambiguous native revert-label edge can
+consume the existing model's single continuation opportunity on observed riding;
+repeated/stale/coalesced labels cannot refresh it. Numeric link telemetry added.
+32 score-edge sanitizer checks,33623 model checks and243 Python tests pass.
+Windows build and actual landing→RT→manual/abuse trials remain required.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position
@@ -106,8 +124,10 @@ own_bkrails_generic_flatrailround_00002, scale1, rail position
 (-39.4061546,47.00006485,52.6163254); verified remount position
 (-39.28947,47.028736,52.84672), heading359.9895, stopped100; spread<0.2mm.
 No skater transform/velocity/collision/state writes. See research/grind-fixture.json.
-After a necessary verified DLL restart:close hub, native Stadium travel, CLOSE MAP
-OVERLAY, inspect fixture status, load only with freshly observed editor8/revision8,
+After a necessary verified DLL restart:close hub, open map overlay, then
+map-destination dropdown → stadium-one → map-travel (in that order). Confirm
+Stadium arrival and CLOSE MAP OVERLAY. Inspect fixture status; load only with
+freshly observed editor8/revision8,
 adopt, close editor, restore60/Arcade ON/actions OFF. Do not reuse stale8/8 guards.
 Best approach:forward300ms,A900,releaseY1300,neutral3000,B3200,neutral5600.
 Slow native B1300–1900,A1900–2300 approach gives1.391m/s/2250ms grind and stalls

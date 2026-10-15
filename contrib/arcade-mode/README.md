@@ -21,8 +21,8 @@ its own installer/updater code as well as the DLL.
 
 ## SSH deployment from this Mac
 
-Default host: `deck@steamdeck.local`. Pairing was established; the latest connection
-attempt could not resolve the host. See STATE.md for the current recovery checkpoint.
+Default host: `deck@steamdeck.local`. Pairing and the trusted external runner are
+working. See STATE.md for the current installed build and hardware checkpoint.
 The Deck must be awake and reachable from the Mac. A sleeping/unreachable Deck
 cannot be installed remotely. No need to switch to Desktop Mode for SSH.
 
@@ -74,9 +74,12 @@ update-to-latest, already-current detection, restore-then-update, failed downloa
 checksum mismatch, wrong commit and wrong download origin.
 
 Steam library import and its controller operation still need on-device acceptance.
-The development DLL includes automatic skating, native A/X gestures, directional
-manual input, camera routing, balance models and an experimental HUD. Guarded
-grab/revert candidates are available through an unsaved experiment selector;
-named Y actuation and final combo integration remain incomplete. Source code and
-offline checks do not establish native repeatability. Read STATE.md and the
-native-method matrix for feature-specific evidence before deploying or testing.
+The installed development DLL has native Y rail engagement verified in the
+50-trial fixed-rail matrix, plus repeatable native Ollie and Kickflip exits.
+Grind/manual meters follow the actual balance model, with full-size Deck captures
+and native physical balance-failure evidence. Automatic skating, camera routing,
+directional manuals and shoulder rotation retain their existing acceptance scope.
+The complete named grind table, monetary combo scoring and final mixed gameplay
+acceptance remain incomplete. Grabs are deferred; their implementation is preserved.
+The known revert recipe has native FS/BS confirmations but remains experimental.
+Read STATE.md and the native-method matrix for source-specific evidence and limits.

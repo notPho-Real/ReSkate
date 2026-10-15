@@ -24,6 +24,9 @@ inline SkatePose observed_pose(const NativeComboObservation& sample) noexcept {
     // ComboSession admits this only immediately after an observed grind, bounded
     // to 150 ms. It grants neither input eligibility nor a score event.
     if (sample.state == 701) return SkatePose::grind_exit_transition;
+    // Confirmed FS/BS revert trials pass through101 on the ground. Preserve
+    // existing grace here; only a separate native label can grant a revert link.
+    if (sample.state == 101 && sample.mode <= 1) return SkatePose::riding;
     // Two Deck Ollie traces enter 100/0 then 103/0 before 200/0. This
     // grounded preparation must preserve link grace and accumulated fatigue.
     // It proves neither a manual nor permission to start another native action.

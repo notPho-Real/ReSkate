@@ -741,6 +741,27 @@ int main() {
           "actual native bail overrides stale balance fields");
     {
         ComboSession session;
+        session.step(SkatePose::air, 0, 0);
+        session.step(SkatePose::riding, 0.1f, 0);
+        const auto multiplier = session.model().state().multiplier;
+        const NativeComboObservation transition{true, true, true, false, 101, 1, 0xc000};
+        check(observed_pose(transition) == SkatePose::riding && !action_input_eligible(transition),
+            "observed native101 is grounded context, not a new action or permission to start one");
+        session.step(observed_pose(transition), 0.2f, 0);
+        check(session.model().state().combo_active && session.model().state().landing_grace &&
+            !session.model().state().revert_pending && session.model().state().multiplier == multiplier,
+            "native101 preserves existing grace without confirming a revert or awarding score");
+        session.step(SkatePose::riding, 0.05f, 0, true);
+        check(session.model().state().revert_pending, "independent native label grants one continuation");
+        for (int i = 0; i < 5; ++i) session.step(SkatePose::riding, 0.1f, 0, true);
+        check(!session.model().state().combo_active, "repeated native acknowledgements cannot extend grace indefinitely");
+        check(observed_pose({true, true, true, true, 101, 1, 0xc000}) == SkatePose::bail &&
+            observed_pose({false, true, true, false, 101, 1, 0xc000}) == SkatePose::unknown &&
+            observed_pose({true, true, true, false, 101, 3, 0xc000}) == SkatePose::unknown,
+            "native101 retains owner, bail and unrecognized-mode boundaries");
+    }
+    {
+        ComboSession session;
         session.step(SkatePose::manual, 0, 0);
         session.step(SkatePose::manual, 0.2f, 0);
         const auto fatigue = session.model().state().manual_fatigue;

@@ -146,10 +146,23 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(trick_batch.named_flip_result('kickflip', trick_batch.observations(row), 0), 'UNVERIFIED')
         for bad in (row + ' private', row.replace('rows=2', 'rows=17'), row.replace('source=1', 'source=3'),
                     row.replace('stage=0', 'stage=6'), row.replace('parts=3', 'parts=32'),
-                    row.replace('labels=4', 'labels=16777216'), row.replace('ms=120', 'ms=18446744073709551616')):
+                    row.replace('labels=4', 'labels=67108864'), row.replace('ms=120', 'ms=18446744073709551616')):
             self.assertEqual(probe.parse_score_presence(bad)['samples'], [])
         bounded = probe.parse_score_presence('\n'.join([row] * 257))
         self.assertEqual((len(bounded['samples']), bounded['dropped']), (256, 1))
+
+    def test_revert_link_acceptance_is_bounded_and_separate_from_side_identity(self):
+        row = 'ARCADE REVERT LINK: ms=120 sequence=2 labels=16777216 accepted=true remaining_ms=450.'
+        parsed = probe.parse_combo_samples(row)
+        self.assertEqual(parsed['revert_links'], [dict(ms=120, sequence=2, labels=16777216,
+                                                     accepted=True, remaining_ms=450)])
+        self.assertEqual(parsed['native_event_identity'], 'UNVERIFIED')
+        for bad in (row + ' private', row.replace('labels=16777216', 'labels=33554432'),
+                    row.replace('sequence=2', 'sequence=0'), row.replace('remaining_ms=450', 'remaining_ms=10001'),
+                    row.replace('ms=120', 'ms=18446744073709551616')):
+            self.assertEqual(probe.parse_combo_samples(bad)['revert_links'], [])
+        bounded = probe.parse_combo_samples('\n'.join([row] * 130))
+        self.assertEqual((len(bounded['revert_links']), bounded['dropped']), (128, 2))
 
     def test_score_numbers_preserve_invalid_unknown_and_stale_evidence(self):
         row = ('ARCADE SCORE NUMBERS: ms=200 sampled=100 score_valid=true score=500 '
@@ -185,14 +198,14 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['samples'][0]['seq'], 2)
         self.assertEqual(result['samples'][-1], dict(seq=129, observed=125, sampled=120, labels=1048575, uncertainty=5))
-        expanded = probe.parse_score_edges(row.replace('labels=1048575', 'labels=16777215'))
-        self.assertEqual(expanded['samples'][0]['labels'], 16777215)
+        expanded = probe.parse_score_edges(row.replace('labels=1048575', 'labels=67108863'))
+        self.assertEqual(expanded['samples'][0]['labels'], 67108863)
         for field in ('seq', 'observed', 'sampled'):
             maximum = re.sub(rf'{field}=\d+', f'{field}=18446744073709551615', row)
             self.assertEqual(probe.parse_score_edges(maximum)['samples'][0][field], 18446744073709551615)
             self.assertEqual(probe.parse_score_edges(maximum.replace('18446744073709551615',
                 '18446744073709551616'))['samples'], [])
-        for bad in (row + ' private', row.replace('labels=1048575', 'labels=16777216'),
+        for bad in (row + ' private', row.replace('labels=1048575', 'labels=67108864'),
                     row.replace('labels=1048575', 'labels=-1'), row.replace('uncertainty=5', 'uncertainty=6'),
                     row.replace('sampled=120', 'sampled=-1'), row.replace('observed=125', 'observed=true')):
             self.assertEqual(probe.parse_score_edges(bad), dict(samples=[], dropped=0))
@@ -454,8 +467,8 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(len(result['labels']), 128)
         self.assertEqual(result['labels_dropped'], 72)
         self.assertEqual(result['labels'][-1]['id'], 20)
-        self.assertEqual(probe.parse_score_samples(row.replace('id=20', 'id=24'))['labels'][0]['id'], 24)
-        for bad in (row.replace('id=20', 'id=25'), row.replace('id=20', 'id=0'),
+        self.assertEqual(probe.parse_score_samples(row.replace('id=20', 'id=26'))['labels'][0]['id'], 26)
+        for bad in (row.replace('id=20', 'id=27'), row.replace('id=20', 'id=0'),
                     row + ' private', row.replace('ms=12', 'ms=99999999999999999999'),
                     row.replace('LABEL', 'VALUE')):
             self.assertEqual(probe.parse_score_samples(bad)['labels'], [])
