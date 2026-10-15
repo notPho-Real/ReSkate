@@ -62,6 +62,16 @@ class ComboTraceTests(unittest.TestCase):
         self.assertTrue(parsed['pad'][0]['requested_y'])
         result = trick_batch.grind_result({'grind': parsed}, {'grind': parsed}, True)
         self.assertEqual((result['native_grind'], result['named_identity'], result['entries']), ('PASS', 'UNKNOWN', 1))
+        self.assertEqual(result['bail_evidence'], 'UNVERIFIED')
+        wipeout = {'baseline_available': True, 'dropped': 0, 'events': [{'pose': 6}]}
+        observed = {'grind': parsed, 'combo': wipeout}
+        grade = trick_batch.grind_result(observed, {'grind': parsed}, True)
+        self.assertTrue(grade['bail'])
+        self.assertEqual(grade['bail_evidence'], 'native_wipeout')
+        for change in ({'baseline_available': False}, {'dropped': 1}, {'events': [{'pose': 1}]}):
+            incomplete = dict(observed, combo=dict(wipeout, **change))
+            self.assertFalse(trick_batch.grind_result(incomplete, {'grind': parsed}, True)['bail'])
+        self.assertFalse(trick_batch.grind_result(dict(observed, evidence_gap=True), {'grind': parsed}, True)['bail'])
         delayed = copy.deepcopy(parsed)
         delayed['status'].insert(0, dict(generation=2, active=False, dropped=0, rejected=0))
         grade = trick_batch.grind_result({'grind': delayed}, {'grind': parsed}, True)

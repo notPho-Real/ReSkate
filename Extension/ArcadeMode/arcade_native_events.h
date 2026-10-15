@@ -3,6 +3,14 @@
 #include "arcade_score_event.h"
 
 namespace dingosdk::arcade_mode {
+constexpr Tuning native_combo_tuning() noexcept {
+    Tuning tuning;
+    // Deck1792062425409350000: native revert confirmation arrives633ms after
+    // landing (179ms player delay +454ms native recognition). Keep one bounded
+    // window that admits that observation without accepting synthetic intent.
+    tuning.combo_link_grace_s = 0.75f;
+    return tuning;
+}
 // Build-specific adapter, separate from combo dynamics. The scoring activity
 // flag alone also fires for ollies; one-wheel contact alone also occurs in turns.
 // Their conjunction in riding state is the measured manual observation.

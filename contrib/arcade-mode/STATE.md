@@ -139,6 +139,25 @@ measured labels in1792059876270789000 precede the return to100. The prior
 and label-integrity guards remain tested. The binding-publication change
 must be included in the next verified combined install. Actual landing→RT→manual/abuse trials remain required.
 
+Measured native revert follow-up (still installed08d2a3a):
+-1792062277478865000:three Ollie controls; early setup cancels acceleration,
+  speed remains0. Early RT rejected; later delivered RT has no native101/label.
+  Do not claim stationary delivery is a revert. All complete/neutral/reset.
+-1792062425409350000:three moving grind exits, all native rail engagement and
+  complete/neutral/reset. Control lands then expires450ms later. RT3800 trial
+  recontacts rail and cannot request revert. RT3950 trial lands at3781ms,
+  accepts RT at3960ms and shows native Revert at4414ms:633ms after landing,
+ 454ms after input. Actual101 starts before the label, after old grace expired.
+Runtime follow-up therefore sets existing model tuning to750ms, allowing the
+measured native acknowledgement plus a bounded reaction margin. No event comes
+from input intent; one native label grants one750ms continuation, repeated
+reverts cannot refresh it. Default pure-model450ms tests remain intact.
+33635 model sanitizer checks pass. New runtime window still needs Deck acceptance.
+Host grader also recognizes the independent native wipeout edge when brief300
+is missed, with fresh baseline/complete-stream guards;243 Python tests pass.
+The next combined verified deployment must include this window and transition
+gate;58d6955 and prior frozen native-label-link helpers are superseded targets.
+
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position
 (-39.4061546,46.00006485,60.6163254), identity quaternion. Native saved start

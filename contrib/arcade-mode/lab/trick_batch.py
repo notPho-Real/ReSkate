@@ -198,6 +198,13 @@ def grind_result(observation, baseline, reset_ok):
                  any(not s['active'] or s['generation'] != old['generation'] or s['dropped'] != old['dropped'] or
                      s['rejected'] != old['rejected'] for s in health))
     active = [r for r in rows if r['valid'] and 400 <= r['state'] < 500]
+    # A brief300 state may fall between grind samples. The independently
+    # observed wipeout edge still proves a bail; input intent never does.
+    combo = observation.get('combo', {})
+    wipeout = (combo.get('baseline_available', False) and not combo.get('dropped', 0) and
+               not observation.get('evidence_gap') and
+               any(r.get('pose') == 6 for r in combo.get('events', [])))
+    physics_bail = any(r['valid'] and r['state'] == 300 for r in rows)
     return dict(evidence='INCOMPLETE' if uncertain else 'COMPLETE',
                 native_grind='UNVERIFIED' if uncertain else 'PASS' if active else 'FAIL',
                 entries=sum(r['edge'] == 1 for r in rows), exits=sum(r['edge'] == 2 for r in rows),
@@ -207,7 +214,9 @@ def grind_result(observation, baseline, reset_ok):
                 entry_speed_mm_s=[r['speed_mm_s'] if r['speed_valid'] else None for r in rows if r['edge'] == 1],
                 named_identity='UNKNOWN', contact_without_grind='UNVERIFIED',
                 stale_health_rows=len(stale),
-                bail=any(r['valid'] and r['state'] == 300 for r in rows), reset='PASS' if reset_ok else 'FAIL')
+                bail=physics_bail or bool(wipeout),
+                bail_evidence='native_physics' if physics_bail else 'native_wipeout' if wipeout else 'UNVERIFIED',
+                reset='PASS' if reset_ok else 'FAIL')
 
 
 def combo_chain_result(expected, observation):
@@ -287,8 +296,6 @@ def perform_case(plan, case, env):
     reset = env.wait_idle(idle_ms, **readiness)
     log_boundary = baseline_observation.get("log_end")
     obs = env.observe(since=log_boundary)
-    if 'grind' in obs:
-        obs['grind_result'] = grind_result(obs, baseline_observation, reset is not None)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
     combo = obs.get("combo", {})
     # Changed-state samples need their own timestamp watermark: heartbeat seq
@@ -299,6 +306,8 @@ def perform_case(plan, case, env):
     combo["baseline_available"] = log_boundary is not None or watermark is not None
     combo["native_event_identity"] = "UNVERIFIED"
     obs["combo"] = combo
+    if 'grind' in obs:
+        obs['grind_result'] = grind_result(obs, baseline_observation, reset is not None)
     if 'chain' in case['expected']:
         obs['chain_result'] = combo_chain_result(case['expected']['chain'], obs)
     wanted = case["expected"]["states"]

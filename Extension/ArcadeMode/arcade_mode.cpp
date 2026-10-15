@@ -135,7 +135,7 @@ void prepare_authored_catalog() noexcept {
         authored_status.store(3, std::memory_order_release);
     }
 }
-ComboSession combo_session;
+ComboSession combo_session(native_combo_tuning());
 std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
 bool had_combo_owner{};
