@@ -369,6 +369,7 @@ class DeckEnvironment:
             raise HardStop('fixture_reset_unverified')
         fixture_console('reset')
         deadline = time.monotonic() + milliseconds / 1000
+        mounted = False
         while time.monotonic() < deadline:
             self.session._clock()
             fixture_console('status')
@@ -378,9 +379,34 @@ class DeckEnvironment:
                 return status
             if status and (status['failed'] or status['editor_open'] or not status['present']):
                 break
+            if status and not observation.get('evidence_gap') and not mounted and status.get('state') == 504:
+                # Native teleport returns on foot. Mount once, then require a new
+                # measured riding status; a button request is never readiness.
+                self.fixture_mount(status)
+                mounted = True
             boundary = observation.get('log_end', boundary)
             time.sleep(.1)
         raise HardStop('fixture_reset_unverified')
+
+    def fixture_mount(self, status):
+        if (type(status.get('arcade')) is not bool or not status.get('configured') or
+                not status.get('present') or status.get('busy') or status.get('failed') or
+                status.get('editor_open') or not status.get('skater') or status.get('state') != 504 or
+                status.get('speed', 1) > .1 or abs((status.get('heading', 180) + 180) % 360 - 180) > 3 or
+                sum((a-b)**2 for a, b in zip(status.get('position', []), status.get('start', []))) > .25 or
+                len(status.get('position', [])) != 3 or len(status.get('start', [])) != 3):
+            raise HardStop('fixture_reset_unverified')
+        context = capabilities()
+        if not context.get('ready') or context.get('gamescope_pids') != [self.session.pid]:
+            raise HardStop('fixture_reset_unverified')
+        self.session._clock()
+        buttons = (0x136, 0x137) if status['arcade'] else (0x134,)
+        try:
+            self.session.pad.frame([(1, button, 1) for button in buttons])
+            time.sleep(.25)  # Bounded native press; includes the 120ms board chord window.
+            self.session._clock()
+        finally:
+            self.session.pad.neutral()
 
     def wait_grind_ready(self, milliseconds):
         before = self.observe()

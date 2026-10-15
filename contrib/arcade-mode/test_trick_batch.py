@@ -63,6 +63,41 @@ class BatchTests(unittest.TestCase):
                     robot.fixture_console(command)
             run.assert_not_called()
 
+    def test_fixture_native_remount_is_contextual_bounded_and_always_neutralized(self):
+        status = dict(arcade=False, configured=True, present=True, busy=False, failed=False,
+                      editor_open=False, skater=True, state=504, speed=0, heading=0,
+                      position=[1, 2, 3], start=[1, 2, 3])
+        session = Mock(pid=123)
+        env = batch.DeckEnvironment(session)
+        with patch.object(batch, 'capabilities', return_value=dict(ready=True, gamescope_pids=[123]), create=True), \
+                patch.object(batch.time, 'sleep'):
+            for arcade, keys in ((False, [0x134]), (True, [0x136, 0x137])):
+                env.fixture_mount(dict(status, arcade=arcade))
+                session.pad.frame.assert_called_with([(1, key, 1) for key in keys])
+            for change in ({'state': 100}, {'position': [4, 2, 3]}, {'heading': 90},
+                           {'arcade': None}, {'editor_open': True}, {'speed': 1}):
+                session.pad.frame.reset_mock()
+                with self.assertRaises(batch.HardStop):
+                    env.fixture_mount(dict(status, **change))
+                session.pad.frame.assert_not_called()
+            session.pad.frame.side_effect = OSError('interrupted input')
+            session.pad.neutral.reset_mock()
+            with self.assertRaises(OSError):
+                env.fixture_mount(status)
+            session.pad.neutral.assert_called_once()
+
+    def test_fixture_remount_waits_for_new_native_readiness_without_repeated_presses(self):
+        session = Mock()
+        env = batch.DeckEnvironment(session)
+        foot = dict(reset_ready=False, present=True, failed=False, editor_open=False, state=504)
+        riding = dict(foot, state=100, reset_ready=True)
+        env.observe = Mock(side_effect=[{'log_end': 100}, {'log_end': 200, 'fixture': foot},
+                                       {'log_end': 300, 'fixture': foot}, {'log_end': 400, 'fixture': riding}])
+        with patch.object(batch, 'fixture_console'), patch.object(batch.time, 'sleep'), \
+                patch.object(env, 'fixture_mount') as mount:
+            self.assertEqual(env.fixture_reset(1000), riding)
+            mount.assert_called_once_with(foot)
+
     def test_fixture_readiness_accepts_coalesced_health_only_with_matching_fresh_rows(self):
         status = dict(generation=8, active=True, dropped=0, rejected=0)
         row = dict(generation=8, dropped=0, valid=True, state=100, edge=0, duration=0)

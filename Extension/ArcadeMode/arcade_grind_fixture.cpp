@@ -1,4 +1,5 @@
 #include "Extension/Console/commands.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Profile/local_profile_runtime.h"
 #include "Extension/Trainer/trainer.h"
@@ -39,8 +40,8 @@ bool flat_start(const std::array<float, 3>& at, float& ground, bool entire_lane)
 }
 }
 void register_arcade_fixture_commands(Commands& registry) {
-    auto operation = argument("status|place|turn|reset|save|adopt", Type::text);
-    operation.choices = {"status", "place", "turn", "reset", "save", "adopt"};
+    auto operation = argument("status|place|relocate|turn|reset|save|adopt", Type::text);
+    operation.choices = {"status", "place", "relocate", "turn", "reset", "save", "adopt"};
     auto entry = action("arcadefixture", "Single native flat-rail practice fixture", Group::objects, {operation});
     entry.run = [](const Model& model, const Values& values, const Output& out) {
         const auto& op = std::get<std::string>(values[0]);
@@ -55,7 +56,7 @@ void register_arcade_fixture_commands(Commands& registry) {
         if (op == "status") {
             Json status{{"configured", fixture.configured}, {"available", editor.available}, {"busy", editor.busy},
                 {"failed", editor.failed}, {"editor_open", model.debug.park_editor}, {"asset_available", asset},
-                {"present", present}, {"generation", editor.generation}, {"revision", editor.revision},
+                {"present", present}, {"arcade", arcade_mode::enabled()}, {"generation", editor.generation}, {"revision", editor.revision},
                 {"map", editor.map}, {"position", skater.position}, {"heading", skater.heading},
                 {"speed", skater.speed}, {"state", skater.physics_state}, {"skater", skater.skater}};
             if (fixture.configured) {
@@ -84,23 +85,28 @@ void register_arcade_fixture_commands(Commands& registry) {
             if (!rail->spawned || rail->scale != 1) { out("error: Saved fixture rail is not ready at its original scale."); return; }
             fixture.configured = true; fixture.map = editor.map; fixture.saved_project = editor.project;
             fixture.rail = {rail->id, rail->item, rail->position, rail->rotation, rail->scale};
-            fixture.start = {rail->position[0], rail->position[1] + .5f, rail->position[2] - 8};
+            // Native riding telemetry settles about one metre above the floor.
+            fixture.start = {rail->position[0], rail->position[1] + 1.0f, rail->position[2] - 8};
             out("Saved fixture adopted; verify status and native reset before trials."); return;
         }
-        if (op == "place") {
-            if (fixture.configured || !model.debug.park_editor || !asset || skater.speed > .1f) {
-                out("error: Open editor at a stopped flat baseline with the exact flat rail available; only one fixture is allowed."); return;
+        if (op == "place" || op == "relocate") {
+            const bool relocate = op == "relocate";
+            if ((relocate ? !present : fixture.configured) || !model.debug.park_editor || !asset ||
+                skater.speed > .1f || skater.physics_state != 100) {
+                out("error: Open editor at a stopped riding baseline; place creates one fixture and relocate moves that same rail."); return;
             }
             float ground{};
             if (!flat_start(skater.position, ground, true)) {
                 out("error: Fixture lane lacks a continuous flat native collision surface."); return;
             }
-            Fixture candidate;
+            Fixture candidate = relocate ? fixture : Fixture{};
             candidate.configured = true; candidate.map = editor.map;
-            candidate.start = {skater.position[0], ground + .5f, skater.position[2]};
+            candidate.start = skater.position;
             candidate.rail.item = rail_item;
             candidate.rail.position = {candidate.start[0], ground, candidate.start[2] + 8};
-            const auto answer = edit_local_park("place", editor.map, editor.generation, editor.revision, {}, candidate.rail);
+            if (relocate) candidate.rail.id = found->id;
+            const auto answer = edit_local_park(relocate ? "move" : "place", editor.map,
+                editor.generation, editor.revision, {}, candidate.rail);
             if (!answer.starts_with("error:")) fixture = candidate;
             out(answer); return;
         }
@@ -117,7 +123,7 @@ void register_arcade_fixture_commands(Commands& registry) {
         if (op == "reset") {
             float ground{};
             if (model.debug.park_editor || !flat_start(fixture.start, ground, false) ||
-                std::abs(ground + .5f - fixture.start[1]) > .08f) {
+                std::abs(ground - fixture.rail.position[1]) > .08f) {
                 out("error: Close editor and retain the verified fixture start surface before reset."); return;
             }
             // Trainer routes this through the existing native teleport manager:

@@ -522,6 +522,8 @@ def parse_fixture_status(text):
             if not .01 <= row['rail_scale'] <= 100 or not .99 <= sum(v*v for v in row['rail_rotation']) <= 1.01:
                 continue
             result = {k: row[k] for k in (*booleans, *numeric, *arrays)}
+            if type(row.get('arcade')) is bool:
+                result['arcade'] = row['arcade']
         except (ValueError, TypeError):
             continue
     return result

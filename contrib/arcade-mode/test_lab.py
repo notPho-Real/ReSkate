@@ -37,6 +37,8 @@ class ComboTraceTests(unittest.TestCase):
         def parse(value):
             return probe.parse_fixture_status('ARCADE FIXTURE: ' + json.dumps(value))
         self.assertEqual(parse(dict(row, private='never exported')), row)
+        self.assertIs(parse(dict(row, arcade=False))['arcade'], False)
+        self.assertNotIn('arcade', parse(dict(row, arcade='not a boolean')))
         for key, value in [('speed', -1), ('heading', float('nan')), ('state', 1.5),
                            ('generation', True), ('revision', -1), ('start', [0, 0]),
                            ('position', [0, 0, 100001]), ('present', 1), ('rail_scale', 0),
