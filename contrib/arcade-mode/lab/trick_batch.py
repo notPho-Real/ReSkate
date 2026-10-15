@@ -148,14 +148,21 @@ def grind_result(observation, baseline, reset_ok):
     pads = current.get('pad', [])
     old_status, status = before.get('status', []), current.get('status', [])
     old = old_status[-1] if old_status else None
+    # The background scanner captures its generation before scanning, then logs
+    # health after draining the queue. A menu handoff can make that health row
+    # older than already-delivered physics. Only discard provably older health
+    # whose loss counters were already covered by the validated baseline.
+    stale = [s for s in status if old and s['generation'] < old['generation'] and
+             s['dropped'] <= old['dropped'] and s['rejected'] <= old['rejected']]
+    health = [s for s in status if s not in stale]
     generations = {r['generation'] for r in rows}
-    uncertain = (not rows or not pads or old is None or not status or observation.get('evidence_gap') or
+    uncertain = (not rows or not pads or old is None or not old['active'] or not health or observation.get('evidence_gap') or
                  current.get('dropped', 0) or len(generations) != 1 or
                  any(not r['valid'] or r['edge'] == 3 for r in rows) or
                  any(r['generation'] != old['generation'] or r['dropped'] != old['dropped'] for r in rows) or
                  any(p['generation'] != old['generation'] or p['dropped'] != old['dropped'] for p in pads) or
                  any(not s['active'] or s['generation'] != old['generation'] or s['dropped'] != old['dropped'] or
-                     s['rejected'] != old['rejected'] for s in status))
+                     s['rejected'] != old['rejected'] for s in health))
     active = [r for r in rows if r['valid'] and 400 <= r['state'] < 500]
     return dict(evidence='INCOMPLETE' if uncertain else 'COMPLETE',
                 native_grind='UNVERIFIED' if uncertain else 'PASS' if active else 'FAIL',
@@ -165,6 +172,7 @@ def grind_result(observation, baseline, reset_ok):
                                        r['skate'] if r['skate_valid'] else None) for r in active}, key=str),
                 entry_speed_mm_s=[r['speed_mm_s'] if r['speed_valid'] else None for r in rows if r['edge'] == 1],
                 named_identity='UNKNOWN', contact_without_grind='UNVERIFIED',
+                stale_health_rows=len(stale),
                 bail=any(r['valid'] and r['state'] == 300 for r in rows), reset='PASS' if reset_ok else 'FAIL')
 
 

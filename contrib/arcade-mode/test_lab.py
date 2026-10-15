@@ -2,6 +2,7 @@
 import ast
 import base64
 import contextlib
+import copy
 import fcntl
 import hashlib
 import io
@@ -61,6 +62,22 @@ class ComboTraceTests(unittest.TestCase):
         self.assertTrue(parsed['pad'][0]['requested_y'])
         result = trick_batch.grind_result({'grind': parsed}, {'grind': parsed}, True)
         self.assertEqual((result['native_grind'], result['named_identity'], result['entries']), ('PASS', 'UNKNOWN', 1))
+        delayed = copy.deepcopy(parsed)
+        delayed['status'].insert(0, dict(generation=2, active=False, dropped=0, rejected=0))
+        grade = trick_batch.grind_result({'grind': delayed}, {'grind': parsed}, True)
+        self.assertEqual((grade['evidence'], grade['stale_health_rows']), ('COMPLETE', 1))
+        # Never excuse newer owners, new loss, current inactivity, or physics
+        # from the old owner. Preserve the raw delayed row for later inspection.
+        for change in ({'generation': 4}, {'dropped': 1}, {'rejected': 1}, {'generation': 3}):
+            altered = copy.deepcopy(delayed)
+            altered['status'][0].update(change)
+            self.assertEqual(trick_batch.grind_result({'grind': altered}, {'grind': parsed}, True)['evidence'], 'INCOMPLETE')
+        old_only = copy.deepcopy(delayed)
+        old_only['status'] = old_only['status'][:1]
+        self.assertEqual(trick_batch.grind_result({'grind': old_only}, {'grind': parsed}, True)['evidence'], 'INCOMPLETE')
+        old_physics = copy.deepcopy(delayed)
+        old_physics['samples'][0]['generation'] = 2
+        self.assertEqual(trick_batch.grind_result({'grind': old_physics}, {'grind': parsed}, True)['evidence'], 'INCOMPLETE')
         self.assertEqual(result['raw_enum_pairs'], [(42, None)])
         for bad in (row + ' raw text', row.replace('state=401', 'state=4294967296'),
                     row.replace('generation=3', 'generation=0'), row.replace('duration=0', 'duration=18446744073709551616')):

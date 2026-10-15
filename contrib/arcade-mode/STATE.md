@@ -4,9 +4,9 @@ Installed gameplay source9a96c69ff42c6fe0c75a06ccb180f6235582d34f, DLL
 10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54.
 All five CI38682971586 gates passed. External fixture-reset-deploy-v1 receipt
 verifies unchanged stock/game hashes, updates off and recovery clear.
-Frozen HIL30 and maintenance40 pin this installation. Root owns hardware.
-One necessary DLL restart; native launch is in progress. Restore Stadium, native
-controls, auxiliary actions off and simulation60 before fixture trials.
+Frozen HIL31 and maintenance41 pin this installation. Root owns hardware.
+Game is running in Stadium1, native controls, auxiliary actions off, simulation60.
+Saved rail restored after the necessary DLL restart; editor is closed.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Keep all grab work and the synthetic-input ownership fix. Practical airtime
@@ -53,7 +53,7 @@ New offline grind report keeps valid-attempt denominators and independent native
 physics, exit, bail and reset outcomes separate.233 local Python tests pass.
 The next trial now revalidates fresh fixture status before deciding to teleport,
 avoiding a redundant reset/remount after an already successful post-trial reset.
-This host improvement still needs a reviewed frozen HIL31 before hardware use.
+Reviewed frozen HIL31 includes this improvement; host source9d758d661013e4a1b2610d6e0e8ffaa6176ff77c.
 
 Do not reuse the rejected topmost-surface ground(-40,55) reset: it landed on
 roof supports (1792033069939264000). Native map recovery restored the entrance.
@@ -61,8 +61,21 @@ Use native movement and near-ground collision validation; no raw skater transfor
 velocity or grind-state writes. Fixture helper uses existing Park Editor APIs,
 one unchanged-scale rail, native Trainer teleport and existing park save/adopt.
 
-Next: establish a flat lane, place/save and verify a spawned rail, close editor,
-verify stopped native reset/heading, then demonstrate a native positive control.
+Current saved fixture: native load/adopt1792040850547365000 passed. Relocation
+1792040961694409000 passed full floor checks: start(-39.4061546,47.0287361,52.6163254),
+rail(-39.4061546,46.00006485,60.6163254), identity quaternion, scale1. Full-size
+capture1792041066703028000 shows a physical straight rail along+Z on clear floor,
+with editor closed. Pilot1792041157347647000 completed2 neutral windows and2
+native mounted resets; the second window stopped the batch on delayed old-generation
+health(gen24 inactive after current-gen25 physics). All36physics/78pad rows remained
+valid gen25, no drops or rejected reads. Preserve this original incomplete result.
+The two reset poses differ by less than0.1mm; both heading359.9895 and nearzero speed.
+Measured remount displacement is about(+0.11675X,+0.23040Z) from the saved start.
+A host-only fix excludes older health only when its counters were already covered
+by the validated baseline and fresh matching health/physics remain complete.
+New owner generations, new loss, inactivity in the current owner, and mismatched
+physics still stop. Retry3reset pilots before grind input; no grind attempted.
+Next: verify repeated stopped/mounted reset poses, then native positive control.
 Only then run50 valid trials:10 native,20 Y timing,10 approach,10 best repeats.
 Current grind denominators:0/0/0/0. Ordinary misses continue; missing telemetry,
 unsafe reset or integrity failure stops. Physics400–499 is primary; contact and
