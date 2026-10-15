@@ -31,7 +31,13 @@ void check(bool passed, const char* description) {
 #ifdef ARCADE_PLAYBACK_COMBINED_TESTS
 int run_arcade_playback_tests();
 #endif
+#ifdef ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS
+int run_arcade_score_settlement_tests();
+#endif
 int main() {
+#ifdef ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS
+    run_arcade_score_settlement_tests();
+#endif
 #ifdef ARCADE_PLAYBACK_COMBINED_TESTS
     run_arcade_playback_tests();
 #endif

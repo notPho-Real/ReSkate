@@ -146,6 +146,23 @@ class ComboTraceTests(unittest.TestCase):
         sequence = row.replace('route=2', 'route=4').replace('reason=7', 'reason=0').replace('success=false', 'success=true')
         self.assertTrue(probe.parse_native_score_events(sequence)['samples'][0]['success'])
 
+    def test_score_capture_guard_and_malformed_rows_preserve_uncertainty(self):
+        good = 'ARCADE NATIVE SCORE GUARD: seq=3 epoch=7 delivered=1000 decision=3 authoritative=false.'
+        parsed = probe.parse_native_score_events('\n'.join([good] * 130))
+        self.assertEqual((len(parsed['guards']), parsed['guard_dropped'], parsed['malformed']), (128, 2, 0))
+        self.assertFalse(parsed['guards'][0]['authoritative'])
+        for bad in (good.replace('decision=3', 'decision=0'), good[:-5],
+                    good.replace('authoritative=false', 'authoritative=true'),
+                    good.replace('epoch=7', 'epoch=0'), good + ' extra'):
+            result = probe.parse_native_score_events(bad)
+            self.assertEqual(result['guards'], [])
+            self.assertEqual(result['malformed'], 1)
+        bad_score = 'ARCADE NATIVE SCORE: seq=4 ms=1000 epoch=7 route=4 score=nan'
+        result = probe.parse_native_score_events(bad_score)
+        self.assertEqual(result['malformed'], 1)
+        self.assertEqual(result['samples'], [])
+        self.assertEqual(probe.parse_native_score_events('unrelated log line')['malformed'], 0)
+
     def test_score_presence_diagnostics_do_not_promote_partial_names(self):
         from lab import trick_batch
         row = 'ARCADE SCORE PRESENCE: ms=120 source=1 rows=2 stage=0 parts=3 labels=4.'

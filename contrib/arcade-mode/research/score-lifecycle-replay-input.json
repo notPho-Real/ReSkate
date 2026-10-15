@@ -1,0 +1,1289 @@
+{
+  "schema": 1,
+  "trials": [
+    {
+      "provenance": {
+        "runner": "trusted-v38",
+        "result": "1792053383541871000",
+        "result_sha256": "362c6d75c7bbf59301bed645781b76e549ade3fe71a8f1d5979d0da2c6f67d25",
+        "trial_index": 0,
+        "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+        "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "kickflip-grind-kickflip-out",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 67,
+                "ms": 138335875,
+                "epoch": 215,
+                "route": 4,
+                "score": 50.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 68,
+                "ms": 138335892,
+                "epoch": 215,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 215,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 215,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "PASS",
+            "entries": 1,
+            "exits": 1,
+            "duration_ms": 600,
+            "raw_enum_pairs": [
+              [
+                null,
+                null
+              ]
+            ],
+            "entry_speed_mm_s": [
+              4963
+            ],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "reset": "PASS"
+          },
+          "chain_result": {
+            "continuous": "PASS",
+            "native_air_ids": "PASS",
+            "fatigue": "PASS",
+            "lifecycle_grace": "PASS",
+            "score_banking": "UNVERIFIED",
+            "grace_ms": 450
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 138333706,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 138334424,
+                "pose": 3,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.17733319,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 138335023,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.345334,
+                "grind_fatigue": 0.04799991,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 138335840,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.41066843,
+                "grind_fatigue": 0.04799991,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 138336290,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [],
+            "bail_results": []
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v39",
+        "result": "1792056683965862000",
+        "result_sha256": "513851c649dec266bb3d1b8419a84e835c7faf9ddb29d3868b6fecd0385f2d15",
+        "trial_index": 0,
+        "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+        "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "nose-manual-lt-pop-control",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 197,
+                "ms": 141633076,
+                "epoch": 649,
+                "route": 4,
+                "score": 5.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 198,
+                "ms": 141633093,
+                "epoch": 649,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 199,
+                "ms": 141634242,
+                "epoch": 649,
+                "route": 4,
+                "score": 20.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 649,
+                "active": true,
+                "bound": false,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 649,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [
+              {
+                "seq": 48,
+                "observed": 141632456,
+                "sampled": 141632456,
+                "labels": 2,
+                "uncertainty": 0
+              }
+            ],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "FAIL",
+            "entries": 0,
+            "exits": 0,
+            "duration_ms": 0,
+            "raw_enum_pairs": [],
+            "entry_speed_mm_s": [],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 1,
+            "bail": false,
+            "reset": "PASS"
+          },
+          "chain_result": {
+            "continuous": "PASS",
+            "native_air_ids": "PASS",
+            "fatigue": "PASS",
+            "lifecycle_grace": "PASS",
+            "score_banking": "UNVERIFIED",
+            "grace_ms": 450
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 141632456,
+                "pose": 5,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 141633123,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.053333215,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.053333215,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 141633506,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.20399971,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.053333215,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 141634207,
+                "pose": 5,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.38000065,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.053333215,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 141634223,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.381334,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.05466654,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 141634673,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [],
+            "bail_results": []
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v37",
+        "result": "1792051238136143000",
+        "result_sha256": "2195f5e6ffdba61760fdf9ae2526d51b9de98af0f81e4959aab035c8dc13b360",
+        "trial_index": 0,
+        "source_commit": "2c3b4c2a110f059661a134545808d888ffe53365",
+        "dll_sha256": "8bac4cc24c0ee64aa052befa062013d0c0bff7ef32ed8ced5446f97c38993620",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "balance-mode-repeat-1",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 152,
+                "ms": 136190857,
+                "epoch": 463,
+                "route": 4,
+                "score": 5.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 153,
+                "ms": 136192375,
+                "epoch": 463,
+                "route": 4,
+                "score": 208.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 154,
+                "ms": 136192388,
+                "epoch": 463,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 463,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 463,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "FAIL",
+            "entries": 0,
+            "exits": 0,
+            "duration_ms": 0,
+            "raw_enum_pairs": [],
+            "entry_speed_mm_s": [],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "reset": "FAIL"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 136189169,
+                "pose": 4,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 136190785,
+                "pose": 4,
+                "active": false,
+                "failed": true,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 136190802,
+                "pose": 6,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 136190819,
+                "pose": 0,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [
+              {
+                "ms": 136190785,
+                "kind": 2,
+                "request": 21
+              }
+            ],
+            "bail_results": [
+              {
+                "ms": 136190785,
+                "request": 21,
+                "result": 1
+              },
+              {
+                "ms": 136190802,
+                "request": 21,
+                "result": 3
+              }
+            ]
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v40",
+        "result": "1792062678538132000",
+        "result_sha256": "c3a186ee8775596e6be019d96c1ea17f331bf269f3733097b7202e42ef1afabe",
+        "trial_index": 0,
+        "source_commit": "08d2a3a67bea23f715f0965afb4d37c9847feaa8",
+        "dll_sha256": "27fe2b45bb2b3202e7d52ac498996896fe4e8c1f604ab63498cf199b837b5f50",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "moving-grind-exit-revert-manual",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 143,
+                "ms": 147629080,
+                "epoch": 507,
+                "route": 4,
+                "score": 35.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 144,
+                "ms": 147629097,
+                "epoch": 507,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 145,
+                "ms": 147630198,
+                "epoch": 507,
+                "route": 4,
+                "score": 7.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 146,
+                "ms": 147631547,
+                "epoch": 507,
+                "route": 4,
+                "score": 14.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 507,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 507,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [
+              {
+                "seq": 25,
+                "observed": 147630644,
+                "sampled": 147630644,
+                "labels": 1,
+                "uncertainty": 0
+              }
+            ],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "PASS",
+            "entries": 1,
+            "exits": 1,
+            "duration_ms": 549,
+            "raw_enum_pairs": [
+              [
+                20,
+                20
+              ]
+            ],
+            "entry_speed_mm_s": [
+              4540
+            ],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 1,
+            "bail": false,
+            "reset": "PASS"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 147626977,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147627694,
+                "pose": 3,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.17733319,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147628244,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.34133393,
+                "grind_fatigue": 0.043999933,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147629044,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.405335,
+                "grind_fatigue": 0.043999933,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147629494,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147629611,
+                "pose": 0,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147630161,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147630644,
+                "pose": 4,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147631462,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.06533315,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.06533315,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 147631911,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [],
+            "bail_results": []
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v32",
+        "result": "1792041692611729000",
+        "result_sha256": "b6f7922d817ef2177efcbfb0d73e17cc8cb10521cabd41f10f54b2c54a46bf83",
+        "trial_index": 0,
+        "source_commit": "9a96c69ff42c6fe0c75a06ccb180f6235582d34f",
+        "dll_sha256": "10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "native-rail-control",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [],
+            "status": [],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "PASS",
+            "entries": 1,
+            "exits": 1,
+            "duration_ms": 847,
+            "raw_enum_pairs": [
+              [
+                0,
+                20
+              ],
+              [
+                20,
+                20
+              ]
+            ],
+            "entry_speed_mm_s": [
+              5021
+            ],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 1,
+            "bail": false,
+            "reset": "PASS"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [],
+            "dropped": 0,
+            "baseline_available": true
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v38",
+        "result": "1792054829820135000",
+        "result_sha256": "b0d254617fef4703ea96529e28e74a95b238379a74e15a49619cba4a3ac6ef39",
+        "trial_index": 0,
+        "source_commit": "7c7d168da22c4ced6a99efc19008ae37d8490a02",
+        "dll_sha256": "f81444e861103579d117feddd90281e9aabc654c893d127b6906cc2fb3057314",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "kickflip-grind-kickflip-manual-kickflip",
+        "repetition": 1,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 110,
+                "ms": 139782693,
+                "epoch": 381,
+                "route": 4,
+                "score": 50.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 111,
+                "ms": 139783126,
+                "epoch": 381,
+                "route": 4,
+                "score": 125.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 112,
+                "ms": 139783141,
+                "epoch": 381,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 113,
+                "ms": 139787676,
+                "epoch": 381,
+                "route": 4,
+                "score": 7.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 381,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 381,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 381,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [
+              {
+                "seq": 24,
+                "observed": 139782840,
+                "sampled": 139782840,
+                "labels": 8388608,
+                "uncertainty": 0
+              }
+            ],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "PASS",
+            "entries": 1,
+            "exits": 1,
+            "duration_ms": 351,
+            "raw_enum_pairs": [
+              [
+                null,
+                null
+              ]
+            ],
+            "entry_speed_mm_s": [
+              4886
+            ],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "reset": "FAIL"
+          },
+          "chain_result": {
+            "continuous": "UNVERIFIED",
+            "native_air_ids": "UNVERIFIED",
+            "fatigue": "UNVERIFIED",
+            "lifecycle_grace": "UNVERIFIED",
+            "score_banking": "UNVERIFIED"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 139780723,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 139781456,
+                "pose": 3,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.1783332,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 139781806,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.32633367,
+                "grind_fatigue": 0.028000003,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 139782640,
+                "pose": 6,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 139782656,
+                "pose": 0,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [],
+            "bail_results": []
+          },
+          "flip": {
+            "dropped": 16
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v40",
+        "result": "1792061493757663000",
+        "result_sha256": "5791dee83e2ca1b3e16afc7433ae60c5b03f0aed932f244df90844c4c863f0b3",
+        "trial_index": 4,
+        "source_commit": "08d2a3a67bea23f715f0965afb4d37c9847feaa8",
+        "dll_sha256": "27fe2b45bb2b3202e7d52ac498996896fe4e8c1f604ab63498cf199b837b5f50",
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "later-kickflip-grind-nose-nollie",
+        "repetition": 5,
+        "neutralized": true,
+        "fixture_reset": {
+          "reset_ready": true
+        },
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 88,
+                "ms": 146537847,
+                "epoch": 331,
+                "route": 4,
+                "score": 56.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 89,
+                "ms": 146537864,
+                "epoch": 331,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 90,
+                "ms": 146539447,
+                "epoch": 331,
+                "route": 4,
+                "score": 22.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 331,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 331,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 331,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "native_event_identity": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "PASS",
+            "entries": 2,
+            "exits": 2,
+            "duration_ms": 534,
+            "raw_enum_pairs": [
+              [
+                10,
+                20
+              ],
+              [
+                20,
+                20
+              ],
+              [
+                9,
+                20
+              ]
+            ],
+            "entry_speed_mm_s": [
+              3950,
+              2403
+            ],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "reset": "PASS"
+          },
+          "chain_result": {
+            "continuous": "FAIL",
+            "native_air_ids": "UNVERIFIED",
+            "fatigue": "UNVERIFIED",
+            "lifecycle_grace": "UNVERIFIED",
+            "score_banking": "UNVERIFIED"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "events": [
+              {
+                "ms": 146535528,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146536244,
+                "pose": 3,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.17699987,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146536778,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.3400006,
+                "grind_fatigue": 0.042999938,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146537544,
+                "pose": 3,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.52100164,
+                "grind_fatigue": 0.042999938,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146537661,
+                "pose": 7,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.5303343,
+                "grind_fatigue": 0.050999895,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146537711,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.654334,
+                "grind_fatigue": 0.050999895,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146537811,
+                "pose": 5,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.78233343,
+                "grind_fatigue": 0.050999895,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146537844,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.7849999,
+                "grind_fatigue": 0.050999895,
+                "manual_fatigue": 0.0026666669,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146538294,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146538628,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146539411,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.062333167,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 146539861,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "dropped": 0,
+            "baseline_available": true,
+            "failure_requests": [],
+            "bail_results": []
+          },
+          "flip": {
+            "dropped": 0
+          }
+        }
+      }
+    }
+  ]
+}
