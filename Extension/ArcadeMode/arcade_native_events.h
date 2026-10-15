@@ -20,6 +20,10 @@ inline SkatePose observed_pose(const NativeComboObservation& sample) noexcept {
     if (sample.bailed) return SkatePose::bail;
     if (sample.state >= 200 && sample.state < 300) return SkatePose::air;
     if (sample.state >= 400 && sample.state < 500) return SkatePose::grind;
+    // Fixture evidence 1792042748530552000: 52 ms between rail exit and pop.
+    // ComboSession admits this only immediately after an observed grind, bounded
+    // to 150 ms. It grants neither input eligibility nor a score event.
+    if (sample.state == 701) return SkatePose::grind_exit_transition;
     // Two Deck Ollie traces enter 100/0 then 103/0 before 200/0. This
     // grounded preparation must preserve link grace and accumulated fatigue.
     // It proves neither a manual nor permission to start another native action.

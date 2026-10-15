@@ -226,7 +226,7 @@ def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
     samples, events, balance, dropped = [], [], [], 0
     for line in text.splitlines():
-        event = re.search(r'ARCADE COMBO EVENT: ms=([0-9]{1,20}) pose=([0-6]) active=(true|false) failed=(true|false) fatigue=([0-9.eE+-]{1,24}) grind=([0-9.eE+-]{1,24}) manual=([0-9.eE+-]{1,24}) native_failure_verified=false\.$', line)
+        event = re.search(r'ARCADE COMBO EVENT: ms=([0-9]{1,20}) pose=([0-7]) active=(true|false) failed=(true|false) fatigue=([0-9.eE+-]{1,24}) grind=([0-9.eE+-]{1,24}) manual=([0-9.eE+-]{1,24}) native_failure_verified=false\.$', line)
         if event and int(event[1]) <= 0xffffffffffffffff:
             try:
                 fatigue = [float(event[i]) for i in (5, 6, 7)]

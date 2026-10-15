@@ -701,6 +701,47 @@ int main() {
               observed_pose({true, true, true, false, 100, 3, 0}) == SkatePose::unknown,
               "preparation mapping preserves bail, owner-loss and unknown-mode boundaries");
     }
+    {
+        const auto transition = observed_pose({true, true, true, false, 701, 1, 0});
+        check(transition == SkatePose::grind_exit_transition &&
+              !action_input_eligible({true, true, true, false, 701, 1, 0}),
+              "measured rail handoff is neither airborne nor action eligible");
+        for (const auto next : {SkatePose::air, SkatePose::riding, SkatePose::grind}) {
+            ComboSession session;
+            session.step(SkatePose::air, 0, 0);
+            session.step(SkatePose::grind, 0.1f, 0);
+            session.step(SkatePose::grind, 0.2f, 0);
+            const auto before = session.model().state();
+            session.step(transition, 0.02f, 0);
+            session.step(transition, 0.032f, 0);
+            const auto held = session.model().state();
+            check(held.combo_active && held.grind_fatigue == before.grind_fatigue &&
+                  held.fatigue >= before.fatigue && held.multiplier == before.multiplier &&
+                  held.balance_kind == BalanceKind::none && !held.landing_grace,
+                  "52ms rail handoff preserves fatigue without phantom points, balance or landing");
+            session.step(next, 0.016f, 0);
+            check(session.model().state().combo_active &&
+                  session.model().state().grind_fatigue >= before.grind_fatigue,
+                  "observed handoff completion preserves the existing combo");
+            check(session.model().state().landing_grace == (next == SkatePose::riding),
+                  "only observed riding after a handoff opens landing grace");
+        }
+        for (const auto previous : {SkatePose::unknown, SkatePose::riding, SkatePose::air, SkatePose::manual}) {
+            ComboSession session;
+            session.step(previous, 0, 0);
+            session.step(transition, 0.016f, 0);
+            check(!session.model().state().combo_active,
+                  "701 without an immediately preceding grind cannot retain a combo");
+        }
+        for (const auto end : {SkatePose::unknown, SkatePose::bail, SkatePose::grind_exit_transition}) {
+            ComboSession session;
+            session.step(SkatePose::grind, 0, 0);
+            session.step(transition, 0.1f, 0);
+            session.step(end, 0.1f, 0);
+            check(!session.model().state().combo_active && !session.model().state().grind_fatigue,
+                  "lost observation, bail or expired handoff clears combo and fatigue");
+        }
+    }
     for (const auto first : {SkatePose::grind, SkatePose::manual}) {
         ComboSession session;
         const auto other = first == SkatePose::grind ? SkatePose::manual : SkatePose::grind;

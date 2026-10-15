@@ -4,8 +4,8 @@ Installed gameplay source9a96c69ff42c6fe0c75a06ccb180f6235582d34f, DLL
 10ba005f144f4c36f1309a07ba12fb4354b15941bbd0d22883891d552220ed54.
 All five CI38682971586 gates passed. External fixture-reset-deploy-v1 receipt
 verifies unchanged stock/game hashes, updates off and recovery clear.
-Frozen HIL31 and maintenance41 pin this installation. Root owns hardware.
-Game is running in Stadium1, native controls, auxiliary actions off, simulation60.
+Frozen HIL32 and maintenance41 pin this installation. Root owns hardware.
+Game is running in Stadium1, Arcade Mode ON, auxiliary actions off, simulation60.
 Saved rail restored after the necessary DLL restart; editor is closed.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
@@ -74,10 +74,30 @@ Measured remount displacement is about(+0.11675X,+0.23040Z) from the saved start
 A host-only fix excludes older health only when its counters were already covered
 by the validated baseline and fresh matching health/physics remain complete.
 New owner generations, new loss, inactivity in the current owner, and mismatched
-physics still stop. Retry3reset pilots before grind input; no grind attempted.
-Next: verify repeated stopped/mounted reset poses, then native positive control.
-Only then run50 valid trials:10 native,20 Y timing,10 approach,10 best repeats.
-Current grind denominators:0/0/0/0. Ordinary misses continue; missing telemetry,
+physics still stop. Retry1792041489143174000 passed3/3 neutral/reset windows with complete evidence,
+no lost events or rejected samples. Safely classified delayed older health counts
+0/1/2. Reset poses vary<0.2mm, heading359.9890–359.9895, speed<0.00011m/s.
+These are reset checks, excluded from grind denominators. Native positive pilot
+1792041583599882000 passed: native401,800ms,entry5.020m/s, exit200 then100,
+no bail, complete evidence and reset. First enum binding was unavailable.
+Main native controls1792041692611729000 then passed10/10 real grinds and exits,
+833–852ms, entry5.021–5.040m/s;10neutral/reset passes, no bails/incomplete trials.
+Raw enum pairs(0,20) and(20,20) are valid in all10; meanings remain UNKNOWN.
+Arcade A/Y pilot1792042271587844000 missed at max1.035m/s: crouch interrupted
+the push before native acceleration. Push-only1792042684404723000 reached5m/s
+with unchanged automatic-push output. Waiting until1100ms to crouch and1500ms
+to release produced native grind401/403 in1792042748530552000:514ms, entry4.989m/s,
+exit and reset passed. Horizontal balance activated from observed native entry.
+These calibration pilots are excluded from the50-trial matrix. The20 Y timing/
+direction trials are running. A brief native701 exit transition currently resets
+the combo before200/201; preserve this demonstrated integration defect for repair.
+Source now preserves this handoff only after observed grinding, at most150ms,
+with balance/HUD cleared and no added trick event. Owner loss, bail, unrelated
+701 and timeout still invalidate.33596 local model/sanitizer checks and233 Python
+tests pass; runtime repair is NOT installed or Deck-accepted yet. CI for prior
+HEAD6c3437f passed (38685942356; installer38685942385).
+Next: finish20 Y,10 approach,10 best repeats; then grind exits/HUD/combo integration.
+Current required matrix denominators:10/0/0/0; native controls10/10 successful. Ordinary misses continue; missing telemetry,
 unsafe reset or integrity failure stops. Physics400–499 is primary; contact and
 named identity remain unknown without independent evidence. Zero-screenshot
 batches are supported. Preserve the fixture and game between batches.

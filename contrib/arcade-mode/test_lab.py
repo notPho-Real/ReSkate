@@ -368,6 +368,7 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(len(events), 128)
         self.assertEqual(events[-1]['pose'], 4)
         self.assertFalse(events[-1]['native_failure_verified'])
+        self.assertEqual(probe.parse_combo_samples(row.replace('pose=4', 'pose=7'))['events'][0]['pose'], 7)
         for bad in (row + ' private', row.replace('0.5', '1e999'), row.replace('pose=4', 'pose=9')):
             self.assertEqual(probe.parse_combo_samples(bad)['events'], [])
 
