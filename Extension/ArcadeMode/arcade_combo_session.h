@@ -26,7 +26,10 @@ public:
         return scoring_.observe(model_, event, proof, context);
     }
     std::optional<ModelSettlement> take_score_settlement() noexcept { return scoring_.take(); }
-    bool score_unverified() const noexcept { return scoring_.unverified(); }
+    ScoreDecision refresh_score_evidence(const ScoreContext& context) noexcept {
+        return scoring_.refresh(model_, context);
+    }
+    bool score_unverified() const noexcept { return scoring_.unverified(model_); }
     void invalidate() noexcept {
         scoring_.invalidate(model_);
         model_.bail();

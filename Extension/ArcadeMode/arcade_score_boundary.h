@@ -62,6 +62,20 @@ public:
             !context.generation || !context.combo;
     }
     bool tainted() const noexcept { return tainted_; }
+    ScoreDecision refresh(const ScoreContext& context) noexcept {
+        ScoreDecision decision = ScoreDecision::valid;
+        if (!context.available || !context.health_complete || !context.owner || !context.combo)
+            decision = ScoreDecision::incomplete;
+        else if (context.generation != context_.generation || context.owner != context_.owner ||
+                 context.combo != context_.combo || context.now < context_.now)
+            decision = ScoreDecision::stale;
+        else if (context.dropped != context_.dropped || context.rejected != context_.rejected ||
+                 context.contended != context_.contended || context.stale != context_.stale || tainted_)
+            decision = ScoreDecision::incomplete;
+        if (decision != ScoreDecision::valid) tainted_ = true;
+        else context_.now = context.now;
+        return decision;
+    }
     ScoreReceipt observe(const native_score_detail::Event& event, const ScoreProof& proof,
                          const ScoreContext& context) noexcept {
         const auto reject = [&](ScoreDecision why) {

@@ -82,8 +82,12 @@ Equal scores and different listeners are not occurrence identity. `ScoreSettleme
 attaches verified raw points to existing observed action slots without changing
 their multiplier, balance or grace. Every action slot must have points evidence,
 including explicit zero; a missing slot cannot produce a partial bank. Model
-expiry and independent clean completion must both occur before a bank receipt;
-bail receipts retain the lost amount separately. Missing evidence produces no
+expiry and independent clean completion must both occur before a bank receipt.
+After a model terminal, a new native receipt or `refresh_score_evidence` health
+snapshot must validate the same owner/generation and unchanged loss counters;
+reusing an earlier snapshot cannot authorize a later bank. A gap during the link
+window cancels monetary authority. Bail receipts retain the lost amount separately.
+Missing evidence produces no
 settlement, rather than an authoritative zero. The current native observer has
 none of the required payload-owner/occurrence/raw-point proofs, so production
 monetary admission remains dormant. Native line/sequence totals are never fed

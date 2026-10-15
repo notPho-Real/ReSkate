@@ -18,6 +18,7 @@ public:
         gate_.begin(context, last_serial);
         owner_ = context.owner; generation_ = context.generation; combo_ = context.combo;
         model_sequence_ = model.last_settlement().sequence;
+        health_now_ = context.now; terminal_after_ = 0;
         confirmation_ = ScoreMeaning::unknown; pending_.reset(); output_.reset(); emitted_ = credited_ = false;
         actions_.fill(false); action_count_ = 0;
         started_ = true; uncertain_ = gate_.tainted();
@@ -47,7 +48,18 @@ public:
             if (receipt.meaning == ScoreMeaning::bail && model.state().combo_active) model.bail();
         }
         poll(model);
+        health_now_ = context.now;
+        publish(context.now);
         return receipt;
+    }
+    ScoreDecision refresh(Model& model, const ScoreContext& context) noexcept {
+        if (!started_) return ScoreDecision::ambiguous;
+        const auto decision = gate_.refresh(context);
+        if (decision != ScoreDecision::valid) { invalidate(model); return decision; }
+        poll(model);
+        health_now_ = context.now;
+        publish(context.now);
+        return decision;
     }
     void poll(Model& model) noexcept {
         if (!started_ || uncertain_ || emitted_) return;
@@ -58,19 +70,23 @@ public:
             }
             model_sequence_ = outcome.sequence;
             pending_ = outcome;
+            terminal_after_ = health_now_;
         }
         if (!pending_) return;
         if (model.state().combo_active) { invalidate(model); return; }
         const bool bank = pending_->kind == SettlementKind::bank && confirmation_ == ScoreMeaning::clean_end;
         const bool bail = pending_->kind == SettlementKind::bail && confirmation_ == ScoreMeaning::bail;
         if (confirmation_ != ScoreMeaning::unknown && !bank && !bail) { invalidate(model); return; }
-        if (credited_ && action_count_ == pending_->actions && (bank || bail)) {
-            output_ = pending_; emitted_ = true;
-        }
+        // A pure model tick cannot prove that the native stream remained
+        // complete through the end of Arcade's later link window. Publication
+        // requires a new native receipt or health snapshot after this terminal.
     }
     // Absence means unverified/pending, never a fabricated zero-point bank.
     std::optional<ModelSettlement> take() noexcept { auto value = output_; output_.reset(); return value; }
-    bool unverified() const noexcept { return !started_ || uncertain_ || !credited_ || (pending_ && !emitted_); }
+    bool unverified(const Model& model) const noexcept {
+        return !started_ || uncertain_ || !credited_ || (pending_ && !emitted_) ||
+            (model.state().combo_active && (emitted_ || action_count_ != model.state().multiplier));
+    }
     void invalidate(Model& model) noexcept {
         uncertain_ = true; pending_.reset();
         // A confirmed terminal is immutable once published, even if the menu,
@@ -79,8 +95,16 @@ public:
         if (started_ && !emitted_) model.discard_unverified_points();
     }
 private:
+    void publish(std::uint64_t now) noexcept {
+        if (uncertain_ || emitted_ || !pending_ || now <= terminal_after_ || !credited_ ||
+            action_count_ != pending_->actions) return;
+        const bool bank = pending_->kind == SettlementKind::bank && confirmation_ == ScoreMeaning::clean_end;
+        const bool bail = pending_->kind == SettlementKind::bail && confirmation_ == ScoreMeaning::bail;
+        if (bank || bail) { output_ = pending_; emitted_ = true; }
+    }
     ScoreBoundary gate_;
     std::uint64_t owner_{}, generation_{}, combo_{}, model_sequence_{};
+    std::uint64_t health_now_{}, terminal_after_{};
     ScoreMeaning confirmation_{ScoreMeaning::unknown};
     std::optional<ModelSettlement> pending_, output_;
     std::array<bool, ScoreBoundary::capacity> actions_{};
