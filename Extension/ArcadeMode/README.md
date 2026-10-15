@@ -89,7 +89,12 @@ requests. See `contrib/arcade-mode/research/upstream-method-survey.json` before
 starting new reverse engineering of those mechanics.
 
 No grind actuator or physical balance-failure action is established by this
-scaffold. LB/RB spins, production RT context selection, native score amounts and persistent
+scaffold. LB/RB now translate continuous airborne rotation and crouched prewind
+to native LS, after the existing120ms board-chord window. A held pair wins;
+release, landing, bail, menus and conflicting owners release rotation. The
+native method produced BS/FS180s and360s on Deck (six trials, all sketchy);
+the new shoulder mapping itself still requires installation and Deck acceptance.
+Production RT context selection, native score amounts and persistent
 telemetry transport still require integration. The existing model remains in
 place. The HUD now uses 30% axis lengths and visible danger zones, driven by its
 published balance position; full Gamescope screenshots remain required.

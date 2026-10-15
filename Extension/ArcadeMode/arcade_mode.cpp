@@ -2,6 +2,7 @@
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
 #include "arcade_gesture.h"
+#include "arcade_rotation.h"
 #include "arcade_score_probe.h"
 #include "arcade_native_score.h"
 #include "arcade_native_events.h"
@@ -70,6 +71,7 @@ std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
 std::atomic<ActionExperiment> action_mode{ActionExperiment::off};
 std::array<ActionRuntime, 4> action_inputs;
+std::array<AirRotation, 4> rotations;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 struct PadEvidence {
     std::uint64_t sequence{}, ms{};
@@ -346,6 +348,7 @@ void set_enabled(bool value, bool persist) noexcept {
         std::lock_guard lock(ollie_mutex);
         arcade_input.enable(value);
         for (auto& input : action_inputs) input.reset();
+        for (auto& rotation : rotations) rotation.reset();
         mode_enabled.store(value, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
@@ -671,14 +674,26 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // active flip. The timeline arm isolates scheduling with ordinary masking.
         if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
         else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
+        const auto pose = manual_observed.load(std::memory_order_relaxed);
+        const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input;
+        const bool crouched = pose == SkatePose::riding && (physical_buttons & ClassicGesture::a) &&
+            result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
+        const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,
+            pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3);
+        // BoardChord has already consumed a valid pair and emitted native Y.
+        // Single shoulders must not leak to native catch/grab bindings.
+        if (rotation_enabled) result.buttons &= ~BoardChord::pair;
+        if (rotation.owns_left) { left_x = rotation.x; left_y = rotation.y; }
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left);
         packet_mask = physical_packet ^ output_packet;
         const auto poll = ++playback_polls[user];
         const auto& old = previous_pad[user];
+        const bool rotation_sample = rotation.owns_left || (rotation_enabled && (physical_buttons & BoardChord::pair)) || old.action_kind == 5;
+        const bool action_owned = action.owned || rotation.owns_left;
         const bool diagnostic = playback_diagnostics && (result.authored_playback || old.playback_sample);
         // Keep one cadence row per game tick plus every changed output. The
         // cumulative poll count exposes extra reads without logging each one.
@@ -688,16 +703,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             ((diagnostic && old.tick != tick) || old.buttons != physical_buttons || old.lt != physical_left_trigger || old.rt != physical_right_trigger ||
              old.output != result.buttons || old.phase != result.phase ||
              old.right_x != result.right_x || old.right_y != result.right_y || action.requested ||
-             ((action_experiment != ActionExperiment::off || old.action_sample) &&
-              (((action.owned || old.action_owned) && old.tick != tick) || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
-               old.output_rt != right_trigger || old.action_owned != action.owned)))) {
+             ((action_experiment != ActionExperiment::off || old.action_sample || rotation_sample) &&
+              (((action_owned || old.action_owned) && old.tick != tick) || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
+               old.output_rt != right_trigger || old.action_owned != action_owned)))) {
             PadEvidence row{++pad_sequence, now, user, physical_buttons, physical_left_trigger,
                 physical_right_trigger, result.buttons, result.phase, false, tick, result.right_x, result.right_y,
                 playback_diagnostics && result.authored_playback, static_cast<unsigned>(experiment),
                 physical_packet, output_packet, diagnostic ? poll : 0};
-            row.action_sample = action_experiment != ActionExperiment::off || old.action_sample;
-            row.action_requested = action.requested; row.action_owned = action.owned;
-            row.action_mode = static_cast<unsigned>(action_experiment); row.action_kind = action.request_kind;
+            row.action_sample = action_experiment != ActionExperiment::off || rotation_sample || old.action_owned;
+            row.action_requested = action.requested; row.action_owned = action_owned;
+            row.action_mode = static_cast<unsigned>(action_experiment);
+            row.action_kind = rotation_enabled && (physical_buttons & BoardChord::pair) ? 5 : action.request_kind;
             row.action_trick = static_cast<unsigned>(action.trick); row.action_result = static_cast<unsigned>(action.result);
             row.left_x = left_x; row.left_y = left_y; row.output_lt = left_trigger; row.output_rt = right_trigger;
             previous_pad[user] = row;

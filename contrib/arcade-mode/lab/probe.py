@@ -392,14 +392,15 @@ def parse_action_samples(text):
     """Numeric input-dispatch evidence only; seq joins the independent stick row."""
     samples, dropped = [], 0
     for line in text.splitlines():
-        row = re.search(r'ARCADE ACTION SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) mode=([0-4]) requested=(true|false) kind=([0-4]) trick=([0-9]{1,2}) result=([0-5]) owned=(true|false) lx=(-?[0-9]{1,5}) ly=(-?[0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) packet=([0-9]{1,10})\.$', line)
+        row = re.search(r'ARCADE ACTION SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) mode=([0-4]) requested=(true|false) kind=([0-5]) trick=([0-9]{1,2}) result=([0-5]) owned=(true|false) lx=(-?[0-9]{1,5}) ly=(-?[0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) packet=([0-9]{1,10})\.$', line)
         if not row:
             continue
         names = ('seq', 'ms', 'tick', 'user', 'mode', 'requested', 'kind', 'trick',
                  'result', 'owned', 'lx', 'ly', 'lt', 'rt', 'packet')
         sample = {key: value == 'true' if key in ('requested', 'owned') else int(value)
                   for key, value in zip(names, row.groups())}
-        # ArcadeTrick::darkslide is 53. result is DispatchResult, never native success.
+        # Kind5 is shoulder rotation. result is DispatchResult, never native success.
+        # ArcadeTrick::darkslide is53; rotation does not fabricate a trick identifier.
         if (max(sample['seq'], sample['ms'], sample['tick']) > 0xffffffffffffffff or
                 sample['trick'] > 53 or sample['packet'] > 0xffffffff or
                 not (-32768 <= sample['lx'] <= 32767 and -32768 <= sample['ly'] <= 32767) or

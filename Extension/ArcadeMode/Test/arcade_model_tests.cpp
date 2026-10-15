@@ -7,6 +7,7 @@
 #include "Extension/ArcadeMode/arcade_ollie.h"
 #include "Extension/ArcadeMode/arcade_flip.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_trick_table.h"
 #include "Extension/ArcadeMode/arcade_native_trick.h"
 #include "Extension/ArcadeMode/arcade_authored_playback.h"
@@ -34,6 +35,62 @@ int main() {
     run_arcade_playback_tests();
 #endif
     using namespace dingosdk::arcade_mode;
+    for (const auto shoulder : {BoardChord::lb, BoardChord::rb}) {
+        AirRotation spin;
+        const auto poll = [&](std::uint64_t ms, std::uint16_t buttons, SkatePose pose = SkatePose::air,
+                              bool crouched = false, bool nollie = false, bool gameplay = true, bool conflict = false) {
+            return spin.poll(ms, buttons, gameplay, pose, crouched, nollie, conflict);
+        };
+        check(!poll(0, shoulder).owns_left, "rotation cannot inherit a held shoulder on enable");
+        poll(1, 0); poll(10, shoulder);
+        check(!poll(130, shoulder).owns_left, "full120ms chord window precedes single-shoulder rotation");
+        auto out = poll(131, shoulder);
+        check(out.owns_left && out.y == 0 && (shoulder == BoardChord::lb ? out.x < -31000 : out.x > 31000),
+            "airborne shoulder requests native horizontal spin in its chosen direction");
+        check(poll(700, shoulder).owns_left, "holding continues rotation beyond a fixed trick pulse");
+        check(!poll(701, 0).owns_left, "release stops requesting additional angular motion immediately");
+        poll(710, shoulder); poll(831, shoulder);
+        check(!poll(850, shoulder, SkatePose::riding).owns_left, "landing releases synthetic rotation");
+        check(!poll(1000, shoulder).owns_left, "held shoulder cannot restart after landing");
+        poll(1010, 0); poll(1020, shoulder); poll(1141, shoulder);
+        check(!poll(1150, shoulder, SkatePose::bail).owns_left, "bail releases native rotation input");
+        poll(1160, 0); poll(1170, shoulder); poll(1291, shoulder);
+        check(!poll(1300, shoulder, SkatePose::air, false, false, false).owns_left,
+            "menu or mode OFF restores the caller's native input");
+        check(!poll(1500, shoulder).owns_left, "menu-held shoulder requires release before rearm");
+        poll(1510, 0); poll(1520, shoulder); poll(1641, shoulder);
+        check(!poll(1650, BoardChord::pair).owns_left && !poll(1800, shoulder).owns_left,
+            "late chord cancels rotation and partial release does not restart it");
+        poll(1900, 0); poll(1910, shoulder, SkatePose::riding, true);
+        out = poll(2031, shoulder, SkatePose::riding, true);
+        check(out.owns_left && out.x == 0 && out.y == 0, "prewind starts from the center after arbitration");
+        out = poll(2055, shoulder, SkatePose::riding, true);
+        check(out.owns_left && out.x == 0 && out.y < -31000, "Ollie prewind first delivers native down");
+        out = poll(2091, shoulder, SkatePose::riding, true);
+        check(out.owns_left && out.y < -18000 && std::abs(out.x) > 25000, "prewind reaches its authored diagonal");
+        out = poll(2121, shoulder);
+        check(out.owns_left && out.y == 0 && std::abs(out.x) > 31000, "prewind settles horizontal through takeoff");
+        check(!poll(2120, shoulder).owns_left, "backwards clock clears rotation ownership");
+        poll(2200, 0); poll(2210, shoulder, SkatePose::riding, true, true);
+        poll(2331, shoulder, SkatePose::riding, true, true);
+        check(poll(2355, shoulder, SkatePose::riding, true, true).y > 31000, "native nollie prewind reverses vertical setup");
+        check(!poll(2610, shoulder, SkatePose::riding).owns_left, "abandoned crouch releases after bounded grace");
+        poll(2700, 0); poll(2710, shoulder);
+        check(!poll(2831, shoulder, SkatePose::air, false, false, true, true).owns_left,
+            "another native input owner cancels rotation");
+    }
+    for (const auto delay : {0u, 119u, 120u, 121u}) {
+        BoardChord chord; AirRotation spin;
+        chord.poll(0, 0, true, true); spin.poll(0, 0, true, SkatePose::riding, false, false);
+        chord.poll(10, BoardChord::lb, true, true);
+        spin.poll(10, BoardChord::lb, true, SkatePose::riding, false, false);
+        const auto board = chord.poll(10 + delay, BoardChord::pair, true, true);
+        check(board.pulse == (delay <= 120), "rotation preserves exact native board chord timing");
+        check(!spin.poll(10 + delay, BoardChord::pair, true, SkatePose::riding, false, false).owns_left,
+            "board pair never also requests rotation");
+        check(!spin.poll(1000, BoardChord::rb, true, SkatePose::air, false, false).owns_left,
+            "board chord requires both shoulders released before rotation can rearm");
+    }
     for (unsigned context = 0; context < 3; ++context) {
         const std::array catalog{PreparedGesture{1, false, GestureContext::ground,
             {{0, 0, -32767}, {18, 0, 32767}, {19, 0, 0}, {54, 0, 0}}}};

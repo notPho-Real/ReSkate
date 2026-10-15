@@ -2003,14 +2003,14 @@
     {
       "id": "spins",
       "requested_action": "LB/RB spin and spin cancellation",
-      "implementation_status": "Classic bumper translation missing",
+      "implementation_status": "Native method DISCOVERED6/6; Classic bumper translation implemented locally, not yet Deck-verified",
       "source_ids": [
         "dual-stick-rail-and-spin",
         "controller-source-attachment"
       ],
-      "remaining": "Native signed/accumulated rotation, low-air settings, stance and board-chord conflict.",
-      "next": "Adapt bounded prewind/LS spin recipe, observe actual rotation, cancel correctly on release/landing.",
-      "new_deck_trials": 0
+      "remaining": "New LB/RB mapping awaits verified build/install and Deck trials; short partial turns, clean landings, stance contexts and board-chord regression remain unaccepted.",
+      "next": "Verify integrated shoulder holds/prewind after CI. Native method6/6 observed BS/FS180 and360, all Sketchy, all neutral/reset. Installed f1; trusted-v24/results/1792027415513923000.json. Local AirRotation implements120ms chord arbitration and release/landing/menu/bail cancellation.",
+      "new_deck_trials": 6
     },
     {
       "id": "board-chord",

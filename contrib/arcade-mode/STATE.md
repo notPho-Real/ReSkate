@@ -1,3 +1,38 @@
+## Active priorities and hot Deck checkpoint — 2026-10-14
+
+GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
+
+Preserve all grab source, tests, mappings and the a970167 synthetic ownership fix.
+Insufficient practical airtime remains an unresolved gameplay-context limitation;
+it does not establish that native grab recipes are incorrect. No further grab
+batches or physics changes are planned in this milestone.
+
+Actual source HEAD a9701673f557c58afa5bddfbe84553aab8bcd53d; installed source
+f1ce40c22a0a908480a891661b3f1d0bbe19427f, DLL
+3bb57725475257d26e1d1912ef7d821b3ea1fbf3bc292446bb6437c56a3b726c.
+Game remains hot in Stadium1, Arcade ON, auxiliary actions OFF, simulation60.
+Root owns hardware; trusted-v24 and maintenance-v28 pin this installed build.
+The 20-trial manual balance batch finished:20 executed,20 neutralized,20 idle
+resets, no evidence gaps. All10 Manual and10 Nose Manual trials showed the
+matching native pose and directionally correct model correction. This remains
+one stationary context, not moving-chain acceptance. Result1792027038994591000.json.
+Earlier four sustained manual/nose-manual cases confirmed native poses and live
+vertical HUD correction in both directions (result1792026779741841000.json).
+Full limit-position and physical balance-failure acceptance remain outstanding.
+
+Next: native LS spin candidate from pinned GoalTrains source, then integrate
+continuous LB/RB with the existing120ms board chord; basic Y rail engagement,
+actual grind/manual HUD and physical failure, then basic combo composition.
+The local LB/RB actuator now supplies native LS rotation and crouched prewind,
+preserving the120ms board chord and release-to-rearm.33,560 model checks pass.
+Raw native method result1792027415513923000.json:6/6 spins independently visible,
+BS/FS180 for200/600ms airborne holds and BS/FS360 with prewind;6 neutral/reset
+passes, no evidence gaps. Every landing was Sketchy. These are native method
+discoveries; shoulder mapping, short-press control and larger spins remain
+unverified. No unverified source was installed. Game remains running.
+CI38663884831 has Linux/macOS passes; Windows/package gates still pending.
+All older next-step notes below are historical and superseded by this priority.
+
 ## Grab ownership and HIL readiness fixes — 2026-10-14
 
 Latest pushed source1d90357; installed f1 remains hot in Stadium1, Arcade ON,
