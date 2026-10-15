@@ -20,6 +20,11 @@ inline SkatePose observed_pose(const NativeComboObservation& sample) noexcept {
     if (sample.bailed) return SkatePose::bail;
     if (sample.state >= 200 && sample.state < 300) return SkatePose::air;
     if (sample.state >= 400 && sample.state < 500) return SkatePose::grind;
+    // Two Deck Ollie traces enter 100/0 then 103/0 before 200/0. This
+    // grounded preparation must preserve link grace and accumulated fatigue.
+    // It proves neither a manual nor permission to start another native action.
+    if ((sample.state == 100 || sample.state == 103) && sample.mode == 0)
+        return SkatePose::riding;
     if (sample.state == 100 && sample.mode == 1) {
         if (!sample.score_valid) return SkatePose::unknown;
         if (sample.score_active) {

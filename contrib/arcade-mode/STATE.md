@@ -1,5 +1,19 @@
 # Arcade Mode persistent project state
 
+## Ground-preparation combo regression found — 2026-10-14
+
+Installed f1 remains running, CI for19776cf diagnostic fix is building.
+Manual command retry:3/4 executed,1 skipped; one independently visible Manual
+and two exact native Ollie1 results,2 reset passes,1 traffic/bail reset failure.
+All executed inputs neutralized. No continuous-chain or Nose Manual acceptance.
+Evidence and earlier4 skipped cases are in manual-revert-controls.json.
+Both Ollies showed native100/mode0 then103/mode0 before takeoff200/mode0;
+existing pose mapping invalidated the combo at that legitimate preparation.
+The targeted local fix treats those ground preparations as riding while retaining
+strict action-start gates.33,504 model sanitizer checks pass; Deck retest pending.
+City sidewalk baseline is unsuitable for moving batches facing traffic. Move to
+the existing Stadium practice map and establish a clear lane before further trials.
+
 ## Verified native runtime installed — 2026-10-14
 
 Source and installed commit `f1ce40c22a0a908480a891661b3f1d0bbe19427f`;

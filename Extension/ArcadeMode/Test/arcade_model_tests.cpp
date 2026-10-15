@@ -527,6 +527,25 @@ int main() {
           "lost owner invalidates balance observation");
     check(observed_pose({true, true, true, true, 100, 1, 0x4000}) == SkatePose::bail,
           "actual native bail overrides stale balance fields");
+    {
+        ComboSession session;
+        session.step(SkatePose::manual, 0, 0);
+        session.step(SkatePose::manual, 0.2f, 0);
+        const auto fatigue = session.model().state().manual_fatigue;
+        for (const auto state : {100u, 103u}) {
+            const NativeComboObservation observed{true, true, true, false, state, 0, 0x4000};
+            check(observed_pose(observed) == SkatePose::riding && !action_input_eligible(observed),
+                  "observed grounded preparation preserves pose without granting action eligibility");
+            session.step(observed_pose(observed), 0.1f, 0);
+        }
+        session.step(observed_pose({true, true, true, false, 200, 0, 0}), 0.02f, 0);
+        check(session.model().state().combo_active && session.model().state().manual_fatigue >= fatigue && fatigue > 0,
+              "native manual through mode-zero preparation to takeoff preserves combo fatigue");
+        check(observed_pose({true, true, true, true, 103, 0, 0}) == SkatePose::bail &&
+              observed_pose({false, true, true, false, 100, 0, 0}) == SkatePose::unknown &&
+              observed_pose({true, true, true, false, 100, 3, 0}) == SkatePose::unknown,
+              "preparation mapping preserves bail, owner-loss and unknown-mode boundaries");
+    }
     for (const auto first : {SkatePose::grind, SkatePose::manual}) {
         ComboSession session;
         const auto other = first == SkatePose::grind ? SkatePose::manual : SkatePose::grind;

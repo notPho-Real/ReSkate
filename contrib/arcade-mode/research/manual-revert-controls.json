@@ -211,5 +211,25 @@
       "native_event_identity": "UNVERIFIED"
     }
   ],
-  "conclusion": "Contact flags alone also change during left-stick turns; they are insufficient to classify actual manuals. Native HUD labels confirm manual and nose manual in the documented successful holds."
+  "conclusion": "Contact flags alone also change during left-stick turns; they are insufficient to classify actual manuals. Native HUD labels confirm manual and nose manual in the documented successful holds.",
+  "classic_runtime_checkpoint": {
+    "source": "f1ce40c22a0a908480a891661b3f1d0bbe19427f",
+    "evidence": "trusted-v23/results/1792025022725446000.json",
+    "planned": 4,
+    "executed": 3,
+    "skipped": 1,
+    "manual_label_confirmed": 1,
+    "native_ollie_id1": 2,
+    "reset_pass": 2,
+    "reset_fail": 1,
+    "neutralized": 3,
+    "findings": [
+      "First Up-Down request produced independently visible Manual, score8, followed by native Ollie1; this was not a validated continuous combo.",
+      "Second manual request did not establish another Manual; subsequent Ollie1 verified.",
+      "Nose Manual trial encountered traffic and bail; next trial skipped. No Nose Manual success claim.",
+      "Two Ollies entered100/mode0 then103/mode0 before200/mode0, causing unknown-pose invalidation. Local pose mapping now treats those observed ground preparations as riding without broadening input eligibility; Deck retest pending.",
+      "Native score observer captured sequence amounts and a line-end event; owner/category attribution remains unverified."
+    ],
+    "earlier_skipped_batch": "trusted-v23/results/1792024796437394000.json: all4 skipped, no input"
+  }
 }
