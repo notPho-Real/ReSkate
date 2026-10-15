@@ -1789,7 +1789,7 @@
       "implementation_status": "Independent native recipe integrated behind existing RT selector. Exact base-label reader and bounded native-confirmed combo continuation implemented; new runtime window awaits verified deployment and Deck acceptance.",
       "hil_status": "DISCOVERED:7c7 frozen trials independently show FS Revert1/1 and BS Revert1/1.08d2a3a numeric diagnostics confirm exact base Revert in2 moving controls and1 moving grind-exit trial; base label does not prove side. Native acknowledgement delay454-471ms; moving grind-exit observation633ms after landing. Stationary delivery did not confirm revert. Not20-trial repeatability. Subsequent matching repeat18/18 plus two controls establishes20/20 generic moving native Revert; exact side and full linking remain distinct.",
       "repeatability": {
-        "status": "REPEATABLE generic native Revert in one moving fixture context; exact side and combined linking pending",
+        "status": "REPEATABLE generic native Revert with both selectors in moving fixture; exact side and combined linking pending",
         "side_controls": {
           "frontside": {
             "trials": 1,
@@ -1812,6 +1812,12 @@
             452,
             500
           ]
+        },
+        "backside_selector_native_confirmation": {
+          "trials": 20,
+          "exact": 20,
+          "scope": "08d2a3a opposite-direction selector, independent state101 and exact base Revert; all complete/neutral/reset; label does not itself identify side",
+          "result": "1792063351680907000"
         }
       },
       "review_pending": false,
@@ -1819,7 +1825,7 @@
         "status": "RT NATIVE ACTION DISCOVERED; COMBO CONTINUATION ACCEPTANCE PENDING",
         "source": "Extension/ArcadeMode/arcade_revert_input.h",
         "duration_ms": 235,
-        "deck_trials": 5,
+        "deck_trials": 40,
         "runtime_selector": "arcadeactions revert-fs or revert-bs; inspected clear-bit stance only"
       },
       "reuse_review": {
@@ -2122,14 +2128,14 @@
     {
       "id": "reverts",
       "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
-      "implementation_status": "Known235ms recipe evaluated on7c7:4 compatible native101/sequence5 trials, plus independently visible FS Revert Clean5 and BS Revert Clean5 controls. Exact side maturity DISCOVERED1/1 each; label telemetry gap remains.",
+      "implementation_status": "Generic native Revert repeatable20/20 with each directional selector on08d2a3a; exact FS/BS display separately discovered1/1 each. Native label edge, state101 preservation and measured750ms/1100ms link windows implemented in verified2bdf062; game update blocks actual integration acceptance.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
       "remaining": "Repeatable independent FS/BS identity and landing/manual/continuation integration; no combo credit from command intent.",
-      "next": "Use corrected08d2a3a numeric label-reader diagnostics before changing the known community recipe.",
-      "new_deck_trials": 6,
+      "next": "Restore pinned game, then matched native RT/manual/no-RT/abuse trials with HIL41.",
+      "new_deck_trials": 40,
       "evidence": "community-revert-source.json",
       "maturity": "DISCOVERED"
     },
@@ -2311,23 +2317,25 @@
     {
       "id": "deck-operation",
       "requested_action": "Reliable Deck gameplay and library update/restore controls",
-      "implementation_status": "Verified08d2a3a/DLL27fe2b45 installed after one controlled restart; native Stadium fixture restore in progress. Stock/game hashes unchanged, updates off, recovery clear.",
+      "implementation_status": "2bdf062/DLL7a8b254e installed after all five CI38727430627 gates passed. Steam then changed executable/build to25617022; launch correctly blocked. No native acceptance on this new DLL yet. Stock backup unchanged, both game processes stopped.",
       "source_ids": [
         "deck-fork",
         "deck-practice-map"
       ],
-      "remaining": "Broader geometry/stance and final mixed gameplay acceptance; library GUI outside current fixture milestone.",
-      "next": "Keep current session hot until one verified combined build is ready.",
-      "new_deck_trials": 0
+      "remaining": "Restore pinned25414733 or establish reviewed native contracts for25617022 before gameplay.",
+      "next": "Use existing launcher supported-build download; verify exact original game hash, restore saved rail, run prepared HIL41 native-link integration.",
+      "new_deck_trials": 0,
+      "evidence": "grind-exit-results.json:game_update_blocker_2026_10_15"
     },
     {
       "id": "build-gate",
       "requested_action": "Verified runtime artifact before installation",
-      "implementation_status": "08d2a3a passed all five CI38716252703 gates and was installed by the frozen trusted helper. DLL27fe2b45; stock/game hashes unchanged, updates off and recovery clear.",
+      "implementation_status": "2bdf062/DLL7a8b254e installed after all five CI38727430627 gates passed. Steam then changed executable/build to25617022; launch correctly blocked. No native acceptance on this new DLL yet. Stock backup unchanged, both game processes stopped.",
       "source_ids": [],
-      "remaining": "Focused Deck verification of the new observer/landing repairs; no unverified artifact deployed.",
-      "next": "Restore saved native fixture and run targeted observer/exit checks.",
-      "new_deck_trials": 0
+      "remaining": "Restore pinned25414733 or establish reviewed native contracts for25617022 before gameplay.",
+      "next": "Use existing launcher supported-build download; verify exact original game hash, restore saved rail, run prepared HIL41 native-link integration.",
+      "new_deck_trials": 0,
+      "evidence": "grind-exit-results.json:game_update_blocker_2026_10_15"
     },
     {
       "id": "chain-A",

@@ -1,14 +1,29 @@
 ## Current native grind and combo checkpoint — 2026-10-15
 
-Installed source:08d2a3a67bea23f715f0965afb4d37c9847feaa8.
-DLL:27fe2b45bb2b3202e7d52ac498996896fe4e8c1f604ab63498cf199b837b5f50.
-All five CI38716252703 gates passed. External grind-observer-corrected-deploy-v1
-receipt verifies unchanged stock/game hashes, updates off and recovery clear.
-Game hot at saved Stadium rail; editor/map/console closed, Arcade ON,
-backside RT experiment selected, grabs OFF, simulation60. Root owns hardware.
-Frozen HIL40 and maintenance45 pin this DLL. HIL40 manifest:
-8828300e2df2e059781ab0c9b4cb311fd339f552acfc2432e983f8657060b067.
-maintenance45 SHA9af32ddca8c8ed4e0aff02ef07f473fd4c3d67bee93c01f1d09cb4dad18dc14b.
+Installed source:2bdf062c7e392350aa160653b25fbc6317d9409f.
+DLL:7a8b254e61cbab32ec113c3d4bf1aef86d5c9fc6b130fcc6bb2da9cbcd73f00e.
+All five CI38727430627 gates passed. Frozen native-label-link-deploy-v5
+receipt verified unchanged stock/game hashes at installation. Steam then
+updated the game to25617022; fresh executable SHA
+915522645e3b151a641743f52b6c7437e75b6d1381d8420edaa83493b025c4b2
+differs from pinned25414733/fbce74d5. Launch guard rejected relaunch.
+BLOCKED — GAME BUILD CHANGED. Both game and launcher are stopped, input
+neutral, updates=false (ReSkate setting), recovery clear, stock backup unchanged.
+No native gameplay on2bdf has run. Do not repin or launch against25617022.
+Read-only frozen game-build-inspect-v1 confirms Steam app3354750 build25617022,
+LastUpdated1792065018, UpdateResult0. Evidence:grind-exit-results.json
+game_update_blocker_2026_10_15. Upstream main6df4f9a7 still has only20260929.
+Existing supported recovery is ReSkateLauncher’s Steam download for build
+25414733 (depot3354751, manifest4621099302092747785); user Steam sign-in
+may be needed. After restoring the pinned game, recheck identity, relaunch via
+maintenance46 and restore saved Stadium rail before any HIL input.
+Prepared HIL41 fixture-native-link-integration-7.json, then targeted hold
+comparison and fixture-core-mixed-20.json; none executed on the new DLL.
+Frozen HIL41 manifest:
+cd6585465a4750cf14304162d807b4100b31e7a2e1b192e9191a6599417ebfd2.
+maintenance46 SHA350a6258b54e3106d43c74929a0ea47bf87e6bd47d7d7d4612045b35aa077856.
+Native gates/labels,750ms landing/1100ms single revert window and once-per-
+generation grind binding publication are now installed; Deck acceptance pending.
 Earlier7c7/2c3 acceptance below retains its original source scope.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
@@ -79,8 +94,9 @@ runtime starts zero-point lifecycle on native takeoff. Incidental short one-whee
 landings still appear as manual poses; do not infer named tricks or score events
 from them. Full multi-rail fatigue chainF, RT revert abuse, scoring and mixed stress
 remain open. Existing rotation/manual/chord evidence below stays valid in scope.
-Raw grind enums are unavailable in the new-build chains; primary400–499 evidence
-is complete. Exact rail-label history recognition is also not yet verified.
+Earlier7c7 chain captures lack raw enums;08d now retains both enum bindings
+after discovery across native resets. Base50-50 Grind history text is observed
+independently; exact enum-to-name and frontside/backside meanings remain unknown.
 
 Installed observer/landing repair:
 - Global grind-asset scan progress survives fixture resets with fresh binding
@@ -168,14 +184,22 @@ Revert diagnostic, complete evidence/no stream loss, neutral/reset. Latency
 452–500ms after RT. With two matching controls1792059876270789000:20/20
 in this moving clear-bit fixture context. This establishes generic native
 revert repeatability, not FS/BS side or combo continuation acceptance.
-Current bounded hardware batch:20 native backside-selector moving controls,
-artifacts/fixture-native-bs-revert-repeat-20.json, frozen HIL40. Inspect this
-batch before any other Deck operation; restore frontside selector for prepared
-seven-trial native combo integration after the verified combined deployment.
-Final combined source6a1c1f4e384c4eb0d81302a4d5740d834938f12e,
-CI38725877835 pending; frozen native-label-link-deploy-v4 helper
-SHAb76b2baba5fa5ddaf1f3fa2c5217749d47727e139c9b869bf273f6a916ec94d1.
-Installed08d remains unchanged until all five gates pass.
+Backside-selector batch1792063351680907000:20/20 native101 plus base Revert,
+complete evidence, all neutral/reset. Exact BS display was independently
+confirmed earlier; base labels remain side-agnostic. Current bounded hardware
+comparison1792063747821039000 stopped safely:three220ms controls yielded
+2/3 full chains;3.950m/s control recontacts rail and loses link. First350ms
+attempt records native grind/exit but observer integrity rejects evidence.
+Four actual attempts, one additional stop record; remaining two unexecuted.
+All actual trials neutral/reset. No longer-hold success credit. Resume only
+after the already-pending binding-publication fix is installed and revalidated.
+Final combined source2bdf062c7e392350aa160653b25fbc6317d9409f,
+CI38727430627 pending; frozen native-label-link-deploy-v5 helper
+SHA0b630797654d91f9106baa9fa95e59155b4e8596bbb16ce15b2c84a08dd16f3a.
+2bdf only renames a shadowed test variable after6a1c1f4; runtime unchanged.
+Combined model/playback/action/manual/label tests pass locally with-Wshadow
+and address/undefined sanitizers;33636 model checks plus all companion checks.
+Final2bdf installed after all five gates passed; older08d evidence retains its source scope.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
 own_bkrails_generic_flatrailround_00002, scale1, rail position
