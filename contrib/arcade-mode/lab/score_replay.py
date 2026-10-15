@@ -14,7 +14,7 @@ from pathlib import Path
 from trick_batch import native_revert_link_result
 
 
-def replay_trial(trial):
+def replay_trial(trial, *, evaluate_revert_link=False):
     obs = trial.get('observations', {})
     native = obs.get('native_score', {})
     rows = native.get('samples', [])
@@ -67,11 +67,12 @@ def replay_trial(trial):
             'reasons': sorted(reasons), 'native_rows': len(rows), 'exact_capture_replays': exact_replays,
             'native_duplicate_identity': 'UNVERIFIED',
             'recorded_chain': obs.get('chain_result'), 'recorded_grind': obs.get('grind_result'),
-            'physical_bail': physical_bail, 'revert_link': native_revert_link_result(obs),
+            'physical_bail': physical_bail,
+            'revert_link': native_revert_link_result(obs) if evaluate_revert_link else None,
             'neutralized': trial.get('neutralized'), 'reset_ready': trial.get('fixture_reset', {}).get('reset_ready')}
 
 
-def fault_cases(trial):
+def fault_cases(trial, *, evaluate_revert_link=False):
     """Fault injection derives from one recorded trial; never new native evidence."""
     for name in ('duplicate_capture', 'missing_score', 'dropped_score', 'truncated_combo', 'interrupted_combo'):
         mutated = copy.deepcopy(trial)
@@ -94,7 +95,8 @@ def fault_cases(trial):
         obs.pop('chain_result', None)
         if name in ('truncated_combo', 'interrupted_combo'):
             obs['grind_result'] = {'evidence': 'INCOMPLETE'}
-        yield {'fault': name, 'synthetic_mutation': True, 'result': replay_trial(mutated)}
+        yield {'fault': name, 'synthetic_mutation': True,
+               'result': replay_trial(mutated, evaluate_revert_link=evaluate_revert_link)}
 
 
 def report(document):
@@ -103,8 +105,12 @@ def report(document):
     rows = []
     for item in document['trials']:
         trial = item['trial']
-        rows.append({'provenance': item['provenance'], 'recorded': replay_trial(trial),
-                     'fault_injection': list(fault_cases(trial))})
+        # Test selection is metadata, not success evidence. An ordinary landing
+        # trial must not become a failed revert test merely because it ends.
+        evaluate_revert = item.get('evaluate_revert_link') is True
+        rows.append({'provenance': item['provenance'],
+                     'recorded': replay_trial(trial, evaluate_revert_link=evaluate_revert),
+                     'fault_injection': list(fault_cases(trial, evaluate_revert_link=evaluate_revert))})
     return {'schema': 1, 'new_hardware_acceptance': False,
             'scope': 'Recorded mechanic grades; monetary authority remains UNVERIFIED. Mutations are offline tests.',
             'trials': rows}

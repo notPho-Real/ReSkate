@@ -123,13 +123,20 @@ int run_arcade_score_settlement_tests() {
               session.model().state().balance_kind == BalanceKind::manual &&
               session.model().state().fatigue == fatigue, "duplicate receipt preserves live balance and fatigue");
         session.step(SkatePose::air, .1f, 0); f.next(ScoreMeaning::raw_action_points, 50);
+        check(session.score_unverified(), "new action without points leaves active total unverified");
         check(session.observe_score(f.event, f.proof, f.context).decision == ScoreDecision::valid &&
-              session.model().state().raw_points == 150 && session.model().state().multiplier == 2, "linked score follows existing multiplier");
+              session.model().state().raw_points == 150 && session.model().state().multiplier == 2 &&
+              !session.score_unverified(), "linked score follows existing multiplier");
         session.step(SkatePose::riding, .1f, 0);
         f.next(ScoreMeaning::clean_end, 999);
         check(session.observe_score(f.event, f.proof, f.context).decision == ScoreDecision::valid &&
               !session.take_score_settlement(), "native line total is not added or banked before Arcade grace expires");
         expire(session);
+        check(!session.take_score_settlement(), "earlier clean end alone cannot prove stream health through later model expiry");
+        check(session.refresh_score_evidence(f.context) == ScoreDecision::valid && !session.take_score_settlement(),
+              "reused health snapshot cannot authorize later banking");
+        f.context.now += 600;
+        check(session.refresh_score_evidence(f.context) == ScoreDecision::valid, "fresh complete terminal health admitted");
         auto bank = session.take_score_settlement();
         check(bank && bank->kind == SettlementKind::bank && bank->points == 300,
               "clean completion banks the model amount once, not the native aggregate");
@@ -153,6 +160,7 @@ int run_arcade_score_settlement_tests() {
         session.observe_score(f.event, f.proof, f.context);
         f.next(ScoreMeaning::clean_end, 100); session.observe_score(f.event, f.proof, f.context);
         session.step(SkatePose::riding, .1f, 0); expire(session);
+        f.context.now += 600; session.refresh_score_evidence(f.context);
         session.step(SkatePose::unknown, .1f, 0);
         session.step(SkatePose::air, .1f, 0);
         ++f.context.combo;
@@ -233,9 +241,29 @@ int run_arcade_score_settlement_tests() {
         session.observe_score(f.event, f.proof, f.context);
         f.next(ScoreMeaning::clean_end, 0); session.observe_score(f.event, f.proof, f.context);
         session.step(SkatePose::riding, .1f, 0); expire(session);
+        f.context.now += 600; session.refresh_score_evidence(f.context);
         const auto zero = session.take_score_settlement();
         check(zero && zero->points == 0 && zero->kind == SettlementKind::bank,
               "explicitly verified zero points remain distinct from missing evidence");
+    }
+    for (unsigned fault = 0; fault < 4; ++fault) {
+        Fixture f; ComboSession session;
+        session.step(SkatePose::air, 0, 0); session.begin_score_evidence(f.context, 0);
+        session.observe_score(f.event, f.proof, f.context);
+        f.next(ScoreMeaning::clean_end, 100); session.observe_score(f.event, f.proof, f.context);
+        session.step(SkatePose::riding, .1f, 0); expire(session);
+        f.context.now += 600;
+        if (fault == 0) ++f.context.dropped;
+        else if (fault == 1) f.context.health_complete = false;
+        else if (fault == 2) ++f.context.generation;
+        else --f.context.owner;
+        check(session.refresh_score_evidence(f.context) != ScoreDecision::valid &&
+              !session.take_score_settlement() && session.score_unverified(),
+              "loss or changed owner after native end but before model bank prevents monetary settlement");
+        // Supplying the old baseline again cannot undo the evidence gap.
+        f.context = Fixture{}.context; f.context.now += 700;
+        check(session.refresh_score_evidence(f.context) != ScoreDecision::valid && !session.take_score_settlement(),
+              "terminal evidence gap stays closed until a new combo baseline");
     }
     {
         Fixture f; ComboSession session;

@@ -752,7 +752,8 @@
             "dropped": 0
           }
         }
-      }
+      },
+      "evaluate_revert_link": true
     },
     {
       "provenance": {

@@ -34,6 +34,8 @@ class ScoreReplayTests(unittest.TestCase):
         self.assertEqual(result['trials'][6]['recorded']['recorded_chain']['continuous'], 'FAIL')
         self.assertIn('telemetry_incomplete', result['trials'][5]['recorded']['reasons'])
         self.assertIn('missing_score_events', result['trials'][4]['recorded']['reasons'])
+        self.assertIsNone(result['trials'][0]['recorded']['revert_link'])
+        self.assertIsNotNone(result['trials'][3]['recorded']['revert_link'])
 
     def test_fault_injection_never_becomes_new_native_acceptance(self):
         for item in self.evidence['trials']:
@@ -73,7 +75,7 @@ class ScoreReplayTests(unittest.TestCase):
 
     def test_revert_replay_uses_existing_grader(self):
         trial = self.evidence['trials'][3]['trial']
-        result = score_replay.replay_trial(trial)
+        result = score_replay.replay_trial(trial, evaluate_revert_link=True)
         self.assertEqual(result['revert_link'], score_replay.native_revert_link_result(trial['observations']))
         self.assertNotEqual(result['revert_link']['revert_continuation'], 'PASS')
 
