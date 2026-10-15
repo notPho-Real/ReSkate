@@ -2052,8 +2052,8 @@
         "dual-stick-rail-and-spin",
         "controller-source-attachment"
       ],
-      "remaining": "Chord/OFF and menu/bail regression, clean landing consistency, moving/ramp/stance and540 contexts.",
-      "next": "Target chord/OFF regression on5ed, then basic Y grinding. f297 batch1792030218835535000:4 partial,8 native180,8 native360;20 neutral/reset;4 Clean,16 Sketchy. Earlier batch1 completed then readiness stop before second trial.",
+      "remaining": "OFF/menu/bail mixed regression, clean landing consistency, moving/ramp/stance and540 contexts. Board chord targeted regression already passed.",
+      "next": "Preserve20 native rotation trials and5ed chord regression3/3 plus2 single exclusions; exercise moving contexts in mixed gameplay.",
       "new_deck_trials": 27
     },
     {
@@ -2068,40 +2068,44 @@
     {
       "id": "nollie-switch",
       "requested_action": "LT nollie and RT switch/revert contexts",
-      "implementation_status": "Authored nollie data; restricted stance runtime gating",
+      "implementation_status": "LT Nose Manual exits produce native Nollie Kickflip17 in20/20 controlled trials on7c7; RT frontside candidate has one exact visible native FS Revert confirmation.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin",
         "controller-source-attachment"
       ],
-      "remaining": "Full stance mapping, motion/foot-leading agreement and transition resync.",
-      "next": "Cross-check native stance with geometry; test regular/nollie/switch without importing weak owner heuristics.",
-      "new_deck_trials": 0
+      "remaining": "Broader stance, moving landing and switch-context integration; full RT acceptance open.",
+      "next": "Verify native labels and context-specific exits with existing recipes.",
+      "new_deck_trials": 20
     },
     {
       "id": "manuals",
       "requested_action": "Directional Manual/Nose Manual, Up/Down correction, clean exits",
-      "implementation_status": "Native pose evidence;75 local directional-adapter checks; integrated adapter unverified on Deck",
+      "implementation_status": "Directional adapter verified:10 Manual and10 Nose Manual native poses on HIL24; native correction/HUD verified. On7c7,20/20 grind/Ollie/manual/Ollie chains and20/20 Nose Manual LT exits with native17 across two hold timings.",
       "source_ids": [
         "manual-pop",
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "New sequence binding, correction isolation, moving contexts and transitions.",
-      "next": "Preserve existing partial-hold/pose method, verify only new routing and combined movement.",
-      "new_deck_trials": 0
+      "remaining": "Standard-context Nose Manual X exits select native16 instead of requested2 in4/4 isolated controls; moving Nose Manual landing repair pending verified build.",
+      "next": "Preserve accepted routing; target bounded initial wrong-wheel landing recovery and natural LT exits without silently changing requested trick identity.",
+      "new_deck_trials": 40,
+      "evidence": "grind-exit-results.json",
+      "maturity": "INTEGRATED"
     },
     {
       "id": "reverts",
       "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
-      "implementation_status": "235ms runtime candidate gated off by default",
+      "implementation_status": "Known235ms recipe evaluated on7c7:4/4 native101/sequence5 observations plus1 separately captured FS Revert Clean5. Label telemetry gap remains; exact side maturity DISCOVERED.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "No accepted native revert; human command/stance change insufficient.",
-      "next": "Prepared recipe first;680ms LS-only fallback if needed; independent FS/BS evidence and20-trial contexts.",
-      "new_deck_trials": 0
+      "remaining": "Repeatable independent FS/BS identity and landing/manual/continuation integration; no combo credit from command intent.",
+      "next": "Use numeric label-reader diagnostics on verifiedf836 build before changing the working community recipe.",
+      "new_deck_trials": 5,
+      "evidence": "community-revert-source.json",
+      "maturity": "DISCOVERED"
     },
     {
       "id": "input-recovery",
@@ -2224,25 +2228,27 @@
     {
       "id": "hil-session",
       "requested_action": "Hot game and one persistent controller per bounded batch",
-      "implementation_status": "ExperimentSession implemented;208 Python checks across lab project",
+      "implementation_status": "Frozen HIL39:one virtual controller per bounded batch, game and native fixture kept hot through50-trial rail matrix and repeated20-trial chains. Source/DLL/stock/game pins verified.",
       "source_ids": [
         "playback-and-stage"
       ],
-      "remaining": "Reviewed external bundle refresh and actual persistent-session acceptance.",
-      "next": "Keep established runner; validate exact source/DLL pins, then use persistent batch.",
-      "new_deck_trials": 0
+      "remaining": "Final mixed stress acceptance; no routine reconnect or restart needed.",
+      "next": "Preserve frozen external workflow and serialize hardware.",
+      "new_deck_trials": 50,
+      "evidence": "grind-fixture-results.json"
     },
     {
       "id": "hil-ready-reset",
       "requested_action": "Event-driven safe baseline/action/neutral/idle progression",
-      "implementation_status": "Existing fresh-idle predicates; still log-tail polling and fixed recovery intervals",
+      "implementation_status": "Native saved reset plus measured pose/speed/heartbeat freshness and protective deadlines verified in50/50 fixture trials and later repeat batches.",
       "source_ids": [
         "playback-and-stage",
         "deck-practice-map"
       ],
-      "remaining": "Stream-driven readiness and controlled simulation/context.",
-      "next": "Reuse recorder readiness/state machine; use stock practice baseline first and retain protective timeouts.",
-      "new_deck_trials": 0
+      "remaining": "Telemetry transport remains bounded log-tail polling; final mixed stress acceptance.",
+      "next": "Retain measured readiness and native reset; no unverified transforms or long arbitrary waits.",
+      "new_deck_trials": 50,
+      "evidence": "grind-fixture-results.json"
     },
     {
       "id": "hil-stream",
@@ -2258,11 +2264,12 @@
     {
       "id": "hil-batch-results",
       "requested_action": "Record ordinary failures and recover without aborting full matrix",
-      "implementation_status": "Persistent batch already continues ordinary recognition/reset failures",
+      "implementation_status": "Ordinary misses/wrong identities recorded and reset without aborting. HIL39 raises chain_evidence_incomplete after safe recovery for required flip/combo stream loss;2048 flip-row bound covers full action/reset window.",
       "source_ids": [],
-      "remaining": "Real hot-session reset reliability and complete event evidence.",
-      "next": "Retain bounds/integrity stops; preserve every denominator and distinguish command/delivery/native/environment failure.",
-      "new_deck_trials": 0
+      "remaining": "Final mixed stress failure envelope; incomplete evidence never earns success credit.",
+      "next": "Preserve all attempted and evidence-qualified denominators.",
+      "new_deck_trials": 0,
+      "evidence": "grind-exit-results.json"
     },
     {
       "id": "stress",
@@ -2278,22 +2285,22 @@
     {
       "id": "deck-operation",
       "requested_action": "Reliable Deck gameplay and library update/restore controls",
-      "implementation_status": "Established deployment/Proton path preserved; library GUI acceptance remains open",
+      "implementation_status": "Deck hot at native saved Stadium rail, installed7c7/DLLf814 verified, stock/game hashes unchanged, updates off and recovery clear.",
       "source_ids": [
         "deck-fork",
         "deck-practice-map"
       ],
-      "remaining": "Reachable paired device and verification of actual installed state; stock-map stability.",
-      "next": "Wake/reconnect existing Deck, read-only status first; no routine restarts or infrastructure redesign.",
+      "remaining": "Broader geometry/stance and final mixed gameplay acceptance; library GUI outside current fixture milestone.",
+      "next": "Keep current session hot until one verified combined build is ready.",
       "new_deck_trials": 0
     },
     {
       "id": "build-gate",
       "requested_action": "Verified runtime artifact before installation",
-      "implementation_status": "Current2f94137 source locally tested; fresh Windows gate unavailable",
+      "implementation_status": "GitHub restored; installed7c7 passed all five CI gates38701577381. New observer/landing repairf836 CI38713723096 pending Windows build; Mac/Linux passed.",
       "source_ids": [],
-      "remaining": "Existing workflow dispatch rejected: Actions disabled for repository.",
-      "next": "Resume unchanged build gates after owner restores availability. Do not deploy unverified artifact or change security settings.",
+      "remaining": "Require all five gates and immutable source/DLL identity for next deployment.",
+      "next": "Use unchanged trusted deployment workflow; no permissions or security changes.",
       "new_deck_trials": 0
     },
     {

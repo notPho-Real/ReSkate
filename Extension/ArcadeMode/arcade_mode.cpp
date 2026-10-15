@@ -143,7 +143,6 @@ NoBailSkater combo_owner{};
 NativeBailStatus previous_balance_bail{};
 SkatePose previous_pose{SkatePose::unknown};
 std::uint64_t next_balance_sample{};
-unsigned balance_sample_count{};
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now) noexcept {
     const auto score = score_activity();
@@ -185,9 +184,10 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             "ARCADE BALANCE FAILURE: ms={} kind={} request={}.", now, static_cast<unsigned>(kind), serial);
     }
     const auto& balance = combo_session.model().state();
-    if (balance.balance_kind != BalanceKind::none && now >= next_balance_sample && balance_sample_count < 4096) {
+    // Rate-bound observations continue through a hot session; a lifetime cap
+    // would silently remove the evidence needed by later fatigue trials.
+    if (balance.balance_kind != BalanceKind::none && now >= next_balance_sample) {
         next_balance_sample = now + 250;
-        ++balance_sample_count;
         logging::log(logging::Level::info, logging::Channel::skater,
             "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
             now, static_cast<unsigned>(balance.balance_kind), balance.balance, balance.balance_velocity,

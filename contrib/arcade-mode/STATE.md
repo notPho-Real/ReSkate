@@ -51,8 +51,11 @@ Verified milestones (full sanitized results/hashes in research/grind-exit-result
   Nose LT rail pilot1792056218140808000:0/3 complete chains;two miss rail and
   one loses manual. Isolated Nose Manual pop1792056450177578000:LT native17
   chains2/2 pass;standard context2/2 gives16 instead of requested2.
-  Current batch:18 longer-hold LT repeats plus2 standard controls on HIL39,
-  artifacts/fixture-nose-pop-repeat-20.json. Inspect before another hardware action.
+  HIL39 repeat1792056683965862000:18/18 longer-hold LT exits produce native17,
+  continuous chain/fatigue,448–452ms grace, complete/neutral/reset. Together with
+  the pilot,20/20 LT exits across two hold timings. Both longer standard-context
+  controls still produce16 rather than2; four isolated standard controls failed
+  exact identity overall. No rail engagement was requested in these controls.
 
 Failure envelope preserved:old2c3 build manual chain9/10; failed contact17ms then
 150ms rebound canceled hold. Later command timing0/5 missed grace. Installed7c7
@@ -84,8 +87,13 @@ diagnostics to distinguish missing history, fallback and split native labels;
 no broader label allowlist or score policy.90 manual,33616 model and40061 grind
 sanitizer checks;242 Python tests pass. Combined Windows build/Deck verification
 required. Keep7c7 installed until verified combined artifact, avoiding two restarts.
-Next after current batch:commit/build combined source, verify all gates, one
-controlled deploy, restore fixture, then targeted enum/label/manual repair tests.
+Combined source f8361140e05e7a8f5b9c0027dcfd791a33fb1cf3 is pushed; CI38713723096
+Mac/Linux passed, Windows pending. Next:verify all five gates, one controlled
+deploy, restore fixture, then targeted enum/label/manual repair tests. No batch
+is running; game remains hot on7c7 with RT frontside experiment selected.
+Follow-up source removes the lifetime4096 balance-sample cap while retaining
+the250ms rate bound, so later hot-session fatigue trials retain numeric evidence.
+This telemetry-only change is not yet built or installed.
 Prepared981 deploy helper is superseded; do not accidentally deploy its older target.
 
 Fixture recovery:existing Park Editor layout "Arcade Rail Fixture", one native
