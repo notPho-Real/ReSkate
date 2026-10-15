@@ -45016,5 +45016,223 @@
       "offline_tests": 244,
       "next": "Restore authenticated connection, inspect preserved artifacts, use supported launcher recovery and full validation, verify content and DLL/stock hashes, restore Stadium fixture, run prepared HIL41 integration seven."
     }
+  },
+  "offline_scoring_sprint_2026_10_15": {
+    "source_commit": "829d8429e980050ea5635da76c92a1c4f8b489bc",
+    "upstream_commit": "e88853add8a78fb79ec4dd5c7fe50ee61e7b9598",
+    "upstream_incoming_commits": 39,
+    "integration_branch": "arcade-stage-offline-integration",
+    "integration_checkpoint": "b1d1ad620d4faca903b44b0433890db82b85ab7d",
+    "promotion": "Scoring implementation promoted to arcade-mode after software gates. Full upstream merge remains isolated on arcade-stage-offline-integration pending supported-build and launch-path verification.",
+    "new_deck_trials": 0,
+    "hardware_changes": false,
+    "recorded_input": "score-lifecycle-replay-input.json",
+    "recorded_input_sha256": "074fa57f2f10f3709dfbafdce9ccf1b61eeb0712ceafec923184791b7acb3ca5",
+    "cpp_capture_input": "score-lifecycle-captures.tsv",
+    "cpp_capture_input_sha256": "fd7879877cc08bc7053c5edd57ccf75c92fc617b7e67ffd9d5846c345bf1f3d5",
+    "recorded_trials": 7,
+    "native_capture_rows": 19,
+    "synthetic_fault_mutations": 35,
+    "authoritative_monetary_operations": 0,
+    "score_banking": "UNVERIFIED",
+    "bail_loss_amount": "UNVERIFIED",
+    "replay_summary": [
+      {
+        "name": "kickflip-grind-kickflip-out",
+        "result": "1792053383541871000",
+        "trial_index": 0,
+        "native_rows": 2,
+        "recorded_chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "physical_bail": "UNVERIFIED",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      },
+      {
+        "name": "nose-manual-lt-pop-control",
+        "result": "1792056683965862000",
+        "trial_index": 0,
+        "native_rows": 3,
+        "recorded_chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 450
+        },
+        "physical_bail": "UNVERIFIED",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      },
+      {
+        "name": "balance-mode-repeat-1",
+        "result": "1792051238136143000",
+        "trial_index": 0,
+        "native_rows": 3,
+        "recorded_chain": null,
+        "physical_bail": "PASS",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      },
+      {
+        "name": "moving-grind-exit-revert-manual",
+        "result": "1792062678538132000",
+        "trial_index": 0,
+        "native_rows": 4,
+        "recorded_chain": null,
+        "physical_bail": "UNVERIFIED",
+        "revert_link": {
+          "native_revert": "UNVERIFIED",
+          "revert_continuation": "FAIL"
+        },
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      },
+      {
+        "name": "native-rail-control",
+        "result": "1792041692611729000",
+        "trial_index": 0,
+        "native_rows": 0,
+        "recorded_chain": null,
+        "physical_bail": "UNVERIFIED",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "missing_score_events",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      },
+      {
+        "name": "kickflip-grind-kickflip-manual-kickflip",
+        "result": "1792054829820135000",
+        "trial_index": 0,
+        "native_rows": 4,
+        "recorded_chain": {
+          "continuous": "UNVERIFIED",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "physical_bail": "PASS",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified",
+          "telemetry_incomplete"
+        ]
+      },
+      {
+        "name": "later-kickflip-grind-nose-nollie",
+        "result": "1792061493757663000",
+        "trial_index": 4,
+        "native_rows": 3,
+        "recorded_chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "physical_bail": "UNVERIFIED",
+        "revert_link": null,
+        "monetary_status": "UNVERIFIED",
+        "reasons": [
+          "delivery_freshness_unverified",
+          "health_boundaries_unverified",
+          "native_occurrence_unverified",
+          "payload_owner_unverified",
+          "point_semantics_unverified"
+        ]
+      }
+    ],
+    "offline_validation": {
+      "new_score_boundary_checks": 328,
+      "core_model_checks": 33636,
+      "dispatch_checks": 124,
+      "revert_checks": 192,
+      "action_observation_checks": 41,
+      "balance_layout_checks": 122,
+      "action_runtime_checks": 41,
+      "manual_checks": 90,
+      "score_label_checks": 32,
+      "score_number_checks": 40,
+      "authored_playback_checks": 48,
+      "native_score_checks": 67,
+      "grind_observer_checks": 40061,
+      "python_tests": 251,
+      "sanitizers": "AddressSanitizer and UndefinedBehaviorSanitizer; strict warnings",
+      "upstream_portable_tests": [
+        "trainer_landing",
+        "trainer_session_extras",
+        "park_randomization",
+        "playstation_report",
+        "launcher_depot_output"
+      ],
+      "ci": "Scoring38807974657 and expanded integration38808153342 passed all software gates; stage publication intentionally skipped. Expanded Windows gate builds runtime and launcher and runs11 selected tests. Initial upstream38802299936 and scoring38805509735 also passed."
+    },
+    "independent_source": {
+      "repository": "SmokeyDawg58/reskate-custom-mods",
+      "revision": "de837826417b55e2a5756c303f4805ae6a39ae89",
+      "files": [
+        "src/Extension/Throwdowns/one_up_native.cpp",
+        "src/Engine/Game/Build/20260929/one_up_scoring.h"
+      ],
+      "finding": "Client realm/lifetime checks are not local payload ownership. Community policy disables native multipliers before using sequence totals; Arcade does not copy that policy or infer raw points."
+    },
+    "upstream_blockers": [
+      "Launcher/main.cpp now refuses Steam-managed common directories, including Proton. Existing recovery/HIL paths require continuity verification; no paths changed.",
+      "New native patches for shader/light tables, descriptor heaps and resource pools remain unverified on recovered supported game. Existing 12 executable/depot/cache identity constants match; added data changelist29544144 and world-layer count261 require verification."
+    ],
+    "next_hardware_action": "Existing supported25414733 recovery and full-content/DLL/stock identity verification, saved Stadium fixture, then unchanged HIL41 prepared seven integration trials. No repeat of completed grind/HUD acceptance.",
+    "smallest_remaining_score_measurement": "Independently relate scoring receiver/payload to local skater, establish canonical occurrence across listeners and raw base-point semantics with native multipliers unchanged, then map occurrences to observed model action slots. Capture complete timestamped health through settlement.",
+    "ci_tested_scoring_artifact": {
+      "source_commit": "829d8429e980050ea5635da76c92a1c4f8b489bc",
+      "dll_sha256": "f5f18308b10354f7128dbb708817df010ec61b15c1a92d00a41abe2d240d8c50",
+      "local_directory": "artifacts/offline-scoring-829d842",
+      "installed": false
+    }
   }
 }

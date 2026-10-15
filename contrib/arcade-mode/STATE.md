@@ -1,4 +1,53 @@
-## Current native grind and combo checkpoint — 2026-10-15
+## Offline engineering checkpoint — 2026-10-15
+
+Scoring implementation:829d8429e980050ea5635da76c92a1c4f8b489bc, promoted
+to arcade-mode with this checkpoint after software gates; initial HEADc8d90059.
+The temporary scoring branch preserves the same commits without a rebase.
+Final software CI38807974657 passed all gates. No Deck connection, wake, recovery,
+deployment or new native acceptance occurred. Installed identities below remain
+LAST VERIFIED. Frozen HIL41, maintenance46 and prepared plans are unchanged.
+
+Official upstream e88853add8a78fb79ec4dd5c7fe50ee61e7b9598 was39 commits
+ahead of Arcade's merge base (Arcade102 ahead); fork main was110 behind.
+Normal merge preserved in arcade-stage-offline-integration, isolated worktree
+artifacts/upstream-offline; combined checkpoint b1d1ad620d4faca903b44b0433890db82b85ab7d.
+Only conflict:overlay_render.cpp; both Arcade balance and upstream drone HUD
+paths retained. Initial upstream CI38802299936 passed. Expanded combined
+CI38808153342 passed, building the Windows runtime and launcher and running
+11 selected tests, including Trainer, park transactions and controller tests. No history rewritten or other worktree overwritten.
+
+Keep upstream isolated: its launcher now rejects Steam-managed directories,
+which conflicts with current recovery/HIL paths. Its new native patches and
+additional data-build expectations require supported-build verification.
+Incoming tracked content and all39 incoming commit messages pass naming checks.
+All12 existing executable/depot/cache identity constants remain identical;
+no Arcade offsets, fingerprint contract or deployment pins were changed.
+
+Implemented fail-closed ScoreBoundary/ScoreSettlement around the existing model:
+independent owner/occurrence/semantic proofs, action-slot deduplication, generation,
+freshness and loss checks; complete action coverage; deferred bank; explicit bail
+loss; immutable receipts consumed once; fatigue reset through existing model.
+Banking also requires fresh complete evidence after model completion. Native
+worker diagnostics now mark stale/invalid captures without granting ownership.
+The community source does not establish local payload ownership and changes
+native multipliers for its own scoring policy; that policy was not copied.
+Production monetary admission remains dormant, not fabricated or zero-scored.
+
+Local sanitizer regressions pass:328 new score checks,33636 core-model checks,
+existing control/manual/revert/HUD/playback checks,67 native-score checks,
+40061 grind-observer checks and251 Python tests. Seven provenance-preserved
+hardware trial excerpts replay19 actual score rows; all monetary outcomes stay
+UNVERIFIED. Original mechanic PASS/FAIL/UNVERIFIED grades remain separate.
+35 explicitly synthetic loss/duplicate/truncation mutations grant no authority.
+Details:research/grind-exit-results.json, offline_scoring_sprint_2026_10_15.
+
+Next hardware action remains supported25414733 recovery/full identity validation,
+saved Stadium fixture and prepared HIL41 seven integration trials. Do not repeat
+completed grind/HUD tests. Then measure the smallest scoring proof gap: local
+receiver/payload ownership, canonical occurrence across listeners, raw-point
+semantics with native multipliers unchanged, and occurrence-to-action mapping.
+
+## Prior native grind and combo checkpoint — 2026-10-15
 
 Recovery authorized; connection preflight currently BLOCKED before Steam login.
 Frozen recovery-inspect-v2 (333e6f1e96b7c2ec53257f4df738409aeef31bd3c3a39c8d4e52412938a826ac)
