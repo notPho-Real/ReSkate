@@ -145,14 +145,16 @@ def named_flip_result(expected, observation, log_boundary):
 def grind_result(observation, baseline, reset_ok):
     current, before = observation.get('grind', {}), baseline.get('grind', {})
     rows = current.get('samples', [])
+    pads = current.get('pad', [])
     old_status, status = before.get('status', []), current.get('status', [])
     old = old_status[-1] if old_status else None
     generations = {r['generation'] for r in rows}
-    uncertain = (not rows or old is None or not status or observation.get('evidence_gap') or
+    uncertain = (not rows or not pads or old is None or not status or observation.get('evidence_gap') or
                  current.get('dropped', 0) or len(generations) != 1 or
                  any(not r['valid'] or r['edge'] == 3 for r in rows) or
                  any(r['generation'] != old['generation'] or r['dropped'] != old['dropped'] for r in rows) or
-                 any(s['generation'] != old['generation'] or s['dropped'] != old['dropped'] or
+                 any(p['generation'] != old['generation'] or p['dropped'] != old['dropped'] for p in pads) or
+                 any(not s['active'] or s['generation'] != old['generation'] or s['dropped'] != old['dropped'] or
                      s['rejected'] != old['rejected'] for s in status))
     active = [r for r in rows if r['valid'] and 400 <= r['state'] < 500]
     return dict(evidence='INCOMPLETE' if uncertain else 'COMPLETE',
@@ -161,14 +163,16 @@ def grind_result(observation, baseline, reset_ok):
                 duration_ms=max((r['duration'] for r in rows), default=0),
                 raw_enum_pairs=sorted({(r['grind'] if r['grind_valid'] else None,
                                        r['skate'] if r['skate_valid'] else None) for r in active}, key=str),
+                entry_speed_mm_s=[r['speed_mm_s'] if r['speed_valid'] else None for r in rows if r['edge'] == 1],
                 named_identity='UNKNOWN', contact_without_grind='UNVERIFIED',
                 bail=any(r['valid'] and r['state'] == 300 for r in rows), reset='PASS' if reset_ok else 'FAIL')
 
 
 def perform_case(plan, case, env):
     env.integrity(plan)
+    fixture_start = None
     if case.get('fixture_reset'):
-        env.fixture_reset(case['reset_ms'])
+        fixture_start = env.fixture_reset(case['reset_ms'])
     readiness = ({"max_speed_mm_s": case["baseline_max_speed_mm_s"]}
                  if "baseline_max_speed_mm_s" in case else {})
     baseline = env.wait_idle(case["reset_ms"], **readiness)
@@ -216,6 +220,7 @@ def perform_case(plan, case, env):
                             "named_trick": named_flip_result(case["expected"].get("trick"), obs, log_boundary)}, neutralized=True)
     if case.get('fixture_reset'):
         # Preserve trial evidence before the console/native reset changes owner generation.
+        result['fixture_start'] = fixture_start
         try:
             result['fixture_reset'] = env.fixture_reset(case['reset_ms'])
         except Exception as error:

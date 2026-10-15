@@ -8,18 +8,19 @@ Observer runtime now wires the existing guarded enum reader to physics steps,
 generation/owner checks, independent delivered-pad samples and bounded nonblocking
 queues drained by a worker. It also observes Arcade OFF positive controls.
 Raw enums remain UNKNOWN. Missing enum bindings do not erase valid physics.
-56 observer/capture sanitizer checks and221 Python tests pass locally; Windows
-CI and installed runtime verification remain pending. No grind success claimed.
+56 observer/capture sanitizer checks and 225 Python tests pass locally. Observer
+CI38675120210 passed all five gates; combined fixture CI38676253606 is building.
+Installed runtime verification remains pending. No grind success claimed.
 
 Reject maintenance-v31 ground(-40,55) as a fixture reset: the native topmost
 surface path placed the skater on Stadium roof supports, not the skating floor.
-Capture1792033069939264000 verifies the failure. Game remains alive there,
-neutral, no test batch active. Return via existing native map spawn before
-fixture placement. Do not use that candidate or count it as a valid approach.
+Capture1792033069939264000 verifies the failure. Native map recovery returned
+the skater to the Stadium entrance on foot, confirmed by capture1792035562147649000.
+Game is alive and neutral, no test batch active. Do not reuse the roof candidate
+or count it as a valid approach. Entrance terrain still needs fixture validation.
 Installed source remains5ed2d873 and DLL92bc4e85 below; no new source deployed.
 
-Observer source edecff71da4342a0b50b002a06d919274208a890 is pushed;
-CI38675120210 Linux/macOS pass, Windows build pending. New fixture command
+Fixture source0caed0e9fb7270ee220a33a29e60ad2a9dc6da0b is pushed. New fixture command
 uses only the existing Park Editor transaction/save APIs and native Trainer
 teleport. Exact installed catalog key own_bkrails_flat_00001 must be available;
 no guessed substitute. Start lane uses short near-ground collision probes,
@@ -27,7 +28,12 @@ rail8m ahead, scale1, identity or quarter-turn orientation. Placement, spawned
 object, reset heading/speed and actual native grinding still require Deck tests.
 Saved fixture can be adopted after loading its existing park mod. HIL now accepts
 zero screenshots while retaining input readiness and automatic neutralization.
-Fixture reset automation and the50-trial matrix are not yet executed.
+HIL source77b3522 adds fixed native reset/status operations, fresh observer
+readiness, before/after reset measurements and zero-screenshot trials. Missing
+delivered input, dropped events, generation changes or unsafe reset stop a fixture
+batch; ordinary misses and recoverable bails remain recorded results. Capture
+the rail transform once and retain measured entry speed. Local tests pass;
+external frozen HIL27 is staged, not installed. No50-trial matrix executed yet.
 
 ## Rotation results and verified grind installation — 2026-10-14
 

@@ -505,18 +505,23 @@ def parse_fixture_status(text):
                 row.setdefault('reset_ready', False)
                 row.setdefault('start', [0, 0, 0])
                 row.setdefault('rail_position', [0, 0, 0])
+                row.setdefault('rail_rotation', [0, 0, 0, 1])
+                row.setdefault('rail_scale', 1)
             if not isinstance(row, dict) or any(type(row.get(k)) is not bool for k in booleans):
                 continue
-            numeric = ('heading', 'speed', 'state', 'generation', 'revision')
+            numeric = ('heading', 'speed', 'state', 'generation', 'revision', 'rail_scale')
             if any(type(row.get(k)) not in (int, float) or not math.isfinite(row[k]) or abs(row[k]) > 1e12 for k in numeric):
                 continue
             if any(type(row[k]) is not int or row[k] < 0 for k in ('state', 'generation', 'revision')) or row['speed'] < 0:
                 continue
-            if any(not isinstance(row.get(k), list) or len(row[k]) != 3 or
+            arrays = {'position': 3, 'start': 3, 'rail_position': 3, 'rail_rotation': 4}
+            if any(not isinstance(row.get(k), list) or len(row[k]) != length or
                    any(type(v) not in (int, float) or not math.isfinite(v) or abs(v) > 100000 for v in row[k])
-                   for k in ('position', 'start', 'rail_position')):
+                   for k, length in arrays.items()):
                 continue
-            result = {k: row[k] for k in (*booleans, *numeric, 'position', 'start', 'rail_position')}
+            if not .01 <= row['rail_scale'] <= 100 or not .99 <= sum(v*v for v in row['rail_rotation']) <= 1.01:
+                continue
+            result = {k: row[k] for k in (*booleans, *numeric, *arrays)}
         except (ValueError, TypeError):
             continue
     return result
