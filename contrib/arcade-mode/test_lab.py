@@ -83,6 +83,12 @@ class ComboTraceTests(unittest.TestCase):
                     row.replace('generation=3', 'generation=0'), row.replace('duration=0', 'duration=18446744073709551616')):
             self.assertEqual(probe.parse_grind_observations(bad)['samples'], [])
         self.assertEqual(probe.parse_grind_observations(pad.replace('ry=32767', 'ry=32768'))['pad'], [])
+        full_window = probe.parse_grind_observations('\n'.join([pad] * 440))
+        self.assertEqual(len(full_window['pad']), 440)
+        self.assertEqual(full_window['dropped'], 0)
+        pad_overflow = probe.parse_grind_observations('\n'.join([pad] * 513))
+        self.assertEqual(len(pad_overflow['pad']), 512)
+        self.assertEqual(pad_overflow['dropped'], 1)
         overflowing = probe.parse_grind_observations('\n'.join([row] * 257 + [status]))
         self.assertEqual((len(overflowing['samples']), overflowing['dropped']), (256, 1))
         self.assertEqual(trick_batch.grind_result({'grind': overflowing}, {'grind': parsed}, True)['native_grind'], 'UNVERIFIED')

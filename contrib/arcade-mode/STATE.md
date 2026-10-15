@@ -6,7 +6,7 @@ All five CI38688434844 gates passed; grind-handoff-deploy-v1 receipt preserves
 stock/game hashes, updates off and recovery clear. Game is running after the
 necessary DLL restart; saved Stadium rail loaded/adopted, editor/console closed,
 Arcade Mode ON, auxiliary actions OFF and simulation60 restored.
-Root owns hardware. Frozen HIL34 and maintenance42 pin this installation.
+Root owns hardware. Frozen HIL35 and maintenance42 pin this installation.
 
 GRABS DEFERRED — RETURN AFTER ROTATION, GRINDING, HUD AND BASIC COMBO INTEGRATION.
 Preserve grab code/tests/guide and input-ownership fix. Limited practical airtime
@@ -48,8 +48,8 @@ trials activated horizontal balance. Their native403→701→200/201 exits cross
 for45–53ms and incorrectly reset the installed combo. Source956dd27 preserves
 this handoff only after grinding and for at most150ms, clearing balance/HUD without
 adding a trick. Owner loss, bail, unrelated701 and timeout still invalidate.
-33596 local model/sanitizer checks pass. CI38688434844 passed; runtime repair is
-installed but NOT Deck-accepted yet. Prior HEAD6c3437f CI passed.
+33596 local model/sanitizer checks pass. CI38688434844 passed; the targeted9/9
+runtime regression below verifies this repair. Prior HEAD6c3437f CI passed.
 
 Host-only readiness correction reads its snapshot before its clock, eliminating
 a race that could falsely report a future timestamp. The100ms freshness limit,
@@ -97,8 +97,19 @@ balance failure, full owner revalidation, existing No Bail protection, serial/30
 expiry/cancellation, native selector acknowledgement and synthetic-input release.
 No forced physics result or velocity change. Adds numeric request/result telemetry,
 owner-change combo reset and active-state logging to expose grace expiry. Local
-33612 model/sanitizer checks and236 Python tests pass; Windows CI and real physical
-bail validation remain required.
+33612 model/sanitizer checks pass. Source2c3b4c2 CI38692885145 has passed Linux/Mac
+tests; Windows build and real physical bail validation remain required.
+
+Manual HUD pilot1792045939110661000 (HIL34) captured a readable full-size vertical
+meter near-0.8 during native Manual, with danger indication. Trial is INCOMPLETE:
+10s post-action wait filled the host256-pad-row cap (30 discarded); native queue
+lost0/rejected0 and native fixture reset passed. Do not promote its truncated
+telemetry. Source now bounds only the pre-fixture idle wait to2s, retaining the
+full native reset budget, and raises bounded pad capacity to512 for the permitted
+12s input+10s recovery window. Overflow still invalidates evidence.237 Python
+tests pass. Frozen HIL35 manifest
+85668cd131c2e4d138f0dc975eafef4fc5a2ea4733b537efb32f383d00934c94.
+Five-position manual HUD retry is running; no other hardware work may overlap it.
 Next:CI-verify this physical failure build, native manual failure pilot, then grind
 failure using sufficient real rail duration; finish full-range HUD and combo scoring.
 Physical balance failure, HUD full-range captures, scoring/banking and mixed

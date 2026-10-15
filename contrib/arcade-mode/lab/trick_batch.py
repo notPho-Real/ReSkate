@@ -196,7 +196,9 @@ def perform_case(plan, case, env):
     result = env.gesture(case)
     # Gesture's finally neutralizes BEFORE waiting on screenshots or reset.
     env.integrity(plan)
-    reset = env.wait_idle(case["reset_ms"], **readiness)
+    # A persistent manual need not end before the verified native fixture reset.
+    idle_ms = min(case["reset_ms"], 2000) if case.get('fixture_reset') else case["reset_ms"]
+    reset = env.wait_idle(idle_ms, **readiness)
     log_boundary = baseline_observation.get("log_end")
     obs = env.observe(since=log_boundary)
     if 'grind' in obs:

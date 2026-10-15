@@ -561,7 +561,8 @@ def parse_grind_observations(text):
                     any(not -32768 <= row.get(k, 0) <= 32767 for k in ('x', 'y')) or row.get('speed_mm_s', 0) > 1000000):
                 continue
             result[kind].append(row)
-            if len(result[kind]) > 256:
+            # Pad samples arrive at 20 Hz: cover a 12s trial plus 10s recovery.
+            if len(result[kind]) > (512 if kind == 'pad' else 256):
                 result[kind].pop(0)
                 result['dropped'] += 1
     return result

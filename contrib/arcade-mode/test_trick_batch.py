@@ -197,6 +197,25 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "SKIPPED_CONTEXT")
         env.gesture.assert_not_called()
 
+    def test_fixture_shortens_only_pre_reset_idle_wait(self):
+        value = plan()
+        case = value['candidates'][0]
+        case.update(fixture_reset=True, reset_ms=10000, baseline_max_speed_mm_s=100)
+        env = Mock()
+        env.wait_idle.side_effect = [1, None]
+        env.gesture.return_value = {'input_sent': True, 'frames': []}
+        env.observe.return_value = {'states': [], 'buttons': [], 'combo': {'samples': []}}
+        env.wait_grind_ready.return_value = {'log_end': 100}
+        env.fixture_reset.return_value = {'reset_ready': True}
+        result = batch.perform_case(value, case, env)
+        self.assertEqual([c.args for c in env.wait_idle.call_args_list], [(10000,), (2000,)])
+        self.assertTrue(all(c.kwargs == {'max_speed_mm_s': 100} for c in env.wait_idle.call_args_list))
+        env.fixture_baseline.assert_called_once_with(10000)
+        env.wait_grind_ready.assert_called_once_with(10000)
+        env.fixture_reset.assert_called_once_with(10000)
+        self.assertEqual(result['criteria']['returned_to_idle'], 'FAIL')
+        self.assertTrue(result['fixture_reset']['reset_ready'])
+
     def test_bounded_capture_policy_and_session_forwarding(self):
         value = plan()
         case = value["candidates"][0]
