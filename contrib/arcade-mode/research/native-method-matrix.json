@@ -1035,10 +1035,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1049,7 +1050,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1067,10 +1068,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1081,7 +1083,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1099,10 +1101,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1113,7 +1116,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1131,10 +1134,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1145,7 +1149,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1163,10 +1167,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1177,7 +1182,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1195,10 +1200,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1209,7 +1215,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1227,10 +1233,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1241,7 +1248,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1259,10 +1266,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1273,7 +1281,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1291,10 +1299,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1305,7 +1314,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1323,10 +1332,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1337,7 +1347,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1355,10 +1365,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1369,7 +1380,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1387,10 +1398,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1401,7 +1413,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1419,10 +1431,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1433,7 +1446,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1451,10 +1464,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1465,7 +1479,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1483,10 +1497,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1497,7 +1512,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1515,10 +1530,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": false,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1574,16 +1590,17 @@
       "arcade_input": "Up then Down",
       "semantic_action": "Manual",
       "native_method": "Synthetic native right-stick partial hold; actual contact/activity observation",
-      "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
+      "method_source": "arcade_manual_input.h; arcade_native_events.h; STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_pilot_6, landing_repair_repeat_17",
       "native_id": null,
-      "classification": "RE-SKATE METHOD AVAILABLE",
-      "hil_status": "Measured native pose exists. Direction-sequence adapter prepared with bounded confirmation timeout; live adapter acceptance pending.",
+      "classification": "VERIFIED ON OUR DECK",
+      "hil_status": "INTEGRATED: HIL24 native Manual pose and Up/Down correction10/10 in stationary context. On7c7, Grind -> Ollie Out -> Manual -> Ollie20/20 with exact air IDs, continuous lifecycle/fatigue,449-464ms grace, neutral/reset. Scoped chain acceptance; RT handoff and monetary banking unverified.",
       "review_pending": false,
       "implementation_plumbing": {
-        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; HIL PENDING",
+        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; SCOPED DECK ACCEPTANCE RECORDED",
         "source": "Extension/ArcadeMode/arcade_manual_input.h",
-        "local_checks": 75,
-        "new_deck_trials": 0
+        "local_checks": 119,
+        "new_deck_trials": 0,
+        "local_checks_scope": "Source91906e5 manual checks; software validation does not extend historical Deck acceptance."
       },
       "reuse_review": {
         "source_ids": [
@@ -1593,25 +1610,27 @@
           "dual-stick-rail-and-spin",
           "native-score-known-failures"
         ],
-        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
-        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
+        "finding": "Directional native pose/correction and scoped native exit chains are already verified; preserve accepted behavior. Combined contexts and exact requested exit identities remain separate.",
+        "next": "Preserve scoped acceptance; extend moving composition and verify requested native exit identity. RT handoff and monetary scoring remain separate open requirements.",
         "new_deck_trials": 0
-      }
+      },
+      "maturity": "INTEGRATED"
     },
     {
       "arcade_input": "Down then Up",
       "semantic_action": "Nose Manual",
       "native_method": "Synthetic native right-stick opposite partial hold; actual contact/activity observation",
-      "method_source": "manual-confirm-35d933e.json; arcade_native_events.h",
+      "method_source": "arcade_manual_input.h; arcade_native_events.h; STATE.md HIL24 result1792027038994591000; grind-exit-results.json:nose_manual_pop_controls_4, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18",
       "native_id": null,
-      "classification": "RE-SKATE METHOD AVAILABLE",
-      "hil_status": "Measured native pose exists. Direction-sequence adapter prepared with bounded confirmation timeout; live adapter acceptance pending.",
+      "classification": "VERIFIED ON OUR DECK",
+      "hil_status": "INTEGRATED: HIL24 native Nose Manual pose and Up/Down correction10/10. On7c7, LT exits20/20 native17 across two holds, continuous lifecycle/fatigue, neutral/reset; no rail requested. Standard-context isolated X exits4/4 produce16 rather than requested2. Later08d rail/Nose/Nollie chain18/20, not repeatability acceptance.",
       "review_pending": false,
       "implementation_plumbing": {
-        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; HIL PENDING",
+        "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; SCOPED DECK ACCEPTANCE RECORDED",
         "source": "Extension/ArcadeMode/arcade_manual_input.h",
-        "local_checks": 75,
-        "new_deck_trials": 0
+        "local_checks": 119,
+        "new_deck_trials": 0,
+        "local_checks_scope": "Source91906e5 manual checks; software validation does not extend historical Deck acceptance."
       },
       "reuse_review": {
         "source_ids": [
@@ -1621,19 +1640,20 @@
           "dual-stick-rail-and-spin",
           "native-score-known-failures"
         ],
-        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
-        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
+        "finding": "Directional native pose/correction and scoped native exit chains are already verified; preserve accepted behavior. Combined contexts and exact requested exit identities remain separate.",
+        "next": "Preserve scoped acceptance; extend moving composition and verify requested native exit identity. RT handoff and monetary scoring remain separate open requirements.",
         "new_deck_trials": 0
-      }
+      },
+      "maturity": "INTEGRATED"
     },
     {
       "arcade_input": "Manual then A release",
       "semantic_action": "Manual exit to ollie",
       "native_method": "Native setup then opposite flick",
-      "method_source": "manual-pop-findings.json",
+      "method_source": "manual-pop-findings.json; grind-exit-results.json:landing_repair_pilot_6, landing_repair_repeat_17",
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
-      "hil_status": "20 native Manual to Ollie chains in one context; Classic adapter integration open",
+      "hil_status": "INTEGRATED: prior20/20 native Manual -> Ollie flat-context observations retained. Classic adapter subsequently passes20/20 Grind -> Ollie Out -> Manual -> Ollie chains on7c7 with exact IDs, retained fatigue, clean grace, neutral/reset; broader chains and monetary scoring remain open.",
       "review_pending": false,
       "reuse_review": {
         "source_ids": [
@@ -1643,10 +1663,11 @@
           "dual-stick-rail-and-spin",
           "native-score-known-failures"
         ],
-        "finding": "Our actual pose and20 manual-to-Ollie trials exceed source-only partial-stick recipes. Preserve existing method; new direction-sequence binding and combined contexts need verification.",
-        "next": "Test existing directional adapter, correction isolation, clean exit and manual/flip/grab scoring negative control.",
+        "finding": "Directional native pose/correction and scoped native exit chains are already verified; preserve accepted behavior. Combined contexts and exact requested exit identities remain separate.",
+        "next": "Preserve scoped acceptance; extend moving composition and verify requested native exit identity. RT handoff and monetary scoring remain separate open requirements.",
         "new_deck_trials": 0
-      }
+      },
+      "maturity": "INTEGRATED"
     },
     {
       "arcade_input": "A hold / release",
@@ -1674,13 +1695,14 @@
       "method_source": null,
       "native_id": null,
       "classification": null,
-      "hil_status": "UNVERIFIED",
+      "hil_status": "UNVERIFIED requested Y parallel/stance-dependent named mapping. Base native history text50-50 Grind observed on08d; enum-to-name mapping remains unknown. Repeatable basic rail engagement does not establish exact named Y-table acceptance.",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1691,9 +1713,10 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
-      }
+      },
+      "evidence": "STATE.md observer_repair_08d2a3a_pilot6; grind-exit-results.json:observer_repair_08d2a3a_pilot6"
     },
     {
       "arcade_input": "Y perpendicular",
@@ -1705,10 +1728,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1719,7 +1743,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1733,10 +1757,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1747,7 +1772,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1761,10 +1786,11 @@
       "hil_status": "UNVERIFIED",
       "review_pending": true,
       "implementation_plumbing": {
-        "status": "SEMANTIC SELECTION ONLY; NATIVE ACTUATION MISSING",
+        "status": "BASIC NATIVE Y ENTRY/EXIT VERIFIED; EXACT NAMED ACTUATION UNVERIFIED",
         "source": "Extension/ArcadeMode/arcade_aux_controls.h",
         "requires": "Fresh rail approach geometry and independently observed exact identity",
-        "deck_trials": 0
+        "deck_trials": 0,
+        "generic_evidence": "grind-fixture-results.json:40/40 Arcade Y plus10/10 native controls; no per-name success inferred. grind-exit-results.json:20/20 Ollie and20/20 Kickflip exit chains on7c7."
       },
       "observation_candidate": "grind-state in upstream-method-survey.json; native enum reader is not an entry recipe or a verified named mapping",
       "reuse_review": {
@@ -1775,7 +1801,7 @@
           "controller-source-attachment"
         ],
         "finding": "Native enum reader, rail-input continuity, board pressure and exit methods available. No reviewed source supplies the full approach/stance-aware named Y table.",
-        "next": "Read installed grind/lip guide and map native enums with actual rail contacts; preserve entry/exit collision mechanics. Exact repeated-Y equivalents remain unresolved.",
+        "next": "Preserve verified basic Y engagement/exits; map exact named outcomes using actual approach/stance and independent native identity. Repeated-Y equivalents remain unresolved.",
         "new_deck_trials": 0
       }
     },
@@ -1920,11 +1946,13 @@
     },
     {
       "requested_action": "Observe manual to pop transition",
-      "classification": "RE-SKATE METHOD AVAILABLE",
+      "classification": "VERIFIED ON OUR DECK",
       "source_id": "manual-pop",
-      "implementation_status": "Owner-filtered launch diagnostics available; existing successful manual behavior preserved",
+      "implementation_status": "Prior20 native Manual/Ollie observations retained; Classic adapter20/20 Grind/Ollie/Manual/Ollie chains on7c7 with exact air IDs, continuous lifecycle/fatigue, neutral/reset. Monetary banking and broader contexts unverified.",
       "native_id": null,
-      "deck_trials": 0
+      "deck_trials": 20,
+      "maturity": "INTEGRATED",
+      "evidence": "grind-exit-results.json:landing_repair_pilot_6, landing_repair_repeat_17; manual-pop-findings.json"
     },
     {
       "requested_action": "Observe actual native line/sequence score events",
@@ -1939,9 +1967,10 @@
       "requested_action": "Spin wind-up and alternate manual-compatible revert",
       "classification": "COMMUNITY METHOD AVAILABLE",
       "source_id": "dual-stick-rail-and-spin",
-      "implementation_status": "Source recipes and offline tests; no Arcade native acceptance",
+      "implementation_status": "Shoulder rotation integrated and native functional behavior observed20/20 onf297 in stationary Stadium:4 partial,8 180,8 prewind360; all neutral/reset,4 Clean/16 Sketchy. This does not verify the alternate LS-only revert recipe or moving/540 contexts.",
       "native_id": null,
-      "deck_trials": 0
+      "deck_trials": 20,
+      "evidence": "upstream-method-survey.json:dual-stick-rail-and-spin.shoulder_rotation_result; STATE.md rotation result1792030218835535000"
     },
     {
       "requested_action": "Exact repeated flip counts",
@@ -2046,7 +2075,7 @@
     {
       "id": "grinds",
       "requested_action": "Contextual primary/repeated Y and lip entries",
-      "implementation_status": "REPEATABLE basic native Y engagement in the saved Stadium rail fixture:40/40 Arcade Y trials, plus10/10 native positive controls. All exited, neutralized and reset; no bails or incomplete valid trials.",
+      "implementation_status": "REPEATABLE basic native Y engagement in saved Stadium fixture:40/40 Arcade Y plus10/10 native controls, all exited/neutralized/reset. Integrated scoped chains on7c7:20/20 grind/Ollie/Manual/Ollie and20/20 Kickflip/grind/Kickflip/land. Raw enums remain unnamed; no exact named Y-table acceptance.",
       "source_ids": [
         "grind-state",
         "grind-exit",
@@ -2058,8 +2087,8 @@
       "new_deck_trials": 40,
       "native_control_trials": 10,
       "native_control_successes": 10,
-      "evidence": "grind-fixture-results.json",
-      "maturity": "REPEATABLE"
+      "evidence": "grind-fixture-results.json; grind-exit-results.json:landing_repair_repeat_17, kickflip_chain_repeat_17",
+      "maturity": "INTEGRATED"
     },
     {
       "id": "grind-exits",
@@ -2071,22 +2100,24 @@
         "held-flip-and-composite-record"
       ],
       "remaining": "Broader geometry/stance contexts and monetary scoring integration.",
-      "next": "Complete longer flip/grind/manual composition; preserve50-trial entry acceptance.",
+      "next": "Preserve40 scoped exit chains; resolve longer-chain failures and broader contexts without repeating accepted entry/HUD suites.",
       "new_deck_trials": 40,
       "evidence": "grind-exit-results.json",
-      "maturity": "REPEATABLE"
+      "maturity": "INTEGRATED"
     },
     {
       "id": "spins",
       "requested_action": "LB/RB spin and spin cancellation",
-      "implementation_status": "Functional native LB/RB rotation in20 controlled stationary trials; integration acceptance incomplete",
+      "implementation_status": "REPEATABLE functional stationary shoulder actuator onf297:20/20 native rotations observed, comprising4 partial,8 180 and8 prewind360; all neutral/reset,4 Clean/16 Sketchy. Functional rotation is repeatable across these hold contexts, not20 trials per angle or full gameplay acceptance.",
       "source_ids": [
         "dual-stick-rail-and-spin",
         "controller-source-attachment"
       ],
       "remaining": "OFF/menu/bail mixed regression, clean landing consistency, moving/ramp/stance and540 contexts. Board chord targeted regression already passed.",
       "next": "Preserve20 native rotation trials and5ed chord regression3/3 plus2 single exclusions; exercise moving contexts in mixed gameplay.",
-      "new_deck_trials": 27
+      "new_deck_trials": 27,
+      "maturity": "REPEATABLE",
+      "evidence": "upstream-method-survey.json:dual-stick-rail-and-spin.shoulder_rotation_result; STATE.md chord regression1792031590223483000"
     },
     {
       "id": "board-chord",
@@ -2119,10 +2150,10 @@
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "Standard-context Nose Manual X exits select native16 instead of requested2 in4/4 isolated controls; moving Nose Manual landing repair pending verified build.",
-      "next": "Preserve accepted routing; target bounded initial wrong-wheel landing recovery and natural LT exits without silently changing requested trick identity.",
+      "remaining": "Standard-context Nose Manual X exits select native16 instead of requested2 in4/4 isolated controls. Installed08d repair reached18/20 later Nose rail chains with one final-landing bail and one rail recontact/short hold; full acceptance remains open. RT/manual handoff is a separate unaccepted composition.",
+      "next": "Preserve accepted directional routing and20/20 scoped exits; target remaining moving Nose/rail failures and RT recovery without silently changing requested trick identity.",
       "new_deck_trials": 40,
-      "evidence": "grind-exit-results.json",
+      "evidence": "STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_repeat_17, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18",
       "maturity": "INTEGRATED"
     },
     {
@@ -2159,7 +2190,7 @@
         "score-hud"
       ],
       "remaining": "Moving combined gameplay acceptance and broader rail contexts.",
-      "next": "Verify grind-based composition on repaired landing build.",
+      "next": "Preserve full-size native HUD acceptance and verified basic compositions; extend remaining mixed gameplay and broader rail contexts.",
       "new_deck_trials": 27,
       "evidence": "grind-exit-results.json",
       "maturity": "INTEGRATED: readable native rail HUD;20/20 grind physical boundary failures verified"
@@ -2172,7 +2203,7 @@
         "score-hud"
       ],
       "remaining": "Moving combined gameplay acceptance.",
-      "next": "Verify prepared manual landing repair in repeated grind/manual/Ollie chains.",
+      "next": "Preserve full-size native HUD acceptance and20/20 grind/manual/Ollie chains; extend remaining moving Nose and RT handoff contexts.",
       "new_deck_trials": 5,
       "evidence": "grind-exit-results.json",
       "maturity": "INTEGRATED: readable native manual HUD;20/20 manual-mode physical boundary failures verified"

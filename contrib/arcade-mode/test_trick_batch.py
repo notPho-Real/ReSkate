@@ -29,6 +29,86 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    @staticmethod
+    def partial_writer_error():
+        error = RuntimeError('Skate exited; test stopped')
+        error.partial_run = {'schema': 1, 'outcome': 'INTERRUPTED', 'game_response': 'UNVERIFIED',
+            'input_sent': True, 'input_may_have_been_sent': True, 'neutralized': True,
+            'neutralization': {'attempted': True, 'write_completed': True, 'elapsed_ms': 1.5},
+            'delivery_timing': {'samples': [{'scheduled_ms': 0, 'write_ms': 0.1}],
+                'dropped': 0, 'interrupted': True, 'interrupted_phase': 1,
+                'scope': 'uinput_write_not_game_poll', 'elapsed_ms': 100},
+            'kernel_pad': {'available': True, 'stage': 7, 'errno': 0, 'samples': [{'ns': 100, 'lt': 0, 'rt': 0}]},
+            'sdl_pad': {'available': False, 'stage': 0, 'samples': []}}
+        return error
+
+    def test_interrupted_trial_preserves_readonly_evidence_without_reset_or_grade(self):
+        value = plan()
+        value['candidates'][0].update(repeat=2, fixture_reset=True)
+        env = Mock()
+        env.wait_idle.return_value = 1
+        env.wait_grind_ready.return_value = {'log_end': 100, 'combo': {'samples': []}}
+        observation = {'states': [{'seq': 2, 'valid': True, 'state': 200}],
+                       'flip': {'samples': [{'id': 2, 'valid': True}], 'dropped': 0}}
+        env.observe.side_effect = [{'log_end': 100}, observation]
+        env.gesture.side_effect = self.partial_writer_error()
+        result = batch.perform_batch(value, env)['trials']
+        self.assertEqual(len(result), 1)
+        self.assertTrue(result[0]['hard_stop'])
+        partial = result[0]['partial_trial']
+        self.assertEqual(partial['observations'], observation)
+        self.assertEqual(partial['observation_status'], 'AVAILABLE')
+        self.assertEqual(partial['reset_status'], 'NOT_ATTEMPTED')
+        self.assertTrue(all(v == 'UNVERIFIED' for v in partial['criteria'].values()))
+        self.assertTrue(partial['neutralized'])
+        self.assertEqual(len(partial['delivery_timing']['samples']), 1)
+        env.observe.assert_called_with(since=100)
+        env.gesture.assert_called_once()
+        env.wait_idle.assert_called_once()
+        env.integrity.assert_called_once()
+        env.fixture_reset.assert_not_called()
+
+    def test_partial_read_failure_or_bound_never_replaces_original_stop(self):
+        for observation, status in [(OSError('private diagnostic'), 'UNAVAILABLE'),
+                                    ({'states': [0] * 400000}, 'BOUND_EXCEEDED')]:
+            env = Mock()
+            env.wait_idle.return_value = 1
+            env.observe.side_effect = [{'log_end': 100}, observation]
+            env.gesture.side_effect = self.partial_writer_error()
+            with self.subTest(status=status):
+                stopped = batch.perform_batch(plan(), env)['trials'][0]
+                self.assertEqual(stopped['reason'], 'input_readiness_lost')
+                self.assertEqual(stopped['partial_trial']['observations'], {})
+                self.assertEqual(stopped['partial_trial']['observation_status'], status)
+                self.assertNotIn('private diagnostic', json.dumps(stopped))
+                env.gesture.assert_called_once()
+
+    def test_partial_writer_envelope_rejects_raw_or_unbounded_data(self):
+        for mutation in ('text', 'nan', 'rows', 'outcome', 'key'):
+            error = self.partial_writer_error()
+            value = error.partial_run
+            if mutation == 'text': value['delivery_timing']['scope'] = '/private/path'
+            elif mutation == 'nan': value['neutralization']['elapsed_ms'] = float('nan')
+            elif mutation == 'rows': value['kernel_pad']['samples'] = [0] * 129
+            elif mutation == 'outcome': value['outcome'] = 'OBSERVED'
+            elif mutation == 'key': value['private'] = 1
+            with self.subTest(mutation=mutation):
+                self.assertIsNone(batch.bounded_partial_run(error))
+
+    def test_normal_host_saves_interrupted_evidence_and_does_not_retry(self):
+        value = plan()
+        value['candidates'][0]['repeat'] = 2
+        stopped = {'hard_stop': True, 'reason': 'input_readiness_lost', 'name': 'kickflip',
+                   'repetition': 1, 'partial_trial': self.partial_writer_error().partial_run}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp).resolve() / 'out'
+            dispatch = Mock(return_value=stopped)
+            summary = batch.run_batch(value, output, dispatch, lambda _: None)
+            self.assertEqual(summary['stop'], 'input_readiness_lost')
+            self.assertEqual(summary['trials'], [stopped])
+            self.assertEqual(json.loads((output / 'summary.json').read_text())['trials'], [stopped])
+            dispatch.assert_called_once()
+
     def test_phase_wait_is_allowlisted_in_both_plan_validators(self):
         good = plan()
         case = good['candidates'][0]
@@ -131,10 +211,44 @@ class BatchTests(unittest.TestCase):
         case['phases'][1]['wait'] = {'condition': 'native-riding', 'timeout_ms': 300}
         session = Mock()
         env = batch.DeckEnvironment(session)
-        env.observe = Mock(return_value=self.condition_observation())
+        env.observe = Mock(side_effect=AssertionError('Full parsing must not run inside phase wait'))
+        env.observe_condition = Mock(return_value=self.condition_observation())
         env.gesture(case)
         self.assertEqual(session.run.call_args.kwargs['phase_conditions'], {1: case['phases'][1]['wait']})
         self.assertTrue(callable(session.run.call_args.kwargs['condition_waiter']))
+        with patch.object(batch, 'wait_native_riding', return_value={'status': 'READY'}) as wait:
+            session.run.call_args.kwargs['condition_waiter'](case['phases'][1]['wait'], lambda: True)
+            self.assertIs(wait.call_args.args[1], env.observe_condition)
+        env.observe.assert_not_called()
+
+    def test_condition_observation_matches_full_required_fields_and_window_guards(self):
+        text = '\n'.join([
+            'ARCADE HIL STATE: seq=7 valid=true state=100 mode=1.',
+            'ARCADE PUSH OBSERVATION: seq=7 ms=1200 valid=true eligible=true speed=1.5 contacts=49152.',
+            'ARCADE COMBO SAMPLE: ms=1200 state=100 mode=1 words=' + ','.join(['00000000'] * 8) + '.',
+            'ARCADE GRIND STATE: seq=7 ms=1200 generation=4 valid=true state=100 edge=0 duration=0 grind_valid=false grind=0 skate_valid=false skate=0 speed_valid=true speed_mm_s=1500 arcade=true dropped=0.',
+            'ARCADE GRIND STATUS: generation=4 active=true dropped=0 rejected=0.',
+            'ARCADE MODE DEV: A press #1 seen on ReSkate client tick.', ''])
+        required = {'states', 'push', 'combo', 'grind', 'log_end', 'evidence_gap'}
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'ReSkate.log'
+            path.write_text(text)
+            env = batch.DeckEnvironment()
+            env.log = path
+            full = env.observe(since=0)
+            with patch.object(batch, 'parse_flip_observations', side_effect=AssertionError('Unused parser')):
+                limited = env.observe_condition(since=0)
+            self.assertEqual(set(limited), required)
+            self.assertEqual(limited, {key: full[key] for key in required})
+            self.assertEqual(limited['states'][0]['seq'], 7)
+            self.assertEqual(limited['grind']['samples'][0]['generation'], 4)
+            self.assertEqual(limited['push'][0]['ms'], 1200)
+            self.assertEqual(len(limited['combo']['samples']), 1)
+            self.assertTrue(full['buttons'])
+            path.write_text(text + 'x' * 270000)
+            self.assertEqual(env.observe_condition(since=0)['evidence_gap'], 'tail_limit')
+            path.write_text('')
+            self.assertEqual(env.observe_condition(since=10)['evidence_gap'], 'log_truncated')
 
     def test_ordinary_condition_miss_keeps_batch_running_and_requires_reset(self):
         value = plan()
@@ -835,7 +949,8 @@ class BatchTests(unittest.TestCase):
 
     def test_remote_and_reviewable_bundle_include_condition_dependencies(self):
         required = {'validate_phase_wait', 'validate_phase_conditions', 'phase_condition_owner',
-                    'check_phase_condition_integrity', 'wait_native_riding'}
+                    'check_phase_condition_integrity', 'wait_native_riding', 'condition_observations',
+                    'bounded_partial_run', 'stopped_trial'}
         value = plan()
         payload = batch.remote_payload(value, value['candidates'][0])
         names = lambda source: {node.name for node in ast.parse(source).body

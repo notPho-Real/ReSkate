@@ -341,47 +341,57 @@ def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic,
     timing = {"samples": [], "dropped": 0, "scope": "uinput_write_not_game_poll"}
     if phase_conditions:
         timing.update(conditions=[], condition_failed=False)
-    for index, (offset, changes) in enumerate(events + [(duration, [])]):
-        while clock() - start < offset + shift:
+    input_attempted = False
+    index = 0
+    try:
+        for index, (offset, changes) in enumerate(events + [(duration, [])]):
+            while clock() - start < offset + shift:
+                if not alive():
+                    raise RuntimeError("Skate exited; test stopped")
+                sleep(max(0, min(0.05, offset + shift - (clock() - start))))
+            if phase_conditions and index in phase_conditions:
+                began = clock()
+                pad.neutral()  # The preceding pose is never held during a condition wait.
+                result = condition_waiter(phase_conditions[index], alive)
+                completed = clock()
+                if (completed < began or completed - began > phase_conditions[index]['timeout_ms'] / 1000 + .100 or
+                        not isinstance(result, dict) or result.get('status') not in ('READY', 'TIMEOUT')):
+                    raise RuntimeError('Invalid phase condition result')
+                # Anchor the resumed phase to completion, including prior writer
+                # lateness; every later offset retains its nominal relative spacing.
+                shift = completed - start - offset
+                timing['conditions'].append(dict(result, phase=index, nominal_ms=round(offset * 1000, 3),
+                    started_ms=round((began - start) * 1000, 3), completed_ms=round((completed - start) * 1000, 3),
+                    wait_ms=round((completed - began) * 1000, 3), shift_ms=round(shift * 1000, 3)))
+                if result['status'] == 'TIMEOUT':
+                    timing['condition_failed'] = True
+                    return timing
+            check_at = clock()
             if not alive():
                 raise RuntimeError("Skate exited; test stopped")
-            sleep(max(0, min(0.05, offset + shift - (clock() - start))))
-        if phase_conditions and index in phase_conditions:
-            began = clock()
-            pad.neutral()  # The preceding pose is never held during a condition wait.
-            result = condition_waiter(phase_conditions[index], alive)
-            completed = clock()
-            if (completed < began or completed - began > phase_conditions[index]['timeout_ms'] / 1000 + .100 or
-                    not isinstance(result, dict) or result.get('status') not in ('READY', 'TIMEOUT')):
-                raise RuntimeError('Invalid phase condition result')
-            # Anchor the resumed phase to completion, including prior writer
-            # lateness; every later offset retains its nominal relative spacing.
-            shift = completed - start - offset
-            timing['conditions'].append(dict(result, phase=index, nominal_ms=round(offset * 1000, 3),
-                started_ms=round((began - start) * 1000, 3), completed_ms=round((completed - start) * 1000, 3),
-                wait_ms=round((completed - began) * 1000, 3), shift_ms=round(shift * 1000, 3)))
-            if result['status'] == 'TIMEOUT':
-                timing['condition_failed'] = True
-                return timing
-        check_at = clock()
-        if not alive():
-            raise RuntimeError("Skate exited; test stopped")
-        if changes:
-            write_at = clock()
-            pad.frame(changes)
-            finished_at = clock()
-            if len(timing["samples"]) < 128:
-                timing["samples"].append({"scheduled_ms": round(offset * 1000, 3),
-                    "write_ms": round((write_at - start) * 1000, 3),
-                    "ready_check_ms": round((write_at - check_at) * 1000, 3),
-                    "write_and_observe_ms": round((finished_at - write_at) * 1000, 3)})
-                if phase_conditions:
-                    timing['samples'][-1]['effective_scheduled_ms'] = round((offset + shift) * 1000, 3)
-            else:
-                timing["dropped"] += 1
-    if phase_conditions:
-        timing['elapsed_ms'] = round((clock() - start) * 1000, 3)
-    return timing
+            if changes:
+                write_at = clock()
+                input_attempted = True
+                pad.frame(changes)
+                finished_at = clock()
+                if len(timing["samples"]) < 128:
+                    timing["samples"].append({"scheduled_ms": round(offset * 1000, 3),
+                        "write_ms": round((write_at - start) * 1000, 3),
+                        "ready_check_ms": round((write_at - check_at) * 1000, 3),
+                        "write_and_observe_ms": round((finished_at - write_at) * 1000, 3)})
+                    if phase_conditions:
+                        timing['samples'][-1]['effective_scheduled_ms'] = round((offset + shift) * 1000, 3)
+                else:
+                    timing["dropped"] += 1
+        if phase_conditions:
+            timing['elapsed_ms'] = round((clock() - start) * 1000, 3)
+        return timing
+    except BaseException as error:
+        timing.update(interrupted=True, interrupted_phase=min(index, 255),
+                      elapsed_ms=round(max(0, min(120000, (clock() - start) * 1000)), 3))
+        error.delivery_timing = copy.deepcopy(timing)
+        error.input_may_have_been_sent = input_attempted
+        raise
 
 
 def image_format(data):
@@ -674,6 +684,8 @@ class ExperimentSession:
         """Run validated events; native outcomes remain independently UNVERIFIED."""
         if self.pad is None:
             raise RuntimeError("Experiment session is not active")
+        pad, delivery_timing = None, None
+        neutral_receipt = {'attempted': False, 'write_completed': False, 'elapsed_ms': None}
         try:
             extra = validate_phase_conditions(events, phase_conditions, condition_waiter) if phase_conditions else 0
             if extra and capture_frames != 0:
@@ -713,6 +725,7 @@ class ExperimentSession:
                     if not watch.ready():
                         raise readiness_failure()
                     return True
+                failure = None
                 try:
                     # A slow preflight remains timestamped at its start. Obtain
                     # fresh evidence while neutral, before starting the timeline.
@@ -729,14 +742,36 @@ class ExperimentSession:
                         delivery_timing = replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.
                     frames = future.result()
+                except BaseException as error:
+                    failure = error
+                    raise
                 finally:
-                    # Always release before joining the capture worker, including
-                    # when replay fails. A signal may already have closed the pad.
+                    # Record only a completed neutral write, before joining any
+                    # worker. Closing a device is not a game-facing neutral ACK.
                     stop.set()
+                    cleanup_error = None
                     if self.pad is not None:
-                        pad.neutral()
+                        began = time.monotonic()
+                        neutral_receipt['attempted'] = True
+                        try:
+                            pad.neutral()
+                            neutral_receipt['write_completed'] = True
+                        except BaseException as error:
+                            cleanup_error = error
+                        finally:
+                            neutral_receipt['elapsed_ms'] = round(max(0, min(120000,
+                                (time.monotonic() - began) * 1000)), 3)
                     if watch is not None:
-                        watch.close()
+                        try:
+                            watch.close()
+                        except BaseException as error:
+                            cleanup_error = cleanup_error or error
+                    if cleanup_error is not None:
+                        if failure is not None:
+                            for field in ('delivery_timing', 'input_may_have_been_sent', 'readiness'):
+                                if hasattr(failure, field):
+                                    setattr(cleanup_error, field, getattr(failure, field))
+                        raise cleanup_error
             self.stop = None
             self._arm(self.deadline)  # Idle time between trials stays bounded too.
             return {"schema": 1, "recipe": name, "input_sent": bool(delivery_timing['samples']) if phase_conditions else True,
@@ -744,8 +779,33 @@ class ExperimentSession:
                     "delivery_timing": delivery_timing,
                     "kernel_pad": copy.deepcopy(pad.kernel_pad),
                     "sdl_pad": copy.deepcopy(pad.sdl_observation)}
-        except BaseException:
-            self.close()  # Infrastructure failures cannot reuse the controller.
+        except BaseException as error:
+            # Keep bounded sanitized writer evidence even when cleanup raises.
+            timing = getattr(error, 'delivery_timing', delivery_timing)
+            if not isinstance(timing, dict):
+                timing = {'samples': [], 'dropped': 0, 'scope': 'uinput_write_not_game_poll'}
+            partial = None
+            if pad is not None:
+                partial = {
+                    'schema': 1, 'outcome': 'INTERRUPTED', 'game_response': 'UNVERIFIED',
+                    'input_sent': bool(timing.get('samples')),
+                    'input_may_have_been_sent': bool(getattr(error, 'input_may_have_been_sent',
+                                                            timing.get('samples'))),
+                    'neutralized': neutral_receipt['write_completed'],
+                    'neutralization': dict(neutral_receipt),
+                    'delivery_timing': copy.deepcopy(timing),
+                    'kernel_pad': copy.deepcopy(pad.kernel_pad),
+                    'sdl_pad': copy.deepcopy(pad.sdl_observation)}
+            try:
+                self.close()  # Infrastructure failures cannot reuse the controller.
+            except BaseException as cleanup_error:
+                if hasattr(error, 'readiness'):
+                    cleanup_error.readiness = error.readiness
+                if partial is not None:
+                    cleanup_error.partial_run = partial
+                raise
+            if partial is not None:
+                error.partial_run = partial
             raise
 
 

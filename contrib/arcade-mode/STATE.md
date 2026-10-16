@@ -1,3 +1,50 @@
+## Conditional HIL parsing and scoring evidence — 2026-10-16
+
+Runtime91906e5 / DLLac6bc714 remains installed; supported game, stock backup,
+recovery launcher, fixture and60Hz configuration are unchanged. CIe2608f2 passed
+all gates including publishing. Inspector source d689ef2 is in CI; not deployed.
+
+HIL46 smoke1792157520917909000: early-manual chains1/2 PASS; the other recontacted
+the rail and never obtained a native revert. The successful trial preserves Up
+at native101 then delivers manual only after100; native manual, persistent grind
+fatigue, grace and neutral/reset pass. Two triple-RT windows each accept exactly
+one opportunity and expire after1116/1100ms without refresh. Monetary authority
+remains UNVERIFIED.
+
+HIL46 repeat1792157728067445000:6 complete early-manual chains PASS; trial7 stops
+on readiness age101ms with correct context/owner. No remaining trials ran. Old
+error reporting omitted trial7 partial input evidence, so it stays interrupted,
+not a successful or cleanly unattempted trial. Read-only measurement reproduced
+Python parsing contention: full parser age126ms versus idle46ms. Narrowing only
+condition-wait parsing to existing native state/contact/owner evidence gives a
+measured64ms maximum versus full106ms in the same new measurement. Full final
+telemetry remains retained; the100ms safety threshold is unchanged.
+
+293 software checks pass. New frozen HIL47 adds this parser change and bounded
+partial interruption evidence, including completed neutral-write receipt and a
+single read-only post-abort observation; it never resets/retries after hard stop.
+Manifest7e5794f88f7b26161ade5b20f85c92348cdd8b92d0120c3c57a4f381673f018e.
+All older frozen tools and919 target pins remain unchanged. Remaining4 early
+and10 standard manual-chain trials are running, with the earlier interruption
+kept separate.
+
+Score window1792158343465402000:2 native Kickflips land, but capture only native
+line-end, over9.3s after Arcade expiry. Two physical manual failures reach observed
+wipeout17/16ms after request and reset model fatigue; later native success-valued
+sequences have kind3/category10/base0, unlike failed kind1/category5/score5.
+They cannot rehabilitate the failed combo or prove banking.4/4 neutral/reset;
+actual bails do not return to riding before reset. Missing start/sequence and
+unbound capture intervals remain explicit limitations even with zero drops.
+
+First verified inspector85f25c9 ran with existing Proton runinprefix while game
+stayed hot;32 assets/129316 declared bytes, metadata INCOMPLETE. Prefix ordering
+exhausted the cap before target graphs. d689ef2 prioritizes the exact four graphs
+and global line/sequence declarations across both fixed bundles, then exports
+only bounded declared field names/hashes.56 sanitized metadata checks pass.
+No raw payload export, offset guessing or ownership inference. Next: inspect
+that CI-verified artifact after the active HIL batch; resolve score attribution
+and finish repeatable native chain acceptance before monetary integration.
+
 ## Manual recovery runtime installed — 2026-10-16
 
 Installed source91906e5a5183429d16f787d0f8f6bb5f2b99da1b, DLL SHA-256

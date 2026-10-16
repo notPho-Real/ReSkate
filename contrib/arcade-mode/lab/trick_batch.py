@@ -135,18 +135,22 @@ def phase_events(case):
             for p in case["phases"]]
 
 
-def observations(text):
+def condition_observations(text):
+    """Only the existing native fields used by the fixed riding predicate."""
     rows = [{"seq": int(m[1]), "valid": m[2] == "true", "state": int(m[3]), "mode": int(m[4])}
             for m in HIL_ROW.finditer(text)]
+    return {'states': rows[-128:], 'combo': parse_combo_samples(text),
+            'push': parse_push_samples(text), 'grind': parse_grind_observations(text)}
+
+
+def observations(text):
     buttons = [{"button": m[1], "count": int(m[2])} for m in BUTTON_ROW.finditer(text)]
-    return {"states": rows[-128:], "buttons": buttons[-32:],
-            "combo": parse_combo_samples(text), "score": parse_score_samples(text),
-            "push": parse_push_samples(text), "pad": parse_pad_samples(text),
+    return dict(condition_observations(text), **{"buttons": buttons[-32:],
+            "score": parse_score_samples(text), "pad": parse_pad_samples(text),
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
             "score_edges": parse_score_edges(text), "score_labels": parse_score_presence(text), "score_numbers": parse_score_numbers(text),
-            "native_score": parse_native_score_events(text), "grind": parse_grind_observations(text),
-            "fixture": parse_fixture_status(text)}
+            "native_score": parse_native_score_events(text), "fixture": parse_fixture_status(text)})
 
 
 def subsequence(expected, rows):
@@ -343,6 +347,45 @@ def combo_chain_result(expected, observation):
     return result
 
 
+def bounded_partial_run(error):
+    """Only fixed writer diagnostics, never exception messages or raw strings."""
+    value = getattr(error, 'partial_run', None)
+    required = {'schema', 'outcome', 'game_response', 'input_sent', 'input_may_have_been_sent',
+                'neutralized', 'neutralization', 'delivery_timing', 'kernel_pad', 'sdl_pad'}
+    allowed_keys = required | {
+        'attempted', 'write_completed', 'elapsed_ms', 'samples', 'dropped', 'scope',
+        'conditions', 'condition_failed', 'interrupted', 'interrupted_phase',
+        'scheduled_ms', 'write_ms', 'ready_check_ms', 'write_and_observe_ms',
+        'effective_scheduled_ms', 'phase', 'nominal_ms', 'started_ms', 'completed_ms',
+        'wait_ms', 'shift_ms', 'status', 'cause', 'last_native', 'heartbeat_seq',
+        'native_ms', 'generation', 'state', 'mode', 'valid', 'speed_valid',
+        'speed_mm_s', 'contacts', 'available', 'stage', 'errno', 'ns', 'lt', 'rt'}
+    allowed_strings = {'INTERRUPTED', 'UNVERIFIED', 'uinput_write_not_game_poll',
+        'READY', 'TIMEOUT', 'fresh_native_riding', 'native_not_riding',
+        'waiting_fresh_heartbeat', 'waiting_current_owner_state', 'speed_above_bound',
+        'native_context_only_not_action_result'}
+    def bounded(node, depth=0):
+        if depth > 7:
+            return False
+        if node is None or type(node) is bool:
+            return True
+        if type(node) in (int, float):
+            return -2**63 <= node <= 2**64 - 1
+        if type(node) is str:
+            return node in allowed_strings
+        if type(node) is list:
+            return len(node) <= 128 and all(bounded(row, depth + 1) for row in node)
+        return (type(node) is dict and set(node) <= allowed_keys and
+                all(bounded(row, depth + 1) for row in node.values()))
+    if (not isinstance(value, dict) or set(value) != required or value['schema'] != 1 or
+            value['outcome'] != 'INTERRUPTED' or value['game_response'] != 'UNVERIFIED' or
+            any(type(value[key]) is not bool for key in
+                ('input_sent', 'input_may_have_been_sent', 'neutralized')) or not bounded(value)):
+        return None
+    encoded = json.dumps(value, allow_nan=False)
+    return json.loads(encoded) if len(encoded.encode()) <= 262144 else None
+
+
 def perform_case(plan, case, env):
     env.integrity(plan)
     fixture_start = None
@@ -360,7 +403,30 @@ def perform_case(plan, case, env):
         baseline_observation = env.wait_grind_ready(case['reset_ms'])
     before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
-    result = env.gesture(case)
+    try:
+        result = env.gesture(case)
+    except Exception as error:
+        partial = bounded_partial_run(error)
+        if partial is not None:
+            partial.update(observations={}, observation_status='BASELINE_UNAVAILABLE',
+                criteria={key: 'UNVERIFIED' for key in ('native_state_sequence',
+                    'heartbeat_state_sequence', 'physics_state_sequence', 'named_trick',
+                    'returned_to_idle', 'score_banking')}, reset_status='NOT_ATTEMPTED')
+            boundary = baseline_observation.get('log_end')
+            if type(boundary) is int:
+                try:
+                    # One read only. Never recover, reset or re-arm after a stop.
+                    observed = env.observe(since=boundary)
+                    encoded = json.dumps(observed, allow_nan=False)
+                    if len(encoded.encode()) <= 1024 * 1024:
+                        partial['observations'] = observed
+                        partial['observation_status'] = 'AVAILABLE'
+                    else:
+                        partial['observation_status'] = 'BOUND_EXCEEDED'
+                except Exception:
+                    partial['observation_status'] = 'UNAVAILABLE'
+            error.partial_trial = partial
+        raise
     # Gesture's finally neutralizes BEFORE waiting on screenshots or reset.
     env.integrity(plan)
     # A persistent manual need not end before the verified native fixture reset.
@@ -437,6 +503,23 @@ def stop_reason(error):
     return categories.get(str(error), "integrity_or_transport_failure")
 
 
+def stopped_trial(error, case, repetition):
+    stopped = {'hard_stop': True, 'reason': stop_reason(error),
+               'name': case['name'], 'repetition': repetition}
+    diagnostic = getattr(error, 'readiness', None)
+    flags = ('failed', 'context_ready', 'owner_matches', 'capture_pending')
+    if (isinstance(diagnostic, dict) and set(diagnostic) == {'age_ms', *flags} and
+            type(diagnostic['age_ms']) is int and -100000 <= diagnostic['age_ms'] <= 100000 and
+            all(type(diagnostic[key]) is bool for key in flags)):
+        stopped['readiness'] = diagnostic
+    partial = getattr(error, 'partial_trial', None)
+    if (isinstance(partial, dict) and partial.get('outcome') == 'INTERRUPTED' and
+            bounded_partial_run(error) is not None and partial.get('reset_status') == 'NOT_ATTEMPTED' and
+            partial.get('criteria') and all(v == 'UNVERIFIED' for v in partial['criteria'].values())):
+        stopped['partial_trial'] = partial
+    return stopped
+
+
 def perform_batch(plan, env):
     """Reuse one environment; ordinary recognition failures never abort a batch."""
     validate_plan(plan)
@@ -462,15 +545,7 @@ def perform_batch(plan, env):
                          observation.get('flip', {}).get('dropped'))):
                     raise HardStop('chain_evidence_incomplete')
             except Exception as error:
-                stopped = {"hard_stop": True, "reason": stop_reason(error),
-                           "name": case["name"], "repetition": repetition + 1}
-                diagnostic = getattr(error, 'readiness', None)
-                flags = ('failed', 'context_ready', 'owner_matches', 'capture_pending')
-                if (isinstance(diagnostic, dict) and set(diagnostic) == {'age_ms', *flags} and
-                        type(diagnostic['age_ms']) is int and -100000 <= diagnostic['age_ms'] <= 100000 and
-                        all(type(diagnostic[key]) is bool for key in flags)):
-                    stopped['readiness'] = diagnostic
-                results.append(stopped)
+                results.append(stopped_trial(error, case, repetition + 1))
                 break
         if results and results[-1].get("hard_stop"):
             break
@@ -639,6 +714,12 @@ class DeckEnvironment:
         raise HardStop("game_or_hil_unavailable_after_recovery_wait")
 
     def observe(self, since=None):
+        return self._read_observation(since, observations)
+
+    def observe_condition(self, since=None):
+        return self._read_observation(since, condition_observations)
+
+    def _read_observation(self, since, parser):
         try:
             with self.log.open("rb") as stream:
                 size = self.log.stat().st_size
@@ -650,7 +731,7 @@ class DeckEnvironment:
                     start = max(start, since)
                 stream.seek(start)
                 data = stream.read(262144)
-                result = observations(data.decode(errors="replace"))
+                result = parser(data.decode(errors="replace"))
                 result["log_end"] = start + len(data)
                 result["evidence_gap"] = "tail_limit" if since is not None and start > since else None
                 return result
@@ -774,10 +855,10 @@ class DeckEnvironment:
         run = self.session.run if self.session is not None else experiment_events
         conditions = {index: phase['wait'] for index, phase in enumerate(case['phases']) if 'wait' in phase}
         if conditions:
-            owner = phase_condition_owner(self.observe())
+            owner = phase_condition_owner(self.observe_condition())
             return run(case['name'], phase_events(case), case['timeout_ms'] / 1000,
                 capture_frames=case.get('capture_frames', 4), phase_conditions=conditions,
-                condition_waiter=lambda spec, alive: wait_native_riding(spec, self.observe, owner, alive))
+                condition_waiter=lambda spec, alive: wait_native_riding(spec, self.observe_condition, owner, alive))
         return run(case["name"], phase_events(case), case["timeout_ms"] / 1000,
                    capture_frames=case.get("capture_frames", 4))
 
@@ -806,7 +887,7 @@ def remote_payload(plan, case):
     return "\n".join(REMOTE_SOURCES) + "\nrequest=json.load(sys.stdin)\nvalidate_plan(request['plan'])\n" + \
         "case=request['plan']['candidates'][request['index']]\n" + \
         "try:\n result=perform_case(request['plan'],case,DeckEnvironment())\n" + \
-        "except Exception as exc:\n result={'hard_stop':type(exc).__name__,'reason':str(exc) if isinstance(exc,HardStop) else 'remote_safety_failure'}\n" + \
+        "except Exception as exc:\n result=stopped_trial(exc,case,1)\n" + \
         "print(json.dumps(result))\n"
 
 
@@ -853,6 +934,8 @@ def run_batch(plan, output, dispatch=transport, check=preflight):
                 check(plan)
                 result = dispatch(plan, case)  # Never retry uncertain gameplay input.
                 if result.get("hard_stop"):
+                    summary['trials'].append(result)
+                    save()
                     raise HardStop(result.get("reason", "remote_safety_failure"))
                 missed = result.get("outcome") == "MISSED_CONDITION"
                 timing = result.get("delivery_timing", {})

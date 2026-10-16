@@ -19,6 +19,35 @@ from lab import robot, controller
 
 
 class RobotTests(unittest.TestCase):
+    def test_interrupted_replay_retains_completed_writes_and_uncertain_attempt(self):
+        for failure in ('before', 'partial-write', 'after'):
+            pad = Mock()
+            alive = Mock(side_effect=[failure != 'before', False])
+            if failure == 'partial-write':
+                pad.frame.side_effect = RuntimeError('Incomplete uinput write')
+            with self.subTest(failure=failure), self.assertRaises(RuntimeError) as caught:
+                robot.replay(pad, [(0, [(3, 0, 1)]), (0, [(3, 0, 2)])], 0, alive, clock=lambda: 0)
+            error = caught.exception
+            self.assertEqual(len(error.delivery_timing['samples']), int(failure == 'after'))
+            self.assertEqual(error.input_may_have_been_sent, failure != 'before')
+            self.assertTrue(error.delivery_timing['interrupted'])
+            self.assertEqual(pad.frame.call_count, int(failure != 'before'))
+
+    def test_interrupted_condition_preserves_prior_phase_and_condition_evidence(self):
+        pad = Mock()
+        waiter = Mock(side_effect=[{'status': 'READY', 'cause': 'fresh_native_riding'},
+                                   RuntimeError('condition_owner_changed')])
+        with self.assertRaises(RuntimeError) as caught:
+            robot.replay(pad, [(0, [(3, 0, 1)]), (0, [(3, 0, 2)])], 0,
+                lambda: True, clock=lambda: 0,
+                phase_conditions={i: {'condition': 'native-riding', 'timeout_ms': 100} for i in (0, 1)},
+                condition_waiter=waiter)
+        timing = caught.exception.delivery_timing
+        self.assertEqual(len(timing['samples']), 1)
+        self.assertEqual(len(timing['conditions']), 1)
+        self.assertEqual(timing['interrupted_phase'], 1)
+        pad.frame.assert_called_once()
+
     def test_condition_completion_shifts_all_later_phases(self):
         now = [0.0]
         pad = Mock()
@@ -432,6 +461,37 @@ class RobotTests(unittest.TestCase):
             with robot.ExperimentSession() as session:
                 session.run('fresh-start', [], 3, capture_frames=0)
                 run.assert_called_once()
+
+    def test_interrupted_session_retains_neutral_receipt_and_closes(self):
+        original_replay = robot.replay
+        for neutral_failure in (False, True):
+            pad = self.pad()
+            def interrupted(device, events, duration, alive):
+                return original_replay(device, [(0, [(3, 0, 1)]), (0, [(3, 0, 2)])], 0,
+                    Mock(side_effect=[True, False]), clock=lambda: 0)
+            with self.subTest(neutral_failure=neutral_failure), \
+                 patch.object(robot, 'capabilities', return_value={'ready': True, 'gamescope_pids': [12]}), \
+                 patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+                 patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[]), \
+                 patch.object(robot, 'replay', side_effect=interrupted), \
+                 patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+                with robot.ExperimentSession() as session:
+                    if neutral_failure:
+                        pad.neutral = Mock(side_effect=RuntimeError('Incomplete uinput write'))
+                    with self.assertRaises(RuntimeError) as caught:
+                        session.run('interrupted', [], 3, capture_frames=0)
+                    partial = caught.exception.partial_run
+                    self.assertEqual(partial['outcome'], 'INTERRUPTED')
+                    self.assertEqual(partial['game_response'], 'UNVERIFIED')
+                    self.assertTrue(partial['input_sent'])
+                    self.assertTrue(partial['input_may_have_been_sent'])
+                    self.assertEqual(len(partial['delivery_timing']['samples']), 1)
+                    self.assertEqual(partial['neutralized'], not neutral_failure)
+                    self.assertTrue(partial['neutralization']['attempted'])
+                    self.assertEqual(partial['neutralization']['write_completed'], not neutral_failure)
+                    self.assertIsNone(session.pad)
+                    with self.assertRaisesRegex(RuntimeError, 'not active'):
+                        session.run('no-replay', [], 3)
 
     def test_fixed_recipes_and_preflight_refusal(self):
         with patch.object(robot, "capabilities", return_value={"ready": False}), patch.object(robot, "Gamepad") as pad:
