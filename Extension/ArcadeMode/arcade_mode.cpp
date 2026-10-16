@@ -1,4 +1,5 @@
 #include "arcade_mode.h"
+#include "arcade_fixture_geometry.h"
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
 #include "arcade_gesture.h"
@@ -523,6 +524,7 @@ void on_client_tick() noexcept {
         }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
+        tick_arcade_fixture_geometry(now, gameplay);
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);

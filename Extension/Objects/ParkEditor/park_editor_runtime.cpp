@@ -414,6 +414,51 @@ void update_park_editor_moves() noexcept {
         fail("Native object movement failed.");
     }
 }
+static EditorSurfaceHit query_park_surface(const EditorSurfaceRequest& probe) {
+    auto& e = editor_state();
+    auto& r = placements_runtime();
+    if (const auto table = placement_manager_ids(r.manager)) {
+        std::map<std::uint32_t, std::uint64_t> native_drops;
+        for (const auto &row : *table)
+            native_drops.emplace(row.id, row.entity);
+        e.native_drops = std::move(native_drops);
+    }
+    // The native dropper queries the client physics world. The server map
+    // context has the same component type but its world at +0x40 is null.
+    // Resolve the current client TLS context here, on the client update.
+    std::array<std::uintptr_t, 2> context{};
+    if (r.context)
+        r.context(context.data());
+    std::vector<std::uint64_t> ignored;
+    std::vector<editor::SurfaceBody> ignored_bodies;
+    if (!probe.picking && e.transaction && e.transaction->preview)
+        for (const auto &step : e.transaction->steps)
+            if (step.entity) {
+                ignored.push_back(step.entity);
+                const auto client = client_root(step.entity);
+                if (client && e.native_ready && e.physics_query) {
+                    alignas(16) std::array<std::uint64_t, 2> root{};
+                    alignas(16) std::array<std::uint64_t, 5> component{};
+                    r.resolve(root.data(), client, false);
+                    if (root[0] != client || !r.valid(root.data()))
+                        continue;
+                    e.physics_query(root.data(), component.data());
+                    editor::SurfaceBody body{};
+                    if (component[2] && component[3] && memory::read(component[3], body) &&
+                        e.picking_api.body_valid(body.data()))
+                        ignored_bodies.push_back(body);
+                }
+            }
+    auto result = editor::probe_surface(e.surface_api, context[0], probe, &surface_owner, ignored,
+                                      ignored_bodies, &surface_body);
+    if (probe.picking)
+        for (const auto &row : r.rows)
+            if (row.spawned && row.entity == result.entity)
+                result.object = row.saved_id;
+    if (probe.picking && !e.picking_api.ready)
+        result.available = false;
+    return result;
+}
 void update_park_editor() {
     auto &e = editor_state();
     auto &r = placements_runtime();
@@ -429,46 +474,7 @@ void update_park_editor() {
             // Keep the cursor sample pending until we know which body to exclude.
             e.probe = probe;
         } else {
-            if (const auto table = placement_manager_ids(r.manager)) {
-                std::map<std::uint32_t, std::uint64_t> native_drops;
-                for (const auto &row : *table)
-                    native_drops.emplace(row.id, row.entity);
-                e.native_drops = std::move(native_drops);
-            }
-            // The native dropper queries the client physics world. The server map
-            // context has the same component type but its world at +0x40 is null.
-            // Resolve the current client TLS context here, on the client update.
-            std::array<std::uintptr_t, 2> context{};
-            if (r.context)
-                r.context(context.data());
-            std::vector<std::uint64_t> ignored;
-            std::vector<editor::SurfaceBody> ignored_bodies;
-            if (!probe->picking && e.transaction && e.transaction->preview)
-                for (const auto &step : e.transaction->steps)
-                    if (step.entity) {
-                        ignored.push_back(step.entity);
-                        const auto client = client_root(step.entity);
-                        if (client && e.native_ready && e.physics_query) {
-                            alignas(16) std::array<std::uint64_t, 2> root{};
-                            alignas(16) std::array<std::uint64_t, 5> component{};
-                            r.resolve(root.data(), client, false);
-                            if (root[0] != client || !r.valid(root.data()))
-                                continue;
-                            e.physics_query(root.data(), component.data());
-                            editor::SurfaceBody body{};
-                            if (component[2] && component[3] && memory::read(component[3], body) &&
-                                e.picking_api.body_valid(body.data()))
-                                ignored_bodies.push_back(body);
-                        }
-                    }
-            e.surface = editor::probe_surface(e.surface_api, context[0], *probe, &surface_owner, ignored,
-                                              ignored_bodies, &surface_body);
-            if (probe->picking)
-                for (const auto &row : r.rows)
-                    if (row.spawned && row.entity == e.surface.entity)
-                        e.surface.object = row.saved_id;
-            if (probe->picking && !e.picking_api.ready)
-                e.surface.available = false;
+            e.surface = query_park_surface(*probe);
         }
     }
     // placement_session_ready may have reset the editor after a world transition.
@@ -613,6 +619,16 @@ void update_park_editor() {
 } // namespace dingosdk::profile_runtime
 namespace dingosdk {
 using namespace profile_runtime;
+std::optional<EditorSurfaceHit> read_local_park_surface(const EditorSurfaceRequest& request, std::uint64_t revision) {
+    PreserveError preserve;
+    std::lock_guard lock(local_runtime().native_mutex);
+    const auto& e = editor_state();
+    if (!local_runtime().active || cosmetic_runtime().update_thread != GetCurrentThreadId() ||
+        !idle() || e.probe || request.generation != e.generation || revision != e.revision ||
+        !request.id || !request.picking || request.grid != 0 || !e.surface_api.ready || !e.picking_api.ready)
+        return {};
+    return query_park_surface(request);
+}
 void tick_local_park_editor() noexcept {
     PreserveError preserve;
     try {

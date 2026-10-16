@@ -1,6 +1,7 @@
 #pragma once
 #include "Engine/Game/World/park_editor.h"
 #include "Extension/Objects/object_placements.h"
+#include <optional>
 
 namespace dingosdk {
 ParkEditorModel local_park_editor();
@@ -21,6 +22,9 @@ std::size_t lobby_object_count();
 bool lobby_object_limit_reached();
 inline constexpr char object_limit_notice[] = "You have placed as many objects as this session allows each player.";
 bool queue_local_park_surface(const EditorSurfaceRequest &);
+// Client-thread read-only picking; never services editor transactions, queued
+// cursor requests, placement restores or native writes. Requires an idle editor.
+std::optional<EditorSurfaceHit> read_local_park_surface(const EditorSurfaceRequest &, std::uint64_t revision);
 bool queue_local_park_preview(const EditorPreviewRequest &);
 bool queue_local_park_selection(const EditorSelectionRequest &);
 bool queue_local_park_paste(const EditorPasteRequest &);

@@ -425,6 +425,43 @@ int main() {
         update_park_editor();
         require(e.surface.object == first.id && e.surface.entity == first_entity,
                 "Collision body/root mapping failed to select the persistent object");
+        {
+            const auto previous_thread = cosmetic_runtime().update_thread;
+            cosmetic_runtime().update_thread = GetCurrentThreadId();
+            const EditorSurfaceRequest diagnostic{e.generation, 600, probe.origin, probe.direction, 0, true};
+            const auto query_count = fixture::surface_calls, create_count = fixture::creates,
+                move_count = fixture::moves, delete_count = fixture::deletes, save_count = fixture::saves;
+            const auto revision = e.revision, cursor_result = e.surface.id;
+            const auto measured = read_local_park_surface(diagnostic, revision);
+            require(measured && measured->object == first.id && measured->id == diagnostic.id &&
+                        fixture::surface_calls == query_count + 1 && e.surface.id == cursor_result,
+                    "Independent read-only query lost identity or changed the cursor result");
+            auto expired = diagnostic; --expired.generation;
+            require(!read_local_park_surface(expired, revision) &&
+                        !read_local_park_surface(diagnostic, revision + 1),
+                    "Read-only query accepted a stale generation or revision");
+            e.probe = diagnostic;
+            require(!read_local_park_surface(diagnostic, revision) && e.probe && e.probe->id == diagnostic.id,
+                    "Read-only query consumed a queued editor cursor request");
+            e.probe.reset();
+            e.transaction.emplace();
+            e.transaction->steps.push_back({park_editor_detail::Kind::create, ramp});
+            require(!read_local_park_surface(diagnostic, revision) && e.transaction &&
+                        e.transaction->steps.size() == 1 && !e.transaction->sent,
+                    "Read-only query drained or advanced an editor mutation");
+            e.transaction.reset();
+            r.clearing = true;
+            require(!read_local_park_surface(diagnostic, revision) && r.clearing,
+                    "Read-only query serviced a pending layout clear");
+            r.clearing = false;
+            cosmetic_runtime().update_thread = 0;
+            require(!read_local_park_surface(diagnostic, revision), "Read-only query ran outside its client thread");
+            cosmetic_runtime().update_thread = previous_thread;
+            require(fixture::surface_calls == query_count + 1 && fixture::creates == create_count &&
+                        fixture::moves == move_count && fixture::deletes == delete_count && fixture::saves == save_count &&
+                        e.revision == revision && r.document.maps[r.map].size() == 1,
+                    "Read-only diagnostic changed native objects, document or editor revision");
+        }
         fixture::table_valid = false;
         require(queue_local_park_surface({e.generation, 9, probe.origin, probe.direction, 0, true}),
                 "Transient-table collision selection was not queued");
