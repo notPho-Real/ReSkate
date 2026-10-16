@@ -1,3 +1,28 @@
+## Hot native score windows and declaration inspection — 2026-10-16
+
+Source966aa6b remains the latest pushed checkpoint; runtime919/ac6bc714 and HIL47
+remain installed. Hot result1792159939246683000 runs two separate clean Kickflips
+without another fixture console reset. Both capture native sequence score13,
+line start16/17ms later, and line end13/reason1 after10,035ms in unchanged epoch259.
+Both neutralize and return idle with no reported capture loss. This supports
+reset-time rebinding as the earlier missing-record cause; it does not prove owner,
+native occurrence identity or raw-point semantics. The replay corpus now retains
+17 separate real trials/45 captures, all rejected as monetary authority.320 Python
+checks pass;16 focused replay tests preserve exact timing without stitching trials.
+
+CI22193dc is fully green. Default-RT candidate8ab84cd and combined checkpoint966aa6b
+await Windows completion; no unverified runtime has been deployed. HIL48 is staged
+for review, not installed, including mode5 parsing and the optional bound baseline.
+
+CI-verified inspector d689ef2 ran while the game stayed hot: artifact SHA-256
+f0bcec065b709248499f125de66cd2dbaafd3a7948c88ab74a22d9bacbd13e69,
+result1792160075371998000,32 assets/151238 declared payload bytes, INCOMPLETE.
+It found two of four graph targets and shared line/sequence declaration types.
+The line-start/end graphs share one parameter import; its role remains unknown.
+Next bounded lookup: parameter declarations and three exact imported type GUIDs,
+with missing references explicit. Static type links are not local-owner proof.
+Game, stock backup, launcher, saved fixture and all frozen tools remain unchanged.
+
 ## Bound scoring baseline prepared — 2026-10-16
 
 Optional score_capture_ready fixture trials now wait neutrally for a fresh

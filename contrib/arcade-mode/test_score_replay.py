@@ -17,7 +17,7 @@ class ScoreReplayTests(unittest.TestCase):
 
     def test_recorded_mechanic_passes_do_not_prove_monetary_ownership(self):
         result = score_replay.report(self.evidence)
-        self.assertEqual(len(result['trials']), 15)
+        self.assertEqual(len(result['trials']), 17)
         self.assertFalse(result['new_hardware_acceptance'])
         for item in result['trials']:
             row = item['recorded']
@@ -122,7 +122,7 @@ class ScoreReplayTests(unittest.TestCase):
         return copy.deepcopy(self.evidence['trials'][13]['trial'])
 
     def test_new_recorded_details_are_separate_trials_without_monetary_authority(self):
-        for index, item in enumerate(self.evidence['trials'][11:]):
+        for index, item in enumerate(self.evidence['trials'][11:15]):
             self.assertEqual(item['provenance']['trial_index'], index)
             self.assertEqual(item['provenance']['result'], '1792158343465402000')
             self.assertEqual(item['provenance']['result_sha256'],
@@ -138,6 +138,29 @@ class ScoreReplayTests(unittest.TestCase):
         self.assertEqual(result['sequence_details']['matched_details'], 3)
         self.assertEqual(result['sequence_details']['missing_details'], 0)
         self.assertEqual(result['sequence_details']['association'], 'capture_serial_only')
+
+    def test_hot_clean_timing_is_observed_without_native_line_identity_or_points_proof(self):
+        for index, item in enumerate(self.evidence['trials'][15:17]):
+            provenance = item['provenance']
+            self.assertEqual(provenance['result'], '1792159939246683000')
+            self.assertEqual(provenance['trial_index'], index)
+            self.assertEqual(provenance['result_sha256'],
+                             '777fe4ababe5b8281a5ad702fcad5d125a5eab17175e04705b90138d6dd3c963')
+            native = item['trial']['observations']['native_score']
+            sequence, start, end = native['samples']
+            self.assertEqual([r['route'] for r in native['samples']], [4, 1, 2])
+            self.assertEqual([r['epoch'] for r in native['samples']], [259, 259, 259])
+            self.assertEqual(start['ms'] - sequence['ms'], 16 + index)
+            self.assertEqual(end['ms'] - start['ms'], 10035)
+            self.assertEqual(sequence['score'], 13)
+            self.assertEqual(end['score'], 13)
+            self.assertEqual(end['reason'], 1)
+            result = score_replay.replay_trial(item['trial'])
+            self.assertEqual(result['monetary_status'], 'UNVERIFIED')
+            self.assertEqual(result['native_duplicate_identity'], 'UNVERIFIED')
+            self.assertEqual(result['authoritative_operations'], 0)
+            self.assertIsNone(result['banked_points'])
+            self.assertIsNone(result['lost_points'])
 
     def test_only_sequence_end_requires_details_and_missing_never_means_zero(self):
         no_sequence = score_replay.replay_trial(self.evidence['trials'][11]['trial'])

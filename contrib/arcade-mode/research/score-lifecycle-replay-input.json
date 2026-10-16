@@ -13385,6 +13385,1314 @@
           }
         }
       }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v47",
+        "result": "1792159939246683000",
+        "source_commit": "91906e5a5183429d16f787d0f8f6bb5f2b99da1b",
+        "dll_sha256": "ac6bc7141ee9ef40ba8a3042e572137a3ba41ded0623228eb140d6f9becb29a6",
+        "result_sha256": "777fe4ababe5b8281a5ad702fcad5d125a5eab17175e04705b90138d6dd3c963",
+        "trial_index": 0,
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "native-score-bound-hot-clean-line",
+        "repetition": 1,
+        "neutralized": true,
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 110,
+                "ms": 37656133,
+                "epoch": 259,
+                "route": 4,
+                "score": 13.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 111,
+                "ms": 37656149,
+                "epoch": 259,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 112,
+                "ms": 37666184,
+                "epoch": 259,
+                "route": 2,
+                "score": 13.0,
+                "reason": 1,
+                "success": false,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 259,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 259,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 259,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "guards": [
+              {
+                "seq": 110,
+                "epoch": 259,
+                "delivered": 37656145,
+                "decision": 3,
+                "authoritative": false
+              },
+              {
+                "seq": 111,
+                "epoch": 259,
+                "delivered": 37656170,
+                "decision": 3,
+                "authoritative": false
+              },
+              {
+                "seq": 112,
+                "epoch": 259,
+                "delivered": 37666202,
+                "decision": 3,
+                "authoritative": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "guard_dropped": 0,
+            "malformed": 0,
+            "native_event_identity": "UNVERIFIED",
+            "details": [
+              {
+                "seq": 110,
+                "scalar_status": "available",
+                "category_status": "available",
+                "sequence_kind": 1,
+                "action_score": 15.0,
+                "base_score": 150.0,
+                "landing": 0.9,
+                "current_category": 1,
+                "authoritative": false,
+                "verification": "UNVERIFIED"
+              }
+            ],
+            "detail_dropped": 0,
+            "detail_malformed": 0,
+            "detail_presence": "present",
+            "score_semantics": "UNVERIFIED",
+            "payload_owner": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "FAIL",
+            "entries": 0,
+            "exits": 0,
+            "duration_ms": 0,
+            "raw_enum_pairs": [],
+            "entry_speed_mm_s": [],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "bail_evidence": "UNVERIFIED",
+            "reset": "PASS"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "samples": [
+              {
+                "ms": 37654685,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  58721280,
+                  537116736,
+                  536872448,
+                  8192,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37654751,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  92275712,
+                  537116736,
+                  536872448,
+                  8192,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655086,
+                "state": 100,
+                "mode": 0,
+                "words": [
+                  92278784,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655102,
+                "state": 100,
+                "mode": 0,
+                "words": [
+                  92274688,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655185,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58736640,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655202,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58736640,
+                  537608192,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655269,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58737152,
+                  537608192,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655285,
+                "state": 200,
+                "mode": 0,
+                "words": [
+                  50348032,
+                  537395200,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655303,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  336068608,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655319,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  470286400,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655518,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  470286400,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655569,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  403177536,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655586,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655703,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655719,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922593792,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655736,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655837,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37655852,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  68,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37656051,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37656086,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  192937984,
+                  245824,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922461696,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37656103,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  41943040,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922461184,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37656121,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  41943040,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37656203,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  58720256,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              }
+            ],
+            "events": [
+              {
+                "ms": 37655297,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 37656097,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.063999824,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 37656847,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "balance": [],
+            "failure_requests": [],
+            "bail_results": [],
+            "revert_links": [],
+            "dropped": 0,
+            "native_event_identity": "UNVERIFIED",
+            "baseline_available": true
+          },
+          "flip": {
+            "samples": [
+              {
+                "ms": 37654685,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37654751,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655086,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655102,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655185,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655202,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655269,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655285,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655303,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655319,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655518,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655569,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37655586,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655703,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655719,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655736,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655837,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37655852,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37656051,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37656086,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37656103,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37656121,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37656203,
+                "valid": true,
+                "id": -1
+              }
+            ],
+            "dropped": 0
+          }
+        }
+      }
+    },
+    {
+      "provenance": {
+        "runner": "trusted-v47",
+        "result": "1792159939246683000",
+        "source_commit": "91906e5a5183429d16f787d0f8f6bb5f2b99da1b",
+        "dll_sha256": "ac6bc7141ee9ef40ba8a3042e572137a3ba41ded0623228eb140d6f9becb29a6",
+        "result_sha256": "777fe4ababe5b8281a5ad702fcad5d125a5eab17175e04705b90138d6dd3c963",
+        "trial_index": 1,
+        "scope": "Unmodified selected sanitized observation fields from this one original trial."
+      },
+      "trial": {
+        "name": "native-score-bound-hot-clean-line",
+        "repetition": 2,
+        "neutralized": true,
+        "observations": {
+          "native_score": {
+            "samples": [
+              {
+                "seq": 113,
+                "ms": 37669882,
+                "epoch": 259,
+                "route": 4,
+                "score": 13.0,
+                "reason": 0,
+                "success": true,
+                "owner_verified": false
+              },
+              {
+                "seq": 114,
+                "ms": 37669899,
+                "epoch": 259,
+                "route": 1,
+                "score": 0.0,
+                "reason": 0,
+                "success": false,
+                "owner_verified": false
+              },
+              {
+                "seq": 115,
+                "ms": 37679934,
+                "epoch": 259,
+                "route": 2,
+                "score": 13.0,
+                "reason": 1,
+                "success": false,
+                "owner_verified": false
+              }
+            ],
+            "status": [
+              {
+                "epoch": 259,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              },
+              {
+                "epoch": 259,
+                "active": true,
+                "bound": true,
+                "dropped": 0,
+                "rejected": 0,
+                "contended": 0,
+                "stale": 0,
+                "owner_verified": false
+              }
+            ],
+            "guards": [
+              {
+                "seq": 113,
+                "epoch": 259,
+                "delivered": 37669889,
+                "decision": 3,
+                "authoritative": false
+              },
+              {
+                "seq": 114,
+                "epoch": 259,
+                "delivered": 37669914,
+                "decision": 3,
+                "authoritative": false
+              },
+              {
+                "seq": 115,
+                "epoch": 259,
+                "delivered": 37679944,
+                "decision": 3,
+                "authoritative": false
+              }
+            ],
+            "dropped": 0,
+            "status_dropped": 0,
+            "guard_dropped": 0,
+            "malformed": 0,
+            "native_event_identity": "UNVERIFIED",
+            "details": [
+              {
+                "seq": 113,
+                "scalar_status": "available",
+                "category_status": "available",
+                "sequence_kind": 1,
+                "action_score": 15.0,
+                "base_score": 150.0,
+                "landing": 0.9,
+                "current_category": 1,
+                "authoritative": false,
+                "verification": "UNVERIFIED"
+              }
+            ],
+            "detail_dropped": 0,
+            "detail_malformed": 0,
+            "detail_presence": "present",
+            "score_semantics": "UNVERIFIED",
+            "payload_owner": "UNVERIFIED"
+          },
+          "score_edges": {
+            "samples": [],
+            "dropped": 0
+          },
+          "grind_result": {
+            "evidence": "COMPLETE",
+            "native_grind": "FAIL",
+            "entries": 0,
+            "exits": 0,
+            "duration_ms": 0,
+            "raw_enum_pairs": [],
+            "entry_speed_mm_s": [],
+            "named_identity": "UNKNOWN",
+            "contact_without_grind": "UNVERIFIED",
+            "stale_health_rows": 0,
+            "bail": false,
+            "bail_evidence": "UNVERIFIED",
+            "reset": "PASS"
+          },
+          "evidence_gap": null,
+          "combo": {
+            "samples": [
+              {
+                "ms": 37668437,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  58721280,
+                  537116736,
+                  536872448,
+                  8192,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37668502,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  92275712,
+                  537116736,
+                  536872448,
+                  8192,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37668837,
+                "state": 100,
+                "mode": 0,
+                "words": [
+                  92278784,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37668851,
+                "state": 100,
+                "mode": 0,
+                "words": [
+                  92274688,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37668936,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58736640,
+                  537640960,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37668952,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58736640,
+                  537608192,
+                  536872704,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669019,
+                "state": 103,
+                "mode": 0,
+                "words": [
+                  58737152,
+                  537608192,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669035,
+                "state": 200,
+                "mode": 0,
+                "words": [
+                  50348032,
+                  537395200,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669053,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  336068608,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669069,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  470286400,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669269,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  470286400,
+                  536872832,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669318,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  403177536,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669336,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669452,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669469,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922593792,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669485,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669586,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669602,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  218120192,
+                  68,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669804,
+                "state": 201,
+                "mode": 2,
+                "words": [
+                  184565760,
+                  64,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922591744,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669836,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  192937984,
+                  245824,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922461696,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669852,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  41943040,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922461184,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669869,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  41943040,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              },
+              {
+                "ms": 37669951,
+                "state": 100,
+                "mode": 1,
+                "words": [
+                  58720256,
+                  537116736,
+                  536872448,
+                  0,
+                  1024,
+                  0,
+                  3922460672,
+                  1065353419
+                ]
+              }
+            ],
+            "events": [
+              {
+                "ms": 37669047,
+                "pose": 2,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 37669847,
+                "pose": 1,
+                "active": true,
+                "failed": false,
+                "fatigue": 0.063999824,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              },
+              {
+                "ms": 37670597,
+                "pose": 1,
+                "active": false,
+                "failed": false,
+                "fatigue": 0.0,
+                "grind_fatigue": 0.0,
+                "manual_fatigue": 0.0,
+                "native_failure_verified": false
+              }
+            ],
+            "balance": [],
+            "failure_requests": [],
+            "bail_results": [],
+            "revert_links": [],
+            "dropped": 0,
+            "native_event_identity": "UNVERIFIED",
+            "baseline_available": true
+          },
+          "flip": {
+            "samples": [
+              {
+                "ms": 37668437,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37668502,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37668837,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37668851,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37668936,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37668952,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669019,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669035,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669053,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669069,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669269,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669318,
+                "valid": true,
+                "id": 2
+              },
+              {
+                "ms": 37669336,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669452,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669469,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669485,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669586,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669602,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669804,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669836,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669852,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669869,
+                "valid": true,
+                "id": -1
+              },
+              {
+                "ms": 37669951,
+                "valid": true,
+                "id": -1
+              }
+            ],
+            "dropped": 0
+          }
+        }
+      }
     }
   ]
 }

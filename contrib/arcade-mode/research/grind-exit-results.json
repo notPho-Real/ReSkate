@@ -72610,5 +72610,273 @@
       }
     ],
     "limits": "Native monetary ownership/banking remains UNVERIFIED. Independent400-499 state is primary grind evidence; available raw enums remain unnamed. Exact label diagnostics do not establish FS/BS context."
+  },
+  "native_score_hot_clean_2": {
+    "source_commit": "91906e5a5183429d16f787d0f8f6bb5f2b99da1b",
+    "dll_sha256": "ac6bc7141ee9ef40ba8a3042e572137a3ba41ded0623228eb140d6f9becb29a6",
+    "runner": "trusted-v47",
+    "result": "1792159939246683000",
+    "sha256": "777fe4ababe5b8281a5ad702fcad5d125a5eab17175e04705b90138d6dd3c963",
+    "trials": [
+      {
+        "name": "native-score-bound-hot-clean-line",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": null,
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 37655297,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 37656097,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.063999824,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 37656847,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [],
+        "native_positive_selection_edges": [
+          {
+            "ms": 37655086,
+            "valid": true,
+            "id": 2
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 110,
+            "ms": 37656133,
+            "epoch": 259,
+            "route": 4,
+            "score": 13.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 111,
+            "ms": 37656149,
+            "epoch": 259,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 112,
+            "ms": 37666184,
+            "epoch": 259,
+            "route": 2,
+            "score": 13.0,
+            "reason": 1,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 110,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 150.0,
+            "landing": 0.9,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [],
+        "grind_discovery_count": 14,
+        "neutralized": true,
+        "reset_ready": null
+      },
+      {
+        "name": "native-score-bound-hot-clean-line",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "FAIL",
+          "entries": 0,
+          "exits": 0,
+          "duration_ms": 0,
+          "raw_enum_pairs": [],
+          "entry_speed_mm_s": [],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": null,
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 37669047,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 37669847,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.063999824,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 37670597,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [],
+        "native_positive_selection_edges": [
+          {
+            "ms": 37668837,
+            "valid": true,
+            "id": 2
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 113,
+            "ms": 37669882,
+            "epoch": 259,
+            "route": 4,
+            "score": 13.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 114,
+            "ms": 37669899,
+            "epoch": 259,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 115,
+            "ms": 37679934,
+            "epoch": 259,
+            "route": 2,
+            "score": 13.0,
+            "reason": 1,
+            "success": false,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 113,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 150.0,
+            "landing": 0.9,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [],
+        "grind_discovery_count": 13,
+        "neutralized": true,
+        "reset_ready": null
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Independent400-499 state is primary grind evidence; available raw enums remain unnamed. Exact label diagnostics do not establish FS/BS context."
   }
 }
