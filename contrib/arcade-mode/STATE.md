@@ -9,14 +9,17 @@ authorization or manifest download was observed. Post-retry hashes remain game
 Game stopped, launcher running, updates=false, about6.30GB free. No HIL trials,
 new binary deployment, credential extraction or version-guard changes.
 
-Source fix: QR now honors the existing remember preference. A successful,
+Source fix ba6f19434f64bdcbba74a872aa1619e6826b5c81: QR now honors the existing
+remember preference. A successful,
 noncancelled download may retain the account name from DepotDownloader's explicit
 QR success hint for its existing remembered-account route. Missing, malformed or
 conflicting hints do not select an account; no token/password is read or stored
 by the launcher addition. Specific authentication errors now survive the generic
 InitializeSteam failure summary. Focused portable C++ regressions and naming/
 diff checks pass. Windows CI now builds the launcher and runs its focused output/
-login tests alongside existing Arcade tests; verification pending for this change.
+login tests alongside existing Arcade tests. Development CI38846120298 and Deck
+software CI38846120302 passed, including Windows launcher compilation and focused
+login/output tests, Arcade regressions, Linux/macOS lab and packaging gates.
 Prior source75645f3 CI38838076079 completed successfully, all jobs.
 
 Reference behavior checked against SteamRE/DepotDownloader tag
