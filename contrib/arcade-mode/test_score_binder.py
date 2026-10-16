@@ -69,13 +69,48 @@ class ScoreBinderTests(unittest.TestCase):
                       [row(route, prepared='false', attached='false') for route in range(1, 5)] + [health()],
                       [row(route, active='false') for route in range(1, 5)] + [health()],
                       full + [health(4)], full + [health(active='false')],
-                      full + [health(ms=7001)], full + [health(ms=999)],
+                      full + [health(ms=7001)],
                       full + [health(), health().replace('unbound=0', 'unbound=INVALID')],
                       [row(route, overflow='true') for route in range(1, 5)] + [health()]]:
             with self.subTest(lines=lines):
                 result = self.parse(lines)
                 self.assertIsNone(result['binder_snapshot'])
                 self.assertEqual(result['binder_status'], 'UNVERIFIED')
+
+    def test_independently_phased_health_retains_complete_diagnostic_snapshot(self):
+        # Exact timestamps from the first deployed binder capture; no raw log or
+        # native payload is needed to reproduce this sampling-phase regression.
+        result = self.parse([health(epoch=1, ms=51365127)] +
+                            [row(route, epoch=1, ms=51366533) for route in range(1, 5)])
+        self.assertEqual(result['binder_status'], 'COMPLETE')
+        self.assertEqual(len(result['binder_snapshot']), 4)
+        self.assertEqual(result['binder_health_age_ms'], -1406)
+        self.assertEqual(result['binder_health_abs_age_ms'], 1406)
+        self.assertTrue(result['binder_context_current'])
+        self.assertFalse(result['binder_evidence_gap'])
+        for field in ('binder_capture_completeness', 'binder_freshness', 'binder_owner'):
+            self.assertEqual(result[field], 'UNVERIFIED')
+        self.assertEqual(json.loads(json.dumps(result)), result)
+
+    def test_health_proximity_bounds_and_clock_lifecycle_rejections(self):
+        full = [row(route, ms=10000) for route in range(1, 5)]
+        for age in (-6001, -6000, -1, 0, 1, 6000, 6001):
+            with self.subTest(age=age):
+                result = self.parse(full + [health(ms=10000 + age)])
+                self.assertEqual(result['binder_context_current'], abs(age) <= 6000)
+                self.assertEqual(result['binder_snapshot'] is not None, abs(age) <= 6000)
+                self.assertEqual(result['binder_health_age_ms'], age)
+                self.assertEqual(result['binder_health_abs_age_ms'], abs(age))
+        for rows in ([health(epoch=4, ms=9999)], [health(active='false', ms=9999)],
+                     [health(ms=10000), health(ms=9999)],
+                     [health(epoch=4, ms=9998), health(epoch=3, ms=9999)],
+                     [health(ms=2**64)],
+                     [health(ms=9999)] * 129):
+            with self.subTest(rows=rows):
+                result = self.parse(full + rows)
+                self.assertIsNone(result['binder_snapshot'])
+                self.assertFalse(result['binder_context_current'])
+                self.assertTrue(result['binder_evidence_gap'])
 
     def test_old_session_and_newer_incomplete_cannot_replay_prior_snapshot(self):
         full = [row(route) for route in range(1, 5)] + [health()]

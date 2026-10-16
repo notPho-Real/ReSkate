@@ -801,12 +801,16 @@ def parse_native_score_binder(text):
     health_result = parse_native_score_health(text)
     health = health_result['health']
     age = health[-1]['ms'] - latest['ms'] if latest and health else None
-    # Binder rows are sampled every five seconds. Require a later health sample
-    # in that interval plus one second tolerance; this is still not live proof.
+    # Independent five-second worker deadlines can put either report first.
+    # Keep signed health-minus-binder age visible; bounded proximity establishes
+    # diagnostic context only, never live freshness or complete event capture.
+    health_ordered = all(after['ms'] >= before['ms'] and after['epoch'] >= before['epoch']
+                         for before, after in zip(health, health[1:]))
     current_context = bool(latest and health and not health_result['health_malformed'] and
                            not health_result['health_dropped'] and not health[-1]['overflow'] and
+                           health_ordered and
                            health[-1]['epoch'] == latest['epoch'] and health[-1]['active'] and
-                           age is not None and 0 <= age <= 6000)
+                           age is not None and abs(age) <= 6000)
     overflow = any(row['overflow'] for row in previous.values())
     complete = bool(len(rows) == 4 and not (malformed or dropped or incomplete or overflow) and
                     latest['active'] and latest['prepared'] and latest['attached'] and current_context)
@@ -814,7 +818,7 @@ def parse_native_score_binder(text):
                 binder_status='COMPLETE' if complete else 'UNVERIFIED' if received else 'MISSING',
                 binder_malformed=malformed, binder_dropped=dropped, binder_incomplete=incomplete,
                 binder_rows_seen=received, binder_overflow=overflow, binder_context_current=current_context,
-                binder_health_age_ms=age if age is not None and 0 <= age <= 0xffffffffffffffff else None,
+                binder_health_age_ms=age, binder_health_abs_age_ms=abs(age) if age is not None else None,
                 binder_evidence_gap=bool(malformed or dropped or incomplete or overflow or (received and not current_context)),
                 binder_capture_completeness='UNVERIFIED', binder_freshness='UNVERIFIED', binder_owner='UNVERIFIED')
 
