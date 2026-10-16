@@ -65,9 +65,15 @@ struct Walker {
             }
             row["kind"] = "type";
             if (type->primitive) row["primitive"] = static_cast<unsigned>(type->primitiveType);
-            else if (type->descriptor >= 0 && static_cast<std::size_t>(type->descriptor) < document.types.size())
-                row["target"] = type->descriptor;
-            else { incomplete = true; return; }
+            else if (!type->encoded && type->descriptor == -1) row["null"] = true;
+            else if (type->encoded && type->descriptor >= 0 &&
+                     static_cast<std::uint32_t>(type->descriptor) == (type->encoded >> 2)) {
+                // read_document preserves the serialized slot here. Unlike
+                // instance.descriptor, it has not mapped EFIX identity to RFL2.
+                // Never label this as an index into the exported types array.
+                row["serialized_index"] = type->descriptor;
+                row["index_space"] = "UNRESOLVED_SERIALIZED_TYPE_REFERENCE";
+            } else { incomplete = true; return; }
         } else if (std::holds_alternative<ebx::BoxedReference>(value.data)) {
             // cat pouch: opaque boxes may contain graph links; never guess or print their bytes.
             ++omitted; incomplete = true; return;
@@ -292,12 +298,29 @@ Json inspect_document(const ebx::Document& document) {
     Json result{{"status", "INCOMPLETE"}, {"owner_proof", "UNVERIFIED"}, {"graph_producer", "UNVERIFIED"},
                 {"file_guid", document.fileGuid.string()}, {"types", Json::array()}, {"fields", Json::array()},
                 {"instances", Json::array()}, {"references", Json::array()}, {"declared_members", Json::array()},
-                {"declared_parameters", Json::array()}};
+                {"declared_parameters", Json::array()}, {"fixup_types", Json::array()},
+                {"type_reference_mapping", "UNVERIFIED"}};
     if (document.types.size() > type_limit || document.fields.size() > field_limit ||
-        document.instances.size() > instance_limit || document.imports.size() > reference_limit) {
+        document.instances.size() > instance_limit || document.imports.size() > reference_limit ||
+        document.fixupTypeGuids.size() > type_limit ||
+        document.fixupTypeSignatures.size() > document.fixupTypeGuids.size()) {
         result["reason"] = "declaration_limit"; return result;
     }
     bool incomplete{};
+    for (std::size_t i = 0; i < document.fixupTypeGuids.size(); ++i) {
+        Json row{{"index", i}, {"guid", document.fixupTypeGuids[i].string()},
+            {"signature", nullptr}, {"reflection_index", nullptr}, {"status", "SIGNATURE_UNAVAILABLE"}};
+        if (i < document.fixupTypeSignatures.size()) {
+            row["signature"] = document.fixupTypeSignatures[i];
+            std::size_t count{}, matched{};
+            for (std::size_t j = 0; j < document.types.size(); ++j)
+                if (document.types[j].guid == document.fixupTypeGuids[i] &&
+                    document.types[j].signature == document.fixupTypeSignatures[i]) { ++count; matched = j; }
+            if (count == 1) row["reflection_index"] = matched;
+            row["status"] = count == 1 ? "REFLECTION_IDENTITY_MATCH" : count ? "AMBIGUOUS" : "NOT_IN_LOCAL_REFLECTION";
+        }
+        result["fixup_types"].push_back(std::move(row));
+    }
     for (std::size_t i = 0; i < document.types.size(); ++i) {
         const auto& type = document.types[i];
         if (type.fieldIndex < 0 || static_cast<std::size_t>(type.fieldIndex) > document.fields.size() ||

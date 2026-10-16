@@ -30,7 +30,7 @@ ebx::Document fixture() {
     object->fields = {
         {0, "ignored_value_name", ebx::Value{ebx::PointerReference{ebx::PointerKind::external, 0}}},
         {1, "ignored_value_name", ebx::Value{ebx::ResourceReference{12345}}},
-        {2, "ignored_value_name", ebx::Value{ebx::TypeReference{false, {}, 0, 0}}},
+        {2, "ignored_value_name", ebx::Value{ebx::TypeReference{false, {}, 1, 4}}},
         {3, "ignored_value_name", ebx::Value{std::string{"private-player-value"}}},
         {4, "ignored_value_name", ebx::Value{std::uint64_t{987654321}}}};
     ebx::InstanceRecord instance; instance.descriptor = 0; instance.object = object;
@@ -146,6 +146,33 @@ int main() {
           "context-named reference cannot establish ownership");
     check(output["references"].size() == 3 && output["references"][0]["kind"].string() == "import" &&
           output["references"][1]["resource_id"].get<unsigned>() == 12345, "only typed reference identities exported");
+    check(output["references"][2]["serialized_index"].get<unsigned>() == 1 &&
+          output["references"][2]["index_space"].string() == "UNRESOLVED_SERIALIZED_TYPE_REFERENCE" &&
+          output["references"][2].dump().find("target") == std::string::npos,
+          "serialized type slot outside local reflection never becomes a false target index");
+    document = fixture();
+    document.fixupTypeGuids.resize(2); document.fixupTypeGuids[0].bytes[0] = std::byte{1};
+    document.fixupTypeSignatures = {123, 456}; document.types[0].signature = 456;
+    output = scoring::inspect_document(document);
+    check(output["fixup_types"][1]["reflection_index"].get<unsigned>() == 0 &&
+          output["fixup_types"][0]["reflection_index"].is_null() &&
+          output["type_reference_mapping"].string() == "UNVERIFIED",
+          "EFIX identity mapping exported separately from raw serialized type slot");
+    document.types.push_back(document.types[0]); output = scoring::inspect_document(document);
+    check(output["fixup_types"][1]["status"].string() == "AMBIGUOUS" &&
+          output["fixup_types"][1]["reflection_index"].is_null(), "duplicate reflection identity never selects first match");
+    document.types.pop_back(); document.fixupTypeSignatures.pop_back(); output = scoring::inspect_document(document);
+    check(output["fixup_types"][1]["status"].string() == "SIGNATURE_UNAVAILABLE" &&
+          output["fixup_types"][1]["reflection_index"].is_null(), "GUID without signature does not identify local reflection");
+    document.fixupTypeGuids.resize(scoring::type_limit + 1);
+    check(scoring::inspect_document(document)["reason"].string() == "declaration_limit", "fixup metadata table shares type budget");
+    document = fixture(); document.fixupTypeSignatures.push_back(1);
+    check(scoring::inspect_document(document)["reason"].string() == "declaration_limit", "signature table cannot exceed GUID table");
+    document = fixture(); root(document).fields[2].value = ebx::Value{ebx::TypeReference{}};
+    check(scoring::inspect_document(document)["references"][2]["null"].get<bool>(), "null type reference retained explicitly");
+    document = fixture(); root(document).fields[2].value = ebx::Value{ebx::TypeReference{false, {}, 2, 4}};
+    check(scoring::inspect_document(document)["status"].string() == "INCOMPLETE", "inconsistent encoded type index rejected");
+    document = fixture(); output = scoring::inspect_document(document);
     check(output.dump().find("private-player-value") == std::string::npos &&
           output.dump().find("987654321") == std::string::npos &&
           output.dump().find("ignored_value_name") == std::string::npos, "scalar, string, and value-side names omitted");
