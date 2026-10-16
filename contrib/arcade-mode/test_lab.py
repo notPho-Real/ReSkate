@@ -30,6 +30,27 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_three_revert_sized_input_trace_keeps_correlated_rows(self):
+        from lab import trick_batch
+        # The real repeated-RT trial contained138 input rows, ten beyond the old tail.
+        rows = []
+        for seq in range(138):
+            rows.extend((
+                f'ARCADE PAD SOURCE: seq={seq} ms=100 user=0 buttons=0 lt=0 rt=255.',
+                f'ARCADE PAD SAMPLE: seq={seq} ms=100 user=0 buttons=0 lt=0 rt=255 output=0 phase=0.',
+                f'ARCADE STICK SAMPLE: seq={seq} ms=100 tick=7 user=0 x=0 y=-32767 phase=0.',
+                f'ARCADE PLAYBACK SAMPLE: seq={seq} poll=100 tick=7 mode=2 input_packet=1 output_packet=2.',
+                f'ARCADE ACTION SAMPLE: seq={seq} ms=100 tick=7 user=0 mode=3 requested=false '
+                'kind=0 trick=0 result=1 owned=true lx=0 ly=0 lt=0 rt=0 packet=2.',
+            ))
+        observed = trick_batch.observations('\n'.join(rows))
+        for key in ('pad', 'stick', 'playback', 'actions'):
+            with self.subTest(stream=key):
+                self.assertEqual(observed[key]['dropped'], 0)
+                self.assertEqual([r['seq'] for r in observed[key]['samples']], list(range(138)))
+        self.assertEqual([r['seq'] for r in observed['pad']['source_samples']], list(range(138)))
+        self.assertEqual(trick_batch.native_revert_link_result(observed)['native_revert'], 'UNVERIFIED')
+
     def test_fixture_status_is_numeric_allowlisted_and_rejects_invalid_context(self):
         row = {k: False for k in ('configured', 'available', 'busy', 'failed', 'editor_open',
                                   'asset_available', 'present', 'skater', 'reset_ready')}
@@ -250,11 +271,11 @@ class ComboTraceTests(unittest.TestCase):
     def test_action_trace_numeric_limits_tail_loss_and_booleans(self):
         row = ('ARCADE ACTION SAMPLE: seq=3 ms=125 tick=7 user=3 mode=4 requested=true '
                'kind=4 trick=53 result=5 owned=false lx=-32768 ly=32767 lt=0 rt=255 packet=4294967295.')
-        result = probe.parse_action_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
-        self.assertEqual(len(result['samples']), 128)
+        result = probe.parse_action_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(514)))
+        self.assertEqual(len(result['samples']), 512)
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['samples'][0]['seq'], 2)
-        self.assertEqual(result['samples'][-1], dict(seq=129, ms=125, tick=7, user=3, mode=4,
+        self.assertEqual(result['samples'][-1], dict(seq=513, ms=125, tick=7, user=3, mode=4,
             requested=True, kind=4, trick=53, result=5, owned=False, lx=-32768, ly=32767, lt=0, rt=255,
             packet=4294967295))
         for field in ('seq', 'ms', 'tick'):
@@ -299,11 +320,11 @@ class ComboTraceTests(unittest.TestCase):
 
     def test_playback_trace_preserves_cadence_and_packet_bounds_with_explicit_loss(self):
         row = 'ARCADE PLAYBACK SAMPLE: seq=3 poll=4 tick=7 mode=2 input_packet=0 output_packet=4294967295.'
-        result = probe.parse_playback_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(130)))
-        self.assertEqual(len(result['samples']), 128)
+        result = probe.parse_playback_samples('\n'.join(row.replace('seq=3', f'seq={i}') for i in range(514)))
+        self.assertEqual(len(result['samples']), 512)
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['samples'][0]['seq'], 2)
-        self.assertEqual(result['samples'][-1], dict(seq=129, poll=4, tick=7, mode=2,
+        self.assertEqual(result['samples'][-1], dict(seq=513, poll=4, tick=7, mode=2,
                                                    input_packet=0, output_packet=4294967295))
         for mode in range(3):
             self.assertEqual(probe.parse_playback_samples(row.replace('mode=2', f'mode={mode}'))['samples'][0]['mode'], mode)
@@ -329,8 +350,8 @@ class ComboTraceTests(unittest.TestCase):
 
     def test_delivered_stick_trace_has_bounded_numeric_fields_and_explicit_loss(self):
         row = 'ARCADE STICK SAMPLE: seq=3 ms=125 tick=7 user=0 x=-32768 y=32767 phase=1.'
-        result = probe.parse_stick_samples((row + '\n') * 130)
-        self.assertEqual(len(result['samples']), 128)
+        result = probe.parse_stick_samples((row + '\n') * 514)
+        self.assertEqual(len(result['samples']), 512)
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['samples'][-1], dict(seq=3, ms=125, tick=7, user=0, x=-32768, y=32767, phase=1))
         for bad in (row + ' private', row.replace('user=0', 'user=4'), row.replace('32767', '32768'),
@@ -402,9 +423,9 @@ class ComboTraceTests(unittest.TestCase):
 
     def test_source_pad_observation_is_separate_and_bounded(self):
         row = 'ARCADE PAD SOURCE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0.'
-        result = probe.parse_pad_samples((row + '\n') * 130)
+        result = probe.parse_pad_samples((row + '\n') * 514)
         self.assertEqual(result['samples'], [])
-        self.assertEqual(len(result['source_samples']), 128)
+        self.assertEqual(len(result['source_samples']), 512)
         self.assertEqual(result['dropped'], 2)
         self.assertEqual(result['source_samples'][-1]['lt'], 255)
         for bad in (row + ' private', row.replace('255', '256'), row.replace('user=0', 'user=4'),
@@ -413,8 +434,8 @@ class ComboTraceTests(unittest.TestCase):
 
     def test_pad_observation_bounds_and_explicit_evidence_loss(self):
         row = 'ARCADE PAD SAMPLE: seq=1 ms=123 user=0 buttons=768 lt=255 rt=0 output=768 phase=0.'
-        result = probe.parse_pad_samples((row + '\n') * 130 + 'ARCADE PAD GAP: dropped=3.')
-        self.assertEqual(len(result['samples']), 128)
+        result = probe.parse_pad_samples((row + '\n') * 514 + 'ARCADE PAD GAP: dropped=3.')
+        self.assertEqual(len(result['samples']), 512)
         self.assertEqual(result['dropped'], 5)
         self.assertEqual(result['samples'][-1], dict(seq=1, ms=123, user=0, buttons=768, lt=255, rt=0, output=768, phase=0))
         for bad in (row + ' private', row.replace('255', '256'), row.replace('user=0', 'user=4'),

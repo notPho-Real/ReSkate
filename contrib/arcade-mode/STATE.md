@@ -56,9 +56,33 @@ its deadline, but lost10 rows in each pad/stick/action stream: full anti-farming
 acceptance remains UNVERIFIED. All three reset and neutralized. Evidence retained
 in research/grind-exit-results.json with original result hashes and setup limits.
 
-20-trial native revert/manual repeatability batch started: ten original-timing
-links and ten with only manual entry100ms earlier. Same native recipe, fixture,
-source and60Hz settings. Do not assume its result until the runner completes.
+Repeatability result1792135457196907000:20/20 valid attempts with complete
+evidence, neutralization and reset. Original timing9/10 passed full native
+revert/manual continuity, IDs, fatigue and grace; the100ms-earlier manual timing
+passed0/10. Total9/20, NOT REPEATABLE. Successful revert-to-manual intervals
+933–967ms. The original-timing miss re-contacted the rail and RT was rejected
+as unsafe context. Earlier-timing cases split between rail re-contact/unsafe RT
+and independently recognized reverts with no subsequent manual. Preserve this
+failure envelope; do not promote RT to default accepted controls.
+
+Bounded-tail expiry follow-up1792135968903873000 also accepted exactly one
+continuation and expired at its1100ms deadline, despite three started RT
+requests. It again lost10 pad/stick/action rows. Source inspection identifies the
+observer's128-row tails, not evidence of a runtime queue failure: the three
+requests exceed that retention limit. Source probe.py now retains512 correlated
+input rows (pad/source/stick/playback/action), still reports overflow and native
+gap counts, and preserves validation/allowlists. Focused99 lab tests pass,
+including138-row correlation,512-row bounds, overflow and explicit-gap coverage.
+Full software self-test passes258 tests; naming and diff checks pass.
+This is an offline observer fix; frozen HIL42 is unchanged and prior losses are
+NOT erased. Anti-farming and score ownership/banking remain UNVERIFIED.
+
+Hardware is left running at the native-reset Stadium fixture, Arcade ON,
+revert-fs explicitly selected,60Hz, editor closed and input neutral. Next:
+prepare a separately reviewed observer bundle before repeating expiry; use the
+already-prepared grind-pop-hold-six comparison to isolate rail re-contact, then
+measure manual delivery against native revert recovery. No arbitrary native
+offset, game physics or stick-recipe changes were made.
 
 ## Supported installation restored — 2026-10-15
 

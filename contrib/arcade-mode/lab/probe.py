@@ -15,6 +15,9 @@ import time
 SETTINGS = "ReSkateLauncher.settings.json"
 BACKUP = "ReSkate.dll.arcade-stock.bak"
 RECEIPT = ".arcade-mode-install.json"
+# Three native reverts exceeded the old 128-row tail before trial observation.
+# Keep correlated input streams bounded together; real loss remains explicit. cat pouch
+INPUT_TRACE_LIMIT = 512
 
 
 def sha(path):
@@ -346,7 +349,7 @@ def parse_pad_samples(text):
             values = [int(v) for v in source.groups()]
             if max(values[:2]) <= 0xffffffffffffffff and values[3] <= 65535 and max(values[4:]) <= 255:
                 sources.append(dict(zip(('seq', 'ms', 'user', 'buttons', 'lt', 'rt'), values)))
-                if len(sources) > 128:
+                if len(sources) > INPUT_TRACE_LIMIT:
                     sources.pop(0)
                     dropped = min(0xffffffffffffffff, dropped + 1)
         row = re.search(r'ARCADE PAD SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) user=([0-3]) buttons=([0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) output=([0-9]{1,5}) phase=([0-3])\.$', line)
@@ -356,7 +359,7 @@ def parse_pad_samples(text):
         if max(values[:2]) > 0xffffffffffffffff or max(values[3], values[6]) > 65535 or max(values[4:6]) > 255:
             continue
         samples.append(dict(zip(('seq', 'ms', 'user', 'buttons', 'lt', 'rt', 'output', 'phase'), values)))
-        if len(samples) > 128:
+        if len(samples) > INPUT_TRACE_LIMIT:
             samples.pop(0)
             dropped = min(0xffffffffffffffff, dropped + 1)
     return {'samples': samples, 'source_samples': sources, 'dropped': dropped}
@@ -406,7 +409,7 @@ def parse_stick_samples(text):
         if max(seq, ms, tick) > 0xffffffffffffffff or not (-32768 <= x <= 32767 and -32768 <= y <= 32767):
             continue
         samples.append(dict(seq=seq, ms=ms, tick=tick, user=user, x=x, y=y, phase=phase))
-        if len(samples) > 128:
+        if len(samples) > INPUT_TRACE_LIMIT:
             samples.pop(0)
             dropped += 1
     return {'samples': samples, 'dropped': dropped}
@@ -424,7 +427,7 @@ def parse_playback_samples(text):
             continue
         samples.append(dict(seq=seq, poll=poll, tick=tick, mode=mode,
                             input_packet=input_packet, output_packet=output_packet))
-        if len(samples) > 128:
+        if len(samples) > INPUT_TRACE_LIMIT:
             samples.pop(0)
             dropped += 1
     return {'samples': samples, 'dropped': dropped}
@@ -449,7 +452,7 @@ def parse_action_samples(text):
                 max(sample['lt'], sample['rt']) > 255):
             continue
         samples.append(sample)
-        if len(samples) > 128:
+        if len(samples) > INPUT_TRACE_LIMIT:
             samples.pop(0)
             dropped += 1
     return {'samples': samples, 'dropped': dropped}
