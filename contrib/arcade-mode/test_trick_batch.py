@@ -1032,5 +1032,219 @@ class BatchTests(unittest.TestCase):
         pad.__exit__.assert_called_once()
 
 
+class ScoreCaptureReadyTests(unittest.TestCase):
+    @staticmethod
+    def observation(seq=1, ms=1000, health=False):
+        value = BatchTests.condition_observation(seq, ms, speed=0)
+        value['grind']['samples'][0]['duration'] = 0
+        value['grind']['pad'] = [dict(generation=4, dropped=0)]
+        value['native_score'] = dict(health_dropped=0, health_malformed=0, health=[])
+        if health:
+            value['native_score']['health'] = [dict(ms=ms, epoch=9, active=True, bound=True,
+                route=route, unbound=0, expired=0, changed=0, overflow=False) for route in range(1, 5)]
+        return value
+
+    def run_wait(self, mutate=None, *, delay=0, timeout=2000, read_delay=0, baseline=None):
+        now, reads = [0.0], []
+        initial = baseline or self.observation()
+        def observe(since=None):
+            seq = len(reads) + 2
+            value = self.observation(seq, 1001 + round(now[0] * 1000), now[0] >= delay)
+            # log offset is independent of native timestamp and advances per read.
+            value['log_end'] = initial['log_end'] + seq
+            reads.append(since)
+            if mutate:
+                mutate(value, now[0])
+            now[0] += read_delay
+            return value
+        result = batch.wait_score_capture_ready(timeout, initial, observe, lambda: True, 100,
+            clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+        return result, now[0], reads
+
+    def test_opt_in_boolean_schema_is_identical_and_defaults_unchanged(self):
+        for validator in (batch.validate_plan, plan_schema.validate_plan):
+            value = plan(); self.assertIs(validator(value), value)
+            value['candidates'][0]['score_capture_ready'] = False
+            self.assertIs(validator(value), value)
+            value['candidates'][0].update(fixture_reset=True, score_capture_ready=True)
+            self.assertIs(validator(value), value)
+            for bad in (1, 'true', None, {}):
+                value['candidates'][0]['score_capture_ready'] = bad
+                with self.assertRaises(ValueError): validator(value)
+            value['candidates'][0].update(score_capture_ready=True, fixture_reset=False)
+            with self.assertRaises(ValueError): validator(value)
+
+    def test_fresh_four_routes_record_readiness_without_scoring_authority(self):
+        (observed, result), _, reads = self.run_wait()
+        self.assertEqual(reads[0], 1001)
+        self.assertEqual(result['status'], 'READY')
+        self.assertEqual(result['scope'], 'observer_binding_only')
+        self.assertEqual(len(result['health']), 4)
+        self.assertFalse(result['owner_verified'])
+        self.assertEqual(result['capture_completeness'], 'UNVERIFIED')
+        self.assertGreater(observed['log_end'], reads[0])
+
+    def test_five_second_health_cadence_accepts_fresh_riding_updates(self):
+        (_, result), elapsed, reads = self.run_wait(delay=5, timeout=10000)
+        self.assertGreaterEqual(elapsed, 5)
+        self.assertLess(elapsed, 5.2)
+        self.assertEqual(result['status'], 'READY')
+        self.assertEqual(reads, sorted(set(reads)))
+
+    def test_reset_skips_become_baseline_after_binding_without_input(self):
+        def mutate(value, now):
+            for row in value['native_score']['health']:
+                row.update(bound=now >= .1, unbound=7 + round(now * 10))
+        (_, result), elapsed, _ = self.run_wait(mutate)
+        self.assertGreaterEqual(elapsed, .1)
+        self.assertTrue(all(row['unbound'] >= 8 for row in result['health']))
+
+    def test_missing_stale_incomplete_or_wrong_context_snapshots_timeout(self):
+        for failure in ('missing', 'stale', 'three_routes', 'unbound', 'not_riding', 'speed', 'old_log', 'old_physics'):
+            def mutate(value, now):
+                health = value['native_score']['health']
+                if failure == 'missing': health.clear()
+                elif failure == 'stale':
+                    for row in health: row['ms'] = 1000
+                elif failure == 'three_routes': health.pop()
+                elif failure == 'unbound':
+                    for row in health: row['bound'] = False
+                elif failure == 'not_riding': value['states'][-1]['state'] = 200
+                elif failure == 'speed': value['push'][-1]['speed'] = 1
+                elif failure == 'old_log': value['log_end'] = 1001
+                elif failure == 'old_physics':
+                    for row in health: row['ms'] += 1000
+            with self.subTest(failure=failure), self.assertRaisesRegex(batch.HardStop, 'score_capture_baseline_timeout'):
+                self.run_wait(mutate)
+
+    def test_owner_loss_malformed_health_and_overflow_stop_before_input(self):
+        for failure in ('owner', 'grind_loss', 'health_loss', 'malformed', 'overflow', 'epoch', 'duplicate', 'health_bool'):
+            def mutate(value, now):
+                health = value['native_score']['health']
+                if failure == 'owner': value['grind']['samples'][0]['generation'] += 1
+                elif failure == 'grind_loss': value['grind']['dropped'] = 1
+                elif failure == 'health_loss': value['native_score']['health_dropped'] = 1
+                elif failure == 'malformed': value['native_score']['health_malformed'] = 1
+                elif failure == 'overflow': health[0]['overflow'] = True
+                elif failure == 'epoch': health[-1]['epoch'] += 1
+                elif failure == 'duplicate': health[-1]['route'] = 1
+                elif failure == 'health_bool': health[0]['unbound'] = False
+            with self.subTest(failure=failure), self.assertRaisesRegex(batch.HardStop, 'score_capture_evidence_lost'):
+                self.run_wait(mutate)
+
+    def test_slow_observation_cannot_supply_current_snapshot(self):
+        with self.assertRaisesRegex(batch.HardStop, 'score_capture_baseline_timeout'):
+            self.run_wait(read_delay=.2)
+
+    def test_routes_from_different_snapshot_times_cannot_be_combined(self):
+        def mutate(value, now):
+            for row in value['native_score']['health']:
+                row['ms'] += row['route']
+        with self.assertRaisesRegex(batch.HardStop, 'score_capture_baseline_timeout'):
+            self.run_wait(mutate)
+
+    def test_backward_host_clock_fails_closed(self):
+        initial = self.observation()
+        clocks = iter([1.0, 0.5])
+        with self.assertRaisesRegex(batch.HardStop, 'score_capture_evidence_lost'):
+            batch.wait_score_capture_ready(2000, initial, Mock(), lambda: True,
+                                           clock=lambda: next(clocks), sleep=lambda _: None)
+
+    def test_coalesced_grind_status_keeps_validated_owner(self):
+        def mutate(value, now): value['grind']['status'] = []
+        (observed, _), _, _ = self.run_wait(mutate)
+        self.assertEqual(observed['grind']['status'][0]['generation'], 4)
+
+    def test_health_only_slice_retains_exact_validated_native_baseline_rows(self):
+        retained = self.observation(2, 1001)
+        def mutate(value, now):
+            if now == 0:
+                value['native_score']['health'] = []
+            else:
+                value['grind'] = {'samples': [], 'pad': [], 'status': [], 'dropped': 0}
+                value['states'] = []; value['push'] = []
+                value['combo'] = {'samples': [], 'dropped': 0}
+        (observed, receipt), elapsed, _ = self.run_wait(mutate)
+        self.assertGreater(elapsed, 0)
+        self.assertEqual(observed['grind']['samples'], retained['grind']['samples'])
+        self.assertEqual(observed['grind']['pad'], retained['grind']['pad'])
+        self.assertEqual(observed['combo']['samples'], retained['combo']['samples'])
+        self.assertEqual(observed['states'], retained['states'])
+        self.assertEqual(observed['push'], retained['push'])
+        self.assertGreater(receipt['ms'], observed['grind']['samples'][0]['ms'])
+        self.assertEqual(batch.grind_result(observed, observed, True)['evidence'], 'COMPLETE')
+
+    def test_deck_wait_neutralizes_once_and_uses_existing_readonly_checks(self):
+        session = Mock(pid=123); env = batch.DeckEnvironment(session)
+        expected = (self.observation(), {'status': 'READY'})
+        def waiter(milliseconds, baseline, observe, alive, speed):
+            self.assertTrue(alive()); self.assertEqual(speed, 100)
+            return expected
+        with patch.object(batch, 'wait_score_capture_ready', side_effect=waiter), \
+                patch.object(batch, 'capabilities', return_value={'ready': True, 'gamescope_pids': [123]}, create=True):
+            self.assertEqual(env.wait_score_capture_ready(2000, self.observation(), 100), expected)
+        session.pad.neutral.assert_called_once()
+        session.pad.frame.assert_not_called()
+        session.run.assert_not_called()
+
+    def test_timeout_is_explicit_pre_input_stop_and_no_repeat(self):
+        value = plan(); case = value['candidates'][0]
+        case.update(fixture_reset=True, score_capture_ready=True, repeat=2)
+        env = Mock(); env.wait_idle.return_value = 1
+        env.wait_grind_ready.return_value = self.observation()
+        env.wait_score_capture_ready.side_effect = batch.HardStop('score_capture_baseline_timeout')
+        result = batch.perform_batch(value, env)['trials']
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['reason'], 'score_capture_baseline_timeout')
+        self.assertFalse(result[0]['input_sent'])
+        env.gesture.assert_not_called()
+        env.wait_score_capture_ready.assert_called_once()
+
+    def test_accepted_snapshot_advances_trial_boundary_before_one_gesture(self):
+        value = plan(); case = value['candidates'][0]
+        case.update(fixture_reset=True, score_capture_ready=True)
+        env = Mock(); env.wait_idle.side_effect = [1, 3]
+        env.fixture_baseline.return_value = {'reset_ready': True}
+        env.fixture_reset.return_value = {'reset_ready': True}
+        baseline = self.observation(); accepted = self.observation(2, 6000, True)
+        accepted['log_end'] = 5000
+        receipt = {'status': 'READY', 'scope': 'observer_binding_only', 'owner_verified': False,
+                   'capture_completeness': 'UNVERIFIED'}
+        env.wait_grind_ready.return_value = baseline
+        env.wait_score_capture_ready.return_value = (accepted, receipt)
+        env.observe.side_effect = [{'log_end': 100}, {'states': [], 'combo': {'samples': []}}]
+        env.gesture.return_value = {'input_sent': True, 'frames': []}
+        result = batch.perform_case(value, case, env)
+        env.observe.assert_called_with(since=5000)
+        env.gesture.assert_called_once_with(case)
+        env.wait_score_capture_ready.assert_called_once_with(case['reset_ms'], baseline)
+        self.assertEqual(result['score_capture_baseline'], receipt)
+
+    def test_partial_gesture_failure_keeps_pre_input_score_baseline(self):
+        value = plan(); case = value['candidates'][0]
+        case.update(fixture_reset=True, score_capture_ready=True)
+        env = Mock(); env.wait_idle.return_value = 1
+        baseline = self.observation(); receipt = {'status': 'READY', 'owner_verified': False}
+        env.wait_grind_ready.return_value = baseline
+        env.wait_score_capture_ready.return_value = (baseline, receipt)
+        env.observe.side_effect = [{'log_end': 100}, {'states': []}]
+        env.gesture.side_effect = BatchTests.partial_writer_error()
+        result = batch.perform_batch(value, env)['trials'][0]
+        self.assertEqual(result['partial_trial']['score_capture_baseline'], receipt)
+        env.gesture.assert_called_once()
+
+    def test_default_candidate_does_not_call_score_readiness(self):
+        env = Mock(); env.wait_idle.side_effect = [1, 3]
+        env.observe.side_effect = [{'log_end': 100}, {'states': [], 'combo': {'samples': []}}]
+        env.gesture.return_value = {'input_sent': True, 'frames': []}
+        value = plan(); batch.perform_case(value, value['candidates'][0], env)
+        env.wait_score_capture_ready.assert_not_called()
+
+    def test_bundle_exports_readiness_helper_without_new_remote_capability(self):
+        value = plan()
+        source = batch.remote_payload(value, value['candidates'][0])
+        self.assertIn('def wait_score_capture_ready(', source)
+
+
 if __name__ == "__main__":
     unittest.main()

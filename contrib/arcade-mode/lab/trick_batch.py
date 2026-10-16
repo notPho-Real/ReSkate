@@ -55,9 +55,12 @@ def validate_plan(plan):
     names, trials = set(), 0
     for case in cases:
         keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
-             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset"))
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset", "score_capture_ready"))
         if "fixture_reset" in case and type(case["fixture_reset"]) is not bool:
             raise ValueError("Fixture reset must be boolean")
+        if 'score_capture_ready' in case and (type(case['score_capture_ready']) is not bool or
+                (case['score_capture_ready'] and case.get('fixture_reset') is not True)):
+            raise ValueError('Score capture readiness requires a boolean and validated fixture baseline')
         for field in ("name", "family"):
             if not isinstance(case[field], str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,47}", case[field]):
                 raise ValueError("Invalid candidate label")
@@ -401,10 +404,16 @@ def perform_case(plan, case, env):
     baseline_observation = env.observe()
     if case.get('fixture_reset'):
         baseline_observation = env.wait_grind_ready(case['reset_ms'])
+    score_readiness = None
+    if case.get('score_capture_ready'):
+        baseline_observation, score_readiness = env.wait_score_capture_ready(
+            case['reset_ms'], baseline_observation, **readiness)
     before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
     try:
         result = env.gesture(case)
+        if score_readiness is not None:
+            result['score_capture_baseline'] = score_readiness
     except Exception as error:
         partial = bounded_partial_run(error)
         if partial is not None:
@@ -412,6 +421,8 @@ def perform_case(plan, case, env):
                 criteria={key: 'UNVERIFIED' for key in ('native_state_sequence',
                     'heartbeat_state_sequence', 'physics_state_sequence', 'named_trick',
                     'returned_to_idle', 'score_banking')}, reset_status='NOT_ATTEMPTED')
+            if score_readiness is not None:
+                partial['score_capture_baseline'] = score_readiness
             boundary = baseline_observation.get('log_end')
             if type(boundary) is int:
                 try:
@@ -499,6 +510,8 @@ def stop_reason(error):
         "condition_evidence_lost": "condition_evidence_lost",
         "condition_owner_changed": "condition_owner_changed",
         "condition_heartbeat_stale": "condition_heartbeat_stale",
+        "score_capture_baseline_timeout": "score_capture_baseline_timeout",
+        "score_capture_evidence_lost": "score_capture_evidence_lost",
     }
     return categories.get(str(error), "integrity_or_transport_failure")
 
@@ -506,6 +519,8 @@ def stop_reason(error):
 def stopped_trial(error, case, repetition):
     stopped = {'hard_stop': True, 'reason': stop_reason(error),
                'name': case['name'], 'repetition': repetition}
+    if stopped['reason'] in ('score_capture_baseline_timeout', 'score_capture_evidence_lost'):
+        stopped.update(input_sent=False, game_response='UNVERIFIED', stage='score_capture_baseline')
     diagnostic = getattr(error, 'readiness', None)
     flags = ('failed', 'context_ready', 'owner_matches', 'capture_pending')
     if (isinstance(diagnostic, dict) and set(diagnostic) == {'age_ms', *flags} and
@@ -683,6 +698,125 @@ def wait_native_riding(condition, observe, owner, alive, clock=None, sleep=None)
         sleep(min(.020, max(0, deadline - clock())))
 
 
+def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm_s=None, clock=None, sleep=None):
+    """Neutral pre-input observer binding gate; never scoring ownership proof.
+
+    Four routes must share one newly delivered native snapshot timestamp. Skip
+    counters accumulated before this gate opens become the baseline, not a loss
+    attributed to a trial which has not started.
+    """
+    integer(milliseconds, 2000, 10000)
+    if max_speed_mm_s is not None:
+        integer(max_speed_mm_s, 0, 20000)
+    clock, sleep = clock or time.monotonic, sleep or time.sleep
+    try:
+        if (type(initial.get('log_end')) is not int or initial['log_end'] < 0 or
+                grind_result(initial, initial, True)['evidence'] != 'COMPLETE'):
+            raise HardStop('score_capture_evidence_lost')
+        owner = initial['grind']['status'][-1]
+        baseline_row = initial['grind']['samples'][-1]
+        arcade = baseline_row['arcade']
+        native_start = baseline_row['ms']
+        boundary = initial['log_end']
+        state = initial['states'][-1]
+        speed = {r['seq']: r for r in initial.get('push', [])}.get(state['seq'])
+        last_grind = baseline_row
+        last_pad = initial['grind']['pad'][-1]
+        last_combo = initial.get('combo', {}).get('samples', [])[-1:]
+        started = prior_clock = grind_at = heartbeat_at = clock()
+        deadline = started + milliseconds / 1000
+        routes, snapshot_ms, snapshot_epoch, arrival = {}, None, None, None
+        while True:
+            now = clock()
+            if now < prior_clock or not alive():
+                raise HardStop('score_capture_evidence_lost')
+            prior_clock = now
+            if now >= deadline:
+                raise HardStop('score_capture_baseline_timeout')
+            current = observe(since=boundary)
+            read_at = clock()
+            if (read_at < now or current.get('evidence_gap') or type(current.get('log_end')) is not int or
+                    current['log_end'] < boundary or current.get('combo', {}).get('dropped')):
+                raise HardStop('score_capture_evidence_lost')
+            prior_clock = read_at
+            old_boundary, boundary = boundary, current['log_end']
+            grind = current.get('grind', {})
+            if grind.get('dropped'):
+                raise HardStop('score_capture_evidence_lost')
+            for row in grind.get('status', []):
+                if not row['active'] or any(row[k] != owner[k] for k in ('generation', 'dropped', 'rejected')):
+                    raise HardStop('score_capture_evidence_lost')
+            for row in grind.get('samples', []):
+                if (not row['valid'] or row['edge'] == 3 or row['generation'] != owner['generation'] or
+                        row['dropped'] != owner['dropped'] or row['arcade'] != arcade or
+                        row['seq'] < last_grind['seq'] or row['ms'] < last_grind['ms']):
+                    raise HardStop('score_capture_evidence_lost')
+                if row['seq'] > last_grind['seq']:
+                    last_grind, grind_at = row, read_at
+            for row in grind.get('pad', []):
+                if row['generation'] != owner['generation'] or row['dropped'] != owner['dropped']:
+                    raise HardStop('score_capture_evidence_lost')
+                last_pad = row
+            if current.get('combo', {}).get('samples'):
+                last_combo = current['combo']['samples'][-1:]
+            speeds = {r['seq']: r for r in current.get('push', [])}
+            for row in current.get('states', []):
+                if row['seq'] < state['seq']:
+                    raise HardStop('score_capture_evidence_lost')
+                if row['seq'] > state['seq']:
+                    state, speed, heartbeat_at = row, speeds.get(row['seq']), read_at
+            native = current.get('native_score', {})
+            if any(type(native.get(k)) is not int or native[k] != 0 for k in ('health_dropped', 'health_malformed')):
+                raise HardStop('score_capture_evidence_lost')
+            health = native.get('health', [])
+            if not isinstance(health, list) or len(health) > 128:
+                raise HardStop('score_capture_evidence_lost')
+            for row in health:
+                if (not isinstance(row, dict) or any(type(row.get(k)) is not int or not 0 <= row[k] <= 0xffffffffffffffff
+                        for k in ('ms', 'epoch', 'route', 'unbound', 'expired', 'changed')) or
+                        not row['epoch'] or row['route'] not in (1, 2, 3, 4) or
+                        any(type(row.get(k)) is not bool for k in ('active', 'bound', 'overflow')) or
+                        row['overflow'] or (row['bound'] and not row['active'])):
+                    raise HardStop('score_capture_evidence_lost')
+                if row['ms'] <= native_start or boundary == old_boundary:
+                    continue
+                if snapshot_ms is not None and row['ms'] < snapshot_ms:
+                    raise HardStop('score_capture_evidence_lost')
+                if row['ms'] != snapshot_ms:
+                    routes, snapshot_ms, snapshot_epoch, arrival = {}, row['ms'], row['epoch'], read_at
+                if row['epoch'] != snapshot_epoch or row['route'] in routes:
+                    raise HardStop('score_capture_evidence_lost')
+                routes[row['route']] = row
+            if read_at - heartbeat_at > .750 or read_at - grind_at > .750:
+                raise HardStop('score_capture_evidence_lost')
+            ready = (len(routes) == 4 and all(r['active'] and r['bound'] for r in routes.values()) and
+                     state['valid'] and state['state'] == 100 and state['mode'] == 1 and
+                     speed and speed['valid'] and speed['contacts'] == 0xc000 and last_grind['state'] == 100 and
+                     abs(last_grind['ms'] - snapshot_ms) <= 250 and abs(speed['ms'] - snapshot_ms) <= 350 and
+                     (max_speed_mm_s is None or 0 <= speed['speed'] * 1000 <= max_speed_mm_s) and
+                     read_at - arrival <= .250 and read_at - now <= .100)
+            if ready:
+                if not alive():
+                    raise HardStop('score_capture_evidence_lost')
+                finish = clock()
+                if finish < read_at:
+                    raise HardStop('score_capture_evidence_lost')
+                if finish < deadline and finish - arrival <= .250:
+                    # Health can arrive in a separate slice from physics. Retain
+                    # actual validated rows and their original native timestamps.
+                    current['grind'] = dict(grind, status=[owner], samples=[last_grind], pad=[last_pad])
+                    current['states'] = [state]
+                    current['push'] = [speed]
+                    current['combo'] = dict(current.get('combo', {}), samples=last_combo)
+                    return current, {'status': 'READY', 'scope': 'observer_binding_only',
+                        'owner_verified': False, 'capture_completeness': 'UNVERIFIED',
+                        'generation': owner['generation'], 'epoch': snapshot_epoch, 'ms': snapshot_ms,
+                        'health': [routes[r] for r in range(1, 5)], 'wait_ms': round((finish - started) * 1000)}
+            sleep(min(.050, max(0, deadline - clock())))
+    except (KeyError, TypeError, IndexError, ValueError):
+        raise HardStop('score_capture_evidence_lost') from None
+
+
 class DeckEnvironment:
     """Uses only trusted robot/probe functions supplied by the remote payload."""
     def __init__(self, session=None):
@@ -850,6 +984,16 @@ class DeckEnvironment:
                     return observation
             time.sleep(.1)
         raise HardStop('grind_evidence_incomplete')
+
+    def wait_score_capture_ready(self, milliseconds, baseline, max_speed_mm_s=None):
+        if self.session is None or self.session.pad is None:
+            raise HardStop('score_capture_evidence_lost')
+        self.session.pad.neutral()
+        def alive():
+            self.session._clock()
+            context = capabilities()
+            return context.get('ready') is True and context.get('gamescope_pids') == [self.session.pid]
+        return wait_score_capture_ready(milliseconds, baseline, self.observe, alive, max_speed_mm_s)
 
     def gesture(self, case):
         run = self.session.run if self.session is not None else experiment_events

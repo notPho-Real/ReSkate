@@ -1,3 +1,16 @@
+## Bound scoring baseline prepared — 2026-10-16
+
+Optional score_capture_ready fixture trials now wait neutrally for a fresh
+same-time four-route active/bound observer snapshot, with unchanged validated
+local grind owner and riding evidence. Reset-time skipped counts become the
+baseline; they do not masquerade as trial losses. Original native timestamps
+and observation boundary are preserved. Timeout/evidence loss stops before
+gesture input; interrupted trials retain the baseline receipt. Defaults are
+unchanged.85 focused batch checks pass; no new frozen runner or Deck acceptance
+for this gate yet. Source8ab84cd carries the default RT binding; its CI is pending.
+Current Deck remains runtime919/HIL47, with two bounded scoring windows running
+without another fixture console reset to isolate rebinding-related capture loss.
+
 ## Default RT binding prepared — 2026-10-16
 
 New source appends action mode classic=5 and selects it at startup, reusing the
