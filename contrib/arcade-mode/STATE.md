@@ -1,3 +1,22 @@
+## Reviewed manual/trajectory build installed — 2026-10-16
+
+Installed8079c14363f7d66e76b186d73fe1281e650d6ca9, DLL
+788cdba0c2d47c8dc007575fd4c20e50ee6bb3e820583079fb466db0cd1f7b19.
+CI38940712773 passed all five gates; raw/package DLL bytes match. Controlled
+stop1792173451856385000 confirmed both processes absent before guarded deploy.
+Supported25414733 game/stock hashes unchanged,updatesfalse,recoverypendingfalse.
+HIL52 manifestacbdee54a0c84d4e5e6ccbd96ddedab2f64411f75fdfc6a6657d169fec9ed6a6;
+maintenance52 pinb2870bdcce566a8605f7169058fac081ea1da1d4e63e3965411e0df81661b9e4.
+Older frozen tools unchanged. LauncherReady25414733 verified after remotely
+dismissing Steam idle overlay, no authentication. Stadium8/8 observed before
+saved fixture load/adopt/editorclose;60Hz restored. Seven-case manual/history/
+revert regression is running onHIL52; next1 trajectory chain. Startup score
+binderprepared/attachedtrue, counterszero. Parser9b82b05 corrects signed health
+phase(-1406ms) interpretation, never grants authority. Offline inspector14f0740
+prioritizes six exact captured producer/local-spawn assets within existing32/read
+bounds.383Python+118metadata checks pass; independentreview/CI pending.
+Root solely owns hardware. Monetary authority remains disabled/unverified.
+
 ## Repeat-manual fix and trajectory preparation — 2026-10-16
 
 Installed Deck remains verified5f6f233 / DLL a49ea593d0b50a69472c7381084be5d2b13b0a17835bd895846182791234aefe,
@@ -10,9 +29,12 @@ readiness from progression authority and preserves the primary player-card
 observer; independent review found no blocker. Sanitized242native-score/21health
 checks,33641combined model checks and378Python tests pass. All57 recorded
 unowned captures still reject monetary authority. Combined CI/deployment pending.
-Source4b7c52f adds opt-in bounded fixture trajectory/HIL handoff, not yet pushed;
-review found post-handoff trajectory prefix accounting needs correction before
-native testing. Original named rail layout is unchanged; no second rail placed.
+Source8079c14363f7d66e76b186d73fe1281e650d6ca9 combines the reviewed binder
+fix with trajectory prefix correction. Independent reviews clear both fixes;
+381Python and38trajectory checks pass. CI38940712773 has Linux/macOS green,
+Windows still building. No8079 runtime deployed yet. Original named rail layout
+is unchanged; no second rail placed. HIL52/deployment preparation scripts are
+local only and require exact successfulCI/raw-package identity before installation.
 
 HIL51 Nose comparison1792170912645805000:6/6neutral/reset,0/6fullchains.
 All lead-ins remained effectively stationary, so this is NOT a valid moving
@@ -23,6 +45,22 @@ and stationaryNose0/1 have no native Nose history/confirmed pose before Ollie
 despite delivered+20000RS. Later rail contacts and one bail are separate outcomes.
 Ground entry differs from the previously successful moving/prelanding context;
 this does not establish an unsupported native mechanic. No magnitude/physics change.
+
+Follow-up1792172092638657000 holds the same ground request1500ms longer:
+Nose2/2 admits after798/830ms and remains confirmed1400/1366ms; regularManual
+control admits306ms and remains1950ms.3/3neutral/reset. Thus prior650ms Nose
+window was too short, not an unsupported native recipe. These are ground-entry
+controls, not proof of landing-link timing or repeated Nose chains. No physics
+or gesture magnitude changed.
+
+Landing-to-Nose long controls1792172746045959000:2/2 native Nose recognition
+but0/2 continuous chains; first combo expires750ms after landing before the
+Nose history edge. Both neutral/reset. Flip stick ownership ends near1092ms,
+prepared1150/1230ms controls1792172861592926000 pass2/2 continuity, fatigue
+and750ms grace with native Nose admission717ms after landing. Both neutral/reset.
+Exact requested air-ID grading fails2/2:observed2→16 rather than requested2→1.
+ID16 is native Nollie; do not silently substitute the requested Ollie. This is a narrow33ms landing-window margin,
+not repeatability acceptance or monetary verification.
 
 ## Manual identity runtime deployed — 2026-10-16
 

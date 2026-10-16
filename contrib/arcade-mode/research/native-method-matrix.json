@@ -2150,10 +2150,10 @@
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "Installed5f strict native-history gate: first-manual chains3/3; repeated-manual chains0/3 despite distinct second presenter additions and sustained local native contact. Source67 adds distinct-history corroboration; native acceptance awaits the corrected combined build. Ground Nose entry0/3 in latest moving/stationary controls versus regular moving Manual450ms; previously accepted landing-context evidence remains valid. Standard-context Nose X native16 versus requested2 remains unresolved.",
+      "remaining": "Installed5f strict native-history gate: first-manual chains3/3; repeated-manual chains0/3 despite distinct second presenter additions and sustained local native contact. Source67 adds distinct-history corroboration; native acceptance awaits the corrected combined build. Ground Nose650ms-window0/3 is resolved by longer same-input controls2/2: native admission798/830ms, sustained1400/1366ms, regular control306ms admission. Landing-link timing and repeated Nose contexts remain open; historical accepted contexts remain valid. Standard-context Nose X native16 versus requested2 remains unresolved. Prepared landing1150/1230ms+long hold gives2/2 continuous Nose chains with750ms grace, but native exit16 instead of requested1 and only33ms admission margin; not repeatability acceptance.",
       "next": "Deploy only the fully reviewed/CI-passing successor including457f203, then repeat the recorded manual pilot and20-trial combined acceptance. Preserve supported native identities and distinguish ground-entry from landing contexts.",
       "new_deck_trials": 40,
-      "evidence": "STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_repeat_17, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18; grind-exit-results.json:manual_identity_5f_12,manual_moving_context_5f_4",
+      "evidence": "STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_repeat_17, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18; grind-exit-results.json:manual_identity_5f_12,manual_moving_context_5f_4,manual_ground_duration_5f_3,nose_landing_duration_5f_2,nose_prepared_duration_5f_2",
       "maturity": "INTEGRATED"
     },
     {
