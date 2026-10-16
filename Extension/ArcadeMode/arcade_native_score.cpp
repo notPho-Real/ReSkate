@@ -112,6 +112,13 @@ void run_worker(Runtime& r) noexcept {
                     "ARCADE NATIVE SCORE: seq={} ms={} epoch={} route={} score={} reason={} success={} owner_verified=false.",
                     row.serial, row.sampled_at, row.epoch, static_cast<unsigned>(row.route), row.payload.score,
                     row.payload.reason, row.payload.success);
+                if (row.route == Route::sequence_end) {
+                    const auto& d = row.sequence;
+                    logging::log(logging::Level::info, logging::Channel::skater,
+                        "ARCADE NATIVE SCORE DETAIL: seq={} scalar_status={} category_status={} sequence_kind={} action_score={} base_score={} landing={} current_category={} authoritative=false.",
+                        row.serial, static_cast<unsigned>(d.scalars), static_cast<unsigned>(d.category), d.kind,
+                        d.action_score, d.base_score, d.landing, d.current_category);
+                }
             }
             if (epoch && now >= r.report_at) {
                 r.report_at = now + 5000;
@@ -191,6 +198,7 @@ void observe_native_score_expression(std::uintptr_t vm, std::uint32_t pc) noexce
         std::uintptr_t page{}, payload{};
         if (!read(instance + graph->frame + 8, page) || !read(page + graph->input, payload) ||
             !decode(read, binding, graph->route, payload, row.payload)) { ++r->rejected; return; }
+        if (graph->route == Route::sequence_end) row.sequence = decode_sequence_diagnostics(read, binding, payload);
     }
     // No raw addresses, text, or identity leave the callback. Different listener
     // routes can report the same end; this stream deliberately makes no bank claim.

@@ -143,7 +143,7 @@ private:
     static bool same_event(const native_score_detail::Event& a, const native_score_detail::Event& b) noexcept {
         return a.serial == b.serial && a.sampled_at == b.sampled_at && a.epoch == b.epoch && a.route == b.route &&
             a.payload.score == b.payload.score && a.payload.reason == b.payload.reason &&
-            a.payload.success == b.payload.success && a.owner_verified == b.owner_verified;
+            a.payload.success == b.payload.success && a.sequence == b.sequence && a.owner_verified == b.owner_verified;
     }
     struct Entry {
         std::uint64_t occurrence{};

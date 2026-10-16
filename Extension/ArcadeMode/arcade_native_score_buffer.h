@@ -12,6 +12,9 @@ struct Event {
     // Serial is our capture order, not a native trick/line identity. Routes can
     // duplicate a native line; no owner or deduplication claim is implied.
     bool owner_verified{};
+    // Optional scalar observations are separate from the monetary payload and
+    // supply no owner, occurrence, action-slot, or raw-point proof.
+    SequenceDiagnostics sequence{};
 };
 template<std::size_t Capacity> class Buffer {
     static_assert(Capacity > 0);

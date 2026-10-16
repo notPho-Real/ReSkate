@@ -126,6 +126,9 @@ public:
         for (auto& chord : chords_) chord.reset();
         for (auto& grind : grinds_) grind.reset();
     }
+    void cancel_manuals() noexcept {
+        for (auto& manual : manuals_) manual.cancel();
+    }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,

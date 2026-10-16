@@ -253,6 +253,32 @@ int main() {
               "only enabled airborne B can end the neutral authored tail");
     }
     {
+        ArcadeInput input; input.enable(true);
+        auto poll = [&](std::uint64_t ms, short y, bool safe, bool prepare) {
+            return input.poll(0, ms, 0, 0, y, 0, 0, true, false, false, 0,
+                false, false, true, ms, false, {}, false, safe, SkatePose::riding, false, prepare);
+        };
+        poll(800, 0, false, true); poll(900, 25000, false, true);
+        poll(960, 0, true, false);
+        check(poll(1024, -25000, true, false).right_y == -20000,
+            "Arcade input propagates bounded preparation into safe manual ownership");
+        input.cancel_manuals();
+        check(!poll(1030, -25000, true, false).command_busy,
+            "explicit context invalidation clears active manual ownership between polls");
+        poll(2000, 0, false, true); poll(2010, 25000, false, true);
+        input.cancel_manuals(); // Native owner/menu changed without any intervening input poll.
+        poll(2020, 0, true, false);
+        check(!poll(2030, -25000, true, false).command_busy,
+            "old first direction cannot cross a context change between polls");
+        poll(2040, 0, true, false); poll(2050, -25000, true, false);
+        check(poll(2060, 25000, true, false).right_y == 20000,
+            "fresh command works after native context recovery");
+        input.cancel_manuals();
+        poll(3000, 0, true, false); poll(3010, 25000, true, false);
+        check(!poll(3020, -25000, false, true).command_busy,
+            "coherent safe-to-recovery snapshot cannot complete a manual in state101");
+    }
+    {
         ManualGesture manual;
         auto poll = [&](std::uint64_t ms, short y, SkatePose pose = SkatePose::riding,
                         bool safe = true, bool conflict = false, bool gameplay = true) {

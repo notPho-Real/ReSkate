@@ -162,10 +162,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const auto pose = observed_pose({valid,
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
-    manual_observed.store(pose, std::memory_order_relaxed);
-    const bool manual_safe = valid && !bail &&
+    const bool manual_safe = valid && !owner_changed && !bail &&
         ((native.state == 100 && native.crouch_mode == 1) || (native.state >= 200 && native.state < 300));
-    manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
     action_eligible_until.store(action_input_eligible({valid, false, false, bail, native.state,
         native.crouch_mode, 0}) ? now + 150 : 0, std::memory_order_release);
     const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
@@ -180,7 +178,15 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool failed = combo_session.step(pose, dt, correction, native_revert);
     const bool manual_prepare = manual_revert_preparation(valid && !owner_changed, bail,
         native.state, native.crouch_mode, combo_session.model().state().revert_pending);
-    manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
+    {
+        // Publish one pose/eligibility snapshot to XInput. A pending direction
+        // must not cross a context change even when no input poll sees the gap.
+        std::lock_guard lock(ollie_mutex);
+        if (!valid || owner_changed || bail) arcade_input.cancel_manuals();
+        manual_observed.store(pose, std::memory_order_relaxed);
+        manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
+        manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
+    }
     if (native_revert) {
         const auto& linked = combo_session.model().state();
         logging::log(logging::Level::info, logging::Channel::skater,
@@ -580,10 +586,14 @@ void on_client_tick() noexcept {
             cancel_balance_bail();
             had_combo_owner = false;
             combo_owner = {};
-            manual_eligible_until.store(0, std::memory_order_release);
-            manual_prepare_until.store(0, std::memory_order_release);
+            {
+                std::lock_guard lock(ollie_mutex);
+                arcade_input.cancel_manuals();
+                manual_eligible_until.store(0, std::memory_order_release);
+                manual_prepare_until.store(0, std::memory_order_release);
+                manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
+            }
             action_eligible_until.store(0, std::memory_order_release);
-            manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
             combo_session.invalidate();
             combo_tick_at = 0;
             publish_balance_hud({}, 0);
@@ -685,7 +695,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto physical_right_x = right_x, physical_right_y = right_y;
     const auto physical_left_trigger = left_trigger, physical_right_trigger = right_trigger;
     const ActionPhysicalPad action_physical{buttons, left_x, left_y, left_trigger, right_trigger};
-    const auto now = GetTickCount64();
+    auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
     game_input = game_input && gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
@@ -694,10 +704,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
     const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
     const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
-    const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
-    const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
-    const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
-    const bool manual_prepare = game_input && prepare_deadline >= now && prepare_deadline - now <= 150;
     const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
     const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
     NativeGesture::Output result{};
@@ -707,6 +713,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     std::uint32_t packet_mask{};
     {
         std::lock_guard lock(ollie_mutex);
+        // A client publication while acquiring the lock must not look future-dated.
+        now = GetTickCount64();
+        const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
+        const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
+        const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
+        const bool manual_prepare = game_input && prepare_deadline >= now && prepare_deadline - now <= 150;
         const bool auxiliary_busy = action_inputs[user].busy();
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);

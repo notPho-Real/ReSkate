@@ -184,6 +184,78 @@ class ComboTraceTests(unittest.TestCase):
         self.assertEqual(result['samples'], [])
         self.assertEqual(probe.parse_native_score_events('unrelated log line')['malformed'], 0)
 
+    def test_native_score_details_preserve_distinct_values_without_authority(self):
+        from lab import trick_batch
+        detail = ('ARCADE NATIVE SCORE DETAIL: seq=7 scalar_status=5 category_status=5 '
+                  'sequence_kind=1 action_score=60 base_score=40 landing=0.75 current_category=13 authoritative=false.')
+        capture = 'ARCADE NATIVE SCORE: seq=7 ms=200 epoch=3 route=4 score=90 reason=0 success=true owner_verified=false.'
+        parsed = trick_batch.observations('\n'.join([capture, detail]))['native_score']
+        row = parsed['details'][0]
+        self.assertEqual((row['seq'], row['sequence_kind'], row['action_score'], row['base_score'],
+                          row['landing'], row['current_category']), (7, 1, 60, 40, .75, 13))
+        self.assertEqual((row['scalar_status'], row['category_status']), ('available', 'available'))
+        self.assertFalse(row['authoritative'])
+        self.assertEqual(row['verification'], 'UNVERIFIED')
+        self.assertEqual(parsed['score_semantics'], 'UNVERIFIED')
+        self.assertEqual(parsed['payload_owner'], 'UNVERIFIED')
+        self.assertEqual(parsed['native_event_identity'], 'UNVERIFIED')
+        self.assertEqual(parsed['samples'][0]['score'], 90)
+        self.assertFalse(parsed['samples'][0]['owner_verified'])
+        # Separate native captures may have equal amounts; rows remain undeduplicated.
+        repeated = probe.parse_native_score_events('\n'.join([detail] * 130))
+        self.assertEqual((len(repeated['details']), repeated['detail_dropped']), (128, 2))
+        self.assertEqual((repeated['dropped'], repeated['malformed'], repeated['detail_malformed']), (0, 0, 0))
+
+    def test_native_score_details_missing_and_invalid_are_explicit(self):
+        template = ('ARCADE NATIVE SCORE DETAIL: seq=7 scalar_status={} category_status={} '
+                    'sequence_kind=0 action_score=0 base_score=0 landing=0 current_category=0 authoritative=false.')
+        missing = probe.parse_native_score_events('unrelated log line')
+        self.assertEqual((missing['details'], missing['detail_presence'], missing['score_semantics']),
+                         ([], 'missing', 'UNVERIFIED'))
+        for scalar_status in (1, 2, 3):
+            for category_status in (1, 2, 4):
+                parsed = probe.parse_native_score_events(template.format(scalar_status, category_status))
+                row = parsed['details'][0]
+                for key in ('sequence_kind', 'action_score', 'base_score', 'landing', 'current_category'):
+                    self.assertIsNone(row[key])
+                self.assertNotEqual(row['scalar_status'], 'available')
+                self.assertNotEqual(row['category_status'], 'available')
+                self.assertEqual(row['verification'], 'UNVERIFIED')
+        available_zero = probe.parse_native_score_events(template.format(5, 5))['details'][0]
+        self.assertEqual(available_zero['action_score'], 0)
+        self.assertEqual(available_zero['current_category'], 0)
+        truncated = probe.parse_native_score_events(template.format(5, 5)[:-8])
+        self.assertEqual((truncated['details'], truncated['detail_presence'], truncated['detail_malformed']),
+                         ([], 'invalid', 1))
+        self.assertEqual(truncated['malformed'], 0)
+
+    def test_native_score_detail_parser_rejects_unsanitized_or_inconsistent_fields(self):
+        row = ('ARCADE NATIVE SCORE DETAIL: seq=7 scalar_status=5 category_status=5 '
+               'sequence_kind=1 action_score=60 base_score=40 landing=0.75 current_category=13 authoritative=false.')
+        mutations = (row + ' private text', row.replace('authoritative=false', 'authoritative=true'),
+                     row.replace('seq=7', 'seq=0'), row.replace('seq=7', 'seq=18446744073709551616'),
+                     row.replace('sequence_kind=1', 'sequence_kind=4294967296'),
+                     row.replace('current_category=13', 'current_category=4294967296'),
+                     row.replace('scalar_status=5', 'scalar_status=4'),
+                     row.replace('scalar_status=5', 'scalar_status=1'),
+                     row.replace('category_status=5', 'category_status=3'),
+                     row.replace('category_status=5', 'category_status=4'),
+                     row.replace('action_score=60', 'action_score=-1'),
+                     row.replace('base_score=40', 'base_score=2147483648'),
+                     row.replace('action_score=60', 'action_score=1.25'),
+                     row.replace('landing=0.75', 'landing=1e309'),
+                     row.replace('landing=0.75', 'landing=1e39'),
+                     row.replace('landing=0.75', 'landing=nan'),
+                     row.replace('base_score=40', 'base_score=--1'))
+        for bad in mutations:
+            with self.subTest(row=bad):
+                parsed = probe.parse_native_score_events(bad)
+                self.assertEqual((parsed['details'], parsed['detail_malformed'], parsed['malformed']), ([], 1, 0))
+                self.assertEqual(parsed['score_semantics'], 'UNVERIFIED')
+        # Neither an unknown category nor finite landing outside 0..1 is assigned invented semantics.
+        raw = row.replace('current_category=13', 'current_category=4294967295').replace('landing=0.75', 'landing=-2.5')
+        self.assertEqual(probe.parse_native_score_events(raw)['details'][0]['landing'], -2.5)
+
     def test_score_presence_diagnostics_do_not_promote_partial_names(self):
         from lab import trick_batch
         row = 'ARCADE SCORE PRESENCE: ms=120 source=1 rows=2 stage=0 parts=3 labels=4.'

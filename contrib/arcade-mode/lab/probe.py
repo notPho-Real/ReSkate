@@ -515,6 +515,57 @@ def parse_score_numbers(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_native_score_details(text):
+    """Optional seq-keyed scalar observations; missing values never mean zero.
+
+    These rows do not identify a native occurrence or owner. A consumer must
+    retain missing detail for any capture without a matching row as unverified;
+    this parser does not join, deduplicate, or turn diagnostics into score proof.
+    """
+    samples, dropped, malformed = [], 0, 0
+    statuses = {1: 'schema_unavailable', 2: 'read_failed', 3: 'invalid_value',
+                4: 'absent', 5: 'available'}
+    pattern = (r'ARCADE NATIVE SCORE DETAIL: seq=([0-9]{1,20}) scalar_status=([1235]) '
+               r'category_status=([1245]) sequence_kind=([0-9]{1,10}) '
+               r'action_score=([0-9.eE+-]{1,32}) base_score=([0-9.eE+-]{1,32}) '
+               r'landing=([0-9.eE+-]{1,32}) current_category=([0-9]{1,10}) authoritative=false\.$')
+    for line in text.splitlines():
+        if 'ARCADE NATIVE SCORE DETAIL:' not in line:
+            continue
+        row = re.search(pattern, line)
+        if not row:
+            malformed += 1
+            continue
+        seq, scalar_status, category_status, kind, action, base, landing, category = row.groups()
+        seq, scalar_status, category_status, kind, category = map(int, (seq, scalar_status, category_status, kind, category))
+        try:
+            action, base, landing = map(float, (action, base, landing))
+        except ValueError:
+            malformed += 1
+            continue
+        if (not 0 < seq <= 0xffffffffffffffff or max(kind, category) > 0xffffffff or
+                not all(math.isfinite(value) for value in (action, base, landing)) or
+                not all(0 <= value <= 2147483647 and value.is_integer() for value in (action, base)) or
+                abs(landing) >= 2**128 or
+                (scalar_status != 5 and (kind or action or base or landing)) or
+                (category_status != 5 and category)):
+            malformed += 1
+            continue
+        samples.append(dict(seq=seq, scalar_status=statuses[scalar_status], category_status=statuses[category_status],
+                            sequence_kind=kind if scalar_status == 5 else None,
+                            action_score=action if scalar_status == 5 else None,
+                            base_score=base if scalar_status == 5 else None,
+                            landing=landing if scalar_status == 5 else None,
+                            current_category=category if category_status == 5 else None,
+                            authoritative=False, verification='UNVERIFIED'))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return dict(details=samples, detail_dropped=dropped, detail_malformed=malformed,
+                detail_presence='present' if samples else 'invalid' if malformed else 'missing',
+                score_semantics='UNVERIFIED', payload_owner='UNVERIFIED')
+
+
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
     samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
@@ -568,7 +619,7 @@ def parse_native_score_events(text):
             malformed += 1
     return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
                 guard_dropped=guard_dropped, malformed=malformed,
-                native_event_identity='UNVERIFIED')
+                native_event_identity='UNVERIFIED', **parse_native_score_details(text))
 
 
 def parse_fixture_status(text):
