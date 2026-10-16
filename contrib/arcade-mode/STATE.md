@@ -1,3 +1,45 @@
+## Rail-clearance repeatability and bounded trajectory collection — 2026-10-16
+
+Source093ad76a4c7d6763df377c66835b07aead9bf593; installed runtime remains
+8079c14363f7d66e76b186d73fe1281e650d6ca9 / DLL788cdba0c2d47c8dc007575fd4c20e50ee6bb3e820583079fb466db0cd1f7b19.
+Original Stadium fixture and supported25414733 game unchanged, measured60Hz.
+Trajectory batch1792175961255279000 attempted4/6 before a genuine collection
+limit stopped it: original timing missed2/2; +200ms had1 full-chainPASS and1
+UNVERIFIED. The fifth record is a stop receipt, not another attempted trial.
+All4 neutral/reset; planned +350ms trials were not attempted. Native-invalid
+trajectory terminal in the third attempt is a separate preserved limitation.
+
+Without optional trajectory,1792176257349805000 gives +200ms1/2 and +350ms2/2
+full-chainPASS, exact native2→2→2, one grind, continuous fatigue and valid grace.
+All4 neutral/reset. Eighteen +350ms repetitions1792176487738322000 finish14/18
+full-chainPASS: compact6/8, standard8/10. With earlier2/2 this is16/20, not20/20.
+All14 actual grind entries compose successfully; four no-grind failures remain
+in the denominator, including one native wipeout.18/18 finally neutral/reset.
+Three misses have pre-pop speed~3.96m/s versus~4.54m/s in passes; fourth bails
+at normal approach speed. Fixture position/heading stable; source-side bounded
+minimum-speed wait is being added to measure this discriminator. No physics
+changes. Money remains UNVERIFIED; misses/incomplete evidence retained.
+
+Reviewed source15221c9 limits explicitly armed trajectory collection to512KiB
+(measured maximum301681bytes); ordinary reads stay256KiB. Native-invalid,
+prefix mismatch, truncation and overflow checks remain fail-closed.399Python,
+11focused tests and3digest-rejection checks pass. Separate HIL54 installed,
+manifest1b799753f44f4b92e27d1cc9a273407515289ed4e1094838dfe27d14e1f6e738;
+same8079/788 runtime pins, frozen53 unchanged. FirstHIL54 trajectory trial
+1792176912351967000 full-chainPASS, neutral/reset, no transportgap and prefix
+MATCHED. Native trajectory still stops INVALID atseq76 while grinding; its
+path is incomplete and not promoted. Existing-read validation diagnostics are
+being investigated independently; collection fix did not hide nativeinvalidity.
+
+Sourcebe2dcea adds bounded static binder-record diagnostics without new native
+reads or ownership authority; CI38949416941 pending Windows. Source093ad76
+adds exact unique local-spawn declaration lookup with both GUIDs required and
+existing asset/read limits;152sanitizer checks and independent review pass,
+CI38950775268 pending. Neither change is deployed. CI38947777388 at0d10ca8
+passed all five gates. Next: finish repeatability batch, one bounded trajectory
+capture, then verified runtime diagnostics/inspector to resolve score ownership.
+Root retains sole hardware ownership; no second rail has been placed.
+
 ## Repeated Manual20/20 and post-grind landing refinement — 2026-10-16
 
 Current source0d10ca850fc41ae39a839068343a529030f47039; runtime still8079/788.
