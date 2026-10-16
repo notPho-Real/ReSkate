@@ -1,3 +1,33 @@
+## Supported recovery retry and launcher login fix — 2026-10-15
+
+Started from3c44036. Paired Deck is reachable at the previously verified address
+with its unchanged pinned host key. Dismissed a covering EA launch-error dialog;
+the separate ReSkate launcher remains available. One supported QR retry reached
+the Steam challenge, then failed with InitializeSteam failed/exit1. No successful
+authorization or manifest download was observed. Post-retry hashes remain game
+91552264 (unsupported), launcher5b11e30a, DLL7a8b254e and stock5512a15e.
+Game stopped, launcher running, updates=false, about6.30GB free. No HIL trials,
+new binary deployment, credential extraction or version-guard changes.
+
+Source fix: QR now honors the existing remember preference. A successful,
+noncancelled download may retain the account name from DepotDownloader's explicit
+QR success hint for its existing remembered-account route. Missing, malformed or
+conflicting hints do not select an account; no token/password is read or stored
+by the launcher addition. Specific authentication errors now survive the generic
+InitializeSteam failure summary. Focused portable C++ regressions and naming/
+diff checks pass. Windows CI now builds the launcher and runs its focused output/
+login tests alongside existing Arcade tests; verification pending for this change.
+Prior source75645f3 CI38838076079 completed successfully, all jobs.
+
+Reference behavior checked against SteamRE/DepotDownloader tag
+DepotDownloader_3.4.0, Program.cs and Steam3Session.cs. Its QR account hint is
+conditional on returned guard data: absent hints must remain unresolved. This
+source improvement is not proof of persistent authentication on our Deck and
+does not remove Steam's initial or renewed account-holder approval requirement.
+Installed launcher is unchanged. Next hardware action remains supported-build
+recovery/full validation, identity checks and the prepared seven integration
+trials; accepted grind/HUD tests and frozen HIL42 tools remain untouched.
+
 ## Separate installation and AC sleep — 2026-10-15
 
 User authorized separate installation, launch/HIL path migration, and disabling

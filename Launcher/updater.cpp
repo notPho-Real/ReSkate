@@ -1,4 +1,5 @@
 #include "updater.h"
+#include "depot_login.h"
 
 #include "Engine/Core/Json/json.h"
 #include "Engine/Core/Log/logging.h"
@@ -692,12 +693,10 @@ DWORD run_depot_downloader(const fs::path& depot_downloader, const GameBuild& ga
     std::wstring command = quote_argument(depot_downloader.wstring()) +
         std::format(L" -app {} -depot {} -manifest {} -dir ", game.app_id, game.depot_id, widen(game.manifest_id)) +
         quote_argument(directory.wstring()) + L" -max-downloads 16";
-    std::wstring user, options;
-    if (login.username.empty()) options += L" -qr";
-    else {
+    std::wstring user;
+    auto options = depot_login_options(login.username.empty(), login.remember, login.prefer_code);
+    if (!login.username.empty()) {
         user = L" -username " + quote_argument(widen(login.username));
-        if (login.remember) options += L" -remember-password";
-        if (login.prefer_code) options += L" -no-mobile";
     }
     if (validate) options += L" -validate";
     // The log is attached to crash reports, so it leaves out the Steam login name.

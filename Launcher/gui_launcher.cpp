@@ -1,6 +1,7 @@
 #include "gui_internal.h"
 
 #include "depot_output.h"
+#include "depot_login.h"
 
 #include "Engine/Core/Json/json.h"
 #include "Engine/Core/Log/logging.h"
@@ -381,16 +382,18 @@ void Launcher::run_download(bool validate) {
         if (qr_login_) login.username.clear();
     }
     if (!login.username.empty()) set(Phase::downloading, "Signing in to Steam", login.username);
+    const bool qr_login = login.username.empty();
+    update::DepotQrAccount qr_account;
     const auto code = update::run_depot_downloader(depot_downloader, config->game,
         session_.paths.directory, validate, login, [&](std::string_view line) {
             // DepotDownloader names the account it signs in ("Logging 'name' into Steam3"); the log
             // travels with crash reports, so the name is left out.
-            std::string logged(line);
+            std::string logged = qr_account.feed(line);
             if (!login.username.empty())
                 for (auto at = logged.find(login.username); at != std::string::npos; at = logged.find(login.username, at + 8))
                     logged.replace(at, login.username.size(), "<hidden>");
             logging::write(logging::Level::debug, logging::Channel::launcher, logged);
-            output.feed(line);
+            output.feed(logged);
             std::lock_guard lock(mutex_);
             if (line.find("Use the Steam Mobile App to confirm") != std::string_view::npos) {
                 state_.status = "Approve the sign-in in the Steam app";
@@ -422,12 +425,17 @@ void Launcher::run_download(bool validate) {
         state_.detail = "Download cancelled. It will resume where it stopped.";
         return;
     }
+    if (const auto account = qr_account.remembered(qr_login, login.remember, code == 0, cancel_)) {
+        settings_.steam_username = *account;
+        save();
+    }
     if (launcher_app::game_files_supported(session_.paths)) {
         set(Phase::ready, "Ready to skate", "Skate build installed.");
         return;
     }
     timing.fail();
-    fail(std::format("The Steam download did not finish (exit code {}). {}", code, output.message));
+    fail(std::format("The Steam download did not finish (exit code {}). {}", code,
+                     output.failure.empty() ? output.message : output.failure));
 }
 
 // The merge the game does behind its splash, done here instead, so a mod that

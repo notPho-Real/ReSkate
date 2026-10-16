@@ -1,5 +1,6 @@
 // DepotDownloader output: progress, QR encodings and updates across successive lines.
 #include "Launcher/depot_output.h"
+#include "Launcher/depot_login.h"
 
 #include <cmath>
 #include <iostream>
@@ -52,6 +53,61 @@ void feed_rows(DepotOutput& output, const std::vector<std::string>& rows, std::s
 } // namespace
 
 int main() {
+    using dingosdk::launcher_update::DepotQrAccount;
+    using dingosdk::launcher_update::depot_login_options;
+    check(depot_login_options(true, true, false) == L" -qr -remember-password",
+          "QR sign-in honors the remembered-session preference");
+    check(depot_login_options(true, false, true) == L" -qr",
+          "One-time QR sign-in neither persists nor requests a typed code");
+    check(depot_login_options(false, true, true) == L" -remember-password -no-mobile",
+          "Account sign-in retains remembered-session and typed-code options");
+    check(depot_login_options(false, false, false).empty(), "One-time account sign-in has no extra options");
+    const std::string hint = "Success! Next time you can login with -username sample_skater -remember-password instead of -qr.";
+    {
+        DepotQrAccount account;
+        check(!account.remembered(true, true, true, false), "No hint cannot manufacture a remembered account");
+        const auto safe = account.feed(hint);
+        check(safe.find("sample_skater") == std::string::npos, "QR account hint is removed from log and display text");
+        check(account.remembered(true, true, true, false) == "sample_skater",
+              "Successful remembered QR download supplies the next account-name sign-in");
+        check(account.feed("Logging 'sample_skater' into Steam3...") == "Logging '<hidden>' into Steam3...",
+              "Reconnection output does not expose the QR account name");
+        check(!account.remembered(true, true, false, false), "Failed download cannot save the candidate account");
+        check(!account.remembered(true, true, true, true), "Cancelled download cannot save the candidate account");
+        check(!account.remembered(true, false, true, false), "Remember-me opt-out is respected");
+        check(!account.remembered(false, true, true, false), "Account sign-in cannot replace its user from a QR hint");
+        account.feed(hint);
+        check(account.remembered(true, true, true, false) == "sample_skater", "Duplicate hints are harmless");
+        account.feed("Success! Next time you can login with -username other_skater -remember-password instead of -qr.");
+        check(!account.remembered(true, true, true, false), "Conflicting hints cannot select an account");
+    }
+    for (const auto& name : {std::string(), std::string("bad name"), std::string("name\n"),
+                            std::string("../name"), std::string(65, 'x')}) {
+        DepotQrAccount account;
+        const auto safe = account.feed("Success! Next time you can login with -username " + name +
+                                      " -remember-password instead of -qr.");
+        check(safe == "Steam QR sign-in returned an account.", "Malformed hints are not echoed");
+        check(!account.remembered(true, true, true, false), "Malformed account is not remembered");
+        account.feed(hint);
+        check(!account.remembered(true, true, true, false), "Later valid hint cannot repair an ambiguous run");
+    }
+    {
+        DepotQrAccount account;
+        check(account.feed("12.34% C:\\Games\\Skate\\file.bin") == "12.34% C:\\Games\\Skate\\file.bin",
+              "Authentication handling preserves normal progress input");
+        account.feed("Success! Next time you can login with -username truncated");
+        check(!account.remembered(true, true, true, false), "Truncated hint is unresolved");
+    }
+    for (const auto* cause : {"Failed to authenticate with Steam: timed out", "Unable to login to Steam3: ServiceUnavailable",
+                             "Access token was rejected (Expired).", "Could not connect to Steam after 10 tries"}) {
+        DepotOutput output;
+        output.feed(cause);
+        output.feed("Error: InitializeSteam failed");
+        check(output.failure == cause, "Generic Steam initialization failure retains its specific cause");
+        DepotOutput next;
+        next.feed("Error: InitializeSteam failed");
+        check(next.failure.empty(), "A new attempt cannot inherit the previous attempt's failure cause");
+    }
     // ------------------------------------------------ progress and retained messages
     {
         DepotOutput output;

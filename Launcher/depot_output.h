@@ -17,6 +17,7 @@ public:
     std::optional<float> percent;
     std::string file;
     std::string message;
+    std::string failure;
 
     void feed(std::string_view line) {
         qr_update.reset();
@@ -39,6 +40,12 @@ public:
         }
         const auto trimmed = trim(line);
         if (trimmed.empty()) return;
+        // Keep the cause when a later generic summary only says initialization failed.
+        if (trimmed.starts_with("Failed to authenticate with Steam:")
+            || trimmed.starts_with("Unable to login to Steam3:")
+            || trimmed.starts_with("Access token was rejected (")
+            || trimmed.starts_with("Could not connect to Steam after "))
+            failure = std::string(trimmed.substr(0, 160));
         if (showing_qr_) { showing_qr_ = false; qr_update = std::vector<std::string>{}; }
         const auto sign = trimmed.find('%');
         if (sign != std::string_view::npos && sign <= 6 && sign + 1 < trimmed.size() && trimmed[sign + 1] == ' ') {
