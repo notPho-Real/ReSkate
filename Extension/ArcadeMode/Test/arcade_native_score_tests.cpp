@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_score_boundary.h"
 #include "Extension/ArcadeMode/arcade_score_schema_snapshot.h"
 #include "Extension/ArcadeMode/arcade_score_binder_diagnostic.h"
+#include "Extension/Progression/neighborhood_unlock_gate.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -83,6 +84,30 @@ struct Fixture {
     }
 };
 void binder_diagnostic_tests() {
+    for (const bool offline_hook : {false, true}) {
+        for (const bool progression_guard : {false, true}) {
+            dingosdk::NeighborhoodUnlockGate gate;
+            // Diagnostic preparation made the common hook available, while
+            // the startup provider must still pass both original prerequisites.
+            const bool hook_prepared = true;
+            if (offline_hook && progression_guard) gate.provider_prepared(hook_prepared);
+            for (unsigned tick = 0; tick < 3; ++tick) {
+                const bool accepted = gate.request(true, hook_prepared); // saved enabled setting
+                check(accepted == (offline_hook && progression_guard) && gate.enabled() == accepted &&
+                      gate.prepared(hook_prepared) == accepted,
+                      "diagnostic-only hook cannot authorize a saved progression setting on later ticks");
+            }
+        }
+    }
+    dingosdk::NeighborhoodUnlockGate authority;
+    authority.provider_prepared(false);
+    check(!authority.request(true, true) && !authority.enabled() && !authority.prepared(true),
+          "failed provider preparation remains unauthorized when diagnostics later prepare the hook");
+    check(!authority.request(false, true), "disabled setting also cannot advertise unauthorized provider readiness");
+    authority.provider_prepared(true);
+    check(authority.request(true, true) && authority.enabled(), "later legitimate provider preparation preserves enable behavior");
+    check(!authority.request(false, false) && authority.enabled(), "unavailable hook cannot process a setting request");
+    check(authority.request(false, true) && !authority.enabled(), "authorized provider still restores native forwarding");
     Fixture fixture;
     const auto serialized = fixture.alloc(0x60), resource = fixture.alloc(0x40);
     const auto table = fixture.alloc(32) + 8;

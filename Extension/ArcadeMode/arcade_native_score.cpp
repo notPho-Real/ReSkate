@@ -82,7 +82,7 @@ void report_binder(Runtime& runtime, std::uint64_t now, bool active) {
         if (runtime.binder_attached) {
             // Reuse the hook owner's unchanged exact image/data/callsite gates.
             // This diagnostic path never enables the progression override.
-            runtime.binder_prepared = prepare_neighborhood_unlock_override(runtime.base.load());
+            runtime.binder_prepared = prepare_expression_binder_diagnostics(runtime.base.load());
             if (!runtime.binder_prepared) {
                 detach_expression_binder_observer(&observe_score_binder);
                 runtime.binder_attached = false;

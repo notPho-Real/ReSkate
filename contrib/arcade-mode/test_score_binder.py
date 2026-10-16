@@ -1,5 +1,6 @@
 """Offline binder diagnostic parsing; no Deck access."""
 import json
+from pathlib import Path
 import unittest
 from lab import probe
 
@@ -18,6 +19,35 @@ def health(epoch=3, active='true', ms=1001):
 
 
 class ScoreBinderTests(unittest.TestCase):
+    def test_diagnostic_hook_cannot_satisfy_progression_or_replace_primary_observer(self):
+        root = Path(__file__).resolve().parents[2]
+        implementation = (root / 'Extension/Progression/neighborhood_unlock_override.cpp').read_text()
+        score = (root / 'Extension/ArcadeMode/arcade_native_score.cpp').read_text()
+        startup = (root / 'Runtime/runtime_init.cpp').read_text()
+        self.assertNotIn('prepare_neighborhood_unlock_override(', score)
+        self.assertIn('prepare_expression_binder_diagnostics(runtime.base.load())', score)
+        hook_only = implementation.split('bool prepare_expression_binder_diagnostics(', 1)[1].split(
+            'bool prepare_neighborhood_unlock_override(', 1)[0]
+        self.assertNotIn('authority.', hook_only)
+        provider = implementation.split('bool prepare_neighborhood_unlock_override(', 1)[1].split(
+            'bool set_neighborhood_unlock_override_enabled(', 1)[0]
+        self.assertIn('authority.provider_prepared(prepared)', provider)
+        self.assertIn('state.authority.request(enabled,', implementation)
+        self.assertIn('observation.prepared = state.authority.prepared(', implementation)
+        self.assertRegex(startup, r'\(global_offline_hook && progression_guard_armed\) &&\s*'
+                                 r'dingosdk::prepare_neighborhood_unlock_override\(r.base\)')
+        self.assertIn('set_expression_binder_observer(&observe_player_card_expression)', startup)
+        attachment = implementation.split('bool try_attach_expression_binder_observer(', 1)[1].split(
+            'bool prepare_expression_binder_diagnostics(', 1)[0]
+        self.assertIn('.diagnostic_observer.compare_exchange_strong', attachment)
+        self.assertNotIn('.observer.', attachment)
+        hook = implementation.split('void expression_argument_binder_hook(', 1)[1].split('\n} // namespace', 1)[0]
+        self.assertIn('state.observer.load(', hook)
+        self.assertIn('state.diagnostic_observer.load(', hook)
+        self.assertIn('void** forwarded_inputs = inputs;', hook)
+        self.assertIn('if (state.authority.enabled())', hook)
+        self.assertIn('original(serialized_graph, runtime_graph, outputs, forwarded_inputs, allocator)', hook)
+
     def parse(self, rows):
         return probe.parse_native_score_events('\n'.join(rows))
 

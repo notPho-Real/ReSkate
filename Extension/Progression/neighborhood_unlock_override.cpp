@@ -1,4 +1,5 @@
 #include "neighborhood_unlock_override.h"
+#include "neighborhood_unlock_gate.h"
 #include "Engine/Game/Build/supported_build.h"
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/addresses.h"
@@ -73,8 +74,9 @@ struct NeighborhoodUnlockState {
     std::uintptr_t base{};
     std::atomic<ExpressionArgumentBinder> original{};
     std::atomic<ExpressionBinderObserver> observer{};
+    std::atomic<ExpressionBinderObserver> diagnostic_observer{};
     std::atomic<GateStatus> gate{GateStatus::not_attempted};
-    std::atomic_bool enabled{};
+    NeighborhoodUnlockGate authority;
     std::atomic<std::uint64_t> invocations{};
     std::atomic<std::uint64_t> target_matches{};
     std::atomic<std::uint64_t> overrides{};
@@ -189,10 +191,13 @@ void expression_argument_binder_hook(
         DINGO_PROFILE_ZONE("hooks/argument binder observer");
         try { observer(serialized_graph, runtime_graph, inputs); } catch (...) {}
     }
+    if (const auto diagnostic = state.diagnostic_observer.load(std::memory_order_acquire)) {
+        try { diagnostic(serialized_graph, runtime_graph, inputs); } catch (...) {}
+    }
 
     void** forwarded_inputs = inputs;
     std::array<void*, 2> replacement{};
-    if (state.enabled.load(std::memory_order_acquire)) {
+    if (state.authority.enabled()) {
         DINGO_PROFILE_ZONE("hooks/argument binder unlock check");
         std::array<unsigned char, updater_serialized_header.size()> header{};
         std::uintptr_t resource_template{};
@@ -241,15 +246,15 @@ void set_expression_binder_observer(ExpressionBinderObserver observer) noexcept 
 bool try_attach_expression_binder_observer(ExpressionBinderObserver observer) noexcept {
     if (!observer) return false;
     ExpressionBinderObserver expected{};
-    return neighborhood_unlock_state().observer.compare_exchange_strong(expected, observer,
+    return neighborhood_unlock_state().diagnostic_observer.compare_exchange_strong(expected, observer,
         std::memory_order_acq_rel) || expected == observer;
 }
 void detach_expression_binder_observer(ExpressionBinderObserver observer) noexcept {
-    if (observer) (void)neighborhood_unlock_state().observer.compare_exchange_strong(observer, nullptr,
+    if (observer) (void)neighborhood_unlock_state().diagnostic_observer.compare_exchange_strong(observer, nullptr,
         std::memory_order_acq_rel);
 }
 
-bool prepare_neighborhood_unlock_override(std::uintptr_t base) noexcept {
+bool prepare_expression_binder_diagnostics(std::uintptr_t base) noexcept {
     PreserveError preserve;
     auto& state = neighborhood_unlock_state();
     try {
@@ -308,19 +313,25 @@ bool prepare_neighborhood_unlock_override(std::uintptr_t base) noexcept {
     }
 }
 
+bool prepare_neighborhood_unlock_override(std::uintptr_t base) noexcept {
+    const bool prepared = prepare_expression_binder_diagnostics(base);
+    // This entry point retains its original gated caller in runtime_init.cpp.
+    // Hook-only diagnostics never call it or grant this authority.
+    neighborhood_unlock_state().authority.provider_prepared(prepared);
+    return prepared;
+}
+
 bool set_neighborhood_unlock_override_enabled(bool enabled) noexcept {
     PreserveError preserve;
     auto& state = neighborhood_unlock_state();
-    if (state.gate.load(std::memory_order_acquire) != GateStatus::prepared) return false;
-    state.enabled.store(enabled, std::memory_order_release);
-    return true;
+    return state.authority.request(enabled, state.gate.load(std::memory_order_acquire) == GateStatus::prepared);
 }
 
 NeighborhoodUnlockOverrideObservation neighborhood_unlock_override_observation() {
     PreserveError preserve;
     auto& state = neighborhood_unlock_state();
     const auto gate = state.gate.load(std::memory_order_acquire);
-    const bool enabled = state.enabled.load(std::memory_order_acquire);
+    const bool enabled = state.authority.enabled();
     const auto invocations = state.invocations.load(std::memory_order_relaxed);
     const auto matches = state.target_matches.load(std::memory_order_relaxed);
     const auto overrides = state.overrides.load(std::memory_order_relaxed);
@@ -331,7 +342,7 @@ NeighborhoodUnlockOverrideObservation neighborhood_unlock_override_observation()
     const auto preactive = state.preactive_forwards.load(std::memory_order_relaxed);
 
     NeighborhoodUnlockOverrideObservation observation;
-    observation.prepared = gate == GateStatus::prepared;
+    observation.prepared = state.authority.prepared(gate == GateStatus::prepared);
     observation.enabled = enabled;
     observation.invocations = invocations;
     observation.target_matches = matches;
@@ -340,6 +351,7 @@ NeighborhoodUnlockOverrideObservation neighborhood_unlock_override_observation()
     std::ostringstream json;
     json << "{\"event\":\"neighborhood_unlock_override_observation\",\"gate\":\""
          << gate_name(gate) << "\",\"enabled\":" << (enabled ? "true" : "false")
+         << ",\"provider_prepared\":" << (observation.prepared ? "true" : "false")
          << ",\"binder_rva\":\"0x" << std::hex << unlock::binder << std::dec << "\""
          << ",\"serialized_hash\":\"0x22cc3916\""
          << ",\"invocations\":" << invocations
