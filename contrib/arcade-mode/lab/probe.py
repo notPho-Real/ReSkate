@@ -805,6 +805,90 @@ def parse_native_score_events(text):
                 **parse_native_score_health(text), **parse_native_score_schema(text))
 
 
+def parse_fixture_geometry(text):
+    """Latest bounded picking diagnostic, never contact or grind authority.
+
+    A malformed newer declaration clears an older result. Status 2 can remain
+    useful historical geometry with context_current=false; it is not a live
+    fixture identity or a complete mesh bounding box.
+    """
+    result = None
+    marker = 'ARCADE FIXTURE GEOMETRY: '
+    base_keys = {'status', 'samples', 'budget', 'step', 'radius', 'contact_verified',
+                 'session', 'started_ms', 'generation', 'revision', 'object', 'context_current'}
+    rail_keys = {'rail_position', 'rail_rotation', 'rail_scale'}
+    bounds_keys = {'sampled_low', 'sampled_high', 'height_min', 'height_max', 'edge_uncertainty'}
+    def unique_object(pairs):
+        row = {}
+        for key, value in pairs:
+            if key in row:
+                raise ValueError('Duplicate geometry field')
+            row[key] = value
+        return row
+    def invalid_constant(_):
+        raise ValueError('Nonfinite geometry field')
+    def number(value, low, high):
+        return type(value) in (int, float) and math.isfinite(value) and low <= value <= high
+    def vector(value, count, low, high):
+        return (type(value) is list and len(value) == count and
+                all(number(item, low, high) for item in value))
+    newest_session = 0
+    for line in text.splitlines():
+        if 'ARCADE FIXTURE GEOMETRY:' not in line:
+            continue
+        result = None
+        if marker not in line:
+            continue
+        payload = line.partition(marker)[2]
+        if not 2 <= len(payload) <= 4096:
+            continue
+        try:
+            row = json.loads(payload, object_pairs_hook=unique_object, parse_constant=invalid_constant)
+            if type(row) is not dict:
+                continue
+            integers = ('status', 'samples', 'budget', 'session', 'started_ms', 'generation', 'revision', 'object')
+            if any(type(row.get(key)) is not int or not 0 <= row[key] <= 0xffffffffffffffff for key in integers):
+                continue
+            status, samples, session = row['status'], row['samples'], row['session']
+            if session > 0xffffff or session < newest_session:
+                continue
+            newest_session = session
+            if status > 8 or samples > 129 or row['budget'] != 129:
+                continue
+            if (not number(row.get('step'), .25, .25) or not number(row.get('radius'), 8, 8) or
+                    row.get('contact_verified') is not False or type(row.get('context_current')) is not bool):
+                continue
+            expected = base_keys | (rail_keys if session else set()) | (bounds_keys if status == 2 else set())
+            if set(row) != expected or (row['context_current'] and status != 2):
+                continue
+            if status == 0:
+                if samples or session or row['started_ms'] or row['generation'] or row['revision'] or row['object']:
+                    continue
+            elif not session or not row['started_ms'] or not row['generation'] or not row['object']:
+                continue
+            if ((status in (2, 6, 7) and samples != 129) or
+                    (status in (1, 4, 5) and samples >= 129) or (status == 8 and samples != 0)):
+                continue
+            if session:
+                if (not vector(row['rail_position'], 3, -100000, 100000) or
+                        not vector(row['rail_rotation'], 4, -1, 1) or
+                        not .99 <= sum(value * value for value in row['rail_rotation']) <= 1.01 or
+                        not number(row['rail_scale'], .01, 100)):
+                    continue
+            if status == 2:
+                if (not vector(row['sampled_low'], 2, -7.75, 0) or
+                        not vector(row['sampled_high'], 2, 0, 7.75) or
+                        any(value * 4 != int(value * 4) for value in row['sampled_low'] + row['sampled_high']) or
+                        not number(row['edge_uncertainty'], .25, .25) or
+                        not number(row['height_min'], -0.10000000149011612, 2) or
+                        not number(row['height_max'], row['height_min'], 2)):
+                    continue
+            result = row
+        except (ValueError, TypeError, OverflowError, RecursionError):
+            continue
+    return result
+
+
 def parse_fixture_status(text):
     result = None
     booleans = ('configured', 'available', 'busy', 'failed', 'editor_open', 'asset_available', 'present', 'skater', 'reset_ready')
@@ -956,4 +1040,5 @@ def native_trace(request, **kwargs):
             "native_score_observations": parse_native_score_events(text[start:] if start >= 0 else ""),
             "grind_observations": parse_grind_observations(text[start:] if start >= 0 else ""),
             "fixture": parse_fixture_status(text[start:] if start >= 0 else ""),
+            "fixture_geometry": parse_fixture_geometry(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}
