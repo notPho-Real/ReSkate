@@ -109,6 +109,14 @@ class InstallerTests(unittest.TestCase):
             installer.change_installation(self.game, fake_dll(), "a" * 40)
         self.assertEqual((self.game / "ReSkate.dll").read_bytes(), b"stock")
 
+    def test_discovery_keeps_standalone_and_steam_copies_distinct(self):
+        home = self.root / "home"
+        standalone = game_at(home / "Games/ReSkate")
+        steam = game_at(home / ".local/share/Steam/steamapps/common/skate")
+        self.assertEqual(set(installer.find_games(home, self.root / "media")), {standalone, steam})
+        (standalone / "Skate.exe").unlink()
+        self.assertEqual(installer.find_games(home, self.root / "media"), [steam])
+
     def test_lock_symlink_and_running_game_refused(self):
         lock = self.game / ".arcade-mode-install.lock"
         lock.mkdir()

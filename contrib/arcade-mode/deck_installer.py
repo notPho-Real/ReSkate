@@ -80,7 +80,8 @@ def find_games(home=None, media=None):
                 libraries.add(Path(value.replace("\\\\", "\\")))
     libraries.update(media.glob("*"))
     libraries.update(media.glob("*/*"))
-    found = set()
+    standalone = home / "Games/ReSkate"
+    found = {standalone} if valid_game(standalone) else set()
     for library in libraries:
         common = library / "steamapps/common"
         if not common.is_dir():

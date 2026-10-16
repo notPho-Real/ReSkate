@@ -82,13 +82,34 @@ def snapshot(request, home=None, media=None, process_info=None):
             for path in common.iterdir():
                 if (path / "Skate.exe").is_file() or (path / "ReSkateLauncher.exe").is_file():
                     candidates.add(path.resolve())
-    games = [Path(request["game"])] if request.get("game") else sorted(candidates)
+    standalone = home / "Games/ReSkate"
+    if any((standalone / name).is_file() for name in ("Skate.exe", "ReSkateLauncher.exe")):
+        candidates.add(standalone)
+    config = home / ".local/share/reskate-arcade/config.json"
+    selection_error = None
+    if request.get("game"):
+        games = [Path(request["game"])]
+    elif config.exists() or config.is_symlink():
+        # During migration both copies remain present. Never silently fall back
+        # to Steam's copy when the selected installation is missing or invalid.
+        try:
+            if any(p.is_symlink() for p in (config, *config.parents)) or not config.is_file():
+                raise ValueError("Unsafe configured installation")
+            value = read_json(config).get("game")
+            if not isinstance(value, str) or not Path(value).is_absolute() or Path(value) not in candidates:
+                raise ValueError("Configured installation is missing or outside discovered locations")
+            games = [Path(value)]
+        except (OSError, ValueError) as error:
+            games = []
+            selection_error = str(error)
+    else:
+        games = sorted(candidates)
     proc = processes() if process_info is None else process_info
     result = {"ssh_connected": True, "user": __import__("pwd").getpwuid(os.getuid()).pw_name,
               "host": socket.gethostname(), "steam_libraries": [str(p) for p in libs],
               "games": [str(p) for p in games], "processes": proc, "pass": False}
     if len(games) != 1:
-        result["reason"] = "Select exactly one game with --game"
+        result["reason"] = selection_error or "Select exactly one game with --game"
         return result
     game = games[0]
     names = ("Skate.exe", "ReSkateLauncher.exe", "ReSkate.dll", SETTINGS, BACKUP, RECEIPT,

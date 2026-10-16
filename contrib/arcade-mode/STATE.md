@@ -1,3 +1,76 @@
+## Separate installation and AC sleep — 2026-10-15
+
+User authorized separate installation, launch/HIL path migration, and disabling
+automatic sleep on external power. Copied308 regular files/15,218,691,855 bytes
+from the Steam-managed installation to /home/deck/Games/ReSkate. Every copied
+file was SHA-256 verified, then every original rechecked unchanged. No hard links
+or symlinks; original installation retained. Only the copied receipt's log_path
+changed to the new logs/ReSkate.log. The remote migration inventory is
+~/Games/.ReSkate-migration-20261015.json. About6.39GB free remains.
+
+Updated the existing Steam shortcut Target and Start In through Steam UI.
+AppID3763278562 / launchID16163158349561462784 remain unchanged. Read-only
+process inspection verifies the running launcher comes from the separate folder
+and retains the existing Proton prefix. Launcher5b11e30a opens normally and
+offers supported-build25414733 recovery. Actual game remains stopped, executable
+91552264 remains unsupported, DLL7a8b254e and stock5512a15e remain exact.
+No offset, native fingerprint, DLL or supported-game pin changed. No new gameplay
+acceptance. Steam authentication/download/full validation still required.
+
+Steam Power UI: When Plugged In and Idle / Sleep after = Disabled, persisted
+IdleSuspendACSeconds=0. Battery sleep remains900 seconds; AC dim900/battery
+dim300 unchanged. This is Gaming Mode idle-sleep prevention, not disabling the
+manual power button or changing Wi-Fi/network/security settings. Desktop power
+behavior was not changed or accepted. Full-size UI evidence saved locally.
+
+Standard ~/.local/share/reskate-arcade/config.json now selects the separate copy
+(no selector config existed before). Source discovery supports the standard
+~/Games/ReSkate location and explicit existing selector; malformed/missing chosen
+targets never silently fall back to Steam.257 Python tests and naming guard pass.
+Separately reviewed HIL42 preserves all HIL41 worker behavior except installation
+selection; same source/DLL/stock/game pins and prepared trial plans. Old frozen
+tools remain unchanged. New external tool identities:
+- trusted-v42/trust.json:2d8d7180b5ce1c9936088edcdff1840b539b6c03e629c5d53e6bbc46c59b7ec0
+- maintenance-v47/maintenance.py:6c2254d2c23e5c11dda75884fc6d8c30e9a686efa4fad1545dcbaecc0874a133
+- recovery-inspect-v3/inspect.py:669b5eba63282dc9ce8916429340758f7de31c2f4819e435876488f9ac488e1b
+
+Hostname resolution failed during this session. One configured wake request did
+not restore mDNS. The single cached IP matching the paired MAC was reachable;
+per-action recovery used that address with HostKeyAlias=steamdeck.local and the
+unchanged strict pinned key. No network scan or authentication weakening.
+Next: authenticate in the separate launcher when the user is available, finish
+supported recovery/full validation, verify hashes, restore saved Stadium fixture,
+then the unchanged seven integration trials through HIL42/maintenance47. Do not
+use old HIL41/maintenance46 for the new path or repeat accepted grind/HUD tests.
+
+## Connected recovery checkpoint — 2026-10-15
+
+Source HEAD81c14b92e72155034aa52188c78afb8715ba80c8. Deck connectivity is
+restored. Fresh frozen recovery-inspect-v2 confirms the installed2bdf runtime
+and DLL7a8b254e, stock backup5512a15e, updates=false, recovery clear. Game
+executable remains unsupported91552264; no gameplay or HIL41 trials run.
+The existing pinned launcher5b11e30a was opened through its established Steam
+shortcut using a separately reviewed, launcher-only recovery action. Neither
+frozen HIL tools nor game-build guards were changed. Launcher2.0.7 explicitly
+offers build25414733 and reached its supported Steam QR authentication flow.
+
+The first QR attempt ended with the exact bounded launcher error:
+"The Steam download did not finish (exit code 1). Error: InitializeSteam failed".
+No authentication completion was observed. Fresh post-failure inspection
+confirms all installed hashes above unchanged. The generic launcher failure UI
+shows a green build indicator even though the executable is unsupported; that
+indicator is not identity evidence. Manifest availability is not yet proven.
+
+WAITING FOR USER STEAM AUTHENTICATION: Retry returned to supported Download;
+the sign-in panel was reopened. Select Scan a QR code with the Steam app, scan
+using Steam Guard and approve directly. No password requested, read or supplied.
+No account/QR values belong in project evidence. The game remains stopped.
+Next: finish download, use launcher Verify game files for full validation,
+recheck supported executable/steam_api and preserved DLL/stock identities,
+restore saved Stadium fixture, then unchanged HIL41 integration seven.
+Frozen HIL41 and maintenance46 hashes still match the pins recorded below.
+No offline scoring or isolated upstream candidate was deployed.
+
 ## Offline engineering checkpoint — 2026-10-15
 
 Scoring implementation:829d8429e980050ea5635da76c92a1c4f8b489bc, promoted

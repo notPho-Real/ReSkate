@@ -588,6 +588,59 @@ class Fixture(unittest.TestCase):
 
 
 class LabTests(Fixture):
+    def test_configured_standalone_selects_copy_without_changing_either(self):
+        standalone = game_at(self.home / "Games/ReSkate")
+        config = self.home / ".local/share/reskate-arcade/config.json"
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({"game": str(standalone)}))
+        before = self.contents()
+        status = probe.snapshot({}, home=self.home, media=self.root / "media", process_info=STOPPED)
+        self.assertEqual(status["games"], [str(standalone)])
+        self.assertEqual(status["game"], str(standalone))
+        self.assertTrue(status["safe_paths"])
+        self.assertEqual(self.contents(), before)
+
+    def test_unselected_standalone_does_not_override_steam(self):
+        game_at(self.home / "Games/ReSkate")
+        status = probe.snapshot({}, home=self.home, media=self.root / "media", process_info=STOPPED)
+        self.assertFalse(status["pass"])
+        self.assertEqual(len(status["games"]), 2)
+        self.assertNotIn("game", status)
+
+    def test_bad_migration_selection_never_falls_back_to_steam(self):
+        config = self.home / ".local/share/reskate-arcade/config.json"
+        config.parent.mkdir(parents=True)
+        for value in ({"game": str(self.home / "Games/ReSkate")}, {"game": "Games/ReSkate"},
+                      {"game": 42}, {}, []):
+            with self.subTest(value=value):
+                config.write_text(json.dumps(value))
+                status = probe.snapshot({}, home=self.home, media=self.root / "media", process_info=STOPPED)
+                self.assertFalse(status["pass"])
+                self.assertEqual(status["games"], [])
+                self.assertNotIn("game", status)
+        config.write_text("truncated{")
+        self.assertEqual(probe.snapshot({}, home=self.home, media=self.root / "media",
+                                        process_info=STOPPED)["games"], [])
+
+    def test_configured_symlink_copy_is_not_safe(self):
+        standalone = self.home / "Games/ReSkate"
+        standalone.parent.mkdir(parents=True)
+        standalone.symlink_to(self.game, target_is_directory=True)
+        config = self.home / ".local/share/reskate-arcade/config.json"
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({"game": str(standalone)}))
+        status = probe.snapshot({}, home=self.home, media=self.root / "media", process_info=STOPPED)
+        self.assertFalse(status["safe_paths"])
+        self.assertFalse(status["pass"])
+
+    def test_existing_configured_steam_copy_remains_selected(self):
+        game_at(self.home / "Games/ReSkate")
+        config = self.home / ".local/share/reskate-arcade/config.json"
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({"game": str(self.game)}))
+        status = probe.snapshot({}, home=self.home, media=self.root / "media", process_info=STOPPED)
+        self.assertEqual(status["game"], str(self.game))
+
     def test_readonly_generated_code_ast(self):
         for operation in ("preflight", "status", "collect", "trace"):
             tree = ast.parse(controller.remote_code(operation))
