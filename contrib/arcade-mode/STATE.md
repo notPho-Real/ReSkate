@@ -1,3 +1,19 @@
+## Default RT runtime update prepared — 2026-10-16
+
+CI8ab84cd passed Windows/Linux/macOS/Deck/publish. Its packaged DLL exactly matches
+the raw CI artifact:042a6ad2f17c4dccc90751766d2ef2a05263a454ed95bc081d1196d631ebb094.
+HIL48 is separately reviewed/frozen (manifest5e8b7d5b66a70f18e8add9acfb2ca306c0371e431f3fb45cc4fd3de74aec4276),
+with score-health parsing, mode5 and the optional neutral scoring baseline gate.
+Maintenance49 uses these verified target pins; all earlier tools remain unchanged.
+The keyboard close was ignored; a reviewed exact-window native close stopped both
+game and launcher. Read-only stopped status1792160934853292000 preserved all old
+pins. Guarded deployment is in progress; new native acceptance has not begun.
+
+The next metadata inspector exports strict declared parameter names/qualifiers,
+a bounded allowed-prefix manifest-name inventory and three exact imported type
+identity lookups.85 sanitizer checks pass. No extra payload scan, guessed owner,
+native offsets or game-build contract change. This source awaits CI before use.
+
 ## Hot native score windows and declaration inspection — 2026-10-16
 
 Source966aa6b remains the latest pushed checkpoint; runtime919/ac6bc714 and HIL47

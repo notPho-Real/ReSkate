@@ -150,6 +150,45 @@ void declared_member(const ebx::Document& document, const ebx::Object& object, s
     incomplete = incomplete || !valid;
     members.push_back(std::move(row));
 }
+void declared_parameter(const ebx::Document& document, const ebx::Object& object, std::size_t instance,
+                        Json& parameters, bool& incomplete) {
+    if (object.descriptor < 0 || static_cast<std::size_t>(object.descriptor) >= document.types.size()) return;
+    const auto& owner = document.types[object.descriptor];
+    if (owner.name != "TypeInfoParameterDataContainer") return;
+    if (parameters.size() >= declared_member_limit || owner.fieldIndex < 0 ||
+        static_cast<std::size_t>(owner.fieldIndex) > document.fields.size() ||
+        owner.fieldCount > document.fields.size() - static_cast<std::size_t>(owner.fieldIndex) ||
+        object.fields.size() > field_limit) { incomplete = true; return; }
+    Json row{{"instance", instance}, {"owner_type", object.descriptor},
+        {"name", nullptr}, {"qualifier", nullptr}, {"is_array", nullptr}};
+    std::array<unsigned, 3> seen{};
+    for (const auto& member : object.fields) {
+        if (member.descriptor < static_cast<std::size_t>(owner.fieldIndex) ||
+            member.descriptor - static_cast<std::size_t>(owner.fieldIndex) >= owner.fieldCount) continue;
+        const auto& field = document.fields[member.descriptor];
+        const int index = field.name == "Name" ? 0 : field.name == "Qualifier" ? 1 : field.name == "IsArray" ? 2 : -1;
+        if (index < 0) continue;
+        constexpr std::array keys{"name", "qualifier", "is_array"};
+        if (++seen[index] != 1) { row[keys[index]] = nullptr; continue; }
+        if (field.category() != ebx::FieldCategory::none) continue;
+        if (index == 0 && field.type() == ebx::FieldType::cString) {
+            const auto* value = std::get_if<std::string>(&member.value.data);
+            const auto initial = [](unsigned char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'; };
+            if (value && !value->empty() && value->size() <= 128 && initial((*value)[0]) &&
+                std::all_of(value->begin(), value->end(), [&](unsigned char c) { return initial(c) || (c >= '0' && c <= '9'); }))
+                row["name"] = *value;
+        } else if (index == 1 && field.type() == ebx::FieldType::enumeration) {
+            const auto* value = std::get_if<std::int64_t>(&member.value.data);
+            if (value && *value >= 0 && *value <= 3) row["qualifier"] = *value;
+        } else if (index == 2 && field.type() == ebx::FieldType::boolean) {
+            if (const auto* value = std::get_if<bool>(&member.value.data)) row["is_array"] = *value;
+        }
+    }
+    const bool valid = seen == std::array<unsigned, 3>{1, 1, 1} && !row["name"].is_null() &&
+        !row["qualifier"].is_null() && !row["is_array"].is_null();
+    row["status"] = valid ? "DECLARED_PARAMETER" : "INCOMPLETE";
+    incomplete = incomplete || !valid; parameters.push_back(std::move(row));
+}
 }
 bool allowed_asset(std::string_view name) noexcept {
     if (!metadata_name(name) || name.empty() || name.find('\\') != name.npos || name.find("..") != name.npos) return false;
@@ -164,7 +203,7 @@ bool allowed_asset(std::string_view name) noexcept {
     return false;
 }
 unsigned asset_priority(std::string_view name) noexcept {
-    if (!allowed_asset(name)) return 3;
+    if (!allowed_asset(name)) return 4;
     const auto leaf = name.substr(name.find_last_of('/') + 1);
     constexpr std::array graph_names{
         "ScoringTelemetryManager_Class__OnScorableLineStarted",
@@ -173,15 +212,48 @@ unsigned asset_priority(std::string_view name) noexcept {
         "ScoringTelemetryManager__OnScorableSequenceEnded"};
     for (std::string_view target : graph_names)
         if (compare_names(leaf, target) == 0) return 0;
+    // The manager stem comes from both captured handlers; its GUID must still
+    // match before it can resolve the shared-parameter declaration.
+    for (std::string_view target : {"ecs/scoringmanager/scoringtelemetrymanager_class",
+                                   "ecs/scoringmanager/activescoringdatamodel"})
+        if (compare_names(name, target) == 0) return 1;
     constexpr std::string_view global = "ecs/scoringmanager/crosssystem_global_scoringevents/";
     if (name.size() > global.size() && compare_names(name.substr(0, global.size()), global) == 0) {
         constexpr std::array events{"scorablelinestarted", "scorablelineended", "scorablesequencestarted",
             "scorablesequenceended", "sequenceactionended", "scorablelinemultiplierincreased",
             "scoringsequenceregisteredinline"};
         for (std::string_view event : events)
-            if (compare_names(leaf, event) == 0) return 1;
+            if (compare_names(leaf, event) == 0) return 2;
     }
-    return 2;
+    return 3;
+}
+bool matches_declaration(const ebx::Document& document, const DeclarationTarget& target) {
+    if (document.fileGuid.string() != target.file_guid || document.instances.size() > instance_limit ||
+        document.types.size() > type_limit) return false;
+    return std::count_if(document.instances.begin(), document.instances.end(), [&](const auto& instance) {
+        return instance.exported && instance.instanceGuid.string() == target.class_guid &&
+            instance.descriptor >= 0 && static_cast<std::size_t>(instance.descriptor) < document.types.size() &&
+            instance.object && instance.object->descriptor == instance.descriptor;
+    }) == 1;
+}
+void DeclarationInventory::consider(AssetCandidate candidate) noexcept {
+    if (candidate.resource || !allowed_asset(candidate.name)) return;
+    const auto less = [](const auto& a, const auto& b) {
+        // Keep root declaration candidates ahead of generated handler names;
+        // neither naming shape nor inventory inclusion proves a declaration.
+        const bool a_handler = a.name.find("__") != std::string_view::npos;
+        const bool b_handler = b.name.find("__") != std::string_view::npos;
+        if (a_handler != b_handler) return !a_handler;
+        const auto compared = compare_names(a.name, b.name);
+        return compared ? compared < 0 : a.bundle != b.bundle ? a.bundle < b.bundle : a.index < b.index;
+    };
+    std::size_t position{};
+    while (position < size && !less(candidate, assets[position])) ++position;
+    if (size == assets.size()) omitted = true;
+    if (position == assets.size()) return;
+    if (size < assets.size()) ++size;
+    for (auto i = size - 1; i > position; --i) assets[i] = assets[i - 1];
+    assets[position] = candidate;
 }
 void AssetSelection::consider(AssetCandidate candidate) noexcept {
     if (!allowed_asset(candidate.name)) return;
@@ -212,7 +284,8 @@ Json targets() {
 Json inspect_document(const ebx::Document& document) {
     Json result{{"status", "INCOMPLETE"}, {"owner_proof", "UNVERIFIED"}, {"graph_producer", "UNVERIFIED"},
                 {"file_guid", document.fileGuid.string()}, {"types", Json::array()}, {"fields", Json::array()},
-                {"instances", Json::array()}, {"references", Json::array()}, {"declared_members", Json::array()}};
+                {"instances", Json::array()}, {"references", Json::array()}, {"declared_members", Json::array()},
+                {"declared_parameters", Json::array()}};
     if (document.types.size() > type_limit || document.fields.size() > field_limit ||
         document.instances.size() > instance_limit || document.imports.size() > reference_limit) {
         result["reason"] = "declaration_limit"; return result;
@@ -251,7 +324,10 @@ Json inspect_document(const ebx::Document& document) {
             {"exported", instance.exported}, {"instance_guid", instance.instanceGuid.string()}});
         if (instance.object) {
             if (instance.object->descriptor != instance.descriptor) incomplete = true;
-            else declared_member(document, *instance.object, i, result["declared_members"], incomplete);
+            else {
+                declared_member(document, *instance.object, i, result["declared_members"], incomplete);
+                declared_parameter(document, *instance.object, i, result["declared_parameters"], incomplete);
+            }
             walker.object_value(*instance.object, i, 0, Json::array());
         }
         else incomplete = true;

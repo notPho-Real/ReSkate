@@ -53,6 +53,17 @@ ebx::Document member_fixture() {
     ebx::InstanceRecord instance; instance.descriptor = 0; instance.object = object;
     document.instances.push_back(instance); return document;
 }
+ebx::Document parameter_fixture() {
+    auto document = member_fixture();
+    document.types[0].name = "TypeInfoParameterDataContainer";
+    document.types[0].fieldCount = 4;
+    document.fields[1] = {"Qualifier", 2, encoded(ebx::FieldType::enumeration), 0, 8};
+    document.fields.push_back({"IsArray", 4, encoded(ebx::FieldType::boolean), 0, 24});
+    root(document).fields[0].value = ebx::Value{std::string{"Value"}};
+    root(document).fields[1].value = ebx::Value{std::int64_t{2}};
+    root(document).fields.push_back({3, {}, ebx::Value{false}});
+    return document;
+}
 }
 int main() {
     check(scoring::allowed_asset("ecs/scoringmanager/ScoringTelemetryManager"), "scoring manager asset selected");
@@ -77,7 +88,7 @@ int main() {
     check(std::all_of(selected.assets.begin(), selected.assets.begin() + 4, [](const auto& asset) {
         return scoring::asset_priority(asset.name) == 0 && asset.bundle == 1;
     }), "all four late second-bundle graph declarations displace first-bundle prefix matches");
-    check(scoring::asset_priority(selected.assets[4].name) == 1 && scoring::asset_priority(selected.assets[5].name) == 1,
+    check(scoring::asset_priority(selected.assets[4].name) == 2 && scoring::asset_priority(selected.assets[5].name) == 2,
           "global line and sequence declarations precede broad prefix matches");
     check(std::equal(selected.assets.begin(), selected.assets.end(), reversed.assets.begin(), [](const auto& a, const auto& b) {
         return a.name == b.name && a.bundle == b.bundle && a.index == b.index && a.resource == b.resource;
@@ -85,11 +96,30 @@ int main() {
     scoring::AssetSelection invalid_selection;
     invalid_selection.consider({"other/scoringtelemetrymanager_class__onscorablelinestarted", 0, 0, false});
     check(invalid_selection.size == 0 && !invalid_selection.omitted, "target basename cannot escape existing namespaces");
-    check(scoring::asset_priority("ecs/scoringmanager/scoringtelemetrymanager_class__onscorablelinestarted_extra") == 2,
+    check(scoring::asset_priority("ecs/scoringmanager/scoringtelemetrymanager_class__onscorablelinestarted_extra") == 3,
           "target matching exact rather than guessed name prefix");
     scoring::AssetSelection kinds;
     kinds.consider({names[80], 1, 0, true}); kinds.consider({names[80], 1, 1, false});
     check(!kinds.assets[0].resource && kinds.assets[1].resource, "graph EBX declaration precedes resource identity");
+    selected.consider({"ecs/scoringmanager/scoringtelemetrymanager_class", 1, 1000, false});
+    selected.consider({"ecs/scoringmanager/activescoringdatamodel", 1, 1001, false});
+    check(scoring::asset_priority(selected.assets[4].name) == 1 && scoring::asset_priority(selected.assets[5].name) == 1 &&
+          selected.size == scoring::asset_limit, "context declaration candidates displace filler without increasing cap");
+    std::vector<std::string> inventory_names;
+    for (unsigned i = 0; i < scoring::manifest_name_limit + 8; ++i)
+        inventory_names.push_back("ecs/scoringmanager/declaration_" + std::to_string(i));
+    scoring::DeclarationInventory inventory, inventory_reverse;
+    inventory.consider({"ecs/scoringmanager/resource", 0, 0, true});
+    inventory.consider({"elsewhere/private", 0, 0, false});
+    check(inventory.size == 0, "inventory never broadens namespace or includes resources");
+    for (std::size_t i = 0; i < inventory_names.size(); ++i) inventory.consider({inventory_names[i], 0, i, false});
+    for (std::size_t i = inventory_names.size(); i-- > 0;) inventory_reverse.consider({inventory_names[i], 0, i, false});
+    check(inventory.size == scoring::manifest_name_limit && inventory.omitted, "manifest inventory bounded with explicit omission");
+    check(std::equal(inventory.assets.begin(), inventory.assets.end(), inventory_reverse.assets.begin(),
+        [](const auto& a, const auto& b) { return a.name == b.name; }), "inventory independent of manifest traversal order");
+    inventory.consider({"ecs/scoringmanager/aaa__handler", 0, 999, false});
+    check(inventory.assets[0].name == inventory_reverse.assets[0].name,
+          "generated handler names do not displace root declaration candidates");
     auto document = fixture(); auto output = scoring::inspect_document(document);
     check(output["status"].string() == "DECLARATIONS_READ", "valid declarations read");
     check(output["owner_proof"].string() == "UNVERIFIED" && output["graph_producer"].string() == "UNVERIFIED",
@@ -194,5 +224,50 @@ int main() {
     output = scoring::inspect_document(document);
     check(output["declared_members"].size() == scoring::declared_member_limit && output["status"].string() == "INCOMPLETE",
           "declaration member cap stays bounded and incomplete");
+    document = parameter_fixture(); output = scoring::inspect_document(document);
+    check(output["declared_parameters"].size() == 1 && output["declared_parameters"][0]["name"].string() == "Value" &&
+          output["declared_parameters"][0]["qualifier"].get<int>() == 2 &&
+          !output["declared_parameters"][0]["is_array"].get<bool>(), "exact parameter metadata exported");
+    check(output.dump().find("private unrelated string") == std::string::npos &&
+          output["owner_proof"].string() == "UNVERIFIED", "parameter declaration never supplies owner proof or unrelated text");
+    document.types[0].name = "OtherParameter";
+    check(scoring::inspect_document(document)["declared_parameters"].empty(), "parameter type must match exactly");
+    for (unsigned malformed = 0; malformed < 13; ++malformed) {
+        document = parameter_fixture();
+        if (malformed == 0) root(document).fields[0].value = ebx::Value{std::string(129, 'x')};
+        if (malformed == 1) root(document).fields[0].value = ebx::Value{std::string{"unsafe text"}};
+        if (malformed == 2) document.fields[0].encodedType = encoded(ebx::FieldType::uint32);
+        if (malformed == 3) root(document).fields[1].value = ebx::Value{std::int64_t{-1}};
+        if (malformed == 4) root(document).fields[1].value = ebx::Value{std::int64_t{4}};
+        if (malformed == 5) root(document).fields[1].value = ebx::Value{std::uint64_t{2}};
+        if (malformed == 6) document.fields[1].encodedType = encoded(ebx::FieldType::int32);
+        if (malformed == 7) root(document).fields[3].value = ebx::Value{std::uint64_t{0}};
+        if (malformed == 8) document.fields[3].encodedType = encoded(ebx::FieldType::boolean, ebx::FieldCategory::array);
+        if (malformed == 9) root(document).fields.pop_back();
+        if (malformed == 10) root(document).fields.push_back(root(document).fields[1]);
+        if (malformed == 11) document.types[0].fieldCount = 1;
+        if (malformed == 12) root(document).fields[0].value = ebx::Value{std::string{"9bad"}};
+        output = scoring::inspect_document(document);
+        check(output["status"].string() == "INCOMPLETE" &&
+              output["declared_parameters"][0]["status"].string() == "INCOMPLETE", "malformed parameter rejected");
+    }
+    document = parameter_fixture(); document.instances.resize(scoring::declared_member_limit + 1, document.instances[0]);
+    check(scoring::inspect_document(document)["declared_parameters"].size() == scoring::declared_member_limit,
+          "parameter output cap retained");
+    constexpr scoring::DeclarationTarget zero{"fixture", "00000000-0000-0000-0000-000000000000", "00000000-0000-0000-0000-000000000000"};
+    document = fixture(); document.instances[0].exported = true;
+    check(scoring::matches_declaration(document, zero), "actual document file and exported class identity resolve");
+    document.instances.push_back(document.instances[0]);
+    check(!scoring::matches_declaration(document, zero), "duplicate exported class identity cannot resolve an import");
+    document.instances.pop_back();
+    check(!scoring::matches_declaration(document, scoring::declaration_targets[0]), "unrelated selected document cannot resolve target");
+    document.instances[0].exported = false;
+    check(!scoring::matches_declaration(document, zero), "unexported instance cannot resolve imported declaration");
+    document.instances[0].exported = true; document.instances[0].descriptor = 999;
+    check(!scoring::matches_declaration(document, zero), "invalid descriptor cannot resolve declaration");
+    document = fixture(); document.instances[0].exported = true; document.fileGuid.bytes[0] = std::byte{1};
+    check(!scoring::matches_declaration(document, zero), "file identity must match independently of class identity");
+    document.fileGuid.bytes[0] = std::byte{0}; document.instances[0].instanceGuid.bytes[0] = std::byte{1};
+    check(!scoring::matches_declaration(document, zero), "class identity must match independently of file identity");
     std::cout << checks << " scoring asset metadata checks passed\n";
 }

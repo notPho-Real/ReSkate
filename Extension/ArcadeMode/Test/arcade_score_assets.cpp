@@ -40,6 +40,7 @@ int inspect(const std::filesystem::path& root) {
         if (toc.bundles.size() > 4096) throw std::runtime_error("bundle_limit");
         std::array<std::optional<dingosdk::vfs::GameBundle>, scoring::bundle_names.size()> bundles;
         scoring::AssetSelection selection;
+        scoring::DeclarationInventory inventory;
         for (std::size_t b = 0; b < bundles.size(); ++b) {
             bundles[b] = data.read_bundle(toc, scoring::bundle_names[b]);
             const auto& bundle = bundles[b];
@@ -49,13 +50,25 @@ int inspect(const std::filesystem::path& root) {
             }
             for (const auto kind : {fb::AssetKind::ebx, fb::AssetKind::resource}) {
                 const auto& assets = kind == fb::AssetKind::ebx ? bundle->manifest.ebx : bundle->manifest.resources;
-                for (std::size_t i = 0; i < assets.size(); ++i)
+                for (std::size_t i = 0; i < assets.size(); ++i) {
                     selection.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
+                    inventory.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
+                }
             }
         }
-        incomplete = incomplete || selection.omitted;
-        output["asset_selection"] = "pinned_graphs_then_global_line_sequence_events_then_namespace";
+        incomplete = incomplete || selection.omitted || inventory.omitted;
+        output["asset_selection"] = "pinned_graphs_then_context_declarations_then_global_events_then_namespace";
         output["asset_limit_reached"] = selection.omitted;
+        output["manifest_declarations"] = Json::array();
+        output["manifest_name_limit_reached"] = inventory.omitted;
+        for (std::size_t i = 0; i < inventory.size; ++i)
+            output["manifest_declarations"].push_back(Json{{"name", inventory.assets[i].name},
+                {"bundle", scoring::bundle_names[inventory.assets[i].bundle]}});
+        output["declaration_lookups"] = Json::array();
+        for (const auto& target : scoring::declaration_targets)
+            output["declaration_lookups"].push_back(Json{{"role", target.role}, {"file_guid", target.file_guid},
+                {"class_guid", target.class_guid}, {"status", "UNRESOLVED_IN_SELECTED_DECLARATIONS"}});
+        serialized = output.dump().size();
         for (std::size_t selected = 0; selected < selection.size; ++selected) {
             const auto& candidate = selection.assets[selected];
             const auto& bundle = bundles[candidate.bundle];
@@ -77,7 +90,16 @@ int inspect(const std::filesystem::path& root) {
                         const auto bytes = data.read(*payload);
                         if (bytes.size() != asset.originalSize || bytes.size() > scoring::payload_limit)
                             throw std::runtime_error("payload_size");
-                        row["declarations"] = scoring::inspect_document(fb::ebx::read_document(bytes));
+                        const auto file_guid = fb::ebx::read_file_guid(bytes);
+                        const auto document = fb::ebx::read_document(bytes);
+                        if (document.fileGuid != file_guid) throw std::runtime_error("file_guid_mismatch");
+                        row["declarations"] = scoring::inspect_document(document);
+                        for (std::size_t target = 0; target < scoring::declaration_targets.size(); ++target) {
+                            if (!scoring::matches_declaration(document, scoring::declaration_targets[target])) continue;
+                            auto& lookup = output["declaration_lookups"][target];
+                            lookup["status"] = "DECLARATION_IDENTITY_RESOLVED";
+                            lookup["name"] = asset.name; lookup["bundle"] = bundle_name;
+                        }
                         row["status"] = row["declarations"]["status"];
                         if (row["status"].string() != "DECLARATIONS_READ") incomplete = true;
                         // References identify RES candidates without reading or decoding their payloads.
@@ -107,6 +129,8 @@ int inspect(const std::filesystem::path& root) {
             }
             serialized += row.dump().size(); output["assets"].push_back(std::move(row));
         }
+        for (const auto& lookup : output["declaration_lookups"])
+            if (lookup["status"].string() != "DECLARATION_IDENTITY_RESOLVED") incomplete = true;
         output["status"] = incomplete ? "INCOMPLETE" : output["assets"].empty() ? "NOT_FOUND" : "METADATA_ONLY";
     } catch (const std::exception&) { output["status"] = "INCOMPLETE"; output["reason"] = "FIXED_BUNDLE_READ_FAILED"; }
     output["declared_payload_bytes_read"] = consumed;
