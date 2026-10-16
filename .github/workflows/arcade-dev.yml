@@ -39,6 +39,21 @@ jobs:
             artifacts/arcade-dev/commit.txt
           if-no-files-found: error
           retention-days: 30
+      - name: Stage tested recovery launcher
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/arcade-launcher -Force | Out-Null
+          Copy-Item build/vs2022-x64/Release/ReSkateLauncher.exe artifacts/arcade-launcher/ReSkateLauncher.exe
+          $hash = (Get-FileHash artifacts/arcade-launcher/ReSkateLauncher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ReSkateLauncher.exe" | Set-Content artifacts/arcade-launcher/ReSkateLauncher.exe.sha256 -Encoding ascii
+          $env:GITHUB_SHA | Set-Content artifacts/arcade-launcher/commit.txt -Encoding ascii
+      - name: Upload tested recovery launcher
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ReSkate-arcade-launcher-${{ github.sha }}
+          path: artifacts/arcade-launcher/
+          if-no-files-found: error
+          retention-days: 30
 
   linux-tests:
     if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-'))
