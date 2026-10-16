@@ -1,3 +1,45 @@
+## Supported installation restored — 2026-10-15
+
+Source e8e71a42ed1ed1753f3a5eb955020a3a78ae3a48. The supported launcher
+download succeeded after authorization. Separate installation ~/Games/ReSkate
+now contains build25414733: executable fbce74d5 and steam_api64.dll88b55dc3.
+Full read-only verification against the downloaded native Steam manifest
+4621099302092747785 passed135/135 files,14,133,684,076 bytes. The cache SHA-256
+is b98ac1e3bbd1a49a24b143335bad550c463bcd75f5083398b17b6aae3d09d552;
+SteamKit's native manifest reader validated its cache checksum and manifest ID.
+Evidence: artifacts/recovered-game-full-verification.json and
+artifacts/recovered-manifest/inventory.json. These are game-file checks, not new
+gameplay acceptance. The launcher visibly reports Ready to skate.
+
+Installed Arcade source2bdf062c, DLL7a8b254e and stock5512a15e are unchanged;
+updates=false, recovery clear, game stopped. Existing shortcut and Proton prefix
+still select the separate installation. Old Steam-managed installation retained.
+A second full supported recovery copy is NOT available:74 native files differ,
+requiring13,189,462,119 replacement bytes, versus about6.13GB free. No original
+files were deleted to make room. Steam's normal update target is separate from
+the selected game; no Steam app-manifest workaround or version bypass was used.
+
+Commit e8e71a4 retains the CI-tested launcher as a separate artifact, avoiding
+replacement of the hardware-tested runtime. Launcher-only deployment is prepared
+with source/hash checks, stopped-process guards and preservation of the old
+launcher. At this checkpoint Windows CI38850122409 is still building, Linux and
+macOS passed; old launcher5b11e30a remains installed. The paired Deck connection
+then timed out before any deployment. One existing configured wake was sent;
+the subsequent strict-key address check still timed out and the original paired
+hostname did not resolve. Local neighbor cache still maps the address to the
+paired MAC. Reconnection and actual launcher installation remain pending. Current
+account-name preference is empty; persistent Steam authentication is UNVERIFIED.
+Do not promise that Steam will never require renewed authorization.
+
+Next: finish verified launcher-only installation and confirm Ready to skate;
+restore the existing Stadium fixture and run the prepared seven integration
+trials through HIL42/maintenance47. Do not repeat accepted grind/HUD tests.
+Prepared local guarded actions: artifacts/deploy-recovery-launcher.py and
+artifacts/recovered-maintenance.py; both require isolated Python. Deployment
+requires successful CI38850122409 metadata plus its source/hash-matched launcher
+artifact, stops if either game or launcher is running, and preserves the prior
+launcher. Frozen HIL tools are unchanged.
+
 ## Supported recovery retry and launcher login fix — 2026-10-15
 
 Started from3c44036. Paired Deck is reachable at the previously verified address
