@@ -830,6 +830,65 @@ def parse_native_score_binder(text):
                 binder_capture_completeness='UNVERIFIED', binder_freshness='UNVERIFIED', binder_owner='UNVERIFIED')
 
 
+def parse_binder_records(text):
+    """Static mapping shapes only: no native object, payload, or owner identity."""
+    start = text.rfind('Arcade Mode ready')
+    if start >= 0:
+        text = text[start:]
+    row_keys = ('seq', 'ms', 'epoch', 'delivered', 'current', 'route',
+                'offset0', 'low0', 'high0', 'offset1', 'low1', 'high1', 'offset2', 'low2', 'high2')
+    status_keys = ('ms', 'epoch', 'dropped', 'duplicates', 'stale', 'overflow')
+    boolean_keys = {'current', 'high0', 'high1', 'high2', 'overflow'}
+    patterns = [re.compile(prefix + ' '.join(
+        key + ('=(true|false)' if key in boolean_keys else r'=([0-9]{1,20})') for key in keys) +
+        r' relationship=UNVERIFIED owner_verified=false\.$') for prefix, keys in
+        (('ARCADE BINDER RECORD: ', row_keys), ('ARCADE BINDER RECORD STATUS: ', status_keys))]
+    rows, statuses = [], []
+    received = [0, 0]
+    malformed = dropped = 0
+    for line in text.splitlines():
+        kind = 0 if 'ARCADE BINDER RECORD:' in line else 1 if 'ARCADE BINDER RECORD STATUS:' in line else None
+        if kind is None:
+            continue
+        received[kind] += 1
+        if received[kind] > (128 if kind == 0 else 32):
+            dropped += 1
+            continue
+        match = patterns[kind].search(line)
+        if not match:
+            malformed += 1
+            continue
+        row = {key: value == 'true' if key in boolean_keys else int(value)
+               for key, value in zip(row_keys if kind == 0 else status_keys, match.groups())}
+        valid = row['epoch'] and all(value <= 0xffffffffffffffff for value in row.values())
+        if kind == 0:
+            valid = (valid and row['seq'] and row['route'] in (2, 4) and row['delivered'] >= row['ms'] and
+                     (not row['current'] or row['delivered'] - row['ms'] <= 6000) and
+                     all(row[f'offset{i}'] <= 0xffffffff and row[f'low{i}'] <= 255 for i in range(3)) and
+                     (not rows or (row['seq'] == rows[-1]['seq'] + 1 and row['epoch'] >= rows[-1]['epoch'])))
+        elif statuses:
+            valid = valid and all(row[key] >= statuses[-1][key] for key in
+                                  ('ms', 'epoch', 'dropped', 'duplicates', 'stale', 'overflow'))
+        if not valid:
+            malformed += 1
+            continue
+        row.update(relationship='UNVERIFIED', owner_verified=False)
+        (rows if kind == 0 else statuses).append(row)
+    binder = parse_native_score_binder(text)
+    context = binder['binder_latest_status'] if binder['binder_snapshot'] else None
+    latest = statuses[-1] if statuses else None
+    gap = bool(malformed or dropped or (sum(received) and (not latest or not context)) or
+               (latest and (latest['dropped'] or latest['stale'] or latest['overflow'])) or
+               (context and latest and (context['epoch'] != latest['epoch'] or abs(context['ms'] - latest['ms']) > 6000)))
+    current = [row for row in rows if row['current'] and context and row['epoch'] == context['epoch'] and
+               abs(context['ms'] - row['delivered']) <= 6000] if not gap else []
+    return dict(binder_records=rows, binder_records_current=current, binder_records_latest_status=latest,
+                binder_records_malformed=malformed, binder_records_dropped=dropped,
+                binder_records_rows_seen=received[0], binder_records_status_rows_seen=received[1],
+                binder_records_evidence_gap=gap, binder_records_relationship='UNVERIFIED',
+                binder_records_owner='UNVERIFIED', binder_records_capture_completeness='UNVERIFIED')
+
+
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
     samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
@@ -884,7 +943,8 @@ def parse_native_score_events(text):
     return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
                 guard_dropped=guard_dropped, malformed=malformed,
                 native_event_identity='UNVERIFIED', **parse_native_score_details(text),
-                **parse_native_score_health(text), **parse_native_score_schema(text), **parse_native_score_binder(text))
+                **parse_native_score_health(text), **parse_native_score_schema(text), **parse_native_score_binder(text),
+                **parse_binder_records(text))
 
 
 def parse_fixture_trajectory(text):

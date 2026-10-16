@@ -4,6 +4,7 @@
 #include "arcade_score_capture_health.h"
 #include "arcade_score_schema_snapshot.h"
 #include "arcade_score_binder_diagnostic.h"
+#include "arcade_score_binder_records.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -45,6 +46,7 @@ struct Runtime {
     std::atomic<bool> binder_overflow{};
     bool binder_attempted{}, binder_prepared{}, binder_attached{};
     std::uint64_t binder_report_at{};
+    BinderRecordBuffer<16> binder_records;
 };
 std::atomic<Runtime*> published{};
 bool same_owner(const NoBailSkater& a, const NoBailSkater& b) noexcept {
@@ -71,7 +73,9 @@ void observe_score_binder(std::uintptr_t serialized, std::uintptr_t, void**) noe
     Read read;
     auto diagnostic = inspect_score_binder(read, serialized, current);
     if (diagnostic.route == Route::none || !client_realm(runtime->base.load())) return;
-    if (!current()) diagnostic.outcome = BinderOutcome::stale;
+    if (!current()) { diagnostic.outcome = BinderOutcome::stale; diagnostic.records_available = false; }
+    if (diagnostic.records_available)
+        (void)runtime->binder_records.push(epoch, GetTickCount64(), diagnostic);
     const auto route = static_cast<unsigned>(diagnostic.route) - 1;
     const auto outcome = static_cast<unsigned>(diagnostic.outcome);
     count_capture_skip(runtime->binder_counts[route][outcome], runtime->binder_overflow);
@@ -109,6 +113,26 @@ void report_binder(Runtime& runtime, std::uint64_t now, bool active) {
             sampled_ms, sampled_epoch, sampled_active, runtime.binder_prepared, runtime.binder_attached, route + 1,
             counts[0], counts[1], counts[2], counts[3], counts[4], counts[5], counts[6], counts[7],
             layout[0], layout[1], layout[2], layout[3], runtime.binder_overflow.load());
+    }
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE BINDER RECORD STATUS: ms={} epoch={} dropped={} duplicates={} stale={} overflow={} relationship=UNVERIFIED owner_verified=false.",
+        sampled_ms, sampled_epoch, runtime.binder_records.dropped(), runtime.binder_records.duplicates(),
+        runtime.binder_records.stale(), runtime.binder_records.overflow());
+}
+void report_binder_records(Runtime& runtime) {
+    std::array<BinderRecordRow, 16> rows{};
+    const auto count = runtime.binder_records.take(rows);
+    for (std::size_t i = 0; i < count; ++i) {
+        const auto& row = rows[i];
+        const auto delivered = GetTickCount64(), epoch = runtime.epoch.load(), expiry = runtime.expires.load();
+        const bool current = epoch == row.epoch && expiry && delivered <= expiry &&
+            delivered >= row.ms && delivered - row.ms <= 6000 && runtime.epoch.load() == epoch;
+        const auto& a = row.records[0]; const auto& b = row.records[1]; const auto& c = row.records[2];
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE BINDER RECORD: seq={} ms={} epoch={} delivered={} current={} route={} offset0={} low0={} high0={} offset1={} low1={} high1={} offset2={} low2={} high2={} relationship=UNVERIFIED owner_verified=false.",
+            row.serial, row.ms, row.epoch, delivered, current, static_cast<unsigned>(row.route),
+            a.offset, a.metadata_low, a.metadata_high, b.offset, b.metadata_low, b.metadata_high,
+            c.offset, c.metadata_low, c.metadata_high);
     }
 }
 bool publish_binding(Runtime& r, std::uint64_t epoch, const Binding& binding) noexcept {
@@ -211,6 +235,7 @@ void run_worker(Runtime& r) noexcept {
             if (epoch != previous_epoch) { previous_epoch = epoch; r.next_scan = 0; }
             const bool active = epoch && now <= r.expires.load();
             report_binder(r, now, active);
+            report_binder_records(r);
             if (active && r.binding_epoch.load() != epoch && now >= r.next_scan) {
                 if (!refresh_binding_hint(r, epoch)) scan_slice(r, epoch);
                 r.next_scan = GetTickCount64() + 100;

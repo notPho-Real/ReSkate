@@ -7,16 +7,24 @@ enum class BinderOutcome : unsigned {
     value_mismatch, relationship_matches, unverified, stale, count
 };
 // Independent reasons may coexist. Bits classify the existing three records;
-// they never relax the representation guards or export the records themselves.
+// neither these bits nor the sanitized shape snapshot relax the guards.
 enum BinderLayoutFailure : unsigned {
     binder_alignment = 1U, binder_range = 2U, binder_metadata = 4U, binder_duplicate = 8U
 };
 inline constexpr std::array<unsigned, 4> binder_layout_bits{
     binder_alignment, binder_range, binder_metadata, binder_duplicate};
+struct BinderRecord {
+    std::uint32_t offset{};
+    unsigned metadata_low{};
+    bool metadata_high{};
+    bool operator==(const BinderRecord&) const = default;
+};
 struct BinderDiagnostic {
     Route route{Route::none};
     BinderOutcome outcome{BinderOutcome::unverified};
     unsigned layout_failures{};
+    std::array<BinderRecord, 3> records{};
+    bool records_available{};
 };
 // These are the existing common binder wrapper/table reads, not guessed scoring
 // parameter offsets. No input slot, Context, runtime instance or payload is read.
@@ -54,8 +62,11 @@ BinderDiagnostic inspect_score_binder(Read& read, std::uintptr_t serialized, Cur
         } else if (!read(table, mappings)) {
             result.outcome = BinderOutcome::mapping_unreadable;
         } else {
+            result.records_available = true;
             for (unsigned i = 0; i < mappings.size(); ++i) {
                 const auto& mapping = mappings[i];
+                result.records[i] = {mapping.register_offset, mapping.native_metadata & 0xffU,
+                    (mapping.native_metadata & 0xffffff00U) != 0};
                 if (mapping.register_offset & 7U) result.layout_failures |= binder_alignment;
                 if (mapping.register_offset > frame || frame - mapping.register_offset < 8)
                     result.layout_failures |= binder_range;
@@ -70,7 +81,10 @@ BinderDiagnostic inspect_score_binder(Read& read, std::uintptr_t serialized, Cur
     }
     // Relationship match describes static mapping compatibility only. It proves
     // neither parameter representation nor ownership nor native occurrence ID.
-    if (!current()) { result.outcome = BinderOutcome::stale; result.layout_failures = 0; }
+    if (!current()) {
+        result.outcome = BinderOutcome::stale; result.layout_failures = 0;
+        result.records_available = false; result.records = {};
+    }
     return result;
 }
 }

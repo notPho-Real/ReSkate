@@ -25,6 +25,74 @@ def layout_row(route=1, reasons=(0, 0, 0, 0), **changes):
 
 
 class ScoreBinderTests(unittest.TestCase):
+    @staticmethod
+    def record(**changes):
+        values = dict(seq=1, ms=1000, epoch=3, delivered=1001, current='true', route=2,
+                      offset0=0, low0=255, high0='true', offset1=8, low1=0, high1='false',
+                      offset2=0xffffffff, low2=1, high2='true')
+        values.update(changes)
+        return 'ARCADE BINDER RECORD: ' + ' '.join(f'{key}={value}' for key, value in values.items()) + \
+            ' relationship=UNVERIFIED owner_verified=false.'
+
+    @staticmethod
+    def record_status(**changes):
+        values = dict(ms=1001, epoch=3, dropped=0, duplicates=2, stale=0, overflow='false')
+        values.update(changes)
+        return 'ARCADE BINDER RECORD STATUS: ' + ' '.join(f'{key}={value}' for key, value in values.items()) + \
+            ' relationship=UNVERIFIED owner_verified=false.'
+
+    def records(self, extra):
+        return self.parse([row(route) for route in range(1, 5)] + [health()] + extra)
+
+    def test_static_records_keep_all_three_shapes_without_relationship_authority(self):
+        result = self.records([self.record(), self.record_status()])
+        self.assertEqual(len(result['binder_records_current']), 1)
+        self.assertEqual(result['binder_records'][0]['offset2'], 0xffffffff)
+        self.assertEqual(result['binder_records'][0]['low0'], 255)
+        self.assertTrue(result['binder_records'][0]['high0'])
+        self.assertFalse(result['binder_records_evidence_gap'])
+        self.assertEqual(result['binder_records_relationship'], 'UNVERIFIED')
+        self.assertEqual(result['binder_records_capture_completeness'], 'UNVERIFIED')
+        self.assertEqual(result, json.loads(json.dumps(result)))
+
+    def test_static_records_reject_malformed_bounds_partial_and_sequence_gaps(self):
+        for malformed in (self.record(low1=256), self.record(offset0=0x100000000),
+                          self.record(epoch=0), self.record(seq=0), self.record(route=1),
+                          self.record(high2='1'), self.record(ms=2**64), self.record(delivered=999),
+                          self.record(delivered=7001), self.record().replace(' low0=255', ''),
+                          self.record().replace('owner_verified=false', 'owner_verified=true')):
+            result = self.records([malformed, self.record_status()])
+            self.assertEqual(result['binder_records_malformed'], 1)
+            self.assertFalse(result['binder_records_current'])
+        for seq in (1, 3):
+            result = self.records([self.record(), self.record(seq=seq), self.record_status()])
+            self.assertEqual(result['binder_records_malformed'], 1)
+            self.assertFalse(result['binder_records_current'])
+
+    def test_static_records_stale_loss_epoch_and_restart_are_explicit(self):
+        for status in (None, self.record_status(dropped=1), self.record_status(stale=1),
+                       self.record_status(overflow='true'), self.record_status(epoch=4),
+                       self.record_status(ms=7001)):
+            result = self.records([self.record()] + ([status] if status else []))
+            self.assertTrue(result['binder_records_evidence_gap'])
+            self.assertFalse(result['binder_records_current'])
+        for record in (self.record(current='false'), self.record(epoch=2)):
+            result = self.records([record, self.record_status()])
+            self.assertEqual(len(result['binder_records']), 1)
+            self.assertFalse(result['binder_records_current'])
+        restarted = self.records([self.record(), self.record_status(), 'Arcade Mode ready'])
+        self.assertFalse(restarted['binder_records'])
+        self.assertFalse(restarted['binder_records_current'])
+
+    def test_static_records_bounded_and_status_counter_regressions_reject(self):
+        result = self.records([self.record(seq=i + 1) for i in range(129)] + [self.record_status()])
+        self.assertEqual(len(result['binder_records']), 128)
+        self.assertEqual(result['binder_records_dropped'], 1)
+        self.assertFalse(result['binder_records_current'])
+        result = self.records([self.record(), self.record_status(duplicates=3), self.record_status()])
+        self.assertEqual(result['binder_records_malformed'], 1)
+        self.assertFalse(result['binder_records_current'])
+
     def test_diagnostic_hook_cannot_satisfy_progression_or_replace_primary_observer(self):
         root = Path(__file__).resolve().parents[2]
         implementation = (root / 'Extension/Progression/neighborhood_unlock_override.cpp').read_text()

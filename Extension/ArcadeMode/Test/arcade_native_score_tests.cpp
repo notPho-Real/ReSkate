@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_score_boundary.h"
 #include "Extension/ArcadeMode/arcade_score_schema_snapshot.h"
 #include "Extension/ArcadeMode/arcade_score_binder_diagnostic.h"
+#include "Extension/ArcadeMode/arcade_score_binder_records.h"
 #include "Extension/Progression/neighborhood_unlock_gate.h"
 #include <cstring>
 #include <cstdlib>
@@ -84,6 +85,36 @@ struct Fixture {
     }
 };
 void binder_diagnostic_tests() {
+    BinderRecordBuffer<2> records;
+    BinderDiagnostic sample{}; sample.route = Route::line_end; sample.records_available = true;
+    sample.records[2] = {UINT32_MAX, 255, true};
+    std::array<BinderRecordRow, 4> captured{};
+    check(!records.push(0, 1, sample), "zero epoch cannot publish static records");
+    check(records.push(1, 10, sample) && !records.push(1, 11, sample) && records.duplicates() == 1,
+          "unchanged same-epoch records deduplicate without pretending they are event occurrences");
+    check(!records.push(1, 9, sample) && records.stale() == 1, "clock reversal is explicit");
+    sample.records[0].offset = 4;
+    check(records.push(1, 12, sample), "changed records are retained even with unaligned offsets");
+    check(!records.push(2, 13, sample) && records.dropped() == 1,
+          "full fixed queue reports loss across a new epoch");
+    check(!records.push(1, 14, sample) && records.stale() == 2,
+          "new epoch invalidates older thread generations even if its publication overflowed");
+    check(records.take(captured) == 2 && captured[0].serial == 1 && captured[1].serial == 2 &&
+          captured[0].records[2].offset == UINT32_MAX && captured[1].records[0].offset == 4,
+          "queue preserves complete three-record scalar snapshots without interpreting their layout");
+    check(records.push(2, 15, sample), "unchanged records publish again for a new lifecycle");
+    std::thread old_thread([&] { (void)records.push(1, 16, sample); }); old_thread.join();
+    check(records.stale() == 3 && records.take(captured) == 1 && captured[0].epoch == 2,
+          "a late producer from an old lifecycle cannot publish into the new generation");
+    BinderRecordBuffer<2> simultaneous;
+    std::array<std::thread, 4> producers;
+    for (auto& producer : producers) producer = std::thread([&] {
+        for (unsigned i = 0; i < 100; ++i) (void)simultaneous.push(1, 20, sample);
+    });
+    for (auto& producer : producers) producer.join();
+    check(simultaneous.take(captured) == 1 &&
+          simultaneous.duplicates() + simultaneous.dropped() == 399 && !simultaneous.overflow(),
+          "concurrent duplicate suppression is atomic and contention loss is explicit");
     for (const bool offline_hook : {false, true}) {
         for (const bool progression_guard : {false, true}) {
             dingosdk::NeighborhoodUnlockGate gate;
@@ -125,6 +156,9 @@ void binder_diagnostic_tests() {
     const auto active = [] { return true; };
     configure(graph);
     auto result = inspect_score_binder(fixture, serialized, active);
+    check(result.records_available && result.records[2].offset == graph.input &&
+          !result.records[2].metadata_low && !result.records[2].metadata_high,
+          "static records expose only bounded offset and metadata classifications");
     check(result.route == Route::line_end && result.outcome == BinderOutcome::relationship_matches,
           "exact three-parameter line mapping matches independently known Value location");
     configure(graphs[3]);
@@ -195,10 +229,14 @@ void binder_diagnostic_tests() {
     result = inspect_score_binder(fixture, serialized, [&] { return ++calls == 1; });
     check(result.outcome == BinderOutcome::stale && !result.layout_failures,
           "retired epoch cannot publish previously read layout failure reasons");
+    check(!result.records_available && result.records == std::array<BinderRecord, 3>{},
+          "retired epoch clears static records as well as reason bits");
     configure(graph); fixture.put(table + 4, std::uint32_t{0xffffff00});
     result = inspect_score_binder(fixture, serialized, active);
     check(!result.layout_failures && result.outcome == BinderOutcome::relationship_matches,
           "only the already guarded metadata low byte contributes a failure reason");
+    check(result.records[0].metadata_high && !result.records[0].metadata_low,
+          "high metadata is classified without exporting unknown bits");
     for (const auto pointer : {std::uintptr_t{}, std::uintptr_t{3}, UINTPTR_MAX}) {
         fixture.put(serialized + 0x58, pointer);
         check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::mapping_unreadable,
