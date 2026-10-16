@@ -323,11 +323,12 @@ def validate_phase_conditions(events, conditions, waiter):
         raise ValueError('Invalid bounded phase conditions')
     for index, condition in conditions.items():
         if (type(index) is not int or not 0 <= index < len(events) or not isinstance(condition, dict) or
-                set(condition) - {'condition', 'timeout_ms', 'max_speed_mm_s'} or
+                set(condition) - {'condition', 'timeout_ms', 'min_speed_mm_s', 'max_speed_mm_s'} or
                 not {'condition', 'timeout_ms'} <= set(condition) or condition['condition'] != 'native-riding' or
                 type(condition['timeout_ms']) is not int or not 100 <= condition['timeout_ms'] <= 3000 or
-                ('max_speed_mm_s' in condition and (type(condition['max_speed_mm_s']) is not int or
-                                                   not 0 <= condition['max_speed_mm_s'] <= 20000))):
+                any(bound in condition and (type(condition[bound]) is not int or not 0 <= condition[bound] <= 20000)
+                    for bound in ('min_speed_mm_s', 'max_speed_mm_s')) or
+                condition.get('min_speed_mm_s', 0) > condition.get('max_speed_mm_s', 20000)):
             raise ValueError('Invalid bounded phase condition')
     return sum(c['timeout_ms'] for c in conditions.values()) / 1000
 

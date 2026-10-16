@@ -106,6 +106,26 @@ class RobotTests(unittest.TestCase):
             pad.frame.assert_not_called()
             waiter.assert_not_called()
 
+    def test_speed_window_conditions_validate_before_any_input(self):
+        for window in ({'min_speed_mm_s': True}, {'min_speed_mm_s': -1}, {'min_speed_mm_s': 20001},
+                       {'min_speed_mm_s': 4.5}, {'min_speed_mm_s': '4500'},
+                       {'min_speed_mm_s': 4501, 'max_speed_mm_s': 4500}):
+            pad, waiter = Mock(), Mock()
+            with self.subTest(window=window), self.assertRaises(ValueError):
+                robot.replay(pad, [(0, [('a',)])], 1, lambda: True,
+                    phase_conditions={0: dict(condition='native-riding', timeout_ms=100, **window)},
+                    condition_waiter=waiter)
+            pad.frame.assert_not_called(); pad.neutral.assert_not_called(); waiter.assert_not_called()
+        for bounds in ({'min_speed_mm_s': 4500}, {'min_speed_mm_s': 4500, 'max_speed_mm_s': 4500}):
+            pad, waiter = Mock(), Mock(return_value={'status': 'TIMEOUT', 'cause': 'speed_below_bound'})
+            condition = dict(condition='native-riding', timeout_ms=100, **bounds)
+            result = robot.replay(pad, [(0, [('a',)])], 1, lambda: True,
+                phase_conditions={0: condition}, condition_waiter=waiter, clock=lambda: 0)
+            self.assertTrue(result['condition_failed'])
+            self.assertEqual(result['conditions'][0]['cause'], 'speed_below_bound')
+            self.assertEqual(waiter.call_args.args[0], condition)
+            pad.neutral.assert_called_once(); pad.frame.assert_not_called()
+
     def test_single_capture_waits_until_trial_end_and_keeps_full_image_hash(self):
         stop = Mock()
         stop.wait.return_value = False

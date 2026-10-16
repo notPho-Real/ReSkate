@@ -23,12 +23,15 @@ def keys(value, required, optional=()):
 
 
 def validate_phase_wait(value):
-    keys(value, ('condition', 'timeout_ms'), ('max_speed_mm_s',))
+    keys(value, ('condition', 'timeout_ms'), ('min_speed_mm_s', 'max_speed_mm_s'))
     if value['condition'] != 'native-riding':
         raise ValueError('Unknown phase condition')
     integer(value['timeout_ms'], 100, 3000)
-    if 'max_speed_mm_s' in value:
-        integer(value['max_speed_mm_s'], 0, 20000)
+    for bound in ('min_speed_mm_s', 'max_speed_mm_s'):
+        if bound in value:
+            integer(value[bound], 0, 20000)
+    if value.get('min_speed_mm_s', 0) > value.get('max_speed_mm_s', 20000):
+        raise ValueError('Invalid native riding speed window')
 
 
 def validate_plan(plan):

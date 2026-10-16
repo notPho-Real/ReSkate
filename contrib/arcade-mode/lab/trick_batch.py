@@ -34,12 +34,15 @@ def keys(value, required, optional=()):
 
 
 def validate_phase_wait(value):
-    keys(value, ('condition', 'timeout_ms'), ('max_speed_mm_s',))
+    keys(value, ('condition', 'timeout_ms'), ('min_speed_mm_s', 'max_speed_mm_s'))
     if value['condition'] != 'native-riding':
         raise ValueError('Unknown phase condition')
     integer(value['timeout_ms'], 100, 3000)
-    if 'max_speed_mm_s' in value:
-        integer(value['max_speed_mm_s'], 0, 20000)
+    for bound in ('min_speed_mm_s', 'max_speed_mm_s'):
+        if bound in value:
+            integer(value[bound], 0, 20000)
+    if value.get('min_speed_mm_s', 0) > value.get('max_speed_mm_s', 20000):
+        raise ValueError('Invalid native riding speed window')
 
 
 def validate_plan(plan):
@@ -369,7 +372,7 @@ def bounded_partial_run(error):
         'speed_mm_s', 'contacts', 'available', 'stage', 'errno', 'ns', 'lt', 'rt'}
     allowed_strings = {'INTERRUPTED', 'UNVERIFIED', 'uinput_write_not_game_poll',
         'READY', 'TIMEOUT', 'fresh_native_riding', 'native_not_riding',
-        'waiting_fresh_heartbeat', 'waiting_current_owner_state', 'speed_above_bound',
+        'waiting_fresh_heartbeat', 'waiting_current_owner_state', 'speed_above_bound', 'speed_below_bound',
         'native_context_only_not_action_result'}
     def bounded(node, depth=0):
         if depth > 7:
@@ -750,8 +753,12 @@ def wait_native_riding(condition, observe, owner, alive, clock=None, sleep=None)
             if latest and latest[0]['ms'] > speed['ms'] and (latest[0]['state'] != 100 or latest[0]['mode'] != 1):
                 coherent = False
             if row['valid'] and row['state'] == 100 and row['mode'] == 1 and speed['valid'] and speed['contacts'] == 0xc000:
-                cause = 'waiting_current_owner_state' if not coherent else 'speed_above_bound'
-                if coherent and ('max_speed_mm_s' not in condition or speed['speed'] * 1000 <= condition['max_speed_mm_s']):
+                measured_speed = speed['speed'] * 1000
+                below = 'min_speed_mm_s' in condition and measured_speed < condition['min_speed_mm_s']
+                cause = 'waiting_current_owner_state' if not coherent else 'speed_below_bound' if below else 'speed_above_bound'
+                within = (('min_speed_mm_s' not in condition or measured_speed >= condition['min_speed_mm_s']) and
+                          ('max_speed_mm_s' not in condition or measured_speed <= condition['max_speed_mm_s']))
+                if coherent and within:
                     if not alive():
                         raise HardStop('condition_evidence_lost')
                     if clock() < deadline:

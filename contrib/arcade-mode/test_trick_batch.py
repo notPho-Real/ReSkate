@@ -137,6 +137,87 @@ class BatchTests(unittest.TestCase):
         for validator in (batch.validate_plan, plan_schema.validate_plan):
             self.assertIs(validator(good), good)
 
+    def test_speed_window_phase_validation_preserves_optional_and_equal_bounds(self):
+        for window in ({}, {'min_speed_mm_s': 0}, {'min_speed_mm_s': 20000},
+                       {'min_speed_mm_s': 4500, 'max_speed_mm_s': 4600},
+                       {'min_speed_mm_s': 4500, 'max_speed_mm_s': 4500}):
+            value = plan(); value['candidates'][0]['capture_frames'] = 0
+            value['candidates'][0]['phases'][1]['wait'] = dict(condition='native-riding', timeout_ms=100, **window)
+            for validator in (batch.validate_plan, plan_schema.validate_plan):
+                self.assertIs(validator(value), value)
+        for window in ({'min_speed_mm_s': -1}, {'min_speed_mm_s': 20001}, {'min_speed_mm_s': True},
+                       {'min_speed_mm_s': 4.5}, {'min_speed_mm_s': '4500'},
+                       {'min_speed_mm_s': 4501, 'max_speed_mm_s': 4500}):
+            value = plan(); value['candidates'][0]['capture_frames'] = 0
+            value['candidates'][0]['phases'][1]['wait'] = dict(condition='native-riding', timeout_ms=100, **window)
+            for validator in (batch.validate_plan, plan_schema.validate_plan):
+                with self.subTest(window=window, validator=validator.__module__), self.assertRaises(ValueError):
+                    validator(value)
+
+    def test_speed_window_waits_for_fresh_same_owner_approach_and_reports_value(self):
+        initial = self.condition_observation(speed=4.54)
+        now = [0.0]
+        def observe(since=None):
+            if since is None: return initial
+            if now[0] < .04: return self.condition_observation(2, 1050, speed=3.96)
+            if now[0] < .08: return self.condition_observation(3, 1100, speed=4.7)
+            return self.condition_observation(4, 1150, speed=4.54)
+        result = batch.wait_native_riding(dict(condition='native-riding', timeout_ms=300,
+            min_speed_mm_s=4500, max_speed_mm_s=4600), observe, batch.phase_condition_owner(initial),
+            lambda: True, clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+        self.assertEqual(result['status'], 'READY')
+        self.assertGreaterEqual(now[0], .08)
+        self.assertEqual(result['last_native']['heartbeat_seq'], 4)
+        self.assertEqual(result['last_native']['speed_mm_s'], 4540)
+        self.assertEqual(result['last_native']['generation'], 4)
+        self.assertEqual(result['scope'], 'native_context_only_not_action_result')
+
+    def test_speed_window_bounds_are_inclusive_and_minimum_alone_is_optional(self):
+        initial = self.condition_observation()
+        for speed, bounds in ((4.5, dict(min_speed_mm_s=4500, max_speed_mm_s=4500)),
+                              (4.6, dict(min_speed_mm_s=4500, max_speed_mm_s=4600)),
+                              (4.8, dict(min_speed_mm_s=4500)), (0, dict(min_speed_mm_s=0))):
+            result = batch.wait_native_riding(dict(condition='native-riding', timeout_ms=100, **bounds),
+                lambda since=None: initial if since is None else self.condition_observation(2, 1100, speed=speed),
+                batch.phase_condition_owner(initial), lambda: True, clock=lambda: 0, sleep=lambda dt: None)
+            self.assertEqual(result['status'], 'READY')
+
+    def test_speed_window_timeout_preserves_measured_failure_not_success(self):
+        initial = self.condition_observation()
+        for speed, cause in ((3.96, 'speed_below_bound'), (4.7, 'speed_above_bound')):
+            now = [0.0]
+            result = batch.wait_native_riding(dict(condition='native-riding', timeout_ms=100,
+                min_speed_mm_s=4500, max_speed_mm_s=4600),
+                lambda since=None: initial if since is None else self.condition_observation(2, 1100, speed=speed),
+                batch.phase_condition_owner(initial), lambda: True, clock=lambda: now[0],
+                sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+            self.assertEqual(result['status'], 'TIMEOUT')
+            self.assertEqual(result['cause'], cause)
+            self.assertEqual(result['last_native']['speed_mm_s'], round(speed * 1000))
+        interrupted = self.partial_writer_error()
+        interrupted.partial_run['delivery_timing']['conditions'] = [dict(status='TIMEOUT',
+            cause='speed_below_bound', last_native=dict(speed_mm_s=3960, generation=4),
+            scope='native_context_only_not_action_result')]
+        receipt = batch.bounded_partial_run(interrupted)
+        self.assertIsNotNone(receipt)
+        self.assertEqual(receipt['delivery_timing']['conditions'][0]['cause'], 'speed_below_bound')
+
+    def test_speed_window_cannot_admit_stale_or_changed_owner_at_desired_speed(self):
+        initial = self.condition_observation(speed=4.54)
+        for failure, expected in (('stale', 'condition_heartbeat_stale'),
+                                  ('generation', 'condition_owner_changed'),
+                                  ('timestamp', 'condition_evidence_lost')):
+            now = [0.0]
+            def observe(since=None):
+                if since is None or failure == 'stale': return initial
+                return self.condition_observation(2, 999 if failure == 'timestamp' else 1100,
+                    generation=5 if failure == 'generation' else 4, speed=4.54)
+            with self.subTest(failure=failure), self.assertRaisesRegex(batch.HardStop, expected):
+                batch.wait_native_riding(dict(condition='native-riding', timeout_ms=1000,
+                    min_speed_mm_s=4500, max_speed_mm_s=4600), observe,
+                    batch.phase_condition_owner(initial), lambda: True, clock=lambda: now[0],
+                    sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+
     @staticmethod
     def condition_observation(seq=1, ms=1000, state=100, mode=1, generation=4, speed=1):
         return {'states': [dict(seq=seq, valid=True, state=state, mode=mode)],
