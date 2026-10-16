@@ -566,6 +566,34 @@ def parse_native_score_details(text):
                 score_semantics='UNVERIFIED', payload_owner='UNVERIFIED')
 
 
+def parse_native_score_health(text):
+    """Sampled health and cumulative hook skips, never proof of complete capture."""
+    samples, dropped, malformed = [], 0, 0
+    pattern = (r'ARCADE NATIVE SCORE HEALTH: ms=([0-9]{1,20}) epoch=([0-9]{1,20}) '
+               r'active=(true|false) bound=(true|false) route=([1-4]) '
+               r'unbound=([0-9]{1,20}) expired=([0-9]{1,20}) changed=([0-9]{1,20}) overflow=(true|false)\.$')
+    for line in text.splitlines():
+        if 'ARCADE NATIVE SCORE HEALTH:' not in line:
+            continue
+        match = re.search(pattern, line)
+        if not match:
+            malformed += 1
+            continue
+        ms, epoch, active, bound, route, unbound, expired, changed, overflow = match.groups()
+        ms, epoch, route, unbound, expired, changed = map(int, (ms, epoch, route, unbound, expired, changed))
+        if (not epoch or max(ms, epoch, unbound, expired, changed) > 0xffffffffffffffff or
+                (bound == 'true' and active != 'true')):
+            malformed += 1
+            continue
+        samples.append(dict(ms=ms, epoch=epoch, active=active == 'true', bound=bound == 'true',
+            route=route, unbound=unbound, expired=expired, changed=changed, overflow=overflow == 'true'))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return dict(health=samples, health_dropped=dropped, health_malformed=malformed,
+                capture_completeness='UNVERIFIED')
+
+
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
     samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
@@ -619,7 +647,8 @@ def parse_native_score_events(text):
             malformed += 1
     return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
                 guard_dropped=guard_dropped, malformed=malformed,
-                native_event_identity='UNVERIFIED', **parse_native_score_details(text))
+                native_event_identity='UNVERIFIED', **parse_native_score_details(text),
+                **parse_native_score_health(text))
 
 
 def parse_fixture_status(text):

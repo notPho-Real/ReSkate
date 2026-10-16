@@ -1,6 +1,7 @@
 #include "arcade_native_score.h"
 #include "arcade_native_score_buffer.h"
 #include "arcade_score_boundary.h"
+#include "arcade_score_capture_health.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -22,6 +23,7 @@ struct Runtime {
     std::atomic_flag binding_busy = ATOMIC_FLAG_INIT;
     Binding binding{};
     Buffer<128> events;
+    CaptureHealth capture_health;
     std::atomic<std::uint64_t> rejected{}, contended{};
     // Client-thread lifecycle. These addresses are never published or logged.
     NoBailSkater owner{};
@@ -82,6 +84,8 @@ void scan_slice(Runtime& r, std::uint64_t epoch) noexcept {
 }
 void run_worker(Runtime& r) noexcept {
     std::uint64_t previous_epoch{};
+    std::uint64_t health_epoch{}, health_report_at{};
+    bool health_active{}, health_bound{};
     // Process lifetime matches the existing runtime workers. All formatting and
     // file logging happen here, after the nonblocking interpreter publication.
     for (;;) {
@@ -127,6 +131,25 @@ void run_worker(Runtime& r) noexcept {
                     epoch, active, active && r.binding_epoch.load() == epoch, r.events.dropped(),
                     r.rejected.load(), r.contended.load(), r.stale);
             }
+            // Sampled worker health is not a complete transition journal. These
+            // lifetime counters also retain gaps that occurred between samples.
+            const auto health_ms = GetTickCount64(), sampled_epoch = r.epoch.load();
+            const auto sampled_expiry = r.expires.load();
+            const bool sampled_active = sampled_epoch && sampled_expiry && health_ms <= sampled_expiry;
+            const bool sampled_bound = sampled_active && r.binding_epoch.load() == sampled_epoch;
+            if (sampled_epoch == r.epoch.load() && (sampled_epoch != health_epoch ||
+                sampled_active != health_active || sampled_bound != health_bound ||
+                (sampled_epoch && health_ms >= health_report_at))) {
+                for (const auto& graph : graphs) {
+                    const auto skipped = r.capture_health.snapshot(graph.route);
+                    logging::log(logging::Level::info, logging::Channel::skater,
+                        "ARCADE NATIVE SCORE HEALTH: ms={} epoch={} active={} bound={} route={} unbound={} expired={} changed={} overflow={}.",
+                        health_ms, sampled_epoch, sampled_active, sampled_bound, static_cast<unsigned>(graph.route),
+                        skipped.unbound, skipped.expired, skipped.changed, r.capture_health.overflow());
+                }
+                health_epoch = sampled_epoch; health_active = sampled_active; health_bound = sampled_bound;
+                health_report_at = health_ms + 5000;
+            }
         } catch (...) { /* diagnostic output failure cannot reach the game thread */ }
         Sleep(25);
     }
@@ -167,7 +190,12 @@ void observe_native_score_expression(std::uintptr_t vm, std::uint32_t pc) noexce
     const auto* graph = graph_for(hash);
     if (!graph) return;
     const auto now = GetTickCount64(), epoch = r->epoch.load();
-    if (now > r->expires.load() || !epoch || r->binding_epoch.load(std::memory_order_acquire) != epoch) return;
+    if (now > r->expires.load() || !epoch) {
+        r->capture_health.skip(graph->route, CaptureSkip::expired); return;
+    }
+    if (r->binding_epoch.load(std::memory_order_acquire) != epoch) {
+        r->capture_health.skip(graph->route, CaptureSkip::unbound); return;
+    }
     // The profiled interpreter may enter the ordinary interpreter. Suppress
     // same-VM ancestor entries; exceeding the bounded nesting walk fails closed.
     auto* scope = profile_runtime::expression_scope;
@@ -185,7 +213,7 @@ void observe_native_score_expression(std::uintptr_t vm, std::uint32_t pc) noexce
     const bool current = r->binding_epoch.load() == epoch && r->epoch.load() == epoch;
     if (current) binding = r->binding;
     r->binding_busy.clear(std::memory_order_release);
-    if (!current) return;
+    if (!current) { r->capture_health.skip(graph->route, CaptureSkip::changed); return; }
     for (unsigned i = 0; i < binding.types.size(); ++i) {
         if (!type_matches(read, binding.types[i], type_hashes[i])) {
             auto expected = epoch;
@@ -203,5 +231,6 @@ void observe_native_score_expression(std::uintptr_t vm, std::uint32_t pc) noexce
     // No raw addresses, text, or identity leave the callback. Different listener
     // routes can report the same end; this stream deliberately makes no bank claim.
     if (r->epoch.load() == epoch && now <= r->expires.load()) (void)r->events.push(row);
+    else r->capture_health.skip(graph->route, CaptureSkip::changed);
 }
 }

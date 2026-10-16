@@ -362,7 +362,9 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
         ARCADE_SCORE_EVENT_COMBINED_TESTS ARCADE_SCORE_NUMBERS_COMBINED_TESTS ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS)
     target_include_directories(dingosdk_arcade_mode_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_mode COMMAND dingosdk_arcade_mode_tests)
-    add_executable(dingosdk_arcade_native_score_tests Extension/ArcadeMode/Test/arcade_native_score_tests.cpp)
+    add_executable(dingosdk_arcade_native_score_tests Extension/ArcadeMode/Test/arcade_native_score_tests.cpp
+        Extension/ArcadeMode/Test/arcade_score_capture_health_tests.cpp)
+    target_compile_definitions(dingosdk_arcade_native_score_tests PRIVATE ARCADE_CAPTURE_HEALTH_COMBINED_TESTS)
     target_include_directories(dingosdk_arcade_native_score_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_native_score COMMAND dingosdk_arcade_native_score_tests)
     add_test(NAME arcade_native_score_replay COMMAND dingosdk_arcade_native_score_tests --replay-unowned

@@ -68677,5 +68677,3938 @@
       }
     ],
     "limits": "Native monetary ownership/banking remains UNVERIFIED. Independent400-499 state is primary grind evidence; available raw enums remain unnamed. Exact label diagnostics do not establish FS/BS context."
+  },
+  "native_manual_recovery_remaining_14": {
+    "source_commit": "91906e5a5183429d16f787d0f8f6bb5f2b99da1b",
+    "dll_sha256": "ac6bc7141ee9ef40ba8a3042e572137a3ba41ded0623228eb140d6f9becb29a6",
+    "runner": "trusted-v47",
+    "result": "1792158793300151000",
+    "sha256": "2768e0b49e642079482e49da687ec8f36a7d530fba68887e286cc2659ab7a631",
+    "trials": [
+      {
+        "name": "native-revert-early-manual",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 2,
+          "exits": 2,
+          "duration_ms": 533,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            3955,
+            2325
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36512347,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36513064,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36513597,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36514297,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5160015,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36514447,
+            "pose": 7,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.52800065,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36514497,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.65200037,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36514630,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.78233296,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36514664,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.78533274,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.0030000003,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36516264,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.0030000003,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36517164,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.052999884,
+            "manual_fatigue": 0.074999765,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36517914,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36515397,
+            "sequence": 34,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36512137,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36513520,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 55,
+            "ms": 36514666,
+            "epoch": 141,
+            "route": 4,
+            "score": 50.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 56,
+            "ms": 36514682,
+            "epoch": 141,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 57,
+            "ms": 36515884,
+            "epoch": 141,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 58,
+            "ms": 36517250,
+            "epoch": 141,
+            "route": 4,
+            "score": 8.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 55,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 0.0,
+            "base_score": 50.0,
+            "landing": 0.9,
+            "current_category": 4,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 57,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 58,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 8.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7444,
+              "native_ms": 36514897,
+              "generation": 147,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 1629,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.076,
+            "completed_ms": 4294.046,
+            "wait_ms": 693.97,
+            "shift_ms": 694.046
+          }
+        ],
+        "score_label_diagnostic_count": 15,
+        "native_label_edges": [
+          {
+            "seq": 33,
+            "observed": 36513147,
+            "sampled": 36513147,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 34,
+            "observed": 36515397,
+            "sampled": 36515397,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 35,
+            "observed": 36516264,
+            "sampled": 36516264,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 14,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-early-manual",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 532,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4533
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "FAIL",
+          "native_air_ids": "UNVERIFIED",
+          "fatigue": "UNVERIFIED",
+          "lifecycle_grace": "UNVERIFIED",
+          "score_banking": "UNVERIFIED"
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36533447,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36534164,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36534697,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36535497,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36536247,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36536264,
+            "sequence": 37,
+            "labels": 16777216,
+            "accepted": false,
+            "remaining_ms": 0
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36533237,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36534620,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 59,
+            "ms": 36535533,
+            "epoch": 151,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 60,
+            "ms": 36535549,
+            "epoch": 151,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 61,
+            "ms": 36536750,
+            "epoch": 151,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 59,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 61,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7527,
+              "native_ms": 36535747,
+              "generation": 157,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3054,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.146,
+            "completed_ms": 4037.016,
+            "wait_ms": 436.87,
+            "shift_ms": 437.016
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 36,
+            "observed": 36534264,
+            "sampled": 36534264,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 37,
+            "observed": 36536264,
+            "sampled": 36536264,
+            "labels": 16777216,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-early-manual",
+        "repetition": 3,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 551,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4535
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36556780,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36557497,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36558047,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34133393,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36558847,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.405335,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36560397,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6493345,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36561314,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7226625,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.07333311,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36562064,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36559547,
+            "sequence": 39,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36556571,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36557973,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 62,
+            "ms": 36558883,
+            "epoch": 159,
+            "route": 4,
+            "score": 34.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 63,
+            "ms": 36558901,
+            "epoch": 159,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 64,
+            "ms": 36560034,
+            "epoch": 159,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 65,
+            "ms": 36561400,
+            "epoch": 159,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 62,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 64,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 65,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7620,
+              "native_ms": 36559047,
+              "generation": 165,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3010,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.079,
+            "completed_ms": 3991.019,
+            "wait_ms": 390.94,
+            "shift_ms": 391.019
+          }
+        ],
+        "score_label_diagnostic_count": 13,
+        "native_label_edges": [
+          {
+            "seq": 38,
+            "observed": 36557597,
+            "sampled": 36557597,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 39,
+            "observed": 36559547,
+            "sampled": 36559547,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 40,
+            "observed": 36560397,
+            "sampled": 36560397,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-early-manual",
+        "repetition": 4,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 532,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4539
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36580164,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36580881,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36581414,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36582214,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36583680,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64100176,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36584580,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.71299654,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.07199978,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36585330,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36582797,
+            "sequence": 42,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36579953,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36581338,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 66,
+            "ms": 36582249,
+            "epoch": 167,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 67,
+            "ms": 36582267,
+            "epoch": 167,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 68,
+            "ms": 36583317,
+            "epoch": 167,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 69,
+            "ms": 36584666,
+            "epoch": 167,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 66,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 68,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 69,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7713,
+              "native_ms": 36582314,
+              "generation": 173,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3042,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.098,
+            "completed_ms": 3886.511,
+            "wait_ms": 286.413,
+            "shift_ms": 286.511
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 41,
+            "observed": 36580997,
+            "sampled": 36580997,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 42,
+            "observed": 36582797,
+            "sampled": 36582797,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 43,
+            "observed": 36583680,
+            "sampled": 36583680,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 518,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4537
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36603447,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36604164,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36604681,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3386672,
+            "grind_fatigue": 0.04133328,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36605480,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40233496,
+            "grind_fatigue": 0.04133328,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36606897,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6360021,
+            "grind_fatigue": 0.04133328,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36607847,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7119966,
+            "grind_fatigue": 0.04133328,
+            "manual_fatigue": 0.07599976,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36608597,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36606080,
+            "sequence": 45,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36603237,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36604605,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 70,
+            "ms": 36605517,
+            "epoch": 175,
+            "route": 4,
+            "score": 32.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 71,
+            "ms": 36605533,
+            "epoch": 175,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 72,
+            "ms": 36606567,
+            "epoch": 175,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 73,
+            "ms": 36607934,
+            "epoch": 175,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 70,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 72,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 73,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7806,
+              "native_ms": 36605564,
+              "generation": 181,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3044,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.039,
+            "completed_ms": 3868.053,
+            "wait_ms": 268.014,
+            "shift_ms": 268.053
+          }
+        ],
+        "score_label_diagnostic_count": 13,
+        "native_label_edges": [
+          {
+            "seq": 44,
+            "observed": 36604247,
+            "sampled": 36604247,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 45,
+            "observed": 36606080,
+            "sampled": 36606080,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 46,
+            "observed": 36606897,
+            "sampled": 36606897,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 2,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 520,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4541
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36626647,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36627366,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36627880,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.33833387,
+            "grind_fatigue": 0.04099995,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36628681,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.4026683,
+            "grind_fatigue": 0.04099995,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36630164,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64133507,
+            "grind_fatigue": 0.04099995,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36631080,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7143298,
+            "grind_fatigue": 0.04099995,
+            "manual_fatigue": 0.072999775,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36631830,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36629314,
+            "sequence": 48,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36626438,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36627806,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 74,
+            "ms": 36628716,
+            "epoch": 183,
+            "route": 4,
+            "score": 12.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 75,
+            "ms": 36628733,
+            "epoch": 183,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 76,
+            "ms": 36629816,
+            "epoch": 183,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 77,
+            "ms": 36631167,
+            "epoch": 183,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 74,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 76,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 77,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7899,
+              "native_ms": 36628814,
+              "generation": 189,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3066,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.087,
+            "completed_ms": 3909.667,
+            "wait_ms": 309.579,
+            "shift_ms": 309.667
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 47,
+            "observed": 36627447,
+            "sampled": 36627447,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 48,
+            "observed": 36629314,
+            "sampled": 36629314,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 49,
+            "observed": 36630164,
+            "sampled": 36630164,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 3,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 534,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4538
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 766
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36649964,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36650681,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36651214,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36652014,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36653397,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6343356,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36654331,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.70933014,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.074999765,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36655097,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36652564,
+            "sequence": 51,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36649754,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36651138,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 78,
+            "ms": 36652049,
+            "epoch": 191,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 79,
+            "ms": 36652067,
+            "epoch": 191,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 80,
+            "ms": 36653067,
+            "epoch": 191,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 81,
+            "ms": 36654418,
+            "epoch": 191,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 78,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 80,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 81,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 7992,
+              "native_ms": 36652064,
+              "generation": 197,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3045,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.249,
+            "completed_ms": 3847.138,
+            "wait_ms": 246.889,
+            "shift_ms": 247.138
+          }
+        ],
+        "score_label_diagnostic_count": 13,
+        "native_label_edges": [
+          {
+            "seq": 50,
+            "observed": 36650764,
+            "sampled": 36650764,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 51,
+            "observed": 36652564,
+            "sampled": 36652564,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 52,
+            "observed": 36653397,
+            "sampled": 36653397,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 4,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 532,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4532
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 751
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36673114,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36673831,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36674364,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36675164,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36676647,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.642335,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36677580,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.71699625,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.07466643,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36678331,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36675797,
+            "sequence": 54,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36672905,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36674287,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 82,
+            "ms": 36675200,
+            "epoch": 201,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 83,
+            "ms": 36675216,
+            "epoch": 201,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 84,
+            "ms": 36676301,
+            "epoch": 201,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 85,
+            "ms": 36677667,
+            "epoch": 201,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 82,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 84,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 85,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8085,
+              "native_ms": 36675314,
+              "generation": 207,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3038,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.08,
+            "completed_ms": 3939.166,
+            "wait_ms": 339.086,
+            "shift_ms": 339.166
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 53,
+            "observed": 36673947,
+            "sampled": 36673947,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 54,
+            "observed": 36675797,
+            "sampled": 36675797,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 55,
+            "observed": 36676647,
+            "sampled": 36676647,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 5,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 551,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4533
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36696447,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36697164,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36697714,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34133393,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36698514,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.405335,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36699947,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64000183,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36700880,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7143298,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0743331,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36701630,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36699097,
+            "sequence": 57,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36696237,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36697637,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 86,
+            "ms": 36698550,
+            "epoch": 209,
+            "route": 4,
+            "score": 34.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 87,
+            "ms": 36698567,
+            "epoch": 209,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 88,
+            "ms": 36699601,
+            "epoch": 209,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 89,
+            "ms": 36700967,
+            "epoch": 209,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 86,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 88,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 89,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8178,
+              "native_ms": 36698614,
+              "generation": 215,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3018,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.137,
+            "completed_ms": 3897.993,
+            "wait_ms": 297.856,
+            "shift_ms": 297.993
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 56,
+            "observed": 36697264,
+            "sampled": 36697264,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 57,
+            "observed": 36699097,
+            "sampled": 36699097,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 58,
+            "observed": 36699947,
+            "sampled": 36699947,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 6,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 534,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4542
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 751
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36719714,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36720431,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36720964,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36721764,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36723230,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64100176,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36724180,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.71699625,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.07599976,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36724931,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36722397,
+            "sequence": 60,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36719504,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36720887,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 90,
+            "ms": 36721800,
+            "epoch": 217,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 91,
+            "ms": 36721816,
+            "epoch": 217,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 92,
+            "ms": 36722900,
+            "epoch": 217,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 93,
+            "ms": 36724267,
+            "epoch": 217,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 90,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 92,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 93,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8271,
+              "native_ms": 36721897,
+              "generation": 223,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3040,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.083,
+            "completed_ms": 3929.874,
+            "wait_ms": 329.79,
+            "shift_ms": 329.874
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 59,
+            "observed": 36720514,
+            "sampled": 36720514,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 60,
+            "observed": 36722397,
+            "sampled": 36722397,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 61,
+            "observed": 36723230,
+            "sampled": 36723230,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 7,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 2,
+          "exits": 2,
+          "duration_ms": 533,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            3956,
+            2323
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 752
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36742897,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36743614,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36744147,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36744847,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5160015,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36745014,
+            "pose": 7,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5293339,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36745064,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6533336,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36745197,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7839995,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36745230,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.78633267,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.0023333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36746764,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.0023333335,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36747697,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.05466654,
+            "manual_fatigue": 0.07699975,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36748449,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36745914,
+            "sequence": 63,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36742687,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36744072,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 94,
+            "ms": 36745234,
+            "epoch": 227,
+            "route": 4,
+            "score": 51.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 95,
+            "ms": 36745249,
+            "epoch": 227,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 96,
+            "ms": 36746401,
+            "epoch": 227,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 97,
+            "ms": 36747784,
+            "epoch": 227,
+            "route": 4,
+            "score": 8.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 94,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 0.0,
+            "base_score": 50.0,
+            "landing": 0.9,
+            "current_category": 4,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 96,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 97,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 8.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8365,
+              "native_ms": 36745414,
+              "generation": 233,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 2022,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.158,
+            "completed_ms": 4256.919,
+            "wait_ms": 656.761,
+            "shift_ms": 656.919
+          }
+        ],
+        "score_label_diagnostic_count": 15,
+        "native_label_edges": [
+          {
+            "seq": 62,
+            "observed": 36743714,
+            "sampled": 36743714,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 63,
+            "observed": 36745914,
+            "sampled": 36745914,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 64,
+            "observed": 36746764,
+            "sampled": 36746764,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 13,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 8,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 550,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4538
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 751
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36766230,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36766947,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36767498,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34133393,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36768297,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.405335,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36769864,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.6506677,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36770780,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.72399575,
+            "grind_fatigue": 0.043999933,
+            "manual_fatigue": 0.07333311,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36771531,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36769014,
+            "sequence": 66,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36766020,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36767420,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 98,
+            "ms": 36768333,
+            "epoch": 235,
+            "route": 4,
+            "score": 34.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 99,
+            "ms": 36768349,
+            "epoch": 235,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 100,
+            "ms": 36769503,
+            "epoch": 235,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 101,
+            "ms": 36770867,
+            "epoch": 235,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 98,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 100,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 101,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8457,
+              "native_ms": 36768514,
+              "generation": 241,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3009,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.088,
+            "completed_ms": 4010.217,
+            "wait_ms": 410.128,
+            "shift_ms": 410.217
+          }
+        ],
+        "score_label_diagnostic_count": 14,
+        "native_label_edges": [
+          {
+            "seq": 65,
+            "observed": 36767047,
+            "sampled": 36767047,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 66,
+            "observed": 36769014,
+            "sampled": 36769014,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 67,
+            "observed": 36769864,
+            "sampled": 36769864,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 9,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 533,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4533
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36789581,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36790297,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36790831,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3400006,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36791631,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400168,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36793131,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64400154,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36794064,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7183295,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0743331,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36794814,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36792297,
+            "sequence": 69,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36789372,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36790754,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 102,
+            "ms": 36791667,
+            "epoch": 245,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 103,
+            "ms": 36791683,
+            "epoch": 245,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 104,
+            "ms": 36792783,
+            "epoch": 245,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 105,
+            "ms": 36794150,
+            "epoch": 245,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 102,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 2.0,
+            "base_score": 25.0,
+            "landing": 1.0,
+            "current_category": 1,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 104,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 105,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 15.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8550,
+              "native_ms": 36791797,
+              "generation": 251,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3036,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.079,
+            "completed_ms": 3950.021,
+            "wait_ms": 349.942,
+            "shift_ms": 350.021
+          }
+        ],
+        "score_label_diagnostic_count": 13,
+        "native_label_edges": [
+          {
+            "seq": 68,
+            "observed": 36790398,
+            "sampled": 36790398,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 69,
+            "observed": 36792297,
+            "sampled": 36792297,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 70,
+            "observed": 36793131,
+            "sampled": 36793131,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 12,
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "native-revert-standard-manual",
+        "repetition": 10,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 2,
+          "exits": 2,
+          "duration_ms": 534,
+          "raw_enum_pairs": [
+            [
+              null,
+              null
+            ]
+          ],
+          "entry_speed_mm_s": [
+            3955,
+            2289
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 0,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 750
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "grind": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 36812714,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36813430,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17699987,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36813964,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.3400006,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36814664,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.5160015,
+            "grind_fatigue": 0.042999938,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36814814,
+            "pose": 7,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.52800065,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36814864,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.65200037,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36814997,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.78233296,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36815016,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7839995,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.0016666667,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36816447,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.0016666667,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36817364,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 1.0,
+            "grind_fatigue": 0.053333215,
+            "manual_fatigue": 0.075333096,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 36818114,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 36815597,
+            "sequence": 72,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 36812503,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 36813887,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 106,
+            "ms": 36815033,
+            "epoch": 253,
+            "route": 4,
+            "score": 50.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 107,
+            "ms": 36815049,
+            "epoch": 253,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 108,
+            "ms": 36816066,
+            "epoch": 253,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 109,
+            "ms": 36817451,
+            "epoch": 253,
+            "route": 4,
+            "score": 8.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "native_score_details": [
+          {
+            "seq": 106,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 0.0,
+            "base_score": 50.0,
+            "landing": 0.9,
+            "current_category": 4,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 108,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 7.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 6,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          },
+          {
+            "seq": 109,
+            "scalar_status": "available",
+            "category_status": "available",
+            "sequence_kind": 1,
+            "action_score": 8.0,
+            "base_score": 5.0,
+            "landing": 1.0,
+            "current_category": 5,
+            "authoritative": false,
+            "verification": "UNVERIFIED"
+          }
+        ],
+        "native_score_detail_dropped": 0,
+        "native_score_detail_malformed": 0,
+        "condition_waits": [
+          {
+            "status": "READY",
+            "cause": "fresh_native_riding",
+            "last_native": {
+              "heartbeat_seq": 8643,
+              "native_ms": 36815097,
+              "generation": 259,
+              "state": 100,
+              "mode": 1,
+              "valid": true,
+              "speed_valid": true,
+              "speed_mm_s": 3118,
+              "contacts": 49152
+            },
+            "scope": "native_context_only_not_action_result",
+            "phase": 7,
+            "nominal_ms": 3600.0,
+            "started_ms": 3600.073,
+            "completed_ms": 4120.871,
+            "wait_ms": 520.798,
+            "shift_ms": 520.871
+          }
+        ],
+        "score_label_diagnostic_count": 15,
+        "native_label_edges": [
+          {
+            "seq": 71,
+            "observed": 36813547,
+            "sampled": 36813547,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 72,
+            "observed": 36815597,
+            "sampled": 36815597,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 73,
+            "observed": 36816447,
+            "sampled": 36816447,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery_count": 13,
+        "neutralized": true,
+        "reset_ready": true
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Independent400-499 state is primary grind evidence; available raw enums remain unnamed. Exact label diagnostics do not establish FS/BS context."
   }
 }

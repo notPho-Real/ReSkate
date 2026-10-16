@@ -1,3 +1,33 @@
+## Revert/manual repeatability and score capture gaps — 2026-10-16
+
+HIL47 result1792158793300151000 completes14/14 planned trials without readiness
+stops, lost evidence or stuck input;13/14 native chains pass. Combined with the
+six completed HIL46 trials:19/20 full grind→Ollie→native revert→manual chains
+pass continuity, native air IDs, fatigue and750ms grace. Both command timings
+were exercised: early9/10, standard10/10. The separate earlier hard-stop trial
+is not erased or included as a complete gameplay result. All20 complete trials
+neutralized and reset.
+
+The one failed chain is a measured deadline boundary, not failed native revert
+recognition: landing36535497, RT36535767, native10136536153, combo expiry36536247,
+independent revert label36536264 (17ms late), continuation rejected. No grace
+refresh or manufactured link; manual preparation then correctly remained gated.
+The existing250ms heartbeat condition can delay automated RT admission after
+landing. Keep this failure envelope; do not change gameplay grace merely to make
+this test pass. Runtime919 and HIL47 stay installed/hot at the Stadium fixture.
+
+New source-only scoring health diagnostics count skipped known-graph callbacks
+while unbound/expired or after an epoch race, and emit bounded timestamped worker
+snapshots. Existing offsets, schema guards, ownership=false and event decoding
+remain unchanged. Sampled health cannot prove completeness; cumulative losses
+before the trial are distinguished from increases between its samples. New
+parser/replay tests reject malformed/lost detail and health evidence, duplicate
+or orphan capture details and unbound intervals. Fifteen separate original
+trials/39 native captures replay with zero authoritative monetary operations.
+New runtime diagnostics are NOT deployed or native accepted yet. Next: complete
+CI and inspect fixed scoring declarations, then measure an explicitly bound
+clean native line and physical bail before enabling monetary settlement.
+
 ## Conditional HIL parsing and scoring evidence — 2026-10-16
 
 Runtime91906e5 / DLLac6bc714 remains installed; supported game, stock backup,

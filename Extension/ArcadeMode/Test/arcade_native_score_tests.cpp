@@ -7,6 +7,9 @@
 #include <thread>
 #include <fstream>
 #include <sstream>
+#ifdef ARCADE_CAPTURE_HEALTH_COMBINED_TESTS
+int arcade_score_capture_health_tests();
+#endif
 
 namespace {
 using namespace dingosdk::arcade_mode::native_score_detail;
@@ -213,6 +216,9 @@ int main(int argc, char** argv) {
         return 0;
     }
     check(argc == 1, "only tests or recorded replay supported");
+#ifdef ARCADE_CAPTURE_HEALTH_COMBINED_TESTS
+    check(arcade_score_capture_health_tests() == 0, "capture health regression checks");
+#endif
     diagnostic_tests();
     for (const auto& g : graphs) {
         check(graph_for(g.hash) == &g && contract(g, g.frame, g.constants, g.words), "exact graph accepted");

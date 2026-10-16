@@ -17,7 +17,7 @@ class ScoreReplayTests(unittest.TestCase):
 
     def test_recorded_mechanic_passes_do_not_prove_monetary_ownership(self):
         result = score_replay.report(self.evidence)
-        self.assertEqual(len(result['trials']), 11)
+        self.assertEqual(len(result['trials']), 15)
         self.assertFalse(result['new_hardware_acceptance'])
         for item in result['trials']:
             row = item['recorded']
@@ -117,6 +117,110 @@ class ScoreReplayTests(unittest.TestCase):
             self.assertEqual(len(columns), 9)
             actual.append([float(value) if i == 5 else int(value) for i, value in enumerate(columns)])
         self.assertEqual(actual, expected)
+
+    def diagnostic_trial(self):
+        return copy.deepcopy(self.evidence['trials'][13]['trial'])
+
+    def test_new_recorded_details_are_separate_trials_without_monetary_authority(self):
+        for index, item in enumerate(self.evidence['trials'][11:]):
+            self.assertEqual(item['provenance']['trial_index'], index)
+            self.assertEqual(item['provenance']['result'], '1792158343465402000')
+            self.assertEqual(item['provenance']['result_sha256'],
+                             '026606de69e72192b737b2d6b23cae89c7be3d899138c20ba1fba6f8714424e1')
+            result = score_replay.replay_trial(item['trial'])
+            self.assertEqual(result['monetary_status'], 'UNVERIFIED')
+            self.assertNotEqual(result['native_diagnostic_evidence'], 'COMPLETE')
+            self.assertEqual(result['authoritative_operations'], 0)
+        unbound = score_replay.replay_trial(self.evidence['trials'][12]['trial'])
+        self.assertIn('observer_unbound', unbound['reasons'])
+        self.assertEqual(unbound['native_diagnostic_evidence'], 'INCOMPLETE')
+        result = score_replay.replay_trial(self.diagnostic_trial())
+        self.assertEqual(result['sequence_details']['matched_details'], 3)
+        self.assertEqual(result['sequence_details']['missing_details'], 0)
+        self.assertEqual(result['sequence_details']['association'], 'capture_serial_only')
+
+    def test_only_sequence_end_requires_details_and_missing_never_means_zero(self):
+        no_sequence = score_replay.replay_trial(self.evidence['trials'][11]['trial'])
+        self.assertEqual(no_sequence['sequence_details']['status'], 'NOT_APPLICABLE')
+        trial = self.diagnostic_trial()
+        trial['observations']['native_score']['details'].pop()
+        result = score_replay.replay_trial(trial)
+        self.assertEqual(result['sequence_details']['missing_details'], 1)
+        self.assertEqual(result['sequence_details']['status'], 'UNVERIFIED')
+        self.assertIn('missing_sequence_details', result['reasons'])
+        self.assertIsNone(result['banked_points'])
+
+    def test_detail_drop_and_malformed_counters_are_independently_incomplete(self):
+        for field in ('detail_dropped', 'detail_malformed', 'health_dropped', 'health_malformed'):
+            with self.subTest(field=field):
+                trial = self.diagnostic_trial()
+                trial['observations']['native_score'][field] = 1
+                result = score_replay.replay_trial(trial)
+                self.assertIn(field, result['reasons'])
+                self.assertIn('telemetry_incomplete', result['reasons'])
+                self.assertEqual(result['native_diagnostic_evidence'], 'INCOMPLETE')
+                self.assertEqual(result['authoritative_operations'], 0)
+
+    def test_malformed_detail_values_duplicates_orphans_and_caps_fail_closed(self):
+        for mutation in ('owner', 'nan', 'bool', 'missing', 'duplicate', 'orphan', 'cap', 'container', 'huge_integer'):
+            with self.subTest(mutation=mutation):
+                trial = self.diagnostic_trial()
+                native = trial['observations']['native_score']; detail = native['details'][0]
+                if mutation == 'owner': detail['authoritative'] = True
+                if mutation == 'nan': detail['landing'] = float('nan')
+                if mutation == 'bool': detail['current_category'] = True
+                if mutation == 'missing': del detail['action_score']
+                if mutation == 'duplicate': native['details'].append(copy.deepcopy(detail))
+                if mutation == 'orphan': detail['seq'] = 9999
+                if mutation == 'cap': native['details'] = [detail] * 129
+                if mutation == 'container': native['details'] = {'seq': 46}
+                if mutation == 'huge_integer': detail['landing'] = 10**1000
+                result = score_replay.replay_trial(trial)
+                self.assertEqual(result['sequence_details']['status'], 'INCOMPLETE')
+                self.assertEqual(result['monetary_status'], 'UNVERIFIED')
+
+    def test_unavailable_detail_fields_remain_null_and_unverified(self):
+        trial = self.diagnostic_trial(); detail = trial['observations']['native_score']['details'][0]
+        detail.update(scalar_status='read_failed', category_status='absent', sequence_kind=None,
+                      action_score=None, base_score=None, landing=None, current_category=None)
+        result = score_replay.replay_trial(trial)
+        self.assertIn('detail_fields_unverified', result['reasons'])
+        self.assertEqual(result['sequence_details']['status'], 'UNVERIFIED')
+        self.assertIsNone(detail['action_score'])
+
+    def test_sampled_health_distinguishes_history_from_between_sample_loss(self):
+        trial = self.diagnostic_trial(); native = trial['observations']['native_score']
+        row = dict(ms=10, epoch=125, active=True, bound=True, route=4,
+                   unbound=7, expired=0, changed=0, overflow=False)
+        native.update(health=[row], health_dropped=0, health_malformed=0)
+        result = score_replay.replay_trial(trial)
+        self.assertIn('health_loss_history_unlocated', result['reasons'])
+        self.assertNotIn('health_loss_between_samples', result['reasons'])
+        self.assertEqual(result['native_diagnostic_evidence'], 'UNVERIFIED')
+        native['health'].append(dict(row, ms=20, route=2, unbound=99))
+        self.assertNotIn('health_loss_between_samples', score_replay.replay_trial(trial)['reasons'])
+        native['health'].append(dict(row, ms=30, unbound=8))
+        result = score_replay.replay_trial(trial)
+        self.assertIn('health_loss_between_samples', result['reasons'])
+        self.assertEqual(result['native_diagnostic_evidence'], 'INCOMPLETE')
+
+    def test_health_false_bound_overflow_malformed_and_counter_reset_are_explicit(self):
+        for mutation, expected in [('bound', 'observer_unbound'), ('overflow', 'health_counter_overflow'),
+                                   ('bad', 'malformed_capture_health'), ('reset', 'health_counter_reset_or_reordered'),
+                                   ('epoch', 'health_generation_changed')]:
+            with self.subTest(mutation=mutation):
+                trial = self.diagnostic_trial(); native = trial['observations']['native_score']
+                row = dict(ms=10, epoch=125, active=True, bound=True, route=4,
+                           unbound=2, expired=0, changed=0, overflow=False)
+                native.update(health=[row], health_dropped=0, health_malformed=0)
+                if mutation == 'bound': row['bound'] = False
+                if mutation == 'overflow': row['overflow'] = True
+                if mutation == 'bad': row['unbound'] = -1
+                if mutation == 'reset': native['health'].append(dict(row, ms=20, unbound=0))
+                if mutation == 'epoch': native['health'].append(dict(row, ms=20, epoch=126))
+                result = score_replay.replay_trial(trial)
+                self.assertIn(expected, result['reasons'])
+                self.assertEqual(result['native_diagnostic_evidence'], 'INCOMPLETE')
 
 
 if __name__ == '__main__':

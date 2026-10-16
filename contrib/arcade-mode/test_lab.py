@@ -30,6 +30,28 @@ STOPPED = {"skate": False, "launcher": False, "check_complete": True}
 
 
 class ComboTraceTests(unittest.TestCase):
+    def test_native_score_health_remains_diagnostic_and_bounded(self):
+        line = ('ARCADE NATIVE SCORE HEALTH: ms=900 epoch=7 active=true bound=false '
+                'route=4 unbound=2 expired=1 changed=0 overflow=false.')
+        result = probe.parse_native_score_events(line)
+        self.assertEqual(result['health'][0]['unbound'], 2)
+        self.assertEqual(result['health'][0]['route'], 4)
+        self.assertEqual(result['capture_completeness'], 'UNVERIFIED')
+        self.assertEqual(result['samples'], [])
+        repeated = probe.parse_native_score_events('\n'.join([line] * 130))
+        self.assertEqual((len(repeated['health']), repeated['health_dropped']), (128, 2))
+        for bad in (line[:-1], line.replace('route=4', 'route=5'),
+                    line.replace('epoch=7', 'epoch=0'),
+                    line.replace('unbound=2', 'unbound=18446744073709551616'),
+                    line.replace('bound=false', 'bound=true').replace('active=true', 'active=false')):
+            with self.subTest(bad=bad):
+                parsed = probe.parse_native_score_events(bad)
+                self.assertEqual((parsed['health'], parsed['health_malformed']), ([], 1))
+                self.assertEqual(parsed['malformed'], 0)
+        absent = probe.parse_native_score_events('unrelated')
+        self.assertEqual((absent['health'], absent['health_malformed']), ([], 0))
+        self.assertEqual(absent['capture_completeness'], 'UNVERIFIED')
+
     def test_three_revert_sized_input_trace_keeps_correlated_rows(self):
         from lab import trick_batch
         # The real repeated-RT trial contained138 input rows, ten beyond the old tail.
