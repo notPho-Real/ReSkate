@@ -1,3 +1,32 @@
+## Manual recovery runtime installed — 2026-10-16
+
+Installed source91906e5a5183429d16f787d0f8f6bb5f2b99da1b, DLL SHA-256
+ac6bc7141ee9ef40ba8a3042e572137a3ba41ded0623228eb140d6f9becb29a6.
+CI38903969020 passed build/Linux/macOS/Deck gates; publishing alone failed403.
+Used those exact CI artifacts through the existing verified-package parser and
+guarded installer, independently matching the raw DLL artifact and commit.
+No release, account permissions or workflow security changed. Both processes
+were confirmed stopped before installation. Stock5512a15e, gamefbce74d5 and
+recovery launcher997aeeef remain unchanged; old DLL7a8b254e remains preserved.
+Launcher again reached Ready/build25414733 without authentication. Stadium
+restoration and targeted native acceptance are in progress; not yet accepted.
+
+HIL45 result1792156456487293000: first conditioned grind/Ollie/revert/manual chain
+passes native identity, continuity/fatigue/grace, neutral/reset. Native riding
+wait399.976ms moved RT until state100 with both-wheel contact. Second trial
+stopped on stale startup readiness age109ms, context/owner still correct; remaining
+trials did not run. Do not count this as4 attempted gameplay trials. The startup
+fix now waits neutral up to250ms for genuinely fresh evidence, preserving the
+100ms age limit and check-start timestamps.285 Python checks pass.
+
+New frozen HIL46 adds only that readiness fix and verified919 target pins to45.
+Manifest22778bba17ac8e71b1d402985062c23e2d394ec8c83570140a5760630f2299a8.
+Maintenance48 uses those target pins and the previously verified focused native
+close. SHA-256ffec26ada0d86d059e3809a756a81fba30132da535d8563b2b890dacf4906f38.
+All older frozen bundles remain unchanged. Next: conditioned early-manual smoke,
+then20-trial repeatability and fresh bounded score diagnostics. Monetary ownership
+and bank/bail amount remain UNVERIFIED; no authoritative score adapter enabled.
+
 ## HIL transport and clean-checkout repair — 2026-10-16
 
 HIL44 result1792155961380022000 is empty: a read-only status reproduction

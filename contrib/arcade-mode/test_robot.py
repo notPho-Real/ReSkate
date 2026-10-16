@@ -365,6 +365,74 @@ class RobotTests(unittest.TestCase):
         finally:
             monitor.close()
 
+    def test_readiness_startup_refresh_preserves_check_start_freshness(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        now = [.109]
+        monitor = robot.ReadinessMonitor(ready, 12, 0, clock=lambda: now[0])
+        def fresh_check(delay):
+            began = now[0]
+            now[0] += delay
+            monitor.snapshot = (began, ready)
+        monitor.stop.wait = Mock(side_effect=fresh_check)
+        alive = Mock()
+        self.assertTrue(monitor.wait_initial_ready(alive))
+        self.assertGreaterEqual(alive.call_count, 2)
+        self.assertEqual(monitor.snapshot[0], .109)
+        self.assertEqual(monitor.last_check['age_ms'], 5)
+        # Refresh changes the evidence, never its maximum accepted age.
+        now[0] = monitor.snapshot[0] + .101
+        self.assertFalse(monitor.ready())
+
+    def test_readiness_startup_refresh_is_bounded_and_rejects_integrity_loss(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        for failure in ('stale', 'failed', 'context', 'owner', 'backwards'):
+            now = [.109]
+            monitor = robot.ReadinessMonitor(ready, 12, 0, clock=lambda: now[0])
+            if failure == 'failed': monitor.failed.set()
+            elif failure == 'context': monitor.snapshot = (0, {'ready': False, 'gamescope_pids': [12]})
+            elif failure == 'owner': monitor.snapshot = (0, {'ready': True, 'gamescope_pids': [13]})
+            def wait(delay):
+                now[0] += -delay if failure == 'backwards' else delay
+            monitor.stop.wait = Mock(side_effect=wait)
+            with self.subTest(failure=failure):
+                self.assertFalse(monitor.wait_initial_ready(lambda: None))
+                self.assertLessEqual(now[0], .359001)
+                if failure in ('failed', 'context', 'owner'):
+                    monitor.stop.wait.assert_not_called()
+
+    def test_slow_worker_check_keeps_start_timestamp(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        now = [0.0]
+        def slow_check():
+            now[0] = .109
+            monitor.stop.set()
+            return ready
+        monitor = robot.ReadinessMonitor(ready, 12, 0, check=slow_check, clock=lambda: now[0])
+        monitor._run()
+        self.assertEqual(monitor.snapshot[0], 0)
+        self.assertFalse(monitor.ready())
+
+    def test_session_refreshes_slow_preflight_before_starting_replay(self):
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        now, checks = [0.0], [0]
+        def check():
+            checks[0] += 1
+            if checks[0] == 2: now[0] += .109  # Trial preflight was slow.
+            return ready
+        def replay(pad, events, duration, alive):
+            self.assertTrue(alive())
+            self.assertGreaterEqual(checks[0], 3)  # New evidence preceded timeline/input.
+            return {'samples': []}
+        with patch.object(robot, 'capabilities', side_effect=check), \
+             patch.object(robot, 'Gamepad', return_value=self.pad()), patch.object(robot.time, 'sleep'), \
+             patch.object(robot.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[]), \
+             patch.object(robot, 'replay', side_effect=replay) as run, \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                session.run('fresh-start', [], 3, capture_frames=0)
+                run.assert_called_once()
+
     def test_fixed_recipes_and_preflight_refusal(self):
         with patch.object(robot, "capabilities", return_value={"ready": False}), patch.object(robot, "Gamepad") as pad:
             with self.assertRaises(RuntimeError):
@@ -518,19 +586,20 @@ class RobotTests(unittest.TestCase):
                 self.assertTrue(all(row[-1] == 0 for row in robot.EVENT.iter_unpack(self.writes[-1])))
                 with self.assertRaisesRegex(RuntimeError, 'not active'):
                     session.run('second', [], 3)
-                replay.assert_called_once()
+                replay.assert_not_called()
         self.assertEqual(self.closed, [7])
 
     def test_session_safety_failure_stops_before_next_trial(self):
         pad = self.pad()
         ready = {'ready': True, 'gamescope_pids': [12]}
-        with patch.object(robot, 'capabilities', side_effect=[ready, ready, {'ready': False}]), \
+        with patch.object(robot, 'capabilities', side_effect=lambda: dict(ready)), \
              patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
              patch.object(robot, 'screenshot'), patch.object(robot, 'periodic', return_value=[{}] * 4), \
              patch.object(robot, 'replay') as replay, \
              patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
             with robot.ExperimentSession() as session:
                 session.run('first', [], 3)
+                ready['ready'] = False
                 with self.assertRaisesRegex(RuntimeError, 'context changed'):
                     session.run('second', [], 3)
                 self.assertEqual(self.closed, [7])

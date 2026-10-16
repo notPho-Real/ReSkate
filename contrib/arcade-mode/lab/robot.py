@@ -566,6 +566,23 @@ class ReadinessMonitor:
         return (not self.failed.is_set() and 0 <= now - sampled_at <= 0.100
                 and current.get("ready", False) and current.get("gamescope_pids") == [self.pid])
 
+    def wait_initial_ready(self, alive):
+        """Neutral startup only: allow a fresh check, never relabel stale evidence."""
+        began = previous = self.clock()
+        deadline = began + 0.250
+        while True:
+            alive()  # Session deadline and capture errors still stop the wait.
+            now = self.clock()
+            if now < previous or now >= deadline:
+                return False
+            previous = now
+            if self.ready():
+                return True
+            if (self.last_check['failed'] or not self.last_check['context_ready'] or
+                    not self.last_check['owner_matches'] or self.last_check['age_ms'] < 0):
+                return False
+            self.stop.wait(min(0.005, max(0, deadline - self.clock())))
+
     def close(self):
         self.stop.set()
         self.thread.join(timeout=0.2)
@@ -681,20 +698,30 @@ class ExperimentSession:
                 self.stop = stop = threading.Event()
                 future = pool.submit(periodic, self.pid, duration, stop, capture_frames)
                 watch = None
-                def alive():
-                    nonlocal watch
-                    current_time = self._clock()
+                def context_alive():
+                    self._clock()
                     if future.done():
                         future.result()  # Stop input if capture failed.
-                    if watch is None:
-                        watch = ReadinessMonitor(status, self.pid, now, check=capabilities)
-                        watch.start()
+
+                def readiness_failure():
+                    error = RuntimeError('Skate exited; test stopped')
+                    error.readiness = dict(watch.last_check, capture_pending=not future.done())
+                    return error
+
+                def alive():
+                    context_alive()
                     if not watch.ready():
-                        error = RuntimeError('Skate exited; test stopped')
-                        error.readiness = dict(watch.last_check, capture_pending=not future.done())
-                        raise error
+                        raise readiness_failure()
                     return True
                 try:
+                    # A slow preflight remains timestamped at its start. Obtain
+                    # fresh evidence while neutral, before starting the timeline.
+                    watch = ReadinessMonitor(status, self.pid, now, check=capabilities, clock=time.monotonic)
+                    watch.start()
+                    if not watch.wait_initial_ready(context_alive):
+                        raise readiness_failure()
+                    if duration + extra > self.deadline - self._clock():
+                        raise RuntimeError('Insufficient session time for trial')
                     if phase_conditions:
                         delivery_timing = replay(pad, events, duration, alive,
                             phase_conditions=phase_conditions, condition_waiter=condition_waiter)

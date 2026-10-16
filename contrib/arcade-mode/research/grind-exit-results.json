@@ -64840,5 +64840,418 @@
       "multiplier": "UNVERIFIED",
       "banking": "UNVERIFIED"
     }
+  },
+  "conditioned_landing_smoke_4": {
+    "source_commit": "2bdf062c7e392350aa160653b25fbc6317d9409f",
+    "dll_sha256": "7a8b254e61cbab32ec113c3d4bf1aef86d5c9fc6b130fcc6bb2da9cbcd73f00e",
+    "runner": "trusted-v45",
+    "result": "1792156456487293000",
+    "sha256": "5a0f63c8f82a68ce08be45e8699ea2fcbce3f1719863a348f7f3b45c2a77db5f",
+    "trials": [
+      {
+        "name": "conditioned-revert-manual",
+        "repetition": 1,
+        "reason": null,
+        "grind": {
+          "evidence": "COMPLETE",
+          "native_grind": "PASS",
+          "entries": 1,
+          "exits": 1,
+          "duration_ms": 532,
+          "raw_enum_pairs": [
+            [
+              20,
+              9
+            ]
+          ],
+          "entry_speed_mm_s": [
+            4539
+          ],
+          "named_identity": "UNKNOWN",
+          "contact_without_grind": "UNVERIFIED",
+          "stale_health_rows": 1,
+          "bail": false,
+          "bail_evidence": "UNVERIFIED",
+          "reset": "PASS"
+        },
+        "chain": {
+          "continuous": "PASS",
+          "native_air_ids": "PASS",
+          "fatigue": "PASS",
+          "lifecycle_grace": "PASS",
+          "score_banking": "UNVERIFIED",
+          "grace_ms": 766
+        },
+        "evidence_gap": null,
+        "dropped_by_stream": {
+          "combo": 0,
+          "pad": 0,
+          "flip": 0,
+          "stick": 0,
+          "playback": 0,
+          "actions": 0,
+          "score_edges": 0,
+          "score_labels": 0,
+          "score_numbers": 0,
+          "native_score": 0,
+          "grind": 0
+        },
+        "native_combo_events": [
+          {
+            "ms": 34175595,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34176312,
+            "pose": 3,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.17733319,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34176845,
+            "pose": 2,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.34000057,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34177645,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.40400165,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34179195,
+            "pose": 4,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.64800125,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34180129,
+            "pose": 1,
+            "active": true,
+            "failed": false,
+            "fatigue": 0.7226625,
+            "grind_fatigue": 0.042666607,
+            "manual_fatigue": 0.07466643,
+            "native_failure_verified": false
+          },
+          {
+            "ms": 34180895,
+            "pose": 1,
+            "active": false,
+            "failed": false,
+            "fatigue": 0.0,
+            "grind_fatigue": 0.0,
+            "manual_fatigue": 0.0,
+            "native_failure_verified": false
+          }
+        ],
+        "native_revert_links": [
+          {
+            "ms": 34178345,
+            "sequence": 147,
+            "labels": 16777216,
+            "accepted": true,
+            "remaining_ms": 1100
+          }
+        ],
+        "native_positive_selection_edges": [
+          {
+            "ms": 34175385,
+            "valid": true,
+            "id": 1
+          },
+          {
+            "ms": 34176770,
+            "valid": true,
+            "id": 1
+          }
+        ],
+        "native_score_samples": [
+          {
+            "seq": 254,
+            "ms": 34177680,
+            "epoch": 649,
+            "route": 4,
+            "score": 33.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 255,
+            "ms": 34177698,
+            "epoch": 649,
+            "route": 1,
+            "score": 0.0,
+            "reason": 0,
+            "success": false,
+            "owner_verified": false
+          },
+          {
+            "seq": 256,
+            "ms": 34178866,
+            "epoch": 649,
+            "route": 4,
+            "score": 7.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          },
+          {
+            "seq": 257,
+            "ms": 34180214,
+            "epoch": 649,
+            "route": 4,
+            "score": 15.0,
+            "reason": 0,
+            "success": true,
+            "owner_verified": false
+          }
+        ],
+        "score_label_diagnostics": [
+          {
+            "ms": 34173995,
+            "source": 1,
+            "rows": 0,
+            "stage": 0,
+            "parts": 0,
+            "labels": 0
+          },
+          {
+            "ms": 34175012,
+            "source": 1,
+            "rows": 0,
+            "stage": 0,
+            "parts": 0,
+            "labels": 0
+          },
+          {
+            "ms": 34175745,
+            "source": 1,
+            "rows": 1,
+            "stage": 0,
+            "parts": 0,
+            "labels": 0
+          },
+          {
+            "ms": 34176412,
+            "source": 1,
+            "rows": 2,
+            "stage": 0,
+            "parts": 8,
+            "labels": 33554432
+          },
+          {
+            "ms": 34177045,
+            "source": 1,
+            "rows": 3,
+            "stage": 0,
+            "parts": 8,
+            "labels": 33554432
+          },
+          {
+            "ms": 34178045,
+            "source": 1,
+            "rows": 3,
+            "stage": 0,
+            "parts": 8,
+            "labels": 33554432
+          },
+          {
+            "ms": 34178345,
+            "source": 1,
+            "rows": 4,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331648
+          },
+          {
+            "ms": 34179195,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34180212,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34181245,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34182245,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34183245,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34184262,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          },
+          {
+            "ms": 34185262,
+            "source": 1,
+            "rows": 5,
+            "stage": 0,
+            "parts": 9,
+            "labels": 50331649
+          }
+        ],
+        "native_label_edges": [
+          {
+            "seq": 146,
+            "observed": 34176412,
+            "sampled": 34176412,
+            "labels": 33554432,
+            "uncertainty": 0
+          },
+          {
+            "seq": 147,
+            "observed": 34178345,
+            "sampled": 34178345,
+            "labels": 16777216,
+            "uncertainty": 0
+          },
+          {
+            "seq": 148,
+            "observed": 34179195,
+            "sampled": 34179195,
+            "labels": 1,
+            "uncertainty": 0
+          }
+        ],
+        "grind_discovery": [
+          {
+            "generation": 654,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          },
+          {
+            "generation": 655,
+            "bound": 3,
+            "pages": 3401510,
+            "passes": 6
+          }
+        ],
+        "neutralized": true,
+        "reset_ready": true
+      },
+      {
+        "name": "conditioned-revert-manual",
+        "repetition": 2,
+        "reason": "input_readiness_lost",
+        "grind": null,
+        "chain": null,
+        "evidence_gap": null,
+        "dropped_by_stream": {},
+        "native_combo_events": [],
+        "native_revert_links": [],
+        "native_positive_selection_edges": [],
+        "native_score_samples": [],
+        "score_label_diagnostics": [],
+        "native_label_edges": [],
+        "grind_discovery": [],
+        "neutralized": null,
+        "reset_ready": null
+      }
+    ],
+    "limits": "Native monetary ownership/banking remains UNVERIFIED. Independent400-499 state is primary grind evidence; available raw enums remain unnamed. Exact label diagnostics do not establish FS/BS context."
   }
 }
