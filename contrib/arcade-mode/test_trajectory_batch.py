@@ -1,6 +1,7 @@
 """Offline opt-in trajectory handoff checks; no native acceptance claim."""
 import copy
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -36,6 +37,51 @@ def captured():
 
 
 class TrajectoryBatchTests(unittest.TestCase):
+    def test_measured_trajectory_window_has_explicit_bounded_headroom(self):
+        prefix = parse_fixture_trajectory(trajectory_row(1))['samples']
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'ReSkate.log'
+            native = 'ARCADE HIL STATE: seq=1 valid=true state=100 mode=1.\n'
+            start = native + trajectory_row(1) + '\n'
+            end = trajectory_row(2) + '\n'
+            path.write_text(start + 'x' * (301681 - len(start) - len(end) - 1) + '\n' + end)
+            env = batch.DeckEnvironment(); env.log = path
+            self.assertEqual(env.observe(since=0)['evidence_gap'], 'tail_limit')
+            expanded = env.observe(since=0, trajectory=True)
+            self.assertIsNone(expanded['evidence_gap'])
+            self.assertEqual(expanded['log_end'], 301681)
+            self.assertEqual(expanded['log_limit'], 524288)
+            self.assertEqual(len(expanded['states']), 1)
+            trajectory = batch.collect_fixture_trajectory(env, dict(log_start=0, session=1, prefix=prefix))
+            self.assertFalse(trajectory['evidence_gap'])
+            self.assertEqual(trajectory['prefix_status'], 'MATCHED')
+            self.assertEqual(trajectory['sequence_missing'], 0)
+            self.assertEqual(trajectory['collection']['log_start'], 0)
+            self.assertIsNone(trajectory['transport_gap'])
+            # Both loss boundaries remain explicit; no general limit increase.
+            path.write_text(start + 'x' * 524288 + '\n' + end)
+            self.assertEqual(env.observe(since=0, trajectory=True)['evidence_gap'], 'tail_limit')
+            lost = batch.collect_fixture_trajectory(env, dict(log_start=0, session=1, prefix=prefix))
+            self.assertTrue(lost['evidence_gap'])
+            self.assertEqual(lost['transport_gap'], 'tail_limit')
+            self.assertEqual(lost['prefix_status'], 'UNVERIFIED')
+            self.assertEqual(env.observe(since=path.stat().st_size + 1, trajectory=True)['evidence_gap'], 'log_truncated')
+            with self.assertRaises(ValueError): env.observe(since=0, trajectory=1)
+
+    def test_trajectory_budget_cannot_hide_native_invalid_terminal(self):
+        prefix = parse_fixture_trajectory(trajectory_row(1))['samples']
+        terminal = ('ARCADE FIXTURE TRAJECTORY: session=1 seq=2 ms=1100 sampled=0 generation=2 revision=3 '
+                    'status=4 dropped=0 x_mm=0 y_mm=0 z_mm=0 speed_mm_s=0 heading_mdeg=0 state=0.')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'ReSkate.log'
+            path.write_text(trajectory_row(1) + '\n' + 'x' * 300000 + '\n' + terminal)
+            env = batch.DeckEnvironment(); env.log = path
+            result = batch.collect_fixture_trajectory(env, dict(log_start=0, session=1, prefix=prefix))
+            self.assertEqual(result['prefix_status'], 'MATCHED')
+            self.assertIsNone(result['transport_gap'])
+            self.assertEqual(result['samples'][-1]['status'], 'invalid')
+            self.assertTrue(result['evidence_gap'])
+
     def test_explicit_boolean_and_compatible_baseline_required(self):
         for validator in (batch.validate_plan, plan_schema.validate_plan):
             self.assertEqual(validator(plan()), plan())
@@ -166,7 +212,7 @@ class TrajectoryBatchTests(unittest.TestCase):
         env.observe_trajectory.return_value = dict(fixture_trajectory=parse_fixture_trajectory(
             '\n'.join(trajectory_row(i) for i in (1, 2, 3))))
         result = batch.perform_case(value, value['candidates'][0], env)
-        env.observe.assert_called_with(since=300)
+        env.observe.assert_called_with(since=300, trajectory=True)
         env.observe_trajectory.assert_called_once_with(since=100)
         self.assertEqual(result['observations']['combo']['samples'], [dict(ms=1200, state=100)])
         self.assertFalse(result['observations']['fixture_trajectory']['evidence_gap'])

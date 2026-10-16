@@ -411,6 +411,10 @@ def collect_fixture_trajectory(env, baseline):
         matches = (result['samples'][:len(prefix)] == prefix and
                    all(row.get('session') == baseline['session'] for row in result['samples']))
         result['prefix_status'] = 'MATCHED' if matches else 'UNVERIFIED'
+        result['transport_gap'] = observed.get('evidence_gap') if observed.get('evidence_gap') in (
+            None, 'tail_limit', 'log_truncated') else 'UNVERIFIED'
+        result['collection'] = {key: observed[key] for key in ('log_start', 'log_end', 'log_limit')
+                                if type(observed.get(key)) is int and observed[key] >= 0}
         result['evidence_gap'] = bool(result.get('evidence_gap', True) or observed.get('evidence_gap') or not matches)
         return result
     except (KeyError, TypeError, ValueError, OSError):
@@ -462,7 +466,8 @@ def perform_case(plan, case, env):
             if type(boundary) is int:
                 try:
                     # One read only. Never recover, reset or re-arm after a stop.
-                    observed = env.observe(since=boundary)
+                    observed = (env.observe(since=boundary, trajectory=True) if trajectory_readiness is not None
+                                else env.observe(since=boundary))
                     if trajectory_readiness is not None:
                         observed['fixture_trajectory'] = collect_fixture_trajectory(env, trajectory_readiness)
                     encoded = json.dumps(observed, allow_nan=False)
@@ -481,7 +486,8 @@ def perform_case(plan, case, env):
     idle_ms = min(case["reset_ms"], 2000) if case.get('fixture_reset') else case["reset_ms"]
     reset = env.wait_idle(idle_ms, **readiness)
     log_boundary = baseline_observation.get("log_end")
-    obs = env.observe(since=log_boundary)
+    obs = (env.observe(since=log_boundary, trajectory=True) if trajectory_readiness is not None
+           else env.observe(since=log_boundary))
     if trajectory_readiness is not None:
         obs['fixture_trajectory'] = collect_fixture_trajectory(env, trajectory_readiness)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
@@ -1003,29 +1009,35 @@ class DeckEnvironment:
             time.sleep(1)
         raise HardStop("game_or_hil_unavailable_after_recovery_wait")
 
-    def observe(self, since=None):
-        return self._read_observation(since, observations)
+    def observe(self, since=None, *, trajectory=False):
+        if type(trajectory) is not bool:
+            raise ValueError('Trajectory collection must be boolean')
+        # Actual opted-in arm-to-final windows reached 301681 bytes. Keep this
+        # fixed headroom local to those trials; arbitrary larger logs still fail.
+        return self._read_observation(since, observations, 524288 if trajectory else 262144)
 
     def observe_condition(self, since=None):
         return self._read_observation(since, condition_observations)
 
     def observe_trajectory(self, since):
-        return self._read_observation(since, lambda text: {'fixture_trajectory': parse_fixture_trajectory(text)})
+        return self._read_observation(since, lambda text: {'fixture_trajectory': parse_fixture_trajectory(text)}, 524288)
 
-    def _read_observation(self, since, parser):
+    def _read_observation(self, since, parser, limit=262144):
         try:
             with self.log.open("rb") as stream:
                 size = self.log.stat().st_size
-                start = max(0, size - 262144)
+                start = max(0, size - limit)
                 if since is not None:
                     if since > size:
                         return {"states": [], "buttons": [], "log_end": size,
                                 "evidence_gap": "log_truncated"}
                     start = max(start, since)
                 stream.seek(start)
-                data = stream.read(262144)
+                data = stream.read(limit)
                 result = parser(data.decode(errors="replace"))
                 result["log_end"] = start + len(data)
+                if limit == 524288:
+                    result["log_start"], result["log_limit"] = start, limit
                 result["evidence_gap"] = "tail_limit" if since is not None and start > since else None
                 return result
         except OSError:
