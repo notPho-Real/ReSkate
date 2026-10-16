@@ -393,6 +393,30 @@ def bounded_partial_run(error):
     return json.loads(encoded) if len(encoded.encode()) <= 262144 else None
 
 
+def collect_fixture_trajectory(env, baseline):
+    # Re-read only this diagnostic from its original boundary. Other native
+    # streams retain their post-handoff trial boundary and grading semantics.
+    unavailable = dict(samples=[], status=None, malformed=0, dropped=0, sequence_missing=0,
+                       evidence_gap=True, capture_completeness='UNVERIFIED', owner_proof='UNVERIFIED',
+                       prefix_status='UNVERIFIED')
+    try:
+        boundary, prefix = baseline['log_start'], baseline['prefix']
+        if type(boundary) is not int or boundary < 0 or not isinstance(prefix, list) or not 1 <= len(prefix) <= 80:
+            return unavailable
+        observed = env.observe_trajectory(since=boundary)
+        result = observed.get('fixture_trajectory')
+        if not isinstance(result, dict) or not isinstance(result.get('samples'), list):
+            return unavailable
+        result = dict(result)
+        matches = (result['samples'][:len(prefix)] == prefix and
+                   all(row.get('session') == baseline['session'] for row in result['samples']))
+        result['prefix_status'] = 'MATCHED' if matches else 'UNVERIFIED'
+        result['evidence_gap'] = bool(result.get('evidence_gap', True) or observed.get('evidence_gap') or not matches)
+        return result
+    except (KeyError, TypeError, ValueError, OSError):
+        return unavailable
+
+
 def perform_case(plan, case, env):
     env.integrity(plan)
     fixture_start = None
@@ -439,6 +463,8 @@ def perform_case(plan, case, env):
                 try:
                     # One read only. Never recover, reset or re-arm after a stop.
                     observed = env.observe(since=boundary)
+                    if trajectory_readiness is not None:
+                        observed['fixture_trajectory'] = collect_fixture_trajectory(env, trajectory_readiness)
                     encoded = json.dumps(observed, allow_nan=False)
                     if len(encoded.encode()) <= 1024 * 1024:
                         partial['observations'] = observed
@@ -456,6 +482,8 @@ def perform_case(plan, case, env):
     reset = env.wait_idle(idle_ms, **readiness)
     log_boundary = baseline_observation.get("log_end")
     obs = env.observe(since=log_boundary)
+    if trajectory_readiness is not None:
+        obs['fixture_trajectory'] = collect_fixture_trajectory(env, trajectory_readiness)
     obs["states"] = [r for r in obs["states"] if r["seq"] > baseline]
     combo = obs.get("combo", {})
     # Changed-state samples need their own timestamp watermark: heartbeat seq
@@ -964,6 +992,9 @@ class DeckEnvironment:
     def observe_condition(self, since=None):
         return self._read_observation(since, condition_observations)
 
+    def observe_trajectory(self, since):
+        return self._read_observation(since, lambda text: {'fixture_trajectory': parse_fixture_trajectory(text)})
+
     def _read_observation(self, since, parser):
         try:
             with self.log.open("rb") as stream:
@@ -1048,7 +1079,7 @@ class DeckEnvironment:
         diagnostic = current.get('fixture_trajectory', {})
         status, rows = diagnostic.get('status'), diagnostic.get('samples', [])
         if (time.monotonic() - handoff > 3 or not status or status.get('status') != 'armed' or status.get('dropped') or
-                diagnostic.get('evidence_gap') or not rows or any(not r.get('valid') for r in rows) or
+                diagnostic.get('evidence_gap') or not rows or len(rows) > 80 or any(not r.get('valid') for r in rows) or
                 any(r.get('session') != status['session'] or r.get('generation') != fixture['generation'] or
                     r.get('revision') != fixture['revision'] or r.get('state') != 100 or r.get('speed_mm_s', 101) > 100 for r in rows)):
             raise HardStop('trajectory_capture_unverified')
@@ -1069,6 +1100,7 @@ class DeckEnvironment:
             ready['combo'] = current['combo']
         return ready, {'session': status['session'], 'sampled': rows[-1]['sampled'],
                          'generation': rows[-1]['generation'], 'revision': rows[-1]['revision'],
+                         'log_start': boundary, 'prefix': rows,
                          'scope': 'relative_motion_diagnostic_only'}
 
     def fixture_reset(self, milliseconds):

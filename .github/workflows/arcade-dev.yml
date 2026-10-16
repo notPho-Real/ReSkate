@@ -18,9 +18,9 @@ jobs:
       - name: Configure
         run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
       - name: Build
-        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_arcade_fixture_geometry_tests dingosdk_arcade_input_telemetry_tests dingosdk_arcade_manual_observation_tests dingosdk_arcade_manual_history_tests dingosdk_park_editor_transaction_tests dingosdk_arcade_score_assets dingosdk_arcade_score_asset_tests
+        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_arcade_fixture_geometry_tests dingosdk_arcade_fixture_trajectory_tests dingosdk_arcade_input_telemetry_tests dingosdk_arcade_manual_observation_tests dingosdk_arcade_manual_history_tests dingosdk_park_editor_transaction_tests dingosdk_arcade_score_assets dingosdk_arcade_score_asset_tests
       - name: Test
-        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(arcade_(mode|native_score(_replay)?|grind_observer|fixture_geometry|input_telemetry|manual_observation|manual_history|score_assets)|park_editor_transactions|launcher_depot_output)$" --output-on-failure
+        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(arcade_(mode|native_score(_replay)?|grind_observer|fixture_geometry|fixture_trajectory|input_telemetry|manual_observation|manual_history|score_assets)|park_editor_transactions|launcher_depot_output)$" --output-on-failure
       - name: Stage tested scoring metadata inspector
         shell: pwsh
         run: |
