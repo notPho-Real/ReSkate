@@ -1,3 +1,20 @@
+## HIL transport and clean-checkout repair — 2026-10-16
+
+HIL44 result1792155961380022000 is empty: a read-only status reproduction
+confirmed SSH's `Argument list too long` error before worker execution. The
+124,330-byte reviewed payload became a131,774-byte shell argument. HIL45 keeps
+the exact44 workers/target pins and compresses only verified source, reducing
+the command to43,282 bytes. Request JSON remains stdin; all existing checks,
+timeouts and no-replay behavior remain. Frozen43/44 are unchanged. HIL45 manifest:
+1717b4b80a36d9a75b4873647a3659adeae7181e74365484534d31d1709c95b6.
+The failed batch is infrastructure evidence, not attempted gameplay acceptance.
+
+CI38905135152 failed because a new staging test assumed the ignored artifacts
+directory existed. The test now creates that directory on clean checkout.
+281 local Python checks pass, including compressed-source round-trip, stdin
+separation and transport bounds. Installed runtime remains2bdf062c; candidate
+91906e5 still awaits its Windows build gate before any deployment.
+
 ## Native continuation convergence — 2026-10-16
 
 Source c9e255b52585e25043db9056c1afe8166c0d25ae preserves the first manual

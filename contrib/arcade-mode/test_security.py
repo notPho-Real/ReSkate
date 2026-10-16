@@ -4,6 +4,9 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -73,6 +76,26 @@ class PlanSecurity(unittest.TestCase):
             self.runner.validate_request({'operation': operation, 'plan': None}, self.trust, self.schema.validate_plan)
             with self.assertRaises(ValueError):
                 self.runner.validate_request({'operation': operation, 'plan': {'game': '/tmp'}}, self.trust, self.schema.validate_plan)
+
+    def test_reviewed_source_transport_preserves_code_and_stdin(self):
+        source = ('# reviewed source with quotes \'\" and Unicode: café\n' * 4000
+                  + 'import json,sys\nprint(json.dumps(json.load(sys.stdin)))\n')
+        command = shlex.split(self.runner.remote_command(source))
+        self.assertLess(len(self.runner.remote_command(source).encode()), 65536)
+        self.assertEqual(command[:4], ['/usr/bin/python3', '-I', '-B', '-c'])
+        request = {'operation': 'status', 'plan': None, 'text': '__import__("os").abort()'}
+        result = subprocess.run([sys.executable, *command[1:]], input=json.dumps(request),
+                                text=True, capture_output=True, check=True, timeout=10)
+        self.assertEqual(json.loads(result.stdout), request)
+        with self.assertRaisesRegex(ValueError, 'source exceeds transport bound'):
+            self.runner.remote_command('x' * (1024 * 1024 + 1))
+
+    def test_incompressible_source_rejected_before_transport(self):
+        import base64
+        import random
+        data = random.Random(42).randbytes(100000)
+        with self.assertRaisesRegex(ValueError, 'source exceeds command bound'):
+            self.runner.remote_command('# ' + base64.b64encode(data).decode('ascii'))
 
     def test_setup_has_only_fixed_reviewed_actions(self):
         for action in self.runner.SETUP_ACTIONS:

@@ -1,4 +1,5 @@
 """Reviewed external HIL entry point. Install separately; stdin contains only data."""
+import base64
 import hashlib
 import json
 import os
@@ -9,6 +10,7 @@ import stat
 import subprocess
 import sys
 import time
+import zlib
 
 VERSION = 13
 MAX_REQUEST = 65536
@@ -124,6 +126,21 @@ print(json.dumps(result))
 '''
 
 
+def remote_command(payload):
+    # SSH's remote shell has a per-argument limit even when the total argv fits.
+    # Compress only the already verified source; request data remains on stdin.
+    raw = payload.encode('utf-8')
+    if len(raw) > 1024 * 1024:
+        raise ValueError('Reviewed source exceeds transport bound')
+    encoded = base64.b64encode(zlib.compress(raw, 9)).decode('ascii')
+    loader = ('import base64,zlib;exec(compile(zlib.decompress(base64.b64decode('
+              + repr(encoded) + ')),"<reviewed HIL worker>","exec"))')
+    command = '/usr/bin/python3 -I -B -c ' + shlex.quote(loader)
+    if len(command.encode('utf-8')) > 65536:
+        raise ValueError('Reviewed source exceeds command bound')
+    return command
+
+
 def execute(request, trust, sources):
     # Payload code comes exclusively from reviewed external files.
     payload = '\n'.join(sources[name] for name in ('worker_robot.py', 'worker_probe.py', 'plan_schema.py', 'worker_batch.py')) + REMOTE
@@ -140,7 +157,7 @@ def execute(request, trust, sources):
                '-o', 'GlobalKnownHostsFile=/dev/null',
                '-o', 'UserKnownHostsFile=' + str(lab / 'known_hosts'),
                '-i', str(lab / 'id_ed25519'), trust['host'],
-               '/usr/bin/python3 -I -B -c ' + shlex.quote(payload)]
+               remote_command(payload)]
     # Trusted output stays outside the mutable checkout and is never executable.
     folder = ROOT / 'results'
     if folder.is_symlink():
@@ -158,6 +175,8 @@ def execute(request, trust, sources):
             process.wait()
             raise
         if process.returncode:
+            if b'Argument list too long' in error:
+                raise RuntimeError('Trusted worker transport argument limit; no automatic input replay')
             raise RuntimeError('Trusted worker failed; no automatic input replay')
     if path.stat().st_size > 512 * 1024 * 1024:
         raise ValueError('Response exceeds evidence bound')

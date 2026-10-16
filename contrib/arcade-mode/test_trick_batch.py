@@ -841,6 +841,7 @@ class BatchTests(unittest.TestCase):
         names = lambda source: {node.name for node in ast.parse(source).body
                                 if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
         self.assertTrue(required <= names(payload))
+        (batch.ROOT / 'artifacts').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=batch.ROOT / 'artifacts') as temp:
             output = Path(temp) / 'bundle'
             with contextlib.redirect_stdout(io.StringIO()):
