@@ -1,3 +1,53 @@
+## Controlled baseline recovery and HIL53 — 2026-10-16
+
+Runtime remains verified8079c14 / DLL788cdba0; game and original Stadium rail
+unchanged. HIL52 batch1792174032767624000 stopped before its first trial:
+fixture remained504 because a native RipCard/Profile/Map menu stack was open.
+Three observed fixed Back actions restored gameplay without a restart. Source
+5c6c870 adds current native-menu diagnostics via the existing validated UI
+reader;391Python tests and independent review pass, not yet deployed.
+
+HIL53 parser-only bundle installed separately, manifest
+fbba5b7d42e41a4000384612192299fde19ecb95f8134a1dad3ad730aa799bc0;
+runtime pins still8079/788, older tools unchanged. Batch1792174536628978000
+completed7/7 neutral/reset, but all5 chain criteria failed. Delivered action
+tick/wallclock slopes measured29.96–30.00Hz in six cases; clean-land sparse
+estimate31.53Hz. This was NOT the intended60Hz comparison. First manual admits,
+but subsequent air inputs/links fail; repeated cases do not establish the
+history fix. Preserve these failed uncontrolled-rate results. Console command
+requires an open console in maintenance52: invoking simulation-60 from gameplay
+did not set the rate. Explicit console open/set/read verified native override60
+in simulation-readback-8079.png; console closed and focused7trial rerun running.
+
+Fresh bounded HIL53 binder snapshots are COMPLETE with zero parser loss.
+Final cumulative route1unverified7,route2layout_rejected5,route4layout_rejected19;
+relationship_matches0. Native binder is exercised; do not infer cached-binding
+bypass from earlier truncated zero-counter captures. Exact rejected predicate
+still unknown; next bounded reason counters preserve all existing checks.
+Monetary score ownership/banking remains UNVERIFIED. Sourcec0f868a adds only
+four bounded rejection reason counters, no new native reads/relaxed predicates;
+independent review,250native-score/21health sanitizer checks,393Python pass.
+CI38945032179 at2e10278:Linux/macOS and installer pass; Windows build pending.
+
+Controlled60Hz rerun1792175001437752000 passes all5 chain cases:1 firstmanual,
+3 repeatedmanual,1 regularrevert→manual. ExactairIDs/fatigue/grace pass;7/7
+neutral/reset and negativecontrols grant no falsemanual. Three repeatedmanual
+successes are DISCOVERED only;17more across7standard/10compact inputs running.
+Trajectory1792175194208240000 has239valid relative samples,prefixMATCHED,
+zero parser/sequence loss; timed window complete but terminal capture remains
+UNVERIFIED because reset cancels after collection. Real grind336ms/oneentry/
+oneexit,neutral/reset PASS. FullchainFAIL:no native manual history addition
+afterflipout; brief native landing/air rebound occurs during manualhold. Do not
+promote prior permissive one-wheel admission as this chain's proof. Next compare
+event-driven postlanding manual requests before extending the fixture.
+Original saved fixture preserved; no second rail placed.
+
+Maintenance53 installed separately, SHA
+6c0c3d35cdb6748aec40e67cbfb8c0b0f3f58ae0b382f4f2c66970f106189c5b.
+Its four simulation/time operations now use the existing self-contained console
+path: invoke from gameplay with console CLOSED, never pre-open. Other operations
+and8079runtime pins unchanged. Structural/compile/eightmockedbranch checks pass.
+
 ## Reviewed manual/trajectory build installed — 2026-10-16
 
 Installed8079c14363f7d66e76b186d73fe1281e650d6ca9, DLL
