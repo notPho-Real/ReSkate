@@ -1,3 +1,65 @@
+## Recovery launcher installed and hardware resumed — 2026-10-16
+
+Reconnected to the paired Deck. Installed the separately tested launcher from
+source e8e71a42ed1ed1753f3a5eb955020a3a78ae3a48, SHA-256
+997aeeef5aeb9133c983a7827ac726199ad9ea63cf793af843d48255afae4329.
+Old launcher5b11e30a is preserved as
+~/Games/ReSkate/ReSkateLauncher.pre-recovery-fix-20261016.exe. The first close
+request was ignored; the stopped-process guard refused installation without
+writing files. A focused native close succeeded, then the guarded installation
+verified runtime, stock backup and settings unchanged. No frozen tool changed.
+
+Updated launcher reaches Ready to skate with build25414733, updates disabled.
+Existing shortcut and Proton prefix remain selected. Play launched the game,
+which reached the hub and then Stadium1 without QR, download or recovery.
+Arcade source2bdf062c, DLL7a8b254e, stock5512a15e, gamefbce74d5 and
+steam_api88b55dc3 remain exact. Evidence: artifacts/installed-recovery-launcher.json
+and artifacts/separate-recovery-status.json. Normal startup is verified; future
+remembered Steam authentication remains unverified because this launch required
+no authentication. Do not deliberately redownload to test it.
+
+Fresh power readback confirms Mains online1, Gaming Mode IdleSuspendACSeconds0
+and Desktop AutoSuspendAction0; battery sleep remains900. Evidence:
+artifacts/recovered-power-status.json. Previous connection loss is not proven to
+have been caused by sleep. Both paired hostname and address work this session.
+
+Restored the saved Stadium rail after fresh editor generation8/revision8,
+adopted it and closed the editor. Native status confirms present=true,
+configured=true, failed=false, editor_open=false, revision9 and the original
+rail/start coordinates. Restored60Hz and auxiliary actions OFF; Arcade ON.
+HIL42 preflight1792134636446255000 records the fixture. Prepared seven-trial
+native-link integration batch resumed through the unchanged trusted runner.
+No accepted grind/HUD suite was repeated.
+
+Initial batch1792134665419948000:7/7 neutralized and reset, no dropped evidence.
+The two composed grind/manual and kickflip/grind/flip-out cases each passed
+continuity, native air IDs, persistent fatigue and750ms model grace (765/766ms
+observed). Native score banking remains UNVERIFIED. The RT cases ran with action
+mode OFF and must not count as native revert tests. Follow-up1792134949410116000
+also lacked action events: the requested mode change was rejected because Arcade
+was ON. Preserve those four results as invalid setup, not recipe failures.
+
+Required action setup: open console, Arcade OFF, set actions-revert-fs, Arcade ON,
+verify the native "Actions: RT frontside candidate" confirmation, close console.
+Do not infer configuration success from the maintenance helper's requested result.
+This preserves the existing mode-change guard. The native actuator remains an
+explicit experimental selection, not an accepted default RT binding.
+
+Verified enabled control1792135247578671000: one started RT request,43 owned
+samples, fresh native label16777216/sequence14, uncertainty0. No active combo,
+so no continuation accepted; input neutralized and reset. Enabled chain batch
+1792135305249152000:2/2 revert-to-manual links PASS, independent labels16/19,
+one1100ms opportunity consumed after984/950ms, continuous native poses/air IDs,
+fatigue and model grace PASS. Still discovery, not repeatability or score-bank
+acceptance. The repeated-RT case accepted one opportunity and expired exactly at
+its deadline, but lost10 rows in each pad/stick/action stream: full anti-farming
+acceptance remains UNVERIFIED. All three reset and neutralized. Evidence retained
+in research/grind-exit-results.json with original result hashes and setup limits.
+
+20-trial native revert/manual repeatability batch started: ten original-timing
+links and ten with only manual entry100ms earlier. Same native recipe, fixture,
+source and60Hz settings. Do not assume its result until the runner completes.
+
 ## Supported installation restored — 2026-10-15
 
 Source e8e71a42ed1ed1753f3a5eb955020a3a78ae3a48. The supported launcher
