@@ -32,7 +32,7 @@ struct Runtime {
     // Worker-only counters and schedule.
     std::uint64_t next_scan{}, report_at{}, stale{};
     // One worker at a time owns the discovery cursor and partial candidates.
-    std::uint64_t scan_epoch{};
+    std::uint64_t scan_epoch{}, hint_epoch{};
     multiplayer::NativeTypeScanCursor cursor{};
     std::array<multiplayer::NativeTypeQuery, 4> queries{};
 };
@@ -49,6 +49,24 @@ bool client_realm(std::uintptr_t base) noexcept {
         return context && memory::peek(base + engine::context_type_offset, offset) && offset < 0x1000000 &&
             memory::peek(context + offset, tag) && tag == 0xbf0f9789;
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+bool publish_binding(Runtime& r, std::uint64_t epoch, const Binding& binding) noexcept {
+    if (r.binding_busy.test_and_set(std::memory_order_acquire)) return false;
+    const bool current = r.epoch.load() == epoch && GetTickCount64() <= r.expires.load();
+    if (current) {
+        r.binding = binding;
+        r.binding_epoch.store(epoch, std::memory_order_release);
+    }
+    r.binding_busy.clear(std::memory_order_release);
+    return current;
+}
+bool refresh_binding_hint(Runtime& r, std::uint64_t epoch) noexcept {
+    if (r.hint_epoch == epoch || r.binding_busy.test_and_set(std::memory_order_acquire)) return false;
+    const auto previous = r.binding;
+    r.binding_busy.clear(std::memory_order_release);
+    r.hint_epoch = epoch;
+    Read read; Binding next{};
+    return rebind_schema_hint(read, previous, next) && publish_binding(r, epoch, next);
 }
 void scan_slice(Runtime& r, std::uint64_t epoch) noexcept {
     const bool lowered = SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) != 0;
@@ -70,13 +88,7 @@ void scan_slice(Runtime& r, std::uint64_t epoch) noexcept {
         std::array<std::uintptr_t, 4> objects{};
         for (unsigned i = 0; i < objects.size(); ++i) objects[i] = r.queries[i].object;
         Read read; Binding binding{};
-        if (bind_schema(read, objects, binding) && !r.binding_busy.test_and_set(std::memory_order_acquire)) {
-            if (r.epoch.load() == epoch && GetTickCount64() <= r.expires.load()) {
-                r.binding = binding;
-                r.binding_epoch.store(epoch, std::memory_order_release);
-            }
-            r.binding_busy.clear(std::memory_order_release);
-        }
+        if (bind_schema(read, objects, binding)) publish_binding(r, epoch, binding);
     }
     // Restart a completed unsuccessful pass later; never expose a partial map.
     if (r.cursor.complete && r.binding_epoch.load() != epoch) r.scan_epoch = 0;
@@ -94,7 +106,7 @@ void run_worker(Runtime& r) noexcept {
             if (epoch != previous_epoch) { previous_epoch = epoch; r.next_scan = 0; }
             const bool active = epoch && now <= r.expires.load();
             if (active && r.binding_epoch.load() != epoch && now >= r.next_scan) {
-                scan_slice(r, epoch);
+                if (!refresh_binding_hint(r, epoch)) scan_slice(r, epoch);
                 r.next_scan = GetTickCount64() + 100;
             }
             std::array<Event, 16> rows{};

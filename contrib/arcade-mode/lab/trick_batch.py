@@ -521,6 +521,14 @@ def stopped_trial(error, case, repetition):
                'name': case['name'], 'repetition': repetition}
     if stopped['reason'] in ('score_capture_baseline_timeout', 'score_capture_evidence_lost'):
         stopped.update(input_sent=False, game_response='UNVERIFIED', stage='score_capture_baseline')
+        receipt = getattr(error, 'score_capture_failure', None)
+        if (isinstance(receipt, dict) and type(receipt.get('schema')) is int and receipt['schema'] == 1 and
+                set(receipt) == {'schema', 'cause', 'owner', 'native', 'grind_health',
+                                 'heartbeat', 'health', 'timing', 'initial', 'pad', 'parser'}):
+            clean = score_capture_failure_receipt(receipt['cause'], **{k: receipt[k] for k in
+                ('owner', 'native', 'grind_health', 'heartbeat', 'health', 'timing', 'initial', 'pad', 'parser')})
+            if clean is not None and clean == receipt:
+                stopped['score_capture_failure'] = clean
     diagnostic = getattr(error, 'readiness', None)
     flags = ('failed', 'context_ready', 'owner_matches', 'capture_pending')
     if (isinstance(diagnostic, dict) and set(diagnostic) == {'age_ms', *flags} and
@@ -698,6 +706,41 @@ def wait_native_riding(condition, observe, owner, alive, clock=None, sleep=None)
         sleep(min(.020, max(0, deadline - clock())))
 
 
+def score_capture_failure_receipt(cause, **context):
+    """Fixed numeric diagnostic schema; never exception text or arbitrary data."""
+    causes = ('initial_log_boundary', 'initial_grind_evidence', 'malformed_fields', 'clock_reversed',
+              'session_unavailable', 'timeout', 'observation_gap', 'log_boundary_invalid', 'combo_loss',
+              'grind_parser_loss', 'grind_status_inactive', 'grind_status_generation', 'grind_status_counters',
+              'grind_sample_invalid', 'grind_sample_generation', 'grind_sample_loss', 'arcade_context_changed',
+              'grind_sample_reordered', 'grind_pad_generation', 'grind_pad_loss', 'heartbeat_reordered',
+              'health_parser_invalid', 'health_parser_loss', 'health_rows_invalid', 'health_row_malformed',
+              'health_overflow', 'health_time_reordered', 'health_epoch_mixed', 'health_route_duplicate',
+              'heartbeat_stale', 'grind_stale', 'session_unavailable_final', 'clock_reversed_final')
+    if cause not in causes:
+        return None
+    fields = {'owner': ('generation', 'dropped', 'rejected'),
+              'native': ('seq', 'ms', 'generation', 'state', 'edge', 'dropped', 'valid', 'arcade', 'speed_mm_s'),
+              'grind_health': ('generation', 'active', 'dropped', 'rejected'),
+              'pad': ('seq', 'ms', 'generation', 'dropped'),
+              'parser': ('health_dropped', 'health_malformed', 'grind_dropped', 'combo_dropped'),
+              'heartbeat': ('seq', 'valid', 'state', 'mode'),
+              'health': ('ms', 'epoch', 'route', 'active', 'bound', 'unbound', 'expired', 'changed', 'overflow'),
+              'timing': ('elapsed_ms', 'read_ms', 'heartbeat_age_ms', 'grind_age_ms', 'snapshot_age_ms',
+                         'snapshot_ms', 'snapshot_epoch', 'routes_mask'),
+              'initial': ('sample_count', 'status_count', 'generation_count', 'first_generation', 'last_generation')}
+    booleans = ('active', 'bound', 'valid', 'arcade', 'overflow')
+    result = {'schema': 1, 'cause': cause}
+    for group, names in fields.items():
+        source = context.get(group)
+        source = source if isinstance(source, dict) else {}
+        result[group] = {}
+        for key in names:
+            value = source.get(key)
+            valid = type(value) is bool if key in booleans else type(value) is int and 0 <= value <= 0xffffffffffffffff
+            result[group][key] = value if valid else None
+    return result
+
+
 def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm_s=None, clock=None, sleep=None):
     """Neutral pre-input observer binding gate; never scoring ownership proof.
 
@@ -709,86 +752,139 @@ def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm
     if max_speed_mm_s is not None:
         integer(max_speed_mm_s, 0, 20000)
     clock, sleep = clock or time.monotonic, sleep or time.sleep
+    owner = last_grind = current_native = current_grind_health = state = current_state = current_health = current_pad = None
+    started = host_last = read_started = heartbeat_at = grind_at = arrival = None
+    snapshot_ms = snapshot_epoch = None
+    routes, initial_summary, parser_state = {}, {}, {}
+    def fail(cause):
+        def age(then):
+            try:
+                return round((host_last - then) * 1000) if host_last is not None and then is not None else None
+            except (TypeError, ValueError, OverflowError):
+                return None
+        error = HardStop('score_capture_baseline_timeout' if cause == 'timeout' else 'score_capture_evidence_lost')
+        error.score_capture_failure = score_capture_failure_receipt(cause,
+            owner=owner, native=current_native, grind_health=current_grind_health, heartbeat=current_state, health=current_health,
+            pad=current_pad, parser=parser_state, initial=initial_summary, timing={'elapsed_ms': age(started), 'read_ms': age(read_started),
+                'heartbeat_age_ms': age(heartbeat_at), 'grind_age_ms': age(grind_at), 'snapshot_age_ms': age(arrival),
+                'snapshot_ms': snapshot_ms, 'snapshot_epoch': snapshot_epoch,
+                'routes_mask': sum(1 << (r - 1) for r in routes)})
+        raise error
     try:
-        if (type(initial.get('log_end')) is not int or initial['log_end'] < 0 or
-                grind_result(initial, initial, True)['evidence'] != 'COMPLETE'):
-            raise HardStop('score_capture_evidence_lost')
+        if type(initial.get('log_end')) is not int or initial['log_end'] < 0:
+            fail('initial_log_boundary')
         owner = initial['grind']['status'][-1]
         baseline_row = initial['grind']['samples'][-1]
+        last_grind, current_native, current_grind_health = baseline_row, baseline_row, owner
+        initial_rows = initial['grind']['samples']
+        initial_summary = {'sample_count': len(initial_rows), 'status_count': len(initial['grind']['status']),
+            'generation_count': len({r['generation'] for r in initial_rows}),
+            'first_generation': initial_rows[0]['generation'], 'last_generation': baseline_row['generation']}
+        if grind_result(initial, initial, True)['evidence'] != 'COMPLETE':
+            fail('initial_grind_evidence')
         arcade = baseline_row['arcade']
         native_start = baseline_row['ms']
         boundary = initial['log_end']
         state = initial['states'][-1]
+        current_state = state
         speed = {r['seq']: r for r in initial.get('push', [])}.get(state['seq'])
         last_grind = baseline_row
         last_pad = initial['grind']['pad'][-1]
+        current_pad = last_pad
         last_combo = initial.get('combo', {}).get('samples', [])[-1:]
         started = prior_clock = grind_at = heartbeat_at = clock()
+        host_last = started
         deadline = started + milliseconds / 1000
         routes, snapshot_ms, snapshot_epoch, arrival = {}, None, None, None
         while True:
             now = clock()
-            if now < prior_clock or not alive():
-                raise HardStop('score_capture_evidence_lost')
+            host_last = now
+            if now < prior_clock:
+                fail('clock_reversed')
+            if not alive():
+                fail('session_unavailable')
             prior_clock = now
             if now >= deadline:
-                raise HardStop('score_capture_baseline_timeout')
+                fail('timeout')
+            read_started = now
             current = observe(since=boundary)
             read_at = clock()
-            if (read_at < now or current.get('evidence_gap') or type(current.get('log_end')) is not int or
-                    current['log_end'] < boundary or current.get('combo', {}).get('dropped')):
-                raise HardStop('score_capture_evidence_lost')
+            host_last = read_at
+            parser_state = {'health_dropped': current.get('native_score', {}).get('health_dropped'),
+                            'health_malformed': current.get('native_score', {}).get('health_malformed'),
+                            'grind_dropped': current.get('grind', {}).get('dropped'),
+                            'combo_dropped': current.get('combo', {}).get('dropped')}
+            if read_at < now: fail('clock_reversed')
+            if current.get('evidence_gap'): fail('observation_gap')
+            if type(current.get('log_end')) is not int or current['log_end'] < boundary: fail('log_boundary_invalid')
+            if current.get('combo', {}).get('dropped'): fail('combo_loss')
             prior_clock = read_at
             old_boundary, boundary = boundary, current['log_end']
             grind = current.get('grind', {})
             if grind.get('dropped'):
-                raise HardStop('score_capture_evidence_lost')
+                fail('grind_parser_loss')
             for row in grind.get('status', []):
-                if not row['active'] or any(row[k] != owner[k] for k in ('generation', 'dropped', 'rejected')):
-                    raise HardStop('score_capture_evidence_lost')
+                current_grind_health = row
+                # Match grind_result: worker health can arrive after newer
+                # physics. Only ignore older health whose loss is covered by
+                # the validated owner; it never refreshes native evidence.
+                if (row['generation'] < owner['generation'] and
+                    row['dropped'] <= owner['dropped'] and row['rejected'] <= owner['rejected']):
+                    continue
+                if not row['active']: fail('grind_status_inactive')
+                if row['generation'] != owner['generation']: fail('grind_status_generation')
+                if any(row[k] != owner[k] for k in ('dropped', 'rejected')): fail('grind_status_counters')
             for row in grind.get('samples', []):
-                if (not row['valid'] or row['edge'] == 3 or row['generation'] != owner['generation'] or
-                        row['dropped'] != owner['dropped'] or row['arcade'] != arcade or
-                        row['seq'] < last_grind['seq'] or row['ms'] < last_grind['ms']):
-                    raise HardStop('score_capture_evidence_lost')
+                current_native = row
+                if not row['valid'] or row['edge'] == 3: fail('grind_sample_invalid')
+                if row['generation'] != owner['generation']: fail('grind_sample_generation')
+                if row['dropped'] != owner['dropped']: fail('grind_sample_loss')
+                if row['arcade'] != arcade: fail('arcade_context_changed')
+                if row['seq'] < last_grind['seq'] or row['ms'] < last_grind['ms']: fail('grind_sample_reordered')
                 if row['seq'] > last_grind['seq']:
                     last_grind, grind_at = row, read_at
             for row in grind.get('pad', []):
-                if row['generation'] != owner['generation'] or row['dropped'] != owner['dropped']:
-                    raise HardStop('score_capture_evidence_lost')
+                current_pad = row
+                if row['generation'] != owner['generation']: fail('grind_pad_generation')
+                if row['dropped'] != owner['dropped']: fail('grind_pad_loss')
                 last_pad = row
             if current.get('combo', {}).get('samples'):
                 last_combo = current['combo']['samples'][-1:]
             speeds = {r['seq']: r for r in current.get('push', [])}
             for row in current.get('states', []):
+                current_state = row
                 if row['seq'] < state['seq']:
-                    raise HardStop('score_capture_evidence_lost')
+                    fail('heartbeat_reordered')
                 if row['seq'] > state['seq']:
                     state, speed, heartbeat_at = row, speeds.get(row['seq']), read_at
             native = current.get('native_score', {})
-            if any(type(native.get(k)) is not int or native[k] != 0 for k in ('health_dropped', 'health_malformed')):
-                raise HardStop('score_capture_evidence_lost')
+            if any(type(native.get(k)) is not int or native[k] < 0 for k in ('health_dropped', 'health_malformed')):
+                fail('health_parser_invalid')
+            if any(native[k] != 0 for k in ('health_dropped', 'health_malformed')):
+                fail('health_parser_loss')
             health = native.get('health', [])
             if not isinstance(health, list) or len(health) > 128:
-                raise HardStop('score_capture_evidence_lost')
+                fail('health_rows_invalid')
             for row in health:
+                current_health = row
                 if (not isinstance(row, dict) or any(type(row.get(k)) is not int or not 0 <= row[k] <= 0xffffffffffffffff
                         for k in ('ms', 'epoch', 'route', 'unbound', 'expired', 'changed')) or
                         not row['epoch'] or row['route'] not in (1, 2, 3, 4) or
                         any(type(row.get(k)) is not bool for k in ('active', 'bound', 'overflow')) or
-                        row['overflow'] or (row['bound'] and not row['active'])):
-                    raise HardStop('score_capture_evidence_lost')
+                        (row['bound'] and not row['active'])):
+                    fail('health_row_malformed')
+                if row['overflow']: fail('health_overflow')
                 if row['ms'] <= native_start or boundary == old_boundary:
                     continue
                 if snapshot_ms is not None and row['ms'] < snapshot_ms:
-                    raise HardStop('score_capture_evidence_lost')
+                    fail('health_time_reordered')
                 if row['ms'] != snapshot_ms:
                     routes, snapshot_ms, snapshot_epoch, arrival = {}, row['ms'], row['epoch'], read_at
-                if row['epoch'] != snapshot_epoch or row['route'] in routes:
-                    raise HardStop('score_capture_evidence_lost')
+                if row['epoch'] != snapshot_epoch: fail('health_epoch_mixed')
+                if row['route'] in routes: fail('health_route_duplicate')
                 routes[row['route']] = row
-            if read_at - heartbeat_at > .750 or read_at - grind_at > .750:
-                raise HardStop('score_capture_evidence_lost')
+            if read_at - heartbeat_at > .750: fail('heartbeat_stale')
+            if read_at - grind_at > .750: fail('grind_stale')
             ready = (len(routes) == 4 and all(r['active'] and r['bound'] for r in routes.values()) and
                      state['valid'] and state['state'] == 100 and state['mode'] == 1 and
                      speed and speed['valid'] and speed['contacts'] == 0xc000 and last_grind['state'] == 100 and
@@ -797,10 +893,11 @@ def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm
                      read_at - arrival <= .250 and read_at - now <= .100)
             if ready:
                 if not alive():
-                    raise HardStop('score_capture_evidence_lost')
+                    fail('session_unavailable_final')
                 finish = clock()
+                host_last = finish
                 if finish < read_at:
-                    raise HardStop('score_capture_evidence_lost')
+                    fail('clock_reversed_final')
                 if finish < deadline and finish - arrival <= .250:
                     # Health can arrive in a separate slice from physics. Retain
                     # actual validated rows and their original native timestamps.
@@ -814,7 +911,7 @@ def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm
                         'health': [routes[r] for r in range(1, 5)], 'wait_ms': round((finish - started) * 1000)}
             sleep(min(.050, max(0, deadline - clock())))
     except (KeyError, TypeError, IndexError, ValueError):
-        raise HardStop('score_capture_evidence_lost') from None
+        fail('malformed_fields')
 
 
 class DeckEnvironment:
@@ -987,7 +1084,9 @@ class DeckEnvironment:
 
     def wait_score_capture_ready(self, milliseconds, baseline, max_speed_mm_s=None):
         if self.session is None or self.session.pad is None:
-            raise HardStop('score_capture_evidence_lost')
+            error = HardStop('score_capture_evidence_lost')
+            error.score_capture_failure = score_capture_failure_receipt('session_unavailable')
+            raise error
         self.session.pad.neutral()
         def alive():
             self.session._clock()

@@ -1813,7 +1813,7 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "implementation_status": "Independent native recipe integrated behind existing RT selector. Exact base-label reader and bounded native-confirmed combo continuation implemented; new runtime window awaits verified deployment and Deck acceptance.",
-      "hil_status": "DISCOVERED:7c7 frozen trials independently show FS Revert1/1 and BS Revert1/1.08d2a3a numeric diagnostics confirm exact base Revert in2 moving controls and1 moving grind-exit trial; base label does not prove side. Native acknowledgement delay454-471ms; moving grind-exit observation633ms after landing. Stationary delivery did not confirm revert. Not20-trial repeatability. Subsequent matching repeat18/18 plus two controls establishes20/20 generic moving native Revert; exact side and full linking remain distinct.",
+      "hil_status": "Native default classic RT integrated on8ab84cd: HIL48 two batches18/20 complete grind/Ollie/revert/manual chains, early9/10 and standard9/10;20/20 neutral/reset. Two rail recontacts have no native revert label and correctly expire. Prior919 mode3 result19/20 remains separate. Exact context coverage and monetary acceptance remain open.",
       "repeatability": {
         "status": "REPEATABLE generic native Revert with both selectors in moving fixture; exact side and combined linking pending",
         "side_controls": {
@@ -2385,16 +2385,16 @@
     {
       "id": "chain-B",
       "requested_action": "Air Trick -> Land -> RT Revert -> Manual",
-      "implementation_status": "Recovered2bdf062: initial2/2 native revert/manual links; repeatability9/20 (original9/10,100ms-earlier0/10). Narrower command after state101 recovery2/5, with3 rail-recontact RT rejections. Input-admission defect localized and source91906e5 fix pending native verification.",
+      "implementation_status": "8ab84cd default classic mode5:18/20 native grind/Ollie/revert/manual chains, early9/10 standard9/10, all neutral/reset. Two rail recontacts lack a native revert label and expire. Earlier919 mode3 batch19/20 retained separately.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
       "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Bounded native-riding readiness before RT; compare early manual command on tested recovery fix; retain all invalid-context outcomes.",
+      "next": "Compare an existing rail-clearing exit, preserve750ms grace; finish independently attributable score settlement.",
       "new_deck_trials": 27,
-      "evidence": "grind-exit-results.json"
+      "evidence": "grind-exit-results.json: classic_default_rt_smoke_3; classic_default_rt_repeat_17"
     },
     {
       "id": "chain-C",

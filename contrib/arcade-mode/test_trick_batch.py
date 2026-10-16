@@ -1245,6 +1245,115 @@ class ScoreCaptureReadyTests(unittest.TestCase):
         source = batch.remote_payload(value, value['candidates'][0])
         self.assertIn('def wait_score_capture_ready(', source)
 
+    def test_initial_mixed_generation_failure_reports_bounded_baseline_summary(self):
+        initial = self.observation()
+        earlier = dict(initial['grind']['samples'][0], generation=3, seq=0, ms=900)
+        initial['grind']['samples'].insert(0, earlier)
+        with self.assertRaises(batch.HardStop) as stopped:
+            self.run_wait(baseline=initial)
+        receipt = stopped.exception.score_capture_failure
+        self.assertEqual(receipt['cause'], 'initial_grind_evidence')
+        self.assertEqual(receipt['initial'], dict(sample_count=2, status_count=1, generation_count=2,
+                                               first_generation=3, last_generation=4))
+        self.assertEqual(receipt['owner']['generation'], 4)
+        self.assertEqual(receipt['native']['generation'], 4)
+
+    def test_older_covered_worker_health_matches_existing_grind_rule(self):
+        def mutate(value, now):
+            value['grind']['status'].insert(0, dict(generation=3, active=True, dropped=0, rejected=0))
+            self.assertEqual(batch.grind_result(value, self.observation(), True)['stale_health_rows'], 1)
+        (_, result), _, _ = self.run_wait(mutate)
+        self.assertEqual(result['status'], 'READY')
+
+    def test_hil49_older_inactive_health_does_not_replace_current_validated_owner(self):
+        initial = self.observation()
+        for row in initial['grind']['samples'] + initial['grind']['pad'] + initial['grind']['status']:
+            row['generation'] = 212
+        initial['grind']['samples'] *= 3
+        def mutate(value, now):
+            for row in value['grind']['samples'] + value['grind']['pad']:
+                row['generation'] = 212
+            value['grind']['status'] = [dict(generation=211, active=False, dropped=0, rejected=0)]
+        (observed, result), _, _ = self.run_wait(mutate, baseline=initial)
+        self.assertEqual(result['status'], 'READY')
+        self.assertEqual(result['generation'], 212)
+        self.assertEqual(observed['grind']['status'], initial['grind']['status'])
+        self.assertEqual(observed['grind']['samples'][-1]['generation'], 212)
+        self.assertFalse(result['owner_verified'])
+
+    def test_uncovered_older_and_current_or_future_health_still_fail_closed(self):
+        cases = [dict(generation=3, active=active, dropped=dropped, rejected=rejected)
+                 for active in (False, True) for dropped, rejected in ((1, 0), (0, 1))]
+        cases += [dict(generation=4, active=False, dropped=0, rejected=0)]
+        cases += [dict(generation=5, active=active, dropped=0, rejected=0) for active in (False, True)]
+        for health in cases:
+            def mutate(value, now): value['grind']['status'] = [health]
+            with self.subTest(health=health), self.assertRaises(batch.HardStop) as stopped:
+                self.run_wait(mutate)
+            receipt = stopped.exception.score_capture_failure
+            self.assertEqual(receipt['cause'], 'grind_status_generation' if health['active'] else 'grind_status_inactive')
+            self.assertEqual(receipt['owner']['generation'], 4)
+            self.assertEqual(receipt['grind_health'], health)
+            result = batch.stopped_trial(stopped.exception, plan()['candidates'][0], 2)
+            self.assertEqual(result['score_capture_failure'], receipt)
+            self.assertFalse(result['input_sent'])
+
+    def test_older_covered_health_cannot_refresh_missing_native_samples(self):
+        def mutate(value, now):
+            value['grind']['status'] = [dict(generation=3, active=False, dropped=0, rejected=0)]
+            value['grind']['samples'] = []
+        with self.assertRaises(batch.HardStop) as stopped:
+            self.run_wait(mutate, delay=1)
+        self.assertEqual(stopped.exception.score_capture_failure['cause'], 'grind_stale')
+
+    def test_missing_initial_owner_cannot_be_replaced_by_older_health(self):
+        initial = self.observation()
+        initial['grind']['status'] = []
+        with self.assertRaises(batch.HardStop) as stopped:
+            self.run_wait(baseline=initial)
+        self.assertEqual(stopped.exception.score_capture_failure['cause'], 'malformed_fields')
+
+    def test_health_failure_receipt_retains_numeric_cause_without_raw_extra_fields(self):
+        def mutate(value, now):
+            value['native_score']['health'][0].update(overflow=True, private='unrelated sensitive text')
+        with self.assertRaises(batch.HardStop) as stopped:
+            self.run_wait(mutate)
+        receipt = stopped.exception.score_capture_failure
+        self.assertEqual(receipt['cause'], 'health_overflow')
+        self.assertTrue(receipt['health']['overflow'])
+        self.assertEqual(receipt['health']['route'], 1)
+        self.assertEqual(receipt['parser']['health_malformed'], 0)
+        self.assertLess(len(json.dumps(receipt)), 4096)
+        self.assertNotIn('private', json.dumps(receipt))
+        self.assertNotIn('unrelated sensitive text', json.dumps(receipt))
+
+    def test_failure_receipt_validator_refuses_unknown_text_extra_fields_and_unbounded_numbers(self):
+        base = batch.score_capture_failure_receipt('timeout')
+        self.assertIsNone(batch.score_capture_failure_receipt('unreviewed exception text'))
+        for mutation in ('cause', 'extra', 'number', 'bool', 'schema', 'schema_bool'):
+            receipt = copy.deepcopy(base)
+            if mutation == 'cause': receipt['cause'] = 'unreviewed exception text'
+            if mutation == 'extra': receipt['health']['raw'] = 'private'
+            if mutation == 'number': receipt['health']['ms'] = 1 << 100
+            if mutation == 'bool': receipt['health']['overflow'] = 1
+            if mutation == 'schema': receipt['schema'] = 2
+            if mutation == 'schema_bool': receipt['schema'] = True
+            error = batch.HardStop('score_capture_evidence_lost'); error.score_capture_failure = receipt
+            with self.subTest(mutation=mutation):
+                result = batch.stopped_trial(error, plan()['candidates'][0], 1)
+                self.assertNotIn('score_capture_failure', result)
+
+    def test_timeout_receipt_carries_last_native_snapshot_and_wait_age(self):
+        def mutate(value, now): value['native_score']['health'] = []
+        with self.assertRaises(batch.HardStop) as stopped:
+            self.run_wait(mutate)
+        receipt = stopped.exception.score_capture_failure
+        self.assertEqual(receipt['cause'], 'timeout')
+        self.assertGreaterEqual(receipt['timing']['elapsed_ms'], 2000)
+        self.assertEqual(receipt['timing']['routes_mask'], 0)
+        self.assertEqual(receipt['native']['state'], 100)
+        self.assertIsNone(receipt['health']['ms'])
+
 
 if __name__ == "__main__":
     unittest.main()

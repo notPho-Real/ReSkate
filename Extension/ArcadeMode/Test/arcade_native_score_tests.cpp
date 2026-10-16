@@ -79,6 +79,71 @@ struct DiagnosticFixture : Fixture {
         put(payload + 32, action); put(action + 8, std::uint32_t{13});
     }
 };
+struct HintRead : Fixture {
+    unsigned reads{};
+    std::uintptr_t replace_at{}, replacement{};
+    template<class T> bool operator()(std::uintptr_t at, T& value) noexcept {
+        ++reads;
+        if (replacement && at == replace_at) {
+            put(objects[0], replacement); replacement = 0;
+        }
+        return Fixture::operator()(at, value);
+    }
+};
+void hint_tests() {
+    Fixture original; Binding previous{}, next{};
+    check(bind_schema(original, original.objects, previous), "hint starts from a validated schema");
+    check(rebind_schema_hint(original, previous, next) && next.line_score.offset == 4,
+          "unchanged type hints can rebuild the complete schema");
+    auto moved = original; moved.put(moved.tables[1] + 8, std::uint16_t{8});
+    check(rebind_schema_hint(moved, previous, next) && next.line_score.offset == 8 && previous.line_score.offset == 4,
+          "valid changed field offset is rebound instead of reused from the prior epoch");
+    for (unsigned i = 0; i < 4; ++i) {
+        for (unsigned fault = 0; fault < 7; ++fault) {
+            auto bad = original;
+            if (fault == 0) bad.put(bad.records[i], type_hashes[i] ^ 1);
+            if (fault == 1) bad.put(bad.records[i] + 4, std::uint16_t{3 << 5});
+            if (fault == 2) bad.put(bad.records[i] + 6, std::uint16_t{128});
+            if (fault == 3) bad.put(bad.objects[i], std::uintptr_t{0x90000});
+            if (fault == 4) bad.put(bad.tables[i] + 8, std::uint16_t{64});
+            if (fault == 5) bad.put(bad.tables[i], std::uint32_t{});
+            if (fault == 6) bad.put(bad.records[i] + 0x2a, std::uint16_t{97});
+            next = previous; next.reason.offset = 123;
+            check(!rebind_schema_hint(bad, previous, next) && next.reason.offset == 123,
+                  "stale type or invalid full schema rejects hints without partial publication");
+        }
+        auto changed = original;
+        const auto replacement = changed.alloc(0x68);
+        std::memcpy(changed.bytes.data() + replacement - 0x10000,
+                    changed.bytes.data() + changed.records[i] - 0x10000, 0x68);
+        changed.put(changed.objects[i], replacement);
+        check(!rebind_schema_hint(changed, previous, next),
+              "replacement record with the same hash still requires discovery");
+        check(bind_schema(changed, changed.objects, next) && next.types[i].record == replacement,
+              "normal discovery binder remains usable after a rejected record hint");
+    }
+    check(!rebind_schema_hint(original, Binding{}, next), "cold start has no usable hints");
+    auto wrong_field = original; wrong_field.put(wrong_field.tables[0] + 16, wrong_field.objects[3]);
+    check(!rebind_schema_hint(wrong_field, previous, next), "hints retain exact embedded payload association checks");
+    DiagnosticFixture diagnostics;
+    check(bind_schema(diagnostics, diagnostics.objects, previous) && previous.sequence.scalars && previous.sequence.category_depth,
+          "diagnostic hint starts with complete optional schema");
+    diagnostics.put(diagnostics.tables[3] + 24, std::uint32_t{});
+    diagnostics.put(diagnostics.tables[3] + 5 * 24, std::uint32_t{});
+    check(rebind_schema_hint(diagnostics, previous, next) && !next.sequence.scalars && !next.sequence.category_depth,
+          "retired optional declarations are not carried across the lifecycle epoch");
+    HintRead counted;
+    check(bind_schema(counted, counted.objects, previous), "bounded read fixture initialized");
+    counted.reads = 0;
+    check(rebind_schema_hint(counted, previous, next) && counted.reads < 200,
+          "minimal schema hint uses bounded metadata reads without an address-space scan");
+    counted.replacement = counted.alloc(0x68);
+    std::memcpy(counted.bytes.data() + counted.replacement - 0x10000,
+                counted.bytes.data() + counted.records[0] - 0x10000, 0x68);
+    counted.replace_at = counted.tables[0]; next.reason.offset = 123;
+    check(!rebind_schema_hint(counted, previous, next) && next.reason.offset == 123,
+          "record replacement during field binding fails final hint validation without publishing");
+}
 void diagnostic_tests() {
     DiagnosticFixture f; Binding b{};
     check(bind_schema(f, f.objects, b) && b.sequence.scalars && b.sequence.category_depth == 2,
@@ -219,6 +284,7 @@ int main(int argc, char** argv) {
 #ifdef ARCADE_CAPTURE_HEALTH_COMBINED_TESTS
     check(arcade_score_capture_health_tests() == 0, "capture health regression checks");
 #endif
+    hint_tests();
     diagnostic_tests();
     for (const auto& g : graphs) {
         check(graph_for(g.hash) == &g && contract(g, g.frame, g.constants, g.words), "exact graph accepted");

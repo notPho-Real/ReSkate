@@ -1,3 +1,43 @@
+## Default RT native trials and scoring baseline diagnosis — 2026-10-16
+
+Current source fe53a8384605e94bea0769d414b1d979a7513ceb passes every CI gate.
+Installed source8ab84cd1209a49c477042ef5f1248bcd7d8ab098, DLL
+042a6ad2f17c4dccc90751766d2ef2a05263a454ed95bc081d1196d631ebb094.
+Deployment completed through the guarded installer; supported25414733 game,
+stock backup and recovery launcher hashes remain unchanged. Launcher reached
+Ready without authentication. Stadium saved rail restored, editor closed,
+Arcade ON/default classic mode5 and60Hz. The game remains running.
+
+HIL48 results1792161606681054000 and1792161864375196000 complete20 default-RT
+grind→Ollie→revert→manual trials:18/20 native chains pass (early9/10, standard9/10).
+All20 neutralize/reset. The two misses recontact the rail, obtain no independent
+native revert label, and correctly expire rather than accepting synthetic intent.
+Preserve the earlier919 runtime19/20 result separately; monetary score authority
+remains UNVERIFIED. Next discriminating control is an already-supported exit
+that clears the rail, keeping the750ms gameplay grace unchanged.
+
+Bound-score result1792161725999231000 completes one clean Kickflip with native
+sequence13, line start17ms later and line end13/reason1 after10,034ms. The next
+trial stops before input; this is one completed trial, not four attempted trials.
+HIL49 diagnostic result1792162265048983000 stops before input on an inactive
+generation211 health row after validated generation212 native/pad evidence,
+all loss counters zero. This identifies delayed previous-generation health;
+the scoring baseline gate is being aligned with existing covered-counter rules.
+No source ownership, canonical native occurrence or bank amount is inferred.
+
+Inspectorfe53 artifact51b3a19d338eb4d67917019b5046753655f969ce09e508b52e7f109a9f52d706
+ran without stopping the game, result1792162581609733000:32 assets/167318 bytes,
+INCOMPLETE. Shared graph parameter resolves the telemetry-manager declaration;
+line/sequence declaration identities remain unresolved in selected assets.
+Declared names and static type references do not establish local-skater ownership.
+HIL49 manifest5e87c99ecea471cca8cc6b3b057071c537bf48d85b75557e72969fbfbcac846a;
+all older frozen tools remain unchanged. Source-only schema hint revalidation
+passes160 native-score/21 health checks; it is not deployed or hardware accepted.
+The baseline correction passes94 focused/329 total Python tests, preserving
+current/future generation rejection, uncovered losses and freshness thresholds.
+New frozen HIL50 manifest0d5ed482b6134927d03efef1806e625d2e36e9323117aed55c6eb66208d9e6e9
+is running the same four scoring windows; native results are pending.
+
 ## Default RT runtime update prepared — 2026-10-16
 
 CI8ab84cd passed Windows/Linux/macOS/Deck/publish. Its packaged DLL exactly matches

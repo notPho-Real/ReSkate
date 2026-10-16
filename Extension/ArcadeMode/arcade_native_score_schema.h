@@ -122,6 +122,22 @@ template<class Read> bool bind_schema(Read& read, const std::array<std::uintptr_
     b.sequence = bind_sequence_diagnostics(read, b.types[3]);
     output = b; return true;
 }
+// A previous binding supplies only discovery hints. Re-read every field through
+// the normal bounded binder; never carry offsets or optional diagnostics across
+// a lifecycle epoch merely because the four type addresses still exist.
+template<class Read> bool rebind_schema_hint(Read& read, const Binding& previous, Binding& output) noexcept {
+    std::array<std::uintptr_t, 4> objects{};
+    for (unsigned i = 0; i < objects.size(); ++i) {
+        if (!type_matches(read, previous.types[i], type_hashes[i])) return false;
+        objects[i] = previous.types[i].object;
+    }
+    Binding next{};
+    if (!bind_schema(read, objects, next)) return false;
+    // A retired/replaced record during the bounded reads requires discovery.
+    for (unsigned i = 0; i < objects.size(); ++i)
+        if (!type_matches(read, previous.types[i], type_hashes[i])) return false;
+    output = next; return true;
+}
 struct Payload { double score{}; std::uint32_t reason{}; bool success{}; };
 enum class DiagnosticStatus : std::uint8_t {
     not_applicable, schema_unavailable, read_failed, invalid_value, absent, available
