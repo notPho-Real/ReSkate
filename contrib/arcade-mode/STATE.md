@@ -20,13 +20,20 @@ acceptance. Steam authentication/download/full validation still required.
 Steam Power UI: When Plugged In and Idle / Sleep after = Disabled, persisted
 IdleSuspendACSeconds=0. Battery sleep remains900 seconds; AC dim900/battery
 dim300 unchanged. This is Gaming Mode idle-sleep prevention, not disabling the
-manual power button or changing Wi-Fi/network/security settings. Desktop power
-behavior was not changed or accepted. Full-size UI evidence saved locally.
+manual power button or changing Wi-Fi/network/security settings. Desktop Mode
+also has an explicit ~/.config/powerdevilrc [AC][SuspendAndShutdown] preference
+AutoSuspendAction=0, verified with kreadconfig6 against the installed6.4.3 schema.
+Only that AC key was created; battery and manual-button defaults remain intact.
+It applies on the next Desktop session; no mode switch or long idle test was run.
+Full-size Gaming Mode UI evidence saved locally.
 
 Standard ~/.local/share/reskate-arcade/config.json now selects the separate copy
 (no selector config existed before). Source discovery supports the standard
 ~/Games/ReSkate location and explicit existing selector; malformed/missing chosen
-targets never silently fall back to Steam.257 Python tests and naming guard pass.
+targets never silently fall back to Steam. Source75645f32e9a955095a1fe321a910f9f636d37fac
+pushed.257 Python tests and naming guard pass. Installer CI38838076003 passed;
+development CI38838076079 Linux/macOS passed, Windows built and remains in its
+test step at this checkpoint. No new runtime from that run was installed.
 Separately reviewed HIL42 preserves all HIL41 worker behavior except installation
 selection; same source/DLL/stock/game pins and prepared trial plans. Old frozen
 tools remain unchanged. New external tool identities:
