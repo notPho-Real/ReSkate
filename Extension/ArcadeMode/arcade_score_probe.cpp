@@ -1,6 +1,7 @@
 #include "arcade_score_probe.h"
 #include "arcade_score_labels.h"
 #include "arcade_score_numbers.h"
+#include "arcade_manual_labels.h"
 #include "arcade_input_telemetry.h"
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/hud_corner.h"
@@ -21,9 +22,11 @@ ScoreActivity activity{};
 ScoreHudNumbers numbers{};
 ScoreLabelEdges label_edges{};
 ManualHistory manual_history;
+ManualHistoryLabels manual_labels;
 void invalidate_label_observation(ScoreLabelUncertainty why = ScoreLabelUncertainty::unavailable) noexcept {
     label_edges.invalidate(why);
     manual_history.reset();
+    manual_labels.invalidate(why);
 }
 void report_manual_history(std::uint64_t now, const ManualHistoryDiagnostic& diagnostic) noexcept {
     static ManualHistoryDiagnostic reported_history{};
@@ -173,6 +176,7 @@ void inspect(const data::Context& context, data::Value value, const ScoreProbePa
 ScoreActivity score_activity() noexcept { return activity; }
 ScoreHudNumbers score_hud_numbers() noexcept { return numbers; }
 ScoreLabelOccurrence take_score_label_occurrence(std::uint64_t now) noexcept { return label_edges.take(now); }
+ScoreLabelOccurrence take_manual_label_evidence(std::uint64_t now) noexcept { return manual_labels.take(now); }
 void reset_score_label_occurrences() noexcept { invalidate_label_observation(); }
 void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
     const auto invalidate = [now](ScoreLabelUncertainty why = ScoreLabelUncertainty::unavailable) {
@@ -238,9 +242,11 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
             // Switching presentation paths cannot manufacture an occurrence.
             if (source != label_source) invalidate();
             label_source = source;
-            report_manual_history(now, manual_history.observe(
+            const auto history_diagnostic = manual_history.observe(
                 std::span<const ManualHistoryRow>(history).first(source == 1 ? diagnostic.rows : 0),
-                {now, manager, score_model.handle, score_model.type, source == 1, history_complete}));
+                {now, manager, score_model.handle, score_model.type, source == 1, history_complete});
+            manual_labels.observe(history_diagnostic, now);
+            report_manual_history(now, history_diagnostic);
             label_edges.observe(labels, true, now);
             report_labels(now, source, diagnostic, labels);
         } catch (...) { invalidate(); label_source = 0; report_labels(now, 0, diagnostic, 0); }

@@ -1070,5 +1070,49 @@
       }
     ]
   },
-  "best_candidate_rationale": "Crouch900ms, release1300ms: 100ms after the failed800ms crouch and50ms later than earliest successful850ms; longer native grind than1100ms approach."
+  "best_candidate_rationale": "Crouch900ms, release1300ms: 100ms after the failed800ms crouch and50ms later than earliest successful850ms; longer native grind than1100ms approach.",
+  "measured_cross_section": {
+    "source_commit": "5f6f23363be75e54ff1b0a9e64dcae9ee262ab1c",
+    "dll_sha256": "a49ea593d0b50a69472c7381084be5d2b13b0a17835bd895846182791234aefe",
+    "result": "1792169821067657000",
+    "sha256": "1eaf4bf1f08a2b499c75ec604f34f9b8ec9c9ae21bd507997490e2ecb6811c63",
+    "measurement": {
+      "budget": 129,
+      "contact_verified": false,
+      "context_current": true,
+      "edge_uncertainty": 0.25,
+      "generation": 8,
+      "height_max": 0.4996986389160156,
+      "height_min": 0.4996986389160156,
+      "object": 1,
+      "radius": 8.0,
+      "rail_position": [
+        -39.40615463256836,
+        46.000064849853516,
+        60.61632537841797
+      ],
+      "rail_rotation": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rail_scale": 1.0,
+      "revision": 9,
+      "sampled_high": [
+        0.0,
+        1.75
+      ],
+      "sampled_low": [
+        0.0,
+        -2.0
+      ],
+      "samples": 129,
+      "session": 1,
+      "started_ms": 47518327,
+      "status": 2,
+      "step": 0.25
+    },
+    "limits": "Read-only raycast samples at0.25m spacing. Cross-section only, not object mesh bounds or native grind acceptance."
+  }
 }

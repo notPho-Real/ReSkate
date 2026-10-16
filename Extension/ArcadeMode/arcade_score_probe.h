@@ -20,5 +20,8 @@ ScoreHudNumbers score_hud_numbers() noexcept;
 // text are returned; baseline/gaps/coalesced edges are explicitly uncertain.
 // This is label evidence, not a score amount or proof of an unseen repeated trick.
 ScoreLabelOccurrence take_score_label_occurrence(std::uint64_t now) noexcept;
+// Distinct history additions corroborate native manual contact, including a
+// repeated label. Presentation identity never establishes score ownership.
+ScoreLabelOccurrence take_manual_label_evidence(std::uint64_t now) noexcept;
 void reset_score_label_occurrences() noexcept;
 }

@@ -1,4 +1,6 @@
 #include "Extension/ArcadeMode/arcade_manual_history.h"
+#include "Extension/ArcadeMode/arcade_manual_labels.h"
+#include "Extension/ArcadeMode/arcade_manual_observation.h"
 #include <cstdlib>
 #include <iostream>
 #include <type_traits>
@@ -117,6 +119,82 @@ int main() {
         const auto cleared = history.observe({}, context(1300));
         check(cleared.comparable && cleared.manual_removed == 1 && cleared.nose_removed == 1,
               "actual complete history clear records removals without fabricating a bank");
+    }
+    // Recorded HIL51 second-manual additions are 350/383ms after landing.
+    // Replay each independent timing, without merging separate hardware trials.
+    for (auto delay : {384u, 350u, 383u}) {
+        ManualHistory history; ManualHistoryLabels labels; ManualObservation gate;
+        const std::array initial{other};
+        const std::array once{other, manual};
+        const std::array twice{other, manual, ManualHistoryRow{4, 10, 1}};
+        auto step = [&](std::uint64_t now, std::span<const ManualHistoryRow> rows, SkatePose raw) {
+            labels.observe(history.observe(rows, context(now)), now);
+            return gate.poll(raw, labels.take(now), {now, 1, true, true, true, false, false});
+        };
+        check(!step(1000, initial, SkatePose::riding).admitted, "initial history is only a baseline");
+        check(step(1016, once, SkatePose::manual).admitted, "first matching history addition confirms native contact");
+        check(step(1032, once, SkatePose::manual).confirmed, "persistent native contact remains confirmed");
+        step(1048, once, SkatePose::air);
+        step(1064, once, SkatePose::riding);
+        for (unsigned elapsed = 16; elapsed < delay; elapsed += 16)
+            check(!step(1064 + elapsed, once, SkatePose::manual).confirmed,
+                  "second native contact waits for fresh corroboration despite old label presence");
+        const auto second = step(1064 + delay, twice, SkatePose::manual);
+        check(second.admitted && second.confirmed, "distinct same-label addition confirms the second manual");
+        check(!step(1080 + delay, twice, SkatePose::manual).admitted, "persistent second presenter cannot duplicate admission");
+        step(1096 + delay, twice, SkatePose::air);
+        check(!step(1112 + delay, twice, SkatePose::manual).confirmed, "old two labels cannot confirm a third manual");
+    }
+    {
+        ManualHistory history; ManualHistoryLabels labels;
+        const std::array baseline{other};
+        const std::array once{other, manual};
+        const std::array twice{other, manual, ManualHistoryRow{4,10,1}};
+        labels.observe(history.observe(baseline, context()), 1000); labels.take(1000);
+        labels.observe(history.observe(once, context(1016)), 1016);
+        labels.observe(history.observe(twice, context(1032)), 1032);
+        const auto coalesced = labels.take(1032);
+        check(coalesced.valid && coalesced.sequence == 2 && coalesced.uncertainty == ScoreLabelUncertainty::coalesced,
+              "two unread same-label additions remain explicitly ambiguous");
+        const std::array moved{twice[2], other, manual};
+        labels.observe(history.observe(moved, context(1048)), 1048);
+        check(labels.take(1048).labels == 0, "slot movement creates no manual evidence");
+        labels.observe(history.observe(once, context(1064)), 1064);
+        check(!labels.take(1064).valid, "presenter removal invalidates pending evidence");
+        labels.observe(history.observe(twice, context(1080)), 1080);
+        check(!labels.take(1080).labels, "reappearance after removal supplies a baseline, not a new manual");
+    }
+    for (unsigned fault = 0; fault < 9; ++fault) {
+        ManualHistory history; ManualHistoryLabels labels;
+        const std::array baseline{other};
+        labels.observe(history.observe(baseline, context()), 1000); labels.take(1000);
+        const std::array added{other, manual};
+        auto diagnostic = history.observe(added, context(1016));
+        if (fault == 0) diagnostic.duplicates = 1;
+        if (fault == 1) diagnostic.relabels = 1;
+        if (fault == 2) diagnostic.manual_removed = 1;
+        if (fault == 3) diagnostic.available = false;
+        if (fault == 4) diagnostic.comparable = false;
+        if (fault == 5) diagnostic.status = ManualHistoryStatus::model_changed;
+        if (fault == 6) diagnostic.manual_added = 17;
+        const auto now = fault == 7 ? 999u : fault == 8 ? 1151u : 1016u;
+        labels.observe(diagnostic, now);
+        const auto rejected = labels.take(now);
+        check(!rejected.valid || !rejected.labels || rejected.uncertainty != ScoreLabelUncertainty::none,
+              "ambiguous replacement, context or time cannot corroborate a manual");
+    }
+    {
+        ManualHistory history; ManualHistoryLabels labels;
+        labels.observe(history.observe({}, context()), 1000); labels.take(1000);
+        const std::array added{nose};
+        labels.observe(history.observe(added, context(1016)), 1016);
+        const auto exact = labels.take(1016);
+        check(exact.valid && exact.labels == score_label_bit(2), "nose addition retains exact label");
+        labels.observe(history.observe(added, context(1032)), 1032);
+        check(!labels.take(1183).valid, "stale history cannot retain valid evidence");
+        labels.invalidate();
+        labels.observe(history.observe(added, context(1199)), 1199);
+        check(!labels.take(1199).labels, "toggle/reset cannot replay a persistent history label");
     }
     std::cout << checks << " manual history diagnostic checks passed\n";
 }

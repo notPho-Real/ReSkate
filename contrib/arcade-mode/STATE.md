@@ -1,3 +1,56 @@
+## Manual identity runtime deployed — 2026-10-16
+
+Source5f6f23363be75e54ff1b0a9e64dcae9ee262ab1c (CI38930044138) combines
+dd8078e manual admission/nonblocking telemetry/type diagnostics with the tested
+28c8f07 geometry parser and a diagnostic-cache shadowing rename for strict MSVC.
+All360 Python tests pass; strict shadow-warning sanitizer runs pass43 history,
+470 admission,1323 telemetry and192 native-score checks. Combined model33641
+and recorded57capture rejection remain unchanged.
+Original dd8078e CI38928009142 failed solely on MSVC C4459 for the renamed
+diagnostic variable. Geometry-only28c8f07 retains the same earlier source.
+CI38930044138 passed every gate, including Windows and publication. Raw and
+packaged DLL match:a49ea593d0b50a69472c7381084be5d2b13b0a17835bd895846182791234aefe.
+Guarded deployment completed after stopped-state1792168689316404000;
+game and stock hashes unchanged,updates=false,recovery_pending=false.
+HIL51 and maintenance51 installed separately; older tools unchanged.
+Restart encountered Steam idle overlay, dismissed with the existing guarded
+Steam Escape action. Launcher visibly Ready/build25414733, no login required.
+Saved Stadium fixture restored after observed8/8 guard; fresh status
+1792169409019016000 confirms configured/present,editorclosed,revision9 and
+original rail/start coordinates. Current12-trial batch establishes native riding
+baseline and covers3 clean-land controls,3 first-manual chains,3 repeated-manual
+diagnostics and3 missed-rail controls. Then bounded rail geometry.
+Read-only schema1792169169543265000 is complete:8line/24sequence fields,zero
+parser loss. It establishes neither local owner nor occurrence identity.
+Context GUID still lacks a supported metadata lookup in captured declarations.
+
+HIL51 result1792169444622320000:12/12neutral/reset. First-manual chains3/3
+PASS; repeated-manual chains0/3 because label-union admission misses the second
+identical label. All3 second entries have a distinct Manual presenter addition
+while local native100/mode1/0x4000 persists; history diagnostics have no parser
+loss. Clean landing/missed-rail controls grant no manual balance. Root repair
+uses fresh distinct additions only to corroborate native contact; monetary
+authority remains disabled. Local144history and470admission sanitizer checks
+pass; all365Python tests pass. New hardware repeatability remains required.
+History pruning/removal deliberately invalidates admission; capped histories
+remain a conservative failure envelope. Binder diagnostic623e941 adds only
+bounded mapping counters via the existing guarded hook; activation needs new
+CI/native validation and never enables progression or monetary authority.
+Read-only geometry1792169821067657000 completes129/129rays with current8/9
+context:height0.4997m,axisZ sampled[-2,+1.75],0.25m uncertainty. Original saved
+fixture unchanged; next longer-chain layout must use these measured dimensions.
+
+Hot8ab Nose context comparison while CI ran:1792167499330441000 gives0/3
+stationary repeated-nose chains, first nose contact only50ms and no sustained
+second entry, despite delivered+20000RS. All3neutral/reset. Existing moving
+recipe1792167699522151000 gives1/3full chains:one missedrail but sustained
+nose482ms,onepre-commandbail,andonepropergrind/nose533ms. The moving candidates
+had prelanding input; this is context evidence, not renewed grind acceptance.
+Prelanding-only comparison1792167871961533000 still0/3full repeated chains:
+twofirstnose sections316–317ms, onebrief34ms, no sustainedsecondmanual. All3
+neutral/reset. Timing alone has not resolved stationary Nose composition; no
+additional recipe tuning before new identity diagnostics.
+
 ## Native composition and software checkpoint — 2026-10-16
 
 Current source7ccce3c644b8374bf2d851480b997a6e2df3e1d5 includes opt-in,

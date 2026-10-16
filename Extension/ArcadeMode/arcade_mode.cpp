@@ -136,7 +136,7 @@ SkatePose previous_pose{SkatePose::unknown};
 std::uint64_t next_balance_sample{};
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now,
-                  const ScoreLabelOccurrence& label) noexcept {
+                  const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label) noexcept {
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid;
     const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
@@ -158,7 +158,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
     // Native contact prepares controls; a matching observed label establishes
     // manual identity for balance/linking. Neither establishes monetary ownership.
-    const auto pose = manual_identity.poll(candidate_pose, label,
+    const auto pose = manual_identity.poll(candidate_pose, manual_label,
         {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
          owner_changed, observation_gap}).pose;
     const bool manual_safe = valid && !owner_changed && !bail &&
@@ -653,6 +653,7 @@ void on_client_tick() noexcept {
         grind_observer_tick(score_probe_base, now, request_probe_ready && ui.available && !ui.in_menu && input.available,
             enabled(), grind_speed_valid, grind_speed);
         const auto score_edge = take_score_label_occurrence(now);
+        const auto manual_label = take_manual_label_evidence(now);
         if (gameplay && score_edge.valid && score_edge.labels) {
             // History base-name occurrences are independently observed native
             // actions. Amounts and FS/BS context remain separate evidence.
@@ -676,10 +677,10 @@ void on_client_tick() noexcept {
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
         board_eligible_until.store(gameplay && watch.valid && native_board_toggle_safe(native) ? now + 150 : 0,
             std::memory_order_release);
-        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge);
+        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label);
         else {
             cancel_balance_bail();
-            manual_identity.reset(score_edge);
+            manual_identity.reset(manual_label);
             had_combo_owner = false;
             combo_owner = {};
             {

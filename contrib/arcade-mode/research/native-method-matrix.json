@@ -2159,16 +2159,16 @@
     {
       "id": "reverts",
       "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
-      "implementation_status": "Supported build restored. Generic native Revert remains repeatable with both selectors; exact side separate. Installed2bdf062 now has independently observed continuation into Manual, but fixed-timing20-trial matrix passed9/20; rail recontact and early manual admission are measured defects. Source91906e5 adds bounded preparation, awaiting CI/native validation.",
+      "implementation_status": "Installed8ab84cd default RT:350ms grind/Ollie-out\u2192native Revert\u2192Manual20/20 controlled regular trials across10early/10standard manual timings, single grind entry, retained fatigue, neutral/reset. Generic Revert identity is separate from FS/BS; earlier220ms18/20 rail-recontact envelope preserved.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "Repeatable independent FS/BS identity and landing/manual/continuation integration; no combo credit from command intent.",
-      "next": "Validate event-driven native landing and CI-tested manual recovery on the existing fixture.",
+      "remaining": "Broader stance and independently repeatable exact FS/BS identity, revised manual admission regression and monetary ownership remain open.",
+      "next": "Use5f6f233 targeted manual-identity regression after verified deployment; preserve20/20 regular composition evidence.",
       "new_deck_trials": 40,
-      "evidence": "community-revert-source.json",
-      "maturity": "DISCOVERED"
+      "evidence": "grind-exit-results.json:classic_rail_clear_comparison_6;classic_rail_clear_repeat_17",
+      "maturity": "REPEATABLE: controlled regular generic native revert/manual composition; exact side remains DISCOVERED"
     },
     {
       "id": "input-recovery",
@@ -2202,8 +2202,8 @@
       "source_ids": [
         "score-hud"
       ],
-      "remaining": "Moving combined gameplay acceptance.",
-      "next": "Preserve full-size native HUD acceptance and20/20 grind/manual/Ollie chains; extend remaining moving Nose and RT handoff contexts.",
+      "remaining": "Repeated same-type manual identity and moving combined gameplay acceptance after observer correction.",
+      "next": "Preserve accepted readability/failure captures; validate first and repeated manual admission with fresh native history diagnostics.",
       "new_deck_trials": 5,
       "evidence": "grind-exit-results.json",
       "maturity": "INTEGRATED: readable native manual HUD;20/20 manual-mode physical boundary failures verified"
@@ -2243,14 +2243,14 @@
     {
       "id": "native-score-events",
       "requested_action": "Native occurrence, score, line completion and bail evidence",
-      "implementation_status": "Installed observer evidence preserved. Offline source now classifies stale/invalid drain records and malformed telemetry; bounded ScoreBoundary rejects missing ownership, occurrence, semantics, generations, ordering, capture loss and conflicting duplicates. No production monetary adapter enabled.",
+      "implementation_status": "Bounded source boundary rejects missing ownership, occurrence, semantics, generations, ordering, capture loss and conflicting duplicates.21recorded trials/57native captures replay with zero monetary authority. dd8078e adds stable exact type-schema snapshots, tested offline; installed8ab stillowner_verified=false.",
       "source_ids": [
         "native-line-events",
         "score-hud",
         "held-flip-and-composite-record"
       ],
       "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before monetary integration.",
-      "next": "Prove local payload owner and canonical occurrence with supported-build hardware; current captures remain UNVERIFIED.",
+      "next": "Read bounded exact line/sequence schema on verified5f6f233, then resolve typed owner/producer relationship. No native money from UI labels, matching timing or capture serials.",
       "new_deck_trials": 23
     },
     {
