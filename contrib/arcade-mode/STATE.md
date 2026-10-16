@@ -1,3 +1,29 @@
+## Repeat-manual fix and trajectory preparation — 2026-10-16
+
+Installed Deck remains verified5f6f233 / DLL a49ea593d0b50a69472c7381084be5d2b13b0a17835bd895846182791234aefe,
+Stadium fixture restored, editor closed,60Hz. No hardware owner besides root.
+Source67ef0cc CI38936894869 passed all gates, including publication, but MUST
+NOT be deployed: review found binder diagnostic preparation could indirectly
+satisfy the existing progression-enable path outside its startup prerequisite.
+The diagnostic has never run on the Deck. Source457f203 separates diagnostic
+readiness from progression authority and preserves the primary player-card
+observer; independent review found no blocker. Sanitized242native-score/21health
+checks,33641combined model checks and378Python tests pass. All57 recorded
+unowned captures still reject monetary authority. Combined CI/deployment pending.
+Source4b7c52f adds opt-in bounded fixture trajectory/HIL handoff, not yet pushed;
+review found post-handoff trajectory prefix accounting needs correction before
+native testing. Original named rail layout is unchanged; no second rail placed.
+
+HIL51 Nose comparison1792170912645805000:6/6neutral/reset,0/6fullchains.
+All lead-ins remained effectively stationary, so this is NOT a valid moving
+versus stationary comparison. Nose labels were late and admitted only15–66ms
+before the next native action. Corrected controls1792171445674275000 finish4/4neutral/reset. Moving trials
+reach4.0–4.58m/s. Regular Manual confirms450ms before Ollie; movingNose0/2
+and stationaryNose0/1 have no native Nose history/confirmed pose before Ollie
+despite delivered+20000RS. Later rail contacts and one bail are separate outcomes.
+Ground entry differs from the previously successful moving/prelanding context;
+this does not establish an unsupported native mechanic. No magnitude/physics change.
+
 ## Manual identity runtime deployed — 2026-10-16
 
 Source5f6f23363be75e54ff1b0a9e64dcae9ee262ab1c (CI38930044138) combines

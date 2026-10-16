@@ -2150,10 +2150,10 @@
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
-      "remaining": "Standard-context Nose Manual X exits select native16 instead of requested2 in4/4 isolated controls. Installed08d repair reached18/20 later Nose rail chains with one final-landing bail and one rail recontact/short hold; full acceptance remains open. RT/manual handoff is a separate unaccepted composition.",
-      "next": "Preserve accepted directional routing and20/20 scoped exits; target remaining moving Nose/rail failures and RT recovery without silently changing requested trick identity.",
+      "remaining": "Installed5f strict native-history gate: first-manual chains3/3; repeated-manual chains0/3 despite distinct second presenter additions and sustained local native contact. Source67 adds distinct-history corroboration; native acceptance awaits the corrected combined build. Ground Nose entry0/3 in latest moving/stationary controls versus regular moving Manual450ms; previously accepted landing-context evidence remains valid. Standard-context Nose X native16 versus requested2 remains unresolved.",
+      "next": "Deploy only the fully reviewed/CI-passing successor including457f203, then repeat the recorded manual pilot and20-trial combined acceptance. Preserve supported native identities and distinguish ground-entry from landing contexts.",
       "new_deck_trials": 40,
-      "evidence": "STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_repeat_17, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18",
+      "evidence": "STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_repeat_17, nose_manual_lt_pop_repeat_18, later_nose_native_chain_repeat_08d2a3a_18; grind-exit-results.json:manual_identity_5f_12,manual_moving_context_5f_4",
       "maturity": "INTEGRATED"
     },
     {
@@ -2165,7 +2165,7 @@
         "dual-stick-rail-and-spin"
       ],
       "remaining": "Broader stance and independently repeatable exact FS/BS identity, revised manual admission regression and monetary ownership remain open.",
-      "next": "Use5f6f233 targeted manual-identity regression after verified deployment; preserve20/20 regular composition evidence.",
+      "next": "Target strict manual-admission composition after the repeated-history repair; preserve20/20 regular native Revert/Manual evidence.",
       "new_deck_trials": 40,
       "evidence": "grind-exit-results.json:classic_rail_clear_comparison_6;classic_rail_clear_repeat_17",
       "maturity": "REPEATABLE: controlled regular generic native revert/manual composition; exact side remains DISCOVERED"
@@ -2237,7 +2237,7 @@
       "implementation_status": "Deterministic model implemented; chainF native acceptance absent",
       "source_ids": [],
       "remaining": "Second grind/manual harder in one unbanked native combo; no premature reset.",
-      "next": "Retain model and verify chainF with per-mode fatigue/difficulty telemetry.",
+      "next": "Validate repeated-manual admission, then capture guarded relative trajectory before any second-rail layout. Original named rail preserved; no guessed transforms or forced physics.",
       "new_deck_trials": 0
     },
     {
