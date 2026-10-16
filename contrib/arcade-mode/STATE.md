@@ -1,6 +1,29 @@
 ## Default RT native trials and scoring baseline diagnosis — 2026-10-16
 
-Current source fe53a8384605e94bea0769d414b1d979a7513ceb passes every CI gate.
+HIL50 result1792162733637269000 now completes all four scoring windows after the
+covered-generation fix: two exact native Kickflips and two physical manual bails,
+all neutralized and fixture-reset ready. Baselines bind in1909–2841ms. Historical
+route2 unbound count4 stays unchanged across all sampled health; it is retained,
+not attributed to the new trials. Both clean lines end10,051ms after line start;
+both bails emit failed kind1/score5 followed by success-valued kind3/category10
+events, reinforcing that success alone is not a clean bank. Missing end-boundary
+health and ownership remain explicit.21 separate recorded trials/57 captures
+replay with zero authoritative monetary operations;17 focused replay tests pass.
+HIL50 result1792162893360510000 completes six rail-clearance comparisons:3/3
+350ms Ollie-out and3/3 Kickflip-out native revert/manual links pass, each with
+one grind entry, retained fatigue,750–752ms final grace, neutral/reset. No rail
+recontact; this does not erase the prior220ms18/20 denominator. Seventeen more
+350ms trials are running to reach ten early/ten standard manual commands.
+The game remains hot at the restored Stadium fixture.
+
+Source review also found that exhausting the32-ancestor capture walk silently
+discarded evidence. It now increments the existing rejection counter; proven
+same-VM duplicates remain suppressed without loss.167 native-score/21 health/
+328 settlement checks pass, and all57 recorded captures remain non-authoritative.
+The full Python suite passes330 checks. This runtime change awaits CI/deployment.
+
+Current source1e02a0fded91048e092834b74d9141ddf2770015 is pushed with CI running;
+fe53a8384605e94bea0769d414b1d979a7513ceb passes every CI gate.
 Installed source8ab84cd1209a49c477042ef5f1248bcd7d8ab098, DLL
 042a6ad2f17c4dccc90751766d2ef2a05263a454ed95bc081d1196d631ebb094.
 Deployment completed through the guarded installer; supported25414733 game,

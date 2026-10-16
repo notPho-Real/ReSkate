@@ -5,6 +5,17 @@
 #include <span>
 
 namespace dingosdk::arcade_mode::native_score_detail {
+// Ancestors are the observer's own stack scopes, not native game memory.
+// Same-VM ancestry proves a duplicate; exhausting the walk proves no such
+// thing and must remain visible in the existing rejected-capture counter.
+template<class Scope, class Counter>
+bool capture_scope_allowed(const Scope* parent, std::uintptr_t vm, Counter& rejected) noexcept {
+    for (unsigned depth = 0; parent; parent = parent->parent) {
+        if (depth++ == 32) { ++rejected; return false; }
+        if (parent->vm == vm) return false;
+    }
+    return true;
+}
 struct Event {
     std::uint64_t serial{}, sampled_at{}, epoch{};
     Route route{};

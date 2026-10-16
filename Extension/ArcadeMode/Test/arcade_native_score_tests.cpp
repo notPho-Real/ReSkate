@@ -18,6 +18,31 @@ void check(bool ok, const char* description) {
     ++checks;
     if (!ok) { std::cerr << "FAIL: " << description << '\n'; std::exit(1); }
 }
+void capture_scope_tests() {
+    struct Scope { std::uintptr_t vm{}; const Scope* parent{}; };
+    std::atomic<std::uint64_t> rejected{};
+    check(capture_scope_allowed(static_cast<const Scope*>(nullptr), 1, rejected) && rejected == 0,
+          "top-level score capture has no duplicate ancestor");
+    std::array<Scope, 33> ancestors{};
+    for (std::size_t i = 0; i < ancestors.size(); ++i)
+        ancestors[i] = {2, i ? &ancestors[i - 1] : nullptr};
+    check(capture_scope_allowed(&ancestors[31], 1, rejected) && rejected == 0,
+          "exactly 32 distinct ancestors remain within existing bound");
+    ancestors[0].vm = 1;
+    check(!capture_scope_allowed(&ancestors[31], 1, rejected) && rejected == 0,
+          "proven same-VM duplicate at last permitted ancestor does not count as loss");
+    check(!capture_scope_allowed(&ancestors[32], 1, rejected) && rejected == 1,
+          "same VM beyond bound cannot silently suppress an unverified capture");
+    ancestors[0].vm = 2;
+    check(!capture_scope_allowed(&ancestors[32], 1, rejected) && rejected == 2,
+          "exhausted walk increments existing rejection counter exactly once");
+    ancestors[32].vm = 1;
+    check(!capture_scope_allowed(&ancestors[32], 1, rejected) && rejected == 2,
+          "immediate duplicate suppresses without needing the remaining ancestry");
+    ancestors[0].parent = &ancestors[0];
+    check(!capture_scope_allowed(&ancestors[0], 1, rejected) && rejected == 3,
+          "cyclic observer ancestry terminates and reports incomplete capture");
+}
 struct Fixture {
     std::array<unsigned char, 8192> bytes{};
     std::size_t next{};
@@ -253,6 +278,7 @@ void diagnostic_tests() {
 }
 }
 int main(int argc, char** argv) {
+    capture_scope_tests();
     if (argc == 3 && std::string_view(argv[1]) == "--replay-unowned") {
         std::ifstream input(argv[2]);
         check(input.good(), "recorded capture file available");

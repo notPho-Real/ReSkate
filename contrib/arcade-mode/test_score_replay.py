@@ -17,7 +17,7 @@ class ScoreReplayTests(unittest.TestCase):
 
     def test_recorded_mechanic_passes_do_not_prove_monetary_ownership(self):
         result = score_replay.report(self.evidence)
-        self.assertEqual(len(result['trials']), 17)
+        self.assertEqual(len(result['trials']), 21)
         self.assertFalse(result['new_hardware_acceptance'])
         for item in result['trials']:
             row = item['recorded']
@@ -161,6 +161,41 @@ class ScoreReplayTests(unittest.TestCase):
             self.assertEqual(result['authoritative_operations'], 0)
             self.assertIsNone(result['banked_points'])
             self.assertIsNone(result['lost_points'])
+
+    def test_bound_capture_windows_preserve_lifetime_losses_and_unverified_ownership(self):
+        for index, item in enumerate(self.evidence['trials'][17:21]):
+            self.assertEqual(item['provenance']['trial_index'], index)
+            self.assertEqual(item['provenance']['result'], '1792162733637269000')
+            self.assertEqual(item['provenance']['result_sha256'],
+                             'b1dc8f2dd18ee127b11f20507fbbc93963ceafd3dc6713caa4319b3376834e8e')
+            trial = item['trial']; baseline = trial['score_capture_baseline']
+            self.assertEqual(baseline['status'], 'READY')
+            self.assertFalse(baseline['owner_verified'])
+            self.assertEqual(baseline['capture_completeness'], 'UNVERIFIED')
+            native = trial['observations']['native_score']
+            before = {r['route']: r for r in baseline['health']}
+            self.assertEqual(before[2]['unbound'], 4)  # Preserved pretrial loss history.
+            for row in native['health']:
+                self.assertEqual(row['epoch'], baseline['epoch'])
+                self.assertGreater(row['ms'], baseline['ms'])
+                for key in ('unbound', 'expired', 'changed'):
+                    self.assertEqual(row[key], before[row['route']][key])
+            result = score_replay.replay_trial(trial)
+            self.assertEqual(result['authoritative_operations'], 0)
+            self.assertIn('health_boundaries_unverified', result['reasons'])
+            self.assertNotIn('health_loss_between_samples', result['reasons'])
+            self.assertIsNone(result['banked_points'])
+            self.assertIsNone(result['lost_points'])
+            if index < 2:
+                self.assertEqual([r['route'] for r in native['samples']], [4, 1, 2])
+                self.assertGreater(native['samples'][-1]['ms'], native['health'][-1]['ms'])
+            else:
+                self.assertEqual(result['physical_bail'], 'PASS')
+                self.assertFalse(native['samples'][0]['success'])
+                self.assertTrue(native['samples'][1]['success'])
+                self.assertEqual([r['sequence_kind'] for r in native['details']], [1, 3])
+            self.assertTrue(trial['neutralized'])
+            self.assertTrue(trial['fixture_reset']['reset_ready'])
 
     def test_only_sequence_end_requires_details_and_missing_never_means_zero(self):
         no_sequence = score_replay.replay_trial(self.evidence['trials'][11]['trial'])

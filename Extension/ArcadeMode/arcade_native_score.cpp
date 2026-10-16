@@ -212,9 +212,7 @@ void observe_native_score_expression(std::uintptr_t vm, std::uint32_t pc) noexce
     // same-VM ancestor entries; exceeding the bounded nesting walk fails closed.
     auto* scope = profile_runtime::expression_scope;
     scope = scope ? scope->parent : nullptr;
-    for (unsigned depth = 0; scope; scope = scope->parent) {
-        if (depth++ == 32 || scope->vm == vm) return;
-    }
+    if (!capture_scope_allowed(scope, vm, r->rejected)) return;
     std::uint32_t frame{}, constants{}, words{};
     std::uintptr_t instance{}, back{};
     if (!read(resource + 0x20, frame) || !read(resource + 0x24, constants) || !read(resource + 0x2c, words) ||
