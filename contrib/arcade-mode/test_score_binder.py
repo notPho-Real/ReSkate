@@ -18,6 +18,12 @@ def health(epoch=3, active='true', ms=1001):
             'route=1 unbound=0 expired=0 changed=0 overflow=false.')
 
 
+def layout_row(route=1, reasons=(0, 0, 0, 0), **changes):
+    keys = ('layout_alignment', 'layout_range', 'layout_metadata', 'layout_duplicate')
+    fields = ''.join(f' {key}={value}' for key, value in zip(keys, reasons))
+    return row(route, **changes).replace(' overflow=', fields + ' overflow=')
+
+
 class ScoreBinderTests(unittest.TestCase):
     def test_diagnostic_hook_cannot_satisfy_progression_or_replace_primary_observer(self):
         root = Path(__file__).resolve().parents[2]
@@ -59,7 +65,37 @@ class ScoreBinderTests(unittest.TestCase):
         self.assertEqual(result['binder_capture_completeness'], 'UNVERIFIED')
         self.assertEqual(result['binder_freshness'], 'UNVERIFIED')
         self.assertEqual(result['binder_owner'], 'UNVERIFIED')
+        self.assertFalse(result['binder_snapshot'][0]['layout_reasons_available'])
+        self.assertNotIn('layout_alignment', result['binder_snapshot'][0])
         self.assertEqual(json.loads(json.dumps(result)), result)
+
+    def test_layout_reasons_preserve_each_cumulative_counter_without_authority(self):
+        result = self.parse([layout_row(route, reasons=(1, 2, 3, 4), layout_rejected=4)
+                             for route in range(1, 5)] + [health()])
+        self.assertEqual(result['binder_status'], 'COMPLETE')
+        for sample in result['binder_snapshot']:
+            self.assertTrue(sample['layout_reasons_available'])
+            self.assertEqual([sample[key] for key in
+                ('layout_alignment', 'layout_range', 'layout_metadata', 'layout_duplicate')], [1, 2, 3, 4])
+        self.assertEqual(result['binder_owner'], 'UNVERIFIED')
+        self.assertEqual(result['binder_capture_completeness'], 'UNVERIFIED')
+        self.assertEqual(json.loads(json.dumps(result)), result)
+
+    def test_partial_invalid_regressed_or_mixed_layout_reasons_reject_snapshot(self):
+        full = [layout_row(route, reasons=(1, 1, 1, 1), layout_rejected=1) for route in range(1, 5)]
+        for bad in (full[0].replace(' layout_range=1', ''),
+                    full[0].replace('layout_range=1', 'layout_range=-1'),
+                    full[0].replace('layout_range=1', 'layout_range=' + str(2**64)),
+                    full[0].replace('layout_range=1', 'layout_range=PRIVATE_0x12345678'), row()):
+            result = self.parse([bad, *full[1:], health()])
+            self.assertIsNone(result['binder_snapshot'])
+            self.assertGreater(result['binder_malformed'], 0)
+            self.assertNotIn('PRIVATE_', json.dumps(result))
+        regressed = [layout_row(route, reasons=(1, 0, 1, 1), layout_rejected=2, ms=6000)
+                     for route in range(1, 5)]
+        result = self.parse(full + regressed + [health(ms=6001)])
+        self.assertIsNone(result['binder_snapshot'])
+        self.assertGreater(result['binder_malformed'], 0)
 
     def test_missing_partial_duplicate_reordered_and_unavailable(self):
         full = [row(route) for route in range(1, 5)]

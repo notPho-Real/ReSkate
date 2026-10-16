@@ -6,9 +6,17 @@ enum class BinderOutcome : unsigned {
     contract_rejected, mapping_unreadable, count_rejected, layout_rejected,
     value_mismatch, relationship_matches, unverified, stale, count
 };
+// Independent reasons may coexist. Bits classify the existing three records;
+// they never relax the representation guards or export the records themselves.
+enum BinderLayoutFailure : unsigned {
+    binder_alignment = 1U, binder_range = 2U, binder_metadata = 4U, binder_duplicate = 8U
+};
+inline constexpr std::array<unsigned, 4> binder_layout_bits{
+    binder_alignment, binder_range, binder_metadata, binder_duplicate};
 struct BinderDiagnostic {
     Route route{Route::none};
     BinderOutcome outcome{BinderOutcome::unverified};
+    unsigned layout_failures{};
 };
 // These are the existing common binder wrapper/table reads, not guessed scoring
 // parameter offsets. No input slot, Context, runtime instance or payload is read.
@@ -46,22 +54,23 @@ BinderDiagnostic inspect_score_binder(Read& read, std::uintptr_t serialized, Cur
         } else if (!read(table, mappings)) {
             result.outcome = BinderOutcome::mapping_unreadable;
         } else {
-            bool valid = true;
             for (unsigned i = 0; i < mappings.size(); ++i) {
                 const auto& mapping = mappings[i];
-                valid = valid && !(mapping.register_offset & 7U) &&
-                    mapping.register_offset <= frame && frame - mapping.register_offset >= 8 &&
-                    !(mapping.native_metadata & 0xffU);
+                if (mapping.register_offset & 7U) result.layout_failures |= binder_alignment;
+                if (mapping.register_offset > frame || frame - mapping.register_offset < 8)
+                    result.layout_failures |= binder_range;
+                if (mapping.native_metadata & 0xffU) result.layout_failures |= binder_metadata;
                 for (unsigned prior = 0; prior < i; ++prior)
-                    valid = valid && mappings[prior].register_offset != mapping.register_offset;
+                    if (mappings[prior].register_offset == mapping.register_offset)
+                        result.layout_failures |= binder_duplicate;
             }
-            result.outcome = !valid ? BinderOutcome::layout_rejected :
+            result.outcome = result.layout_failures ? BinderOutcome::layout_rejected :
                 mappings[2].register_offset == graph->input ? BinderOutcome::relationship_matches : BinderOutcome::value_mismatch;
         }
     }
     // Relationship match describes static mapping compatibility only. It proves
     // neither parameter representation nor ownership nor native occurrence ID.
-    if (!current()) result.outcome = BinderOutcome::stale;
+    if (!current()) { result.outcome = BinderOutcome::stale; result.layout_failures = 0; }
     return result;
 }
 }

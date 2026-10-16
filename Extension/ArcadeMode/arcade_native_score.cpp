@@ -41,6 +41,7 @@ struct Runtime {
     SchemaSnapshotGate schema_gate;
     std::uint64_t schema_report_at{}, schema_serial{}, schema_incomplete{};
     std::array<std::array<std::atomic<std::uint64_t>, static_cast<unsigned>(BinderOutcome::count)>, 4> binder_counts{};
+    std::array<std::array<std::atomic<std::uint64_t>, binder_layout_bits.size()>, 4> binder_layout_counts{};
     std::atomic<bool> binder_overflow{};
     bool binder_attempted{}, binder_prepared{}, binder_attached{};
     std::uint64_t binder_report_at{};
@@ -74,6 +75,10 @@ void observe_score_binder(std::uintptr_t serialized, std::uintptr_t, void**) noe
     const auto route = static_cast<unsigned>(diagnostic.route) - 1;
     const auto outcome = static_cast<unsigned>(diagnostic.outcome);
     count_capture_skip(runtime->binder_counts[route][outcome], runtime->binder_overflow);
+    if (diagnostic.outcome == BinderOutcome::layout_rejected)
+        for (unsigned i = 0; i < binder_layout_bits.size(); ++i)
+            if (diagnostic.layout_failures & binder_layout_bits[i])
+                count_capture_skip(runtime->binder_layout_counts[route][i], runtime->binder_overflow);
 }
 void report_binder(Runtime& runtime, std::uint64_t now, bool active) {
     if (active && !runtime.binder_attempted) {
@@ -97,11 +102,13 @@ void report_binder(Runtime& runtime, std::uint64_t now, bool active) {
     for (unsigned route = 0; route < runtime.binder_counts.size(); ++route) {
         std::array<std::uint64_t, static_cast<unsigned>(BinderOutcome::count)> counts{};
         for (unsigned i = 0; i < counts.size(); ++i) counts[i] = runtime.binder_counts[route][i].load();
+        std::array<std::uint64_t, binder_layout_bits.size()> layout{};
+        for (unsigned i = 0; i < layout.size(); ++i) layout[i] = runtime.binder_layout_counts[route][i].load();
         logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE NATIVE SCORE BINDER: ms={} epoch={} active={} prepared={} attached={} route={} contract_rejected={} mapping_unreadable={} count_rejected={} layout_rejected={} value_mismatch={} relationship_matches={} unverified={} stale={} overflow={} owner_verified=false.",
+            "ARCADE NATIVE SCORE BINDER: ms={} epoch={} active={} prepared={} attached={} route={} contract_rejected={} mapping_unreadable={} count_rejected={} layout_rejected={} value_mismatch={} relationship_matches={} unverified={} stale={} layout_alignment={} layout_range={} layout_metadata={} layout_duplicate={} overflow={} owner_verified=false.",
             sampled_ms, sampled_epoch, sampled_active, runtime.binder_prepared, runtime.binder_attached, route + 1,
             counts[0], counts[1], counts[2], counts[3], counts[4], counts[5], counts[6], counts[7],
-            runtime.binder_overflow.load());
+            layout[0], layout[1], layout[2], layout[3], runtime.binder_overflow.load());
     }
 }
 bool publish_binding(Runtime& r, std::uint64_t epoch, const Binding& binding) noexcept {

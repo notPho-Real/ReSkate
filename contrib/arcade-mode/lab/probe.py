@@ -755,11 +755,14 @@ def parse_native_score_binder(text):
         text = text[start:]
     counters = ('contract_rejected', 'mapping_unreadable', 'count_rejected', 'layout_rejected',
                 'value_mismatch', 'relationship_matches', 'unverified', 'stale')
-    keys = ('ms', 'epoch', 'active', 'prepared', 'attached', 'route', *counters, 'overflow')
+    layout_counters = ('layout_alignment', 'layout_range', 'layout_metadata', 'layout_duplicate')
+    required_keys = ('ms', 'epoch', 'active', 'prepared', 'attached', 'route', *counters)
+    keys = (*required_keys, *layout_counters, 'overflow')
     booleans = {'active', 'prepared', 'attached', 'overflow'}
     pattern = re.compile(r'ARCADE NATIVE SCORE BINDER: ' + ' '.join(
-        key + ('=(true|false)' if key in booleans else r'=([0-9]{1,20})') for key in keys) +
-        r' owner_verified=false\.$')
+        key + ('=(true|false)' if key in booleans else r'=([0-9]{1,20})') for key in required_keys) +
+        r'(?:' + ''.join(' ' + key + r'=([0-9]{1,20})' for key in layout_counters) + r')?' +
+        r' overflow=(true|false) owner_verified=false\.$')
     rows, previous, group, latest = [], {}, None, None
     malformed = dropped = incomplete = received = 0
     for line in text.splitlines():
@@ -774,12 +777,13 @@ def parse_native_score_binder(text):
             malformed += 1
             continue
         row = {key: value == 'true' if key in booleans else int(value)
-               for key, value in zip(keys, match.groups())}
-        if (any(row[key] > 0xffffffffffffffff for key in keys if key not in booleans) or
+               for key, value in zip(keys, match.groups()) if value is not None}
+        if (any(row[key] > 0xffffffffffffffff for key in row if key not in booleans) or
                 not row['epoch'] or row['route'] not in (1, 2, 3, 4) or
                 (row['prepared'] and not row['attached'])):
             malformed += 1
             continue
+        row['layout_reasons_available'] = all(key in row for key in layout_counters)
         current = (row['ms'], row['epoch'])
         if group != current:
             if rows and len(rows) != 4:
@@ -789,8 +793,11 @@ def parse_native_score_binder(text):
             rows, group = [], current
         prior = previous.get(row['route'])
         if (row['route'] != len(rows) + 1 or
-                (prior and any(row[key] < prior[key] for key in counters)) or
-                (rows and any(row[key] != rows[0][key] for key in ('active', 'prepared', 'attached')))):
+                (prior and (row['layout_reasons_available'] != prior['layout_reasons_available'] or
+                            any(row[key] < prior[key] for key in (*counters, *layout_counters)
+                                if key in row and key in prior))) or
+                (rows and any(row[key] != rows[0][key] for key in
+                              ('active', 'prepared', 'attached', 'layout_reasons_available')))):
             malformed += 1
         previous[row['route']] = row
         latest = row

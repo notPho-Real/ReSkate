@@ -178,6 +178,27 @@ void binder_diagnostic_tests() {
     configure(graph); fixture.put(table + 4, std::uint32_t{1});
     check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::layout_rejected,
           "unsupported metadata low-byte representation is not called compatible");
+    for (const unsigned mask : std::array<unsigned, 6>{0U, binder_alignment, binder_range, binder_metadata, binder_duplicate, 15U}) {
+        configure(graph);
+        // Independent entries expose every reason, including all four together.
+        if (mask & binder_alignment) fixture.put(table, std::uint32_t{1});
+        if (mask & binder_range) fixture.put(table + 8, graph.frame);
+        if (mask & binder_metadata) fixture.put(table + 4, std::uint32_t{0xff});
+        if (mask & binder_duplicate) fixture.put(table + 16,
+            mask & binder_range ? graph.frame : std::uint32_t{});
+        result = inspect_score_binder(fixture, serialized, active);
+        check(result.layout_failures == mask && result.outcome ==
+              (mask ? BinderOutcome::layout_rejected : BinderOutcome::relationship_matches),
+              "reason bits distinguish each unchanged layout guard and preserve compound failures");
+    }
+    calls = 0;
+    result = inspect_score_binder(fixture, serialized, [&] { return ++calls == 1; });
+    check(result.outcome == BinderOutcome::stale && !result.layout_failures,
+          "retired epoch cannot publish previously read layout failure reasons");
+    configure(graph); fixture.put(table + 4, std::uint32_t{0xffffff00});
+    result = inspect_score_binder(fixture, serialized, active);
+    check(!result.layout_failures && result.outcome == BinderOutcome::relationship_matches,
+          "only the already guarded metadata low byte contributes a failure reason");
     for (const auto pointer : {std::uintptr_t{}, std::uintptr_t{3}, UINTPTR_MAX}) {
         fixture.put(serialized + 0x58, pointer);
         check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::mapping_unreadable,
