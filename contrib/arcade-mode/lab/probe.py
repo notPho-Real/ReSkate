@@ -748,6 +748,77 @@ def parse_native_score_schema(text):
                 schema_owner='UNVERIFIED')
 
 
+def parse_native_score_binder(text):
+    """Bounded cumulative mapping diagnostics; never owner or freshness proof."""
+    start = text.rfind('Arcade Mode ready')
+    if start >= 0:
+        text = text[start:]
+    counters = ('contract_rejected', 'mapping_unreadable', 'count_rejected', 'layout_rejected',
+                'value_mismatch', 'relationship_matches', 'unverified', 'stale')
+    keys = ('ms', 'epoch', 'active', 'prepared', 'attached', 'route', *counters, 'overflow')
+    booleans = {'active', 'prepared', 'attached', 'overflow'}
+    pattern = re.compile(r'ARCADE NATIVE SCORE BINDER: ' + ' '.join(
+        key + ('=(true|false)' if key in booleans else r'=([0-9]{1,20})') for key in keys) +
+        r' owner_verified=false\.$')
+    rows, previous, group, latest = [], {}, None, None
+    malformed = dropped = incomplete = received = 0
+    for line in text.splitlines():
+        if 'ARCADE NATIVE SCORE BINDER:' not in line:
+            continue
+        received += 1
+        if received > 128:
+            dropped += 1
+            continue
+        match = pattern.search(line)
+        if not match:
+            malformed += 1
+            continue
+        row = {key: value == 'true' if key in booleans else int(value)
+               for key, value in zip(keys, match.groups())}
+        if (any(row[key] > 0xffffffffffffffff for key in keys if key not in booleans) or
+                not row['epoch'] or row['route'] not in (1, 2, 3, 4) or
+                (row['prepared'] and not row['attached'])):
+            malformed += 1
+            continue
+        current = (row['ms'], row['epoch'])
+        if group != current:
+            if rows and len(rows) != 4:
+                incomplete += 1
+            if group and (current[0] < group[0] or current[1] < group[1]):
+                malformed += 1
+            rows, group = [], current
+        prior = previous.get(row['route'])
+        if (row['route'] != len(rows) + 1 or
+                (prior and any(row[key] < prior[key] for key in counters)) or
+                (rows and any(row[key] != rows[0][key] for key in ('active', 'prepared', 'attached')))):
+            malformed += 1
+        previous[row['route']] = row
+        latest = row
+        if len(rows) < 4:
+            rows.append(row)
+    if rows and len(rows) != 4:
+        incomplete += 1
+    health_result = parse_native_score_health(text)
+    health = health_result['health']
+    age = health[-1]['ms'] - latest['ms'] if latest and health else None
+    # Binder rows are sampled every five seconds. Require a later health sample
+    # in that interval plus one second tolerance; this is still not live proof.
+    current_context = bool(latest and health and not health_result['health_malformed'] and
+                           not health_result['health_dropped'] and not health[-1]['overflow'] and
+                           health[-1]['epoch'] == latest['epoch'] and health[-1]['active'] and
+                           age is not None and 0 <= age <= 6000)
+    overflow = any(row['overflow'] for row in previous.values())
+    complete = bool(len(rows) == 4 and not (malformed or dropped or incomplete or overflow) and
+                    latest['active'] and latest['prepared'] and latest['attached'] and current_context)
+    return dict(binder_snapshot=rows if complete else None, binder_latest_status=latest,
+                binder_status='COMPLETE' if complete else 'UNVERIFIED' if received else 'MISSING',
+                binder_malformed=malformed, binder_dropped=dropped, binder_incomplete=incomplete,
+                binder_rows_seen=received, binder_overflow=overflow, binder_context_current=current_context,
+                binder_health_age_ms=age if age is not None and 0 <= age <= 0xffffffffffffffff else None,
+                binder_evidence_gap=bool(malformed or dropped or incomplete or overflow or (received and not current_context)),
+                binder_capture_completeness='UNVERIFIED', binder_freshness='UNVERIFIED', binder_owner='UNVERIFIED')
+
+
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
     samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
@@ -802,7 +873,7 @@ def parse_native_score_events(text):
     return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
                 guard_dropped=guard_dropped, malformed=malformed,
                 native_event_identity='UNVERIFIED', **parse_native_score_details(text),
-                **parse_native_score_health(text), **parse_native_score_schema(text))
+                **parse_native_score_health(text), **parse_native_score_schema(text), **parse_native_score_binder(text))
 
 
 def parse_fixture_geometry(text):

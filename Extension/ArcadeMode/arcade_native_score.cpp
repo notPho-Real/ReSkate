@@ -3,10 +3,12 @@
 #include "arcade_score_boundary.h"
 #include "arcade_score_capture_health.h"
 #include "arcade_score_schema_snapshot.h"
+#include "arcade_score_binder_diagnostic.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Extension/Progression/local_entitlement_trigger_runtime.h"
+#include "Extension/Progression/neighborhood_unlock_override.h"
 #include "Extension/Skater/no_bail.h"
 #include "Extension/Throwdowns/native_type_scan.h"
 #include <thread>
@@ -38,6 +40,10 @@ struct Runtime {
     std::array<multiplayer::NativeTypeQuery, 4> queries{};
     SchemaSnapshotGate schema_gate;
     std::uint64_t schema_report_at{}, schema_serial{}, schema_incomplete{};
+    std::array<std::array<std::atomic<std::uint64_t>, static_cast<unsigned>(BinderOutcome::count)>, 4> binder_counts{};
+    std::atomic<bool> binder_overflow{};
+    bool binder_attempted{}, binder_prepared{}, binder_attached{};
+    std::uint64_t binder_report_at{};
 };
 std::atomic<Runtime*> published{};
 bool same_owner(const NoBailSkater& a, const NoBailSkater& b) noexcept {
@@ -52,6 +58,51 @@ bool client_realm(std::uintptr_t base) noexcept {
         return context && memory::peek(base + engine::context_type_offset, offset) && offset < 0x1000000 &&
             memory::peek(context + offset, tag) && tag == 0xbf0f9789;
     } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+void observe_score_binder(std::uintptr_t serialized, std::uintptr_t, void**) noexcept {
+    auto* runtime = published.load(std::memory_order_acquire);
+    if (!runtime) return;
+    const auto epoch = runtime->epoch.load();
+    const auto current = [&] {
+        const auto expiry = runtime->expires.load();
+        return epoch && expiry && GetTickCount64() <= expiry && runtime->epoch.load() == epoch;
+    };
+    Read read;
+    auto diagnostic = inspect_score_binder(read, serialized, current);
+    if (diagnostic.route == Route::none || !client_realm(runtime->base.load())) return;
+    if (!current()) diagnostic.outcome = BinderOutcome::stale;
+    const auto route = static_cast<unsigned>(diagnostic.route) - 1;
+    const auto outcome = static_cast<unsigned>(diagnostic.outcome);
+    count_capture_skip(runtime->binder_counts[route][outcome], runtime->binder_overflow);
+}
+void report_binder(Runtime& runtime, std::uint64_t now, bool active) {
+    if (active && !runtime.binder_attempted) {
+        runtime.binder_attempted = true;
+        runtime.binder_attached = try_attach_expression_binder_observer(&observe_score_binder);
+        if (runtime.binder_attached) {
+            // Reuse the hook owner's unchanged exact image/data/callsite gates.
+            // This diagnostic path never enables the progression override.
+            runtime.binder_prepared = prepare_neighborhood_unlock_override(runtime.base.load());
+            if (!runtime.binder_prepared) {
+                detach_expression_binder_observer(&observe_score_binder);
+                runtime.binder_attached = false;
+            }
+        }
+    }
+    if (!runtime.binder_attempted || now < runtime.binder_report_at) return;
+    const auto sampled_ms = GetTickCount64(), sampled_epoch = runtime.epoch.load();
+    const auto sampled_expiry = runtime.expires.load();
+    const bool sampled_active = sampled_epoch && sampled_expiry && sampled_ms <= sampled_expiry;
+    runtime.binder_report_at = sampled_ms + 5000;
+    for (unsigned route = 0; route < runtime.binder_counts.size(); ++route) {
+        std::array<std::uint64_t, static_cast<unsigned>(BinderOutcome::count)> counts{};
+        for (unsigned i = 0; i < counts.size(); ++i) counts[i] = runtime.binder_counts[route][i].load();
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE NATIVE SCORE BINDER: ms={} epoch={} active={} prepared={} attached={} route={} contract_rejected={} mapping_unreadable={} count_rejected={} layout_rejected={} value_mismatch={} relationship_matches={} unverified={} stale={} overflow={} owner_verified=false.",
+            sampled_ms, sampled_epoch, sampled_active, runtime.binder_prepared, runtime.binder_attached, route + 1,
+            counts[0], counts[1], counts[2], counts[3], counts[4], counts[5], counts[6], counts[7],
+            runtime.binder_overflow.load());
+    }
 }
 bool publish_binding(Runtime& r, std::uint64_t epoch, const Binding& binding) noexcept {
     if (r.binding_busy.test_and_set(std::memory_order_acquire)) return false;
@@ -152,6 +203,7 @@ void run_worker(Runtime& r) noexcept {
             const auto now = GetTickCount64(), epoch = r.epoch.load();
             if (epoch != previous_epoch) { previous_epoch = epoch; r.next_scan = 0; }
             const bool active = epoch && now <= r.expires.load();
+            report_binder(r, now, active);
             if (active && r.binding_epoch.load() != epoch && now >= r.next_scan) {
                 if (!refresh_binding_hint(r, epoch)) scan_slice(r, epoch);
                 r.next_scan = GetTickCount64() + 100;

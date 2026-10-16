@@ -238,6 +238,16 @@ void expression_argument_binder_hook(
 void set_expression_binder_observer(ExpressionBinderObserver observer) noexcept {
     neighborhood_unlock_state().observer.store(observer, std::memory_order_release);
 }
+bool try_attach_expression_binder_observer(ExpressionBinderObserver observer) noexcept {
+    if (!observer) return false;
+    ExpressionBinderObserver expected{};
+    return neighborhood_unlock_state().observer.compare_exchange_strong(expected, observer,
+        std::memory_order_acq_rel) || expected == observer;
+}
+void detach_expression_binder_observer(ExpressionBinderObserver observer) noexcept {
+    if (observer) (void)neighborhood_unlock_state().observer.compare_exchange_strong(observer, nullptr,
+        std::memory_order_acq_rel);
+}
 
 bool prepare_neighborhood_unlock_override(std::uintptr_t base) noexcept {
     PreserveError preserve;

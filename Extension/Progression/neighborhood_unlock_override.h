@@ -22,6 +22,10 @@ bool prepare_neighborhood_unlock_override(std::uintptr_t image_base) noexcept;
 // Read-only diagnostic observer shared by cached and one-shot expression calls.
 using ExpressionBinderObserver = void (*)(std::uintptr_t, std::uintptr_t, void**);
 void set_expression_binder_observer(ExpressionBinderObserver observer) noexcept;
+// Diagnostic attachment never replaces another observer. Removal only releases
+// the calling observer's slot; neither operation enables the unlock override.
+bool try_attach_expression_binder_observer(ExpressionBinderObserver observer) noexcept;
+void detach_expression_binder_observer(ExpressionBinderObserver observer) noexcept;
 
 // Enables or restores the process-local override after preparation. Restore
 // keeps the hook installed; detour entries that begin after it returns forward

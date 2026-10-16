@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_native_score_buffer.h"
 #include "Extension/ArcadeMode/arcade_score_boundary.h"
 #include "Extension/ArcadeMode/arcade_score_schema_snapshot.h"
+#include "Extension/ArcadeMode/arcade_score_binder_diagnostic.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -81,6 +82,85 @@ struct Fixture {
         payload = alloc(64);
     }
 };
+void binder_diagnostic_tests() {
+    Fixture fixture;
+    const auto serialized = fixture.alloc(0x60), resource = fixture.alloc(0x40);
+    const auto table = fixture.alloc(32) + 8;
+    fixture.put(serialized + 0x38, resource); fixture.put(serialized + 0x58, table);
+    fixture.put(table - 4, std::uint32_t{3});
+    const auto graph = graphs[1];
+    const auto configure = [&](const Graph& target) {
+        fixture.put(resource + 0x10, target.hash); fixture.put(resource + 0x20, target.frame);
+        fixture.put(resource + 0x24, target.constants); fixture.put(resource + 0x2c, target.words);
+        for (unsigned i = 0; i < 3; ++i) {
+            fixture.put(table + i * 8, i == 2 ? target.input : i * 8);
+            fixture.put(table + i * 8 + 4, std::uint32_t{});
+        }
+    };
+    const auto active = [] { return true; };
+    configure(graph);
+    auto result = inspect_score_binder(fixture, serialized, active);
+    check(result.route == Route::line_end && result.outcome == BinderOutcome::relationship_matches,
+          "exact three-parameter line mapping matches independently known Value location");
+    configure(graphs[3]);
+    check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::relationship_matches,
+          "exact sequence mapping matches its own known Value location");
+    for (const auto index : {0, 2}) {
+        configure(graphs[index]); fixture.put(serialized + 0x58, std::uintptr_t{});
+        check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::unverified,
+              "start and stats do not invent a parameter list or Value mapping");
+    }
+    configure(graph); fixture.put(serialized + 0x58, table);
+    unsigned reads{};
+    const auto constrained_read = [&](std::uintptr_t address, auto& value) {
+        ++reads;
+        check((address >= serialized && address + sizeof(value) <= serialized + 0x60) ||
+              (address >= resource && address + sizeof(value) <= resource + 0x40) ||
+              (address >= table - 4 && address + sizeof(value) <= table + 24),
+              "binder diagnostic reads only wrapper/header/static mapping, never inputs or Context");
+        return fixture(address, value);
+    };
+    auto reader = constrained_read;
+    check(inspect_score_binder(reader, serialized, [] { return false; }).route == Route::none && reads == 0,
+          "inactive lifecycle makes no native reads");
+    check(inspect_score_binder(reader, serialized, active).outcome == BinderOutcome::relationship_matches,
+          "successful diagnostic stays within explicit static read ranges");
+    unsigned calls{};
+    check(inspect_score_binder(fixture, serialized, [&] { return ++calls == 1; }).outcome == BinderOutcome::stale,
+          "epoch invalidation after mapping cannot retain a relationship match");
+    fixture.put(resource + 0x10, std::uint32_t{0});
+    check(inspect_score_binder(fixture, serialized, active).route == Route::none, "unknown graph is ignored");
+    configure(graph); fixture.put(resource + 0x24, graph.constants + 1);
+    check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::contract_rejected,
+          "known hash with changed compiled contract never reaches mappings");
+    configure(graph);
+    for (const auto count : {0U, 2U, 4U, 0xffffffffU}) {
+        fixture.put(table - 4, count);
+        check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::count_rejected,
+              "unexpected mapping count rejected before reading entries");
+    }
+    fixture.put(table - 4, std::uint32_t{0x80000003});
+    check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::relationship_matches,
+          "counted-array ownership flag follows existing binder contract");
+    fixture.put(table + 16, std::uint32_t{32});
+    check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::value_mismatch,
+          "bounded valid mapping with different Value location stays a mismatch");
+    for (const auto offset : {1U, 0U, graph.frame, UINT32_MAX}) {
+        configure(graph); fixture.put(table + 16, offset);
+        check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::layout_rejected,
+              "misaligned duplicate and out-of-frame mapping offsets rejected");
+    }
+    configure(graph); fixture.put(table + 4, std::uint32_t{1});
+    check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::layout_rejected,
+          "unsupported metadata low-byte representation is not called compatible");
+    for (const auto pointer : {std::uintptr_t{}, std::uintptr_t{3}, UINTPTR_MAX}) {
+        fixture.put(serialized + 0x58, pointer);
+        check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::mapping_unreadable,
+              "invalid mapping pointer never wraps into a read");
+    }
+    check(inspect_score_binder(fixture, UINTPTR_MAX, active).route == Route::none,
+          "invalid wrapper cannot overflow header addressing");
+}
 void schema_snapshot_tests() {
     Fixture f; Binding binding{};
     check(bind_schema(f, f.objects, binding), "schema snapshot fixture binds existing contracts");
@@ -356,6 +436,7 @@ void diagnostic_tests() {
 }
 int main(int argc, char** argv) {
     capture_scope_tests();
+    binder_diagnostic_tests();
     schema_snapshot_tests();
     if (argc == 3 && std::string_view(argv[1]) == "--replay-unowned") {
         std::ifstream input(argv[2]);
