@@ -105,6 +105,26 @@ int main() {
     selected.consider({"ecs/scoringmanager/activescoringdatamodel", 1, 1001, false});
     check(scoring::asset_priority(selected.assets[4].name) == 1 && scoring::asset_priority(selected.assets[5].name) == 1 &&
           selected.size == scoring::asset_limit, "context declaration candidates displace filler without increasing cap");
+    constexpr std::array observed_candidates{
+        "ecs/scoringmanager/linedata", "ecs/scoringmanager/scoringdataresource",
+        "ecs/scoringmanager/scoringtelemetrymanager_class_ecsschematics",
+        "ecs/scoringmanager/scoringtelemetrymanager_class_schematics",
+        "ecs/scoringmanager/scoringtelemetrymanager_class__onscorablesequenceended"};
+    for (const auto name : observed_candidates) selected.consider({name, 1, 1002, false});
+    check(selected.size == scoring::asset_limit && selected.omitted, "observed candidates preserve original asset cap");
+    for (const auto name : observed_candidates)
+        check(std::any_of(selected.assets.begin(), selected.assets.end(), [&](const auto& candidate) {
+            return candidate.name == name && !candidate.resource;
+        }), "actual context and sequence handler candidates displace unrelated filler");
+    check(scoring::asset_priority("ECS/SCORINGMANAGER/SCORINGTELEMETRYMANAGER_CLASS__ONSCORABLESEQUENCEENDED") == 0,
+          "actual sequence handler identity is case insensitive");
+    check(scoring::asset_priority("ecs/scoringmanager/linedata_extra") == 3 &&
+          scoring::asset_priority("ecs/scoringmanager/unrelated/linedata") == 3 &&
+          scoring::asset_priority("ecs/scoringmanager/scoringtelemetrymanager_class__onscorablesequenceended_extra") == 3,
+          "observed candidate paths exact, without broadened prefixes or guessed variants");
+    check(scoring::targets()[3]["graph_hash"].get<std::uint32_t>() == 0xafef12e9 &&
+          scoring::targets()[3]["name"].string() == "ScoringTelemetryManager__OnScorableSequenceEnded",
+          "manifest candidate selection does not rewrite compiled runtime graph identity");
     std::vector<std::string> inventory_names;
     for (unsigned i = 0; i < scoring::manifest_name_limit + 8; ++i)
         inventory_names.push_back("ecs/scoringmanager/declaration_" + std::to_string(i));

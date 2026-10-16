@@ -212,10 +212,17 @@ unsigned asset_priority(std::string_view name) noexcept {
         "ScoringTelemetryManager__OnScorableSequenceEnded"};
     for (std::string_view target : graph_names)
         if (compare_names(leaf, target) == 0) return 0;
-    // The manager stem comes from both captured handlers; its GUID must still
-    // match before it can resolve the shared-parameter declaration.
+    // Exact manifest identity from the pinned asset inspection. Selecting this
+    // candidate does not assign it the older compiled graph hash contract.
+    if (compare_names(name, "ecs/scoringmanager/scoringtelemetrymanager_class__onscorablesequenceended") == 0) return 0;
+    // These exact candidates appeared in the bounded manifest inventory. Their
+    // parsed GUIDs still determine whether an imported declaration is resolved.
     for (std::string_view target : {"ecs/scoringmanager/scoringtelemetrymanager_class",
-                                   "ecs/scoringmanager/activescoringdatamodel"})
+                                   "ecs/scoringmanager/activescoringdatamodel",
+                                   "ecs/scoringmanager/linedata",
+                                   "ecs/scoringmanager/scoringdataresource",
+                                   "ecs/scoringmanager/scoringtelemetrymanager_class_ecsschematics",
+                                   "ecs/scoringmanager/scoringtelemetrymanager_class_schematics"})
         if (compare_names(name, target) == 0) return 1;
     constexpr std::string_view global = "ecs/scoringmanager/crosssystem_global_scoringevents/";
     if (name.size() > global.size() && compare_names(name.substr(0, global.size()), global) == 0) {
