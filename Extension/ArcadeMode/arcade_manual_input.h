@@ -3,6 +3,11 @@
 #include "arcade_combo_session.h"
 
 namespace dingosdk::arcade_mode {
+// Preparation is input recognition only; state101 never authorizes actuation.
+inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
+        unsigned mode, bool revert_pending) noexcept {
+    return valid && !bail && state == 101 && mode == 1 && revert_pending;
+}
 // The measured native method holds a partial vertical right-stick deflection.
 // This class requests that method; contact/score observations prove the pose.
 class ManualGesture {
@@ -15,9 +20,11 @@ public:
         first_ = previous_ = requested_ = 0;
     }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
-                bool game_input, bool safe_state, SkatePose observed, bool conflicting) noexcept {
+                bool game_input, bool safe_state, SkatePose observed, bool conflicting,
+                bool prepare_only = false) noexcept {
         const bool command_conflict = (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u;
-        if (!game_input || !safe_state || conflicting || command_conflict ||
+        const bool can_prepare = prepare_only && !requested_ && observed == SkatePose::riding;
+        if (!game_input || (!safe_state && !can_prepare) || conflicting || command_conflict ||
             observed == SkatePose::bail || observed == SkatePose::grind ||
             (clocked_ && now < last_)) {
             cancel(); return {};
@@ -72,6 +79,9 @@ public:
         if (first_ && now - first_at_ > 350) first_ = 0;
         if (vertical && vertical != previous_) {
             if (first_ == -vertical && now - first_at_ <= 350) {
+                // Preserve the first edge through measured revert recovery, but
+                // never queue a completed command for a later unsafe surprise.
+                if (!safe_state) { cancel(); return {}; }
                 requested_ = vertical; requested_at_ = now; first_ = 0;
                 air_prepared_ = observed == SkatePose::air;
                 previous_ = vertical;

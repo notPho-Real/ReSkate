@@ -25,6 +25,48 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    check(manual_revert_preparation(true, false, 101, 1, true),
+        "fresh measured recovery with accepted continuation permits preparation");
+    for (unsigned state : {0u, 100u, 102u, 200u, 401u})
+        check(!manual_revert_preparation(true, false, state, 1, true),
+            "preparation exception is restricted to measured state101");
+    check(!manual_revert_preparation(false, false, 101, 1, true) &&
+          !manual_revert_preparation(true, true, 101, 1, true) &&
+          !manual_revert_preparation(true, false, 101, 0, true) &&
+          !manual_revert_preparation(true, false, 101, 1, false),
+        "stale owner bail other mode and absent native continuation reject preparation");
+    for (const short first : {short(25000), short(-25000)}) {
+        ManualGesture manual;
+        auto recovery = [&](std::uint64_t ms, short y, bool prepare = true,
+                            SkatePose pose = SkatePose::riding, bool conflict = false) {
+            return manual.poll(ms, 0, 0, y, true, false, pose, conflict, prepare);
+        };
+        recovery(800, 0);
+        check(!recovery(900, first).owns_stick, "first direction during recovery never owns synthetic input");
+        check(!poll(manual, 941, first).owns_stick, "safe recovery preserves the held first edge");
+        poll(manual, 960);
+        auto out = poll(manual, 1024, -first);
+        check(out.owns_stick && out.y == (first > 0 ? -20000 : 20000),
+            "measured900/941/960/1024ms handoff initiates only after safe opposite edge");
+        check(!recovery(1025, 0).owns_stick,
+            "preparation exception cannot retain an already active synthetic request");
+        manual.cancel(); recovery(2000, 0); recovery(2010, first);
+        check(!recovery(2020, -first).owns_stick && !poll(manual, 2030, -first).owns_stick,
+            "opposite edge while unsafe cancels without delayed actuation");
+        manual.cancel(); recovery(3000, 0); recovery(3010, first);
+        poll(manual, 3020);
+        check(!poll(manual, 3361, -first).owns_stick, "preparation retains350ms direction deadline");
+        for (const auto pose : {SkatePose::riding, SkatePose::unknown, SkatePose::bail, SkatePose::grind}) {
+            manual.cancel(); recovery(4000, 0); recovery(4010, first);
+            recovery(4020, 0, pose != SkatePose::riding, pose);
+            poll(manual, 4030);
+            check(!poll(manual, 4040, -first).owns_stick,
+                "lost preparation or invalid pose discards the earlier direction");
+        }
+        manual.cancel(); recovery(5000, 0); recovery(5010, first);
+        recovery(5020, 0, true, SkatePose::riding, true); poll(manual, 5030);
+        check(!poll(manual, 5040, -first).owns_stick, "conflicting owner discards recovery preparation");
+    }
     for (const bool nose : {false, true}) {
         ManualGesture manual;
         start(manual, 0, nose);

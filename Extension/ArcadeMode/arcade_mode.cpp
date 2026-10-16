@@ -60,6 +60,7 @@ std::atomic<std::uint64_t> gameplay_valid_until{};
 std::atomic<std::uint64_t> push_eligible_until{};
 std::atomic<std::uint64_t> board_eligible_until{};
 std::atomic<std::uint64_t> manual_eligible_until{};
+std::atomic<std::uint64_t> manual_prepare_until{};
 std::atomic<std::uint64_t> action_eligible_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
 std::atomic<float> push_speed{};
@@ -177,6 +178,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
     const bool failed = combo_session.step(pose, dt, correction, native_revert);
+    const bool manual_prepare = manual_revert_preparation(valid && !owner_changed, bail,
+        native.state, native.crouch_mode, combo_session.model().state().revert_pending);
+    manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
     if (native_revert) {
         const auto& linked = combo_session.model().state();
         logging::log(logging::Level::info, logging::Channel::skater,
@@ -393,6 +397,7 @@ void set_enabled(bool value, bool persist) noexcept {
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
         manual_eligible_until.store(0, std::memory_order_release);
+        manual_prepare_until.store(0, std::memory_order_release);
         action_eligible_until.store(0, std::memory_order_release);
         manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
         previous_pad = {};
@@ -576,6 +581,7 @@ void on_client_tick() noexcept {
             had_combo_owner = false;
             combo_owner = {};
             manual_eligible_until.store(0, std::memory_order_release);
+            manual_prepare_until.store(0, std::memory_order_release);
             action_eligible_until.store(0, std::memory_order_release);
             manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
             combo_session.invalidate();
@@ -690,6 +696,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
     const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
     const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
+    const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
+    const bool manual_prepare = game_input && prepare_deadline >= now && prepare_deadline - now <= 150;
     const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
     const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
     NativeGesture::Output result{};
@@ -708,7 +716,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
-            manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs);
+            manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
+            manual_prepare && !auxiliary_busy);
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
