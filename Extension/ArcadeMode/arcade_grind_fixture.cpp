@@ -1,11 +1,13 @@
 #include "Extension/Console/commands.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/ArcadeMode/arcade_fixture_geometry.h"
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/Skater/client_source_spawn.h"
 #include "Extension/Skater/no_bail.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Profile/local_profile_runtime.h"
 #include "Extension/Trainer/trainer.h"
+#include "Extension/Multiplayer/Hud/game_ui_state.h"
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -48,6 +50,44 @@ profile::PlacedObject geometry_rail;
 std::array<float, 3> geometry_skater{};
 std::uint64_t geometry_tick{}, geometry_session{}, geometry_started{};
 bool geometry_gameplay{};
+arcade_mode::FixtureTrajectory trajectory;
+std::uint64_t trajectory_gameplay_seen{};
+arcade_mode::TrajectoryContext trajectory_context(const ParkEditorModel& editor, const trainer::Telemetry& skater) {
+    NoBailSkater owner{};
+    const auto watch = watched_physics_state();
+    const auto found = std::find_if(editor.objects.begin(), editor.objects.end(), same_rail);
+    arcade_mode::TrajectoryContext c;
+    c.valid = fixture.configured && !fixture.saved_project.empty() && fixture.map == editor.map &&
+        editor.available && !editor.busy && !editor.failed && !editor.preview_token &&
+        std::count_if(editor.objects.begin(), editor.objects.end(), same_rail) == 1 &&
+        found != editor.objects.end() && found->spawned && !client_free_camera_active() &&
+        // Trainer publishes later in the client tick. Its retained state and
+        // position carry their own timestamp; a new selector state must not
+        // relabel that preceding sample or manufacture a discontinuity.
+        arcade_mode::enabled() && skater.skater && watch.valid &&
+        no_bail_skater(owner) && owner.entity == skater.sampled_entity;
+    c.owner = {owner.base, owner.entity, owner.core, owner.context, owner.rig};
+    if (c.valid) {
+        const auto ui = multiplayer::sample_game_ui_state(owner.base);
+        c.valid = ui.available && !ui.in_menu;
+    }
+    c.generation = editor.generation; c.revision = editor.revision;
+    c.object = found == editor.objects.end() ? 0 : found->id;
+    return c;
+}
+arcade_mode::TrajectorySample trajectory_sample(const trainer::Telemetry& skater) {
+    return {skater.sampled_ms, skater.position, skater.speed, skater.heading, skater.physics_state,
+        skater.skater && skater.sampled_entity != 0};
+}
+void trajectory_emit(const std::optional<arcade_mode::FixtureTrajectoryEvidence>& row) {
+    if (row && !arcade_mode::enqueue_client_telemetry(*row)) trajectory.delivery_failed();
+}
+void trajectory_update(std::uint64_t now, bool gameplay) {
+    if (gameplay) trajectory_gameplay_seen = now;
+    if (!trajectory.active()) return;
+    const auto skater = trainer::telemetry();
+    trajectory_emit(trajectory.tick(trajectory_context(local_park_editor(), skater), trajectory_sample(skater), now, gameplay));
+}
 arcade_mode::FixtureGeometryContext geometry_context(const ParkEditorModel& editor, bool require_gameplay = true) {
     arcade_mode::FixtureGeometryContext context{};
     const auto skater = trainer::telemetry();
@@ -123,9 +163,9 @@ Json geometry_status() {
 }
 }
 void register_arcade_fixture_commands(Commands& registry) {
-    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel", Type::text);
+    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel|trajectory|trajectory-status|trajectory-cancel", Type::text);
     operation.choices = {"status", "place", "relocate", "turn", "reset", "save", "adopt",
-        "geometry", "geometry-status", "geometry-cancel"};
+        "geometry", "geometry-status", "geometry-cancel", "trajectory", "trajectory-status", "trajectory-cancel"};
     auto entry = action("arcadefixture", "Single native flat-rail practice fixture", Group::objects, {operation});
     entry.run = [](const Model& model, const Values& values, const Output& out) {
         const auto& op = std::get<std::string>(values[0]);
@@ -137,6 +177,23 @@ void register_arcade_fixture_commands(Commands& registry) {
             found != editor.objects.end() && found->spawned;
         const bool asset = editor.assets && std::any_of(editor.assets->begin(), editor.assets->end(),
             [](const auto& item) { return item.key == rail_item; });
+        if (op == "trajectory" || op == "trajectory-status" || op == "trajectory-cancel") {
+            const auto now = GetTickCount64();
+            if (op == "trajectory") {
+                if (model.debug.park_editor || !present || !asset || !trajectory_gameplay_seen ||
+                    now < trajectory_gameplay_seen || now - trajectory_gameplay_seen > 5000 ||
+                    geometry.status == arcade_mode::GeometryStatus::sampling || geometry.status == arcade_mode::GeometryStatus::armed ||
+                    !trajectory.arm(trajectory_context(editor, skater), trajectory_sample(skater), fixture.start, now)) {
+                    out("error: Trajectory requires the closed editor and a fresh stopped saved fixture baseline."); return;
+                }
+                out("Read-only trajectory armed; close console within five seconds. Capture ends after twenty-four seconds.");
+            } else if (op == "trajectory-cancel") trajectory_emit(trajectory.cancel(now));
+            out("ARCADE FIXTURE TRAJECTORY STATUS: " + Json{{"session", trajectory.session},
+                {"status", static_cast<unsigned>(trajectory.status)}, {"samples", trajectory.count},
+                {"dropped", trajectory.dropped}, {"duration_ms", arcade_mode::FixtureTrajectory::duration_ms},
+                {"sample_limit", arcade_mode::FixtureTrajectory::sample_limit}}.dump());
+            return;
+        }
         if (op == "geometry-status" || op == "geometry-cancel") {
             if (op == "geometry-cancel") geometry.cancel();
             out("ARCADE FIXTURE GEOMETRY: " + geometry_status().dump()); return;
@@ -145,7 +202,7 @@ void register_arcade_fixture_commands(Commands& registry) {
             const auto now = GetTickCount64();
             float baseline_distance{};
             for (unsigned i = 0; i < 3; ++i) baseline_distance += std::pow(skater.position[i] - fixture.start[i], 2.f);
-            if (model.debug.park_editor || !present || !geometry_tick || now < geometry_tick ||
+            if (trajectory.active() || model.debug.park_editor || !present || !geometry_tick || now < geometry_tick ||
                 now - geometry_tick > 150 || geometry_session >= 0xffffff ||
                 geometry.status == arcade_mode::GeometryStatus::sampling || geometry.status == arcade_mode::GeometryStatus::armed ||
                 !std::isfinite(baseline_distance) ||
@@ -162,7 +219,7 @@ void register_arcade_fixture_commands(Commands& registry) {
             ++geometry_session;
             out("Read-only fixture measurement armed; close console within five seconds, then inspect geometry-status."); return;
         }
-        if (op != "status") geometry.cancel();
+        if (op != "status") { geometry.cancel(); trajectory_emit(trajectory.cancel(GetTickCount64())); }
         if (op == "status") {
             Json status{{"configured", fixture.configured}, {"available", editor.available}, {"busy", editor.busy},
                 {"failed", editor.failed}, {"editor_open", model.debug.park_editor}, {"asset_available", asset},
@@ -256,7 +313,7 @@ void register_arcade_fixture_commands(Commands& registry) {
 }
 namespace dingosdk::arcade_mode {
 void tick_arcade_fixture_geometry(std::uint64_t now, bool gameplay) noexcept {
-    try { console::geometry_update(now, gameplay); }
-    catch (...) { console::geometry.cancel(); }
+    try { console::geometry_update(now, gameplay); console::trajectory_update(now, gameplay); }
+    catch (...) { console::geometry.cancel(); console::trajectory_emit(console::trajectory.cancel(now)); }
 }
 }

@@ -55,7 +55,10 @@ def validate_plan(plan):
     names, trials = set(), 0
     for case in cases:
         keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
-             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset", "score_capture_ready"))
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset", "score_capture_ready", "trajectory_capture"))
+        if 'trajectory_capture' in case and (type(case['trajectory_capture']) is not bool or
+                (case['trajectory_capture'] and (case.get('fixture_reset') is not True or case.get('score_capture_ready')))):
+            raise ValueError('Trajectory capture requires fixture reset and separate scoring capture')
         if "fixture_reset" in case and type(case["fixture_reset"]) is not bool:
             raise ValueError("Fixture reset must be boolean")
         if 'score_capture_ready' in case and (type(case['score_capture_ready']) is not bool or
@@ -153,7 +156,8 @@ def observations(text):
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
             "score_edges": parse_score_edges(text), "score_labels": parse_score_presence(text), "score_numbers": parse_score_numbers(text),
-            "native_score": parse_native_score_events(text), "fixture": parse_fixture_status(text)})
+            "native_score": parse_native_score_events(text), "fixture": parse_fixture_status(text),
+            "fixture_trajectory": parse_fixture_trajectory(text)})
 
 
 def subsequence(expected, rows):
@@ -408,10 +412,15 @@ def perform_case(plan, case, env):
     if case.get('score_capture_ready'):
         baseline_observation, score_readiness = env.wait_score_capture_ready(
             case['reset_ms'], baseline_observation, **readiness)
+    trajectory_readiness = None
+    if case.get('trajectory_capture'):
+        baseline_observation, trajectory_readiness = env.arm_fixture_trajectory(baseline_observation, fixture_start)
     before = baseline_observation.get("combo", {}).get("samples", [])
     watermark = before[-1]["ms"] if before else None
     try:
         result = env.gesture(case)
+        if trajectory_readiness is not None:
+            result['trajectory_baseline'] = trajectory_readiness
         if score_readiness is not None:
             result['score_capture_baseline'] = score_readiness
     except Exception as error:
@@ -423,6 +432,8 @@ def perform_case(plan, case, env):
                     'returned_to_idle', 'score_banking')}, reset_status='NOT_ATTEMPTED')
             if score_readiness is not None:
                 partial['score_capture_baseline'] = score_readiness
+            if trajectory_readiness is not None:
+                partial['trajectory_baseline'] = trajectory_readiness
             boundary = baseline_observation.get('log_end')
             if type(boundary) is int:
                 try:
@@ -505,6 +516,7 @@ def stop_reason(error):
         "Incomplete uinput write": "input_write_incomplete",
         "fixture_window_invalid": "fixture_window_invalid",
         "fixture_reset_unverified": "fixture_reset_unverified",
+        "trajectory_capture_unverified": "trajectory_capture_unverified",
         "grind_evidence_incomplete": "grind_evidence_incomplete",
         "chain_evidence_incomplete": "chain_evidence_incomplete",
         "condition_evidence_lost": "condition_evidence_lost",
@@ -519,6 +531,8 @@ def stop_reason(error):
 def stopped_trial(error, case, repetition):
     stopped = {'hard_stop': True, 'reason': stop_reason(error),
                'name': case['name'], 'repetition': repetition}
+    if stopped['reason'] == 'trajectory_capture_unverified':
+        stopped.update(input_sent=False, game_response='UNVERIFIED', stage='trajectory_baseline')
     if stopped['reason'] in ('score_capture_baseline_timeout', 'score_capture_evidence_lost'):
         stopped.update(input_sent=False, game_response='UNVERIFIED', stage='score_capture_baseline')
         receipt = getattr(error, 'score_capture_failure', None)
@@ -1009,6 +1023,54 @@ class DeckEnvironment:
             return status
         return self.fixture_reset(milliseconds)
 
+    def arm_fixture_trajectory(self, baseline, fixture):
+        # Final console handoff only. No reset, remount or second arm is attempted.
+        if self.session is None or self.session.pad is None or not fixture or not fixture.get('reset_ready'):
+            raise HardStop('trajectory_capture_unverified')
+        self.session.pad.neutral()
+        boundary = self.observe().get('log_end')
+        if type(boundary) is not int:
+            raise HardStop('trajectory_capture_unverified')
+        self.session._clock()
+        fixture_console('trajectory')
+        handoff = time.monotonic()
+        if self.wait_idle(3000, max_speed_mm_s=100) is None:
+            raise HardStop('trajectory_capture_unverified')
+        remaining = int((handoff + 3 - time.monotonic()) * 1000)
+        if remaining <= 0:
+            raise HardStop('trajectory_capture_unverified')
+        try:
+            ready = self.wait_grind_ready(remaining)
+        except HardStop as error:
+            raise HardStop('trajectory_capture_unverified') from error
+        self.session._clock()
+        current = self.observe(since=boundary)
+        diagnostic = current.get('fixture_trajectory', {})
+        status, rows = diagnostic.get('status'), diagnostic.get('samples', [])
+        if (time.monotonic() - handoff > 3 or not status or status.get('status') != 'armed' or status.get('dropped') or
+                diagnostic.get('evidence_gap') or not rows or any(not r.get('valid') for r in rows) or
+                any(r.get('session') != status['session'] or r.get('generation') != fixture['generation'] or
+                    r.get('revision') != fixture['revision'] or r.get('state') != 100 or r.get('speed_mm_s', 101) > 100 for r in rows)):
+            raise HardStop('trajectory_capture_unverified')
+        # Reuse the existing post-console native baseline, with its actual
+        # timestamps. The sampler independently pins full owner/fixture identity
+        # across this handoff; observer readiness alone does not establish it.
+        native_rows = ready.get('grind', {}).get('samples', [])
+        old_health = baseline.get('grind', {}).get('status', [])[-1:]
+        new_health = ready.get('grind', {}).get('status', [])[-1:]
+        if (not native_rows or abs(native_rows[-1]['ms'] - rows[-1]['sampled']) > 150 or
+                not old_health or not new_health or not old_health[0].get('active') or
+                new_health[0]['generation'] < old_health[0]['generation'] or
+                any(new_health[0][k] != old_health[0][k] for k in ('dropped', 'rejected')) or
+                grind_result(ready, ready, True)['evidence'] != 'COMPLETE'):
+            raise HardStop('trajectory_capture_unverified')
+        ready = dict(ready, log_end=current.get('log_end'))
+        if current.get('combo', {}).get('samples'):
+            ready['combo'] = current['combo']
+        return ready, {'session': status['session'], 'sampled': rows[-1]['sampled'],
+                         'generation': rows[-1]['generation'], 'revision': rows[-1]['revision'],
+                         'scope': 'relative_motion_diagnostic_only'}
+
     def fixture_reset(self, milliseconds):
         if self.session is None or self.session.pad is None:
             raise HardStop('fixture_reset_unverified')
@@ -1112,7 +1174,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_presence, parse_score_numbers, parse_native_score_events, parse_grind_observations, parse_fixture_status
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_presence, parse_score_numbers, parse_native_score_events, parse_grind_observations, parse_fixture_status, parse_fixture_trajectory
 from robot import fixture_console
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree

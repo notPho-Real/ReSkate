@@ -3,6 +3,7 @@
 #include "arcade_native_trick.h"
 #include "arcade_observation.h"
 #include "arcade_manual_history.h"
+#include "arcade_fixture_trajectory.h"
 #include <atomic>
 #include <compare>
 #include <span>
@@ -88,7 +89,7 @@ struct ScoreValueEvidence { std::uint64_t ms{}; ScoreProbePath path{}; std::uint
 using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence,
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
-    ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence>;
+    ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {

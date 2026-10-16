@@ -471,8 +471,8 @@ def screenshot(pid, tmp=Path("/tmp"), sleep=time.sleep, clock=time.monotonic):
 
 
 def fixture_console(operation):
-    """Two fixed practice operations only; never accept console text from a plan."""
-    if operation not in ('reset', 'status'):
+    """Fixed practice operations only; never accept console text from a plan."""
+    if operation not in ('reset', 'status', 'trajectory'):
         raise ValueError('Unknown fixture operation')
     environment = dict(os.environ, DISPLAY=':1', XAUTHORITY='/run/pressure-vessel/Xauthority')
     def run(*args):

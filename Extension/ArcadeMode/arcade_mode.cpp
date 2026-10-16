@@ -288,6 +288,11 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.sequence, r.ms, static_cast<unsigned>(d.status), d.available, d.comparable,
                 d.rows, d.manual_rows, d.nose_rows, d.distinct, d.manual_distinct, d.nose_distinct,
                 d.manual_added, d.manual_removed, d.nose_added, d.nose_removed, d.duplicates, d.relabels);
+        } else if constexpr (std::is_same_v<T, FixtureTrajectoryEvidence>) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE FIXTURE TRAJECTORY: session={} seq={} ms={} sampled={} generation={} revision={} status={} dropped={} x_mm={} y_mm={} z_mm={} speed_mm_s={} heading_mdeg={} state={}.",
+                r.session, r.sequence, r.ms, r.sampled, r.generation, r.revision, static_cast<unsigned>(r.status),
+                r.dropped, r.x_mm, r.y_mm, r.z_mm, r.speed_mm_s, r.heading_mdeg, r.state);
         } else if constexpr (std::is_same_v<T, ScoreNodeEvidence>) {
             const auto path = score_probe_path_text(r.path);
             logging::log(logging::Level::info, logging::Channel::skater,

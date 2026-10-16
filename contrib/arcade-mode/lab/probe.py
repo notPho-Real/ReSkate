@@ -876,6 +876,90 @@ def parse_native_score_events(text):
                 **parse_native_score_health(text), **parse_native_score_schema(text), **parse_native_score_binder(text))
 
 
+def parse_fixture_trajectory(text):
+    """Opt-in relative motion diagnostics; never native mechanic/owner proof."""
+    names = ('session seq ms sampled generation revision status dropped x_mm y_mm z_mm '
+             'speed_mm_s heading_mdeg state').split()
+    statuses = ('idle', 'armed', 'sample', 'complete', 'invalid', 'gap', 'timeout', 'cancelled', 'dropped')
+    marker = 'ARCADE FIXTURE TRAJECTORY: '
+    pattern = re.compile(re.escape(marker) + ' '.join(
+        k + r'=(-?[0-9]{1,20})' for k in names) + r'\.$')
+    result = dict(samples=[], status=None, malformed=0, dropped=0, sequence_missing=0,
+                  capture_completeness='UNVERIFIED', owner_proof='UNVERIFIED')
+    previous = None
+    for line in text.splitlines():
+        if 'ARCADE FIXTURE TRAJECTORY STATUS: ' in line:
+            try:
+                raw = line.split('ARCADE FIXTURE TRAJECTORY STATUS: ', 1)[1]
+                if len(raw) > 512:
+                    raise ValueError('size')
+                def unique(pairs):
+                    out = {}
+                    for k, v in pairs:
+                        if k in out:
+                            raise ValueError('duplicate')
+                        out[k] = v
+                    return out
+                row = json.loads(raw, object_pairs_hook=unique)
+                if (not isinstance(row, dict) or set(row) != {'session', 'status', 'samples', 'dropped', 'duration_ms', 'sample_limit'} or
+                        any(type(v) is not int or not 0 <= v <= 2**64-1 for v in row.values()) or
+                        row['status'] > 8 or row['samples'] > 481 or row['duration_ms'] != 24000 or row['sample_limit'] != 481):
+                    raise ValueError('status')
+                row['status'] = statuses[row['status']]
+                result['status'] = row
+            except (ValueError, TypeError):
+                result['malformed'] += 1
+            continue
+        if marker not in line:
+            continue
+        match = pattern.search(line)
+        try:
+            if not match:
+                raise ValueError('row')
+            row = dict(zip(names, map(int, match.groups())))
+            if (any(not 0 <= row[k] <= 2**64-1 for k in names if k not in ('x_mm', 'y_mm', 'z_mm')) or
+                    not row['session'] or not 1 <= row['seq'] <= 482 or not row['generation'] or not row['revision'] or
+                    row['status'] not in range(2, 9) or abs(row['x_mm']) > 100000 or abs(row['y_mm']) > 20000 or
+                    abs(row['z_mm']) > 100000 or row['speed_mm_s'] > 50000 or row['heading_mdeg'] > 360000 or row['state'] > 10000):
+                raise ValueError('bounds')
+            valid = row['status'] == 2
+            if valid:
+                if not row['sampled'] or not 0 <= row['ms'] - row['sampled'] <= 150 or row['dropped']:
+                    raise ValueError('freshness')
+            elif any(row[k] for k in ('sampled', 'x_mm', 'y_mm', 'z_mm', 'speed_mm_s', 'heading_mdeg', 'state')):
+                raise ValueError('terminal values')
+            if previous:
+                if row['session'] < previous['session']:
+                    raise ValueError('old session')
+                if row['session'] == previous['session']:
+                    if (row['seq'] <= previous['seq'] or previous['status'] != 2 or
+                            row['generation'] != previous['generation'] or row['revision'] != previous['revision'] or
+                            (row['ms'] < previous['ms'] and row['status'] != 5) or
+                            (valid and row['sampled'] <= previous['sampled'])):
+                        raise ValueError('reordered context')
+                    result['sequence_missing'] += row['seq'] - previous['seq'] - 1
+                else:
+                    result['sequence_missing'] += row['seq'] - 1
+            else:
+                result['sequence_missing'] += row['seq'] - 1
+            previous = dict(row)
+            row['status'] = statuses[row['status']]
+            row['valid'] = valid
+            if not valid:
+                for k in ('sampled', 'x_mm', 'y_mm', 'z_mm', 'speed_mm_s', 'heading_mdeg', 'state'):
+                    row[k] = None
+            result['samples'].append(row)
+            if len(result['samples']) > 512:
+                result['samples'].pop(0)
+                result['dropped'] += 1
+        except (ValueError, TypeError):
+            result['malformed'] += 1
+    result['evidence_gap'] = bool(result['malformed'] or result['dropped'] or result['sequence_missing'] or
+        any(r['status'] in ('invalid', 'gap', 'timeout', 'cancelled', 'dropped') or r['dropped'] for r in result['samples']) or
+        (result['status'] and (result['status']['dropped'] or result['status']['status'] in ('invalid', 'gap', 'timeout', 'cancelled', 'dropped'))))
+    return result
+
+
 def parse_fixture_geometry(text):
     """Latest bounded picking diagnostic, never contact or grind authority.
 
@@ -1112,4 +1196,5 @@ def native_trace(request, **kwargs):
             "grind_observations": parse_grind_observations(text[start:] if start >= 0 else ""),
             "fixture": parse_fixture_status(text[start:] if start >= 0 else ""),
             "fixture_geometry": parse_fixture_geometry(text[start:] if start >= 0 else ""),
+            "fixture_trajectory": parse_fixture_trajectory(text[start:] if start >= 0 else ""),
             "authored_catalog": parse_authored_catalog(text[start:] if start >= 0 else "")}

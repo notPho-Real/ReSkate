@@ -44,7 +44,10 @@ def validate_plan(plan):
     names, trials = set(), 0
     for case in cases:
         keys(case, ("name", "family", "phases", "expected", "timeout_ms", "reset_ms"),
-             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset", "score_capture_ready"))
+             ("repeat", "capture_frames", "baseline_max_speed_mm_s", "fixture_reset", "score_capture_ready", "trajectory_capture"))
+        if 'trajectory_capture' in case and (type(case['trajectory_capture']) is not bool or
+                (case['trajectory_capture'] and (case.get('fixture_reset') is not True or case.get('score_capture_ready')))):
+            raise ValueError('Trajectory capture requires fixture reset and separate scoring capture')
         if "fixture_reset" in case and type(case["fixture_reset"]) is not bool:
             raise ValueError("Fixture reset must be boolean")
         if 'score_capture_ready' in case and (type(case['score_capture_ready']) is not bool or

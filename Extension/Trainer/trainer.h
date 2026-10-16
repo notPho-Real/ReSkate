@@ -100,6 +100,10 @@ struct Jump {
 // Changes every client tick.
 struct Telemetry {
     bool skater{};
+    // Internal provenance for consumers needing one complete native motion sample.
+    // Entity is borrowed only for comparison; never include it in diagnostic output.
+    std::uint64_t sampled_ms{};
+    std::uintptr_t sampled_entity{};
     std::array<float, 3> position{};
     float heading{};           // degrees, 0 = +Z, clockwise seen from above
     float speed{}, vertical{}; // metres per second: over the ground, and upward

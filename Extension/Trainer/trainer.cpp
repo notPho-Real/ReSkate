@@ -1095,6 +1095,7 @@ void finish_jump(const Vec3 &landing, float landing_speed, std::int64_t landed_a
 void observe(std::uintptr_t base, std::uintptr_t client, std::uint64_t now) {
     auto &s = state();
     auto &t = s.telemetry;
+    t.sampled_ms = 0; t.sampled_entity = 0;
     auto &m = s.motion;
     overlay::DebugModel skater;
     std::array<float, 16> matrix{};
@@ -1214,6 +1215,9 @@ void observe(std::uintptr_t base, std::uintptr_t client, std::uint64_t now) {
     t.airborne = m.airborne;
     t.speed = horizontal(velocity);
     t.vertical = velocity[1];
+    // Publish provenance only after position, velocity and physics belong to
+    // this observation; first samples, teleports and hitches remain unverified.
+    if (watch.valid) { t.sampled_ms = now; t.sampled_entity = s.entity; }
     t.top_speed = std::max(t.top_speed, t.speed);
     m.velocity = velocity;
     m.position = position;
