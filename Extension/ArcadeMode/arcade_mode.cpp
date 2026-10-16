@@ -2,11 +2,13 @@
 #include "arcade_fixture_geometry.h"
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
+#include "arcade_input_telemetry.h"
 #include "arcade_gesture.h"
 #include "arcade_rotation.h"
 #include "arcade_score_probe.h"
 #include "arcade_native_score.h"
 #include "arcade_native_events.h"
+#include "arcade_manual_observation.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
@@ -76,25 +78,10 @@ std::atomic<ActionExperiment> action_mode{default_action_mode};
 std::array<ActionRuntime, 4> action_inputs;
 std::array<AirRotation, 4> rotations;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
-struct PadEvidence {
-    std::uint64_t sequence{}, ms{};
-    unsigned user{}, buttons{}, lt{}, rt{}, output{}, phase{};
-    bool source{};
-    std::uint64_t tick{};
-    short right_x{}, right_y{};
-    bool playback_sample{};
-    unsigned playback_mode{}, input_packet{}, output_packet{};
-    std::uint64_t poll{};
-    bool action_sample{}, action_requested{}, action_owned{};
-    unsigned action_mode{}, action_kind{}, action_trick{}, action_result{};
-    short left_x{}, left_y{};
-    unsigned output_lt{}, output_rt{};
-};
-std::array<PadEvidence, 64> pad_evidence{};
+InputTelemetryLink input_telemetry;
 std::array<PadEvidence, 4> previous_pad{};
 std::array<PadEvidence, 4> previous_source_pad{};
-std::size_t pad_head{}, pad_count{};
-std::uint64_t pad_sequence{}, pad_dropped{};
+std::uint64_t pad_sequence{};
 std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
@@ -138,6 +125,8 @@ void prepare_authored_catalog() noexcept {
     }
 }
 ComboSession combo_session(native_combo_tuning());
+ManualObservation manual_identity;
+std::uint64_t manual_identity_epoch{1};
 std::uint64_t combo_tick_at{};
 std::uint64_t observed_wipeouts{};
 bool had_combo_owner{};
@@ -151,6 +140,10 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid;
     const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
+    if (valid && (!had_combo_owner || owner_changed) && manual_identity_epoch)
+        manual_identity_epoch = manual_identity_epoch == UINT64_MAX ? 0 : manual_identity_epoch + 1;
+    const bool observation_gap = combo_tick_at &&
+        (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
     if (!valid || owner_changed) {
         cancel_balance_bail();
         combo_session.invalidate();
@@ -160,9 +153,14 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     had_combo_owner = valid;
     combo_owner = valid ? owner : NoBailSkater{};
     observed_wipeouts = wipeouts;
-    const auto pose = observed_pose({valid,
-        score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
+    const bool activity_fresh = score.valid && now >= score.sampled_at && now - score.sampled_at <= 150;
+    const auto candidate_pose = observed_pose({valid, activity_fresh,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
+    // Native contact prepares controls; a matching observed label establishes
+    // manual identity for balance/linking. Neither establishes monetary ownership.
+    const auto pose = manual_identity.poll(candidate_pose, label,
+        {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
+         owner_changed, observation_gap}).pose;
     const bool manual_safe = valid && !owner_changed && !bail &&
         ((native.state == 100 && native.crouch_mode == 1) || (native.state >= 200 && native.state < 300));
     action_eligible_until.store(action_input_eligible({valid, false, false, bail, native.state,
@@ -184,16 +182,14 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
         if (!valid || owner_changed || bail) arcade_input.cancel_manuals();
-        manual_observed.store(pose, std::memory_order_relaxed);
+        manual_observed.store(candidate_pose, std::memory_order_relaxed);
         manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
         manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
     }
     if (native_revert) {
         const auto& linked = combo_session.model().state();
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
-            now, label.sequence, label.labels, !had_revert && linked.revert_pending,
-            static_cast<unsigned>(std::lround(linked.link_grace_s * 1000.0f)));
+        input_telemetry.client(RevertLinkEvidence{now, label.sequence, label.labels,
+            !had_revert && linked.revert_pending, static_cast<unsigned>(std::lround(linked.link_grace_s * 1000.0f))});
     }
     if (failed) {
         const auto serial = request_balance_bail(owner);
@@ -203,38 +199,201 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             for (auto& action : action_inputs) action.reset();
             for (auto& rotation : rotations) rotation.reset();
         }
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE BALANCE FAILURE: ms={} kind={} request={}.", now, static_cast<unsigned>(kind), serial);
+        input_telemetry.client(BalanceFailureEvidence{now, static_cast<unsigned>(kind), serial});
     }
     const auto& balance = combo_session.model().state();
     // Rate-bound observations continue through a hot session; a lifetime cap
     // would silently remove the evidence needed by later fatigue trials.
     if (balance.balance_kind != BalanceKind::none && now >= next_balance_sample) {
         next_balance_sample = now + 250;
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
-            now, static_cast<unsigned>(balance.balance_kind), balance.balance, balance.balance_velocity,
-            correction, combo_session.model().difficulty(), input.left_x, input.left_y);
+        input_telemetry.client(BalanceSampleEvidence{now, static_cast<unsigned>(balance.balance_kind),
+            balance.balance, balance.balance_velocity, correction, combo_session.model().difficulty(), input.left_x, input.left_y});
     }
     if (pose != previous_pose || failed || was_active != balance.combo_active) {
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE COMBO EVENT: ms={} pose={} active={} failed={} fatigue={} grind={} manual={} native_failure_verified=false.",
-            now, static_cast<unsigned>(pose), combo_session.model().state().combo_active, failed,
+        input_telemetry.client(ComboEventEvidence{now, static_cast<unsigned>(pose), balance.combo_active, failed,
             combo_session.model().state().fatigue, combo_session.model().state().grind_fatigue,
-            combo_session.model().state().manual_fatigue);
+            combo_session.model().state().manual_fatigue});
         previous_pose = pose;
     }
     publish_balance_hud(combo_session.model().state(), combo_session.model().danger());
 }
-// Read-only physics-step evidence. A short revert can disappear between client
-// ticks; keep bounded transitions, not full memory dumps or guessed event IDs.
-struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipSelection flip; };
-std::array<ComboSample, 64> combo_samples{};
-std::mutex combo_samples_mutex;
-std::size_t combo_head{}, combo_count{};
-std::uint64_t combo_dropped{};
-NativeRequestSample combo_previous{};
-NativeFlipSelection flip_previous{};
+// Only this background sink formats the live input/client snapshots.
+void write_client_telemetry(const ClientTelemetry& row) noexcept {
+    std::visit([](const auto& r) {
+        using T = std::decay_t<decltype(r)>;
+        if constexpr (std::is_same_v<T, Observation>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE MODE STATE: available={} native={} selector_changes={} wipeouts={} (diagnostic sample).",
+                r.valid, r.state, r.changes, r.wipeouts);
+        else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
+                r.ms, r.sequence, r.labels, r.accepted, r.remaining_ms);
+        else if constexpr (std::is_same_v<T, BalanceFailureEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BALANCE FAILURE: ms={} kind={} request={}.", r.ms, r.kind, r.request);
+        else if constexpr (std::is_same_v<T, BalanceSampleEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
+                r.ms, r.kind, r.x, r.v, r.input, r.difficulty, r.raw_x, r.raw_y);
+        else if constexpr (std::is_same_v<T, ComboEventEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE COMBO EVENT: ms={} pose={} active={} failed={} fatigue={} grind={} manual={} native_failure_verified=false.",
+                r.ms, r.pose, r.active, r.failed, r.fatigue, r.grind, r.manual);
+        else if constexpr (std::is_same_v<T, BalanceBailEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BALANCE BAIL: ms={} request={} result={}.", r.ms, r.request, r.result);
+        else if constexpr (std::is_same_v<T, ScoreEdgeEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",
+                r.sequence, r.observed, r.sampled, r.labels, r.uncertainty);
+        else if constexpr (std::is_same_v<T, HeartbeatEvidence>) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE HIL STATE: seq={} valid={} state={} mode={}.", r.sequence, r.valid, r.state, r.mode);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PUSH OBSERVATION: seq={} ms={} valid={} eligible={} speed={} contacts={}.",
+                r.sequence, r.ms, r.speed_valid, r.push_valid, r.speed, r.contacts);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE NUMBERS: ms={} sampled={} score_valid={} score={} multiplier_valid={} multiplier={} owner_verified=false.",
+                r.ms, r.sampled, r.score_valid, r.score, r.multiplier_valid, r.multiplier);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE AUTHORED STATUS: state={}.", r.authored);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE AUTHORED DIAGNOSTIC: stage={} field={} error={} rejected={}.", r.stage, r.field, r.error, r.rejected);
+        } else if constexpr (std::is_same_v<T, NativeCaptureEvidence>) {
+            if (r.begin) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE CAPTURE: id={} begin=true.", r.id);
+            else logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE CAPTURE: id={} end=true samples={}.", r.id, r.samples);
+        } else if constexpr (std::is_same_v<T, NativeSampleEvidence>) {
+            const auto& s = r.sample;
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE NATIVE SAMPLE: id={} ms={} valid={} state={} crouch_mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
+                r.id, r.ms, s.valid, s.state, s.crouch_mode, s.words[0], s.words[1], s.words[2], s.words[3],
+                s.words[4], s.words[5], s.words[6], s.words[7]);
+        } else if constexpr (std::is_same_v<T, InputEdgeEvidence>) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE MODE DEV: {} press #{} seen on ReSkate client tick.", r.button, r.count);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE MODE INPUT: {} #{} native_state_available={} native_state={} selector_changes={} wipeouts={}.",
+                r.button, r.count, r.sample.valid, r.sample.state, r.sample.changes, r.sample.wipeouts);
+        } else if constexpr (std::is_same_v<T, ScorePresenceEvidence>) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE PRESENCE: ms={} source={} rows={} stage={} parts={} labels={}.",
+                r.ms, r.source, r.rows, r.stage, r.parts, r.labels);
+        } else if constexpr (std::is_same_v<T, ManualHistoryEvidence>) {
+            const auto& d = r.diagnostic;
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE MANUAL HISTORY: seq={} ms={} status={} available={} comparable={} rows={} manual={} nose={} distinct={} manual_distinct={} nose_distinct={} manual_added={} manual_removed={} nose_added={} nose_removed={} duplicates={} relabels={}.",
+                r.sequence, r.ms, static_cast<unsigned>(d.status), d.available, d.comparable,
+                d.rows, d.manual_rows, d.nose_rows, d.distinct, d.manual_distinct, d.nose_distinct,
+                d.manual_added, d.manual_removed, d.nose_added, d.nose_removed, d.duplicates, d.relabels);
+        } else if constexpr (std::is_same_v<T, ScoreNodeEvidence>) {
+            const auto path = score_probe_path_text(r.path);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE NODE: path={} kind={} size={}.", path.view(), r.kind, r.size);
+        } else if constexpr (std::is_same_v<T, ScoreValueEvidence>) {
+            const auto path = score_probe_path_text(r.path);
+            if (r.label) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE LABEL: ms={} path={} id={}.", r.ms, path.view(), r.value);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE VALUE: ms={} path={} value={}.", r.ms, path.view(), r.value);
+            if (r.limit) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE SCORE LIMIT: reached=true.");
+        }
+    }, row);
+}
+void write_input_gap(bool pad, std::uint64_t dropped) noexcept {
+    if (!dropped) return;
+    // Identical loss deltas must not be suppressed as repeated messages. The
+    // command channel already provides this guarantee; bodies stay parseable.
+    if (pad) logging::log(logging::Level::info, logging::Channel::command,
+        "ARCADE PAD GAP: dropped={}.", dropped);
+    else logging::log(logging::Level::info, logging::Channel::command,
+        "ARCADE COMBO GAP: dropped={}.", dropped);
+}
+DWORD WINAPI input_telemetry_worker(void* context) noexcept {
+    auto& telemetry = *static_cast<InputTelemetry*>(context);
+    for (;;) {
+        std::array<PadTelemetry, 16> pad_rows{};
+        const auto pad_rows_count = telemetry.pad.take(pad_rows);
+        const auto pad_lost = telemetry.pad.take_dropped();
+        write_input_gap(true, pad_lost);
+        for (std::size_t i = 0; i < pad_rows_count; ++i) {
+            const auto& row = pad_rows[i];
+            if (row.diagnostic) {
+                const auto& d = row.request;
+                if (d.ollie) logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE OLLIE: A started native right-stick gesture (experimental).");
+                if (d.flip) logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE FLIP: X started candidate={} (experimental).", d.started);
+                if (d.requested_id || d.unsupported) logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE AUTHORED REQUEST: id={} unsupported={}.", d.requested_id, d.unsupported);
+                continue;
+            }
+            const auto& p = row.pad;
+            if (p.source) {
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE PAD SOURCE: seq={} ms={} user={} buttons={} lt={} rt={}.",
+                    p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt);
+                continue;
+            }
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PAD SAMPLE: seq={} ms={} user={} buttons={} lt={} rt={} output={} phase={}.",
+                p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt, p.output, p.phase);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE STICK SAMPLE: seq={} ms={} tick={} user={} x={} y={} phase={}.",
+                p.sequence, p.ms, p.tick, p.user, p.right_x, p.right_y, p.phase);
+            if (p.poll) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE PLAYBACK SAMPLE: seq={} poll={} tick={} mode={} input_packet={} output_packet={}.",
+                p.sequence, p.poll, p.tick, p.playback_mode, p.input_packet, p.output_packet);
+            if (p.action_sample) logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE ACTION SAMPLE: seq={} ms={} tick={} user={} mode={} requested={} kind={} trick={} result={} owned={} lx={} ly={} lt={} rt={} packet={}.",
+                p.sequence, p.ms, p.tick, p.user, p.action_mode, p.action_requested, p.action_kind,
+                p.action_trick, p.action_result, p.action_owned, p.left_x, p.left_y, p.output_lt, p.output_rt, p.output_packet);
+        }
+        std::array<ComboSample, 16> samples{};
+        const auto sample_count = telemetry.combo.queue.take(samples);
+        const auto dropped = telemetry.combo.queue.take_dropped();
+        write_input_gap(false, dropped);
+        for (std::size_t i = 0; i < sample_count; ++i) {
+            const auto& s = samples[i];
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE COMBO SAMPLE: ms={} state={} mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
+                s.ms, s.sample.state, s.sample.crouch_mode,
+                s.sample.words[0], s.sample.words[1], s.sample.words[2], s.sample.words[3],
+                s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
+        }
+        std::array<ClientTelemetry, 16> client_rows{};
+        const auto client_count = telemetry.client.take(client_rows);
+        write_input_gap(false, telemetry.client.take_dropped());
+        for (std::size_t i = 0; i < client_count; ++i) {
+            // A queued old heartbeat must not masquerade as newly fresh riding.
+            if (!client_telemetry_fresh(client_rows[i], GetTickCount64())) {
+                telemetry.client.lose();
+                write_input_gap(false, telemetry.client.take_dropped());
+            } else write_client_telemetry(client_rows[i]);
+        }
+        Sleep(25);
+    }
+}
+bool start_input_telemetry() noexcept {
+    try {
+        auto state = std::make_unique<InputTelemetry>();
+        const auto worker = CreateThread(nullptr, 0, input_telemetry_worker, state.get(), 0, nullptr);
+        if (!worker) return false;
+        // The runtime DLL and logger are process-lifetime objects. Match the
+        // existing observer workers: no static destructor, join, or unload race.
+        auto* live = state.release();
+        CloseHandle(worker);
+        input_telemetry.publish(*live);
+        return true;
+    } catch (...) { return false; }
+}
+
+// Read-only physics-step evidence retains short transitions between client ticks.
 void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
     observe_grind_step(owner);
     using namespace game::build::v20260929::arcade_native_probe;
@@ -247,13 +406,7 @@ void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
     if (!no_bail_skater(after) || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
-    std::lock_guard lock(combo_samples_mutex);
-    if (sample == combo_previous && flip == flip_previous) return;
-    combo_previous = sample;
-    flip_previous = flip;
-    if (combo_count == combo_samples.size()) { ++combo_dropped; return; }
-    combo_samples[(combo_head + combo_count) % combo_samples.size()] = {sample, GetTickCount64(), flip};
-    ++combo_count;
+    input_telemetry.combo({sample, GetTickCount64(), flip});
 }
 
 bool validate_request_probe(std::uintptr_t base) noexcept {
@@ -325,6 +478,7 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 }
 }
 
+bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
 
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
@@ -412,6 +566,7 @@ void set_enabled(bool value, bool persist) noexcept {
     }
     // A toggle never banks an unfinished combo or inherits a held command.
     combo_session.invalidate();
+    manual_identity.reset();
     reset_score_label_occurrences();
     combo_tick_at = 0;
     previous_pose = SkatePose::unknown;
@@ -431,6 +586,9 @@ bool start(std::uintptr_t image_base) noexcept {
     if (!image_base) return false;
     score_probe_base = image_base;
     request_probe_ready = validate_request_probe(image_base);
+    const bool telemetry_ready = start_input_telemetry();
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE INPUT TELEMETRY: available={} queue_limit=64 background=true.", telemetry_ready);
     const bool combo_observer = request_probe_ready && add_no_bail_step_listener(observe_combo_step);
     logging::log(logging::Level::info, logging::Channel::skater,
         "ARCADE COMBO OBSERVER: available={} read_only=true queue_limit=64.", combo_observer);
@@ -453,9 +611,7 @@ void on_client_tick() noexcept {
         const auto watch = watched_physics_state();
         if (observations.update({watch.valid, watch.state, watch.changes, watch.wipeouts})) {
             const auto& sample = observations.state();
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE MODE STATE: available={} native={} selector_changes={} wipeouts={} (diagnostic sample).",
-                sample.valid, sample.state, sample.changes, sample.wipeouts);
+            input_telemetry.client(sample);
         }
         ControllerInput input{};
         DingoSDKOverlayReadControllerInput(&input);
@@ -486,42 +642,6 @@ void on_client_tick() noexcept {
                 }
             }
         }
-        std::array<PadEvidence, 16> pad_rows{};
-        std::size_t pad_rows_count{};
-        std::uint64_t pad_lost{};
-        {
-            std::lock_guard lock(ollie_mutex);
-            pad_rows_count = std::min(pad_rows.size(), pad_count);
-            for (std::size_t i = 0; i < pad_rows_count; ++i)
-                pad_rows[i] = pad_evidence[(pad_head + i) % pad_evidence.size()];
-            pad_head = (pad_head + pad_rows_count) % pad_evidence.size();
-            pad_count -= pad_rows_count;
-            pad_lost = pad_dropped; pad_dropped = 0;
-        }
-        if (pad_lost) logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE PAD GAP: dropped={}.", pad_lost);
-        for (std::size_t i = 0; i < pad_rows_count; ++i) {
-            const auto& p = pad_rows[i];
-            if (p.source) {
-                logging::log(logging::Level::info, logging::Channel::skater,
-                    "ARCADE PAD SOURCE: seq={} ms={} user={} buttons={} lt={} rt={}.",
-                    p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt);
-                continue;
-            }
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE PAD SAMPLE: seq={} ms={} user={} buttons={} lt={} rt={} output={} phase={}.",
-                p.sequence, p.ms, p.user, p.buttons, p.lt, p.rt, p.output, p.phase);
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE STICK SAMPLE: seq={} ms={} tick={} user={} x={} y={} phase={}.",
-                p.sequence, p.ms, p.tick, p.user, p.right_x, p.right_y, p.phase);
-            if (p.poll) logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE PLAYBACK SAMPLE: seq={} poll={} tick={} mode={} input_packet={} output_packet={}.",
-                p.sequence, p.poll, p.tick, p.playback_mode, p.input_packet, p.output_packet);
-            if (p.action_sample) logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE ACTION SAMPLE: seq={} ms={} tick={} user={} mode={} requested={} kind={} trick={} result={} owned={} lx={} ly={} lt={} rt={} packet={}.",
-                p.sequence, p.ms, p.tick, p.user, p.action_mode, p.action_requested, p.action_kind,
-                p.action_trick, p.action_result, p.action_owned, p.left_x, p.left_y, p.output_lt, p.output_rt, p.output_packet);
-        }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
         tick_arcade_fixture_geometry(now, gameplay);
@@ -536,36 +656,9 @@ void on_client_tick() noexcept {
         if (gameplay && score_edge.valid && score_edge.labels) {
             // History base-name occurrences are independently observed native
             // actions. Amounts and FS/BS context remain separate evidence.
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",
+            input_telemetry.client(ScoreEdgeEvidence{
                 score_edge.sequence, score_edge.observed_at, score_edge.sampled_at, score_edge.labels,
-                static_cast<unsigned>(score_edge.uncertainty));
-        }
-        // Drain a fixed maximum per tick; explicitly report lost evidence.
-        std::array<ComboSample, 16> samples{};
-        std::size_t sample_count{};
-        std::uint64_t dropped{};
-        {
-            std::lock_guard lock(combo_samples_mutex);
-            sample_count = std::min(samples.size(), combo_count);
-            for (std::size_t i = 0; i < sample_count; ++i)
-                samples[i] = combo_samples[(combo_head + i) % combo_samples.size()];
-            combo_head = (combo_head + sample_count) % combo_samples.size();
-            combo_count -= sample_count;
-            dropped = combo_dropped;
-            combo_dropped = 0;
-        }
-        if (dropped) logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE COMBO GAP: dropped={}.", dropped);
-        for (std::size_t i = 0; i < sample_count; ++i) {
-            const auto& s = samples[i];
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE COMBO SAMPLE: ms={} state={} mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
-                s.ms, s.sample.state, s.sample.crouch_mode,
-                s.sample.words[0], s.sample.words[1], s.sample.words[2], s.sample.words[3],
-                s.sample.words[4], s.sample.words[5], s.sample.words[6], s.sample.words[7]);
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
+                static_cast<unsigned>(score_edge.uncertainty)});
         }
         NoBailSkater native_owner{};
         const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
@@ -586,6 +679,7 @@ void on_client_tick() noexcept {
         if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge);
         else {
             cancel_balance_bail();
+            manual_identity.reset(score_edge);
             had_combo_owner = false;
             combo_owner = {};
             {
@@ -602,32 +696,21 @@ void on_client_tick() noexcept {
         }
         const auto failure_status = balance_bail_status();
         if (failure_status.serial != previous_balance_bail.serial || failure_status.result != previous_balance_bail.result) {
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE BALANCE BAIL: ms={} request={} result={}.", now, failure_status.serial,
-                static_cast<unsigned>(failure_status.result));
+            input_telemetry.client(BalanceBailEvidence{now, failure_status.serial,
+                static_cast<unsigned>(failure_status.result)});
             previous_balance_bail = failure_status;
         }
         // Bounded numeric read-only HIL heartbeat. Enables fresh reset/state
         // checks without injecting an A press merely to arm a capture.
         if (now >= hil_heartbeat_at && now - hil_heartbeat_at >= 250) {
             hil_heartbeat_at = now;
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE HIL STATE: seq={} valid={} state={} mode={}.",
-                ++hil_heartbeat_id, native.valid, native.state, native.crouch_mode);
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE PUSH OBSERVATION: seq={} ms={} valid={} eligible={} speed={} contacts={}.",
-                hil_heartbeat_id, now, speed_valid, push_valid, speed, native.words[1] & 0xc000u);
             const auto score_numbers = score_hud_numbers();
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE SCORE NUMBERS: ms={} sampled={} score_valid={} score={} multiplier_valid={} multiplier={} owner_verified=false.",
-                now, score_numbers.sampled_at, score_numbers.score_valid, score_numbers.score,
-                score_numbers.multiplier_valid, score_numbers.multiplier);
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE AUTHORED STATUS: state={}.", authored_status.load(std::memory_order_acquire));
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE AUTHORED DIAGNOSTIC: stage={} field={} error={} rejected={}.",
+            input_telemetry.client(HeartbeatEvidence{++hil_heartbeat_id, now, native.valid, native.state,
+                native.crouch_mode, speed_valid, push_valid, speed, native.words[1] & 0xc000u,
+                score_numbers.sampled_at, score_numbers.score, score_numbers.multiplier,
+                score_numbers.score_valid, score_numbers.multiplier_valid, authored_status.load(std::memory_order_acquire),
                 authored_stage.load(std::memory_order_acquire), authored_field.load(std::memory_order_acquire),
-                authored_error.load(std::memory_order_acquire), authored_rejected.load(std::memory_order_acquire));
+                authored_error.load(std::memory_order_acquire), authored_rejected.load(std::memory_order_acquire)});
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
@@ -637,31 +720,21 @@ void on_client_tick() noexcept {
             capture_started = now;
             ++capture_id;
             request_capture.arm(now);
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE NATIVE CAPTURE: id={} begin=true.", capture_id);
+            input_telemetry.client(NativeCaptureEvidence{capture_id, true});
         }
         const bool capturing = request_capture.active();
         if (capturing && request_capture.sample(now, native)) {
             const auto& sample = request_capture.last();
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE NATIVE SAMPLE: id={} ms={} valid={} state={} crouch_mode={} words={:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x},{:08x}.",
-                capture_id, now - capture_started, sample.valid, sample.state, sample.crouch_mode,
-                sample.words[0], sample.words[1], sample.words[2], sample.words[3],
-                sample.words[4], sample.words[5], sample.words[6], sample.words[7]);
+            input_telemetry.client(NativeSampleEvidence{capture_id, now - capture_started, sample});
         }
         if (capturing && !request_capture.active())
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE NATIVE CAPTURE: id={} end=true samples={}.", capture_id, request_capture.count());
+            input_telemetry.client(NativeCaptureEvidence{capture_id, false, request_capture.count()});
         for (std::size_t i = 0; i < face_buttons.size(); ++i) {
             if (!(pressed & face_buttons[i])) continue;
             auto& count = press_counts[i];
             if (count < std::numeric_limits<std::uint64_t>::max()) ++count;
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE MODE DEV: {} press #{} seen on ReSkate client tick.", button_names[i], count);
             const auto& sample = observations.state();
-            logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE MODE INPUT: {} #{} native_state_available={} native_state={} selector_changes={} wipeouts={}.",
-                button_names[i], count, sample.valid, sample.state, sample.changes, sample.wipeouts);
+            input_telemetry.client(InputEdgeEvidence{button_names[i], count, sample});
         }
     } catch (...) {
         ollie_eligible_until.store(0, std::memory_order_release);
@@ -681,11 +754,7 @@ void observe_xinput_source(unsigned user, unsigned short buttons,
     const PadEvidence row{++pad_sequence, GetTickCount64(), user, buttons,
         left_trigger, right_trigger, 0, 0, true};
     old = row;
-    if (pad_count == pad_evidence.size()) ++pad_dropped;
-    else {
-        pad_evidence[(pad_head + pad_count) % pad_evidence.size()] = row;
-        ++pad_count;
-    }
+    input_telemetry.pad({row});
 }
 
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
@@ -797,24 +866,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             row.action_trick = static_cast<unsigned>(action.trick); row.action_result = static_cast<unsigned>(action.result);
             row.left_x = left_x; row.left_y = left_y; row.output_lt = left_trigger; row.output_rt = right_trigger;
             previous_pad[user] = row;
-            if (pad_count == pad_evidence.size()) ++pad_dropped;
-            else {
-                pad_evidence[(pad_head + pad_count) % pad_evidence.size()] = row;
-                ++pad_count;
-            }
+            input_telemetry.pad({row});
         }
     }
     buttons = result.buttons;
     right_x = result.right_x;
     right_y = result.right_y;
-    if (result.started == NativeTrick::ollie) logging::log(logging::Level::info, logging::Channel::skater,
-        "ARCADE OLLIE: A started native right-stick gesture (experimental).");
-    if (result.started == NativeTrick::kickflip || result.started == NativeTrick::heelflip)
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE FLIP: X started candidate={} (experimental).", static_cast<unsigned>(result.started));
-    if (result.requested_id || result.unsupported)
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE AUTHORED REQUEST: id={} unsupported={}.", result.requested_id, result.unsupported);
+    const RemapEvidence diagnostic{result.started == NativeTrick::ollie,
+        result.started == NativeTrick::kickflip || result.started == NativeTrick::heelflip,
+        result.unsupported, static_cast<unsigned>(result.started), result.requested_id};
+    if (diagnostic.ollie || diagnostic.flip || diagnostic.requested_id || diagnostic.unsupported)
+        input_telemetry.pad({{}, diagnostic, true});
     return packet_mask;
 }
 }

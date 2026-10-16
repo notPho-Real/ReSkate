@@ -475,6 +475,61 @@ def parse_score_edges(text):
     return {'samples': samples, 'dropped': dropped}
 
 
+def parse_manual_history(text):
+    """Bounded presentation diagnostics only; counts are not native occurrences.
+
+    Producer comparison is against the preceding complete50ms snapshot, while
+    unchanged diagnostic rows may be logged only once per second. Do not infer
+    missing game snapshots or recompute its deltas from adjacent log rows.
+    """
+    counts = ('rows', 'manual', 'nose', 'distinct', 'manual_distinct', 'nose_distinct',
+              'manual_added', 'manual_removed', 'nose_added', 'nose_removed', 'duplicates', 'relabels')
+    statuses = ('baseline', 'complete', 'gap', 'clock_reset', 'model_changed', 'invalid', 'fallback')
+    pattern = (r'ARCADE MANUAL HISTORY: seq=([0-9]{1,20}) ms=([0-9]{1,20}) status=([0-6]) '
+               r'available=(true|false) comparable=(true|false) ' +
+               ' '.join(key + r'=([0-9]{1,2})' for key in counts) + r'\.$')
+    samples, dropped, malformed, sequence_gaps, sequence_missing = [], 0, 0, 0, 0
+    previous_seq = previous_ms = None
+    for line in text.splitlines():
+        if 'ARCADE MANUAL HISTORY:' not in line:
+            continue
+        match = re.search(pattern, line)
+        if not match:
+            malformed += 1
+            continue
+        seq, ms, status = map(int, match.groups()[:3])
+        available, comparable = (value == 'true' for value in match.groups()[3:5])
+        row = dict(zip(counts, map(int, match.groups()[5:])))
+        deltas = [row[k] for k in ('manual_added', 'manual_removed', 'nose_added', 'nose_removed', 'relabels')]
+        if (not 0 < seq <= 0xffffffffffffffff or ms > 0xffffffffffffffff or max(row.values()) > 16 or
+                available != (status <= 4) or comparable != (status == 1) or
+                (not available and any(row.values())) or (not comparable and any(deltas)) or
+                row['rows'] != row['distinct'] + row['duplicates'] or
+                row['manual'] + row['nose'] > row['rows'] or
+                row['manual_distinct'] + row['nose_distinct'] > row['distinct'] or
+                row['manual_distinct'] > row['manual'] or row['nose_distinct'] > row['nose'] or
+                row['manual'] + row['nose'] - row['manual_distinct'] - row['nose_distinct'] > row['duplicates'] or
+                row['manual_added'] > row['manual_distinct'] or row['nose_added'] > row['nose_distinct'] or
+                row['relabels'] > row['distinct'] or
+                (previous_seq is not None and seq <= previous_seq) or
+                (previous_ms is not None and ms < previous_ms and status != 3)):
+            malformed += 1
+            continue
+        if previous_seq is not None and seq > previous_seq + 1:
+            sequence_gaps += 1
+            sequence_missing += seq - previous_seq - 1
+        previous_seq, previous_ms = seq, ms
+        # Invalid/fallback counts are absent measurements, not observed zeroes.
+        samples.append(dict(seq=seq, ms=ms, status=statuses[status], available=available,
+                            comparable=comparable, **{key: row[key] if available else None for key in counts}))
+        if len(samples) > 128:
+            samples.pop(0)
+            dropped += 1
+    return dict(samples=samples, dropped=dropped, malformed=malformed, sequence_gaps=sequence_gaps,
+                sequence_missing=sequence_missing, presence='present' if samples else 'invalid' if malformed else 'missing',
+                native_identity='UNVERIFIED', authoritative=False, capture_completeness='UNVERIFIED')
+
+
 def parse_score_presence(text):
     """Bounded reader diagnostics; split components are not named native outcomes."""
     samples, dropped = [], 0
@@ -489,7 +544,8 @@ def parse_score_presence(text):
         if len(samples) > 256:
             samples.pop(0)
             dropped += 1
-    return dict(samples=samples, dropped=dropped, native_identity='UNVERIFIED')
+    return dict(samples=samples, dropped=dropped, native_identity='UNVERIFIED',
+                manual_history=parse_manual_history(text))
 
 
 def parse_score_numbers(text):
@@ -594,6 +650,104 @@ def parse_native_score_health(text):
                 capture_completeness='UNVERIFIED')
 
 
+def parse_native_score_schema(text):
+    """Newest bounded declaration pair only; never owner or event identity proof.
+
+    Member order and the terminal footer are part of the wire contract. An
+    incomplete newer snapshot never falls back to an older pair of fields.
+    """
+    field_keys = ('seq', 'epoch', 'role', 'index', 'type_hash', 'type_size',
+                  'field_hash', 'kind', 'size', 'ref_type_hash')
+    footer_keys = ('seq', 'ms', 'epoch', 'status', 'line_count', 'sequence_count', 'emitted', 'incomplete')
+    def pattern(label, keys, suffix=''):
+        return re.compile(re.escape(label) + ' '.join(key + r'=([0-9]{1,20})' for key in keys) + suffix + r'\.$')
+    field_pattern = pattern('ARCADE NATIVE SCORE SCHEMA FIELD: ', field_keys)
+    footer_pattern = pattern('ARCADE NATIVE SCORE SCHEMA: ', footer_keys, ' owner_verified=false')
+    states, malformed, dropped, unassigned, newest, received = {}, 0, 0, 0, 0, 0
+    hashes = {1: 0xf95bfe33, 2: 1606121107}
+    for line in text.splitlines():
+        if 'ARCADE NATIVE SCORE SCHEMA' not in line:
+            continue
+        match, keys = field_pattern.search(line), field_keys
+        if not match:
+            match, keys = footer_pattern.search(line), footer_keys
+        if not match:
+            malformed += 1
+            seq_match = re.search(r'ARCADE NATIVE SCORE SCHEMA(?: FIELD)?: seq=([0-9]{1,20}) ', line)
+            seq = int(seq_match[1]) if seq_match else 0
+            if not 1 <= seq <= 24:
+                unassigned += 1
+                continue
+            state = states.setdefault(seq, dict(fields=[], footer=None, bad=False, epoch=None))
+            state['bad'] = True
+            newest = max(newest, seq)
+            continue
+        row = dict(zip(keys, map(int, match.groups())))
+        seq = row['seq']
+        if not 1 <= seq <= 24:
+            malformed += 1
+            unassigned += 1
+            continue
+        state = states.setdefault(seq, dict(fields=[], footer=None, bad=False, epoch=None))
+        invalid = (seq < newest or not 0 < row['epoch'] <= 0xffffffffffffffff or
+                   state['footer'] is not None or
+                   (state['epoch'] is not None and state['epoch'] != row['epoch']))
+        newest = max(newest, seq)
+        state['epoch'] = row['epoch']
+        if keys is field_keys:
+            received += 1
+            if received > 24 * 192 or len(state['fields']) >= 192:
+                dropped += 1
+                state['bad'] = True
+                continue
+            role, index = row['role'], row['index']
+            prior = state['fields'][-1] if state['fields'] else None
+            invalid |= (role not in hashes or row['type_hash'] != hashes.get(role) or
+                        not 0 <= index < 96 or not 1 <= row['type_size'] <= 65535 or
+                        not 1 <= row['size'] <= row['type_size'] or not 1 <= row['kind'] <= 28 or
+                        max(row['field_hash'], row['ref_type_hash']) > 0xffffffff or
+                        (prior is None and (role, index) != (1, 0)) or
+                        (prior is not None and (role, index) not in (
+                            (prior['role'], prior['index'] + 1), (2, 0))) or
+                        (prior is not None and role == 2 and index == 0 and prior['role'] != 1))
+            same_role = [value for value in state['fields'] if value['role'] == role]
+            invalid |= any(value['field_hash'] == row['field_hash'] or
+                           value['type_size'] != row['type_size'] for value in same_role)
+            if not invalid:
+                state['fields'].append(row)
+        else:
+            invalid |= (row['ms'] > 0xffffffffffffffff or row['status'] > 4 or
+                        max(row['line_count'], row['sequence_count']) > 96 or row['emitted'] > 192 or
+                        row['incomplete'] > seq)
+            if not invalid:
+                state['footer'] = row
+        if invalid:
+            malformed += 1
+            state['bad'] = True
+    incomplete = 0
+    for state in states.values():
+        footer = state['footer']
+        counts = [sum(row['role'] == role for row in state['fields']) for role in (1, 2)]
+        state['complete'] = (not state['bad'] and footer is not None and footer['status'] == 0 and
+                             1 <= counts[0] <= 96 and 1 <= counts[1] <= 96 and
+                             counts == [footer['line_count'], footer['sequence_count']] and
+                             footer['emitted'] == sum(counts))
+        incomplete += not state['complete']
+    latest = states.get(newest)
+    valid = latest is not None and latest['complete'] and not unassigned and not dropped
+    snapshot = None
+    if valid:
+        snapshot = dict(footer=latest['footer'], fields=latest['fields'], owner_verified=False,
+                        native_event_identity='UNVERIFIED')
+    return dict(schema_snapshot=snapshot, schema_latest_footer=latest['footer'] if latest else None,
+                schema_status='COMPLETE' if valid else 'UNVERIFIED' if states or malformed else 'MISSING',
+                schema_malformed=malformed, schema_dropped=dropped, schema_incomplete=incomplete,
+                schema_snapshots_seen=len(states), schema_superseded=max(0, len(states) - 1),
+                schema_evidence_gap=bool(malformed or dropped or incomplete or
+                                        (latest and latest['footer'] and latest['footer']['incomplete'])),
+                schema_owner='UNVERIFIED')
+
+
 def parse_native_score_events(text):
     """Read-only expression payloads; serials are not deduplicated native identities."""
     samples, status, guards, dropped, status_dropped, guard_dropped, malformed = [], [], [], 0, 0, 0, 0
@@ -648,7 +802,7 @@ def parse_native_score_events(text):
     return dict(samples=samples, status=status, guards=guards, dropped=dropped, status_dropped=status_dropped,
                 guard_dropped=guard_dropped, malformed=malformed,
                 native_event_identity='UNVERIFIED', **parse_native_score_details(text),
-                **parse_native_score_health(text))
+                **parse_native_score_health(text), **parse_native_score_schema(text))
 
 
 def parse_fixture_status(text):

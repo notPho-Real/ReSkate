@@ -1,65 +1,79 @@
-## Default RT native trials and scoring baseline diagnosis — 2026-10-16
+## Native composition and software checkpoint — 2026-10-16
 
-HIL50 result1792162733637269000 now completes all four scoring windows after the
-covered-generation fix: two exact native Kickflips and two physical manual bails,
-all neutralized and fixture-reset ready. Baselines bind in1909–2841ms. Historical
-route2 unbound count4 stays unchanged across all sampled health; it is retained,
-not attributed to the new trials. Both clean lines end10,051ms after line start;
-both bails emit failed kind1/score5 followed by success-valued kind3/category10
-events, reinforcing that success alone is not a clean bank. Missing end-boundary
-health and ownership remain explicit.21 separate recorded trials/57 captures
-replay with zero authoritative monetary operations;17 focused replay tests pass.
-HIL50 result1792162893360510000 completes six rail-clearance comparisons:3/3
-350ms Ollie-out and3/3 Kickflip-out native revert/manual links pass, each with
-one grind entry, retained fatigue,750–752ms final grace, neutral/reset. No rail
-recontact; this does not erase the prior220ms18/20 denominator. Seventeen more
-350ms trials are running to reach ten early/ten standard manual commands.
-The game remains hot at the restored Stadium fixture.
+Current source7ccce3c644b8374bf2d851480b997a6e2df3e1d5 includes opt-in,
+bounded fixture cross-section measurement and explicit offline chain timing
+policies.333 Python tests and854 geometry sanitizer checks pass. CI38923734572 passed Windows, Linux, macOS, package and publication, including
+new geometry and Park Editor transaction regressions. No new runtime deployed.
 
-Source review also found that exhausting the32-ancestor capture walk silently
-discarded evidence. It now increments the existing rejection counter; proven
-same-VM duplicates remain suppressed without loss.167 native-score/21 health/
-328 settlement checks pass, and all57 recorded captures remain non-authoritative.
-The full Python suite passes330 checks. This runtime change awaits CI/deployment.
-
-Current source1e02a0fded91048e092834b74d9141ddf2770015 is pushed with CI running;
-fe53a8384605e94bea0769d414b1d979a7513ceb passes every CI gate.
 Installed source8ab84cd1209a49c477042ef5f1248bcd7d8ab098, DLL
 042a6ad2f17c4dccc90751766d2ef2a05263a454ed95bc081d1196d631ebb094.
-Deployment completed through the guarded installer; supported25414733 game,
-stock backup and recovery launcher hashes remain unchanged. Launcher reached
-Ready without authentication. Stadium saved rail restored, editor closed,
-Arcade ON/default classic mode5 and60Hz. The game remains running.
+Supported25414733 game, stock backup and recovery launcher remain unchanged.
+The game is running in the standalone installation, Stadium single rail restored,
+editor closed, Arcade ON/default mode5,60Hz. No authentication intervention.
+HIL50 manifest0d5ed482b6134927d03efef1806e625d2e36e9323117aed55c6eb66208d9e6e9;
+all older frozen tools remain unchanged.
 
-HIL48 results1792161606681054000 and1792161864375196000 complete20 default-RT
-grind→Ollie→revert→manual trials:18/20 native chains pass (early9/10, standard9/10).
-All20 neutralize/reset. The two misses recontact the rail, obtain no independent
-native revert label, and correctly expire rather than accepting synthetic intent.
-Preserve the earlier919 runtime19/20 result separately; monetary score authority
-remains UNVERIFIED. Next discriminating control is an already-supported exit
-that clears the rail, keeping the750ms gameplay grace unchanged.
+Native revert/manual composition: result1792163073714564000 adds17/17 to the
+three350ms Ollie-out controls in1792162893360510000:20/20 across ten early/ten
+standard commands, single grind entry, retained fatigue, native air IDs, final
+750ms grace, neutral/reset. Controlled regular-context mechanic REPEATABLE;
+monetary and broader stance acceptance remain open. Previous220ms18/20 and
+its two rail recontacts remain recorded; no physics/grace/input recipe change.
+The same comparison also passed3/3 Kickflip-out revert/manual links.
 
-Bound-score result1792161725999231000 completes one clean Kickflip with native
-sequence13, line start17ms later and line end13/reason1 after10,034ms. The next
-trial stops before input; this is one completed trial, not four attempted trials.
-HIL49 diagnostic result1792162265048983000 stops before input on an inactive
-generation211 health row after validated generation212 native/pad evidence,
-all loss counters zero. This identifies delayed previous-generation health;
-the scoring baseline gate is being aligned with existing covered-counter rules.
-No source ownership, canonical native occurrence or bank amount is inferred.
+Mixed result1792163515127404000 completes12 cases with12 neutral/reset-ready
+recoveries and no hard stop. Five graded native chains pass; tripleRT permits
+one opportunity and expires exactly1100ms later. One intended grind-failure
+case misses the rail entirely, so it earns no grind-failure credit. Fixed-rail
+brake comparison1792164223478905000 isolates the approach:300ms bails before
+grind;400ms and500ms enter native grinds at2475/1831mm/s for2432/2449ms, then
+physical balance wipes out. All3 reset safely. The original600ms stopped short.
+These controls preserve historical20/20 physical grind-failure acceptance while
+measuring the current approach failure envelope. Rotation/board smoke cases do
+not replace independent angle or full stress acceptance.
 
-Inspectorfe53 artifact51b3a19d338eb4d67917019b5046753655f969ce09e508b52e7f109a9f52d706
-ran without stopping the game, result1792162581609733000:32 assets/167318 bytes,
-INCOMPLETE. Shared graph parameter resolves the telemetry-manager declaration;
-line/sequence declaration identities remain unresolved in selected assets.
-Declared names and static type references do not establish local-skater ownership.
-HIL49 manifest5e87c99ecea471cca8cc6b3b057071c537bf48d85b75557e72969fbfbcac846a;
-all older frozen tools remain unchanged. Source-only schema hint revalidation
-passes160 native-score/21 health checks; it is not deployed or hardware accepted.
-The baseline correction passes94 focused/329 total Python tests, preserving
-current/future generation rejection, uncovered losses and freshness thresholds.
-New frozen HIL50 manifest0d5ed482b6134927d03efef1806e625d2e36e9323117aed55c6eb66208d9e6e9
-is running the same four scoring windows; native results are pending.
+Chain-C pilot1792163828985339000 produces native2→1→2 in3/3 but finaltakeoff
+983–1000ms after landing exceeds750ms grace:0/3 continuous chains. Earlier
+command1792164333661204000 passes1/3; event-wait latency plus400ms crouch still
+leaves two boundary failures, including one late first manual. All6 neutral/reset.
+Shorter manual spacing and300ms final crouch in1792164460296133000 pass3/3;1792164620483477000 adds17/17, for20/20 across ten standard/ten compact timings. All retain native2→1→2, intended manual, fatigue,750–752ms grace and neutral/reset. Monetary authority and midair late flips remain unverified. This is three
+native hops with intermediate landings, not evidence of a midair late flip.
+Repeated-manual diagnostic1792165157533252000 completes3/3 native2→1→2→1
+sequences, two sustained contact candidates and clean resets, but only the first
+manual produces a label edge. History rows4→5 at second entry merit bounded
+identity diagnostics, not proof of native occurrence. One-tick one-wheel
+landing and missed-rail candidates lack matching manual labels. A tested
+strict admission boundary now separates control preparation from combo/HUD
+identity; it is not accepted until repeated-manual integration is resolved.
+
+Prepared source adds bounded nonblocking input/client telemetry with explicit
+loss, manual-history count diagnostics (no handles), and stable native scoring
+type metadata snapshots. Local sanitizer checks:1323 telemetry,470 manual
+admission,43 history,192 native score;353 Python tests pass with the new
+history/schema parsers. Combined model regression passes33641 checks, including
+328 settlement checks; all57 recorded unowned captures remain rejected. None establishes new hardware or monetary acceptance.
+
+Scoring windows1792162733637269000 complete two exact native Kickflips and two
+physical manual bails, all neutral/reset ready. Baselines bind in1909–2841ms;
+historical route2 unbound count4 remains unchanged. Clean line ends occur10051ms
+after start; bail captures include both failed and success-valued subsequent
+events. Ownership, canonical occurrence, raw-point semantics and end-boundary
+health remain unverified.21 separate trials/57 captures replay with zero
+authoritative monetary operations;17 focused replay tests pass. The delayed
+old-generation baseline diagnostic1792162265048983000 and its correction are
+preserved.32-level capture-walk exhaustion now records loss;167 native-score,
+21 health and328 settlement checks pass. Native score authority remains disabled.
+
+CI4780c89,1e02a0f and7ccce3c passed every gate. Earlier1a45a35/eeba163
+publication403 failures remain recorded; no permissions changed. The corrected
+eeba163 read-only inspector5453381e8c0f96766733214d1108f9d34a49bacc4b1b70fd59a65ff126983000
+ran at idle:result1792165018770361000,32 assets/164532bytes, bounded INCOMPLETE.
+Serialized imports identify actual scoring types but Context remains unresolved;
+manager cString IDs and UI presentation do not prove local event ownership.
+Game stayed present. Next: CI the coherent runtime, deploy only verified
+artifact, capture native schema and repeated-manual diagnostics, then targeted
+manual regression and fixed-rail geometry for the longer fatigue chain.
+Do not infer bank/loss from unowned score captures.
 
 ## Default RT runtime update prepared — 2026-10-16
 

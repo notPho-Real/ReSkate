@@ -1,11 +1,10 @@
 #include "arcade_score_probe.h"
 #include "arcade_score_labels.h"
 #include "arcade_score_numbers.h"
-#include "Engine/Core/Log/logging.h"
+#include "arcade_input_telemetry.h"
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/hud_corner.h"
 #include "Extension/UI/NativeMenu/native_menu_data.h"
-#include <format>
 #include <map>
 #include <set>
 #include <string_view>
@@ -14,13 +13,25 @@ namespace dingosdk::arcade_mode {
 namespace {
 namespace data = multiplayer::menu_data;
 namespace build = game::build::v20260929;
-std::map<std::string, std::uint32_t> previous;
-std::set<std::string> described;
+std::map<ScoreProbePath, std::uint32_t> previous;
+std::set<ScoreProbePath> described;
 std::uint64_t next_poll{};
 std::uint64_t next_description{};
 ScoreActivity activity{};
 ScoreHudNumbers numbers{};
 ScoreLabelEdges label_edges{};
+ManualHistory manual_history;
+void invalidate_label_observation(ScoreLabelUncertainty why = ScoreLabelUncertainty::unavailable) noexcept {
+    label_edges.invalidate(why);
+    manual_history.reset();
+}
+void report_manual_history(std::uint64_t now, const ManualHistoryDiagnostic& diagnostic) noexcept {
+    static ManualHistoryDiagnostic previous{};
+    static std::uint64_t report_at{}, sequence{};
+    if (diagnostic == previous && now < report_at) return;
+    previous = diagnostic; report_at = now + 1000;
+    enqueue_client_telemetry(ManualHistoryEvidence{++sequence, now, diagnostic});
+}
 std::uint64_t last_poll{};
 bool polled{};
 unsigned emitted{};
@@ -40,9 +51,7 @@ void report_labels(std::uint64_t now, unsigned source, const LabelDiagnostics& d
     const std::array<unsigned, 5> current{source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels};
     if (current == previous_diagnostic && now < report_at) return;
     previous_diagnostic = current; report_at = now + 1000;
-    logging::log(logging::Level::info, logging::Channel::skater,
-        "ARCADE SCORE PRESENCE: ms={} source={} rows={} stage={} parts={} labels={}.",
-        now, source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels);
+    enqueue_client_telemetry(ScorePresenceEvidence{now, source, diagnostic.rows, diagnostic.stage, diagnostic.parts, labels});
 }
 // Field mapping from indicouchcoding/ReSkate-UI-2.0 (GPL-3.0), revision
 // d5b3d978763c1a279e21ac47fc2b2003746a0a0a:
@@ -78,7 +87,8 @@ std::uint32_t read_legacy_label_presence(const data::Context& context, LabelDiag
         read_text(context.field(context.field(context.field(score_model, parent), 0x2358a817), 0x187bbd85));
     return labels;
 }
-std::uint32_t read_history_label_presence(const data::Context& context, LabelDiagnostics& diagnostic) {
+std::uint32_t read_history_label_presence(const data::Context& context, LabelDiagnostics& diagnostic,
+    std::array<ManualHistoryRow, ManualHistory::capacity>& history, bool& complete) {
     // Same pinned GPL-3.0 reader as above: history items contain presenters,
     // not embedded text fields. Keep only exact allowlisted labels. cat pouch
     namespace corner = build::hud_corner;
@@ -89,12 +99,13 @@ std::uint32_t read_history_label_presence(const data::Context& context, LabelDia
     diagnostic.stage = 2;
     (void)context.array(items, 16, count, stride);
     diagnostic.rows = count;
+    complete = true;
     std::uint32_t labels{};
     for (unsigned i = 0; i < count; ++i) {
         diagnostic.stage = 3;
         const auto presenter = context.field(context.element(items, i), corner::item_content);
         const auto widget = data::read<data::Widget>(context.address(presenter));
-        if (!widget.data.handle) continue;
+        if (!widget.data.handle) { complete = false; continue; }
         diagnostic.stage = 4;
         const auto type = context.type_of(widget.data.handle);
         data::require(type != 0, "native trick presenter type unavailable");
@@ -104,13 +115,14 @@ std::uint32_t read_history_label_presence(const data::Context& context, LabelDia
         data::require(data::kind(text.type) == 7 && data::size(text.type) == 8,
                       "native trick history text schema differs");
         const auto value = context.text(text, 96);
+        history[i] = {widget.data.handle, type, score_label_id(value)};
         observe_label_part(value, diagnostic);
         labels |= score_label_bit(score_label_id(value));
     }
     diagnostic.stage = 0;
     return labels;
 }
-void inspect(const data::Context& context, data::Value value, const std::string& path,
+void inspect(const data::Context& context, data::Value value, const ScoreProbePath& path,
              unsigned depth, unsigned& budget, std::uint64_t now) {
     if (!budget || depth > 3 || emitted >= 4096) return;
     --budget;
@@ -118,8 +130,7 @@ void inspect(const data::Context& context, data::Value value, const std::string&
     if (!described.contains(path)) {
         if (described.size() >= 256) return;
         described.insert(path);
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE SCORE NODE: path={} kind={} size={}.", path, kind, size);
+        enqueue_client_telemetry(ScoreNodeEvidence{path, kind, size});
     }
     const auto meta = data::read<std::uintptr_t>(value.type);
     if (kind == 2) {
@@ -128,7 +139,9 @@ void inspect(const data::Context& context, data::Value value, const std::string&
         const auto fields = data::read<std::uintptr_t>(meta + 0x60);
         for (unsigned i = 0; i < count && budget; ++i) {
             const auto hash = data::read<std::uint32_t>(fields + i * 24ULL);
-            try { inspect(context, context.field(value, hash), path + std::format(".{:08x}", hash), depth + 1, budget, now); }
+            auto child = path;
+            if (!child.append(hash)) continue;
+            try { inspect(context, context.field(value, hash), child, depth + 1, budget, now); }
             catch (...) { /* one unavailable optional field must not hide the others */ }
         }
         return;
@@ -136,8 +149,10 @@ void inspect(const data::Context& context, data::Value value, const std::string&
     if (kind == 4) {
         unsigned count{}, stride{};
         (void)context.array(value, 8, count, stride);
-        for (unsigned i = 0; i < count && budget; ++i)
-            inspect(context, context.element(value, i), path + std::format(".{:08x}", i), depth + 1, budget, now);
+        for (unsigned i = 0; i < count && budget; ++i) {
+            auto child = path;
+            if (child.append(i)) inspect(context, context.element(value, i), child, depth + 1, budget, now);
+        }
         return;
     }
     std::uint32_t current{};
@@ -152,24 +167,22 @@ void inspect(const data::Context& context, data::Value value, const std::string&
     if (previous.size() >= 256 && !previous.contains(path)) return;
     previous[path] = current;
     ++emitted;
-    if (kind == 7 && current)
-        logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE SCORE LABEL: ms={} path={} id={}.", now, path, current);
-    logging::log(logging::Level::info, logging::Channel::skater,
-        "ARCADE SCORE VALUE: ms={} path={} value={}.", now, path, current);
-    if (emitted == 4096) logging::log(logging::Level::info, logging::Channel::skater,
-        "ARCADE SCORE LIMIT: reached=true.");
+    enqueue_client_telemetry(ScoreValueEvidence{now, path, current, kind == 7 && current != 0, emitted == 4096});
 }
 }
 ScoreActivity score_activity() noexcept { return activity; }
 ScoreHudNumbers score_hud_numbers() noexcept { return numbers; }
 ScoreLabelOccurrence take_score_label_occurrence(std::uint64_t now) noexcept { return label_edges.take(now); }
-void reset_score_label_occurrences() noexcept { label_edges.invalidate(); }
+void reset_score_label_occurrences() noexcept { invalidate_label_observation(); }
 void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
-    if (!base) { activity = {}; numbers = {}; label_edges.invalidate(); return; }
+    const auto invalidate = [now](ScoreLabelUncertainty why = ScoreLabelUncertainty::unavailable) {
+        invalidate_label_observation(why);
+        report_manual_history(now, ManualHistoryDiagnostic{});
+    };
+    if (!base) { activity = {}; numbers = {}; invalidate(); return; }
     if (polled && now < last_poll) {
         next_poll = next_description = 0;
-        label_edges.invalidate(ScoreLabelUncertainty::clock_reset);
+        invalidate(ScoreLabelUncertainty::clock_reset);
     }
     if (now < next_poll) return;
     polled = true; last_poll = now;
@@ -179,18 +192,18 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
     try {
         const auto& functions = game::native_data().models;
         if (!functions.lock || !functions.unlock || !functions.value || !functions.field) {
-            label_edges.invalidate(); return;
+            invalidate(); return;
         }
         const auto ui = data::read<std::uintptr_t>(base + build::engine::ui_manager);
         const auto manager = ui ? data::read<std::uintptr_t>(ui + 0x140) : 0;
-        if (!manager) { label_edges.invalidate(); return; }
+        if (!manager) { invalidate(); return; }
         game::ModelWriteLock lock(manager);
         const data::Context context(base, manager);
         if (manager != previous_manager) {
-            score_model = {}; previous_manager = manager; previous.clear(); label_edges.invalidate();
+            score_model = {}; previous_manager = manager; previous.clear(); invalidate();
         }
         if (!score_model.handle || context.type_of(score_model.handle) != score_model.type) {
-            label_edges.invalidate();
+            invalidate();
             const auto roots = context.roots({build::hud_corner::score_view_schema});
             if (roots.empty()) return;
             score_model = roots.front().model;
@@ -218,19 +231,24 @@ void observe_score_hud(std::uintptr_t base, std::uint64_t now) noexcept {
         try {
             std::uint32_t labels{};
             unsigned source = 1;
-            try { labels = read_history_label_presence(context, diagnostic); }
+            std::array<ManualHistoryRow, ManualHistory::capacity> history{};
+            bool history_complete{};
+            try { labels = read_history_label_presence(context, diagnostic, history, history_complete); }
             catch (...) { labels = read_legacy_label_presence(context, diagnostic); source = 2; }
             // Switching presentation paths cannot manufacture an occurrence.
-            if (source != label_source) label_edges.invalidate();
+            if (source != label_source) invalidate();
             label_source = source;
+            report_manual_history(now, manual_history.observe(
+                std::span<const ManualHistoryRow>(history).first(source == 1 ? diagnostic.rows : 0),
+                {now, manager, score_model.handle, score_model.type, source == 1, history_complete}));
             label_edges.observe(labels, true, now);
             report_labels(now, source, diagnostic, labels);
-        } catch (...) { label_edges.invalidate(); label_source = 0; report_labels(now, 0, diagnostic, 0); }
+        } catch (...) { invalidate(); label_source = 0; report_labels(now, 0, diagnostic, 0); }
         if (now >= next_description && emitted < 4096) {
             next_description = now + 250;
             unsigned budget = 256;
-            inspect(context, score_model, "9b74fc7c", 0, budget, now);
+            inspect(context, score_model, {{0x9b74fc7c}, 1}, 0, budget, now);
         }
-    } catch (...) { label_edges.invalidate(); /* unavailable schema leaves all gameplay untouched */ }
+    } catch (...) { invalidate(); /* unavailable schema leaves all gameplay untouched */ }
 }
 }

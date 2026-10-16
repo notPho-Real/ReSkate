@@ -2,6 +2,7 @@
 #include "arcade_native_score_buffer.h"
 #include "arcade_score_boundary.h"
 #include "arcade_score_capture_health.h"
+#include "arcade_score_schema_snapshot.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -35,6 +36,8 @@ struct Runtime {
     std::uint64_t scan_epoch{}, hint_epoch{};
     multiplayer::NativeTypeScanCursor cursor{};
     std::array<multiplayer::NativeTypeQuery, 4> queries{};
+    SchemaSnapshotGate schema_gate;
+    std::uint64_t schema_report_at{}, schema_serial{}, schema_incomplete{};
 };
 std::atomic<Runtime*> published{};
 bool same_owner(const NoBailSkater& a, const NoBailSkater& b) noexcept {
@@ -94,6 +97,50 @@ void scan_slice(Runtime& r, std::uint64_t epoch) noexcept {
     if (r.cursor.complete && r.binding_epoch.load() != epoch) r.scan_epoch = 0;
     if (lowered) SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
 }
+void report_schema(Runtime& r, std::uint64_t epoch, std::uint64_t now) {
+    if (!epoch || now < r.schema_report_at || r.binding_epoch.load() != epoch ||
+        now > r.expires.load()) return;
+    Binding binding{};
+    if (r.binding_busy.test_and_set(std::memory_order_acquire)) return;
+    const bool bound = r.epoch.load() == epoch && r.binding_epoch.load() == epoch;
+    if (bound) binding = r.binding;
+    r.binding_busy.clear(std::memory_order_release);
+    if (!bound) return;
+    r.schema_report_at = now + 1000;
+    const auto slot = r.schema_gate.begin(binding);
+    if (slot == SchemaSnapshotGate::denied) return;
+    const auto current = [&] {
+        const auto expiry = r.expires.load();
+        return expiry && GetTickCount64() <= expiry && r.epoch.load() == epoch &&
+            r.binding_epoch.load() == epoch;
+    };
+    Read read;
+    auto snapshot = snapshot_score_schema(read, binding, current);
+    const auto serial = ++r.schema_serial;
+    unsigned emitted{};
+    if (snapshot.status == SchemaSnapshotStatus::complete) {
+        for (unsigned role = 0; role < snapshot.types.size(); ++role) {
+            const auto& type = snapshot.types[role];
+            for (unsigned i = 0; i < type.count; ++i) {
+                const auto& member = type.members[i];
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE NATIVE SCORE SCHEMA FIELD: seq={} epoch={} role={} index={} type_hash={} type_size={} field_hash={} kind={} size={} ref_type_hash={}.",
+                    serial, epoch, role + 1, i, type.hash, type.size, member.hash,
+                    member.kind, member.size, member.type_hash);
+                ++emitted;
+            }
+        }
+    }
+    // A missing footer or non-complete status invalidates all rows for this
+    // snapshot. Completing a schema snapshot never proves event ownership.
+    if (!current()) snapshot.status = SchemaSnapshotStatus::inactive;
+    if (snapshot.status != SchemaSnapshotStatus::complete) ++r.schema_incomplete;
+    logging::log(logging::Level::info, logging::Channel::skater,
+        "ARCADE NATIVE SCORE SCHEMA: seq={} ms={} epoch={} status={} line_count={} sequence_count={} emitted={} incomplete={} owner_verified=false.",
+        serial, GetTickCount64(), epoch, static_cast<unsigned>(snapshot.status),
+        snapshot.types[0].count, snapshot.types[1].count, emitted, r.schema_incomplete);
+    r.schema_gate.finish(slot, snapshot.status);
+}
 void run_worker(Runtime& r) noexcept {
     std::uint64_t previous_epoch{};
     std::uint64_t health_epoch{}, health_report_at{};
@@ -109,6 +156,7 @@ void run_worker(Runtime& r) noexcept {
                 if (!refresh_binding_hint(r, epoch)) scan_slice(r, epoch);
                 r.next_scan = GetTickCount64() + 100;
             }
+            report_schema(r, epoch, now);
             std::array<Event, 16> rows{};
             const auto count = r.events.take(rows);
             for (std::size_t i = 0; i < count; ++i) {

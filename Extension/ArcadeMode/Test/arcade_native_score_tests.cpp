@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_native_score_buffer.h"
 #include "Extension/ArcadeMode/arcade_score_boundary.h"
+#include "Extension/ArcadeMode/arcade_score_schema_snapshot.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -80,6 +81,82 @@ struct Fixture {
         payload = alloc(64);
     }
 };
+void schema_snapshot_tests() {
+    Fixture f; Binding binding{};
+    check(bind_schema(f, f.objects, binding), "schema snapshot fixture binds existing contracts");
+    const auto active = [] { return true; };
+    auto snapshot = snapshot_score_schema(f, binding, active);
+    check(snapshot.status == SchemaSnapshotStatus::complete && snapshot.types[0].count == 1 &&
+          snapshot.types[1].count == 1, "bounded schema snapshot captures both existing types");
+    check(snapshot.types[0].members[0] == SchemaMember{0x40bff667, 123, 15, 4} &&
+          snapshot.types[1].members[0] == SchemaMember{2099127164U, 123, 15, 4},
+          "sanitized schema rows contain only expected hashes kind and size, no source addresses");
+    unsigned calls{};
+    snapshot = snapshot_score_schema(f, binding, [&] { return ++calls == 1; });
+    check(snapshot.status == SchemaSnapshotStatus::inactive && snapshot.types[0].count == 0,
+          "epoch expiry during snapshot discards every member");
+    calls = 0;
+    snapshot = snapshot_score_schema(f, binding, [&] {
+        if (++calls == 2) f.put(f.records[1], std::uint32_t{999});
+        return true;
+    });
+    check(snapshot.status == SchemaSnapshotStatus::type_changed && snapshot.types[0].count == 0,
+          "type identity changed after reads cannot publish metadata");
+    f.put(f.records[1], type_hashes[1]);
+    f.put(f.records[1] + 0x2a, std::uint16_t{97});
+    check(snapshot_score_schema(f, binding, active).status == SchemaSnapshotStatus::invalid_fields,
+          "97 member table rejected before traversal");
+    f.put(f.records[1] + 0x2a, std::uint16_t{0});
+    check(snapshot_score_schema(f, binding, active).status == SchemaSnapshotStatus::invalid_fields,
+          "empty table cannot replace already bound score fields");
+    f.put(f.records[1] + 0x2a, std::uint16_t{1});
+    f.put(f.tables[1] + 8, std::uint16_t{15});
+    check(snapshot_score_schema(f, binding, active).status == SchemaSnapshotStatus::invalid_fields,
+          "out-of-type field extent rejected by existing field reader");
+    f.put(f.tables[1] + 8, std::uint16_t{4});
+    f.put(f.tables[1] + 16, std::uintptr_t{0});
+    check(snapshot_score_schema(f, binding, active).status == SchemaSnapshotStatus::invalid_fields,
+          "unreadable referenced type cannot produce a row");
+    f.put(f.tables[1] + 16, f.number);
+    f.put(f.records[1] + 0x2a, std::uint16_t{2});
+    f.add(1, 1, 0x40bff667, 8, f.number);
+    check(snapshot_score_schema(f, binding, active).status == SchemaSnapshotStatus::invalid_fields,
+          "duplicate field hashes rejected rather than silently resolving first field twice");
+    f.put(f.records[1] + 0x2a, std::uint16_t{1});
+    unsigned table_reads{};
+    auto changing = [&](std::uintptr_t address, auto& value) {
+        if (address == f.tables[1] && ++table_reads == 3) f.put(f.tables[1], std::uint32_t{42});
+        return f(address, value);
+    };
+    check(snapshot_score_schema(changing, binding, active).status == SchemaSnapshotStatus::fields_changed,
+          "different bounded declaration passes cannot publish a coherent-looking snapshot");
+    f.put(f.tables[1], std::uint32_t{0x40bff667});
+    const auto large = f.alloc(96 * 24);
+    f.tables[1] = large; f.put(f.records[1] + 0x60, large); f.put(f.records[1] + 0x2a, std::uint16_t{96});
+    for (unsigned i = 0; i < 96; ++i) f.add(1, i, i + 1, 0, f.number);
+    snapshot = snapshot_score_schema(f, binding, active);
+    check(snapshot.status == SchemaSnapshotStatus::complete && snapshot.types[0].count == 96 &&
+          snapshot.types[0].members[95].hash == 96, "exact 96 member boundary retained");
+    SchemaSnapshotGate gate;
+    auto slot = gate.begin(binding);
+    check(slot == 0, "first stable type set gets a bounded report slot");
+    gate.finish(slot, SchemaSnapshotStatus::complete);
+    check(gate.begin(binding) == SchemaSnapshotGate::denied,
+          "same type set is not repeated after a reset or epoch change");
+    SchemaSnapshotGate retries;
+    for (unsigned i = 0; i < 3; ++i) {
+        slot = retries.begin(binding); check(slot == 0, "incomplete schema attempt has bounded retry");
+        retries.finish(slot, SchemaSnapshotStatus::inactive);
+    }
+    check(retries.begin(binding) == SchemaSnapshotGate::denied, "fourth incomplete retry is suppressed");
+    for (unsigned i = 1; i < 8; ++i) {
+        binding.types[1].object += 8;
+        slot = gate.begin(binding); check(slot == i, "new type identity gets separate slot");
+        gate.finish(slot, SchemaSnapshotStatus::complete);
+    }
+    binding.types[1].object += 8;
+    check(gate.begin(binding) == SchemaSnapshotGate::denied, "lifetime type-set budget cannot grow unbounded");
+}
 struct DiagnosticFixture : Fixture {
     std::uintptr_t enum_type{}, enum_record{}, float_type{}, float_record{};
     std::uintptr_t action_type{}, action_record{}, parent_type{}, parent_record{}, category_table{}, action{};
@@ -279,6 +356,7 @@ void diagnostic_tests() {
 }
 int main(int argc, char** argv) {
     capture_scope_tests();
+    schema_snapshot_tests();
     if (argc == 3 && std::string_view(argv[1]) == "--replay-unowned") {
         std::ifstream input(argv[2]);
         check(input.good(), "recorded capture file available");

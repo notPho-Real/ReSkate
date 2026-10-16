@@ -1813,7 +1813,7 @@
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
       "implementation_status": "Independent native recipe integrated behind existing RT selector. Exact base-label reader and bounded native-confirmed combo continuation implemented; new runtime window awaits verified deployment and Deck acceptance.",
-      "hil_status": "Native default classic RT integrated on8ab84cd: HIL48 two batches18/20 complete grind/Ollie/revert/manual chains, early9/10 and standard9/10;20/20 neutral/reset. Two rail recontacts have no native revert label and correctly expire. Prior919 mode3 result19/20 remains separate. Exact context coverage and monetary acceptance remain open.",
+      "hil_status": "REPEATABLE in controlled regular context on8ab84cd:350ms native Ollie-out clears rail,20/20 independently observed revert/manual chains across10 early/10 standard manual timings;20/20 one grind entry, retained fatigue, final grace and neutral/reset. Kickflip-out comparison3/3. Previous220ms18/20 remains separate: two rail recontacts without native revert. Monetary and broader stance acceptance remain UNVERIFIED.",
       "repeatability": {
         "status": "REPEATABLE generic native Revert with both selectors in moving fixture; exact side and combined linking pending",
         "side_controls": {
@@ -2338,36 +2338,37 @@
     {
       "id": "stress",
       "requested_action": "Mixed skating/tricks/grabs/grinds/manuals/reverts/banks/failures/toggles/board",
-      "implementation_status": "No final mixed stress acceptance",
+      "implementation_status": "Scoped mixed12 on8ab84cd completed12neutral/reset-ready recoveries with no hard stop: five graded chains pass, one tripleRT expires once at1100ms, native manual bail and fresh recovery work. One intended grind-failure missesrail; subsequent fixed-rail400/500ms brake controls establish real2.4s grind and physical failure. Full mixed acceptance remains open.",
       "source_ids": [
         "native-score-known-failures"
       ],
       "remaining": "Continuous sanitized telemetry, repeated recovery and failure envelope.",
       "next": "Run one hot session after supported primitives pass, fix reproducible failures and repeat affected cases.",
-      "new_deck_trials": 0
+      "new_deck_trials": 15,
+      "evidence": "grind-exit-results.json:mixed_core_12;grind_brake_control_3"
     },
     {
       "id": "deck-operation",
       "requested_action": "Reliable Deck gameplay and library update/restore controls",
-      "implementation_status": "2bdf062/DLL7a8b254e installed after all five CI38727430627 gates passed. Steam then changed executable/build to25617022; launch correctly blocked. No native acceptance on this new DLL yet. Stock backup unchanged, both game processes stopped.",
+      "implementation_status": "Supported25414733 restored and full135/135 manifest verified; standalone/home/deck/Games/ReSkate preserves Steam-managed copies separately. Verified8ab84cd/DLL042a6ad2 installed, launcher Ready without authentication, saved Stadium rail restored and repeated HIL48-50 native trials running. AC sleep disabled while battery timeout remains900s.",
       "source_ids": [
         "deck-fork",
         "deck-practice-map"
       ],
-      "remaining": "Restore pinned25414733 or establish reviewed native contracts for25617022 before gameplay.",
-      "next": "Use existing launcher supported-build download; verify exact original game hash, restore saved rail, run prepared HIL41 native-link integration.",
+      "remaining": "Preserve supported executable and verified artifact contract on subsequent updates; future artifacts require passing software gates and separate native acceptance.",
+      "next": "Keep current hot session; deploy only a verified coherent runtime when needed for remaining native integration.",
       "new_deck_trials": 0,
-      "evidence": "grind-exit-results.json:game_update_blocker_2026_10_15"
+      "evidence": "STATE.md recovery checkpoint; grind-exit-results.json recovered_integration_actions_off_2026_10_16 and HIL50 native controls"
     },
     {
       "id": "build-gate",
       "requested_action": "Verified runtime artifact before installation",
-      "implementation_status": "2bdf062/DLL7a8b254e installed after all five CI38727430627 gates passed. Steam then changed executable/build to25617022; launch correctly blocked. No native acceptance on this new DLL yet. Stock backup unchanged, both game processes stopped.",
+      "implementation_status": "Supported25414733 restored and full135/135 manifest verified; standalone/home/deck/Games/ReSkate preserves Steam-managed copies separately. Verified8ab84cd/DLL042a6ad2 installed, launcher Ready without authentication, saved Stadium rail restored and repeated HIL48-50 native trials running. AC sleep disabled while battery timeout remains900s.",
       "source_ids": [],
-      "remaining": "Restore pinned25414733 or establish reviewed native contracts for25617022 before gameplay.",
-      "next": "Use existing launcher supported-build download; verify exact original game hash, restore saved rail, run prepared HIL41 native-link integration.",
+      "remaining": "Preserve supported executable and verified artifact contract on subsequent updates; future artifacts require passing software gates and separate native acceptance.",
+      "next": "Keep current hot session; deploy only a verified coherent runtime when needed for remaining native integration.",
       "new_deck_trials": 0,
-      "evidence": "grind-exit-results.json:game_update_blocker_2026_10_15"
+      "evidence": "STATE.md recovery checkpoint; grind-exit-results.json recovered_integration_actions_off_2026_10_16 and HIL50 native controls"
     },
     {
       "id": "chain-A",
@@ -2385,29 +2386,30 @@
     {
       "id": "chain-B",
       "requested_action": "Air Trick -> Land -> RT Revert -> Manual",
-      "implementation_status": "8ab84cd default classic mode5:18/20 native grind/Ollie/revert/manual chains, early9/10 standard9/10, all neutral/reset. Two rail recontacts lack a native revert label and expire. Earlier919 mode3 batch19/20 retained separately.",
+      "implementation_status": "REPEATABLE in controlled regular context on8ab84cd:350ms native Ollie-out clears rail,20/20 independently observed revert/manual chains across10 early/10 standard manual timings;20/20 one grind entry, retained fatigue, final grace and neutral/reset. Kickflip-out comparison3/3. Previous220ms18/20 remains separate: two rail recontacts without native revert. Monetary and broader stance acceptance remain UNVERIFIED.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Compare an existing rail-clearing exit, preserve750ms grace; finish independently attributable score settlement.",
+      "remaining": "Independently attributable monetary settlement and broader stance/geometry integration; controlled regular native mechanic20/20 is preserved.",
+      "next": "Preserve repeatable regular native composition; complete independently attributable monetary settlement and broader stance/geometry acceptance.",
       "new_deck_trials": 27,
-      "evidence": "grind-exit-results.json: classic_default_rt_smoke_3; classic_default_rt_repeat_17"
+      "evidence": "grind-exit-results.json: classic_rail_clear_comparison_6; classic_rail_clear_repeat_17; classic_default_rt_repeat_17"
     },
     {
       "id": "chain-C",
       "requested_action": "Kickflip -> Manual -> Ollie -> Flip -> Land",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "Native three-hop subset2\u21921\u21922 with intended manual: corrected timing20/20 across ten standard/ten compact commands, retained fatigue/final750\u2013752msgrace, neutral/reset. Initial3latecommand chains0/3; earliercommand1/3 are preserved. Monetary and midair late-flip acceptance unverified.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "remaining": "Monetary authority, exact midair late-flip equivalent and regression after manual-identity correction remain open.",
+      "next": "Validate stricter manual admission against intended manuals and repeated same-type manuals; do not accept false one-wheel landing links.",
+      "new_deck_trials": 29,
+      "evidence": "grind-exit-results.json:chain_c_pilot_3;chain_c_earlier_command_3;chain_c_short_commands_3;chain_c_short_commands_repeat_17;repeated_manual_identity_3"
     },
     {
       "id": "chain-D",
@@ -2479,6 +2481,6 @@
       "evidence": "grind-exit-results.json"
     }
   ],
-  "coverage_checked_at": "2026-10-14",
+  "coverage_checked_at": "2026-10-16",
   "coverage_policy": "Every action row has a reuse review. Broader requirements below extend the same matrix. Source method availability, source-author gameplay reports, our DISCOVERED/REPEATABLE/INTEGRATED/ACCEPTED maturity and newly changed adapters are separate. No reviewed source proves our Deck acceptance; no-method-found is not exact-equivalent-unsupported."
 }
