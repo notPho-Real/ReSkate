@@ -38,63 +38,74 @@ int inspect(const std::filesystem::path& root) {
         const dingosdk::vfs::GameData data(root);
         const auto toc = data.read_toc(scoring::toc_name);
         if (toc.bundles.size() > 4096) throw std::runtime_error("bundle_limit");
-        for (const auto bundle_name : scoring::bundle_names) {
-            const auto bundle = data.read_bundle(toc, bundle_name);
+        std::array<std::optional<dingosdk::vfs::GameBundle>, scoring::bundle_names.size()> bundles;
+        scoring::AssetSelection selection;
+        for (std::size_t b = 0; b < bundles.size(); ++b) {
+            bundles[b] = data.read_bundle(toc, scoring::bundle_names[b]);
+            const auto& bundle = bundles[b];
             if (!bundle) { incomplete = true; continue; }
             if (bundle->manifest.ebx.size() > 100000 || bundle->manifest.resources.size() > 100000) {
                 incomplete = true; continue;
             }
             for (const auto kind : {fb::AssetKind::ebx, fb::AssetKind::resource}) {
                 const auto& assets = kind == fb::AssetKind::ebx ? bundle->manifest.ebx : bundle->manifest.resources;
-                for (std::size_t i = 0; i < assets.size(); ++i) {
-                    const auto& asset = assets[i];
-                    if (!scoring::allowed_asset(asset.name)) continue;
-                    if (output["assets"].size() >= scoring::asset_limit) { incomplete = true; break; }
-                    auto row = identity(asset, bundle_name);
-                    row["status"] = "RESOURCE_IDENTITY_ONLY";
-                    if (kind == fb::AssetKind::ebx) {
-                        const auto* payload = bundle->payload(kind, i);
-                        if (!payload || !asset.originalSize || asset.originalSize > scoring::payload_limit ||
-                            payload->size > scoring::payload_limit ||
-                            consumed > scoring::total_payload_limit - asset.originalSize) {
-                            row["status"] = "PAYLOAD_UNAVAILABLE_OR_LIMIT"; incomplete = true;
-                        } else {
-                            consumed += static_cast<std::size_t>(asset.originalSize);
-                            try {
-                                const auto bytes = data.read(*payload);
-                                if (bytes.size() != asset.originalSize || bytes.size() > scoring::payload_limit)
-                                    throw std::runtime_error("payload_size");
-                                row["declarations"] = scoring::inspect_document(fb::ebx::read_document(bytes));
-                                row["status"] = row["declarations"]["status"];
-                                if (row["status"].string() != "DECLARATIONS_READ") incomplete = true;
-                                // References identify RES candidates without reading or decoding their payloads.
-                                std::set<std::uint64_t> referenced;
-                                for (const auto& ref : row["declarations"]["references"])
-                                    if (ref["kind"].string() == "resource") referenced.insert(ref["resource_id"].get<std::uint64_t>());
-                                row["referenced_resources"] = Json::array();
-                                for (const auto& resource : bundle->manifest.resources) {
-                                    if (!referenced.contains(resource.resourceId)) continue;
-                                    if (!scoring::allowed_asset(resource.name)) {
-                                        row["external_resource_reference"] = true; incomplete = true; continue;
-                                    }
-                                    if (row["referenced_resources"].size() >= 64) { incomplete = true; break; }
-                                    row["referenced_resources"].push_back(identity(resource, bundle_name));
-                                    referenced.erase(resource.resourceId);
-                                }
-                                if (!referenced.empty()) { row["unresolved_resource_references"] = referenced.size(); incomplete = true; }
-                            } catch (const std::exception&) {
-                                // Exception messages may contain paths or opaque payload text.
-                                row = identity(asset, bundle_name); row["status"] = "READ_OR_PARSE_FAILED"; incomplete = true;
+                for (std::size_t i = 0; i < assets.size(); ++i)
+                    selection.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
+            }
+        }
+        incomplete = incomplete || selection.omitted;
+        output["asset_selection"] = "pinned_graphs_then_global_line_sequence_events_then_namespace";
+        output["asset_limit_reached"] = selection.omitted;
+        for (std::size_t selected = 0; selected < selection.size; ++selected) {
+            const auto& candidate = selection.assets[selected];
+            const auto& bundle = bundles[candidate.bundle];
+            const auto bundle_name = scoring::bundle_names[candidate.bundle];
+            const auto kind = candidate.resource ? fb::AssetKind::resource : fb::AssetKind::ebx;
+            const auto& asset = candidate.resource ? bundle->manifest.resources[candidate.index] : bundle->manifest.ebx[candidate.index];
+            const auto i = candidate.index;
+            auto row = identity(asset, bundle_name);
+            row["status"] = "RESOURCE_IDENTITY_ONLY";
+            if (kind == fb::AssetKind::ebx) {
+                const auto* payload = bundle->payload(kind, i);
+                if (!payload || !asset.originalSize || asset.originalSize > scoring::payload_limit ||
+                    payload->size > scoring::payload_limit ||
+                    consumed > scoring::total_payload_limit - asset.originalSize) {
+                    row["status"] = "PAYLOAD_UNAVAILABLE_OR_LIMIT"; incomplete = true;
+                } else {
+                    consumed += static_cast<std::size_t>(asset.originalSize);
+                    try {
+                        const auto bytes = data.read(*payload);
+                        if (bytes.size() != asset.originalSize || bytes.size() > scoring::payload_limit)
+                            throw std::runtime_error("payload_size");
+                        row["declarations"] = scoring::inspect_document(fb::ebx::read_document(bytes));
+                        row["status"] = row["declarations"]["status"];
+                        if (row["status"].string() != "DECLARATIONS_READ") incomplete = true;
+                        // References identify RES candidates without reading or decoding their payloads.
+                        std::set<std::uint64_t> referenced;
+                        for (const auto& ref : row["declarations"]["references"])
+                            if (ref["kind"].string() == "resource") referenced.insert(ref["resource_id"].get<std::uint64_t>());
+                        row["referenced_resources"] = Json::array();
+                        for (const auto& resource : bundle->manifest.resources) {
+                            if (!referenced.contains(resource.resourceId)) continue;
+                            if (!scoring::allowed_asset(resource.name)) {
+                                row["external_resource_reference"] = true; incomplete = true; continue;
                             }
+                            if (row["referenced_resources"].size() >= 64) { incomplete = true; break; }
+                            row["referenced_resources"].push_back(identity(resource, bundle_name));
+                            referenced.erase(resource.resourceId);
                         }
+                        if (!referenced.empty()) { row["unresolved_resource_references"] = referenced.size(); incomplete = true; }
+                    } catch (const std::exception&) {
+                        // Exception messages may contain paths or opaque payload text.
+                        row = identity(asset, bundle_name); row["status"] = "READ_OR_PARSE_FAILED"; incomplete = true;
                     }
-                    const auto size = row.dump().size();
-                    if (size > scoring::output_limit / 2 || serialized + size > scoring::output_limit - 8192) {
-                        row = identity(asset, bundle_name); row["status"] = "OUTPUT_LIMIT"; incomplete = true;
-                    }
-                    serialized += row.dump().size(); output["assets"].push_back(std::move(row));
                 }
             }
+            const auto size = row.dump().size();
+            if (size > scoring::output_limit / 2 || serialized + size > scoring::output_limit - 8192) {
+                row = identity(asset, bundle_name); row["status"] = "OUTPUT_LIMIT"; incomplete = true;
+            }
+            serialized += row.dump().size(); output["assets"].push_back(std::move(row));
         }
         output["status"] = incomplete ? "INCOMPLETE" : output["assets"].empty() ? "NOT_FOUND" : "METADATA_ONLY";
     } catch (const std::exception&) { output["status"] = "INCOMPLETE"; output["reason"] = "FIXED_BUNDLE_READ_FAILED"; }

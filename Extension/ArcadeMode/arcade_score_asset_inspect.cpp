@@ -1,12 +1,21 @@
 #include "arcade_score_asset_inspect.h"
 #include <algorithm>
 #include <cctype>
+#include <limits>
 
 namespace dingosdk::arcade_mode::score_assets {
 namespace {
 namespace ebx = frostbite::ebx;
 bool metadata_name(std::string_view name) noexcept {
     return name.size() <= 256 && std::all_of(name.begin(), name.end(), [](unsigned char c) { return c >= 32 && c < 127; });
+}
+int compare_names(std::string_view a, std::string_view b) noexcept {
+    for (std::size_t i = 0; i < std::min(a.size(), b.size()); ++i) {
+        const int left = std::tolower(static_cast<unsigned char>(a[i]));
+        const int right = std::tolower(static_cast<unsigned char>(b[i]));
+        if (left != right) return left < right ? -1 : 1;
+    }
+    return a.size() == b.size() ? 0 : a.size() < b.size() ? -1 : 1;
 }
 Json name_or_hash(std::string_view name, std::uint32_t hash) {
     Json result{{"hash", hash}, {"name", nullptr}};
@@ -97,6 +106,50 @@ struct Walker {
         ancestors[depth] = nullptr;
     }
 };
+void declared_member(const ebx::Document& document, const ebx::Object& object, std::size_t instance,
+                     Json& members, bool& incomplete) {
+    if (object.descriptor < 0 || static_cast<std::size_t>(object.descriptor) >= document.types.size()) return;
+    const auto& owner = document.types[object.descriptor];
+    if (owner.name != "TypeInfoFieldData") return;
+    if (members.size() >= declared_member_limit) { incomplete = true; return; }
+    Json row{{"instance", instance}, {"owner_type", object.descriptor},
+             {"owner_type_name", "TypeInfoFieldData"}, {"name", nullptr}, {"name_hash", nullptr}};
+    bool name_seen{}, hash_seen{}, invalid_name{}, invalid_hash{};
+    if (owner.fieldIndex < 0 || static_cast<std::size_t>(owner.fieldIndex) > document.fields.size() ||
+        owner.fieldCount > document.fields.size() - static_cast<std::size_t>(owner.fieldIndex) ||
+        object.fields.size() > field_limit) { incomplete = true; return; }
+    for (const auto& member : object.fields) {
+        // Only fields declared directly on the exact metadata type qualify.
+        if (member.descriptor < static_cast<std::size_t>(owner.fieldIndex) ||
+            member.descriptor - static_cast<std::size_t>(owner.fieldIndex) >= owner.fieldCount) continue;
+        const auto& field = document.fields[member.descriptor];
+        if (field.name == "Name") {
+            if (name_seen) { invalid_name = true; continue; }
+            name_seen = true;
+            const auto* name = std::get_if<std::string>(&member.value.data);
+            const auto initial = [](unsigned char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'; };
+            if (field.type() != ebx::FieldType::cString || field.category() != ebx::FieldCategory::none ||
+                !name || name->empty() || name->size() > 128 || !initial(static_cast<unsigned char>((*name)[0])) ||
+                !std::all_of(name->begin(), name->end(), [&](unsigned char c) { return initial(c) || (c >= '0' && c <= '9'); })) {
+                invalid_name = true; continue;
+            }
+            row["name"] = *name;
+        } else if (field.name == "NameHash") {
+            if (hash_seen) { invalid_hash = true; continue; }
+            hash_seen = true;
+            const auto* hash = std::get_if<std::uint64_t>(&member.value.data);
+            if (field.type() != ebx::FieldType::uint32 || field.category() != ebx::FieldCategory::none ||
+                !hash || *hash > std::numeric_limits<std::uint32_t>::max()) { invalid_hash = true; continue; }
+            row["name_hash"] = *hash;
+        }
+    }
+    if (invalid_name) row["name"] = nullptr;
+    if (invalid_hash) row["name_hash"] = nullptr;
+    const bool valid = name_seen && hash_seen && !invalid_name && !invalid_hash;
+    row["status"] = valid ? "DECLARED_MEMBER" : "INCOMPLETE";
+    incomplete = incomplete || !valid;
+    members.push_back(std::move(row));
+}
 }
 bool allowed_asset(std::string_view name) noexcept {
     if (!metadata_name(name) || name.empty() || name.find('\\') != name.npos || name.find("..") != name.npos) return false;
@@ -110,6 +163,45 @@ bool allowed_asset(std::string_view name) noexcept {
     }
     return false;
 }
+unsigned asset_priority(std::string_view name) noexcept {
+    if (!allowed_asset(name)) return 3;
+    const auto leaf = name.substr(name.find_last_of('/') + 1);
+    constexpr std::array graph_names{
+        "ScoringTelemetryManager_Class__OnScorableLineStarted",
+        "ScoringTelemetryManager_Class__OnScorableLineEnded",
+        "StatsManager__OnScorableLineEnded",
+        "ScoringTelemetryManager__OnScorableSequenceEnded"};
+    for (std::string_view target : graph_names)
+        if (compare_names(leaf, target) == 0) return 0;
+    constexpr std::string_view global = "ecs/scoringmanager/crosssystem_global_scoringevents/";
+    if (name.size() > global.size() && compare_names(name.substr(0, global.size()), global) == 0) {
+        constexpr std::array events{"scorablelinestarted", "scorablelineended", "scorablesequencestarted",
+            "scorablesequenceended", "sequenceactionended", "scorablelinemultiplierincreased",
+            "scoringsequenceregisteredinline"};
+        for (std::string_view event : events)
+            if (compare_names(leaf, event) == 0) return 1;
+    }
+    return 2;
+}
+void AssetSelection::consider(AssetCandidate candidate) noexcept {
+    if (!allowed_asset(candidate.name)) return;
+    const auto less = [](const AssetCandidate& a, const AssetCandidate& b) {
+        const auto ap = asset_priority(a.name), bp = asset_priority(b.name);
+        if (ap != bp) return ap < bp;
+        if (a.resource != b.resource) return !a.resource;
+        const int compared = compare_names(a.name, b.name);
+        if (compared) return compared < 0;
+        if (a.bundle != b.bundle) return a.bundle < b.bundle;
+        return a.index < b.index;
+    };
+    std::size_t position{};
+    while (position < size && !less(candidate, assets[position])) ++position;
+    if (size == asset_limit) omitted = true;
+    if (position == asset_limit) return;
+    if (size < asset_limit) ++size;
+    for (std::size_t i = size - 1; i > position; --i) assets[i] = assets[i - 1];
+    assets[position] = candidate;
+}
 Json targets() {
     return Json::array({
         Json{{"graph_hash", 0xa4d1121cU}, {"name", "ScoringTelemetryManager_Class__OnScorableLineStarted"}},
@@ -120,7 +212,7 @@ Json targets() {
 Json inspect_document(const ebx::Document& document) {
     Json result{{"status", "INCOMPLETE"}, {"owner_proof", "UNVERIFIED"}, {"graph_producer", "UNVERIFIED"},
                 {"file_guid", document.fileGuid.string()}, {"types", Json::array()}, {"fields", Json::array()},
-                {"instances", Json::array()}, {"references", Json::array()}};
+                {"instances", Json::array()}, {"references", Json::array()}, {"declared_members", Json::array()}};
     if (document.types.size() > type_limit || document.fields.size() > field_limit ||
         document.instances.size() > instance_limit || document.imports.size() > reference_limit) {
         result["reason"] = "declaration_limit"; return result;
@@ -157,7 +249,11 @@ Json inspect_document(const ebx::Document& document) {
         }
         result["instances"].push_back(Json{{"index", i}, {"type", instance.descriptor},
             {"exported", instance.exported}, {"instance_guid", instance.instanceGuid.string()}});
-        if (instance.object) walker.object_value(*instance.object, i, 0, Json::array());
+        if (instance.object) {
+            if (instance.object->descriptor != instance.descriptor) incomplete = true;
+            else declared_member(document, *instance.object, i, result["declared_members"], incomplete);
+            walker.object_value(*instance.object, i, 0, Json::array());
+        }
         else incomplete = true;
     }
     result["references"] = std::move(walker.references);
