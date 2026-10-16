@@ -71,7 +71,7 @@ std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
 bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
 std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
-std::atomic<ActionExperiment> action_mode{ActionExperiment::off};
+std::atomic<ActionExperiment> action_mode{default_action_mode};
 std::array<ActionRuntime, 4> action_inputs;
 std::array<AirRotation, 4> rotations;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
@@ -369,7 +369,7 @@ PlaybackExperiment playback_experiment() noexcept {
 }
 ActionExperiment action_experiment() noexcept { return action_mode.load(std::memory_order_acquire); }
 bool set_action_experiment(ActionExperiment value) noexcept {
-    if (value > ActionExperiment::revert_backside) return false;
+    if (value > ActionExperiment::classic) return false;
     std::lock_guard lock(ollie_mutex);
     if (mode_enabled.load(std::memory_order_acquire)) return false;
     for (auto& input : action_inputs) input.reset();

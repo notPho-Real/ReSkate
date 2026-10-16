@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_action_runtime.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
 namespace {
@@ -18,6 +19,80 @@ int run_arcade_action_runtime_tests() {
                     bool inspected = true, bool other = false) {
         return input.poll(mode, ms, pad, active, fresh, pose, inspected, other);
     };
+    check(static_cast<unsigned>(ActionExperiment::off) == 0 &&
+        static_cast<unsigned>(ActionExperiment::observe) == 1 &&
+        static_cast<unsigned>(ActionExperiment::grabs) == 2 &&
+        static_cast<unsigned>(ActionExperiment::revert_frontside) == 3 &&
+        static_cast<unsigned>(ActionExperiment::revert_backside) == 4 &&
+        static_cast<unsigned>(default_action_mode) == 5, "default mode appends without changing diagnostic identifiers");
+    poll(default_action_mode, 0);
+    auto classic_out = poll(default_action_mode, 10, {0, 0, 0, 0, 255});
+    check(classic_out.requested && classic_out.result == DispatchResult::started && classic_out.owned &&
+        classic_out.consume_rt && !classic_out.consume_buttons && classic_out.request_kind == 3,
+        "default RT requests the existing native recipe without enabling grab candidates");
+    check(classic_out.pad.right_y == -32767 && classic_out.pad.left_trigger == 0 && classic_out.pad.right_trigger == 0,
+        "default generic revert uses verified regular setup and owns triggers");
+    check(poll(default_action_mode, 40, {0, 0, 0, 0, 255}).pad.left_x > 32000,
+        "default route reuses the existing rotation direction without claiming native side");
+    check(!poll(default_action_mode, 245, {0, 0, 0, 0, 255}).owned && !input.busy(),
+        "default ownership ends at original235ms deadline");
+    check(!poll(default_action_mode, 500, {0, 0, 0, 0, 255}).requested,
+        "held default RT never restarts after expiry");
+    poll(default_action_mode, 510);
+    classic_out = poll(default_action_mode, 520, {0, 0, 0, 255, 255});
+    check(classic_out.requested && classic_out.result == DispatchResult::unsafe_context &&
+        !classic_out.owned && !classic_out.pad.owns_triggers, "default LT plus RT cannot start unverified nollie revert");
+    check(!poll(default_action_mode, 530, {0, 0, 0, 0, 255}).requested,
+        "releasing LT alone cannot turn a rejected held RT into an action");
+    poll(default_action_mode, 540);
+    check(poll(default_action_mode, 550, {0, 0, 0, 0, 255}).owned,
+        "fresh RT edge works after rejected context releases");
+    check(!poll(default_action_mode, 560, {0, 0, 0, 255, 255}).owned && !input.busy(),
+        "LT pressed during default playback cancels ownership without changing recipe");
+    for (unsigned conflict : {0x1000u, 0x4000u, 0x0100u, 0x0200u, 0x0300u, 0x0010u}) {
+        input.reset(); poll(default_action_mode, 600);
+        const auto denied = poll(default_action_mode, 610,
+            {static_cast<std::uint16_t>(conflict), 0, 0, 0, 255});
+        check(!denied.owned && denied.result == DispatchResult::busy,
+            "default revert yields to authored commands, spin, board pair and menu");
+    }
+    for (unsigned cancellation = 0; cancellation < 6; ++cancellation) {
+        input.reset(); poll(default_action_mode, 700);
+        check(poll(default_action_mode, 710, {0, 0, 0, 0, 255}).owned, "default cancel test starts a real owner");
+        const auto mode = cancellation == 0 ? ActionExperiment::off : default_action_mode;
+        const auto canceled = poll(mode, 720, {0, 0, 0, 0, 255},
+            cancellation == 5 ? SkatePose::air : SkatePose::riding,
+            cancellation != 1, cancellation != 2, cancellation != 3, cancellation == 4);
+        check(!canceled.owned && !input.busy(),
+            "off, Arcade OFF, stale state, uninspected stance, new owner and air cancel default playback");
+        if (cancellation <= 2)
+            check(!canceled.consume_rt && !canceled.consume_buttons, "inactive path restores native channels without masking");
+        check(!poll(default_action_mode, 730, {0, 0, 0, 0, 255}).requested,
+            "held RT cannot replay when an interrupted default context becomes eligible");
+    }
+    input.reset(); poll(default_action_mode, 800);
+    check(!poll(default_action_mode, 810, {0, 0, 0, 0, 255}, SkatePose::manual).owned,
+        "default RT cannot fabricate a riding revert from manual pose");
+    {
+        // Classic command routing reads LT before auxiliary ownership, unchanged.
+        ArcadeInput classic;
+        classic.enable(true);
+        const std::array catalog{PreparedGesture{16, true, GestureContext::ground,
+            {{0, 0, 32767}, {18, 0, -32767}, {22, 0, 0}}}};
+        const auto routed = [&](unsigned tick, std::uint16_t buttons) {
+            return classic.poll(0, tick * 17, buttons, 0, 0, 0, 0, true, true,
+                false, 0, true, true, true, tick, true, catalog, true, true, SkatePose::riding);
+        };
+        routed(0, 0);
+        const auto nollie = routed(1, ClassicGesture::a);
+        check(nollie.requested_id == 16 && nollie.authored_playback && nollie.right_y == 32767,
+            "LT retains authored nollie A routing with production RT available");
+        classic.enable(false);
+        const auto native = classic.poll(0, 40, 0x0300, 100, 200, 300, 400, true, true);
+        check(native.buttons == 0x0300 && native.right_x == 300 && native.right_y == 400 && !native.phase,
+            "Arcade OFF retains physical shoulders and right stick");
+    }
+    input.reset();
     check(!poll(ActionExperiment::off, 0, {0x2004}).owned, "off never owns input");
     poll(ActionExperiment::observe, 1);
     poll(ActionExperiment::observe, 10, {0x2004});

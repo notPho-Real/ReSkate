@@ -1,3 +1,16 @@
+## Default RT binding prepared — 2026-10-16
+
+New source appends action mode classic=5 and selects it at startup, reusing the
+recorded regular-context native revert recipe. Existing selectors0–4 stay intact.
+LT+RT is rejected in classic mode; LT appearing during playback cancels ownership.
+LT authored nollie A/X, Arcade OFF restoration, the120ms board chord, release to
+rearm and input-owner priority remain unchanged.81 sanitized action-runtime checks
+and104 focused parser/integration checks pass. The new default path is NOT yet
+installed or Deck accepted; current hardware remains91906e5/ac6bc714 with mode3.
+Nollie/switch, stationary contexts and exact side identity remain separately
+unverified. No claim of monetary score banking. Next runtime deployment will
+combine this reviewed control change with score capture-gap diagnostics after CI.
+
 ## Revert/manual repeatability and score capture gaps — 2026-10-16
 
 HIL47 result1792158793300151000 completes14/14 planned trials without readiness

@@ -41,13 +41,17 @@ that result while testing interactions with later controls.
 
 ## Remaining action plumbing
 
-The components below are tested by the existing Arcade test target. Experimental
-B/RT routing now reaches XInput through the unsaved
-`arcadeactions off|observe|grabs|revert-fs|revert-bs` selector. Change it with Arcade
-Mode OFF, then enable Arcade Mode. Startup selects `off`; this is a native test
-entry point, not accepted gameplay. `observe` reports B/Y intent without changing
-those bindings; `grabs` consumes B for candidates; the two revert modes consume
-RT for the selected candidate. Y native actuation remains missing.
+The components below are tested by the existing Arcade test target. With Arcade
+Mode enabled, the new startup `classic` action selection maps RT to the existing
+native revert recipe in the inspected regular context. LT+RT and uninspected
+stances remain unavailable; LT still selects authored nollie A/X. The recipe has
+native moving-context evidence, while this new default selection awaits Deck
+acceptance. Exact side identity and monetary scoring remain separate requirements.
+
+The unsaved `arcadeactions classic|off|observe|grabs|revert-fs|revert-bs` selector
+changes only while Arcade Mode is OFF. `observe` reports B/Y intent; `grabs`
+selects deferred grab candidates, and the two side selectors preserve the existing
+revert experiments. These selections do not enable Arcade Mode themselves.
 
 - `arcade_aux_controls.h` selects exact single/double B and Y requests, including
   double directional taps. Simultaneous commands, stale input and menu transitions
@@ -59,7 +63,7 @@ RT for the selected candidate. Y native actuation remains missing.
 - `arcade_revert_input.h` emits the sourced 235 ms native revert candidate with
   stance/nollie context. It emits no native recognition or combo credit.
 - `arcade_action_dispatch.h` arbitrates these candidates with explicit ownership
-  for sticks, triggers and face buttons. It defaults disabled and cancels on stale
+  for sticks, triggers and face buttons. It requires eligible context and cancels on stale
   context, landing, conflicting ownership or time reversal. `arcade_action_runtime.h`
   connects it to the remap with packet progression and ordinary input on unowned
   channels, preserving the physical camera path. The inspected clear-bit stance

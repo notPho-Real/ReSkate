@@ -58,20 +58,20 @@ void register_console_commands(Commands &registry) {
             mode == PlaybackExperiment::timeline ? "Playback: timeline (experimental)" : "Playback: delivery");
     };
     registry.add(std::move(playback));
-    auto action_mode = argument("off|observe|grabs|revert-fs|revert-bs", Type::text, true);
-    action_mode.choices = {"off", "observe", "grabs", "revert-fs", "revert-bs"};
-    auto actions = action("arcadeactions", "Unsaved native action experiment; change with Arcade Mode OFF",
+    auto action_mode = argument("classic|off|observe|grabs|revert-fs|revert-bs", Type::text, true);
+    action_mode.choices = {"classic", "off", "observe", "grabs", "revert-fs", "revert-bs"};
+    auto actions = action("arcadeactions", "Unsaved native action selection; change with Arcade Mode OFF",
                           Group::gameplay, {action_mode});
     actions.run = [](const Model&, const Values& values, const Output& out) {
         using arcade_mode::ActionExperiment;
         if (!values.empty()) {
             const auto& name = std::get<std::string>(values[0]);
-            const auto mode = name == "observe" ? ActionExperiment::observe : name == "grabs" ? ActionExperiment::grabs :
+            const auto mode = name == "classic" ? ActionExperiment::classic : name == "observe" ? ActionExperiment::observe : name == "grabs" ? ActionExperiment::grabs :
                 name == "revert-fs" ? ActionExperiment::revert_frontside : name == "revert-bs" ? ActionExperiment::revert_backside : ActionExperiment::off;
             if (!arcade_mode::set_action_experiment(mode)) { out("Turn Arcade Mode OFF before changing action experiments."); return; }
         }
         const auto mode = arcade_mode::action_experiment();
-        out(mode == ActionExperiment::off ? "Action experiments OFF" : mode == ActionExperiment::observe ? "Actions: observe only" :
+        out(mode == ActionExperiment::classic ? "Actions: RT native revert" : mode == ActionExperiment::off ? "Action experiments OFF" : mode == ActionExperiment::observe ? "Actions: observe only" :
             mode == ActionExperiment::grabs ? "Actions: B grab candidates (unverified)" :
             mode == ActionExperiment::revert_frontside ? "Actions: RT frontside candidate (unverified)" : "Actions: RT backside candidate (unverified)");
     };

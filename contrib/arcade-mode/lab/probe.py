@@ -437,7 +437,7 @@ def parse_action_samples(text):
     """Numeric input-dispatch evidence only; seq joins the independent stick row."""
     samples, dropped = [], 0
     for line in text.splitlines():
-        row = re.search(r'ARCADE ACTION SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) mode=([0-4]) requested=(true|false) kind=([0-5]) trick=([0-9]{1,2}) result=([0-5]) owned=(true|false) lx=(-?[0-9]{1,5}) ly=(-?[0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) packet=([0-9]{1,10})\.$', line)
+        row = re.search(r'ARCADE ACTION SAMPLE: seq=([0-9]{1,20}) ms=([0-9]{1,20}) tick=([0-9]{1,20}) user=([0-3]) mode=([0-5]) requested=(true|false) kind=([0-5]) trick=([0-9]{1,2}) result=([0-5]) owned=(true|false) lx=(-?[0-9]{1,5}) ly=(-?[0-9]{1,5}) lt=([0-9]{1,3}) rt=([0-9]{1,3}) packet=([0-9]{1,10})\.$', line)
         if not row:
             continue
         names = ('seq', 'ms', 'tick', 'user', 'mode', 'requested', 'kind', 'trick',

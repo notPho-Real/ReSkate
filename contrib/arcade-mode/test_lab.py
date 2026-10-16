@@ -382,7 +382,7 @@ class ComboTraceTests(unittest.TestCase):
                 changed = re.sub(rf'{field}=(true|false)', f'{field}={value}', row)
                 self.assertIs(probe.parse_action_samples(changed)['samples'][0][field], value == 'true')
         for field, old, bad in (
-                ('user', '3', '4'), ('mode', '4', '5'), ('kind', '4', '6'), ('trick', '53', '54'),
+                ('user', '3', '4'), ('mode', '4', '6'), ('kind', '4', '6'), ('trick', '53', '54'),
                 ('result', '5', '6'), ('requested', 'true', '1'), ('owned', 'false', 'True'),
                 ('lx', '-32768', '-32769'), ('ly', '32767', '32768'), ('lt', '0', '-1'),
                 ('rt', '255', '256'), ('packet', '4294967295', '4294967296'), ('seq', '3', '-1')):
@@ -403,6 +403,18 @@ class ComboTraceTests(unittest.TestCase):
                          tuple(stick[key] for key in ('seq', 'ms', 'tick', 'user')))
         self.assertEqual(trick_batch.named_flip_result('kickflip', result, 0), 'UNVERIFIED')
         self.assertEqual(result['actions']['dropped'], 0)
+
+    def test_default_revert_dispatch_preserves_mode_without_native_success_claim(self):
+        from lab import trick_batch
+        row = ('ARCADE ACTION SAMPLE: seq=9 ms=125 tick=7 user=0 mode=5 requested=true '
+               'kind=3 trick=0 result=0 owned=true lx=32767 ly=0 lt=0 rt=0 packet=12.')
+        sample = probe.parse_action_samples(row)['samples'][0]
+        self.assertEqual((sample['mode'], sample['kind'], sample['trick']), (5, 3, 0))
+        self.assertTrue(sample['requested'])
+        observed = trick_batch.observations(row)
+        self.assertEqual(observed['score_labels']['samples'], [])
+        self.assertEqual(trick_batch.named_flip_result('kickflip', observed, 0), 'UNVERIFIED')
+        self.assertEqual(probe.parse_action_samples(row.replace('mode=5', 'mode=6'))['samples'], [])
 
     def test_rotation_delivery_is_not_a_native_trick_claim(self):
         row = ('ARCADE ACTION SAMPLE: seq=9 ms=125 tick=7 user=0 mode=0 requested=false '

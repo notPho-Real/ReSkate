@@ -4,13 +4,14 @@
 #include "arcade_combo_session.h"
 
 namespace dingosdk::arcade_mode {
-enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside };
+enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
+inline constexpr ActionExperiment default_action_mode = ActionExperiment::classic;
 struct ActionPhysicalPad {
     std::uint16_t buttons{};
     short left_x{}, left_y{};
     std::uint8_t left_trigger{}, right_trigger{};
 };
-// Unsaved lab adapter. Production defaults remain unchanged until native tests.
+// Classic RT uses the verified moving-context recipe; lab selectors stay unsaved.
 // All channels begin with the caller's ordinary remap; ownership is explicit.
 class ActionRuntime {
 public:
@@ -19,7 +20,7 @@ public:
         std::uint16_t consume_buttons{};
         bool consume_rt{}, requested{}, owned{};
         ArcadeTrick trick{ArcadeTrick::none};
-        unsigned request_kind{}; // 1 grab, 2 grind, 3 frontside revert, 4 backside revert
+        unsigned request_kind{}; // 1 grab, 2 grind, 3/4 revert recipe direction; never observed side
         DispatchResult result{DispatchResult::disabled};
     };
     void reset() noexcept {
@@ -31,7 +32,9 @@ public:
         Output out{};
         if (!active || !fresh || mode == ActionExperiment::off || (clocked_ && now < last_)) { reset(); return out; }
         clocked_ = true; last_ = now;
-        const bool revert_mode = mode == ActionExperiment::revert_frontside || mode == ActionExperiment::revert_backside;
+        const bool classic = mode == ActionExperiment::classic;
+        const bool revert_mode = classic || mode == ActionExperiment::revert_frontside || mode == ActionExperiment::revert_backside;
+        const bool unverified_nollie = classic && physical.left_trigger > 30;
         out.consume_buttons = mode == ActionExperiment::grabs ? 0x2000 : 0;
         out.consume_rt = revert_mode;
         const bool rt = physical.right_trigger > 128;
@@ -61,12 +64,13 @@ public:
         }
         if (rt_edge && revert_mode) {
             out.requested = true;
-            out.request_kind = mode == ActionExperiment::revert_frontside ? 3 : 4;
-            out.result = !inspected_stance ? DispatchResult::unsafe_context : dispatch_.request_revert(mode == ActionExperiment::revert_frontside ?
-                RevertSide::frontside : RevertSide::backside,
+            const bool backside_recipe = mode == ActionExperiment::revert_backside;
+            out.request_kind = backside_recipe ? 4 : 3;
+            out.result = !inspected_stance || unverified_nollie ? DispatchResult::unsafe_context : dispatch_.request_revert(
+                backside_recipe ? RevertSide::backside : RevertSide::frontside,
                 {physical.left_trigger > 30, false, false}, now, context);
         }
-        if (!inspected_stance) dispatch_.cancel();
+        if (!inspected_stance || unverified_nollie) dispatch_.cancel();
         out.pad = dispatch_.sample(now, context);
         out.owned = out.pad.owns_right_stick || out.pad.owns_left_stick || out.pad.owns_triggers || out.pad.owns_face_buttons;
         return out;
