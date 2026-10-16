@@ -22,12 +22,17 @@ the selected game; no Steam app-manifest workaround or version bypass was used.
 Commit e8e71a4 retains the CI-tested launcher as a separate artifact, avoiding
 replacement of the hardware-tested runtime. Launcher-only deployment is prepared
 with source/hash checks, stopped-process guards and preservation of the old
-launcher. At this checkpoint Windows CI38850122409 is still building, Linux and
-macOS passed; old launcher5b11e30a remains installed. The paired Deck connection
+launcher. CI38850122409 passed all Windows/Linux/macOS, Deck software and publish
+gates. Artifact source e8e71a4 is locally verified: launcher SHA-256
+997aeeef5aeb9133c983a7827ac726199ad9ea63cf793af843d48255afae4329,
+5,313,024 bytes, retained at artifacts/tested-recovery-launcher. The old
+launcher5b11e30a remains installed. The paired Deck connection
 then timed out before any deployment. One existing configured wake was sent;
 the subsequent strict-key address check still timed out and the original paired
 hostname did not resolve. Local neighbor cache still maps the address to the
-paired MAC. Reconnection and actual launcher installation remain pending. Current
+paired MAC; final post-CI check returned No route to host. No deployment was
+attempted while disconnected. Reconnection and actual launcher installation
+remain pending. Current
 account-name preference is empty; persistent Steam authentication is UNVERIFIED.
 Do not promise that Steam will never require renewed authorization.
 
