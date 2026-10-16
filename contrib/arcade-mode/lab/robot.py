@@ -318,14 +318,51 @@ def recipe(name):
     raise ValueError("Unknown fixed recipe")
 
 
-def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic):
+def validate_phase_conditions(events, conditions, waiter):
+    if not isinstance(conditions, dict) or len(conditions) > 2 or not callable(waiter):
+        raise ValueError('Invalid bounded phase conditions')
+    for index, condition in conditions.items():
+        if (type(index) is not int or not 0 <= index < len(events) or not isinstance(condition, dict) or
+                set(condition) - {'condition', 'timeout_ms', 'max_speed_mm_s'} or
+                not {'condition', 'timeout_ms'} <= set(condition) or condition['condition'] != 'native-riding' or
+                type(condition['timeout_ms']) is not int or not 100 <= condition['timeout_ms'] <= 3000 or
+                ('max_speed_mm_s' in condition and (type(condition['max_speed_mm_s']) is not int or
+                                                   not 0 <= condition['max_speed_mm_s'] <= 20000))):
+            raise ValueError('Invalid bounded phase condition')
+    return sum(c['timeout_ms'] for c in conditions.values()) / 1000
+
+
+def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic,
+           phase_conditions=None, condition_waiter=None):
+    if phase_conditions:
+        validate_phase_conditions(events, phase_conditions, condition_waiter)
     start = clock()
+    shift = 0.0
     timing = {"samples": [], "dropped": 0, "scope": "uinput_write_not_game_poll"}
-    for offset, changes in events + [(duration, [])]:
-        while clock() - start < offset:
+    if phase_conditions:
+        timing.update(conditions=[], condition_failed=False)
+    for index, (offset, changes) in enumerate(events + [(duration, [])]):
+        while clock() - start < offset + shift:
             if not alive():
                 raise RuntimeError("Skate exited; test stopped")
-            sleep(max(0, min(0.05, offset - (clock() - start))))
+            sleep(max(0, min(0.05, offset + shift - (clock() - start))))
+        if phase_conditions and index in phase_conditions:
+            began = clock()
+            pad.neutral()  # The preceding pose is never held during a condition wait.
+            result = condition_waiter(phase_conditions[index], alive)
+            completed = clock()
+            if (completed < began or completed - began > phase_conditions[index]['timeout_ms'] / 1000 + .100 or
+                    not isinstance(result, dict) or result.get('status') not in ('READY', 'TIMEOUT')):
+                raise RuntimeError('Invalid phase condition result')
+            # Anchor the resumed phase to completion, including prior writer
+            # lateness; every later offset retains its nominal relative spacing.
+            shift = completed - start - offset
+            timing['conditions'].append(dict(result, phase=index, nominal_ms=round(offset * 1000, 3),
+                started_ms=round((began - start) * 1000, 3), completed_ms=round((completed - start) * 1000, 3),
+                wait_ms=round((completed - began) * 1000, 3), shift_ms=round(shift * 1000, 3)))
+            if result['status'] == 'TIMEOUT':
+                timing['condition_failed'] = True
+                return timing
         check_at = clock()
         if not alive():
             raise RuntimeError("Skate exited; test stopped")
@@ -338,8 +375,12 @@ def replay(pad, events, duration, alive, sleep=time.sleep, clock=time.monotonic)
                     "write_ms": round((write_at - start) * 1000, 3),
                     "ready_check_ms": round((write_at - check_at) * 1000, 3),
                     "write_and_observe_ms": round((finished_at - write_at) * 1000, 3)})
+                if phase_conditions:
+                    timing['samples'][-1]['effective_scheduled_ms'] = round((offset + shift) * 1000, 3)
             else:
                 timing["dropped"] += 1
+    if phase_conditions:
+        timing['elapsed_ms'] = round((clock() - start) * 1000, 3)
     return timing
 
 
@@ -612,17 +653,20 @@ class ExperimentSession:
     def __exit__(self, *unused):
         self.close()
 
-    def run(self, name, events, duration, capture_frames=4):
+    def run(self, name, events, duration, capture_frames=4, phase_conditions=None, condition_waiter=None):
         """Run validated events; native outcomes remain independently UNVERIFIED."""
         if self.pad is None:
             raise RuntimeError("Experiment session is not active")
         try:
+            extra = validate_phase_conditions(events, phase_conditions, condition_waiter) if phase_conditions else 0
+            if extra and capture_frames != 0:
+                raise ValueError('Conditioned trials require zero captures')
             if (type(duration) not in (int, float) or not math.isfinite(duration) or
                     not 0 < duration <= 20 or self.trials >= self.max_trials or
                     type(capture_frames) is not int or capture_frames not in (0, 1, 4)):
                 raise ValueError("Invalid or exhausted bounded trial")
             now = self._clock()
-            if duration > self.deadline - now:
+            if duration + extra > 20 or duration + extra > self.deadline - now:
                 raise RuntimeError("Insufficient session time for trial")
             status = capabilities()
             if not status.get("ready") or status.get("gamescope_pids") != [self.pid]:
@@ -651,7 +695,11 @@ class ExperimentSession:
                         raise error
                     return True
                 try:
-                    delivery_timing = replay(pad, events, duration, alive)
+                    if phase_conditions:
+                        delivery_timing = replay(pad, events, duration, alive,
+                            phase_conditions=phase_conditions, condition_waiter=condition_waiter)
+                    else:
+                        delivery_timing = replay(pad, events, duration, alive)
                     pad.neutral()  # Never hold the final phase while capture drains.
                     frames = future.result()
                 finally:
@@ -664,7 +712,7 @@ class ExperimentSession:
                         watch.close()
             self.stop = None
             self._arm(self.deadline)  # Idle time between trials stays bounded too.
-            return {"schema": 1, "recipe": name, "input_sent": True,
+            return {"schema": 1, "recipe": name, "input_sent": bool(delivery_timing['samples']) if phase_conditions else True,
                     "game_response": "UNVERIFIED", "frames": frames,
                     "delivery_timing": delivery_timing,
                     "kernel_pad": copy.deepcopy(pad.kernel_pad),
@@ -674,9 +722,11 @@ class ExperimentSession:
             raise
 
 
-def experiment_events(name, events, duration, capture_frames=4):
+def experiment_events(name, events, duration, capture_frames=4, phase_conditions=None, condition_waiter=None):
     """Single-run compatibility wrapper with the original 25-second lifetime."""
     with ExperimentSession(max_seconds=25, max_trials=1) as session:
+        if phase_conditions:
+            return session.run(name, events, duration, capture_frames, phase_conditions, condition_waiter)
         return session.run(name, events, duration, capture_frames)
 
 
@@ -690,9 +740,12 @@ def remote_source(operation, name):
     return source + "\nprint(json.dumps(" + call + "))\n"
 
 
-def save_run(result, output):
+def save_run(result, output, expected_frames=None):
     """Keep full frames local only. Nothing in this runner publishes to GitHub."""
-    if result.get("schema") != 1 or len(result.get("frames", [])) != (1 if result.get("recipe") == "capture" else 4):
+    if expected_frames is None:
+        expected_frames = 1 if result.get("recipe") == "capture" else 4
+    if (type(expected_frames) is not int or expected_frames not in (0, 1, 4) or
+            result.get("schema") != 1 or len(result.get("frames", [])) != expected_frames):
         raise ValueError("Invalid experiment response")
     decoded = []
     for frame in result["frames"]:

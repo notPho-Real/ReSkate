@@ -16,11 +16,26 @@ jobs:
       - name: Fetch native dependencies required at configure time
         run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON
+        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON
       - name: Build
-        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests
+        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_arcade_score_assets dingosdk_arcade_score_asset_tests
       - name: Test
-        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(arcade_(mode|native_score(_replay)?|grind_observer)|launcher_depot_output)$" --output-on-failure
+        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(arcade_(mode|native_score(_replay)?|grind_observer|score_assets)|launcher_depot_output)$" --output-on-failure
+      - name: Stage tested scoring metadata inspector
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/arcade-score-assets -Force | Out-Null
+          Copy-Item build/vs2022-x64/Release/dingosdk_arcade_score_assets.exe artifacts/arcade-score-assets/
+          $hash = (Get-FileHash artifacts/arcade-score-assets/dingosdk_arcade_score_assets.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  dingosdk_arcade_score_assets.exe" | Set-Content artifacts/arcade-score-assets/sha256.txt -Encoding ascii
+          $env:GITHUB_SHA | Set-Content artifacts/arcade-score-assets/commit.txt -Encoding ascii
+      - name: Upload tested scoring metadata inspector
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ReSkate-arcade-score-assets-${{ github.sha }}
+          path: artifacts/arcade-score-assets/
+          if-no-files-found: error
+          retention-days: 30
       - name: Stage development DLL
         shell: pwsh
         run: |

@@ -1,3 +1,80 @@
+## Native continuation convergence — 2026-10-16
+
+Source c9e255b52585e25043db9056c1afe8166c0d25ae preserves the first manual
+command direction during fresh state101/mode1 only while an independently
+accepted revert opportunity remains active. Synthetic manual input still requires
+the existing state100/air eligibility; unsafe completion cancels, and the350ms
+command deadline, ownership conflicts, bail/menu/toggle cancellation remain.
+Local119 manual checks and33,636 model checks pass. CI38903225629 is running;
+this source is NOT deployed or hardware accepted. Installed source2bdf062c and
+all recovered game/DLL/stock/launcher pins remain unchanged.
+
+HIL43 is a separately reviewed copy of42 with only bounded correlated input
+retention128→512 and its bundle version changed. Manifest SHA-256:
+239810553b304d3258f8713565ee881159ab9a0c4d7288ad443000ddcc213407.
+All old bundle hashes were checked; target pins and frozen42 remain unchanged.
+Staged parsers match the tested source functions;36 focused parser/trace tests
+pass. No scoring parser or runtime changes were imported into this bundle.
+
+Result1792154379890949000: six native flip/grind/nose-manual chains completed,
+all neutralized/reset with no loss.220ms and350ms grind-exit holds each3/3 pass
+continuity/native IDs/fatigue. The saved plan still expected350–650ms grace and
+therefore reports FAIL; actual748–750ms matches the installed750ms contract.
+Preserve the original result and this expectation mismatch. This flip-based
+comparison does not establish the cause of plain-Ollie rail recontact.
+
+Result1792154660225524000: all8 attempts retained complete input/native evidence,
+neutralized and reset. Manual command after transition2/5 passed full native
+link/IDs/fatigue/grace, both at850ms from accepted revert to manual. Other3/5
+recontacted the rail and rejected RT while airborne. The prior six early-command
+failures are localized: first Up atRT+900ms was discarded in state101; return100
+at+925–941ms made Down a new first edge. No synthetic manual hold was delivered;
+auxiliary ownership had already ended. This is command admission, not a failed
+native manual recipe.
+
+The three repeated-RT trials retained all input rows, including140 rows in one
+trial. Two accepted one native-confirmed continuation, then expired exactly1100ms
+later despite three started RT requests; one recontacted the rail and never
+accepted a continuation. No refresh occurred. Monetary multiplier/banking remains
+UNVERIFIED; do not use the continuation grader (which requires a follow-up trick)
+as an expiry grader. Result1792154925602997000 completes20 repeated-RT trials:17/20 accept exactly one opportunity and expire at1100ms despite3 started requests;3 reject the first RT during rail recontact.20/20 neutral/reset, no dropped evidence. Next:
+finish bounded event-driven native landing readiness in HIL, validate the manual
+fix on a CI-tested runtime, and measure native score payload semantics without
+promoting unowned events. Game remains hot at the saved Stadium fixture.
+
+Source91906e5 adds coherent manual pose/eligibility publication under the existing
+input mutex and explicitly cancels pending directions across owner/menu changes.
+33,641 model and119 manual checks pass. It also adds bounded read-only native
+SequenceKind/ActionScore/BaseScore/Landing/current-category diagnostics;113 native
+score and328 settlement checks pass with sanitizers. Authority stays false.
+CI38903969020 is pending Windows completion; Linux/macOS and Deck software pass.
+No runtime deployment yet.
+
+New scoring window1792155462686766000:2/2 native Kickflips/clean landing; native
+line-end route2/reason1 observed in both. Complete second trial has line start to
+end10,034ms, over9s after Arcade grace expiry. First lacks sequence/start records
+and remains incomplete. Two physical manual failures have real bail pose6 and
+failed sequence receipts followed by later success-valued native sequences; those
+later events cannot be treated as a clean Arcade bank.4/4 neutralized/reset.
+Existing replay corpus now contains11 original trials/29 captures, including all
+four new windows, with source/result hashes. Eight Python replay tests pass;
+all29 C++ captures remain rejected as monetary authority. No fabricated zero
+points, score identity, ownership, or banking proof.
+
+Repository HIL now supports at most two bounded native-riding phase waits with
+fresh same-owner heartbeat/contact/physics evidence; subsequent phases shift
+coherently. A missed condition records a neutralized timeout and continues;
+integrity loss still stops.279 full Python tests pass, including host persistence,
+zero-frame recording, missing-condition and stale/changed-owner cases. Frozen43
+is unchanged; a separately reviewed44 is next. The fixed timeline remains intact.
+
+A portable read-only scoring metadata inspector reuses existing GameData/EBX APIs
+for only fixed core bundles and scoring manager prefixes.37 sanitized metadata
+checks and3 CLI checks pass locally. Windows CI builds/tests a separate inspector
+artifact for existing Proton/Oodle support; workflow permissions unchanged. It
+exports bounded declarations/references only, never raw payload bytes or values,
+and cannot itself prove local ownership. Actual pinned assets still uninspected.
+
 ## Recovery launcher installed and hardware resumed — 2026-10-16
 
 Reconnected to the paired Deck. Installed the separately tested launcher from

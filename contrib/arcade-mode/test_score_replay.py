@@ -17,7 +17,7 @@ class ScoreReplayTests(unittest.TestCase):
 
     def test_recorded_mechanic_passes_do_not_prove_monetary_ownership(self):
         result = score_replay.report(self.evidence)
-        self.assertEqual(len(result['trials']), 7)
+        self.assertEqual(len(result['trials']), 11)
         self.assertFalse(result['new_hardware_acceptance'])
         for item in result['trials']:
             row = item['recorded']
@@ -52,6 +52,31 @@ class ScoreReplayTests(unittest.TestCase):
                 self.assertEqual(faults[0]['result']['exact_capture_replays'], 1)
             self.assertIn('missing_score_events', faults[1]['result']['reasons'])
             self.assertIn('telemetry_incomplete', faults[2]['result']['reasons'])
+
+    def test_recorded_native_timer_end_cannot_bank_an_expired_arcade_combo(self):
+        trial = self.evidence['trials'][8]['trial']
+        rows = trial['observations']['native_score']['samples']
+        start = next(row for row in rows if row['route'] == 1)
+        end = next(row for row in rows if row['route'] == 2)
+        self.assertEqual(end['reason'], 1)  # Observed identifier, not a guessed reason name.
+        self.assertEqual(end['ms'] - start['ms'], 10034)
+        inactive = next(e for e in trial['observations']['combo']['events'] if not e['active'])
+        self.assertGreater(end['ms'] - inactive['ms'], 9000)
+        result = score_replay.replay_trial(trial)
+        self.assertEqual(result['authoritative_operations'], 0)
+        self.assertIsNone(result['banked_points'])
+
+    def test_recorded_post_bail_success_payload_is_not_a_clean_bank(self):
+        for item in self.evidence['trials'][9:11]:
+            trial = item['trial']
+            bail = next(e for e in trial['observations']['combo']['events'] if e['pose'] == 6)
+            self.assertTrue(any(row['ms'] > bail['ms'] and row['success'] and row['score'] > 0
+                                for row in trial['observations']['native_score']['samples']))
+            result = score_replay.replay_trial(trial)
+            self.assertEqual(result['physical_bail'], 'PASS')
+            self.assertEqual(result['authoritative_operations'], 0)
+            self.assertIsNone(result['banked_points'])
+            self.assertIsNone(result['lost_points'])
 
     def test_equal_points_are_not_native_identity_and_modified_owner_is_rejected(self):
         trial = copy.deepcopy(self.evidence['trials'][3]['trial'])

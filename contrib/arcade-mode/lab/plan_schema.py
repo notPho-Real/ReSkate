@@ -22,6 +22,15 @@ def keys(value, required, optional=()):
         raise ValueError("Unknown or missing data fields")
 
 
+def validate_phase_wait(value):
+    keys(value, ('condition', 'timeout_ms'), ('max_speed_mm_s',))
+    if value['condition'] != 'native-riding':
+        raise ValueError('Unknown phase condition')
+    integer(value['timeout_ms'], 100, 3000)
+    if 'max_speed_mm_s' in value:
+        integer(value['max_speed_mm_s'], 0, 20000)
+
+
 def validate_plan(plan):
     keys(plan, ("schema", "source_commit", "dll_sha256", "stock_sha256", "candidates"))
     if type(plan["schema"]) is not int or plan["schema"] != 1:
@@ -51,7 +60,28 @@ def validate_plan(plan):
         integer(case["reset_ms"], 2000, 10000)
         if "baseline_max_speed_mm_s" in case:
             integer(case["baseline_max_speed_mm_s"], 0, 20000)
-        keys(case["expected"], ("states",), ("trick",))
+        keys(case["expected"], ("states",), ("trick", "after_grind", "chain"))
+        if 'chain' in case['expected']:
+            chain = case['expected']['chain']
+            keys(chain, ('poses', 'air_ids'), ('minimum_balance_ms', 'grace_ms'))
+            if not isinstance(chain['poses'], list) or not 2 <= len(chain['poses']) <= 12:
+                raise ValueError('Invalid native chain poses')
+            for pose in chain['poses']:
+                integer(pose, 1, 5)
+            if (not isinstance(chain['air_ids'], list) or
+                    len(chain['air_ids']) != chain['poses'].count(2)):
+                raise ValueError('Native air identities must match chain takeoffs')
+            for identity in chain['air_ids']:
+                integer(identity, 1, 63)
+            integer(chain.get('minimum_balance_ms', 200), 0, 2000)
+            grace = chain.get('grace_ms', [350, 650])
+            if not isinstance(grace, list) or len(grace) != 2:
+                raise ValueError('Invalid lifecycle grace window')
+            integer(grace[0], 0, 2000)
+            integer(grace[1], grace[0], 2000)
+        if "after_grind" in case["expected"] and (type(case["expected"]["after_grind"]) is not bool or
+                "trick" not in case["expected"]):
+            raise ValueError("Post-grind identity requires a boolean scope and named trick")
         states = case["expected"]["states"]
         if not isinstance(states, list) or len(states) > 12:
             raise ValueError("Invalid expected states")
@@ -63,9 +93,12 @@ def validate_plan(plan):
         phases = case["phases"]
         if not isinstance(phases, list) or not 1 <= len(phases) <= 64:
             raise ValueError("Invalid phases")
-        previous = -1
+        previous, waits = -1, 0
         for phase in phases:
-            keys(phase, ("ms",), tuple(AXIS_CODES) + ("buttons",))
+            keys(phase, ("ms",), tuple(AXIS_CODES) + ("buttons", "wait"))
+            if 'wait' in phase:
+                validate_phase_wait(phase['wait'])
+                waits += 1
             ms = integer(phase["ms"], 0, timeout - 1000)
             if ms <= previous:
                 raise ValueError("Phases must increase strictly")
@@ -77,6 +110,8 @@ def validate_plan(plan):
             if (not isinstance(buttons, list) or any(not isinstance(b, str) or b not in BUTTON_CODES for b in buttons)
                     or len(set(buttons)) != len(buttons)):
                 raise ValueError("Invalid buttons")
+        if waits > 2 or (waits and case.get('capture_frames', 4) != 0):
+            raise ValueError('Conditioned trials require zero captures and at most two waits')
     if trials > MAX_TRIALS:
         raise ValueError("At most 24 trials per batch")
     return plan

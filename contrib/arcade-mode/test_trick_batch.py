@@ -1,4 +1,5 @@
 """Offline batch validation, transport and cleanup regressions. No real Deck."""
+import ast
 import copy
 import contextlib
 import importlib.util
@@ -15,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "lab"))
 import trick_batch as batch
 import robot
 import inspect_project
+import plan_schema
+import build_trusted_bundle
 
 
 def plan():
@@ -26,6 +29,141 @@ def plan():
 
 
 class BatchTests(unittest.TestCase):
+    def test_phase_wait_is_allowlisted_in_both_plan_validators(self):
+        good = plan()
+        case = good['candidates'][0]
+        case['capture_frames'] = 0
+        case['phases'][1]['wait'] = {'condition': 'native-riding', 'timeout_ms': 1000, 'max_speed_mm_s': 2000}
+        for validator in (batch.validate_plan, plan_schema.validate_plan):
+            self.assertIs(validator(good), good)
+            for mutation in ('predicate', 'code', 'negative', 'long', 'bool', 'speed', 'capture', 'many'):
+                bad = copy.deepcopy(good)
+                candidate = bad['candidates'][0]
+                wait = candidate['phases'][1]['wait']
+                if mutation == 'predicate': wait['condition'] = 'arbitrary-native-state'
+                elif mutation == 'code': wait['eval'] = 'anything'
+                elif mutation == 'negative': wait['timeout_ms'] = -1
+                elif mutation == 'long': wait['timeout_ms'] = 3001
+                elif mutation == 'bool': wait['timeout_ms'] = True
+                elif mutation == 'speed': wait['max_speed_mm_s'] = 20001
+                elif mutation == 'capture': candidate['capture_frames'] = 4
+                elif mutation == 'many':
+                    candidate['phases'][2]['wait'] = dict(wait)
+                    candidate['phases'][3]['wait'] = dict(wait)
+                with self.subTest(validator=validator.__module__, mutation=mutation), self.assertRaises(ValueError):
+                    validator(bad)
+        case['expected']['after_grind'] = True
+        case['expected']['chain'] = {'poses': [2, 1], 'air_ids': [1]}
+        for validator in (batch.validate_plan, plan_schema.validate_plan):
+            self.assertIs(validator(good), good)
+
+    @staticmethod
+    def condition_observation(seq=1, ms=1000, state=100, mode=1, generation=4, speed=1):
+        return {'states': [dict(seq=seq, valid=True, state=state, mode=mode)],
+                'push': [dict(seq=seq, ms=ms, valid=True, speed=speed, contacts=0xc000)],
+                'grind': {'samples': [dict(seq=seq, ms=ms, generation=generation, valid=True,
+                           arcade=True, state=state, edge=0, dropped=0)],
+                          'status': [dict(generation=generation, active=True, dropped=0, rejected=0)], 'dropped': 0},
+                'combo': {'samples': [dict(ms=ms, state=state, mode=mode)], 'dropped': 0},
+                'log_end': 1000 + seq, 'evidence_gap': None}
+
+    def test_condition_requires_new_paired_heartbeat_and_correlated_owner(self):
+        initial = self.condition_observation()
+        owner = batch.phase_condition_owner(initial)
+        now = [0.0]
+        def observe(since=None):
+            if since is None or now[0] < .25:
+                return initial
+            return self.condition_observation(2, 1250)
+        result = batch.wait_native_riding({'condition': 'native-riding', 'timeout_ms': 500}, observe,
+            owner, lambda: True, clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+        self.assertEqual(result['status'], 'READY')
+        self.assertGreaterEqual(now[0], .25)
+        self.assertEqual(result['last_native']['heartbeat_seq'], 2)
+        self.assertEqual(result['last_native']['generation'], 4)
+        self.assertEqual(result['scope'], 'native_context_only_not_action_result')
+
+    def test_condition_timeout_reports_native_cause_without_success(self):
+        initial = self.condition_observation()
+        for failure in ('air', 'mode', 'contacts', 'speed', 'contradiction', 'unpaired', 'old-owner-state'):
+            now = [0.0]
+            def observe(since=None):
+                if since is None: return initial
+                row = self.condition_observation(2, 1100, state=201 if failure == 'air' else 100,
+                                                 mode=0 if failure == 'mode' else 1)
+                if failure == 'contacts': row['push'][0]['contacts'] = 0x4000
+                if failure == 'speed': row['push'][0]['speed'] = 3
+                if failure == 'contradiction': row['combo']['samples'] = [dict(ms=1110, state=201, mode=2)]
+                if failure == 'unpaired': row['push'][0]['seq'] = 1
+                if failure == 'old-owner-state': row['grind']['samples'][0]['ms'] = 900
+                return row
+            with self.subTest(failure=failure):
+                result = batch.wait_native_riding({'condition': 'native-riding', 'timeout_ms': 100, 'max_speed_mm_s': 2000},
+                    observe, batch.phase_condition_owner(initial), lambda: True,
+                    clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+                self.assertEqual(result['status'], 'TIMEOUT')
+                self.assertNotEqual(result['cause'], 'fresh_native_riding')
+                self.assertAlmostEqual(now[0], .1)
+
+    def test_condition_integrity_loss_and_native_stall_stop(self):
+        initial = self.condition_observation()
+        for failure in ('generation', 'gap', 'dropped', 'inactive', 'invalid-owner', 'native-clock', 'stall'):
+            now = [0.0]
+            def observe(since=None):
+                if since is None: return initial
+                row = self.condition_observation(2, 1100, state=201)
+                if failure == 'generation': row['grind']['samples'][0]['generation'] += 1
+                if failure == 'gap': row['evidence_gap'] = 'tail_limit'
+                if failure == 'dropped': row['grind']['samples'][0]['dropped'] = 1
+                if failure == 'inactive': row['grind']['status'][0]['active'] = False
+                if failure == 'invalid-owner': row['grind']['samples'][0]['valid'] = False
+                if failure == 'native-clock': row['push'][0]['ms'] = 999
+                if failure == 'stall': return initial
+                return row
+            with self.subTest(failure=failure), self.assertRaises(batch.HardStop):
+                batch.wait_native_riding({'condition': 'native-riding', 'timeout_ms': 1000}, observe,
+                    batch.phase_condition_owner(initial), lambda: True,
+                    clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt))
+
+    def test_conditioned_environment_forwards_waiter_and_keeps_fixed_path(self):
+        case = plan()['candidates'][0]
+        case['capture_frames'] = 0
+        case['phases'][1]['wait'] = {'condition': 'native-riding', 'timeout_ms': 300}
+        session = Mock()
+        env = batch.DeckEnvironment(session)
+        env.observe = Mock(return_value=self.condition_observation())
+        env.gesture(case)
+        self.assertEqual(session.run.call_args.kwargs['phase_conditions'], {1: case['phases'][1]['wait']})
+        self.assertTrue(callable(session.run.call_args.kwargs['condition_waiter']))
+
+    def test_ordinary_condition_miss_keeps_batch_running_and_requires_reset(self):
+        value = plan()
+        value['candidates'][0].update(fixture_reset=True, repeat=2)
+        missed = {'outcome': 'MISSED_CONDITION', 'input_sent': False, 'neutralized': True,
+                  'delivery_timing': {'condition_failed': True}, 'fixture_reset': {'reset_ready': True},
+                  'observations': {'grind_result': {'evidence': 'COMPLETE'}}}
+        with patch.object(batch, 'perform_case', side_effect=[dict(missed), dict(missed)]):
+            result = batch.perform_batch(value, Mock())
+        self.assertEqual(len(result['trials']), 2)
+        self.assertFalse(any(row.get('hard_stop') for row in result['trials']))
+        bad = copy.deepcopy(missed)
+        bad['fixture_reset']['reset_ready'] = False
+        with patch.object(batch, 'perform_case', return_value=bad):
+            result = batch.perform_batch(value, Mock())
+        self.assertTrue(result['trials'][-1]['hard_stop'])
+
+    def test_condition_checks_readiness_after_evidence_before_releasing(self):
+        initial = self.condition_observation()
+        count = [0]
+        def observe(since=None):
+            return initial if since is None else self.condition_observation(2, 1100)
+        def alive():
+            count[0] += 1
+            return count[0] < 3
+        with self.assertRaises(batch.HardStop):
+            batch.wait_native_riding({'condition': 'native-riding', 'timeout_ms': 100}, observe,
+                batch.phase_condition_owner(initial), alive, clock=lambda: 0, sleep=lambda dt: None)
+
     def test_revert_link_requires_independent_label_and_unbroken_continuation(self):
         def event(ms, pose=1, active=True, fatigue=.2):
             return dict(ms=ms, pose=pose, active=active, failed=False,
@@ -647,6 +785,69 @@ class BatchTests(unittest.TestCase):
         result = self.run_fake(dispatch)
         self.assertEqual(len(result["trials"]), 2)
         self.assertEqual(result["stop"], "candidates_exhausted")
+
+    def test_host_preserves_phase_zero_timeout_and_continues(self):
+        value = plan()
+        case = value['candidates'][0]
+        case.update(capture_frames=0, repeat=2)
+        case['phases'][0]['wait'] = {'condition': 'native-riding', 'timeout_ms': 100}
+        timing = {'samples': [], 'condition_failed': True, 'conditions': [
+            {'phase': 0, 'status': 'TIMEOUT', 'cause': 'native_not_riding',
+             'started_ms': 0, 'completed_ms': 100, 'wait_ms': 100, 'shift_ms': 100,
+             'last_native': {'state': 201, 'heartbeat_seq': 7, 'generation': 4}}]}
+        response = {'schema': 1, 'recipe': case['name'], 'input_sent': False, 'neutralized': True,
+                    'outcome': 'MISSED_CONDITION', 'delivery_timing': timing, 'frames': [],
+                    'criteria': {'named_trick': 'UNVERIFIED'}, 'observations': {'after': {'state': 201}}}
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp).resolve() / 'out'
+            dispatch = Mock(side_effect=lambda *_: copy.deepcopy(response))
+            summary = batch.run_batch(value, output, dispatch, lambda _: None)
+            self.assertEqual(summary['stop'], 'candidates_exhausted')
+            self.assertEqual(dispatch.call_count, 2)
+            for index, trial in enumerate(summary['trials']):
+                self.assertEqual(trial['outcome'], 'MISSED_CONDITION')
+                self.assertFalse(trial['input_sent'])
+                self.assertTrue(trial['neutralized'])
+                self.assertEqual(trial['delivery_timing'], timing)
+                self.assertEqual(trial['criteria']['named_trick'], 'UNVERIFIED')
+                self.assertEqual(json.loads((output / ('trial-%03d' % index) / 'run.json').read_text()), response)
+
+    def test_host_refuses_unconfirmed_or_malformed_missed_condition(self):
+        for failure, expected in [('neutral', 'neutralization_unconfirmed'),
+                                  ('marker', 'invalid_response'), ('condition', 'invalid_response')]:
+            value = plan()
+            case = value['candidates'][0]
+            case.update(capture_frames=0, repeat=2)
+            case['phases'][0]['wait'] = {'condition': 'native-riding', 'timeout_ms': 100}
+            response = {'input_sent': False, 'neutralized': True, 'outcome': 'MISSED_CONDITION',
+                        'delivery_timing': {'samples': [], 'condition_failed': True,
+                                            'conditions': [{'phase': 0, 'status': 'TIMEOUT'}]}}
+            if failure == 'neutral': response['neutralized'] = False
+            elif failure == 'marker': response['delivery_timing']['condition_failed'] = False
+            elif failure == 'condition': response['delivery_timing']['conditions'] = []
+            with self.subTest(failure=failure), tempfile.TemporaryDirectory() as temp, patch.object(robot, 'save_run') as save:
+                dispatch = Mock(return_value=response)
+                result = batch.run_batch(value, Path(temp).resolve() / 'out', dispatch, lambda _: None)
+                self.assertEqual(result['stop'], expected)
+                self.assertEqual(dispatch.call_count, 1)
+                self.assertEqual(result['trials'], [])
+                save.assert_not_called()
+
+    def test_remote_and_reviewable_bundle_include_condition_dependencies(self):
+        required = {'validate_phase_wait', 'validate_phase_conditions', 'phase_condition_owner',
+                    'check_phase_condition_integrity', 'wait_native_riding'}
+        value = plan()
+        payload = batch.remote_payload(value, value['candidates'][0])
+        names = lambda source: {node.name for node in ast.parse(source).body
+                                if isinstance(node, (ast.FunctionDef, ast.ClassDef))}
+        self.assertTrue(required <= names(payload))
+        with tempfile.TemporaryDirectory(dir=batch.ROOT / 'artifacts') as temp:
+            output = Path(temp) / 'bundle'
+            with contextlib.redirect_stdout(io.StringIO()):
+                build_trusted_bundle.build(output)
+            sources = [(output / name).read_text() for name in
+                       ('worker_robot.py', 'worker_probe.py', 'plan_schema.py', 'worker_batch.py')]
+            self.assertTrue(required <= names('\n'.join(sources)))
 
     def test_integrity_failure_stops_before_input(self):
         dispatch = Mock()

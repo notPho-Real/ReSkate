@@ -33,6 +33,15 @@ def keys(value, required, optional=()):
         raise ValueError("Unknown or missing data fields")
 
 
+def validate_phase_wait(value):
+    keys(value, ('condition', 'timeout_ms'), ('max_speed_mm_s',))
+    if value['condition'] != 'native-riding':
+        raise ValueError('Unknown phase condition')
+    integer(value['timeout_ms'], 100, 3000)
+    if 'max_speed_mm_s' in value:
+        integer(value['max_speed_mm_s'], 0, 20000)
+
+
 def validate_plan(plan):
     keys(plan, ("schema", "source_commit", "dll_sha256", "stock_sha256", "candidates"))
     if type(plan["schema"]) is not int or plan["schema"] != 1:
@@ -95,9 +104,12 @@ def validate_plan(plan):
         phases = case["phases"]
         if not isinstance(phases, list) or not 1 <= len(phases) <= 64:
             raise ValueError("Invalid phases")
-        previous = -1
+        previous, waits = -1, 0
         for phase in phases:
-            keys(phase, ("ms",), tuple(AXIS_CODES) + ("buttons",))
+            keys(phase, ("ms",), tuple(AXIS_CODES) + ("buttons", "wait"))
+            if 'wait' in phase:
+                validate_phase_wait(phase['wait'])
+                waits += 1
             ms = integer(phase["ms"], 0, timeout - 1000)
             if ms <= previous:
                 raise ValueError("Phases must increase strictly")
@@ -109,6 +121,8 @@ def validate_plan(plan):
             if (not isinstance(buttons, list) or any(not isinstance(b, str) or b not in BUTTON_CODES for b in buttons)
                     or len(set(buttons)) != len(buttons)):
                 raise ValueError("Invalid buttons")
+        if waits > 2 or (waits and case.get('capture_frames', 4) != 0):
+            raise ValueError('Conditioned trials require zero captures and at most two waits')
     if trials > MAX_TRIALS:
         raise ValueError("At most 24 trials per batch")
     return plan
@@ -377,7 +391,8 @@ def perform_case(plan, case, env):
     # trace is not proof of failed gameplay; a complete observed sequence is
     # positive evidence. Named tricks still require a separate native signal.
     state_result = "PASS" if heartbeat_match or physics_match else "UNVERIFIED"
-    result.update(name=case["name"], outcome="OBSERVED", observations=obs,
+    result.update(name=case["name"], outcome="MISSED_CONDITION" if
+                  result.get('delivery_timing', {}).get('condition_failed') else "OBSERVED", observations=obs,
                   criteria={"native_state_sequence": state_result,
                             "heartbeat_state_sequence": "PASS" if heartbeat_match else "UNVERIFIED",
                             "physics_state_sequence": "PASS" if physics_match else "UNVERIFIED",
@@ -415,6 +430,9 @@ def stop_reason(error):
         "fixture_reset_unverified": "fixture_reset_unverified",
         "grind_evidence_incomplete": "grind_evidence_incomplete",
         "chain_evidence_incomplete": "chain_evidence_incomplete",
+        "condition_evidence_lost": "condition_evidence_lost",
+        "condition_owner_changed": "condition_owner_changed",
+        "condition_heartbeat_stale": "condition_heartbeat_stale",
     }
     return categories.get(str(error), "integrity_or_transport_failure")
 
@@ -431,7 +449,8 @@ def perform_batch(plan, env):
                 results.append(result)
                 if case.get('fixture_reset') and not result.get('fixture_reset', {}).get('reset_ready'):
                     raise HardStop('fixture_reset_unverified')
-                if case.get('fixture_reset') and (not result.get('input_sent') or
+                if case.get('fixture_reset') and ((not result.get('input_sent') and
+                        not result.get('delivery_timing', {}).get('condition_failed')) or
                         result.get('observations', {}).get('grind_result', {}).get('evidence') != 'COMPLETE'):
                     raise HardStop('grind_evidence_incomplete')
                 observation = result.get('observations', {})
@@ -472,6 +491,121 @@ def ready_baseline(observation, watermark, max_speed_mm_s=None):
                     not 0 <= speed["speed"] * 1000 <= max_speed_mm_s):
                 return None
     return rows[-1]["seq"]
+
+
+def phase_condition_owner(observation):
+    """Detached native owner generation; never infer it from the requested action."""
+    health = observation.get('grind', {}).get('status', [])[-1:]
+    rows = observation.get('grind', {}).get('samples', [])[-1:]
+    if (observation.get('evidence_gap') or not health or not rows or not health[0]['active'] or
+            not rows[0]['valid'] or not rows[0]['arcade'] or
+            rows[0]['generation'] != health[0]['generation'] or rows[0]['dropped'] != health[0]['dropped']):
+        raise HardStop('condition_evidence_lost')
+    return {key: health[0][key] for key in ('generation', 'dropped', 'rejected')}
+
+
+def check_phase_condition_integrity(observation, owner):
+    grind = observation.get('grind', {})
+    if observation.get('evidence_gap') or grind.get('dropped') or observation.get('combo', {}).get('dropped'):
+        raise HardStop('condition_evidence_lost')
+    for row in grind.get('samples', []):
+        if row['generation'] != owner['generation']:
+            raise HardStop('condition_owner_changed')
+        if not row['valid'] or not row['arcade'] or row['edge'] == 3 or row['dropped'] != owner['dropped']:
+            raise HardStop('condition_evidence_lost')
+    for row in grind.get('status', []):
+        if row['generation'] != owner['generation']:
+            raise HardStop('condition_owner_changed')
+        if not row['active'] or any(row[key] != owner[key] for key in ('dropped', 'rejected')):
+            raise HardStop('condition_evidence_lost')
+
+
+def wait_native_riding(condition, observe, owner, alive, clock=None, sleep=None):
+    """One fixed predicate: fresh native100/mode1, two wheels, unchanged owner.
+
+    Native and host clocks have different epochs. Freshness requires a heartbeat
+    newer than the wait-entry watermark, correlated native timestamps, advancing
+    native time and bounded host arrival age. No cached pre-wait row can satisfy it.
+    """
+    validate_phase_wait(condition)
+    clock, sleep = clock or time.monotonic, sleep or time.sleep
+    started = clock()
+    if not alive():
+        raise HardStop('condition_evidence_lost')
+    initial = observe()
+    current_owner = phase_condition_owner(initial)
+    if current_owner['generation'] != owner['generation']:
+        raise HardStop('condition_owner_changed')
+    if current_owner != owner or type(initial.get('log_end')) is not int:
+        raise HardStop('condition_evidence_lost')
+    states, speeds = initial.get('states', []), initial.get('push', [])
+    if not states or not speeds:
+        raise HardStop('condition_evidence_lost')
+    watermark = states[-1]['seq']
+    last_seq, native_ms = watermark, speeds[-1]['ms']
+    boundary = initial['log_end']
+    heartbeat_at = grind_at = started
+    last_grind_seq = initial['grind']['samples'][-1]['seq']
+    last = {'heartbeat_seq': watermark, 'native_ms': native_ms, 'generation': owner['generation'],
+            'state': states[-1]['state'], 'mode': states[-1]['mode'], 'valid': states[-1]['valid']}
+    cause = 'waiting_fresh_heartbeat'
+    previous_clock = started
+    deadline = started + condition['timeout_ms'] / 1000
+    while True:
+        now = clock()
+        if now < previous_clock:
+            raise HardStop('condition_evidence_lost')
+        previous_clock = now
+        if not alive():
+            raise HardStop('condition_evidence_lost')
+        if now >= deadline:
+            return {'status': 'TIMEOUT', 'cause': cause, 'last_native': last,
+                    'scope': 'native_context_only_not_action_result'}
+        observation = observe(since=boundary)
+        read_at = clock()
+        if read_at < now:
+            raise HardStop('condition_evidence_lost')
+        check_phase_condition_integrity(observation, owner)
+        rows = observation.get('states', [])
+        speed_rows = {r['seq']: r for r in observation.get('push', [])}
+        grind = observation.get('grind', {}).get('samples', [])
+        if grind and grind[-1]['seq'] < last_grind_seq:
+            raise HardStop('condition_evidence_lost')
+        if grind and grind[-1]['seq'] > last_grind_seq:
+            last_grind_seq, grind_at = grind[-1]['seq'], read_at
+        row = rows[-1] if rows else None
+        speed = speed_rows.get(row['seq']) if row else None
+        if row and row['seq'] < last_seq:
+            raise HardStop('condition_evidence_lost')
+        if row and speed and row['seq'] > last_seq:
+            if speed['ms'] <= native_ms:
+                raise HardStop('condition_evidence_lost')
+            last_seq, native_ms, heartbeat_at = row['seq'], speed['ms'], read_at
+            last = {'heartbeat_seq': last_seq, 'native_ms': native_ms, 'generation': owner['generation'],
+                    'state': row['state'], 'mode': row['mode'], 'valid': row['valid'],
+                    'speed_valid': speed['valid'], 'speed_mm_s': round(speed['speed'] * 1000),
+                    'contacts': speed['contacts']}
+        if read_at - heartbeat_at > .750 or read_at - grind_at > .750:
+            raise HardStop('condition_heartbeat_stale')
+        cause = 'waiting_fresh_heartbeat'
+        if row and speed and row['seq'] > watermark:
+            cause = 'native_not_riding'
+            coherent = (grind and grind[-1]['state'] == 100 and
+                        abs(grind[-1]['ms'] - speed['ms']) <= 150 and read_at - heartbeat_at <= .150 and
+                        read_at - grind_at <= .150 and read_at - now <= .100)
+            # Changed physics may already contradict the latest250ms heartbeat.
+            latest = observation.get('combo', {}).get('samples', [])[-1:]
+            if latest and latest[0]['ms'] > speed['ms'] and (latest[0]['state'] != 100 or latest[0]['mode'] != 1):
+                coherent = False
+            if row['valid'] and row['state'] == 100 and row['mode'] == 1 and speed['valid'] and speed['contacts'] == 0xc000:
+                cause = 'waiting_current_owner_state' if not coherent else 'speed_above_bound'
+                if coherent and ('max_speed_mm_s' not in condition or speed['speed'] * 1000 <= condition['max_speed_mm_s']):
+                    if not alive():
+                        raise HardStop('condition_evidence_lost')
+                    if clock() < deadline:
+                        return {'status': 'READY', 'cause': 'fresh_native_riding', 'last_native': last,
+                                'scope': 'native_context_only_not_action_result'}
+        sleep(min(.020, max(0, deadline - clock())))
 
 
 class DeckEnvironment:
@@ -638,6 +772,12 @@ class DeckEnvironment:
 
     def gesture(self, case):
         run = self.session.run if self.session is not None else experiment_events
+        conditions = {index: phase['wait'] for index, phase in enumerate(case['phases']) if 'wait' in phase}
+        if conditions:
+            owner = phase_condition_owner(self.observe())
+            return run(case['name'], phase_events(case), case['timeout_ms'] / 1000,
+                capture_frames=case.get('capture_frames', 4), phase_conditions=conditions,
+                condition_waiter=lambda spec, alive: wait_native_riding(spec, self.observe, owner, alive))
         return run(case["name"], phase_events(case), case["timeout_ms"] / 1000,
                    capture_frames=case.get("capture_frames", 4))
 
@@ -714,16 +854,32 @@ def run_batch(plan, output, dispatch=transport, check=preflight):
                 result = dispatch(plan, case)  # Never retry uncertain gameplay input.
                 if result.get("hard_stop"):
                     raise HardStop(result.get("reason", "remote_safety_failure"))
-                if result.get("input_sent"):
+                missed = result.get("outcome") == "MISSED_CONDITION"
+                timing = result.get("delivery_timing", {})
+                if missed and not result.get("input_sent"):
+                    conditions = timing.get('conditions', []) if isinstance(timing, dict) else []
+                    if (result.get('input_sent') is not False or not isinstance(timing, dict) or
+                            timing.get('condition_failed') is not True or timing.get('samples') != [] or
+                            not isinstance(conditions, list) or len(conditions) != 1 or
+                            not isinstance(conditions[0], dict) or conditions[0].get('status') != 'TIMEOUT' or
+                            conditions[0].get('phase') != 0 or 'wait' not in case['phases'][0]):
+                        raise HardStop('invalid_response')
+                if result.get("input_sent") or missed:
                     if result.get("neutralized") is not True:
                         raise HardStop("neutralization_unconfirmed")
-                    robot.save_run(result, output / ("trial-%03d" % len(summary["trials"])))
+                    trial_output = output / ("trial-%03d" % len(summary["trials"]))
+                    if case.get('capture_frames', 4) == 4:
+                        robot.save_run(result, trial_output)
+                    else:
+                        robot.save_run(result, trial_output, expected_frames=case['capture_frames'])
                 elif result.get("outcome") != "SKIPPED_CONTEXT":
                     raise HardStop("invalid_response")
                 summary["trials"].append({"name": case["name"], "repeat": repetition + 1,
                     "outcome": result["outcome"], "input_sent": result["input_sent"],
                     "criteria": result.get("criteria", {}), "observations": result.get("observations", {}),
                     "frames": [{k: f[k] for k in ("sha256", "format", "elapsed_ms")} for f in result.get("frames", [])]})
+                if isinstance(timing, dict) and 'conditions' in timing:
+                    summary['trials'][-1].update(delivery_timing=timing, neutralized=result.get('neutralized'))
                 save()
         summary["stop"] = "candidates_exhausted"
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, KeyboardInterrupt) as exc:

@@ -19,6 +19,64 @@ from lab import robot, controller
 
 
 class RobotTests(unittest.TestCase):
+    def test_condition_completion_shifts_all_later_phases(self):
+        now = [0.0]
+        pad = Mock()
+        writes = []
+        pad.frame.side_effect = lambda value: writes.append((now[0], value))
+        def wait(spec, alive):
+            self.assertTrue(alive())
+            self.assertEqual(pad.neutral.call_count, 1)
+            now[0] += .3
+            return {'status': 'READY', 'cause': 'fresh_native_riding', 'last_native': {'heartbeat_seq': 9}}
+        result = robot.replay(pad, [(0, [('first',)]), (1, [('RT',)]), (1.1, [('release',)]), (2, [('manual',)])],
+            3, lambda: True, clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt),
+            phase_conditions={1: {'condition': 'native-riding', 'timeout_ms': 1000}}, condition_waiter=wait)
+        self.assertEqual([round(t, 3) for t, _ in writes], [0, 1.3, 1.4, 2.3])
+        self.assertAlmostEqual(now[0], 3.3)
+        self.assertEqual(result['conditions'][0]['wait_ms'], 300)
+        self.assertEqual(result['conditions'][0]['shift_ms'], 300)
+        self.assertEqual([r['effective_scheduled_ms'] for r in result['samples']], [0, 1300, 1400, 2300])
+        self.assertFalse(result['condition_failed'])
+
+    def test_condition_timeout_neutralizes_and_skips_remaining_actions(self):
+        now = [0.0]
+        pad = Mock()
+        def wait(spec, alive):
+            now[0] += .1
+            return {'status': 'TIMEOUT', 'cause': 'native_not_riding', 'last_native': {'state': 201}}
+        result = robot.replay(pad, [(0, [('first',)]), (.2, [('RT',)]), (.3, [('release',)])], 1,
+            lambda: True, clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt),
+            phase_conditions={1: {'condition': 'native-riding', 'timeout_ms': 100}}, condition_waiter=wait)
+        self.assertTrue(result['condition_failed'])
+        pad.neutral.assert_called_once()
+        self.assertEqual(pad.frame.call_count, 1)
+        self.assertEqual(result['conditions'][0]['last_native']['state'], 201)
+
+    def test_two_condition_delays_accumulate_with_relative_spacing(self):
+        now = [0.0]
+        def wait(spec, alive):
+            now[0] += .1
+            return {'status': 'READY'}
+        result = robot.replay(Mock(), [(0, [('a',)]), (.2, [('b',)]), (.4, [('c',)])], .6,
+            lambda: True, clock=lambda: now[0], sleep=lambda dt: now.__setitem__(0, now[0] + dt),
+            phase_conditions={0: {'condition': 'native-riding', 'timeout_ms': 100},
+                              1: {'condition': 'native-riding', 'timeout_ms': 100}}, condition_waiter=wait)
+        self.assertEqual([r['write_ms'] for r in result['samples']], [100, 400, 600])
+        self.assertAlmostEqual(now[0], .8)
+
+    def test_untrusted_condition_shapes_cannot_reach_waiter_or_pad(self):
+        for conditions in ({0: {'condition': 'eval', 'timeout_ms': 100}},
+                           {0: {'condition': 'native-riding', 'timeout_ms': True}},
+                           {1: {'condition': 'native-riding', 'timeout_ms': 100}},
+                           {0: {'condition': 'native-riding', 'timeout_ms': 100, 'code': 'x'}}):
+            pad, waiter = Mock(), Mock()
+            with self.subTest(conditions=conditions), self.assertRaises(ValueError):
+                robot.replay(pad, [(0, [('a',)])], 1, lambda: True,
+                             phase_conditions=conditions, condition_waiter=waiter)
+            pad.frame.assert_not_called()
+            waiter.assert_not_called()
+
     def test_single_capture_waits_until_trial_end_and_keeps_full_image_hash(self):
         stop = Mock()
         stop.wait.return_value = False
@@ -477,6 +535,46 @@ class RobotTests(unittest.TestCase):
                     session.run('second', [], 3)
                 self.assertEqual(self.closed, [7])
                 replay.assert_called_once()
+
+    def test_condition_timeout_reuses_the_same_neutral_controller(self):
+        pad = self.pad()
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        missed = {'samples': [], 'condition_failed': True, 'conditions': [{'status': 'TIMEOUT'}]}
+        with patch.object(robot, 'capabilities', return_value=ready), \
+             patch.object(robot, 'Gamepad', return_value=pad) as factory, patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), \
+             patch.object(robot, 'periodic', return_value=[]), \
+             patch.object(robot, 'replay', side_effect=[missed, {'samples': []}]), \
+             patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession() as session:
+                first = session.run('condition-miss', [(0, [(3, 5, 255)])], 3, capture_frames=0,
+                    phase_conditions={0: {'condition': 'native-riding', 'timeout_ms': 100}},
+                    condition_waiter=lambda spec, alive: {})
+                self.assertFalse(first['input_sent'])
+                self.assertTrue(first['delivery_timing']['condition_failed'])
+                self.assertIsNotNone(session.pad)
+                self.assertEqual(self.closed, [])
+                session.run('next-fixed-trial', [], 3, capture_frames=0)
+                factory.assert_called_once()
+        self.assertEqual(self.closed, [7])
+
+    def test_condition_budget_is_reserved_before_any_replay(self):
+        pad = self.pad()
+        ready = {'ready': True, 'gamescope_pids': [12]}
+        now = [0]
+        with patch.object(robot, 'capabilities', return_value=ready), \
+             patch.object(robot, 'Gamepad', return_value=pad), patch.object(robot.time, 'sleep'), \
+             patch.object(robot, 'screenshot'), \
+             patch.object(robot.time, 'monotonic', side_effect=lambda: now[0]), \
+             patch.object(robot, 'replay') as replay, patch.object(robot.signal, 'alarm'), patch.object(robot.signal, 'signal'):
+            with robot.ExperimentSession(max_seconds=10) as session:
+                now[0] = 6
+                with self.assertRaisesRegex(RuntimeError, 'Insufficient session time'):
+                    session.run('bounded-wait', [(0, [(3, 5, 255)])], 3, capture_frames=0,
+                        phase_conditions={0: {'condition': 'native-riding', 'timeout_ms': 2000}},
+                        condition_waiter=lambda spec, alive: {})
+                replay.assert_not_called()
+        self.assertEqual(self.closed, [7])
 
     def test_session_idle_alarm_closes_neutral_device_and_restores_handlers(self):
         pad = self.pad()

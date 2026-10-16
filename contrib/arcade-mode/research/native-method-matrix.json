@@ -2128,13 +2128,13 @@
     {
       "id": "reverts",
       "requested_action": "Native FS/BS RT, landing, manual and combo continuation",
-      "implementation_status": "Generic native Revert repeatable20/20 with each directional selector on08d2a3a; exact FS/BS display separately discovered1/1 each. Native label edge, state101 preservation and measured750ms/1100ms link windows implemented in verified2bdf062; game update blocks actual integration acceptance.",
+      "implementation_status": "Supported build restored. Generic native Revert remains repeatable with both selectors; exact side separate. Installed2bdf062 now has independently observed continuation into Manual, but fixed-timing20-trial matrix passed9/20; rail recontact and early manual admission are measured defects. Source91906e5 adds bounded preparation, awaiting CI/native validation.",
       "source_ids": [
         "community-full-translator",
         "dual-stick-rail-and-spin"
       ],
       "remaining": "Repeatable independent FS/BS identity and landing/manual/continuation integration; no combo credit from command intent.",
-      "next": "Restore pinned game, then matched native RT/manual/no-RT/abuse trials with HIL41.",
+      "next": "Validate event-driven native landing and CI-tested manual recovery on the existing fixture.",
       "new_deck_trials": 40,
       "evidence": "community-revert-source.json",
       "maturity": "DISCOVERED"
@@ -2236,14 +2236,15 @@
     {
       "id": "revert-abuse",
       "requested_action": "One valid revert opportunity; no repeated grace/multiplier farming",
-      "implementation_status": "Native label-based continuation wired in2bdf062; installed source has no supported-build gameplay acceptance after Steam update. Existing deterministic and recorded revert-link grader tests pass.",
+      "implementation_status": "HIL43 complete evidence:20/20 neutral/reset,17/20 trials accepted one native-confirmed opportunity and expired exactly1100ms later despite3 started RT requests.3/20 rejected initial RT during rail recontact; none refreshed indefinitely. Earlier complete three-trial batch adds2 matching expiry observations.",
       "source_ids": [
         "native-line-events",
         "community-full-translator"
       ],
-      "remaining": "Validate installed native acknowledgement and single continuation on restored supported build; current historical trials do not establish accepted linking.",
-      "next": "Resume prepared HIL41 tests; repeated native RT must not refresh grace or multiplier indefinitely.",
-      "new_deck_trials": 0
+      "remaining": "Event-driven landing context and practical repeatability; monetary multiplier/banking still UNVERIFIED. Native input is not proof of native identity.",
+      "next": "Use bounded native-riding condition, then validate multiplier only with independently attributable native scoring evidence.",
+      "new_deck_trials": 23,
+      "evidence": "grind-exit-results.json: recovered_complete_expiry_20; recovered_manual_admission_and_complete_expiry_8"
     },
     {
       "id": "bank-bail",
@@ -2353,15 +2354,15 @@
     {
       "id": "chain-B",
       "requested_action": "Air Trick -> Land -> RT Revert -> Manual",
-      "implementation_status": "Native moving grind-exit/Ollie/landing/RT revert observed; label633ms after landing exceeds former450ms grace. Native-label acknowledgement and measured750ms runtime window implemented, pending verified Deck installation.",
+      "implementation_status": "Recovered2bdf062: initial2/2 native revert/manual links; repeatability9/20 (original9/10,100ms-earlier0/10). Narrower command after state101 recovery2/5, with3 rail-recontact RT rejections. Input-admission defect localized and source91906e5 fix pending native verification.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
       "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Matched native RT/no-RT tests followed by actual Manual and repeated-revert expiry.",
-      "new_deck_trials": 0,
+      "next": "Bounded native-riding readiness before RT; compare early manual command on tested recovery fix; retain all invalid-context outcomes.",
+      "new_deck_trials": 27,
       "evidence": "grind-exit-results.json"
     },
     {
@@ -2421,15 +2422,16 @@
     {
       "id": "chain-G",
       "requested_action": "Land -> Revert -> Revert -> Revert -> Wait",
-      "implementation_status": "Offline chain_report.py grader exists; required native chain acceptance absent",
+      "implementation_status": "HIL43 complete evidence:20/20 neutral/reset,17/20 trials accepted one native-confirmed opportunity and expired exactly1100ms later despite3 started RT requests.3/20 rejected initial RT during rail recontact; none refreshed indefinitely. Earlier complete three-trial batch adds2 matching expiry observations.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "At least20 controlled trials and relevant context variation with independently observed native events, score/fatigue/bank/recovery; no one-off or fixture acceptance.",
-      "next": "Connect live semantic event adapter and run targeted supported chain once primitive dependencies are ready.",
-      "new_deck_trials": 0
+      "remaining": "Event-driven landing context and practical repeatability; monetary multiplier/banking still UNVERIFIED. Native input is not proof of native identity.",
+      "next": "Use bounded native-riding condition, then validate multiplier only with independently attributable native scoring evidence.",
+      "new_deck_trials": 23,
+      "evidence": "grind-exit-results.json: recovered_complete_expiry_20; recovered_manual_admission_and_complete_expiry_8"
     },
     {
       "id": "chain-H",
