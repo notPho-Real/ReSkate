@@ -221,11 +221,15 @@ void register_arcade_fixture_commands(Commands& registry) {
         }
         if (op != "status") { geometry.cancel(); trajectory_emit(trajectory.cancel(GetTickCount64())); }
         if (op == "status") {
+            NoBailSkater menu_owner{};
+            const auto ui = no_bail_skater(menu_owner) ? multiplayer::sample_game_ui_state(menu_owner.base) :
+                multiplayer::GameUiState{};
             Json status{{"configured", fixture.configured}, {"available", editor.available}, {"busy", editor.busy},
                 {"failed", editor.failed}, {"editor_open", model.debug.park_editor}, {"asset_available", asset},
                 {"present", present}, {"arcade", arcade_mode::enabled()}, {"generation", editor.generation}, {"revision", editor.revision},
                 {"map", editor.map}, {"position", skater.position}, {"heading", skater.heading},
-                {"speed", skater.speed}, {"state", skater.physics_state}, {"skater", skater.skater}};
+                {"speed", skater.speed}, {"state", skater.physics_state}, {"skater", skater.skater},
+                {"native_ui_available", ui.available}, {"native_in_menu", ui.available ? Json(ui.in_menu) : Json(nullptr)}};
             if (fixture.configured) {
                 status["start"] = fixture.start; status["rail_position"] = fixture.rail.position;
                 status["rail_rotation"] = fixture.rail.rotation; status["rail_scale"] = fixture.rail.scale;

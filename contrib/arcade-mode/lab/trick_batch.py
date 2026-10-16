@@ -544,6 +544,8 @@ def stop_reason(error):
         "Incomplete uinput write": "input_write_incomplete",
         "fixture_window_invalid": "fixture_window_invalid",
         "fixture_reset_unverified": "fixture_reset_unverified",
+        "fixture_native_menu_open": "fixture_native_menu_open",
+        "fixture_native_menu_unverified": "fixture_native_menu_unverified",
         "trajectory_capture_unverified": "trajectory_capture_unverified",
         "grind_evidence_incomplete": "grind_evidence_incomplete",
         "chain_evidence_incomplete": "chain_evidence_incomplete",
@@ -559,6 +561,10 @@ def stop_reason(error):
 def stopped_trial(error, case, repetition):
     stopped = {'hard_stop': True, 'reason': stop_reason(error),
                'name': case['name'], 'repetition': repetition}
+    if stopped['reason'] in ('fixture_native_menu_open', 'fixture_native_menu_unverified'):
+        # A previous reset iteration may already have issued one mount chord.
+        # This exception alone does not establish that no input was sent.
+        stopped.update(game_response='UNVERIFIED', stage='fixture_baseline')
     if stopped['reason'] == 'trajectory_capture_unverified':
         stopped.update(input_sent=False, game_response='UNVERIFIED', stage='trajectory_baseline')
     if stopped['reason'] in ('score_capture_baseline_timeout', 'score_capture_evidence_lost'):
@@ -956,6 +962,17 @@ def wait_score_capture_ready(milliseconds, initial, observe, alive, max_speed_mm
         fail('malformed_fields')
 
 
+def require_fixture_menu_closed(status):
+    # Old runtimes did not export this observation. Their legacy path is not
+    # promoted to menu verification; new unknown/invalid evidence stops input.
+    if 'native_menu' not in status:
+        return
+    if status['native_menu'] == 'open':
+        raise HardStop('fixture_native_menu_open')
+    if status['native_menu'] != 'closed':
+        raise HardStop('fixture_native_menu_unverified')
+
+
 class DeckEnvironment:
     """Uses only trusted robot/probe functions supplied by the remote payload."""
     def __init__(self, session=None):
@@ -1046,6 +1063,7 @@ class DeckEnvironment:
         status = observation.get('fixture')
         if not status or observation.get('evidence_gap'):
             raise HardStop('fixture_reset_unverified')
+        require_fixture_menu_closed(status)
         if status['failed'] or status['editor_open'] or not status['present']:
             raise HardStop('fixture_reset_unverified')
         if status['reset_ready']:
@@ -1118,6 +1136,8 @@ class DeckEnvironment:
             fixture_console('status')
             observation = self.observe(since=boundary)
             status = observation.get('fixture')
+            if status and not observation.get('evidence_gap'):
+                require_fixture_menu_closed(status)
             if status and not observation.get('evidence_gap') and status['reset_ready']:
                 return status
             if status and (status['failed'] or status['editor_open'] or not status['present']):
@@ -1132,6 +1152,7 @@ class DeckEnvironment:
         raise HardStop('fixture_reset_unverified')
 
     def fixture_mount(self, status):
+        require_fixture_menu_closed(status)
         if (type(status.get('arcade')) is not bool or not status.get('configured') or
                 not status.get('present') or status.get('busy') or status.get('failed') or
                 status.get('editor_open') or not status.get('skater') or status.get('state') != 504 or

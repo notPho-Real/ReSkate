@@ -1052,6 +1052,11 @@ def parse_fixture_status(text):
     result = None
     booleans = ('configured', 'available', 'busy', 'failed', 'editor_open', 'asset_available', 'present', 'skater', 'reset_ready')
     for line in text.splitlines():
+        if 'ARCADE FIXTURE: ' not in line:
+            continue
+        # A malformed later response cannot leave an earlier ready/menu-closed
+        # snapshot masquerading as the latest command result.
+        result = None
         match = re.search(r'ARCADE FIXTURE: (\{.{1,4096}\})$', line)
         if not match:
             continue
@@ -1080,6 +1085,19 @@ def parse_fixture_status(text):
             result = {k: row[k] for k in (*booleans, *numeric, *arrays)}
             if type(row.get('arcade')) is bool:
                 result['arcade'] = row['arcade']
+            # Historical debug menu transitions are not a current snapshot.
+            # Only these paired fields from the fresh fixture command qualify.
+            if 'native_ui_available' in row or 'native_in_menu' in row:
+                available, menu = row.get('native_ui_available'), row.get('native_in_menu')
+                state = 'invalid'
+                paired = 'native_ui_available' in row and 'native_in_menu' in row
+                if paired and available is True and type(menu) is bool:
+                    state = 'open' if menu else 'closed'
+                elif paired and available is False and menu is None:
+                    state = 'unavailable'
+                result['native_menu'] = state
+                result['native_ui_available'] = available if state != 'invalid' else None
+                result['native_in_menu'] = menu if state in ('open', 'closed') else None
         except (ValueError, TypeError):
             continue
     return result
