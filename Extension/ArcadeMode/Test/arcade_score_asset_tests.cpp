@@ -125,6 +125,38 @@ int main() {
     check(scoring::targets()[3]["graph_hash"].get<std::uint32_t>() == 0xafef12e9 &&
           scoring::targets()[3]["name"].string() == "ScoringTelemetryManager__OnScorableSequenceEnded",
           "manifest candidate selection does not rewrite compiled runtime graph identity");
+    constexpr std::array producer_candidates{
+        "ecs/scoringmanager/trickscoringmanager_class",
+        "ecs/scoringmanager/trickscoringmanager_class_ecsschematics",
+        "ecs/scoringmanager/trickscoringmanager_class_schematics",
+        "ecs/scoringmanager/trickscoringmanager_class__onskaterobserverlocalplayerspawned",
+        "ecs/scoringmanager/linescoringmanager_class__onendscorableline",
+        "ecs/scoringmanager/sequencescoringmanager_class__onendscorablesequence"};
+    auto producer_forward = selected, producer_reverse = selected;
+    for (std::size_t i = 0; i < producer_candidates.size(); ++i)
+        producer_forward.consider({producer_candidates[i], 1, 2000 + i, false});
+    for (std::size_t i = producer_candidates.size(); i-- > 0;)
+        producer_reverse.consider({producer_candidates[i], 1, 2000 + i, false});
+    check(producer_forward.size == 32 && producer_forward.omitted && scoring::payload_limit == 2 * 1024 * 1024 &&
+          scoring::total_payload_limit == 32 * 1024 * 1024 && scoring::output_limit == 2 * 1024 * 1024,
+          "producer selection replaces filler inside unchanged asset and byte budgets");
+    for (const auto name : producer_candidates) {
+        check(std::any_of(producer_forward.assets.begin(), producer_forward.assets.end(), [&](const auto& candidate) {
+            return candidate.name == name && !candidate.resource;
+        }), "late producer declaration survives a full candidate set");
+        check(scoring::asset_priority(std::string(name) + "_extra") == 3,
+              "producer priority does not include unobserved suffix variants");
+    }
+    check(std::equal(producer_forward.assets.begin(), producer_forward.assets.end(), producer_reverse.assets.begin(),
+        [](const auto& a, const auto& b) { return a.name == b.name && a.index == b.index; }),
+        "producer selection independent of arrival order when the limit is already full");
+    check(std::all_of(producer_forward.assets.begin(), producer_forward.assets.begin() + 5, [](const auto& candidate) {
+        return scoring::asset_priority(candidate.name) == 0;
+    }), "new producer metadata cannot displace exact scoring graph contracts");
+    check(scoring::asset_priority("ECS/SCORINGMANAGER/TRICKSCORINGMANAGER_CLASS__ONSKATEROBSERVERLOCALPLAYERSPAWNED") == 1 &&
+          scoring::asset_priority("ecs/scoringmanager/unrelated/trickscoringmanager_class") == 3 &&
+          scoring::asset_priority("elsewhere/trickscoringmanager_class") == 4,
+          "producer priority is case insensitive but requires the exact allowed manifest path");
     std::vector<std::string> inventory_names;
     for (unsigned i = 0; i < scoring::manifest_name_limit + 8; ++i)
         inventory_names.push_back("ecs/scoringmanager/declaration_" + std::to_string(i));

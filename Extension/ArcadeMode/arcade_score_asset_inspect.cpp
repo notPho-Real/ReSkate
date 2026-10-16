@@ -228,7 +228,15 @@ unsigned asset_priority(std::string_view name) noexcept {
                                    "ecs/scoringmanager/linedata",
                                    "ecs/scoringmanager/scoringdataresource",
                                    "ecs/scoringmanager/scoringtelemetrymanager_class_ecsschematics",
-                                   "ecs/scoringmanager/scoringtelemetrymanager_class_schematics"})
+                                   "ecs/scoringmanager/scoringtelemetrymanager_class_schematics",
+                                   // Exact unread producer candidates from the same manifest
+                                   // inventory; names alone establish no local ownership.
+                                   "ecs/scoringmanager/trickscoringmanager_class",
+                                   "ecs/scoringmanager/trickscoringmanager_class_ecsschematics",
+                                   "ecs/scoringmanager/trickscoringmanager_class_schematics",
+                                   "ecs/scoringmanager/trickscoringmanager_class__onskaterobserverlocalplayerspawned",
+                                   "ecs/scoringmanager/linescoringmanager_class__onendscorableline",
+                                   "ecs/scoringmanager/sequencescoringmanager_class__onendscorablesequence"})
         if (compare_names(name, target) == 0) return 1;
     constexpr std::string_view global = "ecs/scoringmanager/crosssystem_global_scoringevents/";
     if (name.size() > global.size() && compare_names(name.substr(0, global.size()), global) == 0) {
