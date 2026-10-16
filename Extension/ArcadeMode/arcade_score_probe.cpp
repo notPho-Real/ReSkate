@@ -26,10 +26,10 @@ void invalidate_label_observation(ScoreLabelUncertainty why = ScoreLabelUncertai
     manual_history.reset();
 }
 void report_manual_history(std::uint64_t now, const ManualHistoryDiagnostic& diagnostic) noexcept {
-    static ManualHistoryDiagnostic previous{};
+    static ManualHistoryDiagnostic reported_history{};
     static std::uint64_t report_at{}, sequence{};
-    if (diagnostic == previous && now < report_at) return;
-    previous = diagnostic; report_at = now + 1000;
+    if (diagnostic == reported_history && now < report_at) return;
+    reported_history = diagnostic; report_at = now + 1000;
     enqueue_client_telemetry(ManualHistoryEvidence{++sequence, now, diagnostic});
 }
 std::uint64_t last_poll{};
