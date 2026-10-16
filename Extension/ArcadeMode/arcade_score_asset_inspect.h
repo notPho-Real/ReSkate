@@ -19,7 +19,8 @@ struct DeclarationTarget { std::string_view role, file_guid, class_guid; };
 inline constexpr std::array declaration_targets{
     DeclarationTarget{"shared_graph_parameter", "c883e9c8-ec6a-11ee-a230-98e8e08ce66d", "c883e9c8-ec6a-11ee-a230-98e8e08ce66d"},
     DeclarationTarget{"line_data", "d8fb28fb-d3fb-11ed-bee3-9c0b005d0b30", "4fc02350-0fea-216e-55ad-0ba72ea3da4c"},
-    DeclarationTarget{"sequence_data", "a515778d-ad7c-11ed-bff6-dff778381e5f", "f607ab87-140d-528a-bb70-6c73565cb199"}};
+    DeclarationTarget{"sequence_data", "a515778d-ad7c-11ed-bff6-dff778381e5f", "f607ab87-140d-528a-bb70-6c73565cb199"},
+    DeclarationTarget{"local_player_spawn_value", "a623e6bf-3275-11ef-a261-f9f727c65ba1", "40c4614e-cae7-11bf-2b04-4504f690dfb8"}};
 bool matches_declaration(const frostbite::ebx::Document& document, const DeclarationTarget& target);
 // Only fixed scoring-manager namespaces. No caller-provided asset path/filter.
 bool allowed_asset(std::string_view name) noexcept;
@@ -29,6 +30,15 @@ struct AssetCandidate {
     std::string_view name;
     std::size_t bundle{}, index{};
     bool resource{};
+    bool exact_spawn_candidate{};
+};
+// The token comes from the captured callback name. This is a manifest-name
+// candidate only; both imported GUIDs must match before resolving it.
+bool exact_spawn_name(std::string_view name) noexcept;
+struct SpawnDeclarationCandidates {
+    std::array<AssetCandidate, 4> candidates{};
+    std::size_t matches{}, size{};
+    void consider(AssetCandidate candidate) noexcept;
 };
 // Views refer to the caller's retained bundle manifests. Storage stays at 32.
 struct AssetSelection {

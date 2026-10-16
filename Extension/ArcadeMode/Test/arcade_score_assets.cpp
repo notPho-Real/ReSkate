@@ -26,7 +26,7 @@ Json identity(const fb::BundleAsset& asset, std::string_view bundle) {
 int inspect(const std::filesystem::path& root) {
     Json output{{"schema", 1}, {"kind", "arcade_scoring_asset_metadata"}, {"owner_proof", "UNVERIFIED"},
                 {"graph_producer", "UNVERIFIED"}, {"graph_bytecode_decoded", false},
-                {"scope", "fixed_scoring_manager_prefixes_in_two_core_bundles"},
+                {"scope", "fixed_scoring_prefixes_and_exact_local_spawn_basename_in_core_bundles"},
                 {"toc", scoring::toc_name}, {"targets", scoring::targets()}, {"assets", Json::array()},
                 {"status", "NOT_FOUND"}};
     bool incomplete{}; std::size_t consumed{}, serialized{};
@@ -41,6 +41,7 @@ int inspect(const std::filesystem::path& root) {
         std::array<std::optional<dingosdk::vfs::GameBundle>, scoring::bundle_names.size()> bundles;
         scoring::AssetSelection selection;
         scoring::DeclarationInventory inventory;
+        scoring::SpawnDeclarationCandidates spawn_candidates;
         for (std::size_t b = 0; b < bundles.size(); ++b) {
             bundles[b] = data.read_bundle(toc, scoring::bundle_names[b]);
             const auto& bundle = bundles[b];
@@ -51,11 +52,23 @@ int inspect(const std::filesystem::path& root) {
             for (const auto kind : {fb::AssetKind::ebx, fb::AssetKind::resource}) {
                 const auto& assets = kind == fb::AssetKind::ebx ? bundle->manifest.ebx : bundle->manifest.resources;
                 for (std::size_t i = 0; i < assets.size(); ++i) {
-                    selection.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
+                    if (!(b == 1 && kind == fb::AssetKind::ebx && scoring::exact_spawn_name(assets[i].name)))
+                        selection.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
                     inventory.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
+                    spawn_candidates.consider({assets[i].name, b, i, kind == fb::AssetKind::resource});
                 }
             }
         }
+        // No guessed namespace or GUID index. A unique exact basename is only
+        // a candidate until its decoded file and exported class GUIDs match.
+        if (spawn_candidates.matches == 1) selection.consider(spawn_candidates.candidates[0]);
+        output["local_spawn_discovery"] = Json{{"status", spawn_candidates.matches == 1 ? "UNIQUE_CANDIDATE_UNREAD" :
+            spawn_candidates.matches ? "AMBIGUOUS" : "MISSING"}, {"matches", spawn_candidates.matches},
+            {"omitted_names", spawn_candidates.matches - spawn_candidates.size}, {"candidates", Json::array()},
+            {"owner_proof", "UNVERIFIED"}};
+        for (std::size_t i = 0; i < spawn_candidates.size; ++i)
+            output["local_spawn_discovery"]["candidates"].push_back(Json{{"name", spawn_candidates.candidates[i].name},
+                {"bundle", scoring::bundle_names[spawn_candidates.candidates[i].bundle]}});
         incomplete = incomplete || selection.omitted || inventory.omitted;
         output["asset_selection"] = "pinned_graphs_then_context_declarations_then_global_events_then_namespace";
         output["asset_limit_reached"] = selection.omitted;
@@ -94,6 +107,9 @@ int inspect(const std::filesystem::path& root) {
                         const auto document = fb::ebx::read_document(bytes);
                         if (document.fileGuid != file_guid) throw std::runtime_error("file_guid_mismatch");
                         row["declarations"] = scoring::inspect_document(document);
+                        if (candidate.exact_spawn_candidate)
+                            output["local_spawn_discovery"]["status"] = scoring::matches_declaration(document,
+                                scoring::declaration_targets.back()) ? "DECLARATION_IDENTITY_RESOLVED" : "GUID_MISMATCH";
                         for (std::size_t target = 0; target < scoring::declaration_targets.size(); ++target) {
                             if (!scoring::matches_declaration(document, scoring::declaration_targets[target])) continue;
                             auto& lookup = output["declaration_lookups"][target];
@@ -123,6 +139,8 @@ int inspect(const std::filesystem::path& root) {
                     }
                 }
             }
+            if (candidate.exact_spawn_candidate && output["local_spawn_discovery"]["status"].string() == "UNIQUE_CANDIDATE_UNREAD")
+                output["local_spawn_discovery"]["status"] = row["status"];
             const auto size = row.dump().size();
             if (size > scoring::output_limit / 2 || serialized + size > scoring::output_limit - 8192) {
                 row = identity(asset, bundle_name); row["status"] = "OUTPUT_LIMIT"; incomplete = true;

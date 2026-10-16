@@ -64,8 +64,52 @@ ebx::Document parameter_fixture() {
     root(document).fields.push_back({3, {}, ebx::Value{false}});
     return document;
 }
+ebx::Document typed_member_fixture(bool parameter = false) {
+    auto document = parameter ? parameter_fixture() : member_fixture();
+    const auto field = document.fields.size();
+    ++document.types[0].fieldCount;
+    document.fields.push_back({"TypeRef", 5, encoded(ebx::FieldType::structure), 1, 32});
+    ebx::TypeDescriptor type; type.name = "TypeInfoRef"; type.fieldCount = 2;
+    type.fieldIndex = static_cast<std::int32_t>(field + 1);
+    type.encodedType = encoded(ebx::FieldType::structure); document.types.push_back(type);
+    document.fields.push_back({"Asset", 6, encoded(ebx::FieldType::pointer), 0, 0});
+    document.fields.push_back({"TypeInfo", 7, encoded(ebx::FieldType::typeRef), 0, 8});
+    auto child = std::make_shared<ebx::Object>(); child->descriptor = 1;
+    child->fields = {{field + 1, {}, ebx::Value{ebx::PointerReference{ebx::PointerKind::external, 0}}},
+                     {field + 2, {}, ebx::Value{ebx::TypeReference{false, {}, 1, 4}}}};
+    root(document).fields.push_back({field, {}, ebx::Value{child}});
+    document.imports.emplace_back(); document.imports[0].fileGuid.bytes[0] = std::byte{1};
+    document.imports[0].classGuid.bytes[0] = std::byte{2};
+    document.fixupTypeGuids.resize(2); document.fixupTypeGuids[1] = document.imports[0].classGuid;
+    return document;
+}
 }
 int main() {
+    constexpr std::string_view spawn = "ecs/observed_event_scope/SkaterObserverLocalPlayerSpawned";
+    check(scoring::exact_spawn_name(spawn) && scoring::exact_spawn_name("ECS/Observed/SKATEROBSERVERLOCALPLAYERSPAWNED"),
+          "exact captured callback token matches manifest basename without guessing a namespace");
+    for (const auto name : {"elsewhere/OnSkaterObserverLocalPlayerSpawned", "elsewhere/SkaterObserverLocalPlayerSpawned_extra",
+                           "elsewhere/SkaterObserverLocalPlayerSpawned.ebx", "/SkaterObserverLocalPlayerSpawned",
+                           "../SkaterObserverLocalPlayerSpawned", "elsewhere\\SkaterObserverLocalPlayerSpawned"})
+        check(!scoring::exact_spawn_name(name), "basename discovery rejects variants and unsafe names");
+    scoring::SpawnDeclarationCandidates spawn_candidates;
+    spawn_candidates.consider({spawn, 0, 0, false}); spawn_candidates.consider({spawn, 1, 0, true});
+    check(spawn_candidates.matches == 0, "spawn discovery does not inspect other bundles or resource payloads");
+    spawn_candidates.consider({spawn, 1, 1, false});
+    check(spawn_candidates.matches == 1 && spawn_candidates.size == 1 && spawn_candidates.candidates[0].exact_spawn_candidate,
+          "unique EBX candidate retained for exact GUID qualification");
+    scoring::AssetSelection exact_selection;
+    exact_selection.consider({spawn, 1, 1, false});
+    check(!exact_selection.size, "unmarked outside-prefix name cannot enter normal namespace selection");
+    exact_selection.consider(spawn_candidates.candidates[0]);
+    check(exact_selection.size == 1, "only fixed exact candidate receives bounded namespace exception");
+    exact_selection.consider({"private/unrelated", 1, 2, false, true});
+    exact_selection.consider({spawn, 0, 3, false, true});
+    exact_selection.consider({spawn, 1, 4, true, true});
+    check(exact_selection.size == 1, "marker alone cannot bypass exact token core-bundle and EBX constraints");
+    for (unsigned i = 0; i < 7; ++i) spawn_candidates.consider({spawn, 1, i + 2, false});
+    check(spawn_candidates.matches == 8 && spawn_candidates.size == 4,
+          "ambiguous token matches remain counted while candidate-name output stays capped at four");
     check(scoring::allowed_asset("ecs/scoringmanager/ScoringTelemetryManager"), "scoring manager asset selected");
     check(scoring::allowed_asset("ECS/LegacyScoringManager/Manager"), "known prefix is case insensitive");
     for (std::string_view name : {"ecs/scoringmanager/", "ecs/scoringmanagerx/value", "../ecs/scoringmanager/value",
@@ -153,6 +197,12 @@ int main() {
     check(std::all_of(producer_forward.assets.begin(), producer_forward.assets.begin() + 5, [](const auto& candidate) {
         return scoring::asset_priority(candidate.name) == 0;
     }), "new producer metadata cannot displace exact scoring graph contracts");
+    auto with_spawn = producer_forward;
+    with_spawn.consider({spawn, 1, 3000, false, true});
+    check(with_spawn.size == scoring::asset_limit && with_spawn.omitted &&
+          std::count_if(with_spawn.assets.begin(), with_spawn.assets.end(), [](const auto& candidate) {
+              return candidate.exact_spawn_candidate;
+          }) == 1, "unique spawn candidate displaces filler without expanding the 32 asset budget");
     check(scoring::asset_priority("ECS/SCORINGMANAGER/TRICKSCORINGMANAGER_CLASS__ONSKATEROBSERVERLOCALPLAYERSPAWNED") == 1 &&
           scoring::asset_priority("ecs/scoringmanager/unrelated/trickscoringmanager_class") == 3 &&
           scoring::asset_priority("elsewhere/trickscoringmanager_class") == 4,
@@ -333,6 +383,44 @@ int main() {
     document = parameter_fixture(); document.instances.resize(scoring::declared_member_limit + 1, document.instances[0]);
     check(scoring::inspect_document(document)["declared_parameters"].size() == scoring::declared_member_limit,
           "parameter output cap retained");
+    for (bool parameter : {false, true}) {
+        document = typed_member_fixture(parameter); output = scoring::inspect_document(document);
+        const auto key = parameter ? "declared_parameters" : "declared_members";
+        const auto& member = output[key][0];
+        check(member["type_ref_status"].string() == "DECLARED_TYPE_REFERENCE" &&
+              output["references"][member["type_ref_asset"].get<std::size_t>()]["file_guid"].string() ==
+                  document.imports[0].fileGuid.string() &&
+              output["references"][member["type_ref_type"].get<std::size_t>()]["fixup_guid"].string() ==
+                  document.imports[0].classGuid.string(), "named property or parameter joins exact declared import and serialized type identity");
+        check(output["type_reference_mapping"].string() == "UNVERIFIED" &&
+              output["owner_proof"].string() == "UNVERIFIED" &&
+              output.dump().find("private unrelated string") == std::string::npos,
+              "typed links do not decode unrelated values, runtime representation or ownership");
+        for (unsigned malformed = 0; malformed < 7; ++malformed) {
+            document = typed_member_fixture(parameter);
+            auto& child = *std::get<std::shared_ptr<ebx::Object>>(root(document).fields.back().value.data);
+            if (malformed == 0) document.types[1].name = "UnrelatedType";
+            if (malformed == 1) child.descriptor = 0;
+            if (malformed == 2) child.fields.pop_back();
+            if (malformed == 3) child.fields[1] = child.fields[0];
+            if (malformed == 4) root(document).fields.push_back(root(document).fields.back());
+            if (malformed == 5) child.fields[0].value = ebx::Value{ebx::PointerReference{ebx::PointerKind::external, 99}};
+            if (malformed == 6) document.fields.back().encodedType = encoded(ebx::FieldType::uint32);
+            output = scoring::inspect_document(document);
+            check(output["status"].string() == "INCOMPLETE" &&
+                  output[key][0]["type_ref_status"].string() == "INCOMPLETE" &&
+                  output[key][0]["type_ref_asset"].is_null() && output[key][0]["type_ref_type"].is_null(),
+                  "missing duplicate malformed or mismatched declared type reference remains unjoined");
+        }
+    }
+    document = typed_member_fixture(); document.fixupTypeGuids.clear(); output = scoring::inspect_document(document);
+    const auto type_ref = output["declared_members"][0]["type_ref_type"].get<std::size_t>();
+    check(output["references"][type_ref]["fixup_guid"].is_null() &&
+          output["references"][type_ref]["fixup_status"].string() == "UNAVAILABLE",
+          "absent serialized GUID table does not fabricate a type identity");
+    check(scoring::declaration_targets.back().file_guid == "a623e6bf-3275-11ef-a261-f9f727c65ba1" &&
+          scoring::declaration_targets.back().class_guid == "40c4614e-cae7-11bf-2b04-4504f690dfb8",
+          "local spawn target is the exact captured import without changing namespace or read budgets");
     constexpr scoring::DeclarationTarget zero{"fixture", "00000000-0000-0000-0000-000000000000", "00000000-0000-0000-0000-000000000000"};
     document = fixture(); document.instances[0].exported = true;
     check(scoring::matches_declaration(document, zero), "actual document file and exported class identity resolve");

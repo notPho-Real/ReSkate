@@ -73,6 +73,15 @@ struct Walker {
                 // Never label this as an index into the exported types array.
                 row["serialized_index"] = type->descriptor;
                 row["index_space"] = "UNRESOLVED_SERIALIZED_TYPE_REFERENCE";
+                row["fixup_guid"] = nullptr;
+                row["fixup_status"] = "UNAVAILABLE";
+                const auto slot = static_cast<std::size_t>(type->descriptor);
+                if (slot < document.fixupTypeGuids.size()) {
+                    row["fixup_guid"] = document.fixupTypeGuids[slot].string();
+                    // This joins two serialized declarations, not a runtime
+                    // type/layout or a reflection-table index.
+                    row["fixup_status"] = "SERIALIZED_IDENTITY_ONLY";
+                }
             } else { incomplete = true; return; }
         } else if (std::holds_alternative<ebx::BoxedReference>(value.data)) {
             // cat pouch: opaque boxes may contain graph links; never guess or print their bytes.
@@ -195,6 +204,54 @@ void declared_parameter(const ebx::Document& document, const ebx::Object& object
     row["status"] = valid ? "DECLARED_PARAMETER" : "INCOMPLETE";
     incomplete = incomplete || !valid; parameters.push_back(std::move(row));
 }
+void link_declared_types(const ebx::Document& document, Json& rows, const Json& references, bool& incomplete) {
+    for (auto& row : rows) {
+        row["type_ref_status"] = "UNAVAILABLE";
+        row["type_ref_asset"] = nullptr; row["type_ref_type"] = nullptr;
+        const auto instance = row["instance"].get<std::size_t>();
+        const auto& object = *document.instances[instance].object;
+        const auto& owner = document.types[object.descriptor];
+        std::size_t count{}, field_index{};
+        const ebx::Object* child{};
+        for (const auto& member : object.fields) {
+            if (owner.fieldIndex < 0 || member.descriptor < static_cast<std::size_t>(owner.fieldIndex) ||
+                member.descriptor - static_cast<std::size_t>(owner.fieldIndex) >= owner.fieldCount ||
+                member.descriptor >= document.fields.size()) continue;
+            const auto& field = document.fields[member.descriptor];
+            if (field.name != "TypeRef") continue;
+            ++count; field_index = member.descriptor;
+            const auto* value = std::get_if<std::shared_ptr<ebx::Object>>(&member.value.data);
+            if (field.type() == ebx::FieldType::structure && field.category() == ebx::FieldCategory::none &&
+                field.classRef < document.types.size() && document.types[field.classRef].name == "TypeInfoRef" &&
+                value && *value && (*value)->descriptor == field.classRef) child = value->get();
+        }
+        if (!count) continue;
+        row["type_ref_status"] = "INCOMPLETE";
+        if (count != 1 || !child || child->fields.size() != 2) { incomplete = true; continue; }
+        const auto& type = document.types[child->descriptor];
+        std::array<unsigned, 2> seen{};
+        std::array<std::size_t, 2> indexes{};
+        bool valid = type.fieldIndex >= 0 && type.fieldCount == 2;
+        for (const auto& member : child->fields) {
+            if (member.descriptor >= document.fields.size() || type.fieldIndex < 0 ||
+                member.descriptor < static_cast<std::size_t>(type.fieldIndex) ||
+                member.descriptor - static_cast<std::size_t>(type.fieldIndex) >= type.fieldCount) { valid = false; continue; }
+            const auto& field = document.fields[member.descriptor];
+            const int index = field.name == "Asset" && field.type() == ebx::FieldType::pointer ? 0 :
+                field.name == "TypeInfo" && field.type() == ebx::FieldType::typeRef ? 1 : -1;
+            if (index < 0 || field.category() != ebx::FieldCategory::none) { valid = false; continue; }
+            for (std::size_t r = 0; r < references.size(); ++r) {
+                const auto& ref = references[r];
+                if (ref["instance"].get<std::size_t>() == instance && ref["path"].size() == 2 &&
+                    ref["path"][0]["field"].get<std::size_t>() == field_index &&
+                    ref["field"].get<std::size_t>() == member.descriptor) { ++seen[index]; indexes[index] = r; }
+            }
+        }
+        if (!valid || seen != std::array<unsigned, 2>{1, 1}) { incomplete = true; continue; }
+        row["type_ref_asset"] = indexes[0]; row["type_ref_type"] = indexes[1];
+        row["type_ref_status"] = "DECLARED_TYPE_REFERENCE";
+    }
+}
 }
 bool allowed_asset(std::string_view name) noexcept {
     if (!metadata_name(name) || name.empty() || name.find('\\') != name.npos || name.find("..") != name.npos) return false;
@@ -207,6 +264,20 @@ bool allowed_asset(std::string_view name) noexcept {
         if (same) return true;
     }
     return false;
+}
+bool exact_spawn_name(std::string_view name) noexcept {
+    if (!metadata_name(name) || name.empty() || name.front() == '/' ||
+        name.find('\\') != name.npos || name.find("..") != name.npos) return false;
+    const auto leaf = name.substr(name.find_last_of('/') + 1);
+    return compare_names(leaf, "SkaterObserverLocalPlayerSpawned") == 0;
+}
+void SpawnDeclarationCandidates::consider(AssetCandidate candidate) noexcept {
+    // Only the already indexed core-game EBX manifest, never payload probing.
+    if (candidate.bundle != 1 || candidate.resource || !exact_spawn_name(candidate.name)) return;
+    ++matches;
+    if (size == candidates.size()) return;
+    candidate.exact_spawn_candidate = true;
+    candidates[size++] = candidate;
 }
 unsigned asset_priority(std::string_view name) noexcept {
     if (!allowed_asset(name)) return 4;
@@ -277,9 +348,16 @@ void DeclarationInventory::consider(AssetCandidate candidate) noexcept {
     assets[position] = candidate;
 }
 void AssetSelection::consider(AssetCandidate candidate) noexcept {
-    if (!allowed_asset(candidate.name)) return;
+    const auto exact = [](const AssetCandidate& value) {
+        return value.exact_spawn_candidate && value.bundle == 1 && !value.resource && exact_spawn_name(value.name);
+    };
+    if (!allowed_asset(candidate.name) && !exact(candidate)) return;
     const auto less = [](const AssetCandidate& a, const AssetCandidate& b) {
-        const auto ap = asset_priority(a.name), bp = asset_priority(b.name);
+        const auto priority = [](const AssetCandidate& value) {
+            return value.exact_spawn_candidate && value.bundle == 1 && !value.resource && exact_spawn_name(value.name)
+                ? 1U : asset_priority(value.name);
+        };
+        const auto ap = priority(a), bp = priority(b);
         if (ap != bp) return ap < bp;
         if (a.resource != b.resource) return !a.resource;
         const int compared = compare_names(a.name, b.name);
@@ -371,6 +449,8 @@ Json inspect_document(const ebx::Document& document) {
         else incomplete = true;
     }
     result["references"] = std::move(walker.references);
+    link_declared_types(document, result["declared_members"], result["references"], incomplete);
+    link_declared_types(document, result["declared_parameters"], result["references"], incomplete);
     result["visited"] = walker.visited; result["omitted_boxed_references"] = walker.omitted;
     result["status"] = incomplete || walker.incomplete ? "INCOMPLETE" : "DECLARATIONS_READ";
     return result;
