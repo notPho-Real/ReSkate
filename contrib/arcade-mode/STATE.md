@@ -1,3 +1,30 @@
+## Repeated Manual20/20 and post-grind landing refinement — 2026-10-16
+
+Current source0d10ca850fc41ae39a839068343a529030f47039; runtime still8079/788.
+HIL53 result1792175262921339000 adds17/17 passing repeated Manual chains to
+the3/3 pilot:20/20 total,tenstandard/tencompact commands,exact2→1→2→1,
+continuousfatigue,749–766msgrace,20/20neutral/reset. Native monetary banking
+remains UNVERIFIED; this acceptance is controlled60Hz, not30Hz or repeatedNose.
+The existing native-method matrix now records strict current admission evidence.
+
+Post-grind native-riding probes1792175720346321000:compact1/1 fullchainPASS
+with exact2→2→2 and750msgrace;standard1/1 MISSED_CONDITION after real rail
+recontact (twoentries), no falsemanual promotion. Both finallyneutral/reset.
+Six trajectory-equipped original/+200/+350ms flip-out comparisons are running,
+twoeach; only shift existing command timing to measure rail clearance. No new
+rail, physics changes, synthetic state forcing or repeatability claim yet.
+
+CI38945032179 at2e10278 passed all five gates. Exact metadata inspector
+f9caa1fcf962992f9ab534b6da5b7ea422d31ed99c1a62a9a9a47f6627721254
+ran through the reviewed bounded Proton workflow; output
+artifacts/score-assets-2e10278-1792175858618737000.ndjson,INSPECTOR_RETURNED,
+gameprocesspresenttrue. Six prioritized declarations now captured within the
+existing32asset bound; owner/producer remainUNVERIFIED. Runtime unchanged.
+CI38947777388 validates0d10ca8 (menu+reasondiagnostics); not deployed. Further
+static mapping diagnostic is source-only work: existing binder guard metadata/
+alignment/frame assumptions are not generic binder proofs. Never relax them or
+claim owner authority from the diagnostic. Root retains sole hardware ownership.
+
 ## Controlled baseline recovery and HIL53 — 2026-10-16
 
 Runtime remains verified8079c14 / DLL788cdba0; game and original Stadium rail

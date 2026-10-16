@@ -1590,10 +1590,10 @@
       "arcade_input": "Up then Down",
       "semantic_action": "Manual",
       "native_method": "Synthetic native right-stick partial hold; actual contact/activity observation",
-      "method_source": "arcade_manual_input.h; arcade_native_events.h; STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_pilot_6, landing_repair_repeat_17",
+      "method_source": "arcade_manual_input.h; arcade_native_events.h; STATE.md HIL24 result1792027038994591000; grind-exit-results.json:landing_repair_pilot_6, landing_repair_repeat_17; grind-exit-results.json:manual_identity_controlled60hz_8079_7,repeated_manual_identity_8079_17",
       "native_id": null,
       "classification": "VERIFIED ON OUR DECK",
-      "hil_status": "INTEGRATED: HIL24 native Manual pose and Up/Down correction10/10 in stationary context. On7c7, Grind -> Ollie Out -> Manual -> Ollie20/20 with exact air IDs, continuous lifecycle/fatigue,449-464ms grace, neutral/reset. Scoped chain acceptance; RT handoff and monetary banking unverified.",
+      "hil_status": "INTEGRATED: HIL24 native Manual pose and Up/Down correction10/10 in stationary context. On7c7, Grind -> Ollie Out -> Manual -> Ollie20/20 with exact air IDs, continuous lifecycle/fatigue,449-464ms grace, neutral/reset. Scoped chain acceptance; RT handoff and monetary banking unverified. Current8079 strict history/contact admission:20/20 repeated Manual chains across ten standard/ten compact commands, exact native2\u21921\u21922\u21921, preserved fatigue,749\u2013766ms grace,20/20neutral/reset. Monetary and30Hz remain unverified.",
       "review_pending": false,
       "implementation_plumbing": {
         "status": "NATIVE OBSERVER-GUARDED DIRECTIONAL COMMAND INTEGRATED; SCOPED DECK ACCEPTANCE RECORDED",
@@ -1611,7 +1611,7 @@
           "native-score-known-failures"
         ],
         "finding": "Directional native pose/correction and scoped native exit chains are already verified; preserve accepted behavior. Combined contexts and exact requested exit identities remain separate.",
-        "next": "Preserve scoped acceptance; extend moving composition and verify requested native exit identity. RT handoff and monetary scoring remain separate open requirements.",
+        "next": "Preserve20/20 strict repeated-Manual admission; finish post-grind landing composition and native monetary ownership. Repeated Nose and30Hz remain separate.",
         "new_deck_trials": 0
       },
       "maturity": "INTEGRATED"
@@ -2243,14 +2243,14 @@
     {
       "id": "native-score-events",
       "requested_action": "Native occurrence, score, line completion and bail evidence",
-      "implementation_status": "Bounded source boundary rejects missing ownership, occurrence, semantics, generations, ordering, capture loss and conflicting duplicates.21recorded trials/57native captures replay with zero monetary authority. dd8078e adds stable exact type-schema snapshots, tested offline; installed8ab stillowner_verified=false.",
+      "implementation_status": "Runtime8079 typed line/sequence schema and binder counters observed; fresh boundedHIL53 snapshots COMPLETE butowner_verified=false. Native binder routes2/4 fail conservative layout diagnostics; no money authorized. Sourcec0f868a adds bounded rejection reasons,CI/native pending.",
       "source_ids": [
         "native-line-events",
         "score-hud",
         "held-flip-and-composite-record"
       ],
       "remaining": "Prove local payload ownership, native category/occurrence identity and duplicate-route handling before monetary integration.",
-      "next": "Read bounded exact line/sequence schema on verified5f6f233, then resolve typed owner/producer relationship. No native money from UI labels, matching timing or capture serials.",
+      "next": "Use CI-tested producer asset inspector and bounded binder representation diagnostics; establish independent local owner and native event semantics before monetary authority.",
       "new_deck_trials": 23
     },
     {
@@ -2286,7 +2286,7 @@
         "native-bail-scoped"
       ],
       "remaining": "Native ownership, occurrence-to-action mapping and raw-point semantics remain unverified; no new Deck bank/loss acceptance.",
-      "next": "Resume HIL41 after supported recovery, then measure the missing native proof without changing scoring settings.",
+      "next": "Supported recovery complete; current8079 session active. Resolve native score producer/owner proof before authoritative bank or bail-loss operations.",
       "new_deck_trials": 0
     },
     {
@@ -2400,16 +2400,16 @@
     {
       "id": "chain-C",
       "requested_action": "Kickflip -> Manual -> Ollie -> Flip -> Land",
-      "implementation_status": "Native three-hop subset2\u21921\u21922 with intended manual: corrected timing20/20 across ten standard/ten compact commands, retained fatigue/final750\u2013752msgrace, neutral/reset. Initial3latecommand chains0/3; earliercommand1/3 are preserved. Monetary and midair late-flip acceptance unverified.",
+      "implementation_status": "Native three-hop subset2\u21921\u21922 with intended manual: corrected timing20/20 across ten standard/ten compact commands, retained fatigue/final750\u2013752msgrace, neutral/reset. Initial3latecommand chains0/3; earliercommand1/3 are preserved. Monetary and midair late-flip acceptance unverified. Strict8079 regression passes first-manual pilot and20/20 repeated-manual chains at60Hz with exact2\u21921\u21922\u21921, persistent fatigue,749\u2013766ms grace, neutral/reset.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
-      "remaining": "Monetary authority, exact midair late-flip equivalent and regression after manual-identity correction remain open.",
-      "next": "Validate stricter manual admission against intended manuals and repeated same-type manuals; do not accept false one-wheel landing links.",
+      "remaining": "Native monetary authority and exact midair late-flip equivalent;30Hz uncontrolled comparison failed and is not included in60Hz acceptance.",
+      "next": "Preserve20/20 strict native admission; integrate post-grind manual context and native-owned monetary settlement.",
       "new_deck_trials": 29,
-      "evidence": "grind-exit-results.json:chain_c_pilot_3;chain_c_earlier_command_3;chain_c_short_commands_3;chain_c_short_commands_repeat_17;repeated_manual_identity_3"
+      "evidence": "grind-exit-results.json:chain_c_pilot_3;chain_c_earlier_command_3;chain_c_short_commands_3;chain_c_short_commands_repeat_17;repeated_manual_identity_3;manual_identity_controlled60hz_8079_7;repeated_manual_identity_8079_17"
     },
     {
       "id": "chain-D",
@@ -2428,14 +2428,14 @@
     {
       "id": "chain-E",
       "requested_action": "Grind -> Flip Out -> Manual",
-      "implementation_status": "Native subset implemented and observed. Regular five-action chain19/20 attempts on7c7 (one incomplete bail trace); later08d Nose/Nollie chain18/20 complete chains, two failures preserved. All actual native rail and air/manual observations; no full acceptance claim.",
+      "implementation_status": "Native subset implemented and observed. Regular five-action chain19/20 attempts on7c7 (one incomplete bail trace); later08d Nose/Nollie chain18/20 complete chains, two failures preserved. All actual native rail and air/manual observations; no full acceptance claim. Current8079 strict gate rejects old early manual hold after rail landing bounce. Event-driven native-riding compact probe1/1 passes; standard probe1/1 misses riding condition following rail recontact. Both neutral/reset; no repeatability promotion.",
       "source_ids": [
         "native-line-events",
         "grind-exit",
         "community-full-translator"
       ],
       "remaining": "Resolve final landing bail and slower-approach rail recontact; establish supported combined repeatability and monetary banking.",
-      "next": "Use fixed rail and measured approach/exit evidence; preserve failures and exact native identities.",
+      "next": "Improve measured rail clearance before native-riding manual request; retain exact2\u21922\u21922 and750ms grace. No artificial physics.",
       "new_deck_trials": 0,
       "evidence": "grind-exit-results.json"
     },
