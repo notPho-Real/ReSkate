@@ -79,6 +79,20 @@ def document(trials):
     return {"schema": 1, "source_commit": "a" * 40, "dll_sha256": "b" * 64, "trials": trials}
 
 
+def runtime_document():
+    # Policy-injected synthetic trace only; no shipped binary/native outcome proof.
+    candidate = trial("G")
+    for event, ms in zip(candidate['events'], (0, 500, 600, 700, 1600, 1601, 1602, 1603)):
+        event['time_ms'] = ms
+    candidate['events'][0]['link_deadline_ms'] = 750
+    for event in candidate['events'][1:4]:
+        event['link_deadline_ms'] = 1600
+    value = document([candidate])
+    value.update(schema=2, combo_policy=dict(id='arcade-runtime-750-1100-v1',
+                 source_commit=value['source_commit'], dll_sha256=value['dll_sha256']))
+    return value
+
+
 class ChainReportTests(unittest.TestCase):
     def assert_fails(self, candidate, reason):
         result = report.grade_trial(candidate)
@@ -215,6 +229,52 @@ class ChainReportTests(unittest.TestCase):
         candidate = trial("G")
         candidate["events"][0]["link_deadline_ms"] = 100000
         self.assert_fails(candidate, "450 ms bound")
+
+    def test_explicit_runtime_policy_resolves_synthetic_default_policy_mismatch(self):
+        value = runtime_document()
+        self.assert_fails(value['trials'][0], '450 ms bound')
+        result = report.evaluate(value)
+        self.assertTrue(result['trials'][0]['pass'])
+        self.assertFalse(result['all_chains_repeatable'])
+        self.assertEqual(result['live_adapter'], 'pending')
+        self.assertEqual(result['combo_policy']['verification'], 'declared-only')
+        self.assertEqual(result['combo_policy']['source_commit'], value['source_commit'])
+        self.assertEqual(result['combo_policy']['dll_sha256'], value['dll_sha256'])
+        self.assertEqual(result['combo_policy']['landing_grace_ms'], 750)
+        self.assertEqual(result['combo_policy']['revert_grace_ms'], 1100)
+        legacy = report.evaluate(document([trial('G')]))
+        self.assertTrue(legacy['trials'][0]['pass'])
+        self.assertEqual(legacy['combo_policy']['landing_grace_ms'], 450)
+        self.assertEqual(legacy['combo_policy']['revert_grace_ms'], 450)
+
+    def test_runtime_policy_preserves_abuse_and_strict_deadline_checks(self):
+        for failure in ('landing_bound', 'revert_bound', 'late_first', 'extended', 'multiplier', 'score'):
+            value = runtime_document()
+            events = value['trials'][0]['events']
+            if failure == 'landing_bound': events[0]['link_deadline_ms'] = 751
+            elif failure == 'revert_bound':
+                for event in events[1:4]: event['link_deadline_ms'] = 1601
+            elif failure == 'late_first': events[0]['link_deadline_ms'] = 500
+            elif failure == 'extended': events[2]['link_deadline_ms'] += 1
+            elif failure == 'multiplier': events[2]['multiplier'] += 1
+            else: events[2]['unbanked_score'] += 1
+            with self.subTest(failure=failure):
+                self.assertFalse(report.evaluate(value)['trials'][0]['pass'])
+
+    def test_policy_requires_explicit_version_and_matching_build_pins(self):
+        for failure in ('legacy', 'missing', 'unknown', 'source', 'dll', 'arbitrary_limit', 'wrong_type'):
+            value = runtime_document()
+            if failure == 'legacy': value['schema'] = 1
+            elif failure == 'missing': del value['combo_policy']
+            elif failure == 'unknown': value['combo_policy']['id'] = 'unreviewed-v9'
+            elif failure == 'source': value['combo_policy']['source_commit'] = 'c' * 40
+            elif failure == 'dll': value['combo_policy']['dll_sha256'] = 'c' * 64
+            elif failure == 'arbitrary_limit': value['combo_policy']['revert_grace_ms'] = 100000
+            else: value['combo_policy']['id'] = []
+            with self.subTest(failure=failure), self.assertRaises(ValueError):
+                report.evaluate(value)
+        for policy in ('unknown', None, {}, True):
+            self.assertFalse(report.grade_trial(trial('G'), policy_id=policy)['pass'])
 
     def test_bail_reset_and_fresh_combo_are_required(self):
         for index, key, value, reason in ((2, "banked_delta", 1, "lose unbanked"),

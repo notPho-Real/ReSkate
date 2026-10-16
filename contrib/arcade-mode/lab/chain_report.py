@@ -13,8 +13,13 @@ events carry difficulty. Reverts/landing in G carry link_deadline_ms and multipl
 Banking requires a native-confirmed land or grounded_exit after the latest active
 air/grind/manual mechanic. grounded_exit means independently observed riding on
 the ground after leaving a balance mode, not merely release of its command.
-G uses the pinned default 450 ms maximum link grace; its revert adds no score or
-multiplier and must occur before the original landing deadline.
+Schema 1 keeps the model-default 450 ms landing/revert limits. Schema 2 requires
+combo_policy={id, source_commit, dll_sha256}, matching the enclosing build pins.
+Only named, versioned policies below are supported; arbitrary limits are rejected.
+The runtime policy follows native_combo_tuning() in arcade_native_events.h:
+750 ms landing / 1100 ms revert. These are declared policies, not verification
+that the supplied binary implements them. G adds no score or multiplier and its
+first revert must occur before the original landing deadline.
 Bank events carry banked_delta; bail events carry banked_delta=0 and hud_visible=false.
 Neutralized events require input_neutral=true; reset events require riding=true,
 hud_visible=false. Bank/bail/reset fatigue and unbanked_score must be zero.
@@ -29,7 +34,8 @@ from pathlib import Path
 
 CHAINS = tuple("ABCDEFGH")
 MIN_TRIALS = 20
-MAX_LINK_GRACE_MS = 450
+DEFAULT_POLICY = "model-default-450-v1"
+COMBO_POLICIES = {DEFAULT_POLICY: (450, 450), "arcade-runtime-750-1100-v1": (750, 1100)}
 ACTIVE_MECHANICS = frozenset(("ollie", "flip", "grind", "manual"))
 NATIVE = ACTIVE_MECHANICS | {"revert", "land", "grounded_exit", "bail"}
 KINDS = NATIVE | {"bank", "neutralized", "reset", "wait"}
@@ -156,9 +162,11 @@ def reset_after(events, terminal):
     return reset
 
 
-def grade_trial(trial):
+def grade_trial(trial, *, policy_id=DEFAULT_POLICY):
     """Return a failure reason, never turn absent or malformed evidence into PASS."""
     try:
+        require(isinstance(policy_id, str) and policy_id in COMBO_POLICIES, "unsupported combo policy")
+        landing_limit, revert_limit = COMBO_POLICIES[policy_id]
         events = validate_events(trial)
         chain = trial["chain"]
         if chain == "H":
@@ -193,9 +201,11 @@ def grade_trial(trial):
                             number(event.get("multiplier")), "missing revert grace/multiplier observation")
                 require(first["time_ms"] < land["link_deadline_ms"],
                         "first revert occurred after original landing grace expired")
-                require(land["link_deadline_ms"] <= land["time_ms"] + MAX_LINK_GRACE_MS and
-                        first["link_deadline_ms"] <= first["time_ms"] + MAX_LINK_GRACE_MS,
-                        "landing or renewed revert grace exceeds pinned 450 ms bound")
+                require(land["link_deadline_ms"] <= land["time_ms"] + landing_limit and
+                        first["link_deadline_ms"] <= first["time_ms"] + revert_limit,
+                        "landing or renewed revert grace exceeds " +
+                        ("pinned 450 ms bound" if policy_id == DEFAULT_POLICY else
+                         f"declared {landing_limit}/{revert_limit} ms policy bounds"))
                 require(all(e["link_deadline_ms"] == first["link_deadline_ms"] and
                             e["multiplier"] == land["multiplier"] and
                             e["unbanked_score"] == land["unbanked_score"] for e in reverts),
@@ -220,10 +230,21 @@ def grade_trial(trial):
 
 def evaluate(document):
     require(isinstance(document, dict) and type(document.get("schema")) is int and
-            document["schema"] == 1, "unsupported report schema")
+            document["schema"] in (1, 2), "unsupported report schema")
     for field, size in (("source_commit", 40), ("dll_sha256", 64)):
         require(isinstance(document.get(field), str) and
                 re.fullmatch(r"[0-9a-f]{%d}" % size, document[field]), "missing pinned build identity")
+    policy_id = DEFAULT_POLICY
+    if document["schema"] == 1:
+        require("combo_policy" not in document, "explicit combo policy requires report schema 2")
+    else:
+        policy = document.get("combo_policy")
+        require(isinstance(policy, dict) and set(policy) == {"id", "source_commit", "dll_sha256"},
+                "missing or invalid pinned combo policy")
+        policy_id = policy["id"]
+        require(isinstance(policy_id, str) and policy_id in COMBO_POLICIES, "unsupported combo policy")
+        require(all(policy[k] == document[k] for k in ("source_commit", "dll_sha256")),
+                "combo policy build pins do not match evidence")
     trials = document.get("trials")
     require(isinstance(trials, list) and len(trials) <= 10000, "invalid trial collection")
     results, seen = [], set()
@@ -232,7 +253,7 @@ def evaluate(document):
         pair = (trial.get("session_id"), trial.get("trial_id"))
         require(all(isinstance(v, str) for v in pair) and pair not in seen, "duplicate or missing trial identity")
         seen.add(pair)
-        result = grade_trial(trial)
+        result = grade_trial(trial, policy_id=policy_id)
         results.append({"session_id": pair[0], "trial_id": pair[1], "chain": trial.get("chain"),
                         "context_id": trial.get("context_id"), **result})
     chains = {}
@@ -243,7 +264,11 @@ def evaluate(document):
         chains[chain] = {"trials": len(rows), "passed": passed, "failed": len(rows) - passed,
                          "contexts": contexts,
                          "repeatable": passed >= MIN_TRIALS and passed == len(rows) and contexts >= 2}
-    return {"schema": 1, "source_commit": document["source_commit"], "dll_sha256": document["dll_sha256"],
+    return {"schema": document["schema"], "source_commit": document["source_commit"], "dll_sha256": document["dll_sha256"],
+            "combo_policy": {"id": policy_id, "source_commit": document["source_commit"],
+                             "dll_sha256": document["dll_sha256"], "verification": "declared-only",
+                             "landing_grace_ms": COMBO_POLICIES[policy_id][0],
+                             "revert_grace_ms": COMBO_POLICIES[policy_id][1]},
             "scope": "offline-semantic-evidence-only", "live_adapter": "pending",
             "all_chains_repeatable": all(c["repeatable"] for c in chains.values()) and
                                      all(r["pass"] for r in results),
