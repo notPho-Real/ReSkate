@@ -72,6 +72,7 @@ std::atomic<std::uint64_t> air_flip_ready_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
 std::atomic<float> push_speed{};
 std::atomic<std::uint64_t> motion_capture_until{};
+std::atomic<std::uint64_t> movement_eligible_until{};
 bool native_board_velocity(std::array<float, 3>& velocity) noexcept;
 std::atomic<bool> authored_mirror_x{};
 ArcadeInput arcade_input;
@@ -639,6 +640,8 @@ void set_enabled(bool value, bool persist) noexcept {
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
+        movement_eligible_until.store(0, std::memory_order_release);
+        set_arcade_push_intent(false);
         board_eligible_until.store(0, std::memory_order_release);
         offboard_valid_until.store(0, std::memory_order_release);
         manual_eligible_until.store(0, std::memory_order_release);
@@ -766,6 +769,12 @@ void on_client_tick() noexcept {
             combo_session.model().state().balance_kind != BalanceKind::none);
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
+        const auto contacts = native.words[1] & 0xc000u;
+        const bool drive_valid = gameplay && watch.valid && native.valid &&
+            (native.state == 100 || native.state == 103) && native.crouch_mode <= 2 &&
+            combo_session.model().state().balance_kind == BalanceKind::none &&
+            (contacts == 0xc000u || ((native.words[0] & 0x40u) && (contacts == 0x4000u || contacts == 0x8000u)));
+        movement_eligible_until.store(drive_valid ? now + 150 : 0, std::memory_order_release);
         const bool board_safe = gameplay && watch.valid && native_board_toggle_safe(native);
         offboard_valid_until.store(gameplay && watch.valid && native.valid &&
             native.state == game::build::v20260929::no_bail::offboard_physics_state ? now + 150 : 0,
@@ -836,6 +845,9 @@ void on_client_tick() noexcept {
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
+        movement_eligible_until.store(0, std::memory_order_release);
+        motion_capture_until.store(0, std::memory_order_release);
+        set_arcade_push_intent(false);
         board_eligible_until.store(0, std::memory_order_release);
         offboard_valid_until.store(0, std::memory_order_release);
     }
@@ -927,6 +939,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
         const bool crouched = pose == SkatePose::riding && (physical_buttons & ClassicGesture::a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
+        const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
+        const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard &&
+            drive_until >= now && drive_until - now <= 150 && result.movement_intent &&
+            pose == SkatePose::riding && (!physical_buttons || (physical_buttons == ClassicGesture::a && crouched)) &&
+            physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
+            !result.suppress_reverse && (!result.command_busy || crouched);
+        if (user == 0) set_arcade_push_intent(drive_safe, crouched);
         const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,
             pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3);
         // BoardChord has already consumed a valid pair and emitted native Y.

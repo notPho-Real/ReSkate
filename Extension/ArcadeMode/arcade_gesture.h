@@ -43,6 +43,7 @@ public:
         bool authored_playback{};
         bool command_busy{};
         bool suppress_reverse{};
+        bool movement_intent{};
     };
     void cancel() noexcept {
         active_ = NativeTrick::none;
@@ -194,6 +195,7 @@ public:
             (!authored && (rx < -8689 || rx > 8689 || ry < -8689 || ry > 8689));
         if (pushes_[user].poll(now, lx, ly, speed, game_input, may_push && !conflict))
             out.buttons |= NativeGesture::x; // Internal native push; physical X remains a flip request.
+        out.movement_intent = pushes_[user].movement_intent();
         out.command_busy = busy || board.pulse;
         return out;
     }

@@ -1,3 +1,27 @@
+## Bounded ground drive — source pilot pending
+
+Installed9826347 / DLLd12476b9 passed all five CI gates and raw/package byte
+comparison; gamefbce74d5 and stock5512a15e are unchanged, updates off. HIL63
+2bf5b6178b159ec111d3b749d1478f51f6d2ac25abdbb33e3f228d233e885252;
+maintenance64 d7040eef3793a57a7b9af3d5580e5a07e2d94e138b8f151fb7a5c7b1e1ca4797.
+Workers are unchanged. Native calibration1792269481315070000 lands100 with
+Ollie1, no observation gaps. Ten-second forward1792269503023144000 confirms
+repeated native pushing and rising speed, then collides around x-52/z40.8.
+It is not sustained-speed acceptance. Existing Trainer CSV is preserved under
+artifacts/feel-baseline-collision; its position-derived curve approaches7m/s
+at2s and9m/s at3s. The alternate x-71/z52 teleport had no floor and was rejected;
+validated fixture reset restored grounded504 at[-39.406,46.950,52.616].
+
+The new adapter reuses Trainer push-speed ownership, native timestep and body
+writer. It budgets16.88m/s2 toward11.30m/s standing,28.66 toward15.33 crouched,
+counts native acceleration, and adds a uniform horizontal velocity increment.
+Native vertical/relative body motion is preserved. Fresh movement intent and
+validated local ground/contact are required; braking, editor, teleport, stalls,
+impact-sized losses, hitches, invalid ownership and multiplayer suppress it.
+There is no target-field write, velocity multiplier, transform write or new
+hook/offset. OFF releases immediately, with150ms stale-publication expiry.
+This is source-tested behavior; actual movement curve acceptance is PENDING.
+
 ## Control timing fidelity — source update pending hardware
 
 Ground directional pairs now use220ms, airborne pairs400ms, and airborne

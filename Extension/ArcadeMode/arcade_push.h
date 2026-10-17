@@ -18,6 +18,7 @@ constexpr bool native_push_allowed(bool valid, unsigned state, unsigned mode,
 class AutomaticPush {
 public:
     void reset() noexcept { *this = {}; }
+    bool movement_intent() const noexcept { return armed_ && movement_; }
     bool poll(std::uint64_t now, std::int16_t lx, std::int16_t ly, float speed,
               bool gameplay, bool permitted) noexcept {
         if (!gameplay || (sampled_ && now < previous_time_)) { reset(); return false; }
@@ -25,9 +26,9 @@ public:
         sampled_ = true;
         const bool neutral = std::abs(static_cast<int>(lx)) < 9000 && std::abs(static_cast<int>(ly)) < 9000;
         // Release movement after a menu/toggle boundary before starting again.
-        if (neutral) { armed_ = true; return false; }
-        const bool movement = ly >= 13000 || (std::abs(static_cast<int>(lx)) >= 13000 && ly > -9000);
-        if (!armed_ || !movement) {
+        if (neutral) { armed_ = true; movement_ = false; return false; }
+        movement_ = ly >= 13000 || (std::abs(static_cast<int>(lx)) >= 13000 && ly > -9000);
+        if (!armed_ || !movement_) {
             return false;
         }
         // Release ownership during exclusions. Native held pushing owns its
@@ -39,7 +40,7 @@ public:
         return true;
     }
 private:
-    bool armed_{}, sampled_{};
+    bool armed_{}, sampled_{}, movement_{};
     std::uint64_t previous_time_{};
 };
 }

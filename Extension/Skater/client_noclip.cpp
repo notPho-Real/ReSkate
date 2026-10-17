@@ -7,6 +7,9 @@
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/offboard_flight.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
+#include "Engine/Game/Multiplayer/session_tools.h"
+#include "Extension/ArcadeMode/arcade_movement.h"
 #include "free_flight.h"
 #include <cmath>
 
@@ -275,19 +278,32 @@ constexpr int held_steps = 36;       // a push flagged this long is held (a tap 
 constexpr int hold_steps = 360;      // how long after a push the game holds its speed
 struct PushSpeed {
     std::atomic<float> factor{1}, stock{9.25f}, cruise{};
-    std::uintptr_t client{}, entity{};
+    std::atomic<std::uintptr_t> client{}, entity{};
     std::atomic<ULONGLONG> expires{};
+    std::atomic<ULONGLONG> arcade_expires{};
+    std::atomic<bool> arcade_crouched{};
+    std::atomic<std::uint64_t> arcade_epoch{};
     // Physics thread only.
     int pushing{}, since_push{hold_steps};
     bool carried{}; // a held push is being carried past the game's last step
+    arcade_mode::GroundDrive arcade_drive;
+    NoBailSkater arcade_owner{};
+    std::uint64_t drive_epoch{};
 };
 PushSpeed& push_speed() { static auto* value = new PushSpeed; return *value; }
 void trainer_push_speed(std::uintptr_t core) noexcept {
     auto& p = push_speed();
+    const auto now = GetTickCount64();
+    const auto arcade_until = p.arcade_expires.load(std::memory_order_acquire);
+    const bool arcade = arcade_until >= now && arcade_until - now <= 150 && !multiplayer_session_active();
     const float factor = p.factor.load(std::memory_order_relaxed), cruise = p.cruise.load(std::memory_order_relaxed);
-    if ((factor == 1 && cruise <= 0) || GetTickCount64() >= p.expires.load(std::memory_order_acquire)) return;
+    if ((!arcade && factor == 1 && cruise <= 0) || now >= p.expires.load(std::memory_order_acquire)) {
+        return;
+    }
     const auto watch = watched_physics_state();
-    if (!watch.valid || watch.state != 100) return; // riding the ground
+    if (!watch.valid || (watch.state != 100 && !(arcade && watch.state == 103))) {
+        return;
+    }
     SourceLastError error;
     auto& state = source_state();
     if (!state.initialized.load(std::memory_order_acquire) || state.busy.test_and_set(std::memory_order_acquire)) return;
@@ -300,6 +316,23 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         // What the game's brake code tests: a brake held (bit 2) or one squeezed by some amount (bit 1, +0x1880).
         const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 && std::abs(reader.value<float>(bodies.context, 0x1880)) > 0.05f);
+        bool arcade_safe{};
+        if (arcade) {
+            const auto epoch = p.arcade_epoch.load(std::memory_order_relaxed);
+            if (epoch != p.drive_epoch) { p.arcade_drive.reset(); p.drive_epoch = epoch; }
+            namespace native = game::build::v20260929::arcade_native_probe;
+            const auto contacts = reader.value<std::uint32_t>(bodies.context, native::request_words + 4) & 0xc000u;
+            const auto physics = reader.value<std::uint32_t>(bodies.context, native::selected_state);
+            const auto mode = reader.value<std::uint32_t>(bodies.rig_wrapper, native::crouch_mode);
+            NoBailSkater owner{};
+            arcade_safe = !braking && !state.trial.debug.park_editor && mode <= 2 &&
+                (physics == 100 || physics == 103) && !bodies.wipeout &&
+                (contacts == 0xc000u || ((requests & 0x40u) && (contacts == 0x4000u || contacts == 0x8000u))) &&
+                reader.value<std::uint8_t>(p.entity, 0x7e0) == 0 && no_bail_skater(owner) &&
+                owner.base == state.trial.base && owner.entity == p.entity && owner.core == core &&
+                owner.context == bodies.context && owner.rig == bodies.rig_wrapper;
+            if (owner != p.arcade_owner) { p.arcade_drive.reset(); p.arcade_owner = owner; }
+        }
         std::array<std::array<float, 3>, 32> velocities{};
         std::array<std::uint32_t, 32> flags{};
         const auto count = std::min<std::size_t>(bodies.parts.size(), velocities.size());
@@ -308,6 +341,22 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             flags[i] = reader.value<std::uint32_t>(bodies.parts[i], 0x60);
         }
         reader.verify();
+        if (arcade) {
+            if (!arcade_safe) { p.arcade_drive.reset(); return; }
+            const float change = p.arcade_drive.step(bodies.seconds, bodies.root, velocities[0],
+                p.arcade_crouched.load(std::memory_order_relaxed));
+            const float speed = std::hypot(velocities[0][0], velocities[0][2]);
+            if (!(change > .0001f) || !(speed >= .5f)) return;
+            const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
+            // Uniform bounded addition preserves relative body motion. No
+            // transform, vertical component, spin or contact flag is changed.
+            for (std::size_t i = 0; i < count; ++i) {
+                velocities[i][0] += dx; velocities[i][2] += dz;
+                body_write(bodies.parts[i] + 0x70, velocities[i]);
+                body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
+            }
+            return;
+        }
         if (requests & 0x40u) { // the push request the game's own push code tests
             ++p.pushing;
             p.since_push = 0;
@@ -342,7 +391,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             body_write(bodies.parts[i] + 0x70, velocities[i]);
             body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
         }
-    } catch (...) {}
+    } catch (...) { p.arcade_drive.reset(); }
 }
 void noclip_physics_update(std::uintptr_t core) {
     const auto original = source_state().velocity_update_original.load(std::memory_order_acquire);
@@ -474,6 +523,13 @@ void set_push_speed(std::uintptr_t client, std::uintptr_t entity, float factor, 
     p.stock.store(stock > 1 && stock < 100 ? stock : 9.25f, std::memory_order_relaxed);
     p.factor.store(factor > 0.02f && factor <= 50 ? factor : 1.0f, std::memory_order_relaxed);
     p.expires.store(GetTickCount64() + 500, std::memory_order_release);
+}
+void set_arcade_push_intent(bool active, bool crouched) noexcept {
+    auto& p = push_speed();
+    const auto now = GetTickCount64(), previous = p.arcade_expires.load(std::memory_order_relaxed);
+    if ((!active && previous) || (active && previous < now)) p.arcade_epoch.fetch_add(1, std::memory_order_relaxed);
+    p.arcade_crouched.store(crouched, std::memory_order_relaxed);
+    p.arcade_expires.store(active ? now + 150 : 0, std::memory_order_release);
 }
 JumpScaleResult take_jump_scale_result() noexcept {
     auto& j = jump_scale();

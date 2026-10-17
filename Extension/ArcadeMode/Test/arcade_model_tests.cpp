@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_model.h"
+#include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_combo_session.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include "Extension/ArcadeMode/arcade_balance_input.h"
@@ -35,6 +36,39 @@ int run_arcade_playback_tests();
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+    for (const float dt : {1.0f / 60, 1.0f / 30}) {
+        for (const bool crouched : {false, true}) {
+            using dingosdk::arcade_mode::GroundDrive;
+            GroundDrive drive;
+            float speed = 1, position = 0;
+            check(drive.step(dt, {0,0,0}, {0,0,speed}, crouched) == 0,
+                "ground drive requires a fresh native motion baseline");
+            const float acceleration = crouched ? GroundDrive::crouched_acceleration : GroundDrive::standing_acceleration;
+            const float limit = crouched ? GroundDrive::crouched_speed : GroundDrive::standing_speed;
+            for (unsigned i = 0; i < 120; ++i) {
+                position += speed * dt;
+                const float previous = speed;
+                const float native = speed < 9.1f ? std::min(9.1f, speed + .2f) : speed - .15f;
+                speed = native + drive.step(dt, {0,0,position}, {0,0,native}, crouched);
+                check(std::abs(speed - std::min(limit, previous + acceleration * dt)) < .001f,
+                    "acceleration budget counts native push gain and bounds held speed at30/60Hz");
+            }
+            check(std::abs(speed - limit) < .001f, "native held-push target cannot impose its lower cap on the adapter");
+            check(drive.step(dt, {0,0,position}, {0,0,1}, crouched) == 0,
+                "collision-sized native deceleration cannot be replenished");
+            drive.reset();
+            check(drive.step(dt, {0,0,0}, {0,0,0}, crouched) == 0,
+                "stationary ownership cannot manufacture motion without a native push");
+            drive.step(dt, {0,0,0}, {0,0,20}, crouched);
+            check(drive.step(dt, {0,0,20*dt}, {0,0,20}, crouched) == 0,
+                "faster native downhill momentum is never clamped to the pushing threshold");
+            check(drive.step(.1f, {0,0,1}, {0,0,3}, crouched) == 0,
+                "hitches cannot accumulate a large catch-up impulse");
+            drive.step(dt, {0,0,0}, {0,0,3}, crouched);
+            check(drive.step(dt, {0,0,100}, {0,0,3}, crouched) == 0,
+                "teleports invalidate the previous motion budget");
+        }
+    }
     {
         using namespace dingosdk::arcade_mode;
         BalanceControl input;

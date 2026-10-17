@@ -1,0 +1,55 @@
+#pragma once
+#include <algorithm>
+#include <array>
+#include <cmath>
+
+namespace dingosdk::arcade_mode {
+// Nominal mid-stat ground kick response, in SI units. This supplies a bounded
+// acceleration budget through the existing Trainer body writer. Native motion,
+// steering, vertical velocity and collisions remain authoritative.
+class GroundDrive {
+public:
+    static constexpr float standing_speed = 11.30f, standing_acceleration = 16.88f;
+    static constexpr float crouched_speed = 15.33f, crouched_acceleration = 28.66f;
+    void reset() noexcept { *this = {}; }
+    float step(float dt, const std::array<float, 3>& position,
+               const std::array<float, 3>& velocity, bool crouched) noexcept {
+        if (!std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
+        for (unsigned i = 0; i < 3; ++i)
+            if (!std::isfinite(position[i]) || std::abs(position[i]) > 1000000 ||
+                !std::isfinite(velocity[i]) || std::abs(velocity[i]) >= 1000) { reset(); return 0; }
+        const float speed = std::hypot(velocity[0], velocity[2]);
+        if (speed < .5f) { reset(); return 0; } // Native push must start actual movement.
+        float change{};
+        if (primed_) {
+            const float dx = position[0] - position_[0], dz = position[2] - position_[2];
+            travel_time_ += dt; expected_travel_ += speed * dt;
+            const float travel = std::hypot(dx, dz);
+            const bool teleported = travel > std::max(1.0f, expected_travel_ * 4);
+            const bool stalled = travel_time_ >= .1f && travel < expected_travel_ * .2f;
+            const bool impact = speed < previous_speed_ - 18 * dt;
+            const bool reversed = velocity[0] * velocity_[0] + velocity[2] * velocity_[2] < 0;
+            if (teleported || stalled || impact || reversed) { reset(); return 0; }
+            if (travel_time_ >= .1f) {
+                position_ = position; travel_time_ = expected_travel_ = 0;
+            }
+            const float acceleration = crouched ? crouched_acceleration : standing_acceleration;
+            const float limit = crouched ? crouched_speed : standing_speed;
+            // Count acceleration already supplied by native pushing. Compensate
+            // only bounded ground steering drag, never a collision-sized loss.
+            const bool flat = std::abs(velocity[1]) < .3f && std::abs(position[1] - position_[1]) < .025f;
+            const float budget = acceleration * dt - std::max(0.0f, speed - previous_speed_);
+            const float goal = std::min(limit, flat ? previous_speed_ + acceleration * dt : speed + std::max(0.0f, budget));
+            change = std::clamp(goal - speed, 0.0f, (acceleration + 18) * dt);
+        } else {
+            primed_ = true; position_ = position;
+        }
+        previous_speed_ = speed + change; velocity_ = velocity;
+        return change;
+    }
+private:
+    bool primed_{};
+    float previous_speed_{}, travel_time_{}, expected_travel_{};
+    std::array<float, 3> position_{}, velocity_{};
+};
+}
