@@ -95,6 +95,9 @@ std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
 std::atomic<std::uint64_t> input_game_tick{};
+NativePushContact push_contact_policy;
+NoBailSkater push_contact_owner{};
+std::atomic<bool> reset_push_contact_policy{true};
 std::atomic<bool> input_clock_valid{};
 AuthoredTickClock authored_clock;
 CameraOrbit camera_orbit;
@@ -631,6 +634,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 }
 
 void set_enabled(bool value, bool persist) noexcept {
+    reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
     invalidate_grind_observer();
     if (value) prepare_authored_catalog();
@@ -771,7 +775,10 @@ void on_client_tick() noexcept {
         // observed native request may continue through its own one-wheel kick.
         // Manual/grind balance and unknown state/speed still prohibit pushing.
         const bool speed_valid = native.valid && native.state == 100 && native.crouch_mode == 1 && native_board_speed(speed);
-        const bool push_valid = native_push_allowed(gameplay && watch.valid && speed_valid,
+        if (reset_push_contact_policy.exchange(false, std::memory_order_acq_rel) || native_owner != push_contact_owner) {
+            push_contact_policy.reset(); push_contact_owner = native_owner;
+        }
+        const bool push_valid = push_contact_policy.poll(now, gameplay && watch.valid && speed_valid,
             native.state, native.crouch_mode, native.words[1] & 0xc000u, (native.words[0] & 0x40u) != 0,
             combo_session.model().state().balance_kind != BalanceKind::none);
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
@@ -780,7 +787,8 @@ void on_client_tick() noexcept {
         const bool drive_valid = gameplay && watch.valid && native.valid &&
             (native.state == 100 || native.state == 103) && native.crouch_mode <= 2 &&
             combo_session.model().state().balance_kind == BalanceKind::none &&
-            (contacts == 0xc000u || ((native.words[0] & 0x40u) && (contacts == 0x4000u || contacts == 0x8000u)));
+            (contacts == 0xc000u || (((native.words[0] & 0x40u) || push_valid) &&
+                (contacts == 0x4000u || contacts == 0x8000u)));
         movement_eligible_until.store(drive_valid ? now + 150 : 0, std::memory_order_release);
         const bool board_safe = gameplay && watch.valid && native_board_toggle_safe(native);
         offboard_valid_until.store(gameplay && watch.valid && native.valid &&

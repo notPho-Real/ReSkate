@@ -36,6 +36,45 @@ int run_arcade_playback_tests();
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+    for (const float dt : {1.f / 30, 1.f / 60}) {
+        for (const bool crouched : {false,true}) {
+            using dingosdk::arcade_mode::GroundDrive;
+            GroundDrive drive;
+            const float acceleration = crouched ? GroundDrive::crouched_acceleration : GroundDrive::standing_acceleration;
+            const float first = drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
+            check(std::abs(first - acceleration * dt) < .0001f,
+                "validated two-wheel input starts a bounded acceleration budget without waiting for animation");
+            const float next = drive.step(dt, {0,0,first*dt}, {0,0,first}, crouched, true);
+            check(std::abs(next - acceleration * dt) < .0001f, "native startup motion retains the same acceleration budget");
+            drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
+            drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
+            for (unsigned i=0;i<20;++i)
+                check(drive.step(dt, {0,0,0}, {0,0,0}, crouched, true)==0,
+                    "an obstruction cannot repeatedly restart the standing assist while intent stays held");
+            check(drive.step(dt, {0,0,.3f}, {0,0,1}, crouched, true)==0,
+                "genuine native motion must establish a fresh baseline after clearing an obstruction");
+        }
+    }
+    {
+        dingosdk::arcade_mode::NativePushContact contact;
+        check(!contact.poll(0,true,100,1,0x8000,false,false), "one wheel without native push provenance never permits pushing");
+        contact.poll(525,true,100,1,0xc000,true,false);
+        contact.poll(700,true,100,1,0x8000,true,false);
+        check(contact.poll(725,true,100,1,0x8000,false,false) && contact.poll(827,true,100,1,0x8000,false,false),
+            "observed native kick recovery preserves held input until its wheel settles");
+        check(contact.poll(900,true,100,1,0x8000,false,false) && !contact.poll(901,true,100,1,0x8000,false,false),
+            "contact recovery is bounded to200ms from actual native pushing");
+        for (const unsigned state : {103u,200u,300u,401u,504u}) {
+            contact.poll(1000,true,100,1,0x8000,true,false);
+            check(!contact.poll(1010,true,state,1,0x8000,false,false) &&
+                !contact.poll(1020,true,100,1,0x8000,false,false), "incompatible physics revokes push recovery provenance");
+        }
+        contact.poll(2000,true,100,1,0x8000,true,false);
+        check(!contact.poll(2010,true,100,1,0x8000,false,true) &&
+            !contact.poll(2020,true,100,1,0x8000,false,false), "established manual balance cancels recovery immediately");
+        contact.poll(2100,true,100,1,0x8000,true,false); contact.reset();
+        check(!contact.poll(2110,true,100,1,0x8000,false,false), "owner or toggle reset cannot inherit another push");
+    }
     for (const unsigned rate : {30u, 60u, 120u, 200u}) {
         dingosdk::arcade_mode::AuthoredTickClock clock;
         std::uint64_t tick{};

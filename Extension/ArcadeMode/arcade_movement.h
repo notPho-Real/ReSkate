@@ -5,7 +5,7 @@
 
 namespace dingosdk::arcade_mode {
 // Nominal mid-stat ground kick response, in SI units. This supplies a bounded
-// acceleration budget through the existing Trainer body writer. Native motion,
+// acceleration budget through the existing Trainer body writer. Native
 // steering, vertical velocity and collisions remain authoritative.
 class GroundDrive {
 public:
@@ -13,13 +13,18 @@ public:
     static constexpr float crouched_speed = 15.33f, crouched_acceleration = 28.66f;
     void reset() noexcept { *this = {}; }
     float step(float dt, const std::array<float, 3>& position,
-               const std::array<float, 3>& velocity, bool crouched) noexcept {
+               const std::array<float, 3>& velocity, bool crouched, bool may_start = false) noexcept {
         if (!std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
         for (unsigned i = 0; i < 3; ++i)
             if (!std::isfinite(position[i]) || std::abs(position[i]) > 1000000 ||
                 !std::isfinite(velocity[i]) || std::abs(velocity[i]) >= 1000) { reset(); return 0; }
         const float speed = std::hypot(velocity[0], velocity[2]);
-        if (speed < .5f) { reset(); return 0; } // Native push must start actual movement.
+        if (blocked_) {
+            if (speed < .5f || std::hypot(position[0] - position_[0], position[2] - position_[2]) < .25f)
+                return 0;
+            reset(); // Native motion must first clear the obstruction.
+        }
+        if (speed < .5f && !may_start) { reset(); return 0; }
         float change{};
         if (primed_) {
             const float dx = position[0] - position_[0], dz = position[2] - position_[2];
@@ -29,7 +34,9 @@ public:
             const bool stalled = travel_time_ >= .1f && travel < expected_travel_ * .2f;
             const bool impact = speed < previous_speed_ - 18 * dt;
             const bool reversed = velocity[0] * velocity_[0] + velocity[2] * velocity_[2] < 0;
-            if (teleported || stalled || impact || reversed) { reset(); return 0; }
+            if (teleported || stalled || impact || reversed) {
+                reset(); blocked_ = true; position_ = position; return 0;
+            }
             if (travel_time_ >= .1f) {
                 position_ = position; travel_time_ = expected_travel_ = 0;
             }
@@ -43,12 +50,16 @@ public:
             change = std::clamp(goal - speed, 0.0f, (acceleration + 18) * dt);
         } else {
             primed_ = true; position_ = position;
+            // The guarded caller permits this only on native two-wheel ground.
+            // Ground acceleration need not wait for the native kick animation.
+            if (may_start && speed < .5f)
+                change = (crouched ? crouched_acceleration : standing_acceleration) * dt;
         }
         previous_speed_ = speed + change; velocity_ = velocity;
         return change;
     }
 private:
-    bool primed_{};
+    bool primed_{}, blocked_{};
     float previous_speed_{}, travel_time_{}, expected_travel_{};
     std::array<float, 3> position_{}, velocity_{};
 };

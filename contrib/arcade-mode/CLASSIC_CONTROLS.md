@@ -55,9 +55,11 @@ its red edge meter until the native pose exits, including when a protected bail
 cannot immediately end it; synthetic stick ownership is still released.
 
 Holding forward keeps the native push button held through the complete native
-acceleration sequence. There is no lower software cruise cap or resume threshold;
-native pushing owns top speed. Releasing movement or entering an incompatible
-state releases the push immediately.
+kick and its bounded wheel recovery. Arcade ground acceleration targets11.30m/s
+standing or15.33m/s crouched, with a separate16.88/28.66m/s² acceleration budget.
+Validated two-wheel input can start that budget before the native kick animation;
+ordinary steering, braking, vertical motion and collisions stay native.
+Releasing movement or entering an incompatible state releases the push immediately.
 
 ## Flip table — X
 

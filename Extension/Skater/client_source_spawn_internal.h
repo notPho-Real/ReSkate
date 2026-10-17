@@ -188,6 +188,7 @@ struct NoclipBodies {
     bool offboard{};
     bool wipeout{}; // Spread-eagle/torpedo use the native wipeout physics path.
     std::array<float, 3> root{}; // Entity root: the camera target and the idle motion target.
+    std::array<float, 3> forward{}; // Existing validated entity transform, horizontal direction only.
     std::array<std::uintptr_t, 32> parts{}; // Board 0..8, native skeleton velocity parts 1..23.
 };
 constexpr std::uintptr_t camera_fov_offset = 0xac;

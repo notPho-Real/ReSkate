@@ -1,3 +1,29 @@
+## Native push recovery and standing response — source correction pending
+
+Source-first review of the existing push reader, full guarded Trainer writer,
+official client transform/physics APIs and preserved4dab47d motion identifies
+the actual contact gap. In1792275499071053000, native push40 clears at153217319ms
+while contact remains8000 until153217421ms. Both input publication and writer
+required40 on that one wheel, so X and assistance were released during recovery.
+The adapter then resumes its intended acceleration only after two-wheel contact.
+The earlier source did not measure this transition before changing thresholds.
+
+New shared pure policy retains only200ms from an actual native push, enough
+for the102ms recovery plus sampled-frame margin. Both publisher and guarded
+writer use it; owner/toggle/context/balance/invalid-contact resets revoke it.
+Manual commands still preempt ownership, and one wheel alone never qualifies.
+
+The standing adapter also no longer requires the native animation to create
+the first0.5m/s. Only a validated local100/mode1/two-wheel context can start its
+bounded per-step budget. Direction comes from the existing validated entity
+transform already used by Trainer heading; no new memory offset or hook.
+Native vertical and relative body motion remain untouched. Impact/stall/reversal
+or teleport blocks restart until genuine native progress clears the obstruction
+or input is released. Crouched starts retain their separately bounded budget.
+34406 sanitized model checks pass, including30/60 startup, recovery boundaries,
+no inherited/manual/air recovery and repeated blocked-start rejection.
+Hardware and full acceleration/coast/brake acceptance remain PENDING.
+
 ## Installed authored-clock build; elapsed setup fix pending — 2026-10-17
 
 Installed0d895838563caf8f36814d7d8f2a0faecaa50218 / DLL

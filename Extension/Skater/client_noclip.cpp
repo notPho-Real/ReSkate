@@ -10,6 +10,7 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
+#include "Extension/ArcadeMode/arcade_push.h"
 #include "free_flight.h"
 #include <cmath>
 
@@ -61,7 +62,7 @@ void debug_stop_noclip(InteractiveDebug& debug) noexcept {
 }
 NoclipBodies debug_noclip_bodies(std::uintptr_t base, std::uintptr_t client, std::uintptr_t entity) {
     overlay::DebugModel skater;
-    (void)debug_skater(base, client, skater);
+    const auto transform = debug_skater(base, client, skater);
     source_require(skater.skater_identity == entity, "Skater changed; flight stopped.");
     SourceReader reader;
     const auto collection = reader.pointer(entity, 0x70);
@@ -70,6 +71,7 @@ NoclipBodies debug_noclip_bodies(std::uintptr_t base, std::uintptr_t client, std
         "Skater physics ownership changed.");
     NoclipBodies result;
     result.root = skater.skater_position;
+    result.forward = {transform[8], 0, transform[10]};
     result.core = reader.pointer(component, 0x70);
     source_require(reader.pointer(result.core) == base + addr::no_bail::bail_core_vtable, "Skater physics is unavailable.");
     const auto board = reader.pointer(reader.pointer(result.core, 0x430), 0x18);
@@ -287,6 +289,7 @@ struct PushSpeed {
     int pushing{}, since_push{hold_steps};
     bool carried{}; // a held push is being carried past the game's last step
     arcade_mode::GroundDrive arcade_drive;
+    arcade_mode::NativePushContact arcade_push_contacts;
     NoBailSkater arcade_owner{};
     std::uint64_t drive_epoch{};
 };
@@ -302,6 +305,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
     }
     const auto watch = watched_physics_state();
     if (!watch.valid || (watch.state != 100 && !(arcade && watch.state == 103))) {
+        p.arcade_drive.reset(); p.arcade_push_contacts.reset();
         return;
     }
     SourceLastError error;
@@ -310,28 +314,39 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
     SourceBusyScope scope{state.busy};
     try {
         const auto bodies = debug_noclip_bodies(state.trial.base, p.client, p.entity);
-        if (bodies.core != core || bodies.offboard || bodies.parts.empty()) return;
+        if (bodies.core != core || bodies.offboard || bodies.parts.empty()) {
+            p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return;
+        }
         SourceReader reader;
         const float target = reader.value<float>(bodies.context, 0x17f4);
         // What the game's brake code tests: a brake held (bit 2) or one squeezed by some amount (bit 1, +0x1880).
         const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 && std::abs(reader.value<float>(bodies.context, 0x1880)) > 0.05f);
-        bool arcade_safe{};
+        bool arcade_safe{}, arcade_start{};
         if (arcade) {
             const auto epoch = p.arcade_epoch.load(std::memory_order_relaxed);
-            if (epoch != p.drive_epoch) { p.arcade_drive.reset(); p.drive_epoch = epoch; }
+            if (epoch != p.drive_epoch) {
+                p.arcade_drive.reset(); p.arcade_push_contacts.reset(); p.drive_epoch = epoch;
+            }
             namespace native = game::build::v20260929::arcade_native_probe;
             const auto contacts = reader.value<std::uint32_t>(bodies.context, native::request_words + 4) & 0xc000u;
             const auto physics = reader.value<std::uint32_t>(bodies.context, native::selected_state);
             const auto mode = reader.value<std::uint32_t>(bodies.rig_wrapper, native::crouch_mode);
             NoBailSkater owner{};
+            if (!no_bail_skater(owner)) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return; }
+            if (owner != p.arcade_owner) {
+                p.arcade_drive.reset(); p.arcade_push_contacts.reset(); p.arcade_owner = owner;
+            }
+            const bool contact_recovery = p.arcade_push_contacts.poll(now, true, physics, mode, contacts,
+                (requests & 0x40u) != 0, false);
+            arcade_start = physics == 100 && mode == 1 && contacts == 0xc000u;
             arcade_safe = !braking && !state.trial.debug.park_editor && mode <= 2 &&
                 (physics == 100 || physics == 103) && !bodies.wipeout &&
-                (contacts == 0xc000u || ((requests & 0x40u) && (contacts == 0x4000u || contacts == 0x8000u))) &&
+                (contacts == 0xc000u || (((requests & 0x40u) || contact_recovery) &&
+                    (contacts == 0x4000u || contacts == 0x8000u))) &&
                 reader.value<std::uint8_t>(p.entity, 0x7e0) == 0 && no_bail_skater(owner) &&
                 owner.base == state.trial.base && owner.entity == p.entity && owner.core == core &&
                 owner.context == bodies.context && owner.rig == bodies.rig_wrapper;
-            if (owner != p.arcade_owner) { p.arcade_drive.reset(); p.arcade_owner = owner; }
         }
         std::array<std::array<float, 3>, 32> velocities{};
         std::array<std::uint32_t, 32> flags{};
@@ -342,12 +357,19 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         }
         reader.verify();
         if (arcade) {
-            if (!arcade_safe) { p.arcade_drive.reset(); return; }
+            if (!arcade_safe) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return; }
             const float change = p.arcade_drive.step(bodies.seconds, bodies.root, velocities[0],
-                p.arcade_crouched.load(std::memory_order_relaxed));
+                p.arcade_crouched.load(std::memory_order_relaxed), arcade_start);
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
-            if (!(change > .0001f) || !(speed >= .5f)) return;
-            const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
+            if (!(change > .0001f)) return;
+            const auto direction = speed >= .05f ?
+                std::array<float, 3>{velocities[0][0], 0, velocities[0][2]} : bodies.forward;
+            const float direction_length = std::hypot(direction[0], direction[2]);
+            if (!std::isfinite(direction_length) || direction_length < .05f ||
+                (speed < .05f && (direction_length < .5f || direction_length > 1.5f))) {
+                p.arcade_drive.reset(); return;
+            }
+            const float dx = direction[0] / direction_length * change, dz = direction[2] / direction_length * change;
             // Uniform bounded addition preserves relative body motion. No
             // transform, vertical component, spin or contact flag is changed.
             for (std::size_t i = 0; i < count; ++i) {
@@ -391,7 +413,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             body_write(bodies.parts[i] + 0x70, velocities[i]);
             body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
         }
-    } catch (...) { p.arcade_drive.reset(); }
+    } catch (...) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); }
 }
 void noclip_physics_update(std::uintptr_t core) {
     const auto original = source_state().velocity_update_original.load(std::memory_order_acquire);
