@@ -66,6 +66,7 @@ std::atomic<std::uint64_t> offboard_valid_until{};
 std::atomic<std::uint64_t> manual_eligible_until{};
 std::atomic<std::uint64_t> manual_prepare_until{};
 std::atomic<std::uint64_t> action_eligible_until{};
+std::atomic<std::uint64_t> air_flip_ready_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
 std::atomic<float> push_speed{};
 std::atomic<bool> authored_mirror_x{};
@@ -412,7 +413,10 @@ void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
     if (!no_bail_skater(after) || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
-    input_telemetry.combo({sample, GetTickCount64(), flip});
+    const auto now = GetTickCount64();
+    air_flip_ready_until.store(mode_enabled.load(std::memory_order_acquire) && flip.valid && flip.id == -1 &&
+        sample.state >= 200 && sample.state < 300 ? now + 150 : 0, std::memory_order_release);
+    input_telemetry.combo({sample, now, flip});
 }
 
 bool validate_request_probe(std::uintptr_t base) noexcept {
@@ -568,6 +572,7 @@ void set_enabled(bool value, bool persist) noexcept {
         manual_eligible_until.store(0, std::memory_order_release);
         manual_prepare_until.store(0, std::memory_order_release);
         action_eligible_until.store(0, std::memory_order_release);
+        air_flip_ready_until.store(0, std::memory_order_release);
         manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
         previous_pad = {};
         previous_source_pad = {};
@@ -796,6 +801,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool offboard = game_input && offboard_deadline >= now && offboard_deadline - now <= 150;
     const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
     const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
+    const auto flip_deadline = air_flip_ready_until.load(std::memory_order_acquire);
+    const bool flip_ready = game_input && flip_deadline >= now && flip_deadline - now <= 150;
     NativeGesture::Output result{};
     const auto prepared = prepared_catalog.load(std::memory_order_acquire);
     const bool authored = prepared && !prepared->empty();
@@ -819,7 +826,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare && !auxiliary_busy, offboard, auxiliary_busy);
+            manual_prepare && !auxiliary_busy, offboard, auxiliary_busy, flip_ready);
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.

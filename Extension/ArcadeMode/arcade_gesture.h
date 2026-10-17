@@ -137,7 +137,7 @@ public:
             std::span<const PreparedGesture> catalog = {}, bool mirror_x = false,
             bool manual_safe = false, SkatePose observed = SkatePose::unknown,
             bool /* grab experiment selector; air handoff is now shared */ = false, bool manual_prepare_only = false,
-            bool offboard = false, bool action_busy = false) noexcept {
+            bool offboard = false, bool action_busy = false, bool flip_ready = true) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         NativeGesture::Output out{};
@@ -159,7 +159,7 @@ public:
                 (observed != SkatePose::unknown || may_start);
             const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, classic_game_input, may_start, nollie, catalog, mirror_x,
                 observed == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground,
-                observed == SkatePose::air, action_busy && observed == SkatePose::air);
+                observed == SkatePose::air, action_busy && observed == SkatePose::air, flip_ready);
             out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
                 classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};

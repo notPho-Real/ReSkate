@@ -1,3 +1,56 @@
+## On-foot A hardware acceptance — 2026-10-16
+
+HIL58 peak-aligned trial1792213720094790000 on installed9bbff13/b92b633e
+visibly establishes native Jump from standing, then a second native Jump while
+moving after landing. Correct capture triggers4s/8s follow A3650/7650ms;
+artifacts/ding-bat-foot-peak-1.png and-2.png show feet clear of the ground and
+two native Jump entries. No authored playback or syntheticX, native504 foot
+context, ordinary chord remount succeeds, all state/idle criteria and neutral/
+fixture-reset PASS, no evidence gap. Native guide independently confirms A.
+The mistaken A→X adapter from4f5fbe5 is fully removed in installed9bbff13.
+Native OFF restoration comparison remains to be completed explicitly.
+
+Early-X observer-readiness source and locally saved manual/basic-grab changes
+pass combined strict ASAN/UBSAN suites:33746 model,499 manual,99 runtime plus
+all existing control regressions. Next source build is not yet deployed; early,
+apex, late Kickflip/Heelflip and normal B acceptance remain required.
+
+## Native air Kickflip established; early-X handoff source — 2026-10-16
+
+Installed9bbff13c11e299272c1d1ee5ac3cd43849fdfdc8 / DLL
+b92b633eb7a2518a5f15c2e325888da1828fa0928781a6ac5e249c4b290b1d49.
+CI39001777689 passed all five gates; raw and immutable package DLL match.
+Guarded stopped-state deployment retains gamefbce74d5/stock5512a15e,
+updatesfalse/recoverypendingfalse. HIL58 manifest
+8ae6b988b1ee2c1e78dbc926fb31e3ea5c489005364d24a2175193672691a226;
+maintenance56 digestd267c44ea48b75326ff9b1842bb9cccc8d61b41614e604aa3fb1f8eddb89bc1c.
+Pin-only copies; frozen workers unchanged. Launcher Ready25414733 checked;
+Stadium generation8/revision8 confirmed1792212194792394000, saved fixture loaded
+and adopted, native60Hz restored.
+
+HIL58 early-X1792212478734742000 FAILS exact Kickflip: native Ollie1 only.
+Native air precedes X, but selection1 is still active. Apex-X1792212607514078000
+PASSES exact Kickflip2 after independent Ollie1/air; all native/idle/neutral/reset
+criteria pass, no gap. Source now uses the existing owner-validated physics
+observer (no new native read) to wait for fresh native air with no active flip
+selection(-1). A released early X survives ONLY that same air window; landing,
+menu/OFF, lost context or a newer grab/grind intent discards it. No fixed wait,
+no stale future-jump queue and no physics writes. Hardware early/late/Heel trials
+remain required after the next build. Manual/basic-grab commit35ba9f1 is saved
+locally and not yet pushed/built/deployed.
+
+The native Off-board Jump guide1792213558729192000 explicitly shows A; screenshot
+artifacts/ding-bat-offboard-jump-guide.png. A-only trials1792212273497226000 and
+1792212389990254000 produce actual Jump HUD without authored playback or nativeX.
+Their screenshots do NOT establish jump peaks: trusted periodic capture triggers
+at0/one-third/two-thirds/end, while elapsed_ms is recorded AFTER encoding. Earlier
+frames were taken before the scheduled press; lack of a visible jump in them is
+not evidence that standing A failed. Single X/B control1792212667509698000 and
+A+X1792212859733654000 retained for comparison; no unsupported mapping promoted.
+Peak-aligned standing/moving A trial is running. Full repeat/visible/OFF acceptance
+is still pending. All trials neutral/reset; intentional foot/remount idle failures
+remain recorded. No scoring work resumed.
+
 ## Manual responsiveness and basic-grab source ready — 2026-10-16
 
 Runtime remains4f5fbe5 / DLL0e185a8a; stopped-state1792211207948586000 confirms

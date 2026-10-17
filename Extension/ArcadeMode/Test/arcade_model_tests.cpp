@@ -359,6 +359,31 @@ int main() {
         check(!orbit.update(follow, target, std::numeric_limits<float>::quiet_NaN(), 0, .016f),
             "invalid camera input cannot reach native transform setter");
     }
+    {
+        const std::array catalog{PreparedGesture{2, false, GestureContext::ground,
+            {{0, 0, -32767}, {18, 28000, 28000}, {22, 0, 0}, {54, 0, 0}}}};
+        ClassicGesture controls;
+        auto poll = [&](unsigned ms, std::uint16_t buttons, bool air, bool ready) {
+            return controls.poll(ms, ms / 17, buttons, 0, 0, true, !air, false,
+                catalog, false, GestureContext::ground, air, false, ready);
+        };
+        poll(0, 0, true, false);
+        auto out = poll(20, ClassicGesture::x | 4, true, false);
+        check(!out.owns_stick && !out.requested_id && controls.busy(),
+            "early airborne X waits without injecting over an active native Ollie");
+        poll(40, 0, true, false);
+        out = poll(120, 0, true, true);
+        check(out.requested_id == 2 && out.owns_stick,
+            "released X dispatches when independent native readiness clears in the same jump");
+        controls.cancel(); poll(200, 0, true, false);
+        poll(220, ClassicGesture::x | 4, true, false); poll(240, 0, false, false);
+        check(!poll(260, 0, true, true).requested_id && !controls.busy(),
+            "landing discards a waiting X instead of replaying it on another jump");
+        poll(280, ClassicGesture::x | 4, true, false);
+        poll(300, 0x2000, true, false);
+        check(!poll(320, 0, true, true).requested_id && !controls.busy(),
+            "new grab intent cancels a pending flip before ownership handoff");
+    }
     for (const unsigned delay : {100u, 400u, 650u}) {
         const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
         const std::array catalog{PreparedGesture{2, false, GestureContext::ground, steps}};
