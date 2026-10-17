@@ -1,3 +1,36 @@
+## Installed source-first build; native A jump proof — 2026-10-17
+
+Installed3e295fb8b5e7fd4b1c9a0e88b1f9d97b5a61e8a9 / DLL
+00e91c0784d70616b9be5a9de5a4d68cf3f2947d89626fe78d4bdb4660726640.
+CI39007119326 passed all five gates; raw CI DLL and immutable package match.
+Guarded deployment verified original gamefbce74d5/stock5512a15e unchanged,
+updatesfalse/recoverypendingfalse. HIL59 manifest
+b7e13ca38a989b2b62b52c2a7fe06e11f3e62998a884aaff34ade7210a14777b;
+maintenance57 digest86be6abc24180e133977d9d5a6f4ad6a1ca3ab46234f76559db521a68e308b1f.
+Only numeric foot parser and pins added to existing frozen HIL; guards unchanged.
+Stadium saved fixture generation8/revision9 loaded/adopted, native60Hz restored.
+
+HIL59 trial1792217442592376000 establishes standing A and repeated A while moving
+laterally across the flat apron. Independent source-A events95162830/95166830;
+valid local grounded504 baselines; fresh native air edges129ms after each A.
+PelvisVy peaks6.843/5.101m/s, native Y rises0.951/0.886m, then negativeVy and
+native landing at980/930ms after A. No ragdoll, wipeout, malformed rows, sequence
+gaps or truncation; position age<=7ms, one owner epoch. Native flip stays-1,
+with no synthetic on-board Ollie. Native state/idle, neutral and fixture reset
+all PASS. Quiet pre-A grounded interval is the negative control. Arcade OFF
+comparison1792217547962775000 also PASS: native client observed physical A#5/#6,
+two fresh offboard air transitions, positive pelvisVy, native Y rise, descent
+and landing, no ragdoll/wipeout/gaps, native state/idle and neutral PASS. OFF
+source-pad diagnostics are deliberately disabled; client A edges and native
+motion remain independent. Native Y held1s remounts successfully; the earlier
+200ms OFF remount failure remains recorded. Airborne flips, basic B and new
+manuals still pending. Arcade ON restored after the OFF control.
+
+Preserve1792217312524657000: standing jump independently passes, but straight
+running path ragdolled just after the second landing near the rail. REJECT that
+moving landing; the clean lateral rerun above supersedes only its acceptance,
+not its recorded failure. No velocity, airtime, tuning or original files changed.
+
 ## Native motion evidence and late-stroke correction — 2026-10-16
 
 Source audit pinned official upstream4c07f2493bccf6b7f42c4cff17f9bd7e6efebeb8
