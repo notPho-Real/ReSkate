@@ -18,6 +18,15 @@ public:
     explicit ComboSession(Tuning tuning = {}) noexcept : model_(tuning) {}
     const Model& model() const noexcept { return model_; }
     bool failed_section() const noexcept { return failed_section_; }
+    const State& balance_display_state() const noexcept {
+        // A protected or pending native bail can leave the physical manual in
+        // place. Keep its failed meter at the edge until that native section
+        // actually ends; never restart the model or retain synthetic input.
+        if (failed_section_ && balance_kind(previous_) == BalanceKind::manual &&
+            model_.failed_balance().balance_kind == BalanceKind::manual)
+            return model_.failed_balance();
+        return model_.state();
+    }
     bool begin_score_evidence(const ScoreContext& context, std::uint64_t last_serial) noexcept {
         return scoring_.begin(model_, context, last_serial);
     }

@@ -25,6 +25,43 @@ struct Fixture {
 };
 }
 int main() {
+    for (const bool nose : {false, true}) {
+        Fixture f;
+        const auto pose = nose ? SkatePose::nose_manual : SkatePose::manual;
+        f.context.contact = pose;
+        check(f.poll(1010, pose, edge(1010, 1, nose ? 2 : 1)).admitted,
+              "fresh native identity admits a physical manual section");
+        f.context.activity_fresh = false;
+        for (unsigned ms = 1020; ms <= 7020; ms += 50) {
+            const auto result = f.poll(ms, SkatePose::riding);
+            check(result.confirmed && result.pose == pose && !result.admitted,
+                  "fresh same-owner native contact retains its meter through score activity gaps without a new link");
+        }
+        f.context.contact = SkatePose::riding;
+        check(f.poll(7070, SkatePose::riding).confirmed, "brief two-wheel contact does not blink the manual meter");
+        check(!f.poll(7120, SkatePose::riding).confirmed, "sustained two-wheel native exit releases the old identity");
+        f.context.contact = pose; f.context.activity_fresh = true;
+        check(!f.poll(7130, pose, empty(1)).confirmed, "native contact cannot reuse the consumed label for a new manual");
+    }
+    check(manual_contact_pose({true, false, false, false, 100, 1, 0x8000}, false) == SkatePose::nose_manual &&
+          manual_contact_pose({true, false, false, false, 100, 1, 0x4000}, false) == SkatePose::manual,
+          "current native wheel contact independently retains each already-proved identity");
+    check(manual_contact_pose({true, false, false, false, 100, 1, 0x8000}, true) == SkatePose::unknown &&
+          manual_contact_pose({true, false, false, false, 201, 2, 0x8000}, false) == SkatePose::unknown,
+          "native pushing and airborne state cannot masquerade as continuing manual contact");
+    for (unsigned fault = 0; fault < 7; ++fault) {
+        Fixture f; f.context.contact = SkatePose::nose_manual;
+        f.poll(1010, SkatePose::nose_manual, edge(1010, 1, 2));
+        if (fault == 0) f.context.valid = false;
+        if (fault == 1) f.context.enabled = false;
+        if (fault == 2) f.context.owner_changed = true;
+        if (fault == 3) f.context.gap = true;
+        if (fault == 4) ++f.context.generation;
+        if (fault == 5) f.context.contact = SkatePose::unknown;
+        if (fault == 6) f.context.contact = SkatePose::manual;
+        check(!f.poll(1020, SkatePose::riding, empty(1)).confirmed,
+              "native continuity cannot cross owner, menu, invalid state, observation gaps or opposite contact");
+    }
     // HIL50 mixed01: generic activity plus one-wheel contact lasted64ms;
     // no matching Manual label. This replay asserts no fabricated native identity.
     {

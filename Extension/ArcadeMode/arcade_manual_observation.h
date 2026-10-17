@@ -5,7 +5,15 @@ namespace dingosdk::arcade_mode {
 struct ManualObservationContext {
     std::uint64_t now{}, generation{};
     bool enabled{}, valid{}, activity_fresh{}, owner_changed{}, gap{};
+    SkatePose contact{SkatePose::unknown};
 };
+inline SkatePose manual_contact_pose(const NativeComboObservation& native, bool pushing) noexcept {
+    if (!native.valid || native.bailed || pushing || native.state != 100 || native.mode != 1)
+        return SkatePose::unknown;
+    if (native.contacts == 0x4000u) return SkatePose::manual;
+    if (native.contacts == 0x8000u) return SkatePose::nose_manual;
+    return native.contacts == 0xc000u ? SkatePose::riding : SkatePose::unknown;
+}
 struct ManualObservationResult {
     SkatePose pose{SkatePose::unknown};
     bool confirmed{}, admitted{};
@@ -27,6 +35,20 @@ public:
     }
     ManualObservationResult poll(SkatePose raw, const ScoreLabelOccurrence& label,
                                  const ManualObservationContext& context) noexcept {
+        // A fresh native label admits a section once. Thereafter the current
+        // owner's physical wheel contact maintains it, independently of score
+        // polling. A short two-wheel contact gap must not blink the meter and
+        // leave a still-held native manual without its balance lifecycle.
+        const bool same_context = primed_ && context.enabled && context.valid && context.generation &&
+            context.generation == generation_ && !context.owner_changed && !context.gap &&
+            context.now >= last_at_ && context.now - last_at_ <= ScoreLabelEdges::freshness_ms;
+        if (same_context && confirmed_ && (context.contact == candidate_ ||
+                (context.contact == SkatePose::riding && context.now >= contact_at_ && context.now - contact_at_ < 100))) {
+            last_at_ = context.now;
+            if (context.contact == candidate_) contact_at_ = context.now;
+            consume(label);
+            return {candidate_, true, false};
+        }
         const bool manual = raw == SkatePose::manual || raw == SkatePose::nose_manual;
         const auto unconfirmed = [&] {
             return ManualObservationResult{manual ? SkatePose::riding : raw};
@@ -61,7 +83,7 @@ public:
             label.sampled_at >= label.observed_at && context.now >= label.sampled_at &&
             context.now - label.observed_at <= ScoreLabelEdges::freshness_ms;
         const bool admitted = edge && fresh && !confirmed_;
-        if (admitted) confirmed_ = true;
+        if (admitted) { confirmed_ = true; contact_at_ = context.now; }
         return {confirmed_ ? raw : SkatePose::riding, confirmed_, admitted};
     }
 private:
@@ -77,7 +99,7 @@ private:
     }
     ScoreLabelOccurrence last_edge_{};
     SkatePose candidate_{SkatePose::unknown};
-    std::uint64_t sequence_{}, generation_{}, last_at_{}, candidate_at_{};
+    std::uint64_t sequence_{}, generation_{}, last_at_{}, candidate_at_{}, contact_at_{};
     bool primed_{}, confirmed_{};
 };
 }

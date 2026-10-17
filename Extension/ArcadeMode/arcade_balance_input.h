@@ -18,6 +18,27 @@ inline float balance_correction(BalanceKind kind, short left_x, short left_y, bo
     const float scale = raw < 0 ? 32768.0f : 32767.0f;
     return std::copysign(std::min(1.0f, (magnitude - deadzone) / (scale - deadzone)), raw);
 }
+class BalanceControl {
+public:
+    float poll(BalanceKind kind, short x, short y, bool available, std::uint32_t buttons = 0) noexcept {
+        const auto correction = balance_correction(kind, x, y, available, buttons);
+        if (kind != BalanceKind::manual || !available) {
+            manual_ = armed_ = false;
+            return correction; // Preserve existing grind correction.
+        }
+        if (!manual_) {
+            manual_ = true; entry_ = correction; armed_ = std::abs(correction) < .05f;
+        } else if (std::abs(correction) < .05f || correction * entry_ < 0) {
+            armed_ = true;
+        }
+        // Completing the directional command is not also a balance correction.
+        // A release or a fresh opposite tap hands control to the player.
+        return armed_ ? correction : 0;
+    }
+private:
+    bool manual_{}, armed_{};
+    float entry_{};
+};
 struct BalanceMeter {
     bool visible{}, vertical{};
     float cursor_x{}, cursor_y{}; // normalized offsets from center; screen Y points down

@@ -18,6 +18,7 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
 // This class requests that method; contact/score observations prove the pose.
 class ManualGesture {
 public:
+    static constexpr std::uint64_t pair_window_ms = 500;
     // confirmed remembers a native match for this request; it is not a fresh
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; bool suppress_reverse{}; };
@@ -88,9 +89,9 @@ public:
         }
         // A held steering stick cannot swallow a fresh D-pad Up edge, and
         // switching input devices cannot complete half of an unrelated pair.
-        const int pad_request = pad_pair_.poll(now, classic_direction(buttons, 0, 0));
+        const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, (pad & 12u) != 0);
         if (pad) stick_pair_ = {};
-        const int stick_request = pad ? 0 : stick_pair_.poll(now, classic_direction(0, lx, ly));
+        const int stick_request = pad ? 0 : stick_pair_.poll(now, stick_pair_.direction(lx, ly), std::abs(static_cast<int>(lx)) > 11000);
         const int request = pad_request ? pad_request : stick_request;
         if (request) {
             if (!safe_state) { cancel(); return {}; }
@@ -101,28 +102,36 @@ public:
         // Native LS Down starts state101 before a rapid Down/Up can complete
         // (Deck1792220511391760000). Reserve only that grounded first tap;
         // an expired hold passes through and established balance is untouched.
-        return {false, false, 0, observed == SkatePose::riding && ly < -13000 && stick_pair_.awaiting_up(now)};
+        return {false, false, 0, observed == SkatePose::riding && ly < -11000 && stick_pair_.awaiting_up(now)};
     }
 private:
     struct DirectionPair {
         bool armed{};
         int first{}, previous{};
         std::uint64_t at{};
-        bool awaiting_up(std::uint64_t now) const noexcept {
-            return armed && first == -1 && previous == -1 && now >= at && now - at <= 350;
+        int direction(short x, short y) const noexcept {
+            const int vertical = std::abs(static_cast<int>(y));
+            const int horizontal = std::abs(static_cast<int>(x));
+            const int sign = y > 0 ? 1 : y < 0 ? -1 : 0;
+            // Accept ordinary diagonal thumb travel, with hysteresis around
+            // the vertical threshold. Sideways steering alone is not a tap.
+            const int threshold = sign == previous ? 8000 : 11000;
+            return vertical >= threshold && vertical * 4 >= horizontal * 3 ? sign : 0;
         }
-        int poll(std::uint64_t now, TrickDirection direction) noexcept {
-            const int vertical = direction == TrickDirection::up ? 1 : direction == TrickDirection::down ? -1 : 0;
+        bool awaiting_up(std::uint64_t now) const noexcept {
+            return armed && first == -1 && previous == -1 && now >= at && now - at <= pair_window_ms;
+        }
+        int poll(std::uint64_t now, int vertical, bool sideways = false) noexcept {
             if (!armed) {
-                if (direction == TrickDirection::none) armed = true;
+                if (!vertical) armed = true;
                 previous = vertical; return 0;
             }
-            if (first && now - at > 350) first = 0;
+            if (first && now - at > pair_window_ms) first = 0;
             int request{};
             if (vertical && vertical != previous) {
-                if (first == -vertical && now - at <= 350) request = vertical;
+                if (first == -vertical && now - at <= pair_window_ms) request = vertical;
                 first = vertical; at = now;
-            } else if (!vertical && direction != TrickDirection::none) first = 0;
+            } else if (!vertical && sideways) first = 0;
             previous = vertical;
             return request;
         }

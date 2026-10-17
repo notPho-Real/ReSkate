@@ -139,6 +139,7 @@ NoBailSkater combo_owner{};
 NativeBailStatus previous_balance_bail{};
 SkatePose previous_pose{SkatePose::unknown};
 std::uint64_t next_balance_sample{};
+BalanceControl balance_control;
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now,
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label) noexcept {
@@ -165,7 +166,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     // manual identity for balance/linking. Neither establishes monetary ownership.
     const auto pose = manual_identity.poll(candidate_pose, manual_label,
         {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
-         owner_changed, observation_gap}).pose;
+         owner_changed, observation_gap,
+         manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u},
+             (native.words[0] & 0x40u) != 0)}).pose;
     const bool manual_safe = valid && !owner_changed && !bail &&
         ((native.state == 100 && native.crouch_mode == 1) || (native.state >= 200 && native.state < 300));
     action_eligible_until.store(action_input_eligible({valid, false, false, bail, native.state,
@@ -173,7 +176,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
     combo_tick_at = now;
     const auto kind = combo_session.model().state().balance_kind;
-    const auto correction = balance_correction(kind, input.left_x, input.left_y, input.available, input.buttons);
+    const auto correction = balance_control.poll(kind, input.left_x, input.left_y, input.available, input.buttons);
     const bool was_active = combo_session.model().state().combo_active;
     const bool had_revert = combo_session.model().state().revert_pending;
     const bool native_revert = observed_native_revert({valid && !owner_changed,
@@ -186,8 +189,11 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // Publish one pose/eligibility snapshot to XInput. A pending direction
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
-        if (!valid || owner_changed || bail) arcade_input.cancel_manuals();
-        manual_observed.store(manual_input_pose(candidate_pose,
+        if (!valid || owner_changed || bail ||
+            (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
+            arcade_input.cancel_manuals();
+        const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
+        manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 && (native.words[0] & 0x40u) != 0,
             combo_session.model().state().balance_kind != BalanceKind::none), std::memory_order_relaxed);
         manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
@@ -222,7 +228,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             combo_session.model().state().manual_fatigue});
         previous_pose = pose;
     }
-    publish_balance_hud(combo_session.model().state(), combo_session.model().danger());
+    const auto& display = combo_session.balance_display_state();
+    publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
+        2 : combo_session.model().danger());
 }
 // Only this background sink formats the live input/client snapshots.
 void write_client_telemetry(const ClientTelemetry& row) noexcept {

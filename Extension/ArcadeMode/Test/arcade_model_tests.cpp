@@ -35,6 +35,50 @@ int run_arcade_playback_tests();
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+    {
+        using namespace dingosdk::arcade_mode;
+        BalanceControl input;
+        check(input.poll(BalanceKind::manual, 0, -32768, true) == 0 &&
+              input.poll(BalanceKind::manual, 0, -32768, true) == 0,
+              "held entry direction does not immediately steer the new manual meter");
+        check(input.poll(BalanceKind::manual, 0, 32767, true) == 1,
+              "a fresh opposite correction tap takes control without a perfect neutral frame");
+        input.poll(BalanceKind::none, 0, 0, true);
+        input.poll(BalanceKind::manual, 0, -32768, true);
+        input.poll(BalanceKind::manual, 0, 0, true);
+        check(input.poll(BalanceKind::manual, 0, 0, true, 2) == -1,
+              "a released command hands manual correction to the next D-pad tap");
+        check(input.poll(BalanceKind::grind, -32768, 32767, true) == -1,
+              "grind correction retains its original immediate analog response");
+        Tuning t;
+        t.fatigue_per_second = t.mode_fatigue_per_second = t.fatigue_per_link = 0;
+        t.balance_drift_rate = t.edge_instability = 0;
+        Model manual(t), grind(t);
+        manual.begin_balance(BalanceKind::manual); grind.begin_balance(BalanceKind::grind);
+        manual.tick(.1f, -1); grind.tick(.1f, -1);
+        const auto velocity = manual.state().balance_velocity;
+        manual.tick(.25f); grind.tick(.25f);
+        check(velocity < -.45f && manual.state().balance_velocity < velocity * .85f &&
+              manual.state().balance < -.1f,
+              "a100ms manual correction tap creates useful persistent drift instead of requiring a long hold");
+        check(std::abs(grind.state().balance_velocity) < .15f,
+              "manual response tuning leaves the accepted grind damping unchanged");
+        ComboSession session;
+        session.step(SkatePose::nose_manual, 0, 0);
+        bool failed = false;
+        for (unsigned frame = 0; frame < 1200 && !failed; ++frame)
+            failed = session.step(SkatePose::nose_manual, 1.0f/60, 0);
+        check(failed && !session.model().state().combo_active &&
+              balance_meter(session.balance_display_state()).visible &&
+              std::abs(session.balance_display_state().balance) == 1,
+              "failed native manual retains an edge meter while native exit or bail is pending");
+        session.step(SkatePose::nose_manual, 1.0f/60, 0);
+        check(!session.model().state().combo_active && balance_meter(session.balance_display_state()).visible,
+              "pending physical manual cannot restart the failed model or lose its failure display");
+        session.step(SkatePose::riding, 1.0f/60, 0);
+        check(!balance_meter(session.balance_display_state()).visible,
+              "native manual exit clears the failed meter immediately");
+    }
 #ifdef ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS
     run_arcade_score_settlement_tests();
 #endif
@@ -304,7 +348,7 @@ int main() {
         check(!poll(900, 0, SkatePose::manual).confirmed, "an opposite native pose cannot confirm the request");
         check(!poll(2050, 0).owns_stick, "unconfirmed requests expire and neutralize");
         poll(2100, 0); poll(2150, 25000);
-        check(!poll(2501, -25000).owns_stick, "late directional pairs are not manual commands");
+        check(!poll(2651, -25000).owns_stick, "late directional pairs are not manual commands");
         manual.cancel(); poll(3000, 0); poll(3050, 25000);
         check(!poll(3100, -25000, SkatePose::bail, false).owns_stick,
             "unsafe native state cancels a pending manual sequence");
@@ -420,7 +464,7 @@ int main() {
         check(up.right_y == 20000 && !up.suppress_reverse, "the next rapid Up reaches native Nose Manual actuation without state101");
         input.cancel_commands(); poll(1000, 0);
         const auto held = poll(1020, -25000);
-        const auto expired = poll(1371, -25000);
+        const auto expired = poll(1521, -25000);
         check(held.suppress_reverse && !expired.suppress_reverse &&
               (synthetic_packet_mask(held.phase, true) ^ manual_reverse_packet_mask(held.suppress_reverse)) !=
               (synthetic_packet_mask(expired.phase, true) ^ manual_reverse_packet_mask(expired.suppress_reverse)),
@@ -795,17 +839,17 @@ int main() {
     {
         // Wheel contact/native state can briefly become ineligible during a
         // push. That must release X without discarding the forward intent's
-        // acceleration hysteresis above the resume threshold.
+        // permission to finish the native acceleration steps.
         AutomaticPush push;
         push.poll(0, 0, 0, 0, true, true);
         check(push.poll(1, 0, 25000, 0, true, true), "sustained push starts from rest");
         check(!push.poll(100, 0, 25000, 4.5f, true, false), "native exclusion releases push immediately");
         check(push.poll(101, 0, 25000, 4.5f, true, true), "eligibility recovery resumes native held push");
         check(push.poll(851, 0, 25000, 4.5f, true, true), "sustained forward resumes above lower threshold after eligibility gap");
-        check(!push.poll(852, 0, 25000, 6, true, true), "recovered acceleration still stops at cruise");
-        check(!push.poll(1701, 0, 25000, 5, true, true), "cruise latch survives eligibility recovery");
-        push.poll(1702, 0, 0, 5, true, true);
-        check(!push.poll(2551, 0, 25000, 5, true, true), "released forward clears acceleration intent");
+        check(push.poll(852, 0, 25000, 6, true, true), "native later push steps remain available above the old cruise cap");
+        check(push.poll(1701, 0, 25000, 7, true, true), "continuous forward keeps native pushing rather than coasting");
+        check(!push.poll(1702, 0, 0, 5, true, true), "released forward immediately releases native push");
+        check(push.poll(2551, 0, 25000, 5, true, true), "forward resumes native acceleration at an ordinary rolling speed");
     }
     {
         AutomaticPush push;
@@ -816,9 +860,9 @@ int main() {
         check(push.poll(182, 0, 25000, 4.5f, true, true), "native held push survives the old short pulse boundary");
         check(push.poll(851, 0, 25000, 4.5f, true, true), "native cadence is not broken by an artificial release gap");
         check(push.poll(852, 0, 25000, 4.5f, true, true), "native held acceleration continues until cruise");
-        check(!push.poll(853, 0, 25000, 6.0f, true, true), "cruise speed immediately ends an active push");
-        check(!push.poll(2000, 0, 25000, 5.0f, true, true), "cruise hysteresis prevents push chatter");
-        check(!push.poll(3000, 0, 25000, 15.0f, true, true), "downhill speed is left alone");
+        check(push.poll(853, 0, 25000, 6.0f, true, true), "the native full acceleration sequence is not capped early");
+        check(push.poll(2000, 0, 25000, 9.1f, true, true), "the native engine owns its top pushing speed");
+        check(push.poll(3000, 0, 25000, 15.0f, true, true), "native push input leaves downhill physics in native ownership");
         check(push.poll(4000, 0, 25000, 3.9f, true, true), "push resumes after slowing below lower threshold");
         check(!push.poll(4001, 0, 25000, 3.9f, true, false), "lost riding eligibility cancels a push immediately");
         check(!push.poll(5000, 0, -25000, 0, true, true), "backward stick intent never accelerates");

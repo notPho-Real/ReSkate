@@ -33,12 +33,24 @@ X and B require independently observed airtime and a fresh press. Ground X
 does not start a jump; ground B retains native braking. Neither command requires
 A to remain held. Landing, bail, menus and Arcade OFF release synthetic ownership.
 
-Rapid manual pairs accept direct reversal or a neutral frame within350ms. D-pad
+Manual pairs accept direct reversal or a neutral gap within500ms, including
+moderate stick throws and diagonal thumb travel. D-pad
 and left-stick sequences are independent; held forward cannot swallow D-pad
 commands. Airborne preparation retains the proven native partial-stick method
 through landing, and D-pad Up/Down can correct an established manual balance.
-The first grounded left-stick Down is reserved for the rapid pair for up to350ms;
+The first grounded left-stick Down is reserved for the pair for up to500ms;
 a continued hold then passes through. B braking and horizontal steering stay native.
+The entry direction does not immediately push the balance meter: release it or
+tap the opposite direction to begin correction. Short taps change the meter's
+drift velocity and retain their effect after release. Confirmed native manual
+contact keeps the meter alive through score polling gaps. A failed manual keeps
+its red edge meter until the native pose exits, including when a protected bail
+cannot immediately end it; synthetic stick ownership is still released.
+
+Holding forward keeps the native push button held through the complete native
+acceleration sequence. There is no lower software cruise cap or resume threshold;
+native pushing owns top speed. Releasing movement or entering an incompatible
+state releases the push immediately.
 
 ## Flip table — X
 

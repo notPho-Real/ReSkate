@@ -17,7 +17,6 @@ constexpr bool native_push_allowed(bool valid, unsigned state, unsigned mode,
 // does not reliably advance the held-push steps. Never write a speed target.
 class AutomaticPush {
 public:
-    static constexpr float resume_speed = 4.0f, cruise_speed = 6.0f;
     void reset() noexcept { *this = {}; }
     bool poll(std::uint64_t now, std::int16_t lx, std::int16_t ly, float speed,
               bool gameplay, bool permitted) noexcept {
@@ -26,24 +25,21 @@ public:
         sampled_ = true;
         const bool neutral = std::abs(static_cast<int>(lx)) < 9000 && std::abs(static_cast<int>(ly)) < 9000;
         // Release movement after a menu/toggle boundary before starting again.
-        if (neutral) { armed_ = true; stop(); return false; }
+        if (neutral) { armed_ = true; return false; }
         const bool movement = ly >= 13000 || (std::abs(static_cast<int>(lx)) >= 13000 && ly > -9000);
         if (!armed_ || !movement) {
-            stop(); return false;
+            return false;
         }
-        // Release synthetic ownership immediately on exclusion while retaining
-        // the held movement's intent. Recovery can continue above resume_speed.
+        // Release ownership during exclusions. Native held pushing owns its
+        // acceleration steps and top speed; a lower software cruise cap cut
+        // off the later steps and left forward input coasting for too long.
         if (!permitted || !std::isfinite(speed) || speed < 0) {
             return false;
         }
-        if (speed >= cruise_speed) { stop(); return false; }
-        if (!accelerating_ && speed >= resume_speed) return false;
-        accelerating_ = true;
         return true;
     }
 private:
-    void stop() noexcept { accelerating_ = false; }
-    bool armed_{}, accelerating_{}, sampled_{};
+    bool armed_{}, sampled_{};
     std::uint64_t previous_time_{};
 };
 }

@@ -65,8 +65,9 @@ public:
         tuning_.severe_edge = std::max(tuning_.danger_edge, bounded(tuning_.severe_edge, 0.1f, 0.99f));
     }
     const State& state() const noexcept { return state_; }
+    const State& failed_balance() const noexcept { return failed_balance_; }
     const ModelSettlement& last_settlement() const noexcept { return settlement_; }
-    void reset() noexcept { state_ = {}; remainder_ = 0; elapsed_ = 0; }
+    void reset() noexcept { state_ = {}; failed_balance_ = {}; remainder_ = 0; elapsed_ = 0; }
     std::uint64_t take_banked_points() noexcept { const auto p = banked_; banked_ = 0; return p; }
     float difficulty() const noexcept {
         const float mode = state_.balance_kind == BalanceKind::grind ? state_.grind_fatigue : state_.manual_fatigue;
@@ -170,16 +171,27 @@ public:
             const float edge = std::max(0.0f, std::abs(state_.balance) - tuning_.danger_edge);
             const float push = bounded(drift_sign, -1.0f, 1.0f) * wave * tuning_.balance_drift_rate *
                 (1.0f + tuning_.disturbance_difficulty_scale * tuning_.fatigue_drift_gain * d);
-            const float damping = tuning_.damping + d * (tuning_.tired_damping - tuning_.damping);
-            const float authority = tuning_.balance_restore_rate * (1.0f - d * (1.0f - tuning_.tired_control_fraction));
+            const bool manual = state_.balance_kind == BalanceKind::manual;
+            // Manual taps change drift velocity. Strong damping erased those
+            // corrections almost immediately and demanded continuous holds.
+            // Grind dynamics retain their existing response.
+            const float damping = (tuning_.damping + d * (tuning_.tired_damping - tuning_.damping)) * (manual ? .15f : 1.0f);
+            const float authority = tuning_.balance_restore_rate * (1.0f - d * (1.0f - tuning_.tired_control_fraction)) *
+                (manual ? 3.0f : 1.0f);
             state_.balance_velocity += h * (push - damping * state_.balance_velocity +
                 authority * bounded(correction, -1.0f, 1.0f) + edge * state_.balance * (tuning_.edge_instability + d));
             state_.balance += h * state_.balance_velocity;
-            if (std::abs(state_.balance) >= 1.0f) { bail(); return true; }
+            if (std::abs(state_.balance) >= 1.0f) {
+                auto failed = state_;
+                failed.balance = std::clamp(failed.balance, -1.0f, 1.0f);
+                bail(); failed_balance_ = failed;
+                return true;
+            }
         }
         return false;
     }
 private:
+    State failed_balance_{};
     std::uint64_t total_points() const noexcept {
         const auto maximum = std::numeric_limits<std::uint64_t>::max();
         return state_.multiplier && state_.raw_points > maximum / state_.multiplier

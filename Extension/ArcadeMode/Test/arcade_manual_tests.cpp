@@ -25,6 +25,36 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    for (const unsigned frame : {17u, 33u}) {
+        for (const bool nose : {false, true}) {
+            ManualGesture manual;
+            poll(manual, 0);
+            const short first = nose ? -24000 : 24000;
+            poll(manual, frame, first, SkatePose::riding, 0, 16000);
+            for (unsigned ms = frame * 2; ms < 450; ms += frame)
+                poll(manual, ms, ms < 100 ? first : 0, SkatePose::riding, 0, ms < 100 ? 16000 : 0);
+            const auto out = poll(manual, 450 + frame, -first, SkatePose::riding, 0, -16000);
+            check(out.owns_stick && out.y == (nose ? 20000 : -20000),
+                "relaxed450ms opposite taps accept diagonal thumb travel at30/60Hz");
+            manual.cancel(); poll(manual, 1000);
+            poll(manual, 1010, first);
+            poll(manual, 1800, first);
+            check(!poll(manual, 1820, -first).owns_stick,
+                "ordinary long forward or reverse hold cannot complete a stale manual pair");
+        }
+    }
+    {
+        ManualGesture manual;
+        poll(manual, 0);
+        poll(manual, 20, 12500);
+        poll(manual, 50, 9000);
+        check(!poll(manual, 80, 12000).owns_stick, "threshold jitter cannot create a second opposite tap");
+        check(poll(manual, 450, -12500).owns_stick, "moderate stick taps do not require a full throw");
+        manual.cancel(); poll(manual, 1000);
+        poll(manual, 1020, 0, SkatePose::riding, 5);
+        check(poll(manual, 1470, 0, SkatePose::riding, 10).owns_stick,
+            "diagonal D-pad taps preserve their vertical command component");
+    }
     for (const auto candidate : {SkatePose::manual, SkatePose::nose_manual}) {
         check(manual_input_pose(candidate, true, false) == SkatePose::riding,
             "independently observed native one-wheel pushing cannot eat a manual command");
@@ -48,9 +78,9 @@ int run_arcade_manual_tests() {
             "established balance correction is never swallowed as a new first tap");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, -25000);
-        check(poll(manual, 1370, -25000).suppress_reverse && !poll(manual, 1371, -25000).suppress_reverse,
-            "a continued native reverse hold passes through immediately after the existing350ms pair window");
-        check(!poll(manual, 1400, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
+        check(poll(manual, 1520, -25000).suppress_reverse && !poll(manual, 1521, -25000).suppress_reverse,
+            "a continued native reverse hold passes through immediately after the500ms pair window");
+        check(!poll(manual, 1600, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
         manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
         check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
             "airborne movement is not masked by grounded reverse protection");
@@ -58,8 +88,8 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 3020, -25000, SkatePose::riding, 0x2000).suppress_reverse,
             "ordinary B braking cancels pending gesture ownership immediately");
         manual.cancel(); poll(manual, 4000);
-        check(!poll(manual, 4020, -25000, SkatePose::riding, 0, 25000).suppress_reverse,
-            "diagonal steering remains native rather than becoming a vertical tap");
+        check(!poll(manual, 4020, -11000, SkatePose::riding, 0, 32767).suppress_reverse,
+            "predominantly sideways steering remains native rather than becoming a vertical tap");
     }
     check(manual_revert_preparation(true, false, 101, 1, true),
         "fresh measured recovery with accepted continuation permits preparation");
@@ -91,7 +121,7 @@ int run_arcade_manual_tests() {
             "opposite edge while unsafe cancels without delayed actuation");
         manual.cancel(); recovery(3000, 0); recovery(3010, first);
         poll(manual, 3020);
-        check(!poll(manual, 3361, -first).owns_stick, "preparation retains350ms direction deadline");
+        check(!poll(manual, 3511, -first).owns_stick, "preparation retains500ms direction deadline");
         for (const auto pose : {SkatePose::riding, SkatePose::unknown, SkatePose::bail, SkatePose::grind}) {
             manual.cancel(); recovery(4000, 0); recovery(4010, first);
             recovery(4020, 0, pose != SkatePose::riding, pose);
@@ -163,11 +193,11 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 130, -25000).owns_stick, "opposing D-pad directions break the sequence");
         manual.cancel(); poll(manual, 200);
         poll(manual, 210, 25000);
-        check(!poll(manual, 561, -25000).owns_stick, "direction sequence expires after350ms");
+        check(!poll(manual, 711, -25000).owns_stick, "direction sequence expires after500ms");
         manual.cancel(); poll(manual, 600);
         poll(manual, 610, 25000);
-        check(poll(manual, 960, -25000).owns_stick, "direction sequence accepts the350ms boundary");
-        check(!poll(manual, 959).owns_stick, "backwards time cancels manual state");
+        check(poll(manual, 1110, -25000).owns_stick, "direction sequence accepts the500ms boundary");
+        check(!poll(manual, 1109).owns_stick, "backwards time cancels manual state");
     }
     {
         ManualGesture manual;
@@ -251,7 +281,7 @@ int run_arcade_manual_tests() {
         for (const bool nose : {false, true}) {
             for (const bool neutral_between : {false, true}) {
                 ManualGesture manual;
-                // Steering has been held well beyond the350ms pair window.
+                // Steering has been held well beyond the direction-pair window.
                 for (unsigned ms = 0; ms < 1000; ms += frame_ms)
                     check(!poll(manual, ms, 25000).owns_stick,
                         "ordinary sustained forward does not request a manual");

@@ -1,3 +1,38 @@
+## Movement and manual feel correction — 2026-10-17
+
+User play feedback supersedes the earlier basic control acceptance: cruising
+was too slow, manual entry demanded unusually precise/fast input, and a Nose
+Manual once outlasted its meter. That exact live pose had already ended.
+
+Source-first review searched all1455 files in official upstream ba1245a5,
+existing Arcade controls/model/observation/HUD and surveyed input adapters.
+Native held pushing already provides the remaining acceleration steps. Remove
+the lower6m/s cap and4m/s resume latch instead of writing velocity. Manual
+actuation stays the verified partial RS20000 recipe; input now accepts500ms
+pairs, moderate deflection and diagonal thumb travel with threshold hysteresis.
+Both directions still require actual edges; long movement holds and expired
+pairs do not count. First Down's reverse reservation expires after500ms.
+
+Manual-only correction authority increases3x and damping decreases to15% of
+the existing value, allowing short taps to change persistent drift. The entry
+direction is ignored until release or a fresh opposite correction. Grind
+dynamics and correction are unchanged. Model failure retains a bounded edge
+display until native manual exit, without restarting the failed section or
+retaining synthetic stick ownership.
+
+A fresh matching native history label still admits each manual once. Existing
+same-owner native100/mode1 wheel contact maintains that identity through score
+activity gaps; two-wheel gaps get100ms continuity. Owner/menu/bail/invalidity,
+opposite contact and real exits invalidate it. Loss of an established physical
+manual cancels its synthetic hold. This addresses source-reproduced routes to
+a missing meter, without claiming the user's vanished live case was reproduced.
+
+Focused strict ASAN/UBSAN checks pass33765 model,524 manual input, and111 action
+runtime checks; identity checks include contact continuity and negative controls.
+Hosted build and real Deck acceptance are PENDING. Installed build remains
+bedee9d / a521fb05 until a verified replacement is deployed. No executable or
+stock contract changes, new native hooks, memory scans or physics writes.
+
 ## Installed directional basic B build — 2026-10-17
 
 Installed bedee9d3430f496deba23f9ad7b5e26681fd6a09 / DLL
