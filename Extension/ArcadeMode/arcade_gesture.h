@@ -17,6 +17,9 @@ struct GestureProfile { std::array<GesturePhase, 3> phases; };
 constexpr std::uint32_t synthetic_packet_mask(unsigned phase, bool masked_buttons) noexcept {
     return phase == 3 ? 0x10000000u : phase == 1 ? 0x40000000u : phase == 2 ? 0x20000000u : masked_buttons ? 0x60000000u : 0u;
 }
+constexpr std::uint32_t manual_reverse_packet_mask(bool owned) noexcept {
+    return owned ? 0x08000000u : 0u;
+}
 // XInput Y is up-positive. Flip endpoints are DISCOVERED Deck observations,
 // not a claim of repeatability, airborne chaining or stance independence.
 constexpr GestureProfile profile(NativeTrick trick) noexcept {
@@ -39,6 +42,7 @@ public:
         bool unsupported{};
         bool authored_playback{};
         bool command_busy{};
+        bool suppress_reverse{};
     };
     void cancel() noexcept {
         active_ = NativeTrick::none;
@@ -167,6 +171,7 @@ public:
             out.authored_playback = classic.owns_stick;
             const auto manual = manuals_[user].poll(now, buttons, lx, ly, game_input,
                 manual_safe, observed, busy || triggers_held || (buttons & 0xf000u), manual_prepare_only);
+            out.suppress_reverse = manual.suppress_reverse;
             if (manual.owns_stick) {
                 out.right_x = 0; out.right_y = manual.y; out.phase = 1;
                 busy = true;

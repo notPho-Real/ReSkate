@@ -1,3 +1,35 @@
+## Direct-stick Nose Manual routing repair source — 2026-10-17
+
+Installed20b1902dbbafe5b163c76f75d49b40559c4367ce / DLL
+ad732353eb55ec86c85640642192e20ef2c129004432e7d197a248aa174fa862.
+CI39010889427 passed all five gates; raw/package match; guarded deployment preserves
+gamefbce74d5/stock5512a15e, updatesfalse/recoverypendingfalse. HIL60 manifest
+437c1c19aacba77378ec753fc60c4c2740e653bb75e3ddac4e7971c840a768bb;
+maintenance58 digestb6cc521593703a7298d9fd9e1e02186fcd153e3b0a551acfca897e095d7268d8.
+Fast-air/basic-grab native acceptance on this build remains pending startup.
+
+HIL59 direct-stick1792220511391760000: Up/Down confirms native Manual, but
+Down/Up fails Nose Manual. Native LS Down enters101/1 only36ms after its edge;
+the existing correct safety gate then cancels the pair. ManualGesture source is
+identical in3e295fb/20b1902. Source-first reuse: native101/revert classification
+already exists; SessionSticks classic deliberately owns native LS Y. Reserve only
+the grounded first Down within the existing350ms recognizer, preserving all RS
+manual actuation and rejecting actuation during101. A hold beyond350ms passes
+through; B, horizontal steering, menus/OFF/on-foot and established corrections
+are untouched. A distinct packet-mask bit makes restoration visible even with
+unchanged physical input and camera ownership. Hardware proof pending next DLL.
+The existing native push bit0x40 also keeps a one-wheel kick in riding input
+context until independent balance is established, so pushing cannot consume a
+fresh manual pair. This reuses the supported push observation; no new state read.
+33755 model/513 manual/62 playback/99 runtime checks pass strict ASAN/UBSAN.
+
+Manual correction1792220275819179000 PASSES both Manual/Nose: fresh matching
+native history and pose, D-pad correction+1/-1 with near-zero physical LY, actual
+balance x/velocity response, no extra manual request or failure; native state/
+idle/neutral/reset PASS, no gap. No new observation infrastructure was needed.
+Riding/air D-pad manual acceptances above remain valid. Keep failed direct-stick
+Nose result; do not replace it with the passing D-pad result.
+
 ## Manual acceptance; faster native air path source — 2026-10-17
 
 Runtime remains3e295fb / DLL00e91c07 on HIL59. Ground trials

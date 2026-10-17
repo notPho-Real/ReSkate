@@ -37,6 +37,8 @@ Rapid manual pairs accept direct reversal or a neutral frame within350ms. D-pad
 and left-stick sequences are independent; held forward cannot swallow D-pad
 commands. Airborne preparation retains the proven native partial-stick method
 through landing, and D-pad Up/Down can correct an established manual balance.
+The first grounded left-stick Down is reserved for the rapid pair for up to350ms;
+a continued hold then passes through. B braking and horizontal steering stay native.
 
 ## Flip table — X
 

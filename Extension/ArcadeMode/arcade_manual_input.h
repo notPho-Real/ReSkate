@@ -3,6 +3,12 @@
 #include "arcade_combo_session.h"
 
 namespace dingosdk::arcade_mode {
+inline SkatePose manual_input_pose(SkatePose candidate, bool native_pushing, bool established_balance) noexcept {
+    // A native push also lifts one wheel. Until independent balance is
+    // established, its kick must not consume or cancel a fresh manual command.
+    return native_pushing && !established_balance &&
+        (candidate == SkatePose::manual || candidate == SkatePose::nose_manual) ? SkatePose::riding : candidate;
+}
 // Preparation is input recognition only; state101 never authorizes actuation.
 inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
         unsigned mode, bool revert_pending) noexcept {
@@ -14,7 +20,7 @@ class ManualGesture {
 public:
     // confirmed remembers a native match for this request; it is not a fresh
     // pose event and must never replace the combo's independent native observer.
-    struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; };
+    struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; bool suppress_reverse{}; };
     void cancel() noexcept {
         clocked_ = confirmed_ = air_prepared_ = landed_ = wrong_contact_ = false;
         requested_ = 0; stick_pair_ = {}; pad_pair_ = {};
@@ -92,13 +98,19 @@ public:
             air_prepared_ = observed == SkatePose::air; landed_ = !air_prepared_;
             return {true, false, static_cast<std::int16_t>(requested_ * 20000)};
         }
-        return {};
+        // Native LS Down starts state101 before a rapid Down/Up can complete
+        // (Deck1792220511391760000). Reserve only that grounded first tap;
+        // an expired hold passes through and established balance is untouched.
+        return {false, false, 0, observed == SkatePose::riding && ly < -13000 && stick_pair_.awaiting_up(now)};
     }
 private:
     struct DirectionPair {
         bool armed{};
         int first{}, previous{};
         std::uint64_t at{};
+        bool awaiting_up(std::uint64_t now) const noexcept {
+            return armed && first == -1 && previous == -1 && now >= at && now - at <= 350;
+        }
         int poll(std::uint64_t now, TrickDirection direction) noexcept {
             const int vertical = direction == TrickDirection::up ? 1 : direction == TrickDirection::down ? -1 : 0;
             if (!armed) {

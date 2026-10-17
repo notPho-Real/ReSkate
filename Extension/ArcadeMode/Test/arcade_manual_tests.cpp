@@ -25,6 +25,42 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    for (const auto candidate : {SkatePose::manual, SkatePose::nose_manual}) {
+        check(manual_input_pose(candidate, true, false) == SkatePose::riding,
+            "independently observed native one-wheel pushing cannot eat a manual command");
+        check(manual_input_pose(candidate, false, false) == candidate && manual_input_pose(candidate, true, true) == candidate,
+            "actual manual contact and independently established balance keep their input context");
+    }
+    check(manual_input_pose(SkatePose::air, true, false) == SkatePose::air &&
+          manual_input_pose(SkatePose::bail, true, false) == SkatePose::bail,
+          "push context normalization cannot fabricate riding permission outside a one-wheel candidate");
+    {
+        ManualGesture manual;
+        poll(manual, 0);
+        auto down = poll(manual, 20, -25000);
+        check(down.suppress_reverse && !down.owns_stick,
+            "fresh grounded Down is reserved before native revert can consume a Nose Manual pair");
+        check(poll(manual, 100, -25000).suppress_reverse, "a rapid held first tap retains its pending ownership");
+        const auto up = poll(manual, 160, 25000);
+        check(up.owns_stick && up.y == 20000 && !up.suppress_reverse,
+            "direct Down/Up starts the proven native Nose Manual without a native reverse transition");
+        check(!poll(manual, 180, -25000, SkatePose::nose_manual).suppress_reverse,
+            "established balance correction is never swallowed as a new first tap");
+        manual.cancel(); poll(manual, 1000);
+        poll(manual, 1020, -25000);
+        check(poll(manual, 1370, -25000).suppress_reverse && !poll(manual, 1371, -25000).suppress_reverse,
+            "a continued native reverse hold passes through immediately after the existing350ms pair window");
+        check(!poll(manual, 1400, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
+        manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
+        check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
+            "airborne movement is not masked by grounded reverse protection");
+        manual.cancel(); poll(manual, 3000);
+        check(!poll(manual, 3020, -25000, SkatePose::riding, 0x2000).suppress_reverse,
+            "ordinary B braking cancels pending gesture ownership immediately");
+        manual.cancel(); poll(manual, 4000);
+        check(!poll(manual, 4020, -25000, SkatePose::riding, 0, 25000).suppress_reverse,
+            "diagonal steering remains native rather than becoming a vertical tap");
+    }
     check(manual_revert_preparation(true, false, 101, 1, true),
         "fresh measured recovery with accepted continuation permits preparation");
     for (unsigned state : {0u, 100u, 102u, 200u, 401u})

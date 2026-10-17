@@ -187,7 +187,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
         if (!valid || owner_changed || bail) arcade_input.cancel_manuals();
-        manual_observed.store(candidate_pose, std::memory_order_relaxed);
+        manual_observed.store(manual_input_pose(candidate_pose,
+            valid && native.state == 100 && native.crouch_mode == 1 && (native.words[0] & 0x40u) != 0,
+            combo_session.model().state().balance_kind != BalanceKind::none), std::memory_order_relaxed);
         manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
         manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
     }
@@ -869,6 +871,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare && !auxiliary_busy, offboard, auxiliary_busy, flip_ready, neutral_delivery[user].ready(now));
+        if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
@@ -903,6 +906,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^
+            manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
             reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left);

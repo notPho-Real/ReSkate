@@ -404,6 +404,28 @@ int main() {
         check(out.requested_id == 2 && out.right_y == catalog[1].ready_air_steps[0].y && out.right_y != 0,
               "independent native air plus delivered neutral starts the authored setup immediately without A history");
     }
+    {
+        ArcadeInput input;
+        input.enable(true);
+        const std::array catalog{PreparedGesture{1, false, GestureContext::ground,
+            {{0, 0, -32767}, {18, 0, 32767}, {22, 0, 0}}}};
+        const auto poll = [&](unsigned ms, short y) {
+            return input.poll(0, ms, 0, 0, y, 0, 0, true, true, true, 3,
+                false, true, true, ms / 17, false, catalog, false, true, SkatePose::riding);
+        };
+        poll(0, 0);
+        const auto down = poll(20, -25000);
+        check(down.suppress_reverse && !down.right_y, "Arcade routing owns the initial native reverse before Nose Manual recognition");
+        const auto up = poll(160, 25000);
+        check(up.right_y == 20000 && !up.suppress_reverse, "the next rapid Up reaches native Nose Manual actuation without state101");
+        input.cancel_commands(); poll(1000, 0);
+        const auto held = poll(1020, -25000);
+        const auto expired = poll(1371, -25000);
+        check(held.suppress_reverse && !expired.suppress_reverse &&
+              (synthetic_packet_mask(held.phase, true) ^ manual_reverse_packet_mask(held.suppress_reverse)) !=
+              (synthetic_packet_mask(expired.phase, true) ^ manual_reverse_packet_mask(expired.suppress_reverse)),
+              "native left-axis restoration remains packet-visible during an unchanged physical hold and camera ownership");
+    }
     for (const unsigned delay : {100u, 400u, 650u}) {
         const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
         const std::array catalog{PreparedGesture{2, false, GestureContext::ground, steps}};
