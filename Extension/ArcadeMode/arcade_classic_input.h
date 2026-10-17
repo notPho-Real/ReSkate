@@ -8,6 +8,11 @@ struct PreparedGesture {
     bool nollie{};
     GestureContext context{};
     std::vector<AuthoredStickStep> steps;
+    std::vector<AuthoredStickStep> air_steps;
+    PreparedGesture(std::uint8_t id, bool from_nollie, GestureContext from_context,
+                    std::vector<AuthoredStickStep> ground)
+        : native_id(id), nollie(from_nollie), context(from_context), steps(std::move(ground)),
+          air_steps(compile_airborne_flick(steps)) {}
 };
 inline std::vector<PreparedGesture> prepare_gestures(std::span<const AuthoredGesture> catalog) {
     std::vector<PreparedGesture> result;
@@ -126,7 +131,9 @@ private:
                bool airborne = false) noexcept {
         if (id) for (const auto& gesture : catalog) {
             if (gesture.native_id != id || gesture.nollie != nollie || gesture.context != context) continue;
-            if (playback_.start(gesture.steps, tick, hold, mirror_x, airborne)) { out.requested_id = id; return true; }
+            if (playback_.start(airborne ? gesture.air_steps : gesture.steps, tick, hold, mirror_x, airborne)) {
+                out.requested_id = id; return true;
+            }
         }
         out.unsupported = true;
         return false;

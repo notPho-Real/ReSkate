@@ -37,6 +37,15 @@ int run_arcade_playback_tests() {
         {0, -3000, -32767}, {18, 12000, 20000}, {19, 26000, 9000},
         {20, -22000, 15000}, {24, 0, 0}, {56, 0, 0}}};
     AuthoredPlayback delivered, absolute;
+    const auto air = compile_airborne_flick(steps);
+    check(air.front().tick == 0 && !air.front().x && !air.front().y && air[1].tick == 2,
+        "source-derived late stroke starts with30ms native neutral reset");
+    check(air[2].tick == 3 && air[2].x == steps[0].x && air[2].y == steps[0].y && air[3].tick == 5,
+        "late stroke loads native setup then holds it for35ms instead of a single frame");
+    check(air[4].tick == 6 && air[4].x == 4500 && air[5].tick == 7 && air[5].x == steps[1].x,
+        "late stroke interpolates the existing native path over35ms");
+    check(!air[air.size()-2].x && air.back().tick - air[air.size()-3].tick == 6,
+        "late stroke holds its end for60ms then releases a bounded neutral tail");
     check(delivered.schedule() == AuthoredPlaybackSchedule::delivery_relative,
         "existing delivery schedule remains the default");
     absolute.set_schedule(AuthoredPlaybackSchedule::absolute_ticks);

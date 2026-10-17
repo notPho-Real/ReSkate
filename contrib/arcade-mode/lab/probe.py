@@ -384,6 +384,40 @@ def parse_push_samples(text):
     return samples
 
 
+def parse_foot_motion(text):
+    """Existing native readers only; retained position keeps its own timestamp."""
+    samples, malformed, truncated, gaps = [], 0, 0, 0
+    pattern = (r'ARCADE FOOT MOTION: seq=([0-9]{1,20}) ms=([0-9]{1,20}) '
+               r'position_ms=([0-9]{1,20}) epoch=([0-9]{1,20}) valid=(true|false) '
+               r'airborne=(true|false) ragdoll=(true|false) wipeout=(true|false) '
+               r'y=([0-9.eE+-]{1,24}) vy=([0-9.eE+-]{1,24})\.$')
+    for line in text.splitlines():
+        if 'ARCADE FOOT MOTION:' not in line:
+            continue
+        match = re.search(pattern, line)
+        if not match:
+            malformed += 1
+            continue
+        try:
+            seq, ms, position_ms, epoch = map(int, match.groups()[:4])
+            valid, airborne, ragdoll, wipeout = (v == 'true' for v in match.groups()[4:8])
+            y, vy = map(float, match.groups()[8:])
+            if (max(seq, ms, position_ms, epoch) > 0xffffffffffffffff or not seq or not epoch or
+                    not math.isfinite(y) or not math.isfinite(vy) or abs(y) >= 1000000 or abs(vy) >= 1000 or
+                    (valid and not (position_ms and 0 <= ms - position_ms <= 150))):
+                raise ValueError('Invalid native foot sample')
+            if samples and (seq != samples[-1]['seq'] + 1 or ms < samples[-1]['ms']):
+                gaps += 1
+            samples.append(dict(seq=seq, ms=ms, position_ms=position_ms, epoch=epoch,
+                                valid=valid, airborne=airborne, ragdoll=ragdoll, wipeout=wipeout, y=y, vy=vy))
+            if len(samples) > 512:
+                samples.pop(0)
+                truncated += 1
+        except ValueError:
+            malformed += 1
+    return dict(samples=samples, malformed=malformed, truncated=truncated, sequence_gaps=gaps)
+
+
 def parse_flip_observations(text):
     # Changed physics words can repeat a selected flip during a native bail.
     # Cover the bounded12s trial plus10s recovery at60Hz without losing its start.
@@ -1273,6 +1307,7 @@ def native_trace(request, **kwargs):
             "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
             "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
             "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
+            "foot_observations": parse_foot_motion(text[start:] if start >= 0 else ""),
             "pad_observations": parse_pad_samples(text[start:] if start >= 0 else ""),
             "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
             "stick_observations": parse_stick_samples(text[start:] if start >= 0 else ""),

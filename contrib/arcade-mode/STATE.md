@@ -1,3 +1,26 @@
+## Native motion evidence and late-stroke correction — 2026-10-16
+
+Source audit pinned official upstream4c07f2493bccf6b7f42c4cff17f9bd7e6efebeb8
+and searched its complete1427-file tree. Reused HallOfMeat::read_step in the
+existing NoBail physics listener: offboard air/ragdoll and pelvis velocity.
+Trainer::telemetry supplies separate position timestamp/entity provenance;
+unreadable/stale/changed owners invalidate evidence. Numeric20Hz snapshots retain
+flag edges through the existing bounded queue; no new hooks, scans or physics writes.
+Physical A routing remains native. Standing/moving/repeated/OFF jump trials require
+valid grounded504, physical A, fresh native air edge, pelvisVy>2.2m/s, Y rise>0.1m,
+descent and landing, no ragdoll/wipeout/gaps; no-A baseline is a negative control.
+
+Flip timing reuses SessionSticks0.6.1 GPL source core.c build_stroke(rest_first)
+(survey archive b6d7c9dfec2cbdec45128f172ab99344857f3bd30fd94580fbe411c8433c78c8):
+30ms native neutral reset,10ms load,35ms setup/travel and60ms end hold, quantized
+to game ticks with interpolated authored paths. Replaces unproved one-frame air
+setup, retaining ground Ollie, native IDs and delivery ownership. This is a timing
+repair, not a new trick catalog. Early/apex/late Kickflip2 and Heelflip3 acceptance
+requires independent Ollie1/air followed by fresh exact native selection; requests
+alone never pass. Basic B and both manual identities still require hardware proof.
+33746 model,499 manual,99 runtime and52 playback checks pass ASAN/UBSAN;
+1328 telemetry checks and3 bounded-parser tests pass. New runtime is NOT deployed.
+
 ## Mandatory source-first correction — 2026-10-16
 
 WITHDRAW the on-foot jump hardware acceptance claim below. Jump HUD labels and

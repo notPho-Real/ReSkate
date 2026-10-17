@@ -74,6 +74,16 @@ void transition_and_startup() {
         "physics evidence recovers after saturation without replaying a failed transition");
 }
 void client_rows() {
+    FootMotionEvidence foot{1, 500, 450, 1, true, true, false, false, 47.5f, 3.2f};
+    check(client_telemetry_valid(foot), "independent native foot flags and fresh retained position can be published");
+    foot.position_ms = 349;
+    check(!client_telemetry_valid(foot), "stale native position cannot prove jump displacement");
+    foot.position_ms = 501;
+    check(!client_telemetry_valid(foot), "future position fails the shared motion provenance contract");
+    foot.position_ms = 450; foot.vy = std::numeric_limits<float>::quiet_NaN();
+    check(!client_telemetry_valid(foot), "nonfinite native pelvis motion fails closed");
+    foot.vy = 0; foot.valid = false; foot.position_ms = 0;
+    check(client_telemetry_valid(foot), "explicit invalidation survives without invented position provenance");
     InputTelemetry state;
     InputTelemetryLink link;
     HeartbeatEvidence heartbeat{};

@@ -22,6 +22,8 @@
 #include "Engine/Game/Build/20260929/no_bail.h"
 #include "Engine/Game/Build/20260929/grind_exit.h"
 #include "Extension/Skater/no_bail.h"
+#include "Extension/HallOfMeat/hall_of_meat_skater.h"
+#include "Extension/Trainer/trainer.h"
 #include "Extension/Skater/client_source_spawn.h"
 #include "Extension/Multiplayer/Remote/native_skater.h"
 #include "Extension/Multiplayer/Hud/native_party.h"
@@ -290,6 +292,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.sequence, r.ms, static_cast<unsigned>(d.status), d.available, d.comparable,
                 d.rows, d.manual_rows, d.nose_rows, d.distinct, d.manual_distinct, d.nose_distinct,
                 d.manual_added, d.manual_removed, d.nose_added, d.nose_removed, d.duplicates, d.relabels);
+        } else if constexpr (std::is_same_v<T, FootMotionEvidence>) {
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE FOOT MOTION: seq={} ms={} position_ms={} epoch={} valid={} airborne={} ragdoll={} wipeout={} y={} vy={}.",
+                r.sequence, r.ms, r.position_ms, r.owner_epoch, r.valid, r.airborne, r.ragdoll, r.wipeout, r.y, r.vy);
         } else if constexpr (std::is_same_v<T, FixtureTrajectoryEvidence>) {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE FIXTURE TRAJECTORY: session={} seq={} ms={} sampled={} generation={} revision={} status={} dropped={} x_mm={} y_mm={} z_mm={} speed_mm_s={} heading_mdeg={} state={}.",
@@ -401,7 +407,7 @@ bool start_input_telemetry() noexcept {
 }
 
 // Read-only physics-step evidence retains short transitions between client ticks.
-void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
+void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) noexcept {
     observe_grind_step(owner);
     using namespace game::build::v20260929::arcade_native_probe;
     NativeRequestSample sample{};
@@ -409,11 +415,42 @@ void observe_combo_step(const NoBailSkater& owner, float, bool) noexcept {
         !memory::peek(owner.context + selected_state, sample.state) ||
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) return;
     const auto flip = read_flip_selection([](auto address, auto& value) { return memory::peek(address, value); }, owner.core);
+    const bool offboard = sample.state == game::build::v20260929::no_bail::offboard_physics_state;
+    // Same physics-step reader used by Hall of Meat; Trainer's position carries
+    // separate provenance, just as it does for the existing fixture observer.
+    const auto foot = offboard && hall_of_meat::skater_available()
+        ? hall_of_meat::read_step(owner, seconds, wipeout) : hall_of_meat::Step{};
+    const auto motion = offboard ? trainer::telemetry() : trainer::Telemetry{};
     NoBailSkater after{};
     if (!no_bail_skater(after) || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
     const auto now = GetTickCount64();
+    // This listener runs on the local skater physics thread. Retain every flag
+    // transition and otherwise sample at20Hz; the existing bounded queue reports
+    // drops. Include invalidation/owner changes instead of bridging evidence gaps.
+    static NoBailSkater previous_owner{};
+    static FootMotionEvidence previous_foot{};
+    static std::uint64_t foot_sequence{}, foot_epoch{};
+    if (offboard || previous_foot.valid) {
+        if (owner.entity != previous_owner.entity || owner.core != previous_owner.core ||
+            owner.context != previous_owner.context || owner.rig != previous_owner.rig) ++foot_epoch;
+        previous_owner = owner;
+        FootMotionEvidence row{};
+        row.ms = now; row.owner_epoch = foot_epoch;
+        row.airborne = foot.airborne; row.ragdoll = foot.ragdoll.value_or(false); row.wipeout = wipeout;
+        row.valid = offboard && foot.ragdoll.has_value() && foot.velocity.has_value() &&
+            motion.skater && motion.sampled_entity == owner.entity && motion.physics_state == sample.state &&
+            motion.sampled_ms && now >= motion.sampled_ms && now - motion.sampled_ms <= 150;
+        if (row.valid) { row.position_ms = motion.sampled_ms; row.y = motion.position[1]; row.vy = (*foot.velocity)[1]; }
+        if (row.valid != previous_foot.valid || row.airborne != previous_foot.airborne ||
+            row.ragdoll != previous_foot.ragdoll || row.wipeout != previous_foot.wipeout ||
+            row.owner_epoch != previous_foot.owner_epoch || now < previous_foot.ms || now - previous_foot.ms >= 50) {
+            row.sequence = ++foot_sequence;
+            input_telemetry.client(row);
+            previous_foot = row;
+        }
+    }
     air_flip_ready_until.store(mode_enabled.load(std::memory_order_acquire) && flip.valid && flip.id == -1 &&
         sample.state >= 200 && sample.state < 300 ? now + 150 : 0, std::memory_order_release);
     input_telemetry.combo({sample, now, flip});

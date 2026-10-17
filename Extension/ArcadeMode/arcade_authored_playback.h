@@ -61,6 +61,33 @@ inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGestu
 
 enum class AuthoredPlaybackSchedule { delivery_relative, absolute_ticks };
 
+// SessionSticks0.6.1 (GPL-3.0-or-later), core.c build_stroke(rest_first):
+// neutral12+18ms, load10ms, hold35ms, travel35ms per point, end60ms.
+// Reuse the authored native path, prepared outside the input callback. Quantize
+// its continuous stroke to game ticks; repeated polls never shorten a hold.
+inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const AuthoredStickStep> ground) {
+    if (ground.empty() || ground.size() > 128) return {};
+    std::vector<AuthoredStickStep> result{{0, 0, 0}, {2, 0, 0}};
+    unsigned tick = 2;
+    AuthoredStickStep from{};
+    bool first = true;
+    for (const auto& point : ground) {
+        if (!point.x && !point.y) break;
+        const unsigned travel = first ? 1 : 2;
+        for (unsigned t = 1; t <= travel; ++t) {
+            result.push_back({++tick,
+                static_cast<std::int16_t>(static_cast<int>(from.x) + (static_cast<int>(point.x) - from.x) * static_cast<int>(t) / static_cast<int>(travel)),
+                static_cast<std::int16_t>(static_cast<int>(from.y) + (static_cast<int>(point.y) - from.y) * static_cast<int>(t) / static_cast<int>(travel))});
+        }
+        if (first) { tick += 2; result.push_back({tick, point.x, point.y}); }
+        from = point; first = false;
+    }
+    if (first || tick + 6 > 180 || result.size() + 2 > 128) return {};
+    result.push_back({tick + 4, 0, 0});
+    result.push_back({tick + 6, 0, 0});
+    return result;
+}
+
 class AuthoredPlayback {
 public:
     struct Output { bool owns_stick{}; std::int16_t x{}, y{}; };
@@ -79,13 +106,6 @@ public:
         for (std::size_t i = 1; i < steps.size(); ++i)
             if (steps[i].tick <= steps[i - 1].tick) return false;
         std::copy(steps.begin(), steps.end(), steps_.begin());
-        // Ground playback reserves time for crouching. An independently
-        // airborne flick needs one delivered setup tick, then the same authored
-        // arcs and relative timing; it must not spend eighteen ticks crouching.
-        if (airborne && steps.size() > 1 && steps_[1].tick > 1) {
-            const auto removed = steps_[1].tick - 1;
-            for (std::size_t i = 1; i < steps.size(); ++i) steps_[i].tick -= removed;
-        }
         if (mirror_x) for (std::size_t i = 0; i < steps.size(); ++i)
             steps_[i].x = static_cast<std::int16_t>(std::clamp(-static_cast<int>(steps_[i].x), -32768, 32767));
         size_ = steps.size(); began_ = last_ = step_at_ = tick; holding_ = hold_setup;

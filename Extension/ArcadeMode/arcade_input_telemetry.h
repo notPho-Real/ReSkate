@@ -6,6 +6,7 @@
 #include "arcade_fixture_trajectory.h"
 #include <atomic>
 #include <compare>
+#include <cmath>
 #include <span>
 #include <string_view>
 #include <type_traits>
@@ -84,17 +85,31 @@ inline ScoreProbePathText score_probe_path_text(const ScoreProbePath& path) noex
 }
 struct ScorePresenceEvidence { std::uint64_t ms{}; unsigned source{}, rows{}, stage{}, parts{}, labels{}; };
 struct ManualHistoryEvidence { std::uint64_t sequence{}, ms{}; ManualHistoryDiagnostic diagnostic{}; };
+// Read-only native offboard flags/pelvis motion, paired with Trainer's retained
+// position and its own timestamp. No inferred jump or requested action here.
+struct FootMotionEvidence {
+    std::uint64_t sequence{}, ms{}, position_ms{}, owner_epoch{};
+    bool valid{}, airborne{}, ragdoll{}, wipeout{};
+    float y{}, vy{};
+};
+inline bool foot_motion_valid(const FootMotionEvidence& r) noexcept {
+    return r.sequence && r.owner_epoch && std::isfinite(r.y) && std::isfinite(r.vy) &&
+        std::abs(r.y) < 1000000 && std::abs(r.vy) < 1000 &&
+        (!r.valid || (r.position_ms && r.ms >= r.position_ms && r.ms - r.position_ms <= 150));
+}
 struct ScoreNodeEvidence { ScoreProbePath path{}; unsigned kind{}, size{}; };
 struct ScoreValueEvidence { std::uint64_t ms{}; ScoreProbePath path{}; std::uint32_t value{}; bool label{}, limit{}; };
 using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence,
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
-    ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence>;
+    ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
+    FootMotionEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
+    if (const auto* foot = std::get_if<FootMotionEvidence>(&row)) return foot_motion_valid(*foot);
     return true;
 }
 inline bool client_telemetry_fresh(const ClientTelemetry& row, std::uint64_t now) noexcept {

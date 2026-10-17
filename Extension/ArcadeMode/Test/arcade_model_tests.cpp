@@ -155,8 +155,8 @@ int main() {
         gesture.poll(102 * 17, 102, 0, 0, 0, true, false, false, catalog, false, GestureContext::from_grind, true);
         pop = gesture.poll(103 * 17, 103, ClassicGesture::x | 4, 0, 0, true, false, false,
             catalog, false, GestureContext::from_grind, true);
-        check(pop.requested_id == 2 && pop.right_x == 1000,
-            "confirmed airborne rail-exit X retains the exact authored from-grind data");
+        check(pop.requested_id == 2 && pop.owns_stick && !pop.right_x && !pop.right_y,
+            "confirmed airborne rail-exit X resets neutral before its exact authored from-grind data");
         gesture.cancel(); poll(200, 0);
         const std::span ground_only(catalog.data(), 1);
         pop = gesture.poll(3500, 201, ClassicGesture::a, 0, 0, true, true, false,
@@ -430,14 +430,17 @@ int main() {
         check(!out.requested_id && !out.owns_stick, "grounded X is never queued into a later airborne window");
         out = controls.poll(1650, 99, ClassicGesture::x | 4, 0, 0, true, false, false,
             catalog, false, GestureContext::ground, true);
-        check(out.requested_id == 2 && out.right_y == -32767, "airborne X immediately selects exact Kickflip without A or grounded eligibility");
+        check(out.requested_id == 2 && out.owns_stick && !out.right_y, "airborne X selects exact Kickflip and resets native stick without A or grounded eligibility");
         out = controls.poll(1667, 100, 4, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
-        check(out.right_x == 28000, "airborne setup takes one delivered tick instead of a grounded crouch wait");
+        check(!out.right_x && !out.right_y, "native late stroke retains its neutral reset across repeated ticks");
         controls.poll(1733, 104, 4, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
         out = controls.poll(1800, 108, ClassicGesture::x | 4, 0, 0, true, false, false,
             catalog, false, GestureContext::ground, true);
-        check(out.unsupported && !out.requested_id && !out.owns_stick,
-            "unsupported repeated variant never injects a replacement flip");
+        check(!out.requested_id && out.owns_stick,
+            "a rapid second press cannot truncate the active native late stroke");
+        for (unsigned tick = 109; tick < 120; ++tick)
+            controls.poll(1800 + (tick - 108) * 17, tick, 0, 0, 0, true, false, false,
+                catalog, false, GestureContext::ground, true);
         controls.poll(2000, 120, 0, 0, 0, true, false, true, catalog, false, GestureContext::ground, true);
         out = controls.poll(2200, 132, ClassicGesture::x | 4, 0, 0, true, false, true,
             catalog, false, GestureContext::ground, true);
