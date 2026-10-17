@@ -1,3 +1,25 @@
+## Core controls repair in progress — 2026-10-16
+
+Automatic push regression reproduced in the pure controller: after an eligibility
+gap at4.5m/s, sustained forward never restarts because stop() clears acceleration
+intent above the4m/s resume threshold. The fix releases synthetic X immediately
+on exclusion while retaining intent and cadence until movement release, menu,
+toggle or cruise. Pulse180ms/cadence850ms and4/6m/s thresholds unchanged.
+33648 model checks pass with strict warnings and address/undefined sanitizers.
+Hardware acceptance is PENDING; this is not a verified gameplay claim.
+
+Deck status1792204887724192000 confirms8079c14/DLL788cdba0 with supported game
+and original stock hashes unchanged. Profile/Map menus were visibly dismissed
+using fixed Back actions. Trial1792204933146075000 refused fixture reset and sent
+no gameplay input. Trial1792205069473215000 delivered10s forward, neutralized and
+reset; screenshots show movement followed by the far barrier. Bounded evidence
+reports tail_limit/grind_evidence_incomplete amid noisy idle physical-stick logs;
+it does not establish a sustained speed curve or repeated native push acceptance.
+Next: isolated push trial with existing actions-off selector, then CI/deploy/test
+the repair. Off-board A, independently airborne X/B and rapid manuals remain
+required next priorities. Preserve all historical evidence below. Existing dirty
+trajectory/fixture/parser/method-matrix work is retained outside this change.
+
 ## Rail-clearance repeatability and bounded trajectory collection — 2026-10-16
 
 Source093ad76a4c7d6763df377c66835b07aead9bf593; installed runtime remains

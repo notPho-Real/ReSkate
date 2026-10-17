@@ -660,6 +660,21 @@ int main() {
             "full release rearms after a rejected trigger chord");
     }
     {
+        // Wheel contact/native state can briefly become ineligible during a
+        // push. That must release X without discarding the forward intent's
+        // acceleration hysteresis above the resume threshold.
+        AutomaticPush push;
+        push.poll(0, 0, 0, 0, true, true);
+        check(push.poll(1, 0, 25000, 0, true, true), "sustained push starts from rest");
+        check(!push.poll(100, 0, 25000, 4.5f, true, false), "native exclusion releases push immediately");
+        check(!push.poll(101, 0, 25000, 4.5f, true, true), "eligibility recovery does not restart a truncated pulse");
+        check(push.poll(851, 0, 25000, 4.5f, true, true), "sustained forward resumes above lower threshold after eligibility gap");
+        check(!push.poll(852, 0, 25000, 6, true, true), "recovered acceleration still stops at cruise");
+        check(!push.poll(1701, 0, 25000, 5, true, true), "cruise latch survives eligibility recovery");
+        push.poll(1702, 0, 0, 5, true, true);
+        check(!push.poll(2551, 0, 25000, 5, true, true), "released forward clears acceleration intent");
+    }
+    {
         AutomaticPush push;
         check(!push.poll(0, 0, 25000, 0, true, true), "held movement across enable does not auto push");
         push.poll(1, 0, 0, 0, true, true);

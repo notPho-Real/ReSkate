@@ -7,7 +7,7 @@ namespace dingosdk::arcade_mode {
 class AutomaticPush {
 public:
     static constexpr float resume_speed = 4.0f, cruise_speed = 6.0f;
-    // Keep room between ordinary pushes. cat pouch
+    // Keep room between ordinary pushes.
     static constexpr std::uint64_t pulse_ms = 180, cadence_ms = 850;
     void reset() noexcept { *this = {}; }
     bool poll(std::uint64_t now, std::int16_t lx, std::int16_t ly, float speed,
@@ -19,9 +19,17 @@ public:
         // Release movement after a menu/toggle boundary before starting again.
         if (neutral) { armed_ = true; stop(); return false; }
         const bool movement = ly >= 13000 || (std::abs(static_cast<int>(lx)) >= 13000 && ly > -9000);
-        if (!armed_ || !movement || !permitted || !std::isfinite(speed) || speed < 0 || speed >= cruise_speed) {
+        if (!armed_ || !movement) {
             stop(); return false;
         }
+        // Native contact/state exclusions release the button, but are not a
+        // release of the player's forward intent. Clearing accelerating_ here
+        // stranded a skater above resume_speed after one useful push. Preserve
+        // the cadence too: recovery must never emit another immediate edge.
+        if (!permitted || !std::isfinite(speed) || speed < 0) {
+            pulsing_ = false; return false;
+        }
+        if (speed >= cruise_speed) { stop(); return false; }
         if (!accelerating_ && speed >= resume_speed) return false;
         accelerating_ = true;
         if (pulsing_ && now - began_ >= pulse_ms) pulsing_ = false;
