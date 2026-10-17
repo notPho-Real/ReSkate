@@ -1,3 +1,54 @@
+## Native held-push refinement and on-foot source ready — 2026-10-16
+
+Installed runtime remains da1e762 / DLL278ee129, Stadium saved fixture restored,
+native60Hz readback captured in artifacts/ding-bat-60-readback.png. Trial
+1792206629078066000 gives multiple independently observed native push requests
+(request_words[0]&0x40, already used by supported trainer code) and acceleration
+4.96→6.82m/s. It still hits course geometry, so ten-second flat acceptance is NOT
+passed. Neutral/reset pass; returned-to-idle criterion fails before reset.
+1792206736881376000 shows braking/resumption and exact native Ollie, then a bail;
+neutral/reset pass, full scenario fails. Preserve both limitations.
+
+One ordinary native OFF held-X control1792206917876989000 reaches4.816 then6.709
+m/s in about2s and brakes to zero, all three state criteria/idle/neutral pass,
+no gap. Source client_noclip.cpp documents the native held-push speed steps;
+short repeated taps are not equivalent. New source therefore holds native X
+until cruise and permits its own one-wheel kick ONLY with independent native
+push request0x40, while established balance, missing contact, unsafe physics,
+manual input ownership, bail, menu and OFF remain exclusions. No physics writes.
+Combined strict sanitizer suites pass, including33680 model checks. This held
+refinement and the separate on-foot A→nativeX source are not yet built/deployed.
+Current Deck is native OFF, stationary/riding after the native hold control;
+fixture is preserved but pose is ordinarily steered away from its reset start.
+
+## Push repair deployed; native control verification continuing — 2026-10-16
+
+Installed da1e762f7a809ce03a7cf4a8bcb63b89e29f51a0 / DLL
+278ee129113221acb074ab920f2e8438bb6368a4b63b400a62a41e7cc733c09d.
+CI38996213467 passed all five gates; raw CI and immutable packaged DLL bytes
+match. Stopped-state1792206230857679000 confirmed both processes absent before
+guarded deployment. Supported game fbce74d5 and stock backup5512a15e unchanged,
+updatesfalse, recoverypendingfalse. HIL56 is a pin-only copy of frozen55,
+manifest1338cbd5164e489a37edab413880cc0ea24345913ba83040d4bcc018055d6b5e;
+maintenance54 similarly changes only runtime pins. Existing tools unchanged.
+Launcher visibly Ready/build25414733 after the existing guarded Steam Escape.
+Game is starting; fixture/60Hz restoration and hardware repair acceptance pending.
+
+Complete baseline1792205304985308000 independently reproduces the push defect:
+first native acceleration reaches4.954m/s with a one-wheel contact exclusion,
+then sustained forward coasts above4m/s for about6s with no further synthetic
+push edge. No evidence gap; neutral/reset pass. Later obstacle/contact losses
+are retained separately. Repair preserves intent/cadence across those exclusions.
+
+Native OFF on-foot comparison1792205600560120000 shows native Jump HUD after X,
+no Jump result after A; follow-up1792205669283663000 keeps the native mapping
+pilot. Both neutralize and return to riding; truncated numeric evidence remains
+UNVERIFIED and is not promoted. Source-only on-foot A→nativeX adapter now bypasses
+on-board playback, preserves native recovery and cancels on unsafe state/menu/OFF.
+33662 model checks plus existing combined control suites pass under sanitizers.
+No on-foot repair DLL is built/deployed yet. Air X/B and manual responsiveness
+remain outstanding; do not resume advanced score work.
+
 ## Core controls repair in progress — 2026-10-16
 
 Automatic push regression reproduced in the pure controller: after an eligibility

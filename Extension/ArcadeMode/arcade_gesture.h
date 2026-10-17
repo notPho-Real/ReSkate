@@ -5,6 +5,7 @@
 #include "arcade_classic_input.h"
 #include "arcade_manual_input.h"
 #include "arcade_grind_input.h"
+#include "arcade_on_foot.h"
 #include <array>
 #include <cstdint>
 
@@ -125,6 +126,7 @@ public:
         for (auto& push : pushes_) push.reset();
         for (auto& chord : chords_) chord.reset();
         for (auto& grind : grinds_) grind.reset();
+        for (auto& foot : on_foot_) foot.cancel();
     }
     void cancel_manuals() noexcept {
         for (auto& manual : manuals_) manual.cancel();
@@ -136,12 +138,21 @@ public:
             bool authored = false, std::uint64_t tick = 0, bool nollie = false,
             std::span<const PreparedGesture> catalog = {}, bool mirror_x = false,
             bool manual_safe = false, SkatePose observed = SkatePose::unknown,
-            bool experimental_grabs = false, bool manual_prepare_only = false) noexcept {
+            bool experimental_grabs = false, bool manual_prepare_only = false,
+            bool offboard = false, bool foot_safe = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         NativeGesture::Output out{};
         bool busy{};
-        if (authored) {
+        if (game_input && offboard) {
+            // A on foot never enters the authored Ollie/flip decoder. Preserve
+            // native face/d-pad actions and release every on-board stick owner.
+            gestures_[user].cancel(); classic_[user].cancel();
+            manuals_[user].cancel(); grinds_[user].reset(); pushes_[user].reset();
+            out = {on_foot_[user].poll(buttons, foot_safe, may_toggle_board), 0, 0, NativeTrick::none, 0};
+            busy = on_foot_[user].busy();
+        } else if (authored) {
+            on_foot_[user].cancel();
             if (game_input && experimental_grabs && observed == SkatePose::air && (buttons & 0x2000))
                 classic_[user].finish_neutral_tail();
             if (game_input && (observed == SkatePose::air || observed == SkatePose::grind) &&
@@ -166,6 +177,7 @@ public:
                 out.right_x = grind.x; out.right_y = grind.y; out.phase = 1; busy = true;
             }
         } else {
+            on_foot_[user].cancel();
             out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
             busy = gestures_[user].busy();
         }
@@ -188,5 +200,6 @@ private:
     std::array<AutomaticPush, 4> pushes_{};
     std::array<BoardChord, 4> chords_{};
     std::array<GrindInput, 4> grinds_{};
+    std::array<OnFootJump, 4> on_foot_{};
 };
 }

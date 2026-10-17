@@ -12,9 +12,10 @@ exact equivalent is **UNSUPPORTED**, never silently replaced by another trick.
 | Left Stick | Move, steer and directional trick modifier |
 | D-pad | Alternate directional trick input |
 | Right Stick | Camera |
-| A hold / release | Crouch / ollie |
-| X | Flip |
-| B | Grab |
+| A hold / release, on board | Crouch / ollie |
+| A, off board | Native on-foot jump |
+| X, airborne | Flip |
+| B, airborne | Grab |
 | Y | Contextual grind / lip |
 | LB / RB | Spin left / right |
 | LT | Nollie context |

@@ -3,12 +3,21 @@
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
-// Native button cadence only. Speed is an observation, never a velocity target.
+// The supported native push code consumes request_words[0] bit0x40 (also read
+// by trainer_push_speed). A native push lifts one wheel; that is permission to
+// continue pushing only while its independent request is present. Established
+// balance, missing contact and every non-riding state remain exclusions.
+constexpr bool native_push_allowed(bool valid, unsigned state, unsigned mode,
+        unsigned contacts, bool native_pushing, bool balancing) noexcept {
+    return valid && state == 100 && mode == 1 && !balancing &&
+        (contacts == 0xc000u || (native_pushing && (contacts == 0x4000u || contacts == 0x8000u)));
+}
+// Native held-button acceleration supplies its own push cadence. Short taps
+// merely ask for the current speed clamped to a native minimum; repeating them
+// does not reliably advance the held-push steps. Never write a speed target.
 class AutomaticPush {
 public:
     static constexpr float resume_speed = 4.0f, cruise_speed = 6.0f;
-    // Keep room between ordinary pushes.
-    static constexpr std::uint64_t pulse_ms = 180, cadence_ms = 850;
     void reset() noexcept { *this = {}; }
     bool poll(std::uint64_t now, std::int16_t lx, std::int16_t ly, float speed,
               bool gameplay, bool permitted) noexcept {
@@ -22,26 +31,19 @@ public:
         if (!armed_ || !movement) {
             stop(); return false;
         }
-        // Native contact/state exclusions release the button, but are not a
-        // release of the player's forward intent. Clearing accelerating_ here
-        // stranded a skater above resume_speed after one useful push. Preserve
-        // the cadence too: recovery must never emit another immediate edge.
+        // Release synthetic ownership immediately on exclusion while retaining
+        // the held movement's intent. Recovery can continue above resume_speed.
         if (!permitted || !std::isfinite(speed) || speed < 0) {
-            pulsing_ = false; return false;
+            return false;
         }
         if (speed >= cruise_speed) { stop(); return false; }
         if (!accelerating_ && speed >= resume_speed) return false;
         accelerating_ = true;
-        if (pulsing_ && now - began_ >= pulse_ms) pulsing_ = false;
-        if (!pulsing_ && (!has_pushed_ || now - began_ >= cadence_ms)) {
-            began_ = now;
-            pulsing_ = has_pushed_ = true;
-        }
-        return pulsing_;
+        return true;
     }
 private:
-    void stop() noexcept { accelerating_ = pulsing_ = false; }
-    bool armed_{}, accelerating_{}, pulsing_{}, has_pushed_{}, sampled_{};
-    std::uint64_t began_{}, previous_time_{};
+    void stop() noexcept { accelerating_ = false; }
+    bool armed_{}, accelerating_{}, sampled_{};
+    std::uint64_t previous_time_{};
 };
 }

@@ -62,6 +62,7 @@ std::atomic<std::uint64_t> ollie_eligible_until{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
 std::atomic<std::uint64_t> push_eligible_until{};
 std::atomic<std::uint64_t> board_eligible_until{};
+std::atomic<std::uint64_t> offboard_valid_until{}, foot_eligible_until{};
 std::atomic<std::uint64_t> manual_eligible_until{};
 std::atomic<std::uint64_t> manual_prepare_until{};
 std::atomic<std::uint64_t> action_eligible_until{};
@@ -462,8 +463,9 @@ bool native_board_speed(float& speed) noexcept {
     return true;
 }
 
-bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
+bool native_board_toggle_safe(const NativeRequestSample& sample, bool& foot_safe) noexcept {
     namespace layout = game::build::v20260929::skater_state;
+    foot_safe = false;
     if (!sample.valid) return false;
     if (sample.state == 100 && sample.crouch_mode == 1 && (sample.words[1] & 0xc000u) == 0xc000u) return true;
     if (sample.state != game::build::v20260929::no_bail::offboard_physics_state) return false;
@@ -472,14 +474,16 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
     std::uintptr_t trick{}, offboard{};
     std::uint8_t ragdoll{}, airborne{};
     std::uint32_t current{};
-    return no_bail_skater(owner) &&
+    const bool safe = no_bail_skater(owner) &&
         memory::peek(owner.core + layout::trick_state_offset, trick) &&
         memory::peek(trick + layout::offboard_state_offset, offboard) &&
         memory::peek(offboard + layout::ragdoll_offset, ragdoll) && ragdoll == 0 &&
-        memory::peek(offboard + layout::in_the_air_offset, airborne) && airborne == 0 &&
+        memory::peek(offboard + layout::in_the_air_offset, airborne) && airborne <= 1 &&
         memory::peek(owner.context + layout::physics_state_offset, current) && current == sample.state &&
         no_bail_skater(after) && owner.core == after.core && owner.context == after.context &&
         owner.rig == after.rig && owner.entity == after.entity;
+    foot_safe = safe;
+    return safe && airborne == 0;
 }
 }
 
@@ -562,6 +566,8 @@ void set_enabled(bool value, bool persist) noexcept {
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
+        offboard_valid_until.store(0, std::memory_order_release);
+        foot_eligible_until.store(0, std::memory_order_release);
         manual_eligible_until.store(0, std::memory_order_release);
         manual_prepare_until.store(0, std::memory_order_release);
         action_eligible_until.store(0, std::memory_order_release);
@@ -674,13 +680,23 @@ void on_client_tick() noexcept {
         if (native.valid) authored_mirror_x.store(
             !(native.words[0] & game::build::v20260929::grind_exit::stance_switch_mask), std::memory_order_release);
         float speed{};
-        // Both wheel contacts exclude the measured manual poses. Unknown state
-        // or speed means no push; native down-stick sliding also remains intact.
+        // Initial push requires ordinary two-wheel contact. Its independently
+        // observed native request may continue through its own one-wheel kick.
+        // Manual/grind balance and unknown state/speed still prohibit pushing.
         const bool speed_valid = native.valid && native.state == 100 && native.crouch_mode == 1 && native_board_speed(speed);
-        const bool push_valid = gameplay && watch.valid && speed_valid && (native.words[1] & 0xc000u) == 0xc000u;
+        const bool push_valid = native_push_allowed(gameplay && watch.valid && speed_valid,
+            native.state, native.crouch_mode, native.words[1] & 0xc000u, (native.words[0] & 0x40u) != 0,
+            combo_session.model().state().balance_kind != BalanceKind::none);
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
         push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
-        board_eligible_until.store(gameplay && watch.valid && native_board_toggle_safe(native) ? now + 150 : 0,
+        bool foot_safe{};
+        const bool board_safe = gameplay && watch.valid && native_board_toggle_safe(native, foot_safe);
+        offboard_valid_until.store(gameplay && watch.valid && native.valid &&
+            native.state == game::build::v20260929::no_bail::offboard_physics_state ? now + 150 : 0,
+            std::memory_order_release);
+        foot_eligible_until.store(gameplay && watch.valid && foot_safe ? now + 150 : 0,
+            std::memory_order_release);
+        board_eligible_until.store(gameplay && watch.valid && board_safe ? now + 150 : 0,
             std::memory_order_release);
         if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label);
         else {
@@ -747,6 +763,8 @@ void on_client_tick() noexcept {
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
         board_eligible_until.store(0, std::memory_order_release);
+        offboard_valid_until.store(0, std::memory_order_release);
+        foot_eligible_until.store(0, std::memory_order_release);
     }
 }
 
@@ -781,6 +799,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
     const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
     const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
+    const auto offboard_deadline = offboard_valid_until.load(std::memory_order_acquire);
+    const bool offboard = game_input && offboard_deadline >= now && offboard_deadline - now <= 150;
+    const auto foot_deadline = foot_eligible_until.load(std::memory_order_acquire);
+    const bool foot_safe = game_input && foot_deadline >= now && foot_deadline - now <= 150;
     const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
     const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
     NativeGesture::Output result{};
@@ -806,7 +828,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare && !auxiliary_busy);
+            manual_prepare && !auxiliary_busy, offboard, foot_safe);
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
@@ -822,13 +844,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (action.pad.owns_face_buttons) result.buttons = (result.buttons & ~0xf000u) | action.pad.face_buttons;
         const auto experiment = playback_mode.load(std::memory_order_relaxed);
         const bool reference = experiment == PlaybackExperiment::reference && result.authored_playback;
-        const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && left_trigger != 0;
+        const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && !offboard && left_trigger != 0;
         // The reference arm matches upstream's complete scripted pad during the
         // active flip. The timeline arm isolates scheduling with ordinary masking.
         if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
         else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
         const auto pose = manual_observed.load(std::memory_order_relaxed);
-        const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input;
+        const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
         const bool crouched = pose == SkatePose::riding && (physical_buttons & ClassicGesture::a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,

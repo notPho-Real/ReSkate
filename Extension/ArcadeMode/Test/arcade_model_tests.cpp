@@ -660,6 +660,53 @@ int main() {
             "full release rearms after a rejected trigger chord");
     }
     {
+        check(native_push_allowed(true, 100, 1, 0xc000, false, false), "ordinary two-wheel riding permits a native push");
+        for (const auto contact : {0x4000u, 0x8000u}) {
+            check(!native_push_allowed(true, 100, 1, contact, false, false), "one-wheel contact alone cannot authorize pushing");
+            check(native_push_allowed(true, 100, 1, contact, true, false), "independent native push request preserves its own one-wheel kick");
+            check(!native_push_allowed(true, 100, 1, contact, true, true), "established manual balance overrides a lingering native push request");
+        }
+        for (const auto state : {103u, 200u, 201u, 300u, 400u, 504u, 701u})
+            check(!native_push_allowed(true, state, 1, 0xc000, true, false), "crouch air bail grind offboard and exit states cannot push");
+        check(!native_push_allowed(false, 100, 1, 0xc000, true, false), "stale or menu observations cannot push");
+        check(!native_push_allowed(true, 100, 0, 0xc000, true, false), "native trick preparation cannot push");
+        check(!native_push_allowed(true, 100, 1, 0, true, false), "missing ground contact cannot be bypassed by a native request");
+        check(!native_push_allowed(true, 100, 1, 0xc000, true, true), "established balance excludes even a two-wheel contact transient");
+    }
+    {
+        OnFootJump foot;
+        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::a, "on-foot context requires release before a fresh jump");
+        foot.poll(0, true, true);
+        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::x, "fresh grounded on-foot A maps to native jump X");
+        check(foot.poll(OnFootJump::a, true, false) == OnFootJump::x, "jump button ownership survives native airtime");
+        check(foot.poll(0, true, false) == 0 && !foot.busy(), "releasing A releases the native jump button");
+        check(foot.poll(OnFootJump::a, true, false) == OnFootJump::a, "an airborne A edge cannot queue a future jump");
+        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::a, "landing cannot resurrect an airborne jump request");
+        foot.poll(0, true, true);
+        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::x, "another grounded A press jumps after landing");
+        check(foot.poll(OnFootJump::a, false, false) == OnFootJump::a && !foot.busy(), "bail or lost native permission releases synthetic X and preserves recovery A");
+        check(foot.poll(0x6001, true, true) == 0x6001, "other on-foot face and directional actions stay native");
+    }
+    {
+        ArcadeInput input;
+        input.enable(true);
+        auto poll = [&](std::uint64_t now, std::uint16_t buttons, bool gameplay = true, bool safe = true) {
+            return input.poll(0, now, buttons, 0, 25000, 0, 0, gameplay, false,
+                false, 0, false, true, true, now, false, {}, false,
+                false, SkatePose::unknown, false, false, true, safe);
+        };
+        poll(0, 0);
+        auto out = poll(1, OnFootJump::a);
+        check(out.buttons == OnFootJump::x && !out.authored_playback && !out.requested_id &&
+            !out.right_x && !out.right_y, "on-foot A requests native jump without any Ollie playback");
+        check(poll(2, OnFootJump::a, true, false).buttons == OnFootJump::a, "on-foot bail keeps native recovery actions");
+        check(poll(3, OnFootJump::a, false).buttons == OnFootJump::a, "menus preserve physical A");
+        poll(4, 0);
+        check(poll(5, OnFootJump::a).buttons == OnFootJump::x, "moving on-foot A rearms after the menu");
+        input.enable(false);
+        check(poll(6, OnFootJump::a).buttons == OnFootJump::a, "Arcade OFF restores native on-foot A");
+    }
+    {
         // Wheel contact/native state can briefly become ineligible during a
         // push. That must release X without discarding the forward intent's
         // acceleration hysteresis above the resume threshold.
@@ -667,7 +714,7 @@ int main() {
         push.poll(0, 0, 0, 0, true, true);
         check(push.poll(1, 0, 25000, 0, true, true), "sustained push starts from rest");
         check(!push.poll(100, 0, 25000, 4.5f, true, false), "native exclusion releases push immediately");
-        check(!push.poll(101, 0, 25000, 4.5f, true, true), "eligibility recovery does not restart a truncated pulse");
+        check(push.poll(101, 0, 25000, 4.5f, true, true), "eligibility recovery resumes native held push");
         check(push.poll(851, 0, 25000, 4.5f, true, true), "sustained forward resumes above lower threshold after eligibility gap");
         check(!push.poll(852, 0, 25000, 6, true, true), "recovered acceleration still stops at cruise");
         check(!push.poll(1701, 0, 25000, 5, true, true), "cruise latch survives eligibility recovery");
@@ -680,9 +727,9 @@ int main() {
         push.poll(1, 0, 0, 0, true, true);
         check(push.poll(2, 0, 25000, 0, true, true), "fresh movement at rest requests native push");
         check(push.poll(181, 0, 25000, 4.5f, true, true), "acceleration hysteresis survives lower speed crossing");
-        check(!push.poll(182, 0, 25000, 4.5f, true, true), "native push has a bounded hold");
-        check(!push.poll(851, 0, 25000, 4.5f, true, true), "cadence leaves an actual release gap");
-        check(push.poll(852, 0, 25000, 4.5f, true, true), "acceleration continues on the next native pulse");
+        check(push.poll(182, 0, 25000, 4.5f, true, true), "native held push survives the old short pulse boundary");
+        check(push.poll(851, 0, 25000, 4.5f, true, true), "native cadence is not broken by an artificial release gap");
+        check(push.poll(852, 0, 25000, 4.5f, true, true), "native held acceleration continues until cruise");
         check(!push.poll(853, 0, 25000, 6.0f, true, true), "cruise speed immediately ends an active push");
         check(!push.poll(2000, 0, 25000, 5.0f, true, true), "cruise hysteresis prevents push chatter");
         check(!push.poll(3000, 0, 25000, 15.0f, true, true), "downhill speed is left alone");
