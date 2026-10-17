@@ -47,6 +47,15 @@ int run_arcade_playback_tests() {
     check(!air[air.size()-2].x && air.back().tick - air[air.size()-3].tick == 6,
         "late stroke holds its end for60ms then releases a bounded neutral tail");
     const auto ready_air = compile_airborne_flick(steps, false);
+    {
+        AuthoredPlayback phase;
+        check(phase.start(ready_air, 100, false, false, true), "air timing phase control starts");
+        phase.sample(100, 1000);
+        check(phase.sample(102, 1020).x == ready_air[0].x,
+            "an early tick publication cannot shorten the native35ms setup");
+        check(phase.sample(104, 1035).x == ready_air[1].x,
+            "native setup advances once both game time and delivered35ms elapsed");
+    }
     check(ready_air[0].tick == 0 && ready_air[0].y == steps[0].y && ready_air[1].tick == 2 && ready_air[1].x == steps[1].x,
         "proven native neutral permits immediate setup with the same35ms load and fast authored flick");
     NeutralStickDelivery neutral;

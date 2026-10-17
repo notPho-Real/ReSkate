@@ -163,7 +163,7 @@ public:
         if (holding_ && !(held & a)) {
             playback_.release(tick); holding_ = false;
         }
-        const auto sample = playback_.sample(tick);
+        const auto sample = playback_.sample(tick, now);
         if (!playback_.busy()) holding_ = false;
         out.owns_stick = sample.owns_stick;
         out.right_x = sample.x; out.right_y = sample.y;

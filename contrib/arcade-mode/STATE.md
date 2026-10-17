@@ -1,3 +1,38 @@
+## Installed authored-clock build; elapsed setup fix pending — 2026-10-17
+
+Installed0d895838563caf8f36814d7d8f2a0faecaa50218 / DLL
+b64b7b9c9a35977b7c9931e121686009b17294014fc154ebf7dc33f494319339.
+CI39074691042 passes all five gates; raw CI DLL/package byte match and guarded
+deployment preserve gamefbce74d5/stock5512a15e, updatesfalse/recoveryfalse.
+HIL66 manifestd7fc29e4, maintenance67 d400b725; only verified pins/version changed.
+
+Trial1792277405025210000 rejects all three original30Hz flip timings: exact2/3
+but offboard504. Face-first33ms case delivers the authored path but no exact
+flip; its reset also fails native-menu closure after a telemetry console call
+overlapped final reset. Do not accept it. All input/console operations must be
+serialized. Native OFF controls1792278070755974000 are inconclusive (no air or
+motion); guarded retry1792278317882008000 stops before input with native menu
+open. The retained native customization menu is being dismissed. These are not
+proof of a native animation limitation. No automatic replay bypassed the guard.
+
+The same failed-trial stick records expose a concrete timing defect: first
+airborne setup is delivered for20–28ms despite its documented35ms requirement.
+A normalized tick counter cannot guarantee a duration when output starts
+between publications. Source fix retains native35ms from actual output delivery
+in the existing authored scheduler; grounded recipes, arc points and neutral
+tails remain unchanged. The focused regression fails before and passes after;
+65 playback,34304 model and119 action checks pass sanitized. Hardware PENDING.
+
+The earlier2fbfee1 trial1792276075837229000 independently verifies matched60:
+native rate readback60/cached16.667ms,1000 direct physics rows at16.667ms and
+59.9856 callbacks/s; native Ollie1/200/201/100 and neutral/idle PASS. CSVaca8f761,
+native motion157513d0 retained privately. A later center-lane run is rejected
+for605/200/504 terrain contact; only its historical CSV is archived
+(18a694792c263002ce89304586d0e3eab691a2fb29f8bb94c21997801957329f).
+The old session exceeded the frozen16MiB log limit; no limit was raised.
+Ten-second clear-lane speed, crouching/coasting/braking, matched-rate air-action
+landings and complete180/360 acceptance remain outstanding.
+
 ## Installed guarded rate build — 2026-10-17
 
 Installed2fbfee106c0a9f5717f35252d9ebb62259e0407b / DLL

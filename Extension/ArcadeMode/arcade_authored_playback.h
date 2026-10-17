@@ -142,18 +142,24 @@ public:
         if (mirror_x) for (std::size_t i = 0; i < steps.size(); ++i)
             steps_[i].x = static_cast<std::int16_t>(std::clamp(-static_cast<int>(steps_[i].x), -32768, 32767));
         size_ = steps.size(); began_ = last_ = step_at_ = tick; holding_ = hold_setup;
+        airborne_ = airborne; timed_ = false; first_non_neutral_ = size_;
         for (std::size_t i = 0; i < size_; ++i)
-            if (steps_[i].x || steps_[i].y) last_non_neutral_ = i;
+            if (steps_[i].x || steps_[i].y) {
+                first_non_neutral_ = std::min(first_non_neutral_, i); last_non_neutral_ = i;
+            }
         return true;
     }
     void release(std::uint64_t tick) noexcept {
         if (!holding_ || !size_) return;
         if (tick < last_) { cancel(); return; }
-        holding_ = false; released_ = true; began_ = last_ = step_at_ = tick;
+        holding_ = false; released_ = true; began_ = last_ = step_at_ = tick; timed_ = false;
     }
-    Output sample(std::uint64_t tick) noexcept {
+    Output sample(std::uint64_t tick) noexcept { return sample(tick, tick * 1000 / 60); }
+    Output sample(std::uint64_t tick, std::uint64_t now) noexcept {
         if (!size_) return {};
-        if (tick < last_) { cancel(); return {}; }
+        if (tick < last_ || (timed_ && now < last_ms_)) { cancel(); return {}; }
+        if (!timed_) { step_at_ms_ = now; timed_ = true; }
+        last_ms_ = now;
         last_ = tick;
         if (holding_) return {true, steps_[0].x, steps_[0].y};
         const auto elapsed = tick - began_;
@@ -174,16 +180,23 @@ public:
         if (index_ + 1 < size_) {
             const auto spacing = steps_[index_ + 1].tick - steps_[index_].tick;
             const auto due = released_ ? (spacing > 18 ? spacing - 18 : 0) : spacing;
-            if (since_step >= due) {
+            // Tick publication can occur just after this output is delivered.
+            // Preserve the existing native35ms airborne load in elapsed time,
+            // including starts between frames. Other authored stages are unchanged.
+            const auto minimum_ms = airborne_ && index_ == first_non_neutral_ ? 35u : 0u;
+            if (since_step >= due && now - step_at_ms_ >= minimum_ms) {
                 // A late input poll must deliver the next arc, never jump over it.
                 // Schedule later arcs from this delivery; same-tick reads are stable.
-                ++index_; step_at_ = tick; released_ = false;
+                ++index_; step_at_ = tick; step_at_ms_ = now; released_ = false;
             }
         }
         if (index_ + 1 == size_) { cancel(); return {}; }
         return {true, steps_[index_].x, steps_[index_].y};
     }
-    void cancel() noexcept { size_ = index_ = last_non_neutral_ = 0; holding_ = released_ = false; }
+    void cancel() noexcept {
+        size_ = index_ = first_non_neutral_ = last_non_neutral_ = 0;
+        holding_ = released_ = airborne_ = timed_ = false;
+    }
     bool busy() const noexcept { return size_ != 0; }
     bool finish_neutral_tail() noexcept {
         // A completed flick has already delivered neutral before a following
@@ -194,9 +207,9 @@ public:
     }
 private:
     std::array<AuthoredStickStep, 128> steps_{};
-    std::size_t size_{}, index_{}, last_non_neutral_{};
-    std::uint64_t began_{}, last_{}, step_at_{};
-    bool holding_{}, released_{};
+    std::size_t size_{}, index_{}, first_non_neutral_{}, last_non_neutral_{};
+    std::uint64_t began_{}, last_{}, step_at_{}, step_at_ms_{}, last_ms_{};
+    bool holding_{}, released_{}, airborne_{}, timed_{};
     AuthoredPlaybackSchedule schedule_{AuthoredPlaybackSchedule::delivery_relative};
 };
 }
