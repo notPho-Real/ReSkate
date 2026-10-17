@@ -28,6 +28,9 @@ struct ManualHistoryDiagnostic {
     bool available{}, comparable{};
     unsigned rows{}, manual_rows{}, nose_rows{}, distinct{}, manual_distinct{}, nose_distinct{};
     unsigned manual_added{}, manual_removed{}, nose_added{}, nose_removed{}, duplicates{}, relabels{};
+    // Reuse the same bounded presenter comparison for other exact native action
+    // labels. These masks corroborate physics/pose; they are not native event IDs.
+    std::uint32_t labels_added{}, labels_removed{};
     bool operator==(const ManualHistoryDiagnostic&) const = default;
 };
 class ManualHistory {
@@ -79,6 +82,8 @@ public:
                 const bool new_label = prior == count_ || previous_[prior].label != unique[i].label;
                 result.manual_added += new_label && unique[i].label == 1;
                 result.nose_added += new_label && unique[i].label == 2;
+                if (new_label && unique[i].label)
+                    result.labels_added |= std::uint32_t{1} << (unique[i].label - 1);
                 result.relabels += prior < count_ && previous_[prior].label != unique[i].label;
             }
             for (std::size_t i = 0; i < count_; ++i) {
@@ -86,6 +91,8 @@ public:
                 const bool old_label = current == count || unique[current].label != previous_[i].label;
                 result.manual_removed += old_label && previous_[i].label == 1;
                 result.nose_removed += old_label && previous_[i].label == 2;
+                if (old_label && previous_[i].label)
+                    result.labels_removed |= std::uint32_t{1} << (previous_[i].label - 1);
             }
         }
         previous_ = unique; count_ = count; context_ = context; primed_ = true;

@@ -69,7 +69,7 @@ int run_arcade_score_event_tests() {
         "backwards consumer clocks invalidate pending occurrences");
     edges.observe(1u << 31, true, 1500);
     check(!edges.take(1500).valid, "out-of-allowlist numeric labels are invalid evidence");
-    check(!score_label_bit(0) && !score_label_bit(27) && !result.contains(32),
+    check(!score_label_bit(0) && !score_label_bit(static_cast<std::uint32_t>(score_labels.size() + 1)) && !result.contains(32),
         "invalid diagnostic IDs cannot overflow bit selection");
     check(score_label_id("FS Revert") == 3 && score_label_id("BS Revert") == 4 &&
         score_label_id("FS Revert private text") == 0,

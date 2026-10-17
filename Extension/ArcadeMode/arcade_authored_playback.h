@@ -16,7 +16,7 @@ struct AuthoredStickStep {
 // Prepare away from the input callback. Authored step offsets use game ticks,
 // independent of the number of XInput reads in a frame.
 inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGesture& gesture,
-                                                           unsigned flick_ms = 24) {
+                                                           unsigned flick_ms = 24, bool maximum_magnitude = false) {
     if (gesture.arcs.empty() || gesture.arcs.size() > 32 || flick_ms > 1000) return {};
     constexpr float pi = 3.14159265358979323846f;
     std::vector<std::array<float, 2>> points;
@@ -29,6 +29,7 @@ inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGestu
             return {};
         const auto angle = (arc.start + std::remainder(arc.end - arc.start, 360.0f) / 2 + 180.0f) * pi / 180;
         float magnitude = arc.maximum <= .25f ? 0 : (arc.minimum + arc.maximum) / 2;
+        if (maximum_magnitude && arc.maximum > .25f) magnitude = std::min(arc.maximum, 1.0f);
         if (points.empty() && arc.maximum >= 1) magnitude = 1;
         points.push_back({std::sin(angle) * magnitude, std::cos(angle) * magnitude});
     }
@@ -61,32 +62,48 @@ inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGestu
 
 enum class AuthoredPlaybackSchedule { delivery_relative, absolute_ticks };
 
-// SessionSticks0.6.1 (GPL-3.0-or-later), core.c build_stroke(rest_first):
-// neutral12+18ms, load10ms, hold35ms, travel35ms per point, end60ms.
-// Reuse the authored native path, prepared outside the input callback. Quantize
-// its continuous stroke to game ticks; repeated polls never shorten a hold.
-inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const AuthoredStickStep> ground) {
+// SessionSticks0.6.1 (GPL-3.0-or-later), core.c build_stroke(rest_first)
+// establishes neutral30ms/setup35ms/end60ms. Native controls1792218594467142000
+// and1792218776707718000 land exact2/3 at the apex with35ms setup and a fast
+// full-range native flick. Retain the authored24ms flick path; unnecessary
+// neutral/load latency previously delayed native recognition by~80ms.
+inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const AuthoredStickStep> ground,
+                                                          bool neutral_reset = true) {
     if (ground.empty() || ground.size() > 128) return {};
-    std::vector<AuthoredStickStep> result{{0, 0, 0}, {2, 0, 0}};
-    unsigned tick = 2;
-    AuthoredStickStep from{};
+    std::vector<AuthoredStickStep> result;
+    unsigned tick{};
+    if (neutral_reset) { result = {{0, 0, 0}, {2, 0, 0}}; tick = 3; }
     bool first = true;
     for (const auto& point : ground) {
         if (!point.x && !point.y) break;
-        const unsigned travel = first ? 1 : 2;
-        for (unsigned t = 1; t <= travel; ++t) {
-            result.push_back({++tick,
-                static_cast<std::int16_t>(static_cast<int>(from.x) + (static_cast<int>(point.x) - from.x) * static_cast<int>(t) / static_cast<int>(travel)),
-                static_cast<std::int16_t>(static_cast<int>(from.y) + (static_cast<int>(point.y) - from.y) * static_cast<int>(t) / static_cast<int>(travel))});
-        }
-        if (first) { tick += 2; result.push_back({tick, point.x, point.y}); }
-        from = point; first = false;
+        result.push_back({tick, point.x, point.y});
+        tick += first ? 2 : 1;
+        first = false;
     }
-    if (first || tick + 6 > 180 || result.size() + 2 > 128) return {};
-    result.push_back({tick + 4, 0, 0});
-    result.push_back({tick + 6, 0, 0});
+    if (first || tick + 5 > 180 || result.size() + 2 > 128) return {};
+    result.push_back({tick + 3, 0, 0});
+    result.push_back({tick + 5, 0, 0});
     return result;
 }
+
+// Input ownership provenance only. Airtime and trick outcomes still come from
+// the independent native observer. Actual final RS outputs must stay zero across
+// distinct game ticks for30ms before omitting the authored neutral reset.
+class NeutralStickDelivery {
+public:
+    void observe(std::uint64_t now, std::uint64_t tick, bool active, short x, short y) noexcept {
+        if (!active || (seen_ && (now < last_ || tick < last_tick_))) { *this = {}; return; }
+        if (!seen_ || !neutral_ || x || y) { since_ = now; since_tick_ = tick; }
+        neutral_ = !x && !y; seen_ = true; last_ = now; last_tick_ = tick;
+    }
+    bool ready(std::uint64_t now) const noexcept {
+        return seen_ && neutral_ && now >= last_ && now - last_ <= 150 &&
+            last_ >= since_ && last_ - since_ >= 30 && last_tick_ > since_tick_;
+    }
+private:
+    std::uint64_t since_{}, since_tick_{}, last_{}, last_tick_{};
+    bool seen_{}, neutral_{};
+};
 
 class AuthoredPlayback {
 public:

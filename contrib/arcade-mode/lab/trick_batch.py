@@ -157,6 +157,7 @@ def observations(text):
     return dict(condition_observations(text), **{"buttons": buttons[-32:],
             "score": parse_score_samples(text), "pad": parse_pad_samples(text),
             "foot": parse_foot_motion(text),
+            "action_history": parse_action_history(text),
             "flip": parse_flip_observations(text), "stick": parse_stick_samples(text),
             "playback": parse_playback_samples(text), "actions": parse_action_samples(text),
             "score_edges": parse_score_edges(text), "score_labels": parse_score_presence(text), "score_numbers": parse_score_numbers(text),
@@ -1247,7 +1248,7 @@ ROOT = HERE.parents[2]
 sys.path.insert(0, str(HERE))
 import controller
 import robot
-from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_presence, parse_score_numbers, parse_native_score_events, parse_grind_observations, parse_fixture_status, parse_fixture_trajectory, parse_foot_motion
+from probe import parse_combo_samples, parse_score_samples, parse_push_samples, parse_pad_samples, parse_flip_observations, parse_stick_samples, parse_playback_samples, parse_action_samples, parse_score_edges, parse_score_presence, parse_score_numbers, parse_native_score_events, parse_grind_observations, parse_fixture_status, parse_fixture_trajectory, parse_foot_motion, parse_action_history
 from robot import fixture_console
 
 # Freeze trusted code for the lifetime of this process. Editing the worktree

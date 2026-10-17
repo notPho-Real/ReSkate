@@ -78,6 +78,7 @@ std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
 bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
 std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
+std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
 std::array<ActionRuntime, 4> action_inputs;
 std::array<AirRotation, 4> rotations;
@@ -292,6 +293,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.sequence, r.ms, static_cast<unsigned>(d.status), d.available, d.comparable,
                 d.rows, d.manual_rows, d.nose_rows, d.distinct, d.manual_distinct, d.nose_distinct,
                 d.manual_added, d.manual_removed, d.nose_added, d.nose_removed, d.duplicates, d.relabels);
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE ACTION HISTORY: seq={} ms={} status={} available={} comparable={} added={} removed={} relabels={}.",
+                r.sequence, r.ms, static_cast<unsigned>(d.status), d.available, d.comparable,
+                d.labels_added, d.labels_removed, d.relabels);
         } else if constexpr (std::is_same_v<T, FootMotionEvidence>) {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE FOOT MOTION: seq={} ms={} position_ms={} epoch={} valid={} airborne={} ragdoll={} wipeout={} y={} vy={}.",
@@ -863,7 +868,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare && !auxiliary_busy, offboard, auxiliary_busy, flip_ready);
+            manual_prepare && !auxiliary_busy, offboard, auxiliary_busy, flip_ready, neutral_delivery[user].ready(now));
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
@@ -901,6 +906,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
             reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left);
+        neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
+            result.right_x, result.right_y);
         packet_mask = physical_packet ^ output_packet;
         const auto poll = ++playback_polls[user];
         const auto& old = previous_pad[user];

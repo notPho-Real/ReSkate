@@ -384,6 +384,26 @@ int main() {
         check(!poll(320, 0, true, true).requested_id && !controls.busy(),
             "new grab intent cancels a pending flip before ownership handoff");
     }
+    {
+        const AuthoredGesture path{1, false, GestureContext::ground, 0, 0, 0,
+            {{280, 30, .5f, 1, 0}, {90, 150, .5f, 1, .1f}}, 0};
+        std::array<AuthoredGesture, 4> source{path, path, path, path};
+        source[1].native_id = 2; source[2].native_id = 16; source[2].nollie = true;
+        source[3].context = GestureContext::from_grind;
+        const auto catalog = prepare_gestures(source);
+        const auto radius = [](const AuthoredStickStep& step) { return std::hypot(step.x, step.y); };
+        check(radius(catalog[0].steps[1]) > 32765 && radius(catalog[2].steps[1]) > 32765 &&
+              radius(catalog[1].steps[1]) < 24576 && radius(catalog[3].steps[1]) < 24576,
+              "full native ground pop preserves existing grounded-flip and from-grind recipes");
+        check(radius(catalog[1].ready_air_steps[1]) > 32765 && catalog[1].ready_air_steps[1].tick == 2,
+              "air flips use the authored allowed range after a stable35ms setup");
+        ClassicGesture controls;
+        controls.poll(0, 0, 0, 0, 0, true, false, false, catalog, false, GestureContext::ground, true, false, true, true);
+        const auto out = controls.poll(20, 1, ClassicGesture::x | 4, 0, 0, true, false, false,
+            catalog, false, GestureContext::ground, true, false, true, true);
+        check(out.requested_id == 2 && out.right_y == catalog[1].ready_air_steps[0].y && out.right_y != 0,
+              "independent native air plus delivered neutral starts the authored setup immediately without A history");
+    }
     for (const unsigned delay : {100u, 400u, 650u}) {
         const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
         const std::array catalog{PreparedGesture{2, false, GestureContext::ground, steps}};

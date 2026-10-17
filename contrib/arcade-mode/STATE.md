@@ -1,3 +1,44 @@
+## Manual acceptance; faster native air path source — 2026-10-17
+
+Runtime remains3e295fb / DLL00e91c07 on HIL59. Ground trials
+1792218467126868000 PASS rapid70ms D-pad pairs over held forward for BOTH Manual
+and Nose Manual: fresh distinct matching native history, riding/one-wheel contact,
+native idle/neutral/reset PASS, no gap. Air preparation1792218281960351000 also
+PASSES BOTH: independent Ollie1/air, partial native stick before landing, correct
+one-wheel landing and fresh matching Manual/Nose Manual identity; all state/idle/
+neutral/reset PASS. Earlier1792217949057994000 preserved: Manual identity succeeds
+but brake too short; Nose cut off before recognition. Focused longer control
+1792218168224600000 proves Nose identity808ms after native actuation with clean
+stop. Native manual recipe,350ms command window and accepted balance preserved.
+
+Air source3e295fb:1792217646730504000 early Kickflip2 lands cleanly, apex Heelflip3
+recognizes but steps off.1792217815919279000 early Heelflip3 lands cleanly, apex
+Kickflip2 recognizes but steps off; both late requests fail exact identity. Retain
+all failures. Native OFF controls1792218594467142000 and1792218776707718000 land
+exact Kickflip2/Heelflip3 near apex with35ms setup/full-range fast flick, full
+native Ollie, no artificial airtime/tuning. Native recognition is~80ms earlier.
+Source now prepares that path: original authored24ms flick spacing and allowed
+maximum magnitudes,35ms setup, conditional30ms neutral reset. Only delivered zero
+RS across distinct game ticks for>=30ms can omit reset; nonzero outputs and OFF/
+menu/offboard invalidate that proof. Ground full-pop uses native allowed range;
+from-grind pop and ordinary grounded flip recipes remain unchanged. Hardware
+acceptance of this new source is PENDING the next verified DLL.
+Native OFF late control1792219198041405000 also FAILS exact Heelflip3 with clean
+idle/no gap. This falsifies the hypothesis that all late rejection is Arcade
+playback latency; a longer natural-air control remains required. No jump-height,
+game-time or native velocity changes are authorized as a substitute.
+
+Normal neutral-B pilot1792218085190513000 has native Ollie/air, safe native landing,
+fresh visible BS Grab Sketchy and a new native history row. Basic grab identity
+was missing from the existing exact-label allowlist, so do not accept from image
+alone. Source reuses that same guarded history reader with exact BS Grab/FS Grab/
+Grab labels and bounded added/removed label masks. Persistent history/baselines
+never become additions; no amounts, awards, banking or monetary authority changed.
+Fresh native history must corroborate independent air/pose and actual B before
+acceptance. Unproved named directional grabs remain unavailable.
+33752 model,62 playback,499 manual,99 runtime,150 history and1328 telemetry checks
+pass strict ASAN/UBSAN;414 lab tests pass. New source is not yet deployed.
+
 ## Installed source-first build; native A jump proof — 2026-10-17
 
 Installed3e295fb8b5e7fd4b1c9a0e88b1f9d97b5a61e8a9 / DLL

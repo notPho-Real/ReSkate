@@ -9,16 +9,20 @@ struct PreparedGesture {
     GestureContext context{};
     std::vector<AuthoredStickStep> steps;
     std::vector<AuthoredStickStep> air_steps;
+    std::vector<AuthoredStickStep> ready_air_steps;
     PreparedGesture(std::uint8_t id, bool from_nollie, GestureContext from_context,
-                    std::vector<AuthoredStickStep> ground)
+                    std::vector<AuthoredStickStep> ground, std::vector<AuthoredStickStep> air_path = {})
         : native_id(id), nollie(from_nollie), context(from_context), steps(std::move(ground)),
-          air_steps(compile_airborne_flick(steps)) {}
+          air_steps(compile_airborne_flick(air_path.empty() ? steps : air_path)),
+          ready_air_steps(compile_airborne_flick(air_path.empty() ? steps : air_path, false)) {}
 };
 inline std::vector<PreparedGesture> prepare_gestures(std::span<const AuthoredGesture> catalog) {
     std::vector<PreparedGesture> result;
     for (const auto& gesture : catalog) {
-        auto steps = compile_authored_flick(gesture);
-        if (!steps.empty()) result.push_back({gesture.native_id, gesture.nollie, gesture.context, std::move(steps)});
+        const bool full_pop = gesture.context == GestureContext::ground && (gesture.native_id == 1 || gesture.native_id == 16);
+        auto steps = compile_authored_flick(gesture, 24, full_pop);
+        if (!steps.empty()) result.push_back({gesture.native_id, gesture.nollie, gesture.context,
+            std::move(steps), compile_authored_flick(gesture, 24, true)});
     }
     return result;
 }
@@ -58,7 +62,7 @@ public:
             std::int16_t lx, std::int16_t ly, bool game_input, bool may_start, bool nollie,
             std::span<const PreparedGesture> catalog, bool mirror_x = false,
             GestureContext context = GestureContext::ground, bool airborne = false,
-            bool other_owner = false, bool flip_ready = true) noexcept {
+            bool other_owner = false, bool flip_ready = true, bool neutral_ready = false) noexcept {
         Output out{buttons};
         if (!game_input) { cancel(); return out; }
         // Directional trick modifiers must not open native gameplay menus.
@@ -103,7 +107,7 @@ public:
                 const auto air_context = context == GestureContext::ground ? context_ : context;
                 if (flip_ready) {
                     pending_flip_ = false;
-                    air_action_ = begin(id, nollie, false, tick, catalog, out, mirror_x, air_context, true);
+                    air_action_ = begin(id, nollie, false, tick, catalog, out, mirror_x, air_context, true, neutral_ready);
                 } else {
                     pending_id_ = id; pending_nollie_ = nollie; pending_mirror_ = mirror_x;
                     pending_context_ = air_context; pending_flip_ = id != 0;
@@ -114,7 +118,7 @@ public:
         if (pending_flip_ && airborne && flip_ready && !playback_.busy()) {
             pending_flip_ = false;
             air_action_ = begin(pending_id_, pending_nollie_, false, tick, catalog, out,
-                pending_mirror_, pending_context_, true);
+                pending_mirror_, pending_context_, true, neutral_ready);
         }
         if (holding_ && !(held & a)) {
             playback_.release(tick); holding_ = false;
@@ -128,10 +132,11 @@ public:
 private:
     bool begin(std::uint8_t id, bool nollie, bool hold, std::uint64_t tick,
                std::span<const PreparedGesture> catalog, Output& out, bool mirror_x, GestureContext context,
-               bool airborne = false) noexcept {
+               bool airborne = false, bool neutral_ready = false) noexcept {
         if (id) for (const auto& gesture : catalog) {
             if (gesture.native_id != id || gesture.nollie != nollie || gesture.context != context) continue;
-            if (playback_.start(airborne ? gesture.air_steps : gesture.steps, tick, hold, mirror_x, airborne)) {
+            const auto& steps = airborne ? (neutral_ready ? gesture.ready_air_steps : gesture.air_steps) : gesture.steps;
+            if (playback_.start(steps, tick, hold, mirror_x, airborne)) {
                 out.requested_id = id; return true;
             }
         }

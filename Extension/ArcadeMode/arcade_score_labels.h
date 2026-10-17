@@ -6,7 +6,7 @@
 namespace dingosdk::arcade_mode {
 // Diagnostic IDs, separate from native animation IDs. Exact text matches only;
 // unknown labels and player-authored text never enter telemetry.
-constexpr std::array<std::string_view, 26> score_labels{
+constexpr std::array<std::string_view, 29> score_labels{
     "Manual", "Nose Manual", "FS Revert", "BS Revert",
     "Melon", "Nosegrab", "Indy", "Tailgrab", "Japan", "Madonna", "Benihana", "Airwalk",
     "Method", "Rocket Air", "Stiffy", "One Foot Tailgrab", "One Foot Japan", "Judo", "Sacktap", "Christ Air",
@@ -14,7 +14,9 @@ constexpr std::array<std::string_view, 26> score_labels{
     "BS 50-50 Grind", "BS Axle Stall", "Harsh Slam", "Slam",
     // Native history stores these base names separately from the displayed side.
     // Observed on08d2a3a; they establish no FS/BS identity or grind enum mapping.
-    "Revert", "50-50 Grind"
+    "Revert", "50-50 Grind",
+    // Basic native grab names, separate from the unproved named modifiers.
+    "BS Grab", "FS Grab", "Grab"
 };
 constexpr std::uint32_t score_label_id(std::string_view text) noexcept {
     // Observed on Deck after a native revert changes riding context. This

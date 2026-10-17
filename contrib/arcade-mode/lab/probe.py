@@ -384,6 +384,41 @@ def parse_push_samples(text):
     return samples
 
 
+def parse_action_history(text):
+    """Fresh exact-name changes from the existing native history reader.
+
+    Presenter changes only corroborate independently observed native motion;
+    they are not animation IDs, local action ownership or scoring authority.
+    """
+    samples, malformed, dropped, gaps = [], 0, 0, 0
+    pattern = (r'ARCADE ACTION HISTORY: seq=([0-9]{1,20}) ms=([0-9]{1,20}) status=([0-6]) '
+               r'available=(true|false) comparable=(true|false) added=([0-9]{1,10}) '
+               r'removed=([0-9]{1,10}) relabels=([0-9]{1,2})\.$')
+    for line in text.splitlines():
+        if 'ARCADE ACTION HISTORY:' not in line:
+            continue
+        m = re.search(pattern, line)
+        if not m:
+            malformed += 1
+            continue
+        seq, ms, status = map(int, m.groups()[:3])
+        available, comparable = m[4] == 'true', m[5] == 'true'
+        added, removed, relabels = map(int, m.groups()[5:])
+        if (not seq or max(seq, ms) > 0xffffffffffffffff or (added | removed) >= 1 << 29 or relabels > 16 or
+                (comparable and (not available or status != 1)) or (not comparable and (added or removed))):
+            malformed += 1
+            continue
+        if samples and (seq != samples[-1]['seq'] + 1 or ms < samples[-1]['ms']):
+            gaps += 1
+        samples.append(dict(seq=seq, ms=ms, status=status, available=available, comparable=comparable,
+                            added=added, removed=removed, relabels=relabels))
+        if len(samples) > 512:
+            samples.pop(0)
+            dropped += 1
+    return dict(samples=samples, malformed=malformed, dropped=dropped, sequence_gaps=gaps,
+                standalone_proof=False)
+
+
 def parse_foot_motion(text):
     """Existing native readers only; retained position keeps its own timestamp."""
     samples, malformed, truncated, gaps = [], 0, 0, 0
@@ -1308,6 +1343,7 @@ def native_trace(request, **kwargs):
             "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
             "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
             "foot_observations": parse_foot_motion(text[start:] if start >= 0 else ""),
+            "action_history": parse_action_history(text[start:] if start >= 0 else ""),
             "pad_observations": parse_pad_samples(text[start:] if start >= 0 else ""),
             "flip_observations": parse_flip_observations(text[start:] if start >= 0 else ""),
             "stick_observations": parse_stick_samples(text[start:] if start >= 0 else ""),

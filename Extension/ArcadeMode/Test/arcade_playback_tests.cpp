@@ -42,10 +42,37 @@ int run_arcade_playback_tests() {
         "source-derived late stroke starts with30ms native neutral reset");
     check(air[2].tick == 3 && air[2].x == steps[0].x && air[2].y == steps[0].y && air[3].tick == 5,
         "late stroke loads native setup then holds it for35ms instead of a single frame");
-    check(air[4].tick == 6 && air[4].x == 4500 && air[5].tick == 7 && air[5].x == steps[1].x,
-        "late stroke interpolates the existing native path over35ms");
+    check(air[3].x == steps[1].x && air[4].tick == 6 && air[4].x == steps[2].x,
+        "late stroke retains the fast authored path after a stable native setup");
     check(!air[air.size()-2].x && air.back().tick - air[air.size()-3].tick == 6,
         "late stroke holds its end for60ms then releases a bounded neutral tail");
+    const auto ready_air = compile_airborne_flick(steps, false);
+    check(ready_air[0].tick == 0 && ready_air[0].y == steps[0].y && ready_air[1].tick == 2 && ready_air[1].x == steps[1].x,
+        "proven native neutral permits immediate setup with the same35ms load and fast authored flick");
+    NeutralStickDelivery neutral;
+    neutral.observe(100, 10, true, 0, 0);
+    check(!neutral.ready(140), "one delivered neutral poll cannot prove a reset by waiting");
+    neutral.observe(140, 10, true, 0, 0);
+    check(!neutral.ready(140), "a paused game tick cannot prove native neutral delivery");
+    neutral.observe(141, 11, true, 0, 0);
+    check(neutral.ready(141) && neutral.ready(291) && !neutral.ready(292), "neutral proof needs distinct ticks and expires with the gameplay freshness contract");
+    neutral.observe(150, 12, true, 0, 20000);
+    check(!neutral.ready(150), "manual or another native stick owner invalidates neutral immediately");
+    neutral.observe(160, 13, true, 0, 0); neutral.observe(189, 14, true, 0, 0);
+    check(!neutral.ready(189), "a new neutral tail must finish its own30ms reset");
+    neutral.observe(190, 15, true, 0, 0);
+    check(neutral.ready(190), "a completed neutral tail rearms the fast air path");
+    neutral.observe(191, 16, false, 0, 0);
+    check(!neutral.ready(191), "menu, OFF and offboard transitions invalidate input ownership provenance");
+    neutral.observe(200, 17, true, 0, 0); neutral.observe(240, 18, true, 0, 0); neutral.observe(239, 19, true, 0, 0);
+    check(!neutral.ready(240), "clock reversal cannot preserve neutral proof");
+    const AuthoredGesture native{2, false, GestureContext::ground, 0, 0, 0,
+        {{280, 30, .5f, 1, 0}, {90, 150, .5f, 1, .1f}}, 256};
+    const auto normal_range = compile_authored_flick(native);
+    const auto full_range = compile_authored_flick(native, 24, true);
+    check(std::hypot(full_range[1].x, full_range[1].y) > 32765 &&
+          std::hypot(normal_range[1].x, normal_range[1].y) < 24576,
+          "fast native flick uses the authored allowed maximum rather than a weaker midpoint");
     check(delivered.schedule() == AuthoredPlaybackSchedule::delivery_relative,
         "existing delivery schedule remains the default");
     absolute.set_schedule(AuthoredPlaybackSchedule::absolute_ticks);

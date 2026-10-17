@@ -14,13 +14,30 @@ void check(bool value, const char* message) {
 }
 ManualHistoryContext context(std::uint64_t now = 1000) { return {now, 100, 200, 300, true, true}; }
 bool no_delta(const ManualHistoryDiagnostic& d) {
-    return !d.manual_added && !d.manual_removed && !d.nose_added && !d.nose_removed && !d.relabels;
+    return !d.manual_added && !d.manual_removed && !d.nose_added && !d.nose_removed && !d.relabels &&
+        !d.labels_added && !d.labels_removed;
 }
 }
 int main() {
     static_assert(std::is_trivially_copyable_v<ManualHistoryDiagnostic>);
     static_assert(sizeof(ManualHistoryDiagnostic) <= 64);
     const ManualHistoryRow manual{1, 10, 1}, nose{2, 10, 2}, other{3, 10, 26};
+    {
+        check(score_label_id("BS Grab") == 27 && score_label_id("FS Grab") == 28 && score_label_id("Grab") == 29 &&
+              score_label_id("Melon") == 5 && !score_label_id("unknown Grab"),
+              "basic native grabs retain exact identities without becoming named modifier results");
+        ManualHistory history;
+        const std::array first_grab{ManualHistoryRow{10, 20, 27}};
+        check(no_delta(history.observe(first_grab, context())), "a lingering native grab is only a baseline");
+        const std::array next_grab{first_grab[0], ManualHistoryRow{11, 20, 27}};
+        const auto added = history.observe(next_grab, context(1050));
+        check(added.comparable && added.labels_added == score_label_bit(27) && !added.manual_added && !added.nose_added,
+              "a second same-name grab presenter exposes a fresh native label change without manual or score effects");
+        check(no_delta(history.observe(next_grab, context(1100))), "repeated grab history is never another action");
+        const auto removed = history.observe(first_grab, context(1150));
+        check(removed.labels_removed == score_label_bit(27) && !removed.labels_added, "native grab removal is explicit");
+        check(no_delta(history.observe(next_grab, context(1400))), "an observation gap cannot invent a grab occurrence");
+    }
     const std::array first{manual, nose, other};
     {
         ManualHistory history;
@@ -94,7 +111,7 @@ int main() {
         if (fault == 4) c.model_type = 0;
         if (fault == 5) rows[0].handle = 0;
         if (fault == 6) rows[0].type = 0;
-        if (fault == 7) rows[0].label = 27;
+        if (fault == 7) rows[0].label = static_cast<std::uint32_t>(score_labels.size() + 1);
         const auto d = history.observe(rows, c);
         check(!d.available && !d.comparable && d.status == expected && !d.rows && no_delta(d),
               "unavailable or malformed history remains explicitly unavailable, not zero evidence");
