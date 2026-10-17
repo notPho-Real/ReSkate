@@ -1,3 +1,80 @@
+## Installed guarded rate build — 2026-10-17
+
+Installed2fbfee106c0a9f5717f35252d9ebb62259e0407b / DLL
+de032bb8e3dea172a16a17d80ba06aabbd6f3a3afa8d617d68a055860535070e.
+CI39073048584 passes all five gates; raw CI DLL and immutable package are
+byte-identical. Guarded stopped-game deployment preserves gamefbce74d5 and
+stock5512a15e, updatesfalse/recoverypendingfalse. HIL65 manifestf268f13a,
+maintenance66 digest013b80a1; frozen workers unchanged. Only two reviewed fixed
+rate commands now invoke the guarded fixture rate operation. Actual rate
+readback/cadence and movement acceptance remain PENDING the fresh session.
+
+Previous4dab47d matched30 movement pilot1792275499071053000 reaches native
+11.150m/s before course contact/offboard504; NOT sustained-speed acceptance.
+Native2252 physics rows all report33.3ms and Trainer position corroborates
+movement. CSV85d8bc859bf41bbd3e088b004a70a6a8082a631a0c7f4414335e03675d75e052;
+motion21c93fe84219f168ca65df50348b17e8aa481edc83099bfce541190ae791e251.
+The ten-second HIL tail reports truncation; complete bounded native-motion
+collection is preserved separately. No collision result is accepted as cruising.
+
+## Air event matching and authored clock — source correction pending
+
+Fresh4dab47d trial1792275159684754000: rising Kickflip2 and near-peak/later
+Heelflip3 all select the exact native identity but finish offboard504. All are
+REJECTED as gameplay successes. Inputs, native air/state/identity and clean
+neutral/reset are retained; no screenshot or selection alone establishes landing.
+
+Source-first comparison of existing authored compilation, client publication,
+Hall of Meat cached-step API and surveyed playback adapters exposes a timing
+defect: authored offsets are compiled at60 units/s but runtime advances only
+once per client callback. At matched30Hz that doubles setup/tail durations.
+New source advances a monotonic rational authored clock from the existing
+guarded cached step. Missing/invalid rate releases synthetic ownership; native
+frame quantization and ordered arc delivery remain. No animation/physics changes.
+
+Original event matching accepts face/direction in either order within500ms;
+the existing adapter only handled direction first. A failing focused regression
+reproduced that gap. New source retains unmatched airborne X without stick
+ownership, consumes it once a direction matches, and discards it on landing,
+competing input, invalid direction, owner/context loss or expiry. Native
+readiness remains a separate200ms budget after matching. Takeoff separately
+clears directional history older than160ms; held directions remain usable.
+Both500ms airborne matching and160ms preload boundaries are source-tested.
+Sanitized34304 model and119 runtime checks pass. Hardware acceptance PENDING;
+these source changes are not part of installed4dab47d or the rate-only2fbfee1.
+
+## Focused matched30 control pilots — 2026-10-17
+
+Installed4dab47d / DLL22ac7739, HIL64, unchanged native/stock contract.
+After reloading Stadium, both native callback cadence and cached33.3ms step
+establish matched30Hz. The earlier nominal60 setup is invalidated below.
+No monetary, grind, revert or supported-build changes were made.
+
+* 1792273386159627000: ground200ms diagonal pairs yield fresh native Manual1
+  and Nose Manual2, riding100, idle/neutral/reset PASS, no observation drops.
+  Short70–100ms D-pad corrections exercise the existing manual balance path.
+* 1792273815256714000: rolling moderate diagonal200ms pair yields Manual1;
+  D-pad200ms pair over held forward yields Nose Manual2. Both clean100 with
+  idle/neutral/reset PASS and no observation drops. This does not support the
+  speculative claim that rolling entry requires a different native recipe.
+* 1792273895088300000: both350ms airborne pairs follow independently observed
+  Ollie1/air and produce the correct fresh manual on landing. Manual1 appears
+ 195ms after landing; Nose Manual2 appears696ms after landing. Both clean100,
+  idle/neutral/reset PASS, no observation drops. Recognition,700ms air request
+  and separate native landing-actuation lifetime remain distinct.
+* 1792274222045567000: left prewind and later right airborne shoulder trials
+  both land100 cleanly. Historical native Trainer headings unwrap to188.5 and
+  -126.5 degrees respectively. This is rotation response evidence, not complete
+ 180/360-degree acceptance. Raw CSV is preserved with archival-only metadata,
+  SHA2567bde227befa99f2314cf666d2bf34350a714f6ba37331f33779324a14f42439d.
+
+The long session exceeded the frozen full-log16MiB collector limit; it was
+stopped and its bounded2.44MB Trainer CSV archived separately. The limit was
+not loosened. Per-trial bounded observations remain preserved; the archival
+CSV must not be relabeled as a fresh live-session integrity check.
+Fresh-session matched60 acceleration, sustained clear-lane speed, crouching,
+braking/OFF and air-action timing acceptance remain outstanding.
+
 ## Native rate setup correction — pending guarded operation build
 
 Installed4dab47d / DLL22ac7739 passed all five gates and raw/package match;

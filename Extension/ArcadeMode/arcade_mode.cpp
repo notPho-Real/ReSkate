@@ -30,6 +30,7 @@
 #include "Extension/Multiplayer/Hud/follow_camera.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Input/controller_bindings.h"
+#include "Engine/Game/Settings/simulation_time.h"
 #include "Extension/UI/Overlay/overlay.h"
 #include "Extension/Profile/local_profile_runtime.h"
 #include "Extension/Multiplayer/Hud/game_ui_state.h"
@@ -94,6 +95,8 @@ std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
 std::atomic<std::uint64_t> input_game_tick{};
+std::atomic<bool> input_clock_valid{};
+AuthoredTickClock authored_clock;
 CameraOrbit camera_orbit;
 std::uint64_t camera_at{};
 bool camera_lease_requested{};
@@ -690,8 +693,12 @@ bool start(std::uintptr_t image_base) noexcept {
 
 void on_client_tick() noexcept {
     if (!ready.load(std::memory_order_acquire)) return;
-    input_game_tick.fetch_add(1, std::memory_order_acq_rel);
     try {
+        const float step = hall_of_meat::step_length();
+        const bool valid_clock = std::isfinite(step) && step >= .001f && step <= .1f;
+        input_game_tick.store(authored_clock.advance(valid_clock ? simulation_time::rate_of(step) : 0),
+            std::memory_order_release);
+        input_clock_valid.store(valid_clock, std::memory_order_release);
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
             set_enabled(profile_runtime::local_preference("ArcadeMode").value_or(false), false);
             preference_loaded = true;
@@ -842,6 +849,7 @@ void on_client_tick() noexcept {
             input_telemetry.client(InputEdgeEvidence{button_names[i], count, sample});
         }
     } catch (...) {
+        input_clock_valid.store(false, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
@@ -878,7 +886,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     auto now = GetTickCount64();
     const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
     const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
-    game_input = game_input && gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
+    game_input = game_input && input_clock_valid.load(std::memory_order_acquire) &&
+        gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
     const bool may_start = game_input && deadline >= now && deadline - now <= 150;
     const auto push_deadline = push_eligible_until.load(std::memory_order_acquire);
     const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;

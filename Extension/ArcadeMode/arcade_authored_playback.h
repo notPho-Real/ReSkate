@@ -13,6 +13,22 @@ struct AuthoredStickStep {
     unsigned tick{};
     std::int16_t x{}, y{};
 };
+// Authored offsets use sixtieths of a simulation second, not client callbacks.
+// At30Hz one callback advances two units; multiple input reads advance none.
+// Keep the counter monotonic across rate changes without a catch-up impulse.
+class AuthoredTickClock {
+public:
+    std::uint64_t advance(unsigned rate) noexcept {
+        if (rate < 10 || rate > 1000) { rate_ = remainder_ = 0; return tick_; }
+        if (rate != rate_) { rate_ = rate; remainder_ = 0; }
+        remainder_ += 60;
+        tick_ += remainder_ / rate; remainder_ %= rate;
+        return tick_;
+    }
+private:
+    std::uint64_t tick_{};
+    unsigned rate_{}, remainder_{};
+};
 // Prepare away from the input callback. Authored step offsets use game ticks,
 // independent of the number of XInput reads in a frame.
 inline std::vector<AuthoredStickStep> compile_authored_flick(const AuthoredGesture& gesture,

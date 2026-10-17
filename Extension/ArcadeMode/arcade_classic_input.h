@@ -41,6 +41,7 @@ class ClassicGesture {
 public:
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
     static constexpr std::uint64_t direction_event_ms = 500, extra_press_ms = 300;
+    static constexpr std::uint64_t takeoff_preload_ms = 160;
     static constexpr std::uint64_t readiness_buffer_ms = 200;
     struct Output {
         std::uint16_t buttons{};
@@ -50,11 +51,11 @@ public:
         bool unsupported{};
     };
     void cancel() noexcept {
-        playback_.cancel(); previous_ = 0; count_ = 0; holding_ = false; armed_ = false; clocked_ = false;
-        pending_flip_ = air_action_ = was_airborne_ = false; context_ = GestureContext::ground;
+        playback_.cancel(); previous_ = previous_buttons_ = 0; count_ = 0; holding_ = false; armed_ = false; clocked_ = false;
+        pending_match_ = pending_flip_ = air_action_ = was_airborne_ = false; context_ = GestureContext::ground;
         previous_direction_ = recent_direction_ = TrickDirection::none; direction_consumed_ = true;
     }
-    bool busy() const noexcept { return playback_.busy() || pending_flip_; }
+    bool busy() const noexcept { return playback_.busy() || pending_flip_ || pending_match_; }
     bool finish_neutral_tail() noexcept { return playback_.finish_neutral_tail(); }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
         if (playback_.schedule() == schedule) return;
@@ -76,14 +77,21 @@ public:
         const auto edges = static_cast<std::uint16_t>(held & ~previous_);
         const bool release_a = (previous_ & a) && !(held & a);
         previous_ = held;
+        const auto other_edges = static_cast<std::uint16_t>(buttons & ~previous_buttons_ & ~(a | x | 15));
+        previous_buttons_ = buttons;
+        if (other_edges) pending_match_ = false;
         if (was_airborne_ && !airborne) {
-            context_ = GestureContext::ground; count_ = 0; pending_flip_ = false;
+            context_ = GestureContext::ground; count_ = 0; pending_match_ = pending_flip_ = false;
             recent_direction_ = TrickDirection::none; direction_consumed_ = true;
         }
+        // Takeoff only retains recent directional preloads. This is separate
+        // from matching two events during an already observed jump.
+        if (!was_airborne_ && airborne && now - direction_at_ > takeoff_preload_ms)
+            direction_consumed_ = true;
         was_airborne_ = airborne;
         if (air_action_ && !airborne) { playback_.cancel(); air_action_ = false; }
         if (other_owner) {
-            playback_.cancel(); holding_ = false; count_ = 0; pending_flip_ = air_action_ = false;
+            playback_.cancel(); holding_ = false; count_ = 0; pending_match_ = pending_flip_ = air_action_ = false;
             recent_direction_ = TrickDirection::none; direction_consumed_ = true;
             armed_ = held == 0;
             return out;
@@ -93,12 +101,17 @@ public:
         if (physical_direction != previous_direction_) {
             if (physical_direction != TrickDirection::none && physical_direction != TrickDirection::invalid) {
                 recent_direction_ = physical_direction; direction_at_ = now; direction_consumed_ = false;
-            } else if (physical_direction == TrickDirection::invalid) direction_consumed_ = true;
+            } else if (physical_direction == TrickDirection::invalid) {
+                direction_consumed_ = true; pending_match_ = false;
+            }
             previous_direction_ = physical_direction;
         }
         // A newer grab/grind intent supersedes a waiting flip. A request only
         // lives in this observed air window; landing and loss of context clear it.
-        if (buttons & (a | 0xa000u)) { pending_flip_ = false; direction_consumed_ = true; }
+        if ((edges & a) || (buttons & 0xa000u)) {
+            pending_match_ = pending_flip_ = false; direction_consumed_ = true;
+        }
+        if (pending_match_ && now - match_at_ >= direction_event_ms) pending_match_ = false;
         if (pending_flip_ && now - pending_at_ >= readiness_buffer_ms) pending_flip_ = false;
         if ((edges & a) && may_start) playback_.finish_neutral_tail();
         if ((edges & a) && may_start && !playback_.busy()) {
@@ -109,25 +122,36 @@ public:
         if (release_a && holding_) {
             playback_.release(tick); holding_ = false;
         }
-        if ((edges & x) && airborne) {
+        const auto direction = physical_direction == TrickDirection::none && !direction_consumed_ &&
+            now - direction_at_ < direction_event_ms ? recent_direction_ : physical_direction;
+        const bool valid_direction = direction != TrickDirection::none && direction != TrickDirection::invalid;
+        // Either event may arrive first, even on adjacent sampled frames. An
+        // unmatched face edge owns no stick and cannot survive this jump.
+        const bool matching_direction = pending_match_ && valid_direction;
+        if (((edges & x) || matching_direction) && airborne) {
             playback_.finish_neutral_tail();
-            const auto direction = physical_direction == TrickDirection::none && !direction_consumed_ &&
-                now - direction_at_ < direction_event_ms ? recent_direction_ : physical_direction;
             if (!playback_.busy()) {
-                count_ = count_ && direction == direction_ && nollie == nollie_ && now - tap_at_ < extra_press_ms
-                    ? std::min(count_ + 1, 3u) : 1;
-                direction_consumed_ = true;
-                direction_ = direction; nollie_ = nollie; tap_at_ = now;
-                const auto id = native_flip_id(select_named_trick(TrickFamily::flip, direction, count_), nollie);
-                const auto air_context = context == GestureContext::ground ? context_ : context;
-                if (flip_ready) {
-                    pending_flip_ = false;
-                    air_action_ = begin(id, nollie, false, tick, catalog, out, mirror_x, air_context, true, neutral_ready);
+                if (!valid_direction) {
+                    pending_match_ = direction == TrickDirection::none;
+                    match_at_ = now;
+                    out.unsupported = direction == TrickDirection::invalid;
                 } else {
-                    pending_id_ = id; pending_nollie_ = nollie; pending_mirror_ = mirror_x;
-                    pending_context_ = air_context; pending_flip_ = id != 0;
-                    pending_at_ = now;
-                    if (!id) out.unsupported = true;
+                    pending_match_ = false;
+                    count_ = count_ && direction == direction_ && nollie == nollie_ && now - tap_at_ < extra_press_ms
+                        ? std::min(count_ + 1, 3u) : 1;
+                    direction_consumed_ = true;
+                    direction_ = direction; nollie_ = nollie; tap_at_ = now;
+                    const auto id = native_flip_id(select_named_trick(TrickFamily::flip, direction, count_), nollie);
+                    const auto air_context = context == GestureContext::ground ? context_ : context;
+                    if (flip_ready) {
+                        pending_flip_ = false;
+                        air_action_ = begin(id, nollie, false, tick, catalog, out, mirror_x, air_context, true, neutral_ready);
+                    } else {
+                        pending_id_ = id; pending_nollie_ = nollie; pending_mirror_ = mirror_x;
+                        pending_context_ = air_context; pending_flip_ = id != 0;
+                        pending_at_ = now;
+                        if (!id) out.unsupported = true;
+                    }
                 }
             }
         }
@@ -160,14 +184,14 @@ private:
         return false;
     }
     AuthoredPlayback playback_;
-    std::uint16_t previous_{};
+    std::uint16_t previous_{}, previous_buttons_{};
     bool armed_{true}, holding_{}, nollie_{}, clocked_{}, air_action_{}, was_airborne_{};
-    bool pending_flip_{}, pending_nollie_{}, pending_mirror_{};
+    bool pending_match_{}, pending_flip_{}, pending_nollie_{}, pending_mirror_{};
     std::uint8_t pending_id_{};
     unsigned count_{};
     std::uint64_t tap_at_{};
     std::uint64_t last_now_{}, last_tick_{};
-    std::uint64_t direction_at_{}, pending_at_{};
+    std::uint64_t direction_at_{}, pending_at_{}, match_at_{};
     TrickDirection previous_direction_{}, recent_direction_{};
     bool direction_consumed_{true};
     TrickDirection direction_{TrickDirection::none};

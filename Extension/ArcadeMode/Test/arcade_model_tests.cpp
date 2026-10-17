@@ -36,6 +36,16 @@ int run_arcade_playback_tests();
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+    for (const unsigned rate : {30u, 60u, 120u, 200u}) {
+        dingosdk::arcade_mode::AuthoredTickClock clock;
+        std::uint64_t tick{};
+        for (unsigned frame = 0; frame < rate; ++frame) tick = clock.advance(rate);
+        check(tick == 60, "authored timing advances one simulation second at30/60/120/200Hz");
+        check(clock.advance(0) == tick && clock.advance(1001) == tick,
+            "missing or invalid native rate cannot advance synthetic playback");
+        check(clock.advance(30) == tick + 2 && clock.advance(60) == tick + 3,
+            "rate changes preserve monotonic time without accumulated catch-up");
+    }
     for (const float dt : {1.0f / 60, 1.0f / 30}) {
         for (const bool crouched : {false, true}) {
             using dingosdk::arcade_mode::GroundDrive;
@@ -465,6 +475,44 @@ int main() {
         poll(420, ClassicGesture::x | 4, true, false);
         check(!poll(620, 0, true, true).requested_id && !controls.busy(),
             "readiness buffer expires200ms after the X edge even within a long jump");
+    }
+    for (const unsigned gap : {17u, 33u, 499u, 500u}) {
+        const std::array catalog{PreparedGesture{3, false, GestureContext::ground,
+            {{0,0,-32767},{2,-28000,28000},{8,0,0}}}};
+        ClassicGesture controls;
+        const auto poll = [&](unsigned ms, std::uint16_t buttons, bool air = true) {
+            return controls.poll(ms, ms / 17, buttons, 0, 0, true, false, false,
+                catalog, false, GestureContext::ground, air);
+        };
+        poll(0, 0);
+        const auto face = poll(20, ClassicGesture::x);
+        check(!face.owns_stick && !face.requested_id,
+            "unmatched airborne X never injects a guessed trick");
+        poll(21, 0);
+        const auto matched = poll(20 + gap, 8);
+        check(matched.requested_id == (gap < 500 ? 3 : 0),
+            "airborne direction can follow a released X within the event matching window");
+        controls.cancel(); poll(1000, 0);
+        poll(1020, ClassicGesture::x); poll(1040, 0, false); poll(1060, 0);
+        check(!poll(1080, 8).requested_id,
+            "landing discards an unmatched face edge before another jump");
+    }
+    for (const unsigned age : {160u, 161u}) {
+        const std::array catalog{PreparedGesture{3, false, GestureContext::ground,
+            {{0,0,-32767},{2,-28000,28000},{8,0,0}}}};
+        ClassicGesture controls;
+        const auto poll = [&](unsigned ms, std::uint16_t buttons, bool air) {
+            return controls.poll(ms, ms / 17, buttons, 0, 0, true, false, false,
+                catalog, false, GestureContext::ground, air);
+        };
+        poll(0, 0, false); poll(20, 8, false); poll(40, 0, false);
+        poll(20 + age, 0, true);
+        check(poll(40 + age, ClassicGesture::x, true).requested_id == (age <= 160 ? 3 : 0),
+            "takeoff retains only recent directional preloads without shortening airborne matching");
+        controls.cancel(); poll(1000, 0, true); poll(1020, ClassicGesture::x, true);
+        poll(1040, 0x2000, true); poll(1060, 0, true);
+        check(!poll(1080, 8, true).requested_id,
+            "a newer face command consumes the unmatched X before a directional event");
     }
     for (const unsigned gap : {499u, 500u}) {
         const std::array catalog{
