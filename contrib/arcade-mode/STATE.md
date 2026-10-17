@@ -1,3 +1,22 @@
+## Mandatory source-first correction — 2026-10-16
+
+WITHDRAW the on-foot jump hardware acceptance claim below. Jump HUD labels and
+screenshots are secondary evidence; they do not prove a fresh takeoff or its
+input cause. Existing native source already provides the required offboard flags,
+pelvis velocity and takeoff detector. Earlier visual trials remain preserved,
+but standing/repeated/moving/OFF jump acceptance is PENDING guarded native proof:
+grounded504 without ragdoll, physical A event, fresh native airborne edge,
+positive pelvis Y velocity and displacement, descent and landing, plus negative
+controls. Reuse HallOfMeat::read_step, NoBailSkater ownership/physics listeners,
+and Trainer motion provenance; no memory scan or artificial physics.
+
+Installed9bbff13 / DLLb92b633e remains known. Source d9ac4a6 is building in
+CI39005469689; no newer DLL deployed. Last native OFF comparison
+1792214149269363000 completed and neutralized; it is not jump acceptance.
+Source-first audit now precedes further mechanic design or implementation across
+all four core controls, including existing official upstream and surveyed forks.
+No scoring/combo work resumed.
+
 ## On-foot A hardware acceptance — 2026-10-16
 
 HIL58 peak-aligned trial1792213720094790000 on installed9bbff13/b92b633e
