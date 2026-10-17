@@ -1,3 +1,34 @@
+## Installed8fec865 core regressions — 2026-10-17
+
+HIL61 trial1792224271386351000 PASSES early native Kickflip2, apex-timed
+Heelflip3, basic neutral B (fresh Grab29 in native201), standing/moving on-foot A,
+and10s held-forward push; all native state/idle/neutral/reset pass, no drops.
+Foot A edges102046173/102050174 have fresh native air after125/125ms, pelvisVy
+peaks6.843/5.101m/s, Y rises0.951/0.888m, descent and grounded504 landings976/925ms
+after A. No ragdoll/wipeout/gaps; position age<=7ms; nativeflip stays-1.
+Push speed4.920m/s at1s,6.925 at2s,6.755 at10s, native0x40 edges688/1789ms,
+state100 throughout, stop0 by12s. This is the installed47ba309f DLL, not an older
+binary. Native opposite-hand control1792224137714688000 has no fresh grab:
+its short native air window is not a positive FS Grab result. Full native rail
+pop in the same control also supplies no longer air; no runtime recipe changed.
+Native Trainer CSV apex measurement1792224768461031000 records a plain Ollie
+and exact Heelflip with safe landings; CSV retrieval is not yet verified, so
+physical apex/later classifications remain unproved. Existing native CSV is
+being reused; no new physics observer or tuning changes were introduced.
+
+## Separate native30Hz manual acceptance — 2026-10-17
+
+8fec865 / DLL47ba309f, HIL61 trial1792223841285352000 PASSES both140ms direct
+stick pairs at explicitly selected native30Hz: fresh Manual1/Nose Manual2,
+riding/one-wheel contacts, idle/neutral/reset, no observation drops. Native console
+readback1792223728249647000 confirms30; readback1792224019832417000 confirms60
+restored afterward. Frozen workers remain unchanged. A reviewed fixed30 command
+was added to separately pinned maintenance60 (digest
+1cc529903f42f5b7e49731e5863b557e788176b27398e67bd03c3ec5d9c430b8);
+removing only that command exactly reproduces maintenance59, including guards.
+Hardflip radius hypothesis1792223560073617000 is FALSIFIED: native4, not9,
+with clean landing/idle/no drops. Compiler was deliberately not changed.
+
 ## Native direct-stick manual repair accepted at60Hz — 2026-10-17
 
 Installed8fec865 / DLL47ba309f, HIL61.1792223321181273000 PASSES both rapid
