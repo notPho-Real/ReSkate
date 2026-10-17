@@ -23,3 +23,5 @@ observation. Reuse existing mechanisms unless a demonstrated gap requires more.
 Define independent native acceptance evidence and negative controls before HIL
 trials. Input requests, synthetic tests and lingering HUD labels never prove an
 action; screenshots are secondary. Preserve native physics and trusted HIL.
+For rate-dependent trials, verify the clock cadence and the local skater's cached
+step with the existing physics observer; a ForceSimRate readback alone is insufficient.

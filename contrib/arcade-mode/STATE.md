@@ -1,3 +1,21 @@
+## Native rate setup correction — pending guarded operation build
+
+Installed4dab47d / DLL22ac7739 passed all five gates and raw/package match;
+HIL64 manifest340dcefb, maintenance65 8dd4e39c. Originals remain unchanged.
+Pilot1792272295465881000 produced native velocity11.225m/s and stopped at the
+known course boundary, but is NOT nominal60Hz acceleration acceptance:
+7870 physics observations run near60/s while their cached step is33.3ms.
+The mixed-rate trajectory/motion/metadata are preserved privately under
+artifacts/fidelity-rate-mismatch. Reload restores the map default30Hz.
+
+Existing simulation_time.h documents core-construction caching; Hall of Meat
+already owns a guarded step_length/set_step_length API. New explicit fixture
+rate-30/rate-60 operations reuse that API and named ForceSimRate/MaxSimFps.
+They require a fresh, stopped, local two-wheel owner and closed editor, reject
+multiplayer, verify readback and restore owned values on failure. No new hook,
+offset, native scan, velocity change or frozen-worker change. Future acceptance
+must establish both callback cadence and cached step, not a clock command alone.
+
 ## Bounded ground drive — source pilot pending
 
 Installed9826347 / DLLd12476b9 passed all five CI gates and raw/package byte

@@ -8,6 +8,12 @@
 #include "Extension/Profile/local_profile_runtime.h"
 #include "Extension/Trainer/trainer.h"
 #include "Extension/Multiplayer/Hud/game_ui_state.h"
+#include "Extension/HallOfMeat/hall_of_meat_skater.h"
+#include "Extension/Settings/named_settings.h"
+#include "Engine/Core/Platform/memory.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
+#include "Engine/Game/Multiplayer/session_tools.h"
+#include "Engine/Game/Settings/simulation_time.h"
 #include <algorithm>
 #include <cmath>
 #include <format>
@@ -20,6 +26,7 @@ namespace {
 constexpr auto rail_item = "own_bkrails_generic_flatrailround_00002";
 // One added object, retained by the existing Park Editor document and save path.
 // No layout clearing, physics tuning, collision overrides or direct skater writes.
+// Explicit rate operations separately reuse the existing clock/cached-step APIs.
 struct Fixture {
     bool configured{};
     std::string map, saved_project;
@@ -161,16 +168,59 @@ Json geometry_status() {
     }
     return result;
 }
+std::string fixture_rate(unsigned rate, const trainer::Telemetry& skater, bool editing) {
+    namespace native = game::build::v20260929::arcade_native_probe;
+    NoBailSkater owner{}, after{};
+    std::array<std::uint32_t, 8> words{};
+    std::uint32_t state{}, mode{};
+    const auto now = GetTickCount64();
+    if ((rate != 30 && rate != 60) || editing || multiplayer_session_active() ||
+        !hall_of_meat::skater_available() || !no_bail_skater(owner) || !skater.skater ||
+        skater.sampled_entity != owner.entity || !skater.sampled_ms || now < skater.sampled_ms ||
+        now - skater.sampled_ms > 150 || !std::isfinite(skater.speed) || skater.speed > .1f ||
+        !std::isfinite(skater.vertical) || std::abs(skater.vertical) > .1f ||
+        !memory::peek(owner.context + native::selected_state, state) || state != 100 ||
+        !memory::peek(owner.rig + native::crouch_mode, mode) || mode != 1 ||
+        !memory::peek(owner.context + native::request_words, words) ||
+        (words[1] & 0xc000u) != 0xc000u || (words[0] & 0x40u) ||
+        !no_bail_skater(after) || owner != after)
+        return "error: Rate setup requires the stopped local two-wheel skater, closed editor and no multiplayer session.";
+    constexpr std::array names{"SimulationTime.ForceSimRate", "SimulationTime.MaxSimFps"};
+    const std::array previous{named_setting_value(names[0]), named_setting_value(names[1])};
+    const float old_step = hall_of_meat::step_length(), step = simulation_time::step_seconds(rate);
+    if (!previous[0] || !previous[1] || !std::isfinite(old_step) || old_step <= 0 || old_step > .1f)
+        return "error: Native rate ownership is unavailable.";
+    const auto value = std::to_string(rate);
+    auto restore = [&] {
+        for (unsigned i = 0; i < names.size(); ++i)
+            if (named_setting_value(names[i]) == value) (void)change_named_setting(names[i], *previous[i], false);
+        if (no_bail_skater(after) && owner == after && hall_of_meat::step_length() == step)
+            (void)hall_of_meat::set_step_length(old_step);
+    };
+    for (const auto name : names)
+        if (change_named_setting(name, value, false).starts_with("error:")) {
+            restore(); return "error: Native clock rate setup failed; owned values restored.";
+        }
+    if (!no_bail_skater(after) || owner != after || !hall_of_meat::set_step_length(step) ||
+        hall_of_meat::step_length() != step || named_setting_value(names[0]) != value || named_setting_value(names[1]) != value) {
+        restore(); return "error: Native skater rate setup failed; owned values restored.";
+    }
+    return std::format("ARCADE FIXTURE RATE: requested={} cached_rate={} cached_step_seconds={}.",
+        rate, simulation_time::rate_of(hall_of_meat::step_length()), hall_of_meat::step_length());
+}
 }
 void register_arcade_fixture_commands(Commands& registry) {
-    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel|trajectory|trajectory-status|trajectory-cancel", Type::text);
+    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel|trajectory|trajectory-status|trajectory-cancel|rate-30|rate-60", Type::text);
     operation.choices = {"status", "place", "relocate", "turn", "reset", "save", "adopt",
-        "geometry", "geometry-status", "geometry-cancel", "trajectory", "trajectory-status", "trajectory-cancel"};
+        "geometry", "geometry-status", "geometry-cancel", "trajectory", "trajectory-status", "trajectory-cancel", "rate-30", "rate-60"};
     auto entry = action("arcadefixture", "Single native flat-rail practice fixture", Group::objects, {operation});
     entry.run = [](const Model& model, const Values& values, const Output& out) {
         const auto& op = std::get<std::string>(values[0]);
         const auto editor = local_park_editor();
         const auto skater = trainer::telemetry();
+        if (op == "rate-30" || op == "rate-60") {
+            out(fixture_rate(op == "rate-30" ? 30u : 60u, skater, model.debug.park_editor)); return;
+        }
         const auto count = std::count_if(editor.objects.begin(), editor.objects.end(), same_rail);
         const auto found = std::find_if(editor.objects.begin(), editor.objects.end(), same_rail);
         const bool present = fixture.configured && fixture.map == editor.map && count == 1 &&
