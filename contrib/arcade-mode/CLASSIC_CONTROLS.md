@@ -32,13 +32,20 @@ inside a native adapter is an implementation detail, not another player control.
 X and B require independently observed airtime and a fresh press. Ground X
 does not start a jump; ground B retains native braking. Neither command requires
 A to remain held. Landing, bail, menus and Arcade OFF release synthetic ownership.
+Direction edges can match a later airborne X/B press for500ms, with held
+directions remaining valid. Consumed released directions do not repeat. Extra
+air trick face presses use300ms; normal B remains the verified basic grab.
+X/B readiness handoffs retain a request for at most200ms within the same jump.
+These windows start at input edges, never at takeoff; they add no fixed wait.
 
-Manual pairs accept direct reversal or a neutral gap within500ms, including
+Manual pairs accept direct reversal or a neutral gap within220ms on the ground
+or400ms in the air, including
 moderate stick throws and diagonal thumb travel. D-pad
 and left-stick sequences are independent; held forward cannot swallow D-pad
-commands. Airborne preparation retains the proven native partial-stick method
-through landing, and D-pad Up/Down can correct an established manual balance.
-The first grounded left-stick Down is reserved for the pair for up to500ms;
+commands. An airborne request remains eligible for700ms; landing within that
+lifetime starts the separate native actuation/settling window. D-pad Up/Down
+can correct an established manual balance.
+The first grounded left-stick Down is reserved for the pair for up to220ms;
 a continued hold then passes through. B braking and horizontal steering stay native.
 The entry direction does not immediately push the balance meter: release it or
 tap the opposite direction to begin correction. Short taps change the meter's

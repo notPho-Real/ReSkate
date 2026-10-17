@@ -18,7 +18,8 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
 // This class requests that method; contact/score observations prove the pose.
 class ManualGesture {
 public:
-    static constexpr std::uint64_t pair_window_ms = 500;
+    static constexpr std::uint64_t ground_pair_ms = 220, air_pair_ms = 400;
+    static constexpr std::uint64_t air_request_ms = 700;
     // confirmed remembers a native match for this request; it is not a fresh
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; bool suppress_reverse{}; };
@@ -43,12 +44,11 @@ public:
             cancel(); return {};
         }
         if (requested_) {
-            // A command near the apex must retain the proven native hold until
-            // landing. Give the native landing actuation its own bounded window;
-            // a later rebound must never restart that deadline.
+            // Recognition, airborne request lifetime and native landing settling
+            // have separate deadlines. Rebounds cannot renew any of them.
             if (air_prepared_ && !landed_ && !confirmed_) {
-                requested_at_ = now;
-                landed_ = observed != SkatePose::air;
+                if (now - requested_at_ >= air_request_ms) { cancel(); return {}; }
+                if (observed != SkatePose::air) { landed_ = true; requested_at_ = now; }
             }
             const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;
             const auto opposite = requested_ < 0 ? SkatePose::nose_manual : SkatePose::manual;
@@ -84,14 +84,15 @@ public:
             return {true, confirmed_, static_cast<std::int16_t>(requested_ * 20000)};
         }
         const auto pad = buttons & 15u;
+        const auto pair_ms = observed == SkatePose::air ? air_pair_ms : ground_pair_ms;
         if ((pad & 3u) == 3u || (pad & 12u) == 12u) {
             stick_pair_ = {}; pad_pair_ = {}; return {};
         }
         // A held steering stick cannot swallow a fresh D-pad Up edge, and
         // switching input devices cannot complete half of an unrelated pair.
-        const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, (pad & 12u) != 0);
+        const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, pair_ms, (pad & 12u) != 0);
         if (pad) stick_pair_ = {};
-        const int stick_request = pad ? 0 : stick_pair_.poll(now, stick_pair_.direction(lx, ly), std::abs(static_cast<int>(lx)) > 11000);
+        const int stick_request = pad ? 0 : stick_pair_.poll(now, stick_pair_.direction(lx, ly), pair_ms, std::abs(static_cast<int>(lx)) > 11000);
         const int request = pad_request ? pad_request : stick_request;
         if (request) {
             if (!safe_state) { cancel(); return {}; }
@@ -119,17 +120,17 @@ private:
             return vertical >= threshold && vertical * 4 >= horizontal * 3 ? sign : 0;
         }
         bool awaiting_up(std::uint64_t now) const noexcept {
-            return armed && first == -1 && previous == -1 && now >= at && now - at <= pair_window_ms;
+            return armed && first == -1 && previous == -1 && now >= at && now - at <= ground_pair_ms;
         }
-        int poll(std::uint64_t now, int vertical, bool sideways = false) noexcept {
+        int poll(std::uint64_t now, int vertical, std::uint64_t window, bool sideways = false) noexcept {
             if (!armed) {
                 if (!vertical) armed = true;
                 previous = vertical; return 0;
             }
-            if (first && now - at > pair_window_ms) first = 0;
+            if (first && now - at > window) first = 0;
             int request{};
             if (vertical && vertical != previous) {
-                if (first == -vertical && now - at <= pair_window_ms) request = vertical;
+                if (first == -vertical && now - at <= window) request = vertical;
                 first = vertical; at = now;
             } else if (!vertical && sideways) first = 0;
             previous = vertical;

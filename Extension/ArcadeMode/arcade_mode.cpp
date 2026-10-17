@@ -71,6 +71,8 @@ std::atomic<std::uint64_t> action_eligible_until{};
 std::atomic<std::uint64_t> air_flip_ready_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
 std::atomic<float> push_speed{};
+std::atomic<std::uint64_t> motion_capture_until{};
+bool native_board_velocity(std::array<float, 3>& velocity) noexcept;
 std::atomic<bool> authored_mirror_x{};
 ArcadeInput arcade_input;
 std::mutex ollie_mutex;
@@ -247,6 +249,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
         else if constexpr (std::is_same_v<T, BalanceFailureEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE FAILURE: ms={} kind={} request={}.", r.ms, r.kind, r.request);
+        else if constexpr (std::is_same_v<T, BoardMotionEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BOARD MOTION: seq={} ms={} dt={} valid={} state={} mode={} requests={} contacts={} vx={} vy={} vz={} wipeout={}.",
+                r.sequence, r.ms, r.seconds, r.valid, r.state, r.mode, r.requests, r.contacts, r.vx, r.vy, r.vz, r.wipeout);
         else if constexpr (std::is_same_v<T, BalanceSampleEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
@@ -441,6 +447,16 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
     const auto now = GetTickCount64();
+    const auto capture = motion_capture_until.load(std::memory_order_acquire);
+    if (capture >= now && capture - now <= 150 && seconds > 0 && seconds <= .1f) {
+        static std::uint64_t sequence{};
+        std::array<float, 3> velocity{};
+        const bool valid = !offboard && native_board_velocity(velocity);
+        NoBailSkater final_owner{};
+        if (no_bail_skater(final_owner) && owner == final_owner)
+            input_telemetry.client(BoardMotionEvidence{++sequence, now, seconds, velocity[0], velocity[1], velocity[2],
+                sample.state, sample.crouch_mode, sample.words[0], sample.words[1] & 0xc000u, valid, wipeout});
+    }
     // This listener runs on the local skater physics thread. Retain every flag
     // transition and otherwise sample at20Hz; the existing bounded queue reports
     // drops. Include invalidation/owner changes instead of bridging evidence gaps.
@@ -497,12 +513,11 @@ NativeRequestSample native_request_sample(NoBailSkater& validated_owner) noexcep
 
 // Reuse the board-root layout and owner/vtable checks used by Grind Exit and
 // Hall of Meat. This observer never writes physics or scales native velocity.
-bool native_board_speed(float& speed) noexcept {
+bool native_board_velocity(std::array<float, 3>& velocity) noexcept {
     namespace layout = game::build::v20260929::skater_state;
     NoBailSkater skater{}, after{};
     std::uintptr_t holder{}, physics{}, type{}, bodies{}, owner{};
     std::uint32_t count{};
-    std::array<float, 3> velocity{};
     if (!no_bail_skater(skater) ||
         !memory::peek(skater.core + layout::board_holder_offset, holder) ||
         !memory::peek(holder + layout::board_physics_offset, physics) ||
@@ -515,6 +530,11 @@ bool native_board_speed(float& speed) noexcept {
         !no_bail_skater(after) || skater.core != after.core || skater.entity != after.entity ||
         skater.context != after.context || skater.rig != after.rig) return false;
     for (const auto value : velocity) if (!std::isfinite(value) || std::abs(value) >= 1000) return false;
+    return true;
+}
+bool native_board_speed(float& speed) noexcept {
+    std::array<float, 3> velocity{};
+    if (!native_board_velocity(velocity)) return false;
     speed = std::hypot(velocity[0], velocity[2]);
     return true;
 }
@@ -708,6 +728,9 @@ void on_client_tick() noexcept {
             }
         }
         const auto ui = multiplayer::sample_game_ui_state(score_probe_base);
+        const auto trainer_view = trainer::view();
+        motion_capture_until.store(trainer_view && trainer_view->logging && ui.available && !ui.in_menu ? now + 150 : 0,
+            std::memory_order_release);
         const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
         tick_arcade_fixture_geometry(now, gameplay);
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);

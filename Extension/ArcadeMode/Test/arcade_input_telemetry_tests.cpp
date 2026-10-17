@@ -16,6 +16,14 @@ constexpr std::uint64_t checksum(std::uint64_t producer, std::uint64_t ordinal) 
     return (producer * 1000003u) ^ ordinal ^ 0xabcdef12u;
 }
 void saturation_and_recovery() {
+    BoardMotionEvidence motion{1, 500, 1.0f / 60, 3, 0, 4, 100, 1, 0x40, 0xc000, true, false};
+    check(client_telemetry_valid(motion), "native60Hz velocity and step time fit the bounded telemetry channel");
+    motion.seconds = 1.0f / 30;
+    check(client_telemetry_valid(motion), "separate native30Hz observations retain their actual timestep");
+    motion.seconds = 0;
+    check(!client_telemetry_valid(motion), "paused or missing physics time cannot become a motion sample");
+    motion.seconds = .017f; motion.vx = std::numeric_limits<float>::infinity();
+    check(!client_telemetry_valid(motion), "invalid native velocity is rejected before formatting");
     InputTelemetryQueue<Row, 4> queue;
     std::array<Row, 4> out{};
     check(queue.take(out) == 0 && queue.take_dropped() == 0, "empty worker drain is harmless");

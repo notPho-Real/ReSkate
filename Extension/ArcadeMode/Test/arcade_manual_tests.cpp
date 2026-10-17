@@ -25,17 +25,46 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    for (const auto pose : {SkatePose::riding, SkatePose::air}) {
+        const auto window = pose == SkatePose::air ? 400u : 220u;
+        for (const auto buttons : {true, false}) {
+            for (const bool nose : {false, true}) {
+                for (const auto offset : {0u, 1u}) {
+                    ManualGesture manual;
+                    const short first = nose ? -12500 : 12500;
+                    poll(manual, 0, 0, pose);
+                    poll(manual, 10, buttons ? 0 : first, pose, buttons ? (nose ? 2 : 1) : 0);
+                    poll(manual, 50, 0, pose);
+                    const auto out = poll(manual, 10 + window + offset, buttons ? 0 : -first,
+                        pose, buttons ? (nose ? 1 : 2) : 0);
+                    check(out.owns_stick == (offset == 0),
+                        "ground220/air400 deadlines apply independently to either direction and input device");
+                }
+            }
+        }
+    }
+    {
+        ManualGesture manual;
+        poll(manual, 0, 0, SkatePose::air);
+        poll(manual, 10, 12500, SkatePose::air);
+        poll(manual, 360, -12500, SkatePose::air);
+        check(poll(manual, 1059, 0, SkatePose::air).owns_stick &&
+              !poll(manual, 1060, 0, SkatePose::air).owns_stick,
+              "air request expires700ms after recognition without a refreshed deadline");
+        check(!poll(manual, 1080).owns_stick,
+              "an expired airborne request cannot replay on landing");
+    }
     for (const unsigned frame : {17u, 33u}) {
         for (const bool nose : {false, true}) {
             ManualGesture manual;
             poll(manual, 0);
             const short first = nose ? -24000 : 24000;
             poll(manual, frame, first, SkatePose::riding, 0, 16000);
-            for (unsigned ms = frame * 2; ms < 450; ms += frame)
+            for (unsigned ms = frame * 2; ms < 180; ms += frame)
                 poll(manual, ms, ms < 100 ? first : 0, SkatePose::riding, 0, ms < 100 ? 16000 : 0);
-            const auto out = poll(manual, 450 + frame, -first, SkatePose::riding, 0, -16000);
+            const auto out = poll(manual, 180 + frame, -first, SkatePose::riding, 0, -16000);
             check(out.owns_stick && out.y == (nose ? 20000 : -20000),
-                "relaxed450ms opposite taps accept diagonal thumb travel at30/60Hz");
+                "natural180ms opposite taps accept diagonal thumb travel at30/60Hz");
             manual.cancel(); poll(manual, 1000);
             poll(manual, 1010, first);
             poll(manual, 1800, first);
@@ -49,10 +78,10 @@ int run_arcade_manual_tests() {
         poll(manual, 20, 12500);
         poll(manual, 50, 9000);
         check(!poll(manual, 80, 12000).owns_stick, "threshold jitter cannot create a second opposite tap");
-        check(poll(manual, 450, -12500).owns_stick, "moderate stick taps do not require a full throw");
+        check(poll(manual, 200, -12500).owns_stick, "moderate stick taps do not require a full throw");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, 0, SkatePose::riding, 5);
-        check(poll(manual, 1470, 0, SkatePose::riding, 10).owns_stick,
+        check(poll(manual, 1220, 0, SkatePose::riding, 10).owns_stick,
             "diagonal D-pad taps preserve their vertical command component");
     }
     for (const auto candidate : {SkatePose::manual, SkatePose::nose_manual}) {
@@ -78,8 +107,8 @@ int run_arcade_manual_tests() {
             "established balance correction is never swallowed as a new first tap");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, -25000);
-        check(poll(manual, 1520, -25000).suppress_reverse && !poll(manual, 1521, -25000).suppress_reverse,
-            "a continued native reverse hold passes through immediately after the500ms pair window");
+        check(poll(manual, 1240, -25000).suppress_reverse && !poll(manual, 1241, -25000).suppress_reverse,
+            "a continued native reverse hold passes through immediately after the220ms pair window");
         check(!poll(manual, 1600, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
         manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
         check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
@@ -121,7 +150,7 @@ int run_arcade_manual_tests() {
             "opposite edge while unsafe cancels without delayed actuation");
         manual.cancel(); recovery(3000, 0); recovery(3010, first);
         poll(manual, 3020);
-        check(!poll(manual, 3511, -first).owns_stick, "preparation retains500ms direction deadline");
+        check(!poll(manual, 3511, -first).owns_stick, "preparation retains220ms direction deadline");
         for (const auto pose : {SkatePose::riding, SkatePose::unknown, SkatePose::bail, SkatePose::grind}) {
             manual.cancel(); recovery(4000, 0); recovery(4010, first);
             recovery(4020, 0, pose != SkatePose::riding, pose);
@@ -193,11 +222,11 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 130, -25000).owns_stick, "opposing D-pad directions break the sequence");
         manual.cancel(); poll(manual, 200);
         poll(manual, 210, 25000);
-        check(!poll(manual, 711, -25000).owns_stick, "direction sequence expires after500ms");
+        check(!poll(manual, 711, -25000).owns_stick, "direction sequence expires after220ms");
         manual.cancel(); poll(manual, 600);
         poll(manual, 610, 25000);
-        check(poll(manual, 1110, -25000).owns_stick, "direction sequence accepts the500ms boundary");
-        check(!poll(manual, 1109).owns_stick, "backwards time cancels manual state");
+        check(poll(manual, 830, -25000).owns_stick, "direction sequence accepts the220ms boundary");
+        check(!poll(manual, 829).owns_stick, "backwards time cancels manual state");
     }
     {
         ManualGesture manual;
@@ -310,14 +339,14 @@ int run_arcade_manual_tests() {
         poll(manual, 50, nose ? 25000 : -25000, SkatePose::air);
         check(poll(manual, 700, 0, SkatePose::air).owns_stick,
             "early airborne preparation retains the native method through the jump");
-        check(poll(manual, 800).owns_stick && poll(manual, 1600).owns_stick,
+        check(poll(manual, 740).owns_stick && poll(manual, 1600).owns_stick,
             "landing actuation gets its own bounded window instead of expiring from the apex");
         const auto pose = nose ? SkatePose::nose_manual : SkatePose::manual;
         check(poll(manual, 1617, 0, pose).confirmed,
             "only the independently observed requested manual confirms prepared landing");
         manual.cancel(); poll(manual, 0, 0, SkatePose::air);
         poll(manual, 17, 25000, SkatePose::air); poll(manual, 50, -25000, SkatePose::air);
-        poll(manual, 800); poll(manual, 900, 0, SkatePose::air);
+        poll(manual, 740); poll(manual, 900, 0, SkatePose::air);
         check(!poll(manual, 2000).owns_stick,
             "later rebound cannot restart the1200ms failed-landing deadline");
     }

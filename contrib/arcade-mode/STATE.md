@@ -1,3 +1,22 @@
+## Control timing fidelity — source update pending hardware
+
+Ground directional pairs now use220ms, airborne pairs400ms, and airborne
+requests expire700ms after recognition. Landing actuation retains its separate
+proven1200ms limit and bounded wheel-contact settling. Moderate/diagonal stick
+travel and hysteresis remain; native partial-stick recipes are unchanged.
+
+Airborne direction events match released-direction X/B for500ms, extra face
+presses300ms. Readiness buffering is separately bounded to200ms within one
+observed jump, canceled by landing or competing intent. Basic B preserves the
+verified native identity; no named grab is substituted. Existing authored
+playback and native readiness remain authoritative.
+
+Trainer logging now also samples direct, guarded board velocity from the
+existing physics-step listener, retaining the actual timestep and native
+requests/contact/state. Existing client-position CSV is separate corroboration.
+No new hook or offset. Focused sanitized checks pass; hosted build and hardware
+acceptance remain pending. No movement adapter has been applied yet.
+
 ## Movement and manual feel correction — 2026-10-17
 
 User play feedback supersedes the earlier basic control acceptance: cruising

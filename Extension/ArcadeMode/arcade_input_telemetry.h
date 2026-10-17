@@ -92,6 +92,19 @@ struct FootMotionEvidence {
     bool valid{}, airborne{}, ragdoll{}, wipeout{};
     float y{}, vy{};
 };
+// Direct board velocity at each native simulation step while Trainer logging
+// is enabled. Client-position CSV remains separate evidence.
+struct BoardMotionEvidence {
+    std::uint64_t sequence{}, ms{};
+    float seconds{}, vx{}, vy{}, vz{};
+    unsigned state{}, mode{}, requests{}, contacts{};
+    bool valid{}, wipeout{};
+};
+inline bool board_motion_valid(const BoardMotionEvidence& r) noexcept {
+    return r.sequence && std::isfinite(r.seconds) && r.seconds > 0 && r.seconds <= .1f &&
+        std::isfinite(r.vx) && std::isfinite(r.vy) && std::isfinite(r.vz) &&
+        std::abs(r.vx) < 1000 && std::abs(r.vy) < 1000 && std::abs(r.vz) < 1000;
+}
 inline bool foot_motion_valid(const FootMotionEvidence& r) noexcept {
     return r.sequence && r.owner_epoch && std::isfinite(r.y) && std::isfinite(r.vy) &&
         std::abs(r.y) < 1000000 && std::abs(r.vy) < 1000 &&
@@ -103,10 +116,11 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence>;
+    FootMotionEvidence, BoardMotionEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+    if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
     if (const auto* foot = std::get_if<FootMotionEvidence>(&row)) return foot_motion_valid(*foot);

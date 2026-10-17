@@ -427,6 +427,23 @@ int main() {
         poll(300, 0x2000, true, false);
         check(!poll(320, 0, true, true).requested_id && !controls.busy(),
             "new grab intent cancels a pending flip before ownership handoff");
+        controls.cancel(); poll(400, 0, true, false);
+        poll(420, ClassicGesture::x | 4, true, false);
+        check(!poll(620, 0, true, true).requested_id && !controls.busy(),
+            "readiness buffer expires200ms after the X edge even within a long jump");
+    }
+    for (const unsigned gap : {499u, 500u}) {
+        const std::array catalog{
+            PreparedGesture{2, false, GestureContext::ground, {{0,0,-32767},{2,28000,28000},{8,0,0}}},
+            PreparedGesture{3, false, GestureContext::ground, {{0,0,-32767},{2,-28000,28000},{8,0,0}}}};
+        ClassicGesture controls;
+        controls.poll(0, 0, 0, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        controls.poll(20, 1, 8, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        controls.poll(40, 2, 0, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        const auto out = controls.poll(20 + gap, 40, ClassicGesture::x, 0, 0, true, false, false,
+            catalog, false, GestureContext::ground, true);
+        check(out.requested_id == (gap < 500 ? 3 : 0),
+            "released direction matches X for500ms from its edge rather than from takeoff");
     }
     {
         const AuthoredGesture path{1, false, GestureContext::ground, 0, 0, 0,

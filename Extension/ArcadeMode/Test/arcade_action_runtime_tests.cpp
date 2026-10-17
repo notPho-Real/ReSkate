@@ -13,6 +13,18 @@ void check(bool pass, const char* reason) {
 }
 int run_arcade_action_runtime_tests() {
     using namespace dingosdk::arcade_mode;
+    for (const auto delay : {100u, 200u}) {
+        ActionRuntime queued;
+        queued.poll(default_action_mode, 0, {}, true, true, SkatePose::air, true, false);
+        auto out = queued.poll(default_action_mode, 20, {0x2000}, true, true, SkatePose::air, true, true);
+        check(!out.owned, "early B cannot steal an authored stick owner");
+        out = queued.poll(default_action_mode, 20 + delay, {}, true, true, SkatePose::air, true, false);
+        check(out.owned == (delay < 200), "B readiness buffer is bounded independently of direction matching");
+        out = queued.poll(default_action_mode, 40 + delay, {}, true, true, SkatePose::riding, true, false);
+        check(!out.owned, "landing always cancels a grab or pending grab");
+        out = queued.poll(default_action_mode, 60 + delay, {}, true, true, SkatePose::air, true, false);
+        check(!out.owned, "an earlier B cannot replay on another jump");
+    }
     ActionRuntime input;
     auto poll = [&](ActionExperiment mode, std::uint64_t ms, ActionPhysicalPad pad = {},
                     SkatePose pose = SkatePose::riding, bool active = true, bool fresh = true,

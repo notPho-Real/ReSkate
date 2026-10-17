@@ -38,19 +38,23 @@ public:
             if (direction != TrickDirection::none) {
                 const bool repeated = (direction == TrickDirection::up || direction == TrickDirection::down) &&
                     previous_direction_ == TrickDirection::none && direction == last_direction_ &&
-                    now - direction_at_ <= 350;
+                    now - direction_at_ < (immediate_grabs ? 300u : 350u);
                 direction_count_ = repeated ? 2 : 1;
                 last_direction_ = direction; direction_at_ = now;
+                direction_consumed_ = false;
             }
             previous_direction_ = direction;
         }
         if (held == mask) { count_ = 0; out.rejected = true; armed_ = false; return out; }
         if (immediate_grabs && (edges & 0x2000)) {
-            immediate_count_ = immediate_count_ && direction == immediate_direction_ && now - immediate_at_ <= 180
+            const auto matched = direction == TrickDirection::none && !direction_consumed_ &&
+                now - direction_at_ < 500 ? last_direction_ : direction;
+            direction_consumed_ = true;
+            immediate_count_ = immediate_count_ && matched == immediate_direction_ && now - immediate_at_ < 300
                 ? std::min(immediate_count_ + 1, 3u) : 1;
-            immediate_direction_ = direction; immediate_at_ = now; count_ = 0;
-            const auto trick = select_named_trick(TrickFamily::grab, direction, immediate_count_);
-            return {true, trick == ArcadeTrick::none, TrickFamily::grab, trick, direction, immediate_count_, 1};
+            immediate_direction_ = matched; immediate_at_ = now; count_ = 0;
+            const auto trick = select_named_trick(TrickFamily::grab, matched, immediate_count_);
+            return {true, trick == ArcadeTrick::none, TrickFamily::grab, trick, matched, immediate_count_, 1};
         }
         // A late poll may close one command and start the next. Do not discard
         // the completed request just because the new edge arrived after its window.
@@ -85,6 +89,7 @@ private:
     unsigned immediate_count_{};
     std::uint64_t immediate_at_{};
     TrickDirection immediate_direction_{};
+    bool direction_consumed_{true};
     TrickFamily family_{};
     TrickDirection direction_{}, previous_direction_{}, last_direction_{};
 };
