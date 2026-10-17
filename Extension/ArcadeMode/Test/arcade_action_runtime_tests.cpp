@@ -194,10 +194,24 @@ int run_arcade_action_runtime_tests() {
     check(!poll(default_action_mode, 10, {0x2000}).consume_buttons,
         "ordinary grounded B remains native brake");
     input.reset(); poll(default_action_mode, 0);
-    const auto unsupported_melon = poll(default_action_mode, 20, {0x2004}, SkatePose::air);
-    check(unsupported_melon.requested && !unsupported_melon.owned &&
-          unsupported_melon.result == DispatchResult::unavailable,
-          "normal play cannot substitute a basic BS Grab for the unproved named Melon");
+    const auto directional_basic = poll(default_action_mode, 20, {0x2004}, SkatePose::air);
+    check(directional_basic.requested && directional_basic.owned &&
+          directional_basic.result == DispatchResult::started && directional_basic.trick == ArcadeTrick::basic_bs_grab,
+          "single directional B explicitly requests the verified basic grab rather than claiming an unproved Melon");
+    for (const auto direction : {0u, 1u, 2u, 4u, 8u, 5u, 9u, 6u, 10u}) {
+        input.reset(); poll(default_action_mode, 0);
+        const auto grab = poll(default_action_mode, 20, {static_cast<std::uint16_t>(0x2000u | direction)}, SkatePose::air);
+        check(grab.owned && grab.trick == ArcadeTrick::basic_bs_grab && grab.pad.right_trigger == 255,
+              "every valid D-pad modifier keeps normal B available with its actual basic identity");
+    }
+    for (const auto axis : {-25000, 25000}) {
+        input.reset(); poll(default_action_mode, 0);
+        const auto grab = poll(default_action_mode, 20, {0x2000, 0, static_cast<short>(axis)}, SkatePose::air);
+        check(grab.owned && grab.trick == ArcadeTrick::basic_bs_grab && !grab.pad.owns_left_stick,
+              "forward or backward movement cannot suppress the basic grab or take away steering");
+    }
+    check(select_named_trick(TrickFamily::grab, TrickDirection::left, 1) == ArcadeTrick::melon,
+          "named candidate catalog remains distinct from the production basic-grab control");
     input.reset(); poll(default_action_mode, 0);
     const auto basic = poll(default_action_mode, 20, {0x2000}, SkatePose::air);
     check(basic.trick == ArcadeTrick::basic_bs_grab && basic.pad.right_trigger == 255 &&

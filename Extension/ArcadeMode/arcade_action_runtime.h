@@ -56,13 +56,20 @@ public:
             true, conflict, RailRelationship::unknown, classic);
         if (request.ready) {
             out.requested = true; out.trick = request.trick;
+            // Normal B currently exposes the independently verified basic grab.
+            // Movement held during a jump must not turn it into an unavailable
+            // named modifier. Keep the actual basic identity in diagnostics;
+            // the explicit lab selector still requests the named catalog entry.
+            if (classic && request.family == TrickFamily::grab && request.presses == 1 &&
+                request.direction != TrickDirection::invalid)
+                out.trick = ArcadeTrick::basic_bs_grab;
             out.request_kind = request.family == TrickFamily::grab ? 1 : 2;
             if (request.family == TrickFamily::grab && (mode == ActionExperiment::grabs || classic)) {
                 // A native BS Grab is not a successful Melon. Preserve candidate
                 // recipes for the explicit lab selector without substituting them
                 // for unproved named controls during normal play.
-                out.result = classic && request.trick != ArcadeTrick::basic_bs_grab
-                    ? DispatchResult::unavailable : dispatch_.request_grab(request.trick, now, context);
+                out.result = classic && out.trick != ArcadeTrick::basic_bs_grab
+                    ? DispatchResult::unavailable : dispatch_.request_grab(out.trick, now, context);
             }
             else if (request.family == TrickFamily::grind && mode == ActionExperiment::observe)
                 out.result = DispatchResult::needs_geometry;

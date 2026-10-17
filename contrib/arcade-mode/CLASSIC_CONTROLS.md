@@ -58,10 +58,12 @@ exists. A dash means this contract assigns no variant to that combination.
 
 ## Grab table — B
 
-Neutral B requests the basic native BS Grab in the inspected stance. The named
-directional rows below remain the target contract. Normal play rejects their
-unproved recipes; the explicit lab selector retains them for bounded controls.
-A generic BS Grab must never be reported as a successful Melon.
+A single B press during native airtime requests the verified basic BS Grab in
+the inspected stance. A held direction or movement stick keeps that basic action
+available and preserves steering. This first playable grab control reports its
+actual basic identity. The named directional rows below remain the target for
+future verified modifiers; the explicit lab selector retains their candidates.
+A basic BS Grab must never be reported as a successful Melon or other modifier.
 
 | Direction | B | B,B |
 | --- | --- | --- |

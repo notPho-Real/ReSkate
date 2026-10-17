@@ -1,3 +1,18 @@
+## Directional basic B source repair — 2026-10-17
+
+Runtime remains verified8fec865 / DLL47ba309f. Normal single B plus any valid
+movement/direction now explicitly requests basic_bs_grab in source, reusing the
+same proved RT500ms plan, native-air gate, ownership, landing cancellation and
+fresh-press rearm. Previously the named-table selection made ordinary B plus
+held movement unavailable. Actual request diagnostics remain the basic identity;
+no Melon/Indy/Nose identity is claimed. Named catalog candidates and explicit lab
+selector are retained separately. Ground/on-foot B remains native, invalid opposing
+directions remain rejected, and no wait or stale queue is added.111 focused
+runtime checks pass strict ASAN/UBSAN, including all nine valid D-pad modifiers,
+forward/backward movement and existing safe cancellation. New source hardware
+acceptance is PENDING its next verified DLL. Native Trainer CSV collection is
+being repaired through existing command routing; no new physics hook or reader.
+
 ## Installed8fec865 core regressions — 2026-10-17
 
 HIL61 trial1792224271386351000 PASSES early native Kickflip2, apex-timed
