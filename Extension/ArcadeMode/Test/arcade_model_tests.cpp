@@ -149,10 +149,14 @@ int main() {
         auto pop = poll(1, ClassicGesture::a);
         check(pop.requested_id == 1 && pop.right_y == -28000,
             "rail Ollie chooses the existing from-grind pattern instead of ground playback");
-        gesture.cancel(); poll(100, 0); poll(101, ClassicGesture::x | 4);
-        pop = poll(112, 0);
+        gesture.cancel(); poll(100, 0);
+        pop = poll(101, ClassicGesture::x | 4);
+        check(!pop.requested_id && !pop.owns_stick, "grounded rail X cannot fabricate an airborne flip");
+        gesture.poll(102 * 17, 102, 0, 0, 0, true, false, false, catalog, false, GestureContext::from_grind, true);
+        pop = gesture.poll(103 * 17, 103, ClassicGesture::x | 4, 0, 0, true, false, false,
+            catalog, false, GestureContext::from_grind, true);
         check(pop.requested_id == 2 && pop.right_x == 1000,
-            "rail X selects authored from-grind flip data");
+            "confirmed airborne rail-exit X retains the exact authored from-grind data");
         gesture.cancel(); poll(200, 0);
         const std::span ground_only(catalog.data(), 1);
         pop = gesture.poll(3500, 201, ClassicGesture::a, 0, 0, true, true, false,
@@ -249,8 +253,8 @@ int main() {
         check(neutral.command_busy && neutral.authored_playback && neutral.right_y == 0,
               "authored neutral was delivered before grab handoff");
         const auto next = poll(32, 0x2000, context == 1 ? SkatePose::riding : SkatePose::air);
-        check(next.command_busy == (context != 2) && next.authored_playback == (context != 2),
-              "only enabled airborne B can end the neutral authored tail");
+        check(!next.command_busy && !next.authored_playback,
+              "a delivered neutral tail releases control for air actions and landing without an experiment selector");
     }
     {
         ArcadeInput input; input.enable(true);
@@ -355,6 +359,28 @@ int main() {
         check(!orbit.update(follow, target, std::numeric_limits<float>::quiet_NaN(), 0, .016f),
             "invalid camera input cannot reach native transform setter");
     }
+    for (const unsigned delay : {100u, 400u, 650u}) {
+        const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
+        const std::array catalog{PreparedGesture{2, false, GestureContext::ground, steps}};
+        ClassicGesture controls;
+        controls.poll(0, 0, 0, 0, 0, true, false, false, catalog);
+        const auto tick = delay / 17;
+        const auto flip = controls.poll(delay, tick, ClassicGesture::x | 4, 0, 0,
+            true, false, false, catalog, false, GestureContext::ground, true);
+        check(flip.requested_id == 2 && flip.owns_stick,
+            "fresh X can start throughout independently observed air without any A history");
+        const auto landing = controls.poll(delay + 17, tick + 1, ClassicGesture::x | 4, 0, 0,
+            true, true, false, catalog);
+        check(!landing.owns_stick && !controls.busy(), "landing immediately cancels unfinished airborne flick");
+        check(!controls.poll(delay + 34, tick + 2, ClassicGesture::x | 4, 0, 0,
+            true, false, false, catalog, false, GestureContext::ground, true).requested_id,
+            "held X cannot replay on a later jump");
+        controls.poll(delay + 51, tick + 3, 0, 0, 0, true, false, false, catalog,
+            false, GestureContext::ground, true);
+        check(controls.poll(delay + 250, tick + 15, ClassicGesture::x | 4, 0, 0,
+            true, false, false, catalog, false, GestureContext::ground, true).requested_id == 2,
+            "released X rearms for another eligible airborne action");
+    }
     {
         const std::vector<AuthoredStickStep> steps{{0,0,-32767},{18,28000,28000},{22,0,0},{54,0,0}};
         const std::array<PreparedGesture, 4> catalog{{{1,false,GestureContext::ground,steps},
@@ -373,19 +399,23 @@ int main() {
         check(!out.owns_stick && !out.requested_id, "mode reset cannot convert held A into a new crouch");
         controls.poll(1300, 78, 0, 0, 0, true, true, false, catalog);
         out = controls.poll(1400, 84, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
-        check(!out.requested_id && !(out.buttons & ClassicGesture::x), "X waits briefly for exact repeated-button selection");
+        check(!out.requested_id && !(out.buttons & ClassicGesture::x), "ground X is rejected without starting a jump");
         check(!(out.buttons & 15), "directional trick input cannot open a native gameplay menu");
-        out = controls.poll(1600, 96, 0, 0, 0, true, true, false, catalog);
-        check(out.requested_id == 2 && out.right_y == -32767, "left X selects the exact authored kickflip");
-        controls.cancel(); controls.poll(1700, 102, 0, 0, 0, true, true, false, catalog);
-        controls.poll(1800, 108, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
-        controls.poll(1850, 111, 4, 0, 0, true, true, false, catalog);
-        controls.poll(1900, 114, ClassicGesture::x | 4, 0, 0, true, true, false, catalog);
-        out = controls.poll(2100, 126, 0, 0, 0, true, true, false, catalog);
+        out = controls.poll(1600, 96, 0, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        check(!out.requested_id && !out.owns_stick, "grounded X is never queued into a later airborne window");
+        out = controls.poll(1650, 99, ClassicGesture::x | 4, 0, 0, true, false, false,
+            catalog, false, GestureContext::ground, true);
+        check(out.requested_id == 2 && out.right_y == -32767, "airborne X immediately selects exact Kickflip without A or grounded eligibility");
+        out = controls.poll(1667, 100, 4, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        check(out.right_x == 28000, "airborne setup takes one delivered tick instead of a grounded crouch wait");
+        controls.poll(1733, 104, 4, 0, 0, true, false, false, catalog, false, GestureContext::ground, true);
+        out = controls.poll(1800, 108, ClassicGesture::x | 4, 0, 0, true, false, false,
+            catalog, false, GestureContext::ground, true);
         check(out.unsupported && !out.requested_id && !out.owns_stick,
-            "unsupported double kickflip never executes a single kickflip substitute");
-        controls.poll(2200, 132, ClassicGesture::x | 4, 0, 0, true, true, true, catalog);
-        out = controls.poll(2400, 144, 0, 0, 0, true, true, true, catalog);
+            "unsupported repeated variant never injects a replacement flip");
+        controls.poll(2000, 120, 0, 0, 0, true, false, true, catalog, false, GestureContext::ground, true);
+        out = controls.poll(2200, 132, ClassicGesture::x | 4, 0, 0, true, false, true,
+            catalog, false, GestureContext::ground, true);
         check(out.requested_id == 17, "LT context selects the distinct authored nollie identifier");
         out = controls.poll(2500, 150, ClassicGesture::a | 4, 0, 0, false, true, true, catalog);
         check(out.buttons == (ClassicGesture::a | 4) && !out.owns_stick,
@@ -674,37 +704,23 @@ int main() {
         check(!native_push_allowed(true, 100, 1, 0xc000, true, true), "established balance excludes even a two-wheel contact transient");
     }
     {
-        OnFootJump foot;
-        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::a, "on-foot context requires release before a fresh jump");
-        foot.poll(0, true, true);
-        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::x, "fresh grounded on-foot A maps to native jump X");
-        check(foot.poll(OnFootJump::a, true, false) == OnFootJump::x, "jump button ownership survives native airtime");
-        check(foot.poll(0, true, false) == 0 && !foot.busy(), "releasing A releases the native jump button");
-        check(foot.poll(OnFootJump::a, true, false) == OnFootJump::a, "an airborne A edge cannot queue a future jump");
-        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::a, "landing cannot resurrect an airborne jump request");
-        foot.poll(0, true, true);
-        check(foot.poll(OnFootJump::a, true, true) == OnFootJump::x, "another grounded A press jumps after landing");
-        check(foot.poll(OnFootJump::a, false, false) == OnFootJump::a && !foot.busy(), "bail or lost native permission releases synthetic X and preserves recovery A");
-        check(foot.poll(0x6001, true, true) == 0x6001, "other on-foot face and directional actions stay native");
-    }
-    {
         ArcadeInput input;
         input.enable(true);
-        auto poll = [&](std::uint64_t now, std::uint16_t buttons, bool gameplay = true, bool safe = true) {
+        auto poll = [&](std::uint64_t now, std::uint16_t buttons, bool gameplay = true) {
             return input.poll(0, now, buttons, 0, 25000, 0, 0, gameplay, false,
                 false, 0, false, true, true, now, false, {}, false,
-                false, SkatePose::unknown, false, false, true, safe);
+                false, SkatePose::unknown, false, false, true);
         };
         poll(0, 0);
-        auto out = poll(1, OnFootJump::a);
-        check(out.buttons == OnFootJump::x && !out.authored_playback && !out.requested_id &&
-            !out.right_x && !out.right_y, "on-foot A requests native jump without any Ollie playback");
-        check(poll(2, OnFootJump::a, true, false).buttons == OnFootJump::a, "on-foot bail keeps native recovery actions");
-        check(poll(3, OnFootJump::a, false).buttons == OnFootJump::a, "menus preserve physical A");
+        auto out = poll(1, NativeGesture::a);
+        check(out.buttons == NativeGesture::a && !out.authored_playback && !out.requested_id &&
+            !out.right_x && !out.right_y, "on-foot A preserves verified native jump without any Ollie playback");
+        check(poll(2, NativeGesture::a, true).buttons == NativeGesture::a, "on-foot bail keeps native recovery actions");
+        check(poll(3, NativeGesture::a, false).buttons == NativeGesture::a, "menus preserve physical A");
         poll(4, 0);
-        check(poll(5, OnFootJump::a).buttons == OnFootJump::x, "moving on-foot A rearms after the menu");
+        check(poll(5, NativeGesture::a).buttons == NativeGesture::a, "moving on-foot A rearms after the menu");
         input.enable(false);
-        check(poll(6, OnFootJump::a).buttons == OnFootJump::a, "Arcade OFF restores native on-foot A");
+        check(poll(6, NativeGesture::a).buttons == NativeGesture::a, "Arcade OFF restores native on-foot A");
     }
     {
         // Wheel contact/native state can briefly become ineligible during a

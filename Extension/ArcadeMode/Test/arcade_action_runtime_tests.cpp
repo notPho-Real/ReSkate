@@ -176,6 +176,23 @@ int run_arcade_action_runtime_tests() {
         native.bailed = false; native.state = state;
         check(!action_input_eligible(native), "unknown/offboard/grind state cannot own auxiliary input");
     }
+    for (const unsigned delay : {100u, 400u, 650u}) {
+        input.reset();
+        poll(default_action_mode, 0);
+        poll(default_action_mode, 20, {}, SkatePose::air, true, true, true, true);
+        const auto grab = poll(default_action_mode, delay, {0x2004}, SkatePose::air);
+        check(grab.requested && grab.result == DispatchResult::started && grab.owned,
+            "first fresh airborne B after neutral Ollie ownership dispatches without a second press or fixed wait");
+        check(!poll(default_action_mode, delay + 17, {4}, SkatePose::riding).owned,
+            "landing cancels airborne grab ownership immediately");
+        check(!poll(default_action_mode, delay + 34, {0x2004}, SkatePose::riding).owned,
+            "grounded B keeps native braking and cannot start a grab");
+        check(!poll(default_action_mode, delay + 51, {0x2004}, SkatePose::air).requested,
+            "grounded B cannot queue a stale grab for the next jump");
+    }
+    input.reset(); poll(default_action_mode, 0);
+    check(!poll(default_action_mode, 10, {0x2000}).consume_buttons,
+        "ordinary grounded B remains native brake");
     std::cout << checks << " action runtime checks passed\n";
     return 0;
 }

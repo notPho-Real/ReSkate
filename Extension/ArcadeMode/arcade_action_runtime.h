@@ -35,7 +35,7 @@ public:
         const bool classic = mode == ActionExperiment::classic;
         const bool revert_mode = classic || mode == ActionExperiment::revert_frontside || mode == ActionExperiment::revert_backside;
         const bool unverified_nollie = classic && physical.left_trigger > 30;
-        out.consume_buttons = mode == ActionExperiment::grabs ? 0x2000 : 0;
+        out.consume_buttons = mode == ActionExperiment::grabs || (classic && pose == SkatePose::air) ? 0x2000 : 0;
         out.consume_rt = revert_mode;
         const bool rt = physical.right_trigger > 128;
         const bool held_command = (physical.buttons & 0xa000) || rt;
@@ -53,11 +53,11 @@ public:
         ActionContext context{mode != ActionExperiment::observe, fresh, pose == SkatePose::air,
             pose == SkatePose::riding, inspected_stance, conflict};
         const auto request = controls_.poll(now, physical.buttons, physical.left_x, physical.left_y,
-            true, conflict);
+            true, conflict, RailRelationship::unknown, classic);
         if (request.ready) {
             out.requested = true; out.trick = request.trick;
             out.request_kind = request.family == TrickFamily::grab ? 1 : 2;
-            if (request.family == TrickFamily::grab && mode == ActionExperiment::grabs)
+            if (request.family == TrickFamily::grab && (mode == ActionExperiment::grabs || classic))
                 out.result = dispatch_.request_grab(request.trick, now, context);
             else if (request.family == TrickFamily::grind && mode == ActionExperiment::observe)
                 out.result = DispatchResult::needs_geometry;

@@ -1,3 +1,53 @@
+## Core gameplay pilots and airborne source — 2026-10-16
+
+Installed runtime remains4f5fbe5 / DLL0e185a8a. Stadium saved fixture and60Hz
+restored. HIL57 trial1792209954009004000 holds forward continuously10s with
+native full-left steering on the flat apron. Independent push-request rising
+edges87673859/87674959 accompany speed4.90m/s at1s,6.85 at2s,6.08 at9s,
+5.98 at10s; native state100/mode1 throughout, brake reaches0 by12s. Screenshot
+artifacts/ding-bat-flat-tight-2.png verifies flat course, no gap, all state/idle
+criteria and neutral/reset pass. Earlier gentle circles1792209301698374000 and
+1792209525733163000 hit geometry and are not flat-ground acceptance. Broader
+release/resume and incompatible-state acceptance remain required.
+
+CORRECTION: native on-foot jump is A, not X. Native OFF comparison
+1792210065933189000 changes native request words after A alone; Jump HUD persists
+through the later X, which caused the earlier mistaken attribution. Installed
+A-to-X pilot1792209898156278000 has no jump request and is a failed repair.
+Source removes that translation and preserves native on-foot A outside all
+Ollie/flip/manual handlers, including recovery. Source right-stick input is also
+preserved on foot. Neither the corrected on-foot source nor new independent air
+X/B runtime is yet deployed. No hardware jump acceptance is claimed.
+
+Air source accepts fresh X only in independently observed air, starts the existing
+exact authored flick after one delivered setup tick, cancels on landing/bail,
+and releases completed neutral tails before another owner. B tracks neutral
+releases during Ollie ownership and dispatches immediately in classic mode;
+ground B keeps native braking, stale requests are never queued. Named grab plans
+remain candidates; previous Melon control yielded BS Grab and is not exact
+identity acceptance. Kickflip/Heelflip and basic grab pilots are required next.
+Manual command responsiveness remains outstanding. No scoring work resumed.
+
+## Held-push/on-foot runtime installed — 2026-10-16
+
+Installed4f5fbe566b3a95e8d61efd3a448f61a064db0330 / DLL
+0e185a8a92c74d08c53c78cf5c7b9f260257e3b31a4cfed0a5bb03ff27d3a663.
+CI38998301227 passed all five gates; raw and immutable packaged DLL match.
+Stopped-state1792208662734365000 precedes guarded deployment. Original game
+fbce74d5/stock5512a15e unchanged, updatesfalse, recoverypendingfalse. New pin-only
+HIL57 manifest2fda19e36816e0c530e2649390ba9ef5f58023f786dbae94b7ad2c5937efbaa7;
+maintenance55 digest483da060565f52b6322455327f2435f46054957ae340ed75e1ddacee0bcacf7f.
+Frozen workers and older tools unchanged. Launcher Ready25414733 visually checked.
+Native Stadium/60Hz restoration and full push/on-foot acceptance still pending.
+
+Bounded grab pilots on the previous da1 runtime:1792207357264612000 reproduces
+first airborne B discarded because auxiliary rearm was reset by Ollie ownership.
+Method control1792207680102233000 dispatches, but native HUD shows BS Grab,
+NOT requested Melon. Nose controls1792207849901664000 and1792208303353491000
+do not establish named Nose Grab. All reset/neutral and state criteria pass,
+no gaps. No named grab is promoted. Source air X/B handoff/rearm work is in
+progress and not built/deployed; no artificial airtime or physics changes.
+
 ## Native held-push refinement and on-foot source ready — 2026-10-16
 
 Installed runtime remains da1e762 / DLL278ee129, Stadium saved fixture restored,

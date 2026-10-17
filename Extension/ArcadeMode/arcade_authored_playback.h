@@ -70,13 +70,22 @@ public:
         schedule_ = schedule;
     }
     AuthoredPlaybackSchedule schedule() const noexcept { return schedule_; }
-    bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup, bool mirror_x = false) noexcept {
+    bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup,
+               bool mirror_x = false, bool airborne = false) noexcept {
         cancel();
+        if (airborne && hold_setup) return false;
         if (steps.empty() || steps.size() > steps_.size() || steps.front().tick != 0 ||
             steps.back().tick > 180 || steps.back().x || steps.back().y) return false;
         for (std::size_t i = 1; i < steps.size(); ++i)
             if (steps[i].tick <= steps[i - 1].tick) return false;
         std::copy(steps.begin(), steps.end(), steps_.begin());
+        // Ground playback reserves time for crouching. An independently
+        // airborne flick needs one delivered setup tick, then the same authored
+        // arcs and relative timing; it must not spend eighteen ticks crouching.
+        if (airborne && steps.size() > 1 && steps_[1].tick > 1) {
+            const auto removed = steps_[1].tick - 1;
+            for (std::size_t i = 1; i < steps.size(); ++i) steps_[i].tick -= removed;
+        }
         if (mirror_x) for (std::size_t i = 0; i < steps.size(); ++i)
             steps_[i].x = static_cast<std::int16_t>(std::clamp(-static_cast<int>(steps_[i].x), -32768, 32767));
         size_ = steps.size(); began_ = last_ = step_at_ = tick; holding_ = hold_setup;

@@ -71,7 +71,7 @@ void register_console_commands(Commands &registry) {
             if (!arcade_mode::set_action_experiment(mode)) { out("Turn Arcade Mode OFF before changing action experiments."); return; }
         }
         const auto mode = arcade_mode::action_experiment();
-        out(mode == ActionExperiment::classic ? "Actions: RT native revert" : mode == ActionExperiment::off ? "Action experiments OFF" : mode == ActionExperiment::observe ? "Actions: observe only" :
+        out(mode == ActionExperiment::classic ? "Actions: airborne grabs and RT revert" : mode == ActionExperiment::off ? "Action experiments OFF" : mode == ActionExperiment::observe ? "Actions: observe only" :
             mode == ActionExperiment::grabs ? "Actions: B grab candidates (unverified)" :
             mode == ActionExperiment::revert_frontside ? "Actions: RT frontside candidate (unverified)" : "Actions: RT backside candidate (unverified)");
     };

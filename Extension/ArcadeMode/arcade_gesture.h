@@ -5,7 +5,6 @@
 #include "arcade_classic_input.h"
 #include "arcade_manual_input.h"
 #include "arcade_grind_input.h"
-#include "arcade_on_foot.h"
 #include <array>
 #include <cstdint>
 
@@ -126,7 +125,6 @@ public:
         for (auto& push : pushes_) push.reset();
         for (auto& chord : chords_) chord.reset();
         for (auto& grind : grinds_) grind.reset();
-        for (auto& foot : on_foot_) foot.cancel();
     }
     void cancel_manuals() noexcept {
         for (auto& manual : manuals_) manual.cancel();
@@ -138,8 +136,8 @@ public:
             bool authored = false, std::uint64_t tick = 0, bool nollie = false,
             std::span<const PreparedGesture> catalog = {}, bool mirror_x = false,
             bool manual_safe = false, SkatePose observed = SkatePose::unknown,
-            bool experimental_grabs = false, bool manual_prepare_only = false,
-            bool offboard = false, bool foot_safe = false) noexcept {
+            bool /* grab experiment selector; air handoff is now shared */ = false, bool manual_prepare_only = false,
+            bool offboard = false, bool action_busy = false) noexcept {
         if (!enabled_ || user >= gestures_.size())
             return {buttons, rx, ry, NativeTrick::none, 0};
         NativeGesture::Output out{};
@@ -149,16 +147,19 @@ public:
             // native face/d-pad actions and release every on-board stick owner.
             gestures_[user].cancel(); classic_[user].cancel();
             manuals_[user].cancel(); grinds_[user].reset(); pushes_[user].reset();
-            out = {on_foot_[user].poll(buttons, foot_safe, may_toggle_board), 0, 0, NativeTrick::none, 0};
-            busy = on_foot_[user].busy();
+            out = {buttons, rx, ry, NativeTrick::none, 0};
         } else if (authored) {
-            on_foot_[user].cancel();
-            if (game_input && experimental_grabs && observed == SkatePose::air && (buttons & 0x2000))
+            // A completed native flick's neutral tail must not reserve the
+            // airborne window from subsequent X/B or landing-manual commands.
+            if (game_input)
                 classic_[user].finish_neutral_tail();
             if (game_input && (observed == SkatePose::air || observed == SkatePose::grind) &&
                 (buttons & GrindInput::y_button)) classic_[user].finish_neutral_tail();
-            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, game_input, may_start, nollie, catalog, mirror_x,
-                observed == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground);
+            const bool classic_game_input = game_input && observed != SkatePose::bail &&
+                (observed != SkatePose::unknown || may_start);
+            const auto classic = classic_[user].poll(now, tick, buttons, lx, ly, classic_game_input, may_start, nollie, catalog, mirror_x,
+                observed == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground,
+                observed == SkatePose::air, action_busy && observed == SkatePose::air);
             out = {classic.buttons, classic.owns_stick ? classic.right_x : static_cast<short>(game_input ? 0 : rx),
                 classic.owns_stick ? classic.right_y : static_cast<short>(game_input ? 0 : ry), NativeTrick::none,
                 classic.owns_stick ? 1u : 0u, classic.requested_id, classic.unsupported};
@@ -177,7 +178,6 @@ public:
                 out.right_x = grind.x; out.right_y = grind.y; out.phase = 1; busy = true;
             }
         } else {
-            on_foot_[user].cancel();
             out = gestures_[user].poll(now, buttons, lx, ly, rx, ry, game_input, may_start);
             busy = gestures_[user].busy();
         }
@@ -200,6 +200,5 @@ private:
     std::array<AutomaticPush, 4> pushes_{};
     std::array<BoardChord, 4> chords_{};
     std::array<GrindInput, 4> grinds_{};
-    std::array<OnFootJump, 4> on_foot_{};
 };
 }

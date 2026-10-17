@@ -15,11 +15,20 @@ public:
     };
     void cancel() noexcept { *this = {}; armed_ = false; }
     Request poll(std::uint64_t now, std::uint16_t buttons, short lx, short ly,
-                 bool gameplay_fresh, bool conflicting, RailRelationship rail = RailRelationship::unknown) noexcept {
+                 bool gameplay_fresh, bool conflicting, RailRelationship rail = RailRelationship::unknown,
+                 bool immediate_grabs = false) noexcept {
         Request out{};
-        if (!gameplay_fresh || conflicting || (clocked_ && now < last_)) { cancel(); return out; }
-        clocked_ = true; last_ = now;
         constexpr std::uint16_t mask = 0x2000 | 0x8000;
+        if (!gameplay_fresh || (clocked_ && now < last_)) { cancel(); return out; }
+        if (conflicting) {
+            cancel(); clocked_ = true; last_ = now;
+            previous_ = static_cast<std::uint16_t>(buttons & mask);
+            // Track releases while another owner is active. A neutral B does
+            // not need another release after a completed Ollie hands off.
+            armed_ = previous_ == 0;
+            return out;
+        }
+        clocked_ = true; last_ = now;
         const auto held = static_cast<std::uint16_t>(buttons & mask);
         const auto edges = static_cast<std::uint16_t>(held & ~previous_);
         previous_ = held;
@@ -36,6 +45,13 @@ public:
             previous_direction_ = direction;
         }
         if (held == mask) { count_ = 0; out.rejected = true; armed_ = false; return out; }
+        if (immediate_grabs && (edges & 0x2000)) {
+            immediate_count_ = immediate_count_ && direction == immediate_direction_ && now - immediate_at_ <= 180
+                ? std::min(immediate_count_ + 1, 3u) : 1;
+            immediate_direction_ = direction; immediate_at_ = now; count_ = 0;
+            const auto trick = select_named_trick(TrickFamily::grab, direction, immediate_count_);
+            return {true, trick == ArcadeTrick::none, TrickFamily::grab, trick, direction, immediate_count_, 1};
+        }
         // A late poll may close one command and start the next. Do not discard
         // the completed request just because the new edge arrived after its window.
         if (count_ && now - tap_at_ > 180) out = finish(rail);
@@ -66,6 +82,9 @@ private:
     std::uint16_t previous_{};
     std::uint64_t last_{}, tap_at_{}, direction_at_{};
     unsigned count_{}, direction_count_{1}, direction_presses_{1};
+    unsigned immediate_count_{};
+    std::uint64_t immediate_at_{};
+    TrickDirection immediate_direction_{};
     TrickFamily family_{};
     TrickDirection direction_{}, previous_direction_{}, last_direction_{};
 };
