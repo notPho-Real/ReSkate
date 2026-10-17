@@ -30,6 +30,14 @@ constexpr NativeActionPlan grab_plan(ArcadeTrick trick, bool inspected_stance) n
     NativeActionPad first{}, second{}, third{};
     bool extra{};
     switch (trick) {
+    case ArcadeTrick::basic_bs_grab:
+        // Native OFF control1792210929031828000: RT alone establishes BS Grab.
+        // Keep this distinct from named modifiers that returned a different label.
+        plan.readiness = ActionReadiness::candidate;
+        plan.steps[0] = {500, {0, 0, 0, 255, 0}};
+        plan.steps[1] = {34, {}};
+        plan.count = 2;
+        return plan;
     case ArcadeTrick::melon: first.right_trigger = 255; second = first; second.right_y = 32767; break;
     case ArcadeTrick::method: first.right_trigger = 255; second = first; second.right_x = 32767; break;
     case ArcadeTrick::stiffy: first.left_trigger = 255; second = first; second.right_x = -32767; break;

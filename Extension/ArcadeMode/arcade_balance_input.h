@@ -5,8 +5,12 @@ namespace dingosdk::arcade_mode {
 // Left stick: right is positive for grind, up is positive for either manual.
 // Nose manual initially shares this screen-space convention (no inversion).
 // Caller supplies the raw physical sample, never the synthetic game-facing pad.
-inline float balance_correction(BalanceKind kind, short left_x, short left_y, bool available) noexcept {
+inline float balance_correction(BalanceKind kind, short left_x, short left_y, bool available,
+                                std::uint32_t buttons = 0) noexcept {
     if (!available || kind == BalanceKind::none) return 0;
+    if (kind == BalanceKind::manual && (buttons & 3u)) {
+        return (buttons & 3u) == 1u ? 1.0f : (buttons & 3u) == 2u ? -1.0f : 0.0f;
+    }
     constexpr float deadzone = 7849.0f;
     const float raw = static_cast<float>(kind == BalanceKind::grind ? left_x : left_y);
     const float magnitude = std::abs(raw);

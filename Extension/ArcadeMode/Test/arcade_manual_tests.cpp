@@ -211,6 +211,50 @@ int run_arcade_manual_tests() {
         start(manual, base);
         check(!poll(manual, base + 1220).owns_stick, "near-limit timestamps use bounded differences without overflow");
     }
+    for (const unsigned frame_ms : {17u, 33u}) {
+        for (const bool nose : {false, true}) {
+            for (const bool neutral_between : {false, true}) {
+                ManualGesture manual;
+                // Steering has been held well beyond the350ms pair window.
+                for (unsigned ms = 0; ms < 1000; ms += frame_ms)
+                    check(!poll(manual, ms, 25000).owns_stick,
+                        "ordinary sustained forward does not request a manual");
+                const auto first = static_cast<std::uint16_t>(nose ? 2 : 1);
+                const auto second = static_cast<std::uint16_t>(nose ? 1 : 2);
+                poll(manual, 1000, 25000, SkatePose::riding, first);
+                if (neutral_between) poll(manual, 1000 + frame_ms, 25000);
+                const auto out = poll(manual, 1000 + 2 * frame_ms, 25000, SkatePose::riding, second);
+                check(out.owns_stick && out.y == (nose ? 20000 : -20000),
+                    "rapid D-pad pair works over held forward at30/60Hz with or without neutral");
+            }
+        }
+        ManualGesture manual;
+        poll(manual, 0); poll(manual, frame_ms, 25000);
+        check(!poll(manual, frame_ms * 2, 25000, SkatePose::riding, 2).owns_stick,
+            "stick Up cannot combine with an unrelated D-pad Down");
+        manual.cancel(); poll(manual, 0);
+        poll(manual, frame_ms, 0, SkatePose::riding, 1);
+        check(!poll(manual, frame_ms * 2, -25000).owns_stick,
+            "D-pad Up cannot combine with an unrelated stick Down");
+    }
+    for (const bool nose : {false, true}) {
+        ManualGesture manual;
+        poll(manual, 0, 0, SkatePose::air);
+        poll(manual, 17, nose ? -25000 : 25000, SkatePose::air);
+        poll(manual, 50, nose ? 25000 : -25000, SkatePose::air);
+        check(poll(manual, 700, 0, SkatePose::air).owns_stick,
+            "early airborne preparation retains the native method through the jump");
+        check(poll(manual, 800).owns_stick && poll(manual, 1600).owns_stick,
+            "landing actuation gets its own bounded window instead of expiring from the apex");
+        const auto pose = nose ? SkatePose::nose_manual : SkatePose::manual;
+        check(poll(manual, 1617, 0, pose).confirmed,
+            "only the independently observed requested manual confirms prepared landing");
+        manual.cancel(); poll(manual, 0, 0, SkatePose::air);
+        poll(manual, 17, 25000, SkatePose::air); poll(manual, 50, -25000, SkatePose::air);
+        poll(manual, 800); poll(manual, 900, 0, SkatePose::air);
+        check(!poll(manual, 2000).owns_stick,
+            "later rebound cannot restart the1200ms failed-landing deadline");
+    }
     std::cout << checks << " manual input checks passed\n";
     return 0;
 }

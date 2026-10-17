@@ -180,7 +180,7 @@ int run_arcade_action_runtime_tests() {
         input.reset();
         poll(default_action_mode, 0);
         poll(default_action_mode, 20, {}, SkatePose::air, true, true, true, true);
-        const auto grab = poll(default_action_mode, delay, {0x2004}, SkatePose::air);
+        const auto grab = poll(default_action_mode, delay, {0x2000}, SkatePose::air);
         check(grab.requested && grab.result == DispatchResult::started && grab.owned,
             "first fresh airborne B after neutral Ollie ownership dispatches without a second press or fixed wait");
         check(!poll(default_action_mode, delay + 17, {4}, SkatePose::riding).owned,
@@ -193,6 +193,25 @@ int run_arcade_action_runtime_tests() {
     input.reset(); poll(default_action_mode, 0);
     check(!poll(default_action_mode, 10, {0x2000}).consume_buttons,
         "ordinary grounded B remains native brake");
+    input.reset(); poll(default_action_mode, 0);
+    const auto unsupported_melon = poll(default_action_mode, 20, {0x2004}, SkatePose::air);
+    check(unsupported_melon.requested && !unsupported_melon.owned &&
+          unsupported_melon.result == DispatchResult::unavailable,
+          "normal play cannot substitute a basic BS Grab for the unproved named Melon");
+    input.reset(); poll(default_action_mode, 0);
+    const auto basic = poll(default_action_mode, 20, {0x2000}, SkatePose::air);
+    check(basic.trick == ArcadeTrick::basic_bs_grab && basic.pad.right_trigger == 255 &&
+          basic.pad.right_x == 0 && basic.pad.right_y == 0,
+          "neutral B requests the measured basic RT grab without an unproved modifier");
+    check(poll(default_action_mode, 519, {0x2000}, SkatePose::air).pad.right_trigger == 255 &&
+          poll(default_action_mode, 520, {0x2000}, SkatePose::air).pad.right_trigger == 0,
+          "basic grab retains measured hold and explicit neutral release");
+    check(!poll(default_action_mode, 554, {0x2000}, SkatePose::air).owned &&
+          !poll(default_action_mode, 555, {0x2000}, SkatePose::air).requested,
+          "completed grab releases ownership without replaying held B");
+    poll(default_action_mode, 560, {}, SkatePose::air);
+    check(poll(default_action_mode, 600, {0x2000}, SkatePose::air).owned,
+          "fresh B rearms after completed grab while native air remains eligible");
     std::cout << checks << " action runtime checks passed\n";
     return 0;
 }

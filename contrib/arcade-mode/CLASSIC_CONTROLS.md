@@ -29,6 +29,15 @@ speed require them. The player does not need to repeatedly press a push button.
 The physical right stick always belongs to the camera; any synthetic gesture used
 inside a native adapter is an implementation detail, not another player control.
 
+X and B require independently observed airtime and a fresh press. Ground X
+does not start a jump; ground B retains native braking. Neither command requires
+A to remain held. Landing, bail, menus and Arcade OFF release synthetic ownership.
+
+Rapid manual pairs accept direct reversal or a neutral frame within350ms. D-pad
+and left-stick sequences are independent; held forward cannot swallow D-pad
+commands. Airborne preparation retains the proven native partial-stick method
+through landing, and D-pad Up/Down can correct an established manual balance.
+
 ## Flip table — X
 
 Repeated presses select the exact listed variant only where a native equivalent
@@ -46,6 +55,11 @@ exists. A dash means this contract assigns no variant to that combination.
 | Down-Right | Varial Heelflip | 360 Heelflip | — |
 
 ## Grab table — B
+
+Neutral B requests the basic native BS Grab in the inspected stance. The named
+directional rows below remain the target contract. Normal play rejects their
+unproved recipes; the explicit lab selector retains them for bounded controls.
+A generic BS Grab must never be reported as a successful Melon.
 
 | Direction | B | B,B |
 | --- | --- | --- |

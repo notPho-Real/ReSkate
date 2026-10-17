@@ -147,7 +147,7 @@ public:
             // native face/d-pad actions and release every on-board stick owner.
             gestures_[user].cancel(); classic_[user].cancel();
             manuals_[user].cancel(); grinds_[user].reset(); pushes_[user].reset();
-            out = {buttons, rx, ry, NativeTrick::none, 0};
+            out = {buttons, 0, 0, NativeTrick::none, 0}; // Existing Arcade camera owns the physical right stick.
         } else if (authored) {
             // A completed native flick's neutral tail must not reserve the
             // airborne window from subsequent X/B or landing-manual commands.

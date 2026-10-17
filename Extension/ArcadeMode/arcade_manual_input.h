@@ -16,8 +16,8 @@ public:
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; };
     void cancel() noexcept {
-        armed_ = clocked_ = confirmed_ = air_prepared_ = wrong_contact_ = false;
-        first_ = previous_ = requested_ = 0;
+        clocked_ = confirmed_ = air_prepared_ = landed_ = wrong_contact_ = false;
+        requested_ = 0; stick_pair_ = {}; pad_pair_ = {};
     }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
                 bool game_input, bool safe_state, SkatePose observed, bool conflicting,
@@ -30,19 +30,19 @@ public:
             cancel(); return {};
         }
         clocked_ = true; last_ = now;
-        const auto direction = classic_direction(buttons, lx, ly);
-        const int vertical = direction == TrickDirection::up ? 1 : direction == TrickDirection::down ? -1 : 0;
         // A native manual already in progress uses Up/Down for correction.
         // Unknown pose cannot establish that a fresh command is appropriate.
         if (!requested_ && observed != SkatePose::riding && observed != SkatePose::air) {
             cancel(); return {};
         }
-        if (!armed_) {
-            if (direction == TrickDirection::none) armed_ = true;
-            previous_ = vertical;
-            return {};
-        }
         if (requested_) {
+            // A command near the apex must retain the proven native hold until
+            // landing. Give the native landing actuation its own bounded window;
+            // a later rebound must never restart that deadline.
+            if (air_prepared_ && !landed_ && !confirmed_) {
+                requested_at_ = now;
+                landed_ = observed != SkatePose::air;
+            }
             const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;
             const auto opposite = requested_ < 0 ? SkatePose::nose_manual : SkatePose::manual;
             // A prepared landing can briefly touch one wheel then rebound. The
@@ -76,25 +76,48 @@ public:
             }
             return {true, confirmed_, static_cast<std::int16_t>(requested_ * 20000)};
         }
-        if (first_ && now - first_at_ > 350) first_ = 0;
-        if (vertical && vertical != previous_) {
-            if (first_ == -vertical && now - first_at_ <= 350) {
-                // Preserve the first edge through measured revert recovery, but
-                // never queue a completed command for a later unsafe surprise.
-                if (!safe_state) { cancel(); return {}; }
-                requested_ = vertical; requested_at_ = now; first_ = 0;
-                air_prepared_ = observed == SkatePose::air;
-                previous_ = vertical;
-                return {true, false, static_cast<std::int16_t>(requested_ * 20000)};
-            }
-            first_ = vertical; first_at_ = now;
-        } else if (!vertical && direction != TrickDirection::none) first_ = 0;
-        previous_ = vertical;
+        const auto pad = buttons & 15u;
+        if ((pad & 3u) == 3u || (pad & 12u) == 12u) {
+            stick_pair_ = {}; pad_pair_ = {}; return {};
+        }
+        // A held steering stick cannot swallow a fresh D-pad Up edge, and
+        // switching input devices cannot complete half of an unrelated pair.
+        const int pad_request = pad_pair_.poll(now, classic_direction(buttons, 0, 0));
+        if (pad) stick_pair_ = {};
+        const int stick_request = pad ? 0 : stick_pair_.poll(now, classic_direction(0, lx, ly));
+        const int request = pad_request ? pad_request : stick_request;
+        if (request) {
+            if (!safe_state) { cancel(); return {}; }
+            requested_ = request; requested_at_ = now;
+            air_prepared_ = observed == SkatePose::air; landed_ = !air_prepared_;
+            return {true, false, static_cast<std::int16_t>(requested_ * 20000)};
+        }
         return {};
     }
 private:
-    bool armed_{}, clocked_{}, confirmed_{}, air_prepared_{}, wrong_contact_{};
-    int first_{}, previous_{}, requested_{};
-    std::uint64_t last_{}, first_at_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
+    struct DirectionPair {
+        bool armed{};
+        int first{}, previous{};
+        std::uint64_t at{};
+        int poll(std::uint64_t now, TrickDirection direction) noexcept {
+            const int vertical = direction == TrickDirection::up ? 1 : direction == TrickDirection::down ? -1 : 0;
+            if (!armed) {
+                if (direction == TrickDirection::none) armed = true;
+                previous = vertical; return 0;
+            }
+            if (first && now - at > 350) first = 0;
+            int request{};
+            if (vertical && vertical != previous) {
+                if (first == -vertical && now - at <= 350) request = vertical;
+                first = vertical; at = now;
+            } else if (!vertical && direction != TrickDirection::none) first = 0;
+            previous = vertical;
+            return request;
+        }
+    };
+    DirectionPair stick_pair_{}, pad_pair_{};
+    bool clocked_{}, confirmed_{}, air_prepared_{}, landed_{}, wrong_contact_{};
+    int requested_{};
+    std::uint64_t last_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };
 }

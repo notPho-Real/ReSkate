@@ -1,3 +1,31 @@
+## Manual responsiveness and basic-grab source ready — 2026-10-16
+
+Runtime remains4f5fbe5 / DLL0e185a8a; stopped-state1792211207948586000 confirms
+both game and launcher absent, original game/stock unchanged, updatesfalse,
+recoverypendingfalse. Source9bbff13 CI39001777689 is still building Windows;
+Linux/macOS gates pass. No new runtime is deployed yet.
+
+HIL57 manual baseline1792210643848860000 reproduces ignored rapid D-pad Up/Down
+over long-held forward: no synthetic manual stick, no native manual label, no
+evidence gap; all native/idle criteria, neutral/reset pass. New focused test
+fails against HEAD recognizer and passes after separate stick/D-pad channels.
+350ms window and native partial-stick recipe remain unchanged.499 manual checks
+include30/60Hz rapid pairs with/without neutral, held-forward nonactivation,
+no cross-device pair completion, and bounded apex-to-landing preparation. D-pad
+vertical correction now uses the established manual balance path. Ground/air
+Manual AND Nose Manual hardware acceptance remains required.
+
+Native OFF controls1792210929031828000 establish actual BS Grab HUD with RT
+alone. RT followed by up after150ms still produces BS Grab, not Melon; earlier
+50ms candidate also failed exact identity. Both controls have native100→201→100,
+idle and neutral PASS, no gap. Source adds distinct neutral-B basic_bs_grab
+without renumbering old actions; normal classic mode gates unproved named grab
+recipes, while explicit lab mode retains them. No false named support claim.
+Combined sanitizer checks pass:33742 model,499 manual,99 action runtime plus
+existing regression suites. Manual/basic-grab source is not yet built/deployed.
+Camera input retains its existing Arcade owner on foot. Air flip pilots remain
+pending installation of the verified9bbff13 build. No physics writes added.
+
 ## Core gameplay pilots and airborne source — 2026-10-16
 
 Installed runtime remains4f5fbe5 / DLL0e185a8a. Stadium saved fixture and60Hz

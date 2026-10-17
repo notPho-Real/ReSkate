@@ -18,7 +18,8 @@ enum class ArcadeTrick : std::uint8_t {
     grind_50_50, boardslide_or_lipslide, nosegrind, grind_5_0,
     noseslide_or_tailslide, crooked_or_overcrook, smith_or_feeble,
     nosebluntslide, bluntslide, nosegrind_to_pivot, grind_5_0_overturn,
-    hurricane, salad, hang_ten_nosegrind, crail_slide, double_blunt_slide, darkslide
+    hurricane, salad, hang_ten_nosegrind, crail_slide, double_blunt_slide, darkslide,
+    basic_bs_grab
 };
 struct TrickTableRow {
     TrickFamily family;
@@ -48,6 +49,7 @@ inline constexpr std::array literal_trick_table{
     TrickTableRow{TrickFamily::flip, TrickDirection::up, 3, ArcadeTrick::triple_impossible, "Triple Impossible"},
     TrickTableRow{TrickFamily::flip, TrickDirection::right, 3, ArcadeTrick::triple_heelflip, "Triple Heelflip"},
     TrickTableRow{TrickFamily::flip, TrickDirection::down, 3, ArcadeTrick::shove_it_540, "540 Shove-It"},
+    TrickTableRow{TrickFamily::grab, TrickDirection::none, 1, ArcadeTrick::basic_bs_grab, "BS Grab"},
     TrickTableRow{TrickFamily::grab, TrickDirection::left, 1, ArcadeTrick::melon, "Melon"},
     TrickTableRow{TrickFamily::grab, TrickDirection::up, 1, ArcadeTrick::nosegrab, "Nosegrab"},
     TrickTableRow{TrickFamily::grab, TrickDirection::right, 1, ArcadeTrick::indy, "Indy"},
