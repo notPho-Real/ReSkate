@@ -1,3 +1,76 @@
+## Native direct-stick manual repair accepted at60Hz — 2026-10-17
+
+Installed8fec865 / DLL47ba309f, HIL61.1792223321181273000 PASSES both rapid
+140ms direct stick pairs. Native100/mode1, fresh distinct Manual1/Nose Manual2
+history without duplicates/relabels, corresponding one-wheel0x4000/0x8000,
+proper balance activation, clean native idle/neutral/reset and no observation
+drops. The previous direct-stick Nose failure is fixed. A held first Down
+negative control restores native101 after the350ms reservation, with no partial
+RS manual request, no manual history or balance activation; idle/neutral/reset
+also PASS. Native reverse remains available when the player continues holding.
+1792223434141577000 PASSES rapid70ms stick commands prepared in real Ollie1/air:
+native100 landing then fresh Manual1/Nose Manual2, clean idle/neutral/reset,
+no drops. Both airborne preparations work on the deployed source.
+Separate native30Hz checks remain pending; native60Hz is still active.
+
+## Installed manual-routing build — 2026-10-17
+
+Installed8fec86579d19a690155fb8181b28352b2c4f9431 / DLL
+47ba309f13af64a8edc54b68ce1aa8a1369fc0c6bf9994bc909d67482fd74c6d.
+CI39013028970 passed all five gates; raw CI and immutable package are byte-identical.
+Guarded deployment verified gamefbce74d5/stock5512a15e unchanged, updatesfalse,
+recoverypendingfalse. HIL61 manifeste3e4aba48896f74562604568719e4acd9f98ea6bea4e23c86595dcbe2dce6bc9,
+maintenance59 aabd469696bda4806a0dc0def4798a9a01c0446167591a72e73e6f8705965ccc.
+HIL workers are byte-identical to60; only runner version and target pins changed.
+Manual routing acceptance is pending startup on this build.
+
+Additional20b native trials1792222690419044000: directional Pop Shove-It4 PASS,
+grounded-X negative control has no takeoff at X and no stale flip after later
+Ollie1; both clean native100/idle/neutral/reset, no drops. Requested Hardflip9
+instead produces native7: FAIL exact identity despite safe landing. Preserve this
+catalog failure and inspect its authored pattern/mirroring before further changes;
+never report native7 as Hardflip. No extra catalog rebuild or physics change yet.
+
+## Fast-air/basic-grab native pilots — 2026-10-17
+
+Installed20b1902 / DLLad732353 remains verified on HIL60, Stadium60Hz.
+1792221943045155000: early Kickflip2 and apex Heelflip3 both PASS exact native
+selection after independent Ollie1/air, clean native100 landing, idle/neutral/
+reset; no pad/flip/combo/grind/stick drops.1792222050645768000 also PASSES apex
+Kickflip2 and early Heelflip3 with the same independent evidence. Thus both
+identities now land at early and apex timings; no A hold is required in air.
+Normal neutral-B in1792221943045155000 produces fresh native base-name Grab
+(label29, added mask268435456),404ms after B while independently201, followed
+by native100 landing90ms later; valid/comparable history, no malformed/drop/gap.
+This proves the basic grab action, not a side or a named modifier. Its rendered
+BS label is secondary. Persistent history never counts as a fresh action.
+
+Preserve late failures:1792222237518222000 X3800 Kickflip has no native2;
+X3750 Heelflip3 recognizes but lands504, so neither passes late acceptance.
+1792222050645768000 natural-ramp late commands fail exact identity; the measured
+remaining air before native402 contact is180/139ms, inadequate for the proved
+native animations. Do not call these late successes or inject extra airtime.
+Native-OFF guide controls1792222180487567000 also fail named identity: Nose
+RSdown50ms then RT600ms yields no fresh grab label; RT400ms then RSup350ms
+produces only native Grab29, not Melon. Both land100/idle safely with no evidence
+drops. This falsifies simply extending those two candidate holds as a named-grab
+fix. Named recipes remain unavailable; basic neutral B remains enabled.
+Source8fec865 manual Down reservation is still awaiting its verified DLL and
+hardware test. Existing direct-stick Nose failure is not waived.
+
+1792222577286819000 current-build push regression: ten seconds uninterrupted
+forward/full-left on flat ground, native100/mode1 throughout, native0x40 rises
+657/1757ms after capture baseline. Speed4.912m/s at1s,6.922 at2s,6.753 at10s;
+release ends automatic push, B brings speed0 by12s. Native state/idle/neutral/
+reset PASS, no pad/combo drops. Separate stop/resume trial stops by5s then has
+three new native0x40 edges after resuming; final idle FAILS at0.15m/s residual
+speed, although state100/neutral/reset pass. Preserve that failed idle result.
+Native grind-to-pop control1792222324725394000 preserves independent401→200/201→
+100 and exact Ollie1, clean idle/neutral/reset, no observation drops. It does not
+supply a longer native air window. Native Nose release-before-trigger control
+1792222500508908000 yields only fresh Grab29, not Nose Grab6, with safe landing;
+the extra neutral gap does not establish that named action either.
+
 ## Direct-stick Nose Manual routing repair source — 2026-10-17
 
 Installed20b1902dbbafe5b163c76f75d49b40559c4367ce / DLL
