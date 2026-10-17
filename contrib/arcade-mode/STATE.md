@@ -1,3 +1,96 @@
+## Installed directional basic B build — 2026-10-17
+
+Installed bedee9d3430f496deba23f9ad7b5e26681fd6a09 / DLL
+a521fb052701ad1988118af217aff55024b42d0c51b0d8c4b0e3d82dd8103aaa.
+CI39017769634 passed all five gates, raw/package byte match, guarded deployment
+preserves gamefbce74d5/stock5512a15e, updatesfalse/recoverypendingfalse.
+HIL62 manifestb0bbef3f555a2577167a31b091ccf10a8152544f1256a073a735eb21e1cdf2fa;
+maintenance63 aa55d5bbf08a079dbdbeb0f198545e33aace28fe676f5f7c67f33766eb473717.
+Workers are byte-identical to61; only runner version and verified target pins
+changed. The following acceptance uses this exact installed DLL at native60Hz:
+
+* HIL62 trial1792228905221427000: ten seconds of forward-only input, no stick
+  release/repress, produces native0x40 push edges106620389/106621490 and speed
+  steps4.986/7.002m/s. Native100 throughout; release/brake returns to rest,
+  neutralization/idle pass, no observation drops. Cruise settles lower later in
+  the path; this is independent native push/speed evidence, not input delivery.
+* 1792229186994077000: B+D-pad Left on ascent and B+held forward near the peak
+  each produce fresh native Grab29 (added mask268435456) while201, then clean
+  riding100, idle/neutral/reset. Native identity is the basic grab, not a named
+  directional modifier. Secondary Deck capture shows the corresponding pose.
+* 1792229243272985000: all SIX Kickflip/Heelflip rising/near-peak/later cases
+  pass exact native2/3 after native Ollie1/air, clean100 landings, idle/neutral/
+  reset; no pad/flip/combo/grind/stick drops. Existing native Trainer CSV
+  SHA25639e10da9cda9350a2eac9fff7597e167dab8d199c314627ee2e80b38c0a2fcfc
+  has22474 rows and8 air intervals. State-edge clock consistency0.8–5.6ms;
+  observation precision remains about one native frame. Early flip presses are
+  268–306ms before measured peak; near-peak presses29ms before; later Kickflip
+  is65ms after peak with native vertical-0.477m/s. Later Heelflip/B are within
+  one frame of peak; the later pilots below resolve their descent timing.
+* 1792229398399098000: standing/moving on-foot A have fresh air edges127ms after
+  physical A, pelvisVy peaks6.843/3.822m/s, Y rise0.951/0.888m, descent and grounded
+  landings977/929ms after A.168 samples,166 valid, no ragdoll/wipeout/gaps;
+  native flip stays-1. Both140ms direct stick manual pairs and both70ms
+  airborne-prepared pairs produce distinct fresh Manual1/Nose Manual2 and
+  riding100; idle/neutral/reset pass with no observation drops.
+* 1792229568459038000: B+forward54.5ms after measured peak, native vertical
+  -0.303m/s, establishes fresh Grab29 while201 then lands100/idle/neutral/reset.
+  A Heelflip47.5ms after peak, native vertical-0.310m/s, recognizes exact3 but
+  lands off board504: FAIL landing, despite successful reset. Do not count it
+  as full success. Native standing-air time is finite; the earlier six-case
+  acceptance does not imply an unrestricted late window. Existing Trainer CSV
+  SHA256518a4c12f8e265d3cb11706d09c8162b4174ac865f7ea1b8dfd94b5d8734c6c4,
+  5753 rows, edge-clock consistency0.2/1.5ms. Private evidence is preserved as
+  artifacts/ding-bat-bed-later-air (.csv, -metadata.json, -correlation.json).
+
+These trials reuse the existing source-derived gestures, guarded observers and
+Trainer CSV. Private evidence is retained under artifacts/ding-bat-bed-native-air
+(.csv, -metadata.json and -correlation.json). The older sections below retain
+their checkpoint-time pending status; the current acceptance above supersedes it.
+Hardflip remains an exact-identity failure documented below; no wrong native
+trick is accepted as Hardflip. No physics tuning or artificial airtime was added.
+
+Focused Hardflip follow-up1792230696374614000 reuses the existing bounded arc
+catalog (index34/native9/ground), its original midpoint magnitudes and the
+previously verified reflected path after a native500ms-load/68ms-pop Ollie.
+Fresh status1792230649893175000 confirms Arcade OFF, local riding100, closed
+native menu, stationary baseline. Native1 precedes200/201, then native7 rather
+than9, clean100/idle/neutral and no drops: FAIL exact identity. Restoring original
+magnitudes alone is falsified; the compiler was not changed. The current native
+guide agrees with the authored small scoop/flick recipe. Earlier grounded9
+successes in research/reflection-control-results.json remain valid; this is an
+unresolved airborne adapter failure, not evidence that native Hardflip is absent.
+The existing catalog already exports bounded arc data; no new export or memory
+scan was needed. Underflip patterns remain distinct and are not substituted.
+
+Final native status1792231013107190000: Arcade ON, local riding100, fixture
+reset_ready=true, editor/menu closed, controller neutral; native60Hz restored,
+Trainer logging OFF. Installation status1792230890840751000 confirms bedee9d /
+a521fb05, stock5512a15e unchanged, updatesfalse/recoverypendingfalse. Reset briefly
+left the actor grounded off board; native Y remounted successfully before this
+final independently observed riding baseline. No new binary followed acceptance.
+
+8fec865 native trial1792226717773020000 adds real-motion timing evidence using
+the EXISTING Trainer CSV (native map keydingolevel_sdm_int_001, not CLIstadium_1).
+CSV SHA256f330465f433efc18356bbda4d3b817b2a1abf1f1227839335b576655d7865e3c,
+12637 rows,6 native air intervals. State-edge clock consistency1.3ms in the
+Heelflip case: native peak1071ms after A; physical X1096ms after A, with native
+Y falling and vertical-0.137m/s; exact native3 and safe100 landing PASS. Thus the
+previously named apex trial actually includes a descending-air request, not an
+A-playback inference. Plain-Ollie peak1089ms after A. Early B atA+768ms and mid B
+atA+900ms both establish fresh Grab29 in201 then land100/idle safely, no drops.
+A during a real one-wheel push also passes: preceding native100/1, contact0x8000,
+request0x40; then native Ollie1/air, rail contact/release and safe100/idle/reset.
+All five trials neutralize/reset, no observation drops. No new physics reader,
+logger or tuning was introduced; the existing Trainer native CSV is reused.
+
+The first CSV attempt had not established logging; explicit console focus now
+verifies native log=1/log=0 replies and actual file creation. Logging is OFF.
+The long native log reached19MB beyond the frozen16MB reader limit; restarting
+the same verified DLL renewed the session without changing that guard. Old
+trial records are preserved. Current native apex data is retained privately in
+artifacts/ding-bat-source8-native-air.csv and its metadata/correlation JSON.
+
 ## Directional basic B source repair — 2026-10-17
 
 Runtime remains verified8fec865 / DLL47ba309f. Normal single B plus any valid

@@ -56,6 +56,12 @@ exists. A dash means this contract assigns no variant to that combination.
 | Down-Left | Varial Kickflip | 360 Flip | — |
 | Down-Right | Varial Heelflip | 360 Heelflip | — |
 
+The table describes the intended mapping. Current native Deck acceptance covers
+Kickflip, Heelflip and Pop Shove-It. Hardflip is unresolved: the authored request
+for native9 produced native7, and a separate radius control produced native4.
+Neither result verifies Hardflip. Other catalog rows retain their authored
+candidates and require independent native identity checks.
+
 ## Grab table — B
 
 A single B press during native airtime requests the verified basic BS Grab in
