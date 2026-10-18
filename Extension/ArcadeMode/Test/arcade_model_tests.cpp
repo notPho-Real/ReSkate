@@ -8,13 +8,13 @@
 #include "Extension/ArcadeMode/arcade_native_probe.h"
 #include "Extension/ArcadeMode/arcade_ollie.h"
 #include "Extension/ArcadeMode/arcade_flip.h"
-#include "Extension/ArcadeMode/arcade_gesture.h"
+#include "ReferenceInput/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_trick_table.h"
 #include "Extension/ArcadeMode/arcade_native_trick.h"
 #include "Extension/ArcadeMode/arcade_authored_playback.h"
 #include "Extension/ArcadeMode/arcade_native_mapping.h"
-#include "Extension/ArcadeMode/arcade_classic_input.h"
+#include "ReferenceInput/arcade_classic_input.h"
 #include "Extension/ArcadeMode/arcade_camera.h"
 #include "Extension/ArcadeMode/arcade_score_labels.h"
 #include "Extension/Skater/native_bail_request.h"
@@ -166,6 +166,7 @@ int main() {
     }
     {
         using namespace dingosdk::arcade_mode;
+using namespace dingosdk::arcade_mode::baseline;
         BalanceControl input;
         check(input.poll(BalanceKind::manual, 0, -32768, true) == 0 &&
               input.poll(BalanceKind::manual, 0, -32768, true) == 0,
@@ -215,6 +216,7 @@ int main() {
     run_arcade_playback_tests();
 #endif
     using namespace dingosdk::arcade_mode;
+using namespace dingosdk::arcade_mode::baseline;
     {
         using dingosdk::NativeBailRequest;
         using dingosdk::NativeBailResult;

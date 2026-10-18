@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "arcade_action_runtime.h"
+#include "arcade_input_types.h"
 
 namespace dingosdk::arcade_mode {
 // Development observer and guarded native-input gesture on this branch.

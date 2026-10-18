@@ -1,5 +1,5 @@
 #include "Extension/ArcadeMode/arcade_action_dispatch.h"
-#include "Extension/ArcadeMode/arcade_aux_controls.h"
+#include "ReferenceInput/arcade_aux_controls.h"
 #include <cstdlib>
 #include <iostream>
 namespace {
@@ -11,6 +11,7 @@ void check(bool value, const char* reason) {
 }
 int run_arcade_action_dispatch_tests() {
     using namespace dingosdk::arcade_mode;
+    using namespace dingosdk::arcade_mode::baseline;
     ActionDispatch dispatch;
     ActionContext context{};
     check(dispatch.request_grab(ArcadeTrick::melon, 0, context) == DispatchResult::disabled, "default gate closed");

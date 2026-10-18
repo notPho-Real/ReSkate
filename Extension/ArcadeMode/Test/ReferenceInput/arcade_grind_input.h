@@ -1,8 +1,8 @@
 #pragma once
 #include "arcade_classic_input.h"
-#include "arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_combo_session.h"
 
-namespace dingosdk::arcade_mode {
+namespace dingosdk::arcade_mode::baseline {
 // Native rail contact decides engagement. Y only holds board alignment/tilt;
 // it never writes a rail, physics state, score, or named grind identity.
 // Vertical tilt follows the installed native guide and the pinned community

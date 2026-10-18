@@ -1,3 +1,4 @@
+#include "session_manual.h"
 #include "Extension/ArcadeMode/arcade_manual_input.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
@@ -11,12 +12,12 @@ void check(bool value, const char* reason) {
     if (!value) { std::cerr << "FAIL: " << reason << '\n'; std::exit(1); }
 }
 using namespace dingosdk::arcade_mode;
-ManualGesture::Output poll(ManualGesture& manual, std::uint64_t ms, short y = 0,
+dingosdk::arcade_mode::test::SessionManual::Output poll(dingosdk::arcade_mode::test::SessionManual& manual, std::uint64_t ms, short y = 0,
         SkatePose pose = SkatePose::riding, std::uint16_t buttons = 0, short x = 0,
         bool safe = true, bool conflict = false, bool gameplay = true) {
     return manual.poll(ms, buttons, x, y, gameplay, safe, pose, conflict);
 }
-void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
+void start(dingosdk::arcade_mode::test::SessionManual& manual, std::uint64_t ms = 0, bool nose = false) {
     poll(manual, ms);
     poll(manual, ms + 10, nose ? -25000 : 25000);
     const auto out = poll(manual, ms + 20, nose ? 25000 : -25000);
@@ -29,7 +30,7 @@ int run_arcade_manual_tests() {
     for (bool pad : {false, true}) for (bool nose : {false, true}) {
         const int first = nose ? -1 : 1;
         for (bool prior_neutral : {false, true}) for (unsigned gap : {0u, 1u, 2u}) {
-            ManualGesture manual;
+            dingosdk::arcade_mode::test::SessionManual manual;
             auto sample = [&](unsigned ms, int direction, bool rejected) {
                 return manual.poll(ms, (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
                     (rejected && gap == 0 ? 0x2000u : 0u), 0, static_cast<std::int16_t>(pad ? 0 : direction * 24000),
@@ -42,7 +43,7 @@ int run_arcade_manual_tests() {
             check(result.owns_stick && result.y == (nose ? 20000 : -20000),
                 "sampled neutral during a reversible conflict preserves a fresh post-gap edge");
         }
-        auto sample = [&](ManualGesture& m, unsigned ms, int direction, bool safe = true,
+        auto sample = [&](dingosdk::arcade_mode::test::SessionManual& m, unsigned ms, int direction, bool safe = true,
                           bool gameplay = true, SkatePose pose = SkatePose::riding) {
             return m.poll(ms, pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u,
                 0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), gameplay, safe, pose, false);
@@ -66,7 +67,7 @@ int run_arcade_manual_tests() {
                 "public input integration recognizes the immediate post-conflict first edge");
         }
         {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 0, 0); sample(m, 17, first);
             check(sample(m, 51, -first).owns_stick, "opposing-pad cancellation has an active request control");
             const auto out = m.poll(68, 3, 0, 0, true, true, SkatePose::riding, false);
@@ -76,19 +77,19 @@ int run_arcade_manual_tests() {
                 "an opposing-pad cancellation cannot replay the canceled request");
         }
         {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 0, 0); sample(m, 17, first);
             sample(m, 34, first, false); sample(m, 51, first);
             check(!sample(m, 200, -first).owns_stick,
                 "held first direction across eligibility gap cannot become a new press");
         }
         {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 0, first);
             check(!sample(m, 200, -first).owns_stick, "unknown startup hold is only a baseline");
         }
         for (unsigned reset : {0u, 1u, 2u, 3u, 4u, 5u}) {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 100, 0); sample(m, 117, first);
             if (reset == 0) sample(m, 134, 0, true, false); // Menu/focus.
             if (reset == 1) m.cancel(); // Owner/context reset published outside input poll.
@@ -101,7 +102,7 @@ int run_arcade_manual_tests() {
                 "hard context boundary restores unknown held baseline suppression");
         }
         {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 0, 0); sample(m, 17, first); sample(m, 34, -first);
             check(!sample(m, 51, 0, false).owns_stick && !sample(m, 68, -first).owns_stick,
                 "completed request cannot survive eligibility loss or replay on return");
@@ -130,7 +131,7 @@ int run_arcade_manual_tests() {
                 "toggle controller menu and offboard integration reset physical continuity");
         }
         {
-            ManualGesture m;
+            dingosdk::arcade_mode::test::SessionManual m;
             sample(m, 0, 0);
             // Both directions occur while another owner is active: no queued command.
             for (unsigned button : {0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0300u}) {
@@ -158,7 +159,7 @@ int run_arcade_manual_tests() {
             // Deliberate long holds must lie outside that ambiguous boundary.
             for (const unsigned duration : {150u, 220u, 250u, 350u, 800u}) {
                 for (const bool nose : {false, true}) for (const bool pad : {false, true}) {
-                    ManualGesture manual;
+                    dingosdk::arcade_mode::test::SessionManual manual;
                     bool requested{};
                     const short first = nose ? -24000 : 24000;
                     for (unsigned ms = phase; ms < 220 + duration; ms += frame) {
@@ -185,7 +186,7 @@ int run_arcade_manual_tests() {
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
-                    ManualGesture manual;
+                    dingosdk::arcade_mode::test::SessionManual manual;
                     const short first = nose ? -12500 : 12500;
                     poll(manual, 0, 0, pose);
                     poll(manual, 10, buttons ? 0 : first, pose, buttons ? (nose ? 2 : 1) : 0);
@@ -199,7 +200,7 @@ int run_arcade_manual_tests() {
         }
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0, 0, SkatePose::air);
         poll(manual, 10, 12500, SkatePose::air);
         poll(manual, 360, -12500, SkatePose::air);
@@ -211,7 +212,7 @@ int run_arcade_manual_tests() {
     }
     for (const unsigned frame : {17u, 33u}) {
         for (const bool nose : {false, true}) {
-            ManualGesture manual;
+            dingosdk::arcade_mode::test::SessionManual manual;
             poll(manual, 0);
             const short first = nose ? -24000 : 24000;
             poll(manual, frame, first, SkatePose::riding, 0, 16000);
@@ -228,7 +229,7 @@ int run_arcade_manual_tests() {
         }
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0);
         poll(manual, 20, 12500);
         poll(manual, 50, 9000);
@@ -240,16 +241,16 @@ int run_arcade_manual_tests() {
             "diagonal D-pad taps preserve their vertical command component");
     }
     for (const auto candidate : {SkatePose::manual, SkatePose::nose_manual}) {
-        check(manual_input_pose(candidate, true, false) == SkatePose::riding,
+        check(dingosdk::arcade_mode::manual_input_pose(candidate, true, false) == SkatePose::riding,
             "independently observed native one-wheel pushing cannot eat a manual command");
-        check(manual_input_pose(candidate, false, false) == candidate && manual_input_pose(candidate, true, true) == candidate,
+        check(dingosdk::arcade_mode::manual_input_pose(candidate, false, false) == candidate && dingosdk::arcade_mode::manual_input_pose(candidate, true, true) == candidate,
             "actual manual contact and independently established balance keep their input context");
     }
-    check(manual_input_pose(SkatePose::air, true, false) == SkatePose::air &&
-          manual_input_pose(SkatePose::bail, true, false) == SkatePose::bail,
+    check(dingosdk::arcade_mode::manual_input_pose(SkatePose::air, true, false) == SkatePose::air &&
+          dingosdk::arcade_mode::manual_input_pose(SkatePose::bail, true, false) == SkatePose::bail,
           "push context normalization cannot fabricate riding permission outside a one-wheel candidate");
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0);
         auto down = poll(manual, 20, -25000);
         check(down.suppress_reverse && !down.owns_stick,
@@ -275,18 +276,18 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 4020, -11000, SkatePose::riding, 0, 32767).suppress_reverse,
             "predominantly sideways steering remains native rather than becoming a vertical tap");
     }
-    check(manual_revert_preparation(true, false, 101, 1, true),
+    check(dingosdk::arcade_mode::manual_revert_preparation(true, false, 101, 1, true),
         "fresh measured recovery with accepted continuation permits preparation");
     for (unsigned state : {0u, 100u, 102u, 200u, 401u})
-        check(!manual_revert_preparation(true, false, state, 1, true),
+        check(!dingosdk::arcade_mode::manual_revert_preparation(true, false, state, 1, true),
             "preparation exception is restricted to measured state101");
-    check(!manual_revert_preparation(false, false, 101, 1, true) &&
-          !manual_revert_preparation(true, true, 101, 1, true) &&
-          !manual_revert_preparation(true, false, 101, 0, true) &&
-          !manual_revert_preparation(true, false, 101, 1, false),
+    check(!dingosdk::arcade_mode::manual_revert_preparation(false, false, 101, 1, true) &&
+          !dingosdk::arcade_mode::manual_revert_preparation(true, true, 101, 1, true) &&
+          !dingosdk::arcade_mode::manual_revert_preparation(true, false, 101, 0, true) &&
+          !dingosdk::arcade_mode::manual_revert_preparation(true, false, 101, 1, false),
         "stale owner bail other mode and absent native continuation reject preparation");
     for (const short first : {short(25000), short(-25000)}) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         auto recovery = [&](std::uint64_t ms, short y, bool prepare = true,
                             SkatePose pose = SkatePose::riding, bool conflict = false) {
             return manual.poll(ms, 0, 0, y, true, false, pose, conflict, prepare);
@@ -318,7 +319,7 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 5040, -first).owns_stick, "conflicting owner discards recovery preparation");
     }
     for (const bool nose : {false, true}) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         start(manual, 0, nose);
         const auto pose = nose ? SkatePose::nose_manual : SkatePose::manual;
         check(poll(manual, 30, 0, pose).confirmed, "only matching native pose confirms the request");
@@ -335,7 +336,7 @@ int run_arcade_manual_tests() {
             "expired ownership cannot inherit a held direction as a fresh edge");
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         start(manual);
         check(poll(manual, 1219).owns_stick && !poll(manual, 1220).owns_stick,
             "unconfirmed request releases exactly1200ms after initiation");
@@ -346,27 +347,27 @@ int run_arcade_manual_tests() {
     }
     for (auto pose : {SkatePose::manual, SkatePose::nose_manual, SkatePose::unknown,
                       SkatePose::bail, SkatePose::grind}) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0, 0, pose);
         poll(manual, 10, 25000, pose);
         check(!poll(manual, 20, -25000, pose).owns_stick,
             "correction or unknown incompatible pose cannot initiate a manual");
     }
     for (auto pose : {SkatePose::bail, SkatePose::grind, SkatePose::nose_manual}) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         start(manual);
         check(!poll(manual, 30, 0, pose).owns_stick,
             "independent incompatible native pose releases even if external eligibility lags");
     }
     constexpr std::uint16_t conflicting_buttons[]{0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0010u, 0x0020u, 0x0300u};
     for (const auto button : conflicting_buttons) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         start(manual);
         check(!poll(manual, 30, 0, SkatePose::manual, button).owns_stick,
             "face menu and board commands cannot retain manual synthetic ownership");
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0);
         poll(manual, 10, 25000);
         poll(manual, 20, 0, SkatePose::riding, 0, 25000);
@@ -384,7 +385,7 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 829).owns_stick, "backwards time cancels manual state");
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0, 0, SkatePose::air);
         poll(manual, 10, 0, SkatePose::air, 1);
         auto out = poll(manual, 20, 0, SkatePose::air, 2);
@@ -403,13 +404,13 @@ int run_arcade_manual_tests() {
             "native eligibility loss cancels synthetic ownership");
     }
     {
-        auto prepare = [](ManualGesture& manual) {
+        auto prepare = [](dingosdk::arcade_mode::test::SessionManual& manual) {
             poll(manual, 0, 0, SkatePose::air);
             poll(manual, 10, 25000, SkatePose::air);
             poll(manual, 20, -25000, SkatePose::air);
             check(poll(manual, 100, 0, SkatePose::manual).confirmed, "native initial wheel contact confirms prepared landing");
         };
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         prepare(manual);
         check(poll(manual, 117, 0, SkatePose::air).owns_stick &&
               poll(manual, 267, 0, SkatePose::manual).confirmed,
@@ -429,12 +430,12 @@ int run_arcade_manual_tests() {
               "unknown evidence retains the original150ms limit");
     }
     {
-        auto prepare_nose = [](ManualGesture& manual) {
+        auto prepare_nose = [](dingosdk::arcade_mode::test::SessionManual& manual) {
             poll(manual, 0, 0, SkatePose::air);
             poll(manual, 10, -25000, SkatePose::air);
             poll(manual, 20, 25000, SkatePose::air);
         };
-        ManualGesture manual; prepare_nose(manual);
+        dingosdk::arcade_mode::test::SessionManual manual; prepare_nose(manual);
         auto out = poll(manual, 100, 0, SkatePose::manual);
         check(out.owns_stick && !out.confirmed && out.y == 20000,
               "opposite first wheel contact retains prepared input without claiming a match");
@@ -456,7 +457,7 @@ int run_arcade_manual_tests() {
               "intentional trick cancels even during initial wrong-wheel recovery");
     }
     {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         const auto base = std::numeric_limits<std::uint64_t>::max() - 1300;
         start(manual, base);
         check(!poll(manual, base + 1220).owns_stick, "near-limit timestamps use bounded differences without overflow");
@@ -464,7 +465,7 @@ int run_arcade_manual_tests() {
     for (const unsigned frame_ms : {17u, 33u}) {
         for (const bool nose : {false, true}) {
             for (const bool neutral_between : {false, true}) {
-                ManualGesture manual;
+                dingosdk::arcade_mode::test::SessionManual manual;
                 // Steering has been held well beyond the direction-pair window.
                 for (unsigned ms = 0; ms < 1000; ms += frame_ms)
                     check(!poll(manual, ms, 25000).owns_stick,
@@ -478,7 +479,7 @@ int run_arcade_manual_tests() {
                     "rapid D-pad pair works over held forward at30/60Hz with or without neutral");
             }
         }
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0); poll(manual, frame_ms, 25000);
         check(!poll(manual, frame_ms * 2, 25000, SkatePose::riding, 2).owns_stick,
             "stick Up cannot combine with an unrelated D-pad Down");
@@ -488,7 +489,7 @@ int run_arcade_manual_tests() {
             "D-pad Up cannot combine with an unrelated stick Down");
     }
     for (const bool nose : {false, true}) {
-        ManualGesture manual;
+        dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0, 0, SkatePose::air);
         poll(manual, 17, nose ? -25000 : 25000, SkatePose::air);
         poll(manual, 50, nose ? 25000 : -25000, SkatePose::air);

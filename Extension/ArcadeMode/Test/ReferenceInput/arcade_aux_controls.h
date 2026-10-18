@@ -1,7 +1,7 @@
 #pragma once
 #include "arcade_classic_input.h"
 
-namespace dingosdk::arcade_mode {
+namespace dingosdk::arcade_mode::baseline {
 // Semantic B/Y requests only. The caller decides whether a native method is
 // enabled; selection alone never owns the game-facing pad or extends a combo.
 class AuxiliaryControls {

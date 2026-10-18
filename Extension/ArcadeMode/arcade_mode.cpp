@@ -84,7 +84,6 @@ std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
 std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
-std::array<ActionRuntime, 4> action_inputs;
 std::array<AirRotation, 4> rotations;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
@@ -222,7 +221,6 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         {
             std::lock_guard lock(ollie_mutex);
             arcade_input.cancel_commands();
-            for (auto& action : action_inputs) action.reset();
             for (auto& rotation : rotations) rotation.reset();
         }
         input_telemetry.client(BalanceFailureEvidence{now, static_cast<unsigned>(kind), serial});
@@ -629,7 +627,7 @@ bool set_action_experiment(ActionExperiment value) noexcept {
     if (value > ActionExperiment::classic) return false;
     std::lock_guard lock(ollie_mutex);
     if (mode_enabled.load(std::memory_order_acquire)) return false;
-    for (auto& input : action_inputs) input.reset();
+    arcade_input.cancel_commands();
     action_mode.store(value, std::memory_order_release);
     return true;
 }
@@ -653,7 +651,7 @@ void set_enabled(bool value, bool persist) noexcept {
     {
         std::lock_guard lock(ollie_mutex);
         arcade_input.enable(value);
-        for (auto& input : action_inputs) input.reset();
+        arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
         mode_enabled.store(value, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
@@ -932,25 +930,22 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
         const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
         const bool manual_prepare = game_input && prepare_deadline >= now && prepare_deadline - now <= 150;
-        const bool auxiliary_busy = action_inputs[user].busy();
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);
         const bool may_exit_grind = game_input && observed == SkatePose::grind;
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start || may_exit_grind, may_push && !auxiliary_busy, push_speed.load(std::memory_order_relaxed),
+            game_input, may_start || may_exit_grind, may_push, push_speed.load(std::memory_order_relaxed),
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
-            authored_mirror_x.load(std::memory_order_acquire), manual_safe && !auxiliary_busy,
+            authored_mirror_x.load(std::memory_order_acquire), manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare && !auxiliary_busy, offboard, auxiliary_busy, flip_ready, neutral_delivery[user].ready(now));
+            manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
+            action_experiment, action_safe, authored_mirror_x.load(std::memory_order_acquire));
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
-        const auto action = action_inputs[user].poll(action_experiment, now, action_physical,
-            mode_enabled.load(std::memory_order_acquire), action_safe,
-            manual_observed.load(std::memory_order_relaxed), authored_mirror_x.load(std::memory_order_acquire),
-            result.command_busy);
+        const auto& action = result.action;
         result.buttons &= ~action.consume_buttons;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
@@ -966,12 +961,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
         const auto pose = manual_observed.load(std::memory_order_relaxed);
         const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
-        const bool crouched = pose == SkatePose::riding && (physical_buttons & ClassicGesture::a) &&
+        const bool crouched = pose == SkatePose::riding && (physical_buttons & classic_a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
         const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard &&
             drive_until >= now && drive_until - now <= 150 && result.movement_intent &&
-            pose == SkatePose::riding && (!physical_buttons || (physical_buttons == ClassicGesture::a && crouched)) &&
+            pose == SkatePose::riding && (!physical_buttons || (physical_buttons == classic_a && crouched)) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
         if (user == 0) set_arcade_push_intent(drive_safe, crouched);
@@ -981,7 +976,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Single shoulders must not leak to native catch/grab bindings.
         if (rotation_enabled) result.buttons &= ~BoardChord::pair;
         if (rotation.owns_left) { left_x = rotation.x; left_y = rotation.y; }
-        observe_grind_pad(user, now, (physical_buttons & GrindInput::y_button) != 0,
+        observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^

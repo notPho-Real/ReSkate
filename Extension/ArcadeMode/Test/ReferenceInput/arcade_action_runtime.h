@@ -1,9 +1,9 @@
 #pragma once
-#include "arcade_action_dispatch.h"
+#include "Extension/ArcadeMode/arcade_action_dispatch.h"
 #include "arcade_aux_controls.h"
-#include "arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_combo_session.h"
 
-namespace dingosdk::arcade_mode {
+namespace dingosdk::arcade_mode::baseline {
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
 inline constexpr ActionExperiment default_action_mode = ActionExperiment::classic;
 struct ActionPhysicalPad {

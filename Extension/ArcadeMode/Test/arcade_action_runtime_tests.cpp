@@ -1,7 +1,7 @@
-#include "Extension/ArcadeMode/arcade_action_runtime.h"
+#include "ReferenceInput/arcade_action_runtime.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
-#include "Extension/ArcadeMode/arcade_gesture.h"
+#include "ReferenceInput/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
 namespace {
@@ -13,6 +13,7 @@ void check(bool pass, const char* reason) {
 }
 int run_arcade_action_runtime_tests() {
     using namespace dingosdk::arcade_mode;
+    using namespace dingosdk::arcade_mode::baseline;
     for (const auto delay : {100u, 200u}) {
         ActionRuntime queued;
         queued.poll(default_action_mode, 0, {}, true, true, SkatePose::air, true, false);

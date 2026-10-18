@@ -53,9 +53,16 @@ changes only while Arcade Mode is OFF. `observe` reports B/Y intent; `grabs`
 selects deferred grab candidates, and the two side selectors preserve the existing
 revert experiments. These selections do not enable Arcade Mode themselves.
 
-- `arcade_aux_controls.h` selects exact single/double B and Y requests, including
-  double directional taps. Simultaneous commands, stale input and menu transitions
-  cancel pending intent. Neutral Y needs a rail relationship supplied by geometry.
+- `arcade_input_events.h` records one bounded circular event history per controller.
+  `arcade_input_dispatch.h` applies context tables, usage masks and bounded queues.
+  `arcade_input_session.h` connects those requests to native execution adapters;
+  recognized input alone never proves an action. Unsupported balance branches
+  remain explicit and cannot install a native pose or award combo credit.
+  The optional lip context likewise requires independent admission and has no
+  native execution adapter. It is never inferred from a rail request.
+  Tests retain frozen baseline recognizers only under `Test/ReferenceInput`;
+  production contains no legacy decoder path. Identical traces exercise both
+  paths, with separately tested source-style matching and queue contracts.
 - `arcade_action_plan.h` contains 12 independently written grab candidates from
   the installed native guide. Ordering is documented; 50 ms stages and 300 ms holds
   are experimental timing, not measured acceptance. Missing named methods and
@@ -64,7 +71,7 @@ revert experiments. These selections do not enable Arcade Mode themselves.
   stance/nollie context. It emits no native recognition or combo credit.
 - `arcade_action_dispatch.h` arbitrates these candidates with explicit ownership
   for sticks, triggers and face buttons. It requires eligible context and cancels on stale
-  context, landing, conflicting ownership or time reversal. `arcade_action_runtime.h`
+  context, landing, conflicting ownership or time reversal. The shared input session
   connects it to the remap with packet progression and ordinary input on unowned
   channels, preserving the physical camera path. The inspected clear-bit stance
   is required. Native crouch state 103 stays eligible during revert setup; manual
@@ -74,8 +81,8 @@ revert experiments. These selections do not enable Arcade Mode themselves.
   repeated polling of a persistent selection. Only an observed revert may feed
   the existing combo continuation hook; request delivery never does.
 
-`arcade_manual_input.h` now connects directional manual commands to the existing
-pose observer. Balance corrections cannot start a new manual while already in
+`arcade_manual_input.h` retains native manual actuation and contact settling;
+the session journal recognizes directional commands. Balance corrections cannot start a new manual while already in
 one; confirmed takeoff, incompatible poses and competing commands release
 ownership. New command repeatability and combined gameplay still need Deck tests.
 
