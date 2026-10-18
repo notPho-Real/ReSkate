@@ -3,6 +3,7 @@
 #include "arcade_native_trick.h"
 #include "arcade_observation.h"
 #include "arcade_manual_history.h"
+#include "arcade_manual_input.h"
 #include "arcade_fixture_trajectory.h"
 #include <atomic>
 #include <compare>
@@ -27,6 +28,10 @@ struct PadEvidence {
     unsigned action_mode{}, action_kind{}, action_trick{}, action_result{};
     short left_x{}, left_y{};
     unsigned output_lt{}, output_rt{};
+    ManualGesture::Diagnostic manual{};
+    short manual_x{}, manual_y{};
+    unsigned manual_pose{};
+    bool manual_sample{};
 };
 struct RemapEvidence {
     bool ollie{}, flip{}, unsupported{};

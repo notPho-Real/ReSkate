@@ -448,6 +448,61 @@ int main() {
         check(!poll(3020, -25000, false, true).command_busy,
             "coherent safe-to-recovery snapshot cannot complete a manual in state101");
     }
+    for (const unsigned frame : {17u, 34u}) {
+        for (const int sign : {-1, 1}) {
+            ManualGesture manual;
+            const auto poll = [&](unsigned ms, short x, short y) {
+                return manual.poll(ms, 0, x, y, true, true, SkatePose::riding, false);
+            };
+            // A context recovery may happen while steering is already held.
+            // Only the following two fresh edges count, without a neutral gate.
+            poll(0, 0, static_cast<short>(-sign * 24000));
+            poll(frame, 0, static_cast<short>(sign * 24000));
+            check(poll(frame + 200, 0, static_cast<short>(-sign * 24000)).y == -sign * 20000,
+                "two fresh reversals after a held baseline do not require perfect neutral");
+            manual.cancel(); poll(1000, 0, 0);
+            poll(1000 + frame, 14000, static_cast<short>(sign * 24000));
+            poll(1080, 21000, static_cast<short>(sign * 4000));
+            poll(1140, 16000, static_cast<short>(-sign * 6000));
+            check(poll(1200 + frame, 14000, static_cast<short>(-sign * 24000)).y == -sign * 20000,
+                "diagonal travel through center retains the first vertical event");
+            for (const unsigned pair : {150u, 220u, 250u, 300u}) {
+                manual.cancel(); poll(2000, 0, 0);
+                poll(2100, 0, static_cast<short>(sign * 24000));
+                check(poll(2100 + pair, 0, static_cast<short>(-sign * 24000)).owns_stick == (pair <= 250),
+                    "ground input has a bounded sampling allowance, not a long-hold trigger");
+            }
+        }
+    }
+    for (const int sign : {-1, 1}) {
+        ManualGesture manual;
+        const auto poll = [&](unsigned ms, unsigned pad) {
+            return manual.poll(ms, static_cast<std::uint16_t>(pad), 12000, 25000,
+                true, true, SkatePose::riding, false);
+        };
+        poll(0, 0);
+        poll(100, sign > 0 ? 1 : 2);
+        poll(180, sign > 0 ? 5 : 10); // Natural D-pad diagonal still holds the same vertical.
+        poll(220, 4);
+        check(poll(350, sign > 0 ? 2 : 1).y == -sign * 20000,
+            "D-pad250ms pair survives diagonal/neutral passage while steering forward");
+        manual.cancel(); poll(1000, 0);
+        poll(1100, sign > 0 ? 1 : 2);
+        poll(1800, sign > 0 ? 1 : 2);
+        check(!poll(1850, sign > 0 ? 2 : 1).owns_stick,
+            "long-held ordinary D-pad direction cannot become a stale manual pair");
+    }
+    {
+        NativePushContact contact;
+        contact.poll(0, true, 100, 1, 0x8000, true, false);
+        const bool recovery = contact.poll(100, true, 100, 1, 0x8000, false, false);
+        check(manual_input_pose(SkatePose::nose_manual, recovery, false) == SkatePose::riding,
+            "independently observed native push recovery cannot swallow a manual input edge");
+        check(manual_input_pose(SkatePose::nose_manual, recovery, true) == SkatePose::nose_manual,
+            "established native balance always takes precedence over push recovery provenance");
+        check(!contact.poll(201, true, 100, 1, 0x8000, false, false),
+            "push recovery cannot disguise a later genuine manual indefinitely");
+    }
     {
         ManualGesture manual;
         auto poll = [&](std::uint64_t ms, short y, SkatePose pose = SkatePose::riding,
@@ -456,6 +511,7 @@ int main() {
         };
         poll(0, 25000); poll(100, -25000);
         check(!poll(150, 0).owns_stick, "held direction on enable cannot form a manual request");
+        manual.cancel(); poll(150, 0);
         poll(200, 25000);
         auto out = poll(350, -25000);
         check(out.owns_stick && out.y == -20000 && !out.confirmed,

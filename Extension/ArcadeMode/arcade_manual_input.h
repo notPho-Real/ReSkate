@@ -19,10 +19,23 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
 class ManualGesture {
 public:
     static constexpr std::uint64_t ground_pair_ms = 220, air_pair_ms = 400;
+    // One 30 Hz sampling interval plus input-poll jitter. This affects only
+    // ground edge matching, not request lifetime or native actuation.
+    static constexpr std::uint64_t ground_sample_slack_ms = 40;
     static constexpr std::uint64_t air_request_ms = 700;
     // confirmed remembers a native match for this request; it is not a fresh
     // pose event and must never replace the combo's independent native observer.
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; bool suppress_reverse{}; };
+    // Numeric snapshots travel through the existing bounded input telemetry.
+    // They explain recognition/ownership only; native history proves success.
+    struct Diagnostic {
+        int stick{}, pad{}, stick_first{}, pad_first{}, request{};
+        std::uint64_t stick_at{}, pad_at{}, request_at{};
+        unsigned rejected{};
+        bool safe{}, preparation{}, owns{}, confirmed{};
+        bool operator==(const Diagnostic&) const = default;
+    };
+    const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     void cancel() noexcept {
         clocked_ = confirmed_ = air_prepared_ = landed_ = wrong_contact_ = false;
         requested_ = 0; stick_pair_ = {}; pad_pair_ = {};
@@ -30,6 +43,22 @@ public:
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
                 bool game_input, bool safe_state, SkatePose observed, bool conflicting,
                 bool prepare_only = false) noexcept {
+        const unsigned rejected = !game_input ? 1 : conflicting ? 2 :
+            ((buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u) ? 3 :
+            (!safe_state && !prepare_only) ? 4 :
+            (observed == SkatePose::bail || observed == SkatePose::grind) ? 5 : 0;
+        const int stick = stick_pair_.direction(lx, ly);
+        const int pad = (buttons & 3u) == 1 ? 1 : (buttons & 3u) == 2 ? -1 : 0;
+        const auto result = poll_impl(now, buttons, lx, ly, game_input, safe_state, observed, conflicting, prepare_only);
+        diagnostic_ = {stick, pad, stick_pair_.first, pad_pair_.first, requested_,
+            stick_pair_.at, pad_pair_.at, requested_ ? requested_at_ : 0,
+            rejected, safe_state, prepare_only, result.owns_stick, result.confirmed};
+        return result;
+    }
+private:
+    Output poll_impl(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
+                bool game_input, bool safe_state, SkatePose observed, bool conflicting,
+                bool prepare_only) noexcept {
         const bool command_conflict = (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u;
         const bool can_prepare = prepare_only && !requested_ && observed == SkatePose::riding;
         if (!game_input || (!safe_state && !can_prepare) || conflicting || command_conflict ||
@@ -84,15 +113,15 @@ public:
             return {true, confirmed_, static_cast<std::int16_t>(requested_ * 20000)};
         }
         const auto pad = buttons & 15u;
-        const auto pair_ms = observed == SkatePose::air ? air_pair_ms : ground_pair_ms;
+        const auto pair_ms = observed == SkatePose::air ? air_pair_ms : ground_pair_ms + ground_sample_slack_ms;
         if ((pad & 3u) == 3u || (pad & 12u) == 12u) {
             stick_pair_ = {}; pad_pair_ = {}; return {};
         }
         // A held steering stick cannot swallow a fresh D-pad Up edge, and
         // switching input devices cannot complete half of an unrelated pair.
-        const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, pair_ms, (pad & 12u) != 0);
+        const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, pair_ms);
         if (pad) stick_pair_ = {};
-        const int stick_request = pad ? 0 : stick_pair_.poll(now, stick_pair_.direction(lx, ly), pair_ms, std::abs(static_cast<int>(lx)) > 11000);
+        const int stick_request = pad ? 0 : stick_pair_.poll(now, stick_pair_.direction(lx, ly), pair_ms);
         const int request = pad_request ? pad_request : stick_request;
         if (request) {
             if (!safe_state) { cancel(); return {}; }
@@ -120,11 +149,13 @@ private:
             return vertical >= threshold && vertical * 4 >= horizontal * 3 ? sign : 0;
         }
         bool awaiting_up(std::uint64_t now) const noexcept {
-            return armed && first == -1 && previous == -1 && now >= at && now - at <= ground_pair_ms;
+            return armed && first == -1 && previous == -1 && now >= at && now - at <= ground_pair_ms + ground_sample_slack_ms;
         }
-        int poll(std::uint64_t now, int vertical, std::uint64_t window, bool sideways = false) noexcept {
+        int poll(std::uint64_t now, int vertical, std::uint64_t window) noexcept {
             if (!armed) {
-                if (!vertical) armed = true;
+                // Baseline a held direction without treating it as an edge.
+                // Subsequent fresh reversals must rearm even without neutral.
+                armed = true;
                 previous = vertical; return 0;
             }
             if (first && now - at > window) first = 0;
@@ -132,12 +163,15 @@ private:
             if (vertical && vertical != previous) {
                 if (first == -vertical && now - at <= window) request = vertical;
                 first = vertical; at = now;
-            } else if (!vertical && sideways) first = 0;
+            }
+            // A thumb can cross center on an arc. Sideways/neutral samples
+            // neither erase nor refresh the bounded first vertical event.
             previous = vertical;
             return request;
         }
     };
     DirectionPair stick_pair_{}, pad_pair_{};
+    Diagnostic diagnostic_{};
     bool clocked_{}, confirmed_{}, air_prepared_{}, landed_{}, wrong_contact_{};
     int requested_{};
     std::uint64_t last_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};

@@ -151,7 +151,8 @@ std::uint64_t next_balance_sample{};
 BalanceControl balance_control;
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now,
-                  const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label) noexcept {
+                  const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
+                  bool native_push_contact) noexcept {
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid;
     const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
@@ -203,7 +204,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             arcade_input.cancel_manuals();
         const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
         manual_observed.store(manual_input_pose(control_pose,
-            valid && native.state == 100 && native.crouch_mode == 1 && (native.words[0] & 0x40u) != 0,
+            valid && native.state == 100 && native.crouch_mode == 1 &&
+                ((native.words[0] & 0x40u) != 0 || native_push_contact),
             combo_session.model().state().balance_kind != BalanceKind::none), std::memory_order_relaxed);
         manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
         manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
@@ -392,6 +394,14 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
                 "ARCADE ACTION SAMPLE: seq={} ms={} tick={} user={} mode={} requested={} kind={} trick={} result={} owned={} lx={} ly={} lt={} rt={} packet={}.",
                 p.sequence, p.ms, p.tick, p.user, p.action_mode, p.action_requested, p.action_kind,
                 p.action_trick, p.action_result, p.action_owned, p.left_x, p.left_y, p.output_lt, p.output_rt, p.output_packet);
+            if (p.manual_sample) {
+                const auto& m = p.manual;
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE MANUAL INPUT: seq={} ms={} user={} lx={} ly={} buttons={} pose={} safe={} prepare={} rejected={} stick={} pad={} stick_first={} pad_first={} stick_at={} pad_at={} request={} request_at={} owned={} confirmed={} output_y={}.",
+                    p.sequence, p.ms, p.user, p.manual_x, p.manual_y, p.buttons, p.manual_pose,
+                    m.safe, m.preparation, m.rejected, m.stick, m.pad, m.stick_first, m.pad_first,
+                    m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed, p.right_y);
+            }
         }
         std::array<ComboSample, 16> samples{};
         const auto sample_count = telemetry.combo.queue.take(samples);
@@ -796,7 +806,7 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         board_eligible_until.store(gameplay && watch.valid && board_safe ? now + 150 : 0,
             std::memory_order_release);
-        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label);
+        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label, push_valid);
         else {
             cancel_balance_bail();
             manual_identity.reset(manual_label);
@@ -982,6 +992,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         packet_mask = physical_packet ^ output_packet;
         const auto poll = ++playback_polls[user];
         const auto& old = previous_pad[user];
+        const bool manual_sample = old.manual != result.manual || old.manual_x != action_physical.left_x ||
+            old.manual_y != action_physical.left_y || old.manual_pose != static_cast<unsigned>(observed);
         const bool rotation_sample = rotation.owns_left || (rotation_enabled && (physical_buttons & BoardChord::pair)) || old.action_kind == 5;
         const bool action_owned = action.owned || rotation.owns_left;
         const bool diagnostic = playback_diagnostics && (result.authored_playback || old.playback_sample);
@@ -992,7 +1004,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (mode_enabled.load(std::memory_order_acquire) &&
             ((diagnostic && old.tick != tick) || old.buttons != physical_buttons || old.lt != physical_left_trigger || old.rt != physical_right_trigger ||
              old.output != result.buttons || old.phase != result.phase ||
-             old.right_x != result.right_x || old.right_y != result.right_y || action.requested ||
+             old.right_x != result.right_x || old.right_y != result.right_y || action.requested || manual_sample ||
              ((action_experiment != ActionExperiment::off || old.action_sample || rotation_sample) &&
               (((action_owned || old.action_owned) && old.tick != tick) || old.left_x != left_x || old.left_y != left_y || old.output_lt != left_trigger ||
                old.output_rt != right_trigger || old.action_owned != action_owned)))) {
@@ -1006,6 +1018,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             row.action_kind = rotation_enabled && (physical_buttons & BoardChord::pair) ? 5 : action.request_kind;
             row.action_trick = static_cast<unsigned>(action.trick); row.action_result = static_cast<unsigned>(action.result);
             row.left_x = left_x; row.left_y = left_y; row.output_lt = left_trigger; row.output_rt = right_trigger;
+            row.manual = result.manual; row.manual_x = action_physical.left_x; row.manual_y = action_physical.left_y;
+            row.manual_pose = static_cast<unsigned>(observed); row.manual_sample = manual_sample;
             previous_pad[user] = row;
             input_telemetry.pad({row});
         }

@@ -44,6 +44,7 @@ public:
         bool command_busy{};
         bool suppress_reverse{};
         bool movement_intent{};
+        ManualGesture::Diagnostic manual{};
     };
     void cancel() noexcept {
         active_ = NativeTrick::none;
@@ -172,6 +173,7 @@ public:
             out.authored_playback = classic.owns_stick;
             const auto manual = manuals_[user].poll(now, buttons, lx, ly, game_input,
                 manual_safe, observed, busy || triggers_held || (buttons & 0xf000u), manual_prepare_only);
+            out.manual = manuals_[user].diagnostic();
             out.suppress_reverse = manual.suppress_reverse;
             if (manual.owns_stick) {
                 out.right_x = 0; out.right_y = manual.y; out.phase = 1;
