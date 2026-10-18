@@ -1,4 +1,49 @@
-## Native push recovery and standing response — source correction pending
+## Installed responsive ground and elapsed-air setup — 2026-10-17
+
+Installed795ab49a7a2da5bf931c2d80d2da731e896d1e59 / DLL
+92bb9ba1c6644ee49ffdb6a757d3aeadfdb594856c375732d59c1777f521c4a5.
+CI39078971196 passes all five gates; immutable package/raw CI DLL byte match.
+Guarded deployment preserves gamefbce74d5/stock5512a15e, updatesfalse,
+recoveryfalse. HIL67 manifestba84d1c0; maintenance68 a1b618a8; only pins/version
+changed. Original uncommitted trajectory work remains separate.
+
+After restarting the contaminated earlier session, native OFF controls
+1792279962473636000 at matched30 select2/3 but land offboard. Matched60 control
+1792280375725136000 lands Heelflip3; early Kickflip is not recognized. Keep the
+two rates distinct. Do not interpret the earlier menu-paused controls as native
+limitations. Trainer's existing write_live tuning edits a shared process asset,
+then refreshes the local cache; it is not a local-only movement interface.
+
+Trial1792281209568208000 measures matched60 (native dt16.667ms) initial ground
+response: first speed>0.1 about15ms after input,1.61m/s at0.1s,3.85 at0.25s,
+8.07 at0.5s,11.23 at0.75s and1s. Clock alignment uses the preceding physical
+A event/native observation and kernel timestamps; uncertainty includes one
+input poll. Native push40 rises at0.513s. The reversed lane reaches a barrier
+and offboard504 at1.398s: NOT ten-second flat acceptance. The old full-left
+circle1792281448425001000 also fails at the higher speed. Do not reuse either
+as a clear route or claim repeated native pushes/top-speed acceptance from them.
+Private motion/CSV metadata are preserved as push-response-reversed60 and
+push-response-circle60. Collision/offboard contexts stop the ground writer.
+
+Trial1792281590098436000 verifies exact rising Kickflip2 and near-peak Heelflip3,
+both100→103→200→201→100, idle/neutral/reset PASS and no dropped/gapped evidence.
+The corrected35ms delivered airborne setup is now verified at matched60.
+Trial1792281784080085000 retains the late Heelflip failure: X atA+1152ms,
+independent vertical-velocity apex aroundA+1078ms, native3 atA+1212ms, offboard504
+atA+1546ms. Identity alone is not success. Later candidates were not executed
+after the runner's evidence stop. No artificial airtime/catch substitution.
+Trial1792281955027489000 verifies face-before-direction33ms Kickflip2 with
+clean landing, and rising/descending directional B requests with fresh native
+BS Grab29 history additions and on-board landings; all idle/neutral/reset PASS,
+no evidence gap or drops. Its final full live-log collection rejects17,149,183
+bytes at the unchanged16MiB guard; only CSV archivalaa33a1cb is retained for
+that collection. Restart before further full-log telemetry; do not relax bounds.
+Source rotation100/50ms delays apply to directional inputs; shoulder inputs
+bypass them. Do not add that delay to the shoulder adapter. The preceding
+matched60 prewind1792281182966823000 lands on-board with native heading about
+182.9° unwrapped. Complete both-direction180/360 acceptance remains pending.
+
+## Native push recovery and standing response — source correction
 
 Source-first review of the existing push reader, full guarded Trainer writer,
 official client transform/physics APIs and preserved4dab47d motion identifies
