@@ -75,6 +75,16 @@ int main() {
                 "validated two-wheel input starts a bounded acceleration budget without waiting for animation");
             const float next = drive.step(dt, {0,0,first*dt}, {0,0,first}, crouched, true);
             check(std::abs(next - acceleration * dt) < .0001f, "native startup motion retains the same acceleration budget");
+            drive.reset();
+            drive.step(dt, {0,0,0}, {-.00000115f,0,-.00010328f}, crouched, true);
+            check(drive.step(dt, {0,0,first*.75f*dt}, {-.00016822f,0,first*.75f}, crouched, true) > 0,
+                "measured resting velocity noise cannot latch a false reversal when starting from rest");
+            drive.reset();
+            drive.step(dt, {0,0,0}, {0,0,1}, crouched, true);
+            check(drive.step(dt, {0,0,-dt}, {0,0,-1}, crouched, true) == 0,
+                "genuine reversed travel still revokes ground acceleration");
+            drive.reset();
+            drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
             drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
             drive.step(dt, {0,0,0}, {0,0,0}, crouched, true);
             for (unsigned i=0;i<20;++i)

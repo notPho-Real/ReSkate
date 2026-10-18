@@ -33,7 +33,10 @@ public:
             const bool teleported = travel > std::max(1.0f, expected_travel_ * 4);
             const bool stalled = travel_time_ >= .1f && travel < expected_travel_ * .2f;
             const bool impact = speed < previous_speed_ - 18 * dt;
-            const bool reversed = velocity[0] * velocity_[0] + velocity[2] * velocity_[2] < 0;
+            // Resting bodies retain tiny signed velocity noise. It is not a
+            // travel direction against which a fresh forward start can reverse.
+            const bool reversed = speed >= .5f && std::hypot(velocity_[0], velocity_[2]) >= .5f &&
+                velocity[0] * velocity_[0] + velocity[2] * velocity_[2] < 0;
             if (teleported || stalled || impact || reversed) {
                 reset(); blocked_ = true; position_ = position; return 0;
             }
