@@ -17,6 +17,7 @@
 #include "Extension/ArcadeMode/arcade_camera.h"
 #include "Extension/ArcadeMode/arcade_score_labels.h"
 #include "Extension/Skater/native_bail_request.h"
+#include "Extension/Objects/teleport_transform.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -36,6 +37,34 @@ int run_arcade_playback_tests();
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+    {
+        const std::array<float, 3> position{666.4f,200.226f,1056.928f};
+        for (const float heading : {0.f,33.f,90.f,180.f,-90.f,360.f,-360.f}) {
+            const auto matrix = dingosdk::upright_teleport_transform(position, heading);
+            check(matrix.has_value(), "bounded fixture heading accepted");
+            const auto& m = *matrix;
+            check(m[12] == position[0] && m[13] == position[1] && m[14] == position[2],
+                  "heading leaves arrival position unchanged");
+            check(m[4] == 0 && m[5] == 1 && m[6] == 0 && m[15] == 1,
+                  "heading leaves upright and affine axes unchanged");
+            check(std::abs(m[0]*m[0]+m[2]*m[2]-1) < .00001f &&
+                  std::abs(m[8]*m[8]+m[10]*m[10]-1) < .00001f &&
+                  std::abs(m[0]*m[8]+m[2]*m[10]) < .00001f &&
+                  std::abs(m[0]*m[10]-m[2]*m[8]-1) < .00001f,
+                  "arrival basis is orthonormal and preserves handedness");
+            const float observed = std::atan2(m[8],m[10])*180/std::numbers::pi_v<float>;
+            check(std::abs(std::remainder(observed-heading,360.f)) < .0001f,
+                  "arrival forward agrees with independent Trainer heading reader");
+        }
+        for (const float heading : {361.f,-361.f,std::numeric_limits<float>::infinity(),
+                                   std::numeric_limits<float>::quiet_NaN()})
+            check(!dingosdk::upright_teleport_transform(position,heading), "invalid arrival heading rejected");
+        for (unsigned axis=0; axis<3; ++axis) {
+            auto invalid = position;
+            invalid[axis] = std::numeric_limits<float>::quiet_NaN();
+            check(!dingosdk::upright_teleport_transform(invalid,0), "invalid arrival position rejected");
+        }
+    }
     for (const float dt : {1.f / 30, 1.f / 60}) {
         for (const bool crouched : {false,true}) {
             using dingosdk::arcade_mode::GroundDrive;

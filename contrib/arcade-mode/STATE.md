@@ -1,3 +1,25 @@
+## Reproducible heading for movement acceptance — source pending
+
+The source-first route investigation finds update_position_teleport constructs
+an identity-orientation transform for every position-only Trainer arrival.
+Its established native teleport manager already accepts a full transform.
+Optional `trainer tp x y z heading` now passes a bounded upright heading through
+that same request/transition path. Legacy position-only arrival stays at zero;
+no new hook, offset, velocity write or stock file change.34448 sanitized model
+checks pass, including independently read heading, orthonormality/handedness,
+position retention and invalid inputs. Build/native heading acceptance PENDING.
+
+Road pilot1792282773980551000 stays on-board, reaches11.23m/s by0.75s and
+remains near11.23 at3s, then brakes to rest. It crosses a curb via605 between
+about1.05–1.42s: useful transition evidence, NOT an uninterrupted flat baseline.
+CSV679ea6d5/motion47ad0755 are preserved privately. It ends on the promenade
+near(666.4,200.226,1056.928). Subsequent partial-turn/ten-second route
+1792283054337018000 fails300/504 at the waterfront edge; reject flat acceptance.
+Its complete CSVcd39b300/motion3b10bcd1 remain below the16MiB collection guard.
+Measured heading and eventual travel direction differ after that partial turn;
+do not use visual facing or its lingering HUD as route proof. Traffic was read
+as default before temporary0; restoration to-1 is required before leaving.
+
 ## Installed responsive ground and elapsed-air setup — 2026-10-17
 
 Installed795ab49a7a2da5bf931c2d80d2da731e896d1e59 / DLL

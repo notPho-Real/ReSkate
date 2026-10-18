@@ -591,16 +591,15 @@ void update_position_teleport() {
     if (!r.teleport || !r.transition_ctor || !r.transition_destroy || !placement_client_channel() ||
         !read(local_runtime().base + addr::local_placements::teleport_manager, manager) || !manager ||
         !read(manager, state) || state != 0) return;
-    const auto at = *r.position_teleport;
+    alignas(16) const auto transform = *r.position_teleport;
     r.position_teleport.reset();
     // Upright at the spot. The native teleport manager handles streaming, ground checks and physics reset.
-    alignas(16) const std::array<float, 16> transform{1,0,0,0, 0,1,0,0, 0,0,1,0, at[0], at[1], at[2], 1};
     alignas(16) std::array<std::uint64_t, 2> transition{};
     r.transition_ctor(transition.data());
     struct Destroy { decltype(r.transition_destroy) call; void* value; ~Destroy() { call(value); } } destroy{r.transition_destroy, transition.data()};
     const auto request = r.teleport(manager, transform.data(), 1, transition.data());
     dingosdk::logging::event(dingosdk::logging::Channel::objects, dingosdk::Json{{"event", "position_teleport_requested"},
-        {"x", at[0]}, {"y", at[1]}, {"z", at[2]}, {"request", request}}.dump().c_str());
+        {"x", transform[12]}, {"y", transform[13]}, {"z", transform[14]}, {"request", request}}.dump().c_str());
 }
 
 void update_placement_teleport() {

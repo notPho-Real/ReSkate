@@ -1,5 +1,6 @@
 #include "runtime_internal.h"
 #include "Extension/Objects/local_placements_runtime.h"
+#include "Extension/Objects/teleport_transform.h"
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Objects/ParkEditor/park_editor_surface.h"
 #include <cmath>
@@ -50,12 +51,15 @@ bool delete_local_placed_object(std::string_view map, std::uint64_t token) {
     return begin_placement_delete({token});
 }
 bool teleport_local_skater(const std::array<float, 3>& position) {
+    return teleport_local_skater(position, 0);
+}
+bool teleport_local_skater(const std::array<float, 3>& position, float heading) {
+    const auto transform = upright_teleport_transform(position, heading);
+    if (!transform) return false;
     std::lock_guard lock(local_runtime().native_mutex);
     auto& r = placements_runtime();
     if (!local_runtime().active || !r.teleport || !r.transition_ctor || !r.transition_destroy) return false;
-    for (const auto v : position)
-        if (!std::isfinite(v) || std::abs(v) > 1e6f) return false;
-    r.position_teleport = position;
+    r.position_teleport = *transform;
     r.position_teleport_at = GetTickCount64();
     return true;
 }

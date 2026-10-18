@@ -21,7 +21,7 @@ void register_trainer_commands(Commands &registry) {
         {"dial", "Turn a built-in preset up or down: 1 is the game's own", "<multiplier> <preset name>", false},
         {"slot", "Select a marker slot", "<1-5>", false},
         {"marker", "Save, go to or clear a marker", "save|go|clear [slot]", false},
-        {"tp", "Teleport the skater", "<x> <y> <z>", false},
+        {"tp", "Teleport the skater with an optional upright heading", "<x> <y> <z> [heading -360..360]", false},
         {"waypoint", "Teleport to the waypoint placed on the pause map, onto the surface there", "[info]", false},
         {"ground", "Teleport to the topmost surface at a map position", "<x> <z>", false},
         {"spot", "Go to one of the map author's spots", "<number>", false},

@@ -80,6 +80,8 @@ bool teleport_to_local_placed_object(std::string_view map, std::uint64_t token);
 // Teleports the local skater to a world position (sent within 5 s, when the skater can be
 // moved). False when the game's teleport is unavailable.
 bool teleport_local_skater(const std::array<float, 3>& position);
+// Optional upright world heading; the position-only overload retains heading zero.
+bool teleport_local_skater(const std::array<float, 3>& position, float heading);
 // The highest collision surface straight down at (x, z) between world heights `top` and
 // `bottom`, from the client physics world (the park editor's native ray). Empty when nothing
 // is there yet (collision still streaming) or the query is unavailable. Client update thread.

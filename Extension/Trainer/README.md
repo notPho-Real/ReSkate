@@ -21,7 +21,10 @@ Controller, once switched on: hold **LB + RB**, then D-pad **up** saves the mark
 Everything is also a console command (`~`): `trainer open [tune|practice|map|realistic|fun|everything]`, `trainer status`, `trainer set <id> <value>`,
 `trainer find <words>`, `trainer preset apply|remove <name>`, `trainer dial <multiplier> <preset name>`,
 `trainer reset <id>|all|tricks|presets|everything`, `trainer marker save|go|clear [slot]`,
-`trainer tp <x> <y> <z>`, `trainer waypoint [info]`, `trainer ground <x> <z>`, `trainer where`, `trainer jumps`, `trainer dump`, `trainer selftest`.
+`trainer tp <x> <y> <z> [heading -360..360]`, `trainer waypoint [info]`, `trainer ground <x> <z>`, `trainer where`, `trainer jumps`, `trainer dump`, `trainer selftest`.
+The optional heading sets an upright arrival through the existing native teleport;
+omitting it retains the zero-heading arrival. `trainer where` and telemetry report
+heading with zero along world +Z and90 along +X.
 
 ## For map makers: `trainer.json`
 
