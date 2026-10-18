@@ -24,9 +24,10 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
 class ManualGesture {
 public:
     static constexpr std::uint64_t ground_pair_ms = 220, air_pair_ms = 400;
-    // One 30 Hz sampling interval plus input-poll jitter. This affects only
-    // ground edge matching, not request lifetime or native actuation.
-    static constexpr std::uint64_t ground_sample_slack_ms = 40;
+    // A natural250ms pair can span eight30Hz samples (267ms, or272ms with
+    // rounded34ms polls). Keep the220ms reference plus a55ms usability/sampling
+    // allowance. This never extends request lifetime or native actuation.
+    static constexpr std::uint64_t ground_sample_slack_ms = 55;
     static constexpr std::uint64_t air_request_ms = 700;
     // confirmed remembers a native match for this request; it is not a fresh
     // pose event and must never replace the combo's independent native observer.

@@ -25,8 +25,35 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    // Replay physical events on every input sampling phase, rather than
+    // assigning their timestamps directly to idealized polls.
+    for (const unsigned frame : {17u, 34u}) {
+        for (unsigned phase = 0; phase < frame; ++phase) {
+            for (const unsigned duration : {150u, 220u, 250u, 300u}) {
+                for (const bool nose : {false, true}) for (const bool pad : {false, true}) {
+                    ManualGesture manual;
+                    bool requested{};
+                    const short first = nose ? -24000 : 24000;
+                    for (unsigned ms = phase; ms < 520; ms += frame) {
+                        const int direction = ms >= 100 && ms < 180 ? 1 :
+                            ms >= 100 + duration && ms < 180 + duration ? -1 : 0;
+                        const auto buttons = static_cast<std::uint16_t>(!pad || !direction ? 0 :
+                            direction * first > 0 ? 1 : 2);
+                        const auto out = poll(manual, ms, pad ? 25000 : static_cast<short>(direction * first),
+                            SkatePose::riding, buttons);
+                        requested = requested || out.owns_stick;
+                    }
+                    if (requested != (duration <= 250))
+                        std::cerr << "Sampling case: frame=" << frame << " phase=" << phase
+                            << " duration=" << duration << " nose=" << nose << " pad=" << pad << '\n';
+                    check(requested == (duration <= 250),
+                        "physical150-250ms thumb events survive every30/60Hz sampling phase;300ms holds do not");
+                }
+            }
+        }
+    }
     for (const auto pose : {SkatePose::riding, SkatePose::air}) {
-        const auto window = pose == SkatePose::air ? 400u : 260u;
+        const auto window = pose == SkatePose::air ? 400u : 275u;
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
@@ -38,7 +65,7 @@ int run_arcade_manual_tests() {
                     const auto out = poll(manual, 10 + window + offset, buttons ? 0 : -first,
                         pose, buttons ? (nose ? 1 : 2) : 0);
                     check(out.owns_stick == (offset == 0),
-                        "ground220 plus40ms sampling slack and air400 have exact independent boundaries");
+                        "ground220 plus55ms sampling slack and air400 have exact independent boundaries");
                 }
             }
         }
@@ -107,8 +134,8 @@ int run_arcade_manual_tests() {
             "established balance correction is never swallowed as a new first tap");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, -25000);
-        check(poll(manual, 1280, -25000).suppress_reverse && !poll(manual, 1281, -25000).suppress_reverse,
-            "a continued reverse hold passes through immediately after the260ms sampled ground window");
+        check(poll(manual, 1295, -25000).suppress_reverse && !poll(manual, 1296, -25000).suppress_reverse,
+            "a continued reverse hold passes through immediately after the275ms sampled ground window");
         check(!poll(manual, 1600, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
         manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
         check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
