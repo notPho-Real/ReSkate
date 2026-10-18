@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_combo_session.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
+#include "Extension/ArcadeMode/arcade_manual_observation.h"
 #include "Extension/ArcadeMode/arcade_balance_input.h"
 #include "Extension/ArcadeMode/arcade_observation.h"
 #include "Extension/ArcadeMode/arcade_native_probe.h"
@@ -502,6 +503,20 @@ int main() {
             "established native balance always takes precedence over push recovery provenance");
         check(!contact.poll(201, true, 100, 1, 0x8000, false, false),
             "push recovery cannot disguise a later genuine manual indefinitely");
+        ManualGesture manual;
+        const auto poll = [&](unsigned ms, short y, bool fresh_score) {
+            const NativeComboObservation native{true, fresh_score, false, false, 100, 1, 0xc000};
+            const auto control = manual_input_pose(observed_pose(native), false, false,
+                manual_contact_pose(native, false));
+            return manual.poll(ms, 0, 0, y, true, true, control, false);
+        };
+        poll(300, 0, true); poll(400, 24000, true);
+        poll(480, 0, false);
+        check(poll(620, -24000, true).y == -20000,
+            "stale score presentation cannot erase a manual pair with valid native two-wheel contact");
+        check(manual_input_pose(SkatePose::unknown, false, false,
+            manual_contact_pose({false, false, false, false, 100, 1, 0xc000}, false)) == SkatePose::unknown,
+            "missing native ownership still fails closed despite plausible contact bits");
     }
     {
         ManualGesture manual;

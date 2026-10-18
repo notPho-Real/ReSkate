@@ -3,7 +3,12 @@
 #include "arcade_combo_session.h"
 
 namespace dingosdk::arcade_mode {
-inline SkatePose manual_input_pose(SkatePose candidate, bool native_pushing, bool established_balance) noexcept {
+inline SkatePose manual_input_pose(SkatePose candidate, bool native_pushing, bool established_balance,
+        SkatePose physical = SkatePose::unknown) noexcept {
+    // Presentation freshness must not erase valid physical input context.
+    // The caller uses the existing owner-checked native wheel-contact reader;
+    // combo/HUD identity admission remains independent and unchanged.
+    if (candidate == SkatePose::unknown) candidate = physical;
     // A native push also lifts one wheel. Until independent balance is
     // established, its kick must not consume or cancel a fresh manual command.
     return native_pushing && !established_balance &&

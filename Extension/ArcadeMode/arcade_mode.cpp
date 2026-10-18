@@ -206,7 +206,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 &&
                 ((native.words[0] & 0x40u) != 0 || native_push_contact),
-            combo_session.model().state().balance_kind != BalanceKind::none), std::memory_order_relaxed);
+            combo_session.model().state().balance_kind != BalanceKind::none,
+            manual_contact_pose({valid && !bail, false, false, bail, native.state,
+                native.crouch_mode, native.words[1] & 0xc000u}, false)), std::memory_order_relaxed);
         manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
         manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
     }
