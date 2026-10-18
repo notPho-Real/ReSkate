@@ -26,7 +26,7 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 
 int run_arcade_manual_tests() {
     for (const auto pose : {SkatePose::riding, SkatePose::air}) {
-        const auto window = pose == SkatePose::air ? 400u : 220u;
+        const auto window = pose == SkatePose::air ? 400u : 260u;
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
@@ -38,7 +38,7 @@ int run_arcade_manual_tests() {
                     const auto out = poll(manual, 10 + window + offset, buttons ? 0 : -first,
                         pose, buttons ? (nose ? 1 : 2) : 0);
                     check(out.owns_stick == (offset == 0),
-                        "ground220/air400 deadlines apply independently to either direction and input device");
+                        "ground220 plus40ms sampling slack and air400 have exact independent boundaries");
                 }
             }
         }
@@ -107,8 +107,8 @@ int run_arcade_manual_tests() {
             "established balance correction is never swallowed as a new first tap");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, -25000);
-        check(poll(manual, 1240, -25000).suppress_reverse && !poll(manual, 1241, -25000).suppress_reverse,
-            "a continued native reverse hold passes through immediately after the220ms pair window");
+        check(poll(manual, 1280, -25000).suppress_reverse && !poll(manual, 1281, -25000).suppress_reverse,
+            "a continued reverse hold passes through immediately after the260ms sampled ground window");
         check(!poll(manual, 1600, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
         manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
         check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
@@ -150,7 +150,7 @@ int run_arcade_manual_tests() {
             "opposite edge while unsafe cancels without delayed actuation");
         manual.cancel(); recovery(3000, 0); recovery(3010, first);
         poll(manual, 3020);
-        check(!poll(manual, 3511, -first).owns_stick, "preparation retains220ms direction deadline");
+        check(!poll(manual, 3511, -first).owns_stick, "preparation cannot extend the sampled ground direction deadline");
         for (const auto pose : {SkatePose::riding, SkatePose::unknown, SkatePose::bail, SkatePose::grind}) {
             manual.cancel(); recovery(4000, 0); recovery(4010, first);
             recovery(4020, 0, pose != SkatePose::riding, pose);
@@ -177,7 +177,7 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 280, 0, SkatePose::unknown).owns_stick,
             "confirmed hold expires exactly150ms after its last matching observation");
         check(!poll(manual, 281, 25000).owns_stick && !poll(manual, 282, -25000).owns_stick,
-            "expired hold requires a neutral rearm before another directional pair");
+            "expired ownership cannot inherit a held direction as a fresh edge");
     }
     {
         ManualGesture manual;
@@ -215,14 +215,14 @@ int run_arcade_manual_tests() {
         poll(manual, 0);
         poll(manual, 10, 25000);
         poll(manual, 20, 0, SkatePose::riding, 0, 25000);
-        check(!poll(manual, 30, -25000).owns_stick, "horizontal motion breaks a pending vertical sequence");
+        check(poll(manual, 30, -25000).owns_stick, "sideways center passage retains a fresh bounded vertical sequence");
         manual.cancel(); poll(manual, 100);
         poll(manual, 110, 25000);
         poll(manual, 120, 0, SkatePose::riding, 3);
         check(!poll(manual, 130, -25000).owns_stick, "opposing D-pad directions break the sequence");
         manual.cancel(); poll(manual, 200);
         poll(manual, 210, 25000);
-        check(!poll(manual, 711, -25000).owns_stick, "direction sequence expires after220ms");
+        check(!poll(manual, 711, -25000).owns_stick, "a long hold exceeds the sampled ground direction deadline");
         manual.cancel(); poll(manual, 600);
         poll(manual, 610, 25000);
         check(poll(manual, 830, -25000).owns_stick, "direction sequence accepts the220ms boundary");
