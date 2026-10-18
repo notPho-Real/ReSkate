@@ -32,7 +32,7 @@ int run_arcade_manual_tests() {
             ManualGesture manual;
             auto sample = [&](unsigned ms, int direction, bool rejected) {
                 return manual.poll(ms, (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
-                    (rejected && gap == 0 ? 0x2000u : 0u), 0, pad ? 0 : direction * 24000,
+                    (rejected && gap == 0 ? 0x2000u : 0u), 0, static_cast<std::int16_t>(pad ? 0 : direction * 24000),
                     true, !rejected || gap != 1, SkatePose::riding, rejected && gap == 2);
             };
             if (prior_neutral) sample(0, 0, false);
@@ -45,7 +45,7 @@ int run_arcade_manual_tests() {
         auto sample = [&](ManualGesture& m, unsigned ms, int direction, bool safe = true,
                           bool gameplay = true, SkatePose pose = SkatePose::riding) {
             return m.poll(ms, pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u,
-                0, pad ? 0 : direction * 24000, gameplay, safe, pose, false);
+                0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), gameplay, safe, pose, false);
         };
         for (bool trigger : {false, true}) {
             ArcadeInput input; input.enable(true);
@@ -53,7 +53,7 @@ int run_arcade_manual_tests() {
                 return input.poll(0, ms,
                     (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
                         (rejected && !trigger ? 0x2000u : 0u),
-                    0, pad ? 0 : direction * 24000, 0, 0, true, false,
+                    0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), 0, 0, true, false,
                     false, 0, rejected && trigger, false, true, ms, false, {}, false,
                     true, SkatePose::riding);
             };
@@ -115,7 +115,7 @@ int run_arcade_manual_tests() {
                                   bool offboard = false) {
                 return input.poll(user, ms,
                     pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u,
-                    0, pad ? 0 : direction * 24000, 0, 0, gameplay, false,
+                    0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), 0, 0, gameplay, false,
                     false, 0, false, false, true, ms, false, {}, false,
                     true, SkatePose::riding, false, false, offboard);
             };
@@ -136,8 +136,8 @@ int run_arcade_manual_tests() {
             for (unsigned button : {0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0300u}) {
                 m.cancel(); sample(m, 0, 0);
                 auto rejected = [&](unsigned ms, int direction) {
-                    return m.poll(ms, button | (pad ? (direction > 0 ? 1u : 2u) : 0u),
-                        0, pad ? 0 : direction * 24000, true, true, SkatePose::riding, true);
+                    return m.poll(ms, static_cast<std::uint16_t>(button | (pad ? (direction > 0 ? 1u : 2u) : 0u)),
+                        0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), true, true, SkatePose::riding, true);
                 };
                 check(!rejected(17, first).owns_stick && !rejected(51, -first).owns_stick &&
                       !sample(m, 68, -first).owns_stick,
