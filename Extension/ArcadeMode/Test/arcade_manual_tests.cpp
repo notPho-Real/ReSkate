@@ -29,13 +29,16 @@ int run_arcade_manual_tests() {
     // assigning their timestamps directly to idealized polls.
     for (const unsigned frame : {17u, 34u}) {
         for (unsigned phase = 0; phase < frame; ++phase) {
-            for (const unsigned duration : {150u, 220u, 250u, 300u}) {
+            // 300ms and250ms can both quantize to272ms at34ms polling.
+            // Deliberate long holds must lie outside that ambiguous boundary.
+            for (const unsigned duration : {150u, 220u, 250u, 350u, 800u}) {
                 for (const bool nose : {false, true}) for (const bool pad : {false, true}) {
                     ManualGesture manual;
                     bool requested{};
                     const short first = nose ? -24000 : 24000;
-                    for (unsigned ms = phase; ms < 520; ms += frame) {
-                        const int direction = ms >= 100 && ms < 180 ? 1 :
+                    for (unsigned ms = phase; ms < 220 + duration; ms += frame) {
+                        const auto first_end = duration <= 250 ? 180u : 100 + duration;
+                        const int direction = ms >= 100 && ms < first_end ? 1 :
                             ms >= 100 + duration && ms < 180 + duration ? -1 : 0;
                         const auto buttons = static_cast<std::uint16_t>(!pad || !direction ? 0 :
                             direction * first > 0 ? 1 : 2);
@@ -47,7 +50,7 @@ int run_arcade_manual_tests() {
                         std::cerr << "Sampling case: frame=" << frame << " phase=" << phase
                             << " duration=" << duration << " nose=" << nose << " pad=" << pad << '\n';
                     check(requested == (duration <= 250),
-                        "physical150-250ms thumb events survive every30/60Hz sampling phase;300ms holds do not");
+                        "physical150-250ms thumb events survive every30/60Hz phase;350/800ms steering holds do not");
                 }
             }
         }
