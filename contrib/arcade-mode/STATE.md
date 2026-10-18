@@ -1,4 +1,4 @@
-## Manual input reliability correction — hardware acceptance pending, 2026-10-18
+## Manual input reliability correction — native trials verified, 2026-10-18
 
 Installed candidate f771cd21e6d859400edd0214e68375a93bd42d85 includes
 0ede9d3/a45e2fc/9dad4d8. CI39154146695 passes all five gates; separate installer
@@ -7,8 +7,9 @@ b01f307c31189771537648cd3baedf265cba099e4e6dc328ecb826e1fec2c8d7.
 Guarded deployment completed with gamefbce74d5/stock5512a15e unchanged,
 updatesfalse/recoveryfalse. HIL70 manifest4383ae67 and maintenance71 059723d9
 change only version/build pins; frozen workers/installers and guards are unchanged.
-406de15 remains the previous native-verified rollback. This candidate has software
-verification and installed integrity, but native manual acceptance is PENDING.
+406de15 remains the previous native-verified rollback. The installed candidate
+now has software verification and native manual trials below. Hands-on feel
+validation remains with the player; overall handling equivalence is not claimed.
 
 Source-first review reused manual_contact_pose, NativePushContact, the partial
 native right-stick recipe and the existing bounded input telemetry. Official
@@ -46,23 +47,52 @@ requires independent native history. Change-only ARCADE MANUAL INPUT rows
 record physical axes/buttons, directions, first-edge timestamps, request,
 eligibility/rejection, ownership and delivered Y through the existing queue.
 
-Hardware session preparation found the overnight log at560315155bytes, above
-the unchanged16MiB guard; the old session was gracefully closed. The fresh
-launcher drew a first frame according to its log, but compositor and direct
-window capture were black and fixed Play did not create a game. One existing
-headless-launch attempt exited without a game; normal Steam launcher restored.
-A source-defined Enter shortcut and retaining the Steam-owned prefix during the
-existing CLI invocation also produced no game. Stop launcher retries; the user
-was asked to open PLAY on the Deck and report any prompt/error.
-The user reported that PLAY starts the game, but fresh status1792349163079476000
-and1792349227598099000 still found launchertrue/skatefalse, with no fresh native
-samples or game window. Clarification of the physical screen is pending.
-Stopped-state1792349266133892000 passed before deployment; post-deploy
-1792349298645021000 verified the new pins and unchanged originals. Normal Steam
-launcher was reopened.1792349316473788000 still finds only the launcher window.
-No manual input trials have been sent in this session: zero native attempts,
-repeatability UNMEASURED. Prepared four natural-arc pilots remain unexecuted.
-Do not promote local recognizer tests or installed integrity to native acceptance.
+The player's photo correctly showed the native Hub. Status1792349540804834000
+then confirmed the game and candidate pins. Automated launcher mouse/Enter did
+not start the game; the source-defined default PLAY controller-A action, using
+the unchanged frozen gamepad class, did. Oversized old logs were not admitted.
+A fresh session with warning-level logging during setup stayed under the existing
+16MiB limit. Saved runway collision was restored through scale100→99 at current
+generation8/revisions11→13→15. Both endpoint native ground rays224.2m, local
+on-board100, no menu, native clock60/cached step0.016666666 confirmed before trials.
+
+25/25 intentional commands entered the correct native identity:13 Manual1,
+12 NoseManual2, across both input methods. Evidence joins a new comparable native
+history addition, matching0x4000/0x8000 wheel contact stable at least700ms, delivered
+partial stick, and clean release/exit with neutral synthetic ownership. No bail
+occurred in those positive trials. The frozen generic named_trick criterion stays
+UNVERIFIED; exact manual proof comes from the independent history/contact join,
+not requested input or HUD. Physics state sequences pass; sparse airborne
+heartbeat sequences remain explicitly UNVERIFIED where they miss short states.
+
+- 1792350280888573000:4/4 natural diagonal/center-arc pilots,225/250ms pairs.
+- 1792350475510691000:13 executed entries correct, including150ms direct pairs,
+ 250ms neutral gaps and4/4 air350ms landing preparations;3 rolling cases skipped
+ their baseline. First rolling entry/release passed but the short scripted brake
+ left1.4m/s coasting, so returned_to_idle failed. Do not call that trial fully PASS.
+- 1792350658672650000:4/4 rolling cases with the established longer native brake
+ hold enter correctly and return to idle; observed maximum speeds9.29–9.92m/s.
+- 1792350901141314000:4/4 valid800ms held-direction negatives, no manual request,
+ fresh manual/nose history addition or manual combo entry; clean idle afterward.
+ An earlier negative1792350771771321000 left the pad laterally after cumulative
+ steering. It stopped on incomplete evidence and is INVALID, not a negative PASS.
+ The existing saved spawn/heading was restored before the four valid negatives.
+- 1792351024837505000:4/4 natural-arc cases at separately confirmed native30Hz/
+ cached step0.03333333. Correct identities/contact, release and idle.150ms balance
+ taps retain normal controls; sampled correction includes analog−0.728 and pad−1.
+ Earlier60Hz trials also record positive/negative corrections, including Nose.
+
+Full native motion/Trainer CSV collected with unchanged installation/owner guards;
+pilot CSV397e7a05, representative23d8effc, rolling623de663, valid negativee61426b1,
+30Hz54eaef88. Offline join and raw traces retained in local artifacts. Native pose
+recognition takes283–894ms after request (slowest Nose at30Hz); the proven native
+recipe and balance dynamics were preserved. Brief taps can fall between250ms
+balance telemetry samples; absence of a sampled correction alone is not a failure.
+The remaining first-tap-at-renewed-eligibility hypothesis has no demonstrated
+native miss in these trials; do not add machinery or widen windows speculatively.
+Final native status: ArcadeON,100, rest, editor/menu closed, saved runway spawn;
+clock60 and cached step0.016666666 restored. Trainer loggingOFF, session log level
+warning to avoid idle log growth. No further gameplay code changed during HIL.
 
 ## Installed startup guard fix — native movement verified
 

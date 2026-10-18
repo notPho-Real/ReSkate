@@ -3,7 +3,7 @@
 Run from this checkout:
 
 ```sh
-python3 -B /Users/andrewfarrell/reskate-arcade-mode/contrib/arcade-mode/lab/trick_batch.py contrib/arcade-mode/research/batch-example.json
+python3 -B contrib/arcade-mode/lab/trick_batch.py contrib/arcade-mode/research/batch-example.json
 ```
 
 The example is pinned to CI-tested heartbeat build
