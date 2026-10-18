@@ -1,0 +1,44 @@
+{
+  "format": "reskate-park",
+  "maps": {
+    "stadium_1": [
+      {
+        "id": 1,
+        "item": "own_bkrails_generic_flatrailround_00002",
+        "position": [
+          -39.40615463256836,
+          46.000064849853516,
+          60.61632537841797
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "id": 2,
+        "item": "own_bkpads_generic_manualpadlarge_00001",
+        "position": [
+          0.0,
+          150.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  "object_scales": {
+    "stadium_1": {
+      "2": 99.0
+    }
+  },
+  "revision": 0,
+  "schema_version": 1
+}

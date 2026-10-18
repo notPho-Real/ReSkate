@@ -1,0 +1,317 @@
+{
+  "schema": 1,
+  "game_build": "20260929",
+  "steam_build": 25414733,
+  "saved_layout": "Arcade Movement Runway",
+  "base_map": "stadium_1",
+  "park_file": "movement-runway.park.json",
+  "asset": "own_bkpads_generic_manualpadlarge_00001",
+  "object_id": 2,
+  "position": [
+    0,
+    150,
+    0
+  ],
+  "rotation": [
+    0,
+    0,
+    0,
+    1
+  ],
+  "scale": 99,
+  "axis": {
+    "x": 0,
+    "start_z": -100,
+    "end_z": 100,
+    "length_m": 200
+  },
+  "native_ground_ray_height_rounded_m": 224.2,
+  "spawn": {
+    "trainer_tp": [
+      0,
+      225.5,
+      -100,
+      0
+    ],
+    "mounted_position": [
+      0.116683,
+      225.278687,
+      -99.76963
+    ],
+    "heading_degrees": 359.984985,
+    "speed_max_m_s": 0.1,
+    "trainer_marker_slot": 5
+  },
+  "simulation": {
+    "rate_hz": 60,
+    "cached_step_s": 0.016666666
+  },
+  "restore": "Open saved park through existing Park Editor. The retail create recipe omits scale: select pad object2, Apply Transform at scale100, then99, preserving position0,150,0/quaternion0,0,0,1. Use current map/generation/revision for console edits and require acknowledgements; this restores native collision on every reload without changing the final saved layout. Close editor; native ground rays at both endpoints must return224.2m. Native Trainer tp0,225.5,-100,0 then mount; verify native100, speed<=0.1m/s, heading within3degrees, no menu and matched cached60Hz.",
+  "preservation": "The original saved rail park remains separate; this park retains its rail below the raised pad.",
+  "validation": {
+    "source_commit": "08d08732f074d14fee1befaba9bb971c722ec9ad",
+    "dll_sha256": "92a324c5293173955bb315ef561fc43bc46ebf40a719cff6e1672ed5b91f0644",
+    "pilot": "1792285225982347000",
+    "native_riding_travel_m": 177.369,
+    "native_states": [
+      100
+    ],
+    "csv_sha256": "2727aad5e58b7121aabcc4255102ab2287c3667f7cfc8448111969f192049002",
+    "motion_sha256": "4527648164dded9b81c5a21b2b36b2286796215249dda919d861cc5282b79392",
+    "caveat": "Pilot returned-to-idle failed because braking was released early; complete native trajectory remains valid. Later coast/brake case returns to rest. Frozen HIL tail limits remain unchanged; full motion/CSV separately collected with installation/owner guards."
+  },
+  "latest_validation": {
+    "source_commit": "406de15fb5e5eee0a4df51b287855faa87e6b384",
+    "dll_sha256": "9c915dd882888abae2cc132f37ed207776cc8b9ea00e2adf8e93dae2b6c10ec7",
+    "ci_run": 39085320986,
+    "ci_gates_passed": 5,
+    "clock_precision": "approximately one native/input poll; use actual sample time",
+    "proofs": {
+      "standing": {
+        "trial": "1792287306600672000",
+        "hold_seconds": 10,
+        "native_frames": 600,
+        "native_dt": [
+          "0.016666666"
+        ],
+        "speed_samples": {
+          "0.1": {
+            "t": 0.105,
+            "speed": 1.8946,
+            "vy": -8.511628e-06,
+            "state": "100"
+          },
+          "0.25": {
+            "t": 0.255,
+            "speed": 4.2015,
+            "vy": -0.00046718356,
+            "state": "100"
+          },
+          "0.5": {
+            "t": 0.506,
+            "speed": 8.4217,
+            "vy": -1.3115629e-05,
+            "state": "100"
+          },
+          "0.75": {
+            "t": 0.756,
+            "speed": 11.2249,
+            "vy": -1.19037595e-05,
+            "state": "100"
+          },
+          "1": {
+            "t": 1.005,
+            "speed": 11.2251,
+            "vy": -1.36434e-05,
+            "state": "100"
+          },
+          "2": {
+            "t": 2.006,
+            "speed": 11.2251,
+            "vy": -1.2801172e-05,
+            "state": "100"
+          },
+          "3": {
+            "t": 3.005,
+            "speed": 11.2251,
+            "vy": -1.2563702e-05,
+            "state": "100"
+          },
+          "5": {
+            "t": 5.004,
+            "speed": 11.225,
+            "vy": -1.1319632e-05,
+            "state": "100"
+          }
+        },
+        "csv_sha256": "551a5dabbb33cbca482e94ef7e0d9d31f8449687fa1bf7f42ffc77af4789f594",
+        "motion_sha256": "dddfe3db63c89f11dd0e5dc6a41058c2b88b37c3526c2a5db237623ca1eace92",
+        "native_push_rises_s": [
+          0.521,
+          1.572,
+          2.539,
+          3.521,
+          4.504,
+          5.471,
+          6.454,
+          7.439,
+          8.404,
+          9.388
+        ]
+      },
+      "crouched": {
+        "trial": "1792287370124174000",
+        "hold_seconds": 5,
+        "native_frames": 300,
+        "native_dt": [
+          "0.016666666"
+        ],
+        "speed_samples": {
+          "0.1": {
+            "t": 0.093,
+            "speed": 2.791,
+            "vy": -8.647184e-06,
+            "state": "100"
+          },
+          "0.25": {
+            "t": 0.258,
+            "speed": 7.1176,
+            "vy": -9.601502e-06,
+            "state": "100"
+          },
+          "0.5": {
+            "t": 0.49,
+            "speed": 13.2053,
+            "vy": -6.6128246e-06,
+            "state": "100"
+          },
+          "0.75": {
+            "t": 0.757,
+            "speed": 15.255,
+            "vy": -6.466922e-06,
+            "state": "100"
+          },
+          "1": {
+            "t": 1.008,
+            "speed": 15.255,
+            "vy": -2.2779774e-07,
+            "state": "100"
+          },
+          "2": {
+            "t": 1.991,
+            "speed": 15.255,
+            "vy": -6.8029726e-06,
+            "state": "100"
+          },
+          "3": {
+            "t": 3.008,
+            "speed": 15.255,
+            "vy": -2.4660724e-07,
+            "state": "100"
+          },
+          "5": {
+            "t": 4.992,
+            "speed": 15.255,
+            "vy": -1.0388272e-05,
+            "state": "100"
+          }
+        },
+        "csv_sha256": "1232ed14e5adc7b8e01288e23768dc094f0aeceb7f79655f10924d7abd9ac5b3",
+        "motion_sha256": "91d2d732c04c7fd73b80c4f5463ad506fecfa636d11eba03d8ba85c27679e855"
+      },
+      "coast_brake_steer_resume": {
+        "trial": "1792287445880790000",
+        "csv_sha256": "ad5785d796773e9bd5e6b0f9aa1502eb74e40538f122f6a4aa0edcf57f5bfea7",
+        "motion_sha256": "9044a0656e4b0fc20ac38129b842bbdf0ac8a3f85ade7ac5c53ccda6d32398bb"
+      },
+      "arcade_off": {
+        "trial": "1792287551055700000",
+        "csv_sha256": "16368c61315463dca99099e7bc9f8ed5a45ad07b6d70b5d47821f7f274bf5f65",
+        "motion_sha256": "768c64f37aaef30a5a2403fc4186593cac458ef0b0d6e30cb75a88957e5b90f0",
+        "input_ms": 165266467.395394,
+        "speed_mps": {
+          "1": 4.9911,
+          "2": 7.009,
+          "3": 8.459,
+          "5": 9.4976,
+          "9.99": 9.4976
+        },
+        "clock": "same-process physical B/native source calibration; one input-poll uncertainty",
+        "native_dt": [
+          "0.016666666"
+        ],
+        "native_samples": 600
+      },
+      "air_smoke": {
+        "trial": "1792287716594062000",
+        "csv_sha256": "66c2b4ac8937876bb7c90c608a006bc013e82a7ca5a6ab415abc581fc0b1e827",
+        "motion_sha256": "dd852ce344a3bdfe9dcc5a96eeefbafcf0f4e7fa823bf8b2b286992e49a5b701",
+        "native_ids": [
+          2,
+          3,
+          29
+        ],
+        "a_held_at_X_or_B": false,
+        "grab_native_vertical_at_B_m_s": -0.8264058,
+        "landings": [
+          100,
+          100,
+          100
+        ],
+        "complete_native_evidence": true
+      },
+      "rotations": {
+        "short_trial": "1792287836845726000",
+        "short": [
+          {
+            "name": "180-left",
+            "rotation_degrees": 182.8,
+            "air_s": 0.7987,
+            "landing_state": "100",
+            "landing_heading": 182.2,
+            "settled_heading": 182.3
+          },
+          {
+            "name": "180-right",
+            "rotation_degrees": -194.1,
+            "air_s": 0.8,
+            "landing_state": "100",
+            "landing_heading": 348.4,
+            "settled_heading": 348.3
+          },
+          {
+            "name": "360-left",
+            "rotation_degrees": 332.1,
+            "air_s": 0.8001,
+            "landing_state": "100",
+            "landing_heading": 320.3,
+            "settled_heading": 320.3
+          },
+          {
+            "name": "360-right",
+            "rotation_degrees": -345.1,
+            "air_s": 0.7999,
+            "landing_state": "100",
+            "landing_heading": 335.0,
+            "settled_heading": 335.2
+          }
+        ],
+        "longer_hold_trial": "1792288033205693000",
+        "longer_hold": [
+          {
+            "name": "360-left-longer-hold",
+            "rotation_degrees": 341.9,
+            "air_s": 0.8,
+            "landing_state": "100",
+            "landing_heading": 317.0,
+            "settled_heading": 317.1
+          },
+          {
+            "name": "360-right-longer-hold",
+            "rotation_degrees": -357.1,
+            "air_s": 0.7999,
+            "landing_state": "100",
+            "landing_heading": 319.9,
+            "settled_heading": 320.0
+          }
+        ],
+        "inputs": {
+          "A_hold_ms": 500,
+          "shoulder_press_after_A_ms": {
+            "half_turn": 300,
+            "full_turn": 100
+          },
+          "short_shoulder_release_after_A_ms": 1175,
+          "longer_shoulder_release_after_A_ms": 1250
+        },
+        "exact_full_turn_acceptance": false
+      }
+    },
+    "limits": [
+      "Late Heelflip landing failure remains; exact selection alone is not success.",
+      "Full360 response remains variable; retain measured angles and clean-landings distinction.",
+      "Long HIL cases report tail_limit; complete pinned native-motion/Trainer evidence was collected separately without relaxing bounds.",
+      "Hands-on feel validation belongs to the player; no claim of complete handling equivalence."
+    ]
+  }
+}

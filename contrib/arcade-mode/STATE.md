@@ -1,3 +1,121 @@
+## Installed startup guard fix — native movement verified
+
+406de15fb5e5eee0a4df51b287855faa87e6b384 / DLL
+9c915dd882888abae2cc132f37ed207776cc8b9ea00e2adf8e93dae2b6c10ec7.
+CI39085320986 passes all five gates; immutable/raw-CI DLL bytes match. Guarded
+deployment preserves gamefbce74d5/stock5512a15e, updatesfalse/recoveryfalse.
+HIL69 manifest78a510cc, maintenance70 785c5310; pins/version only. Fresh process
+and saved-pad collision restored through existing scale100→99 transforms. Both
+endpoint rays224.2m, resting100, no menu, matched cached60Hz verified.
+
+1792287306600672000: continuous standing response1.895/4.202/8.422/11.225m/s
+at0.1/0.25/0.5/0.75s, then11.225 at1/2/3/5s and the final held frame near10s
+(first post-release sample11.15). Ten native40 pushes, first movement within one
+native frame. CSV551a5dab/motiondddfe3db. The observed false-reversal stall is
+fixed, not merely hidden by a final-speed claim.
+1792287370124174000: crouched-from-rest2.791/7.118/13.205/15.255m/s at
+0.1/0.25/0.5/0.75s;15.255 at1/2/3/5s. Release A gives native103/200/201/100,
+clean landing, then B stops at rest; no bail/offboard. CSV1232ed14/motion91d2d732.
+1792287445880790000: coast/brake/steer/resume stays100 and ends at rest;
+CSVad5785d7/motion9044a065.
+1792287551055700000: OFF independently confirmed false afterward; native held-X
+4.991/7.009/8.459/9.498/9.498m/s at1/2/3/5/9.99s,600 consecutive native60Hz
+valid100 samples during the hold, no wipeout, and final rest. Same-process
+physical B/native source calibrates kernel X timing within input-poll precision.
+CSV16368c61/motion768c64f3. Long-case frozen HIL tail_limit remains explicit;
+complete guarded native motion and independent Trainer trajectories support
+these movement results, without promoting the truncated HIL view to PASS.
+1792287716594062000 current-build smoke: exact risingKickflip2 and near-apexHeelflip3,
+each independently airborne after A release, exact selection then clean100/idle/
+neutral. Descending B+Right adds fresh nativeBSGrab29 (mask268435456, comparable
+history) while201, then clean100. All three physics sequences/idle/neutral PASS
+with no gap or dropped pad/flip/combo/grind/stick evidence. CSV66c2b4ac,
+motiondd852ce3. No A hold is present at X/B.
+Late Heel remains a landing failure: matched60 trial1792281784080085000 selects3
+after a press74ms beyond measured peak, with only334ms from recognition to
+offboard504, versus~382ms selection duration in the passing near-peak case.
+Existing Trainer flip_speed is shared-curve discovery/writes in trainer_classes,
+not a validated local animation interface. Do not scan or change it, inflate
+airtime, shorten proved35ms setup, or promote identity alone to success.
+Rotation1792287836845726000: native yaw182.8/-194.1° on the180 inputs;
+short360 inputs332.1/-345.1°. One bounded75ms-longer shoulder hold per direction
+1792288033205693000 gives341.9/-357.1°, all clean100/idle/neutral with complete
+physics evidence/no gaps or drops. Not exact full360 acceptance; no native
+angular manipulation or further tuning loop. CSV05719de9/motion5fa0938d, then
+CSVdf00753d/motion7702988f retained privately. Preserved manual preparations
+and existing grind/revert/balance transitions remain unchanged, with their
+previous independently verified results below.
+
+Normal Arcade Rail Fixture restored after tests; raised pad removed from active
+layout through existing saved-park load, reusable runway save retained. Final
+native100/rest, reset_readytrue, menu/editor closed, heading359.9895 and
+matched cached60Hz verified (2026-10-17 18:51). Read-only readiness trace
+1792288315107820000 also confirms Arcade ON and the installed DLL. Trainer logging OFF.
+No further gameplay source changes while shipping this iteration for feedback.
+
+## Saved native movement runway — 2026-10-17
+
+Installed08d08732 / DLL92a324c5293173955bb315ef561fc43bc46ebf40a719cff6e1672ed5b91f0644
+passes all five gates39083180604 and immutable/raw-CI byte comparison. Guarded
+deployment preserves gamefbce74d5/stock5512a15e, updatesfalse/recoveryfalse.
+HIL68 manifest7a7116e7; maintenance69 c558db9f, pins/version only.
+
+Stop route scouting. `research/movement-runway.park.json` is the exact exported
+Park Editor save, with reset/ownership/collision instructions in
+`research/movement-runway.json`. One existing large pad, native scale99 through
+the existing move path, at(0,150,0); old rail/save retained. Console create saves
+scale but its native create recipe omits it: apply the documented existing move
+after a reload before accepting collision. Endpoint native rays at z±100 both
+hit224.2m. Pilot1792285225982347000 stays100 over177.369m, no air/offboard; its
+early brake release fails idle, so retain that caveat. Native Trainer tp
+(0,225.5,-100,heading0), then mount, reproducibly returns resting100 around
+(0.1167,225.2787,-99.7696), heading359.985. Trainer marker5 saved. Actual matched
+cached60Hz/.016666666, editor/menu closed, native motion—not images—are required.
+
+Standing1792285407118890000 completes ten seconds with ten native40 push rises
+at0.514,1.563,2.530,3.515,4.496,5.464,6.448,7.430,8.399,9.382s. Native velocity
+is10.772m/s at1s,11.225 at2/3/5/10s,60.007Hz, all100. CSV945fa7b4,
+motionfdf6e685 retained privately. First bounded nudge at16ms stalls until the
+first native push; do not equate first motion with sustained acceleration.
+Coast/brake/resume1792285523703283000 stays100:11.225 at release,10.609 after
+two seconds of coast, native B reaches rest, forward resumes11.225; steering
+changes heading to347.1 and final B stops. CSV8c90272a/motion58a8b756.
+Frozen HIL reports tail_limit for these long cases; complete guarded native
+motion and Trainer CSV are separately preserved. No guard was relaxed.
+
+Crouched-from-rest1792285630381985000 FAILS (peak0.739, stalls), but A release
+still gives native1/200/201/100 and a clean landing. CSVca08083a/motion91d5991d.
+The same native samples identify the cause: resting vz≈-0.000103 becomes a
+legitimate forward0.28/0.48; the dot-product guard calls that a reversal and
+latches assistance off.406de15 requires meaningful measured velocity on both
+sides before calling a reversal.34456 sanitized checks pass; regression fails
+on previous source; genuine reversal/impact/stall guards remain. CI/native
+recheck was pending at this checkpoint; the current-build results above supersede
+that pending status and independently verify crouched speed.
+
+Rolling-crouch1792286026323319000 measures11.703→14.344→15.255m/s at
+0/0.1/0.25s after A, then holds15.255. A+B does not
+brake effectively while the authored crouch remains held. After late A release
+the neutral recovery overruns the pad edge (z≈150), then falls: reject the whole
+trial. Raw saved-position teleport recovery was attempted but not independently
+confirmed; subsequent freshness check rejects17,714,679bytes at the unchanged
+16MiB guard. Close this session and restart; do not claim recovery or route around
+geometry. CSV58f6b739/motion90d6b228. The next bounded check releases A, confirms
+landing, then brakes; no overlapping control/telemetry or relaxed guard.
+
+OFF1792285763782867000 is independently confirmed false/resting100 afterward.
+Native held-X velocity is4.992/7.010/8.459/9.498/9.498m/s at1/2/3/5/10s, all100,
+with ten native40 rises. Same-process physical B/native source calibration
+aligns kernel X timing; retain input-poll uncertainty. CSVfc436bd5/motion0cb9e01d.
+This pad's native ceiling is about9.50; do not relabel it9.1 from another surface.
+
+Previous installed795 matched60 manual trials1792284053194205000 verify ground
+200ms moderate-diagonal Manual1/Nose2 and tap corrections. Short air350ms pilots
+1792284395871822000 verify both identities after landing and full neutral/idle/
+reset with no gaps/drops (CSVcd91628f/motione708ded6). Retain late Heel failure.
+Rotation1792284555678213000 lands both directions with native yaw335.7/-345.1°;
+these are not exact360 acceptance (CSVd5169a95/motiond6706c87).
+
 ## Reproducible heading for movement acceptance — source pending
 
 The source-first route investigation finds update_position_teleport constructs
@@ -18,7 +136,8 @@ near(666.4,200.226,1056.928). Subsequent partial-turn/ten-second route
 Its complete CSVcd39b300/motion3b10bcd1 remain below the16MiB collection guard.
 Measured heading and eventual travel direction differ after that partial turn;
 do not use visual facing or its lingering HUD as route proof. Traffic was read
-as default before temporary0; restoration to-1 is required before leaving.
+as default before temporary0; restoration to-1 was confirmed as default in the next fresh session
+(2026-10-17 17:36:29). No traffic override remains.
 
 ## Installed responsive ground and elapsed-air setup — 2026-10-17
 
