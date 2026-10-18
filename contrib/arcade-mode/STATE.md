@@ -1,3 +1,69 @@
+## Manual input reliability correction — hardware acceptance pending, 2026-10-18
+
+Installed candidate f771cd21e6d859400edd0214e68375a93bd42d85 includes
+0ede9d3/a45e2fc/9dad4d8. CI39154146695 passes all five gates; separate installer
+CI39154146656 passes. Raw-CI and immutable-release DLL bytes match:
+b01f307c31189771537648cd3baedf265cba099e4e6dc328ecb826e1fec2c8d7.
+Guarded deployment completed with gamefbce74d5/stock5512a15e unchanged,
+updatesfalse/recoveryfalse. HIL70 manifest4383ae67 and maintenance71 059723d9
+change only version/build pins; frozen workers/installers and guards are unchanged.
+406de15 remains the previous native-verified rollback. This candidate has software
+verification and installed integrity, but native manual acceptance is PENDING.
+
+Source-first review reused manual_contact_pose, NativePushContact, the partial
+native right-stick recipe and the existing bounded input telemetry. Official
+source/fork survey and native methods remain in research/upstream-method-survey.json;
+the established reference has ground220ms, air400ms and air request700ms.
+No new hooks, fields, physics recipe or balance tuning.
+
+Deterministic failures: a held non-neutral baseline never armed until perfect
+neutral; sideways center travel erased the first vertical edge; fresh valid
+two-wheel context was lost when score-display freshness lapsed. Ground250ms
+pairs exceeded220ms even though sampling adds a frame. Regressions now cover
+fresh reversals after a held baseline, diagonal/neutral passage, both input
+methods,150/220/250ms acceptance versus300ms/long holds,30/60Hz samples,
+native push recovery and missing-owner rejection.34489 ASAN/UBSAN model checks
+and1332 telemetry checks pass. The final complete combined target passes37114 checks,
+including1562 manual checks. Its obsolete strict220ms/sideways-cancel assertions
+were corrected after CI rejected0ede9d3; the superseded a45e2fc run was cancelled.
+The original rearming regression fails before the correction.
+9b6f618 integration CI39153189356 passes all five gates; final55ms sourcef771cd2
+passes separate CI39154146695. The earlier260ms artifact was not deployed.
+
+The initial260ms allowance still missed physical250ms commands sampled at34ms:
+phase0 gives observed edges102/374ms, a272ms gap. Final recognition keeps220ms
+as its reference with explicit55ms usability/sampling slack (effective275ms);
+all150/220/250ms physical events pass every17/34ms sampling phase for both
+directions/devices.350/800ms held-steering negatives pass. Physical300ms can
+quantize identically to250ms at30Hz; do not claim that ambiguous negative was
+rejected in every phase. The direct300ms observed-edge test remains rejected.
+The invalid300ms sampling-negative run9dad4d8 was cancelled after its failure.
+Air400ms/request700ms/native actuation remain separate.
+Controls reuse owner-checked physical contact during score-presentation gaps,
+and the existing200ms native push provenance during one-wheel recovery.
+Established balance retains precedence. Combo/HUD identity admission still
+requires independent native history. Change-only ARCADE MANUAL INPUT rows
+record physical axes/buttons, directions, first-edge timestamps, request,
+eligibility/rejection, ownership and delivered Y through the existing queue.
+
+Hardware session preparation found the overnight log at560315155bytes, above
+the unchanged16MiB guard; the old session was gracefully closed. The fresh
+launcher drew a first frame according to its log, but compositor and direct
+window capture were black and fixed Play did not create a game. One existing
+headless-launch attempt exited without a game; normal Steam launcher restored.
+A source-defined Enter shortcut and retaining the Steam-owned prefix during the
+existing CLI invocation also produced no game. Stop launcher retries; the user
+was asked to open PLAY on the Deck and report any prompt/error.
+The user reported that PLAY starts the game, but fresh status1792349163079476000
+and1792349227598099000 still found launchertrue/skatefalse, with no fresh native
+samples or game window. Clarification of the physical screen is pending.
+Stopped-state1792349266133892000 passed before deployment; post-deploy
+1792349298645021000 verified the new pins and unchanged originals. Normal Steam
+launcher was reopened.1792349316473788000 still finds only the launcher window.
+No manual input trials have been sent in this session: zero native attempts,
+repeatability UNMEASURED. Prepared four natural-arc pilots remain unexecuted.
+Do not promote local recognizer tests or installed integrity to native acceptance.
+
 ## Installed startup guard fix — native movement verified
 
 406de15fb5e5eee0a4df51b287855faa87e6b384 / DLL
