@@ -95,15 +95,23 @@ public:
         if (native_score_capture_status(event, context.generation, context.now, true) == ScoreDecision::invalid)
             return reject(ScoreDecision::invalid);
         // Replayed transport rows are not native duplicates. An exact repeat of
-        // the last capture is harmless only when every payload field agrees.
+        // the last capture is harmless only when payload AND authority agree.
+        // A previously incomplete stream cannot regain authority via replay.
         if (event.serial <= serial_) {
-            if (have_last_ && same_event(event, last_)) return {ScoreDecision::duplicate};
+            if (have_last_ && same_event(event, last_)) {
+                if (tainted_) return {ScoreDecision::incomplete};
+                if (!same_proof(proof, last_proof_)) return reject(ScoreDecision::ambiguous);
+                // Even a duplicate is a new observation of the stream clock.
+                context_.now = context.now;
+                return {ScoreDecision::duplicate};
+            }
             return reject(ScoreDecision::stale);
         }
         if (serial_ == UINT64_MAX || event.serial != serial_ + 1)
             return reject(ScoreDecision::incomplete);
         if (have_last_ && event.sampled_at < sampled_) return reject(ScoreDecision::stale);
-        serial_ = event.serial; sampled_ = event.sampled_at; last_ = event; have_last_ = true;
+        serial_ = event.serial; sampled_ = event.sampled_at;
+        last_ = event; last_proof_ = proof; have_last_ = true;
         context_.now = context.now;
         if (tainted_) return {ScoreDecision::incomplete};
         if (!event.owner_verified || !proof.local_owner || !proof.native_identity || !proof.semantics ||
@@ -140,6 +148,12 @@ public:
             proof.meaning == ScoreMeaning::raw_action_points ? static_cast<std::uint32_t>(event.payload.score) : 0};
     }
 private:
+    static bool same_proof(const ScoreProof& a, const ScoreProof& b) noexcept {
+        return a.owner == b.owner && a.generation == b.generation && a.combo == b.combo &&
+            a.occurrence == b.occurrence && a.local_owner == b.local_owner &&
+            a.native_identity == b.native_identity && a.semantics == b.semantics &&
+            a.meaning == b.meaning && a.action == b.action;
+    }
     static bool same_event(const native_score_detail::Event& a, const native_score_detail::Event& b) noexcept {
         return a.serial == b.serial && a.sampled_at == b.sampled_at && a.epoch == b.epoch && a.route == b.route &&
             a.payload.score == b.payload.score && a.payload.reason == b.payload.reason &&
@@ -154,6 +168,7 @@ private:
     ScoreContext context_{};
     std::array<Entry, capacity> journal_{};
     native_score_detail::Event last_{};
+    ScoreProof last_proof_{};
     std::uint64_t serial_{}, sampled_{}, began_at_{};
     std::size_t size_{};
     bool tainted_{true}, closed_{}, have_last_{};

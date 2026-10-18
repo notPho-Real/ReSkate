@@ -3,6 +3,10 @@
 #include <iostream>
 #include <limits>
 
+#ifdef ARCADE_SCORE_REPLAY_COMBINED_TESTS
+int run_arcade_score_replay_tests();
+#endif
+
 namespace {
 using namespace dingosdk::arcade_mode;
 using namespace dingosdk::arcade_mode::native_score_detail;
@@ -31,6 +35,9 @@ void expire(ComboSession& session) {
 }
 
 int run_arcade_score_settlement_tests() {
+#ifdef ARCADE_SCORE_REPLAY_COMBINED_TESTS
+    run_arcade_score_replay_tests();
+#endif
     {
         Fixture f;
         check(native_score_capture_status(f.event, 7, 1000, true) == ScoreDecision::ambiguous,

@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "scope": "Offline synthetic adapter-proof corpus. No native score authority or adapter enabled.",
+  "test": "Extension/ArcadeMode/Test/arcade_score_replay_tests.cpp",
+  "fixed_contracts": [
+    {
+      "contract": "An exact transport replay must retain identical owner, generation, combo, canonical occurrence, ownership/identity/semantics attestations, meaning and action attribution.",
+      "before": "Payload-only duplicate shortcut ignored contradictory proof and retained credited authority.",
+      "after": "Contradiction taints the boundary and invalidates unconfirmed monetary credit."
+    },
+    {
+      "contract": "Every admitted observation, including exact duplicates, advances the stream context clock.",
+      "before": "A later duplicate did not prevent a subsequent health snapshot from moving backward in time.",
+      "after": "Clock rollback after a duplicate is stale and closes monetary authority."
+    },
+    {
+      "contract": "A transport duplicate cannot restore a tainted stream's admission classification.",
+      "before": "Replay shortcut could report duplicate after a health gap, though settlement remained invalidated.",
+      "after": "Replay remains incomplete until an independently delimited new baseline."
+    }
+  ],
+  "preserved_existing_contracts": [
+    "Owner, generation, combo and health loss discard monetary authority without resetting live physical balance or fatigue.",
+    "Equal points do not establish identity; conflicting occurrence reuse and two occurrences claiming one action fail closed.",
+    "Verified action slots may arrive out of action order, but transport serial gaps, old timestamps and incomplete coverage cannot settle.",
+    "Only independently attested integer raw action awards are added. Native aggregates and unknown multiplier semantics are not inferred or counted twice.",
+    "Manual, grind, exit and revert transitions preserve existing model continuity; credited points neither manufacture actions nor extend grace.",
+    "Clean/bail terminal conflicts cannot create a second receipt. An already published bank or loss remains immutable until drained.",
+    "Native end plus model expiry requires fresh complete terminal health; absence of points is not an authoritative zero bank.",
+    "A new independently delimited owner/combo namespace can reuse occurrence values; old-context evidence cannot cross it."
+  ],
+  "native_questions_remaining": [
+    "Independent local payload-owner and observer-generation attribution for every admitted award/end event.",
+    "Canonical native occurrence identity shared across duplicate listeners and its independently verified mapping to an observed action slot.",
+    "Whether each candidate native payload is raw action value or includes native multiplier/landing factors.",
+    "Native clean/bail meaning and completeness through the later model link-window terminal."
+  ],
+  "native_evidence_required": "An owner-bound, canonically identified action/end stream with independently established value semantics and complete health across its terminal. Existing unowned captures remain unverified; capture serial, HUD text, timestamp coincidence or equal values cannot substitute."
+}

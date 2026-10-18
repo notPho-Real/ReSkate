@@ -1,3 +1,49 @@
+## Offline score replay admission correction — local candidate, 2026-10-18
+
+The score boundary now compares the complete authority proof as well as the
+payload before accepting an exact transport duplicate. A changed owner,
+generation, combo, canonical occurrence, attestation, meaning or action slot
+invalidates unconfirmed monetary credit. Exact duplicates also advance the
+observed context clock; a subsequent backwards health sample is stale. A
+tainted stream cannot regain a harmless-duplicate classification via replay.
+Already published undrained bank/loss receipts remain immutable.
+
+All three defects reproduce against the prior source and pass with the narrow
+boundary correction. The new deterministic synthetic corpus passes105 checks;
+existing328 settlement,263 native-score and21 capture-health checks pass.
+Full combined ASAN/UBSAN tests retain34489 model/movement checks and existing
+input/component regressions. All57 recorded unowned captures still reject
+monetary authority. The corpus is included in the existing combined target.
+See research/score-replay-contracts.json for tested contracts and native gaps.
+
+No production ScoreProof adapter is enabled. Local payload ownership, canonical
+native occurrence/action mapping, raw-versus-aggregate value semantics and
+terminal completeness still require independent native evidence. Synthetic
+proofs exercise software contracts only; no new native acceptance is claimed.
+This follow-on candidate is local-only pending review, with no CI or hardware
+operation. Input recognizers, physics, scoring policy and native payload hooks
+are unchanged.
+
+## Complex combo trace contract audit — local tests only, 2026-10-18
+
+An interleaved model/admission corpus passes1736 checks at17/34ms intervals,
+including repeated Manual/Nose sections, multi-rail recontacts, duplicate
+observations, score-activity dropout, bounded revert links, expiry/bail order
+and OFF/context recovery. All13 existing A-H report-grader tests pass.
+The corpus joins the existing combined local regression target.
+
+No runtime continuity or fatigue-reset defect was reproduced. Model/session,
+native admission, input recognition and runtime750/1100ms grace are unchanged.
+The initial800ms exit fixture omitted the established100ms contact retention
+before landing grace; observing1000ms corrected the test, not the runtime.
+See research/combo-trace-contracts.json for exact coverage and limits.
+
+These are synthetic contract checks, not full A-H native acceptance. Remaining
+evidence must independently identify intended airborne actions and repeated
+manual/rail sections through contiguous owner-matched native history/contact,
+cadence and terminal/recovery records. Pose alone cannot identify multiple
+midair actions. Existing native denominators retain their original scope.
+
 ## Manual input reliability correction — native trials verified, 2026-10-18
 
 Installed candidate f771cd21e6d859400edd0214e68375a93bd42d85 includes

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "scope": "Deterministic model/admission trace checks only. No new native gameplay or monetary acceptance.",
+  "base_commit": "35693567da38795c8d73b32fddb30c3b30267d2b",
+  "source_contracts": [
+    "lab/chain_report.py A-H semantic acceptance requirements",
+    "research/native-method-matrix.json chain-A through chain-H historical scope",
+    "research/grind-exit-results.json repeated manual, revert, recontact and multi-action evidence",
+    "arcade_native_events.h runtime750/1100ms grace and150ms measured rail handoff limit",
+    "arcade_manual_observation.h independently matched identity and100ms established-contact retention"
+  ],
+  "test": "Extension/ArcadeMode/Test/arcade_combo_trace_tests.cpp",
+  "coverage": {
+    "A_C_D_E_F": "Pose-level projections through existing native-state mapping and manual identity admission. Multiple named tricks within one airborne pose cannot be inferred and are not graded here.",
+    "B": "600ms landing-to-revert plus950ms subsequent Manual/Nose admission retains the existing bounded runtime link.",
+    "F_repeated": "Three interleaved rail recontacts, takeoffs, Manual and Nose sections retain both mode histories; later same-family sections have increasing difficulty.",
+    "G": "Repeated observed revert signals neither farm multiplier nor extend the accepted1100ms deadline.",
+    "H": "Physical bail or unknown owner/state resets continuity, repeated loss is idempotent, and fresh recovery starts without old mode fatigue.",
+    "sampling": "17ms and34ms sampled intervals with interleaved zero-time duplicate observations.",
+    "admission": "Fresh matching Manual/Nose history edges are required. Contact alone and consumed labels after OFF/context reset cannot restore a section.",
+    "dropout": "Score-display activity may lapse while fresh same-owner contact maintains an admitted manual. Unknown physical observation remains a hard boundary.",
+    "terminal": "740ms continuation retains history;750ms expiry resets it. A physical bail on the expiry poll wins over model banking. Model outcomes do not establish native monetary settlement."
+  },
+  "result": "All tested contracts hold on unchanged runtime source. No continuity/fatigue defect reproduced; no runtime refactor or tuning change.",
+  "fixture_correction": "The initial expiry fixture allowed800ms from physical contact exit, omitting the accepted100ms contact-retention period before750ms landing grace. Extending observation to1000ms corrected the fixture without changing runtime behavior.",
+  "remaining_native_observation": "Full complex-chain acceptance still requires a contiguous owner-matched native event/history/contact trace through each intended named airborne action, repeated Manual/Nose section and rail recontact, with measured cadence and independent terminal/recovery evidence. In particular, pose alone cannot distinguish multiple midair actions or whether a short two-wheel interval represents a fresh independently named manual section. Existing historical mechanic denominators remain scoped to their original builds and contexts."
+}

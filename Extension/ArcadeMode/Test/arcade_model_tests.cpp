@@ -34,10 +34,16 @@ void check(bool passed, const char* description) {
 #ifdef ARCADE_PLAYBACK_COMBINED_TESTS
 int run_arcade_playback_tests();
 #endif
+#ifdef ARCADE_COMBO_TRACE_COMBINED_TESTS
+int run_arcade_combo_trace_tests();
+#endif
 #ifdef ARCADE_SCORE_SETTLEMENT_COMBINED_TESTS
 int run_arcade_score_settlement_tests();
 #endif
 int main() {
+#ifdef ARCADE_COMBO_TRACE_COMBINED_TESTS
+    run_arcade_combo_trace_tests();
+#endif
     {
         const std::array<float, 3> position{666.4f,200.226f,1056.928f};
         for (const float heading : {0.f,33.f,90.f,180.f,-90.f,360.f,-360.f}) {
