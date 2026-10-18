@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_manual_input.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -25,6 +26,130 @@ void start(ManualGesture& manual, std::uint64_t ms = 0, bool nose = false) {
 }
 
 int run_arcade_manual_tests() {
+    for (bool pad : {false, true}) for (bool nose : {false, true}) {
+        const int first = nose ? -1 : 1;
+        for (bool prior_neutral : {false, true}) for (unsigned gap : {0u, 1u, 2u}) {
+            ManualGesture manual;
+            auto sample = [&](unsigned ms, int direction, bool rejected) {
+                return manual.poll(ms, (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
+                    (rejected && gap == 0 ? 0x2000u : 0u), 0, pad ? 0 : direction * 24000,
+                    true, !rejected || gap != 1, SkatePose::riding, rejected && gap == 2);
+            };
+            if (prior_neutral) sample(0, 0, false);
+            check(!sample(17, 0, true).owns_stick, "rejected sample never actuates");
+            sample(51, first, false);
+            const auto result = sample(251, -first, false);
+            check(result.owns_stick && result.y == (nose ? 20000 : -20000),
+                "sampled neutral during a reversible conflict preserves a fresh post-gap edge");
+        }
+        auto sample = [&](ManualGesture& m, unsigned ms, int direction, bool safe = true,
+                          bool gameplay = true, SkatePose pose = SkatePose::riding) {
+            return m.poll(ms, pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u,
+                0, pad ? 0 : direction * 24000, gameplay, safe, pose, false);
+        };
+        for (bool trigger : {false, true}) {
+            ArcadeInput input; input.enable(true);
+            auto integrated = [&](unsigned ms, int direction, bool rejected) {
+                return input.poll(0, ms,
+                    (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
+                        (rejected && !trigger ? 0x2000u : 0u),
+                    0, pad ? 0 : direction * 24000, 0, 0, true, false,
+                    false, 0, rejected && trigger, false, true, ms, false, {}, false,
+                    true, SkatePose::riding);
+            };
+            check(!integrated(17, 0, true).phase,
+                "brake or trigger owner retains neutral synthetic input during rejection");
+            check(!integrated(51, first, false).phase,
+                "first fresh direction on brake or trigger release only prepares the pair");
+            const auto out = integrated(251, -first, false);
+            check(out.phase && out.right_y == (nose ? 20000 : -20000),
+                "public input integration recognizes the immediate post-conflict first edge");
+        }
+        {
+            ManualGesture m;
+            sample(m, 0, 0); sample(m, 17, first);
+            check(sample(m, 51, -first).owns_stick, "opposing-pad cancellation has an active request control");
+            const auto out = m.poll(68, 3, 0, 0, true, true, SkatePose::riding, false);
+            check(!out.owns_stick && !out.suppress_reverse && !out.confirmed && !out.y,
+                "opposing D-pad input cancels an active request without retaining stick ownership");
+            check(!sample(m, 85, -first).owns_stick,
+                "an opposing-pad cancellation cannot replay the canceled request");
+        }
+        {
+            ManualGesture m;
+            sample(m, 0, 0); sample(m, 17, first);
+            sample(m, 34, first, false); sample(m, 51, first);
+            check(!sample(m, 200, -first).owns_stick,
+                "held first direction across eligibility gap cannot become a new press");
+        }
+        {
+            ManualGesture m;
+            sample(m, 0, first);
+            check(!sample(m, 200, -first).owns_stick, "unknown startup hold is only a baseline");
+        }
+        for (unsigned reset : {0u, 1u, 2u, 3u, 4u, 5u}) {
+            ManualGesture m;
+            sample(m, 100, 0); sample(m, 117, first);
+            if (reset == 0) sample(m, 134, 0, true, false); // Menu/focus.
+            if (reset == 1) m.cancel(); // Owner/context reset published outside input poll.
+            if (reset == 2) sample(m, 99, 0); // Clock rollback.
+            if (reset == 3) sample(m, 134, 0, true, true, SkatePose::bail);
+            if (reset == 4) sample(m, 134, 0, true, true, SkatePose::grind);
+            if (reset == 5) sample(m, 134, 0, true, true, SkatePose::unknown);
+            sample(m, 151, first);
+            check(!sample(m, 200, -first).owns_stick,
+                "hard context boundary restores unknown held baseline suppression");
+        }
+        {
+            ManualGesture m;
+            sample(m, 0, 0); sample(m, 17, first); sample(m, 34, -first);
+            check(!sample(m, 51, 0, false).owns_stick && !sample(m, 68, -first).owns_stick,
+                "completed request cannot survive eligibility loss or replay on return");
+            m.cancel(); sample(m, 100, 0); sample(m, 117, first);
+            check(!sample(m, 500, -first).owns_stick, "expired sequence remains expired");
+        }
+        // Exercise public integration resets without changing playback/face ownership.
+        for (unsigned reset : {0u, 1u, 2u, 3u}) {
+            ArcadeInput input; input.enable(true);
+            auto integrated = [&](unsigned user, unsigned ms, int direction, bool gameplay = true,
+                                  bool offboard = false) {
+                return input.poll(user, ms,
+                    pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u,
+                    0, pad ? 0 : direction * 24000, 0, 0, gameplay, false,
+                    false, 0, false, false, true, ms, false, {}, false,
+                    true, SkatePose::riding, false, false, offboard);
+            };
+            integrated(0, 0, 0); integrated(0, 17, first);
+            unsigned user = 0;
+            if (reset == 0) { input.enable(false); input.enable(true); }
+            if (reset == 1) user = 1;
+            if (reset == 2) integrated(0, 34, 0, false);
+            if (reset == 3) integrated(0, 34, 0, true, true);
+            integrated(user, 51, first);
+            check(!integrated(user, 200, -first).phase,
+                "toggle controller menu and offboard integration reset physical continuity");
+        }
+        {
+            ManualGesture m;
+            sample(m, 0, 0);
+            // Both directions occur while another owner is active: no queued command.
+            for (unsigned button : {0x1000u, 0x2000u, 0x4000u, 0x8000u, 0x0300u}) {
+                m.cancel(); sample(m, 0, 0);
+                auto rejected = [&](unsigned ms, int direction) {
+                    return m.poll(ms, button | (pad ? (direction > 0 ? 1u : 2u) : 0u),
+                        0, pad ? 0 : direction * 24000, true, true, SkatePose::riding, true);
+                };
+                check(!rejected(17, first).owns_stick && !rejected(51, -first).owns_stick &&
+                      !sample(m, 68, -first).owns_stick,
+                    "face trigger and active playback conflicts never queue or replay rejected pairs");
+            }
+            m.cancel(); sample(m, 0, 0);
+            m.poll(17, 3, 0, 0, true, false, SkatePose::riding, false);
+            sample(m, 51, first);
+            check(!sample(m, 200, -first).owns_stick,
+                "invalid opposing physical directions reset continuity even during eligibility loss");
+        }
+    }
     // Replay physical events on every input sampling phase, rather than
     // assigning their timestamps directly to idealized polls.
     for (const unsigned frame : {17u, 34u}) {

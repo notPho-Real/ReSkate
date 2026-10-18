@@ -43,8 +43,8 @@ public:
     };
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     void cancel() noexcept {
-        clocked_ = confirmed_ = air_prepared_ = landed_ = wrong_contact_ = false;
-        requested_ = 0; stick_pair_ = {}; pad_pair_ = {};
+        cancel_intent();
+        clocked_ = false; stick_pair_ = {}; pad_pair_ = {};
     }
     Output poll(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
                 bool game_input, bool safe_state, SkatePose observed, bool conflicting,
@@ -62,17 +62,39 @@ public:
         return result;
     }
 private:
+    void cancel_intent() noexcept {
+        confirmed_ = air_prepared_ = landed_ = wrong_contact_ = false;
+        requested_ = 0;
+        stick_pair_.first = pad_pair_.first = 0;
+        stick_pair_.at = pad_pair_.at = 0;
+    }
     Output poll_impl(std::uint64_t now, std::uint16_t buttons, std::int16_t lx, std::int16_t ly,
                 bool game_input, bool safe_state, SkatePose observed, bool conflicting,
                 bool prepare_only) noexcept {
         const bool command_conflict = (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u;
         const bool can_prepare = prepare_only && !requested_ && observed == SkatePose::riding;
-        if (!game_input || (!safe_state && !can_prepare) || conflicting || command_conflict ||
+        if (!game_input || (buttons & 0x0030u) ||
+            (buttons & 3u) == 3u || (buttons & 12u) == 12u ||
             observed == SkatePose::bail || observed == SkatePose::grind ||
             (clocked_ && now < last_)) {
             cancel(); return {};
         }
         clocked_ = true; last_ = now;
+        if ((!safe_state && !can_prepare) || conflicting || command_conflict) {
+            // Rejected commands never retain preparation or synthetic ownership.
+            // Within a known riding/air input session, still observe the physical
+            // baseline: releasing a brake into a fresh direction is a new edge,
+            // while a direction held through the gap is not. External context
+            // resets and invalid gameplay above still discard all continuity.
+            if (observed != SkatePose::riding && observed != SkatePose::air) {
+                cancel(); return {};
+            }
+            cancel_intent();
+            stick_pair_.baseline(stick_pair_.direction(lx, ly));
+            const auto pad = buttons & 3u;
+            pad_pair_.baseline(pad == 1 ? 1 : pad == 2 ? -1 : 0);
+            return {};
+        }
         // A native manual already in progress uses Up/Down for correction.
         // Unknown pose cannot establish that a fresh command is appropriate.
         if (!requested_ && observed != SkatePose::riding && observed != SkatePose::air) {
@@ -120,9 +142,6 @@ private:
         }
         const auto pad = buttons & 15u;
         const auto pair_ms = observed == SkatePose::air ? air_pair_ms : ground_pair_ms + ground_sample_slack_ms;
-        if ((pad & 3u) == 3u || (pad & 12u) == 12u) {
-            stick_pair_ = {}; pad_pair_ = {}; return {};
-        }
         // A held steering stick cannot swallow a fresh D-pad Up edge, and
         // switching input devices cannot complete half of an unrelated pair.
         const int pad_request = pad_pair_.poll(now, (pad & 1u) ? 1 : (pad & 2u) ? -1 : 0, pair_ms);
@@ -145,6 +164,9 @@ private:
         bool armed{};
         int first{}, previous{};
         std::uint64_t at{};
+        void baseline(int vertical) noexcept {
+            armed = true; previous = vertical;
+        }
         int direction(short x, short y) const noexcept {
             const int vertical = std::abs(static_cast<int>(y));
             const int horizontal = std::abs(static_cast<int>(x));
