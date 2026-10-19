@@ -11,6 +11,13 @@
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Objects/ParkEditor/park_editor_surface.h"
 #include <cmath>
+#include "Extension/World/local_population_controls.h"
+#include "Extension/World/local_park_rotation.h"
+#include "Engine/Game/Build/20260929/engine.h"
+#include "Engine/Game/Build/20260929/park_rotation.h"
+#include "Engine/Game/Build/20260929/population.h"
+#include "Engine/Game/Build/20260929/remote_collision.h"
+#include "Engine/Game/Build/20260929/world_layers.h"
 #include "Extension/World/local_world_layers.h"
 
 namespace dingosdk {
@@ -112,6 +119,8 @@ constexpr std::array surface_self_contracts{
  game::build::Fingerprint{0xf88670,{0x48,0x89,0x5c,0x24,0x10,0x48,0x89,0x6c,0x24,0x18,0x56,0x57,0x41,0x55,0x41,0x56,0x41,0x57,0x48,0x81,0xec,0xf0,0x00,0x00,0x00,0x44,0x0f,0xb7,0x05,0xff,0x85,0x2f}},
  game::build::Fingerprint{0x104bee0,{0x48,0x89,0x5c,0x24,0x08,0x57,0x48,0x83,0xec,0x20,0x48,0x8d,0x05,0x8f,0x18,0x13,0x05,0x48,0x89,0x51,0x08,0x48,0x89,0x01,0x48,0x8b,0xf9,0x4c,0x89,0x41,0x10,0x49}},
  game::build::Fingerprint{0x105d0c3,{0x4c,0x8b,0x4e,0x20,0x4c,0x8b,0xc3,0x89,0x4c,0x24,0x20,0x48,0x8b,0xc8,0xe8,0xda,0xda,0xfc,0xff,0x48,0x8b,0x08,0x48,0x89,0x4e,0x18,0x4c,0x85,0x76,0x18,0x4c,0x89}}};
+struct SurfaceClientGate {std::uintptr_t client{},base{},context{};std::uint64_t sampled_at{};};
+SurfaceClientGate surface_client_gate; // Existing client callback, protected by native_mutex.
 struct SurfaceSelf {
  std::uintptr_t collection{},component{};std::uint64_t entity{};
  alignas(16) std::array<std::uint64_t,3> query{};
@@ -200,6 +209,7 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world)return;
   SurfaceGeometryContext origin{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
    context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,SurfaceGeometryPhase::client};
+  surface_client_gate={client,local.base,context[0],GetTickCount64()};
   SurfaceCallback callback{native,lifetime,GetCurrentThreadId(),client,owner,self,origin,editor.surface_api,editor.picking_api,true};
   SurfaceGeometryNativeApi api;api.base=local.base;api.surface=callback.surface;
   api.picking={callback.picking.hit_body,callback.picking.body_valid,callback.picking.body_entity,callback.picking.ready};
@@ -214,6 +224,225 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
   publish_surface_geometry(sample);callback.entered=false;
  }catch(...){arcade_mode::invalidate_surface_geometry();}
+}
+
+// Scope/table/selected-pose reuse: davad00/ReSkate (GPL-3.0),
+// 992e35fddb5bcef914e2ec20b13e9316393b6763, traffic_vehicle_provider.cpp.
+// Selected traffic observation runtime. All native queries execute only inside
+// the existing post-update park callback and existing native/world locks.
+namespace {
+struct TrafficScope {
+ std::uintptr_t client{},client_context{},server{},server_context{},park{},park_context{},root{},root_data{},root_owner{},traffic{};
+ std::uint64_t world_generation{};
+ bool operator==(const TrafficScope&)const=default;
+};
+struct TrafficRuntime {
+ TrafficSurfaceProvider provider;
+ bool observing{};
+ TrafficScope scope;
+ TrafficSurfaceSelection selected;
+ std::array<std::uint64_t,3> query{};
+ SurfaceGeometryBody body;
+};
+TrafficRuntime& traffic_runtime(){static TrafficRuntime value;return value;} // native_mutex only
+bool traffic_pointer(std::uintptr_t p){return p>=0x10000&&p<=0x00007fffffffffefULL;}
+bool traffic_scope(std::uintptr_t client,std::uintptr_t park,TrafficScope& out){
+ const auto base=local_runtime().base;auto& w=world_layers_runtime();auto& controls=world_control_runtime();
+ auto& parks=park_runtime();
+ if(!base||!traffic_pointer(client)||!traffic_pointer(park)||!local_runtime().active||!parks.active.load(std::memory_order_acquire)||!w.active.load(std::memory_order_acquire)||
+    !controls.population_active.load(std::memory_order_acquire)||parks.surface_thread!=GetCurrentThreadId()||parks.surface_park!=park||!w.model.ready||w.model.map==WorldMap::none||!w.root_generation)return false;
+ TrafficScope s;s.client=client;s.park=park;s.world_generation=w.root_generation;
+ const auto read=[](auto at,auto& value){return memory::read(at,value);};
+ std::uintptr_t value{},controller{},reference{};std::uint32_t state{},online{},offset{};std::uint8_t flag{};int realm{};
+ if(!read(client,value)||value!=base+addr::engine::client_vtable||!read(client+8,s.client_context)||!s.client_context||
+    !read(client+0xc4,state)||(state!=13&&state!=21)||!read(client+0xc0,online)||online>1||
+    !read(base+addr::engine::game_server,s.server)||!s.server||!read(s.server,value)||value!=base+addr::engine::server_vtable||
+    !read(client+0xd0,controller)||!controller||!read(controller,value)||value!=base+addr::engine::controller_vtable||
+    !read(controller+0x4c0,value)||value!=s.server||!read(s.server+8,s.server_context)||!s.server_context||
+    !read(base+addr::remote_collision::game_context_global,value)||value!=s.client_context||
+    !read(base+addr::remote_collision::game_context_global+8,value)||value!=s.server_context||
+    !read(base+addr::park_rotation::manager,value)||value!=park||!park||!read(park,value)||value!=base+addr::park_rotation::manager_vtable||
+    !read(park+8,reference)||reference!=s.server_context||!read(base+addr::park_rotation::context_offset,offset)||offset>0x1000000||
+    reference>UINTPTR_MAX-offset||!read(reference+offset+0x28,flag)||flag!=1||w.context!=s.server_context)return false;
+ s.park_context=reference+offset;
+ if(!read(base+addr::population::managers+8,s.traffic)||!s.traffic||!read(s.traffic,value)||value!=base+addr::population::manager_vtable||
+    !read(s.traffic+8,realm)||realm!=1||!read(s.traffic+0x152,flag)||flag!=1||!read(s.traffic+0x150,flag)||flag!=1)return false;
+ for(const auto& [entity,node]:w.nodes){
+  if(node.generation!=w.root_generation||node.context!=w.context)continue;
+  if(s.root)return false;s.root=entity;s.root_data=node.data;
+ }
+ if(!s.root||!read(s.root,value)||value!=base+addr::world_layers::subworld_reference_vtable||!read(s.root+0x38,value)||value!=s.root_data||
+    !read(s.root+0x30,s.root_owner)||!s.root_owner||!read(s.root_owner+0x20,value)||value!=s.server_context||
+    !read(s.root+0x80,value)||!value||!read(s.root+0x148,flag)||!(flag&1))return false;
+ for(const auto p:{s.client_context,s.server,s.server_context,controller,s.root,s.root_owner,s.traffic})if(!traffic_pointer(p))return false;
+ out=s;return true;
+}
+bool traffic_members(std::uintptr_t manager,std::vector<std::uint64_t>& out){
+ std::uintptr_t begin{},end{};if(!memory::read(manager+0xa8,begin)||!memory::read(manager+0xb0,end)||end<begin||
+    end-begin>8000||begin%8||end%8||(end!=begin&&!begin))return false;
+ std::vector<std::uint64_t> ids;std::set<std::uint64_t> unique;
+ for(auto at=begin;at<end;at+=8){std::uint64_t id{};if(!memory::read(at,id)||!(id>>32)||!unique.insert(id).second)return false;ids.push_back(id);}
+ std::uintptr_t after_begin{},after_end{};
+ if(!memory::read(manager+0xa8,after_begin)||after_begin!=begin||!memory::read(manager+0xb0,after_end)||after_end!=end)return false;
+ out=std::move(ids);return true;
+}
+// POD-only public native boundaries; no mutex/object construction in __try.
+// Missing optional parent/peer contracts deliberately remain unavailable.
+bool traffic_valid(const void* ref){
+#ifdef _MSC_VER
+ __try{return placements_runtime().valid&&placements_runtime().valid(ref);}__except(EXCEPTION_EXECUTE_HANDLER){return false;}
+#else
+ try{return placements_runtime().valid&&placements_runtime().valid(ref);}catch(...){return false;}
+#endif
+}
+void* traffic_query(void* out,std::uint64_t id){
+#ifdef _MSC_VER
+ __try{return placements_runtime().query?placements_runtime().query(out,id):nullptr;}__except(EXCEPTION_EXECUTE_HANDLER){return nullptr;}
+#else
+ try{return placements_runtime().query?placements_runtime().query(out,id):nullptr;}catch(...){return nullptr;}
+#endif
+}
+float* traffic_pose(float* out,const void* query){
+#ifdef _MSC_VER
+ __try{return placements_runtime().pose?placements_runtime().pose(out,query):nullptr;}__except(EXCEPTION_EXECUTE_HANDLER){return nullptr;}
+#else
+ try{return placements_runtime().pose?placements_runtime().pose(out,query):nullptr;}catch(...){return nullptr;}
+#endif
+}
+bool traffic_body_valid(const void* body){
+#ifdef _MSC_VER
+ __try{return park_editor_detail::editor_state().picking_api.body_valid(body);}__except(EXCEPTION_EXECUTE_HANDLER){return false;}
+#else
+ try{return park_editor_detail::editor_state().picking_api.body_valid(body);}catch(...){return false;}
+#endif
+}
+void* traffic_body_entity(void* out,const void* body){
+#ifdef _MSC_VER
+ __try{return park_editor_detail::editor_state().picking_api.body_entity(out,body);}__except(EXCEPTION_EXECUTE_HANDLER){return nullptr;}
+#else
+ try{return park_editor_detail::editor_state().picking_api.body_entity(out,body);}catch(...){return nullptr;}
+#endif
+}
+std::uintptr_t traffic_mapping(){
+#ifdef _MSC_VER
+ __try{return park_editor_detail::editor_state().picking_api.mapping();}__except(EXCEPTION_EXECUTE_HANDLER){return 0;}
+#else
+ try{return park_editor_detail::editor_state().picking_api.mapping();}catch(...){return 0;}
+#endif
+}
+void* traffic_map(std::uintptr_t manager,void* out,std::uint64_t id,int direction){
+#ifdef _MSC_VER
+ __try{return park_editor_detail::editor_state().picking_api.map_entity(manager,out,id,direction);}__except(EXCEPTION_EXECUTE_HANDLER){return nullptr;}
+#else
+ try{return park_editor_detail::editor_state().picking_api.map_entity(manager,out,id,direction);}catch(...){return nullptr;}
+#endif
+}
+std::uint64_t traffic_mapped(std::uint64_t id){
+ const auto manager=traffic_mapping();std::uintptr_t buckets{};std::uint32_t count{},entries{};std::uint64_t out{};
+ if(!manager||!memory::read(manager+0x70,buckets)||!buckets||!memory::read(manager+0x78,count)||!count||count>0x100000||
+    !memory::read(manager+0x7c,entries)||!entries||traffic_map(manager,&out,id,1)!=&out)return 0;return out;
+}
+double traffic_seconds(void*)noexcept{
+ LARGE_INTEGER frequency{},counter{};
+ return QueryPerformanceFrequency(&frequency)&&frequency.QuadPart>0&&QueryPerformanceCounter(&counter)&&counter.QuadPart>0?
+  static_cast<double>(counter.QuadPart)/static_cast<double>(frequency.QuadPart):0;
+}
+struct TrafficCallback {
+ SurfaceCallback base;
+ TrafficScope scope;
+ std::vector<std::uint64_t> members;
+ TrafficSurfaceSelection selected;
+ std::array<std::uint64_t,3> query;
+ decltype(placements_runtime().valid) valid{};
+ decltype(placements_runtime().query) query_api{};
+ decltype(placements_runtime().pose) pose_api{};
+};
+bool traffic_callback_current(void* user,const SurfaceGeometryContext& context,TrafficSurfaceSelection selected)noexcept{
+ try{
+  const auto& c=*static_cast<TrafficCallback*>(user);const auto& b=c.base;auto& e=park_editor_detail::editor_state();
+  const auto& placements=placements_runtime();
+  if(!c.valid||!c.query_api||!c.pose_api||placements.valid!=c.valid||placements.query!=c.query_api||placements.pose!=c.pose_api)return false;
+  if(!b.entered||!b.native_lock.owns_lock()||!b.world_lock.owns_lock()||b.thread!=GetCurrentThreadId()||context!=b.context||
+     selected!=c.selected||!population_surface_current(selected)||!arcade_mode::enabled()||local_runtime().base!=context.owner[0]||
+     !e.surface_api.ready||!e.picking_api.ready||e.surface_api.world!=b.surface.world||e.surface_api.ray!=b.surface.ray||
+     e.surface_api.scope_allocator!=b.surface.scope_allocator||e.surface_api.release!=b.surface.release||
+     e.picking_api.body_valid!=b.picking.body_valid||e.picking_api.body_entity!=b.picking.body_entity||e.picking_api.hit_body!=b.picking.hit_body||
+     e.picking_api.mapping!=b.picking.mapping||e.picking_api.map_entity!=b.picking.map_entity)return false;
+  const auto now=GetTickCount64();const auto gate=surface_client_gate;
+  if(gate.client!=b.client||gate.base!=context.owner[0]||gate.context!=context.client_context||now<gate.sampled_at||now-gate.sampled_at>150||
+     b.surface.world(context.client_context)!=context.world)return false;
+  TrafficScope scope;std::vector<std::uint64_t> ids;NoBailSkater owner{};SurfaceSelf self;
+  if(!traffic_scope(b.client,c.scope.park,scope)||scope!=c.scope||!traffic_members(scope.traffic,ids)||ids!=c.members||
+     std::find(ids.begin(),ids.end(),selected.id)==ids.end()||!no_bail_skater(owner)||owner!=b.owner||
+     !read_surface_self(context.client_context,owner,self)||self!=b.self||context.self_entity!=self.entity)return false;
+  alignas(16) std::array<std::uint64_t,3> query{};std::uint32_t realm{},record{};
+  if(traffic_query(query.data(),selected.id)!=query.data()||query!=c.query||!memory::read(query[1]+8,realm)||realm!=std::uint32_t(selected.id>>32)||
+     !memory::read(query[2],record)||record!=std::uint32_t(selected.id))return false;
+  const auto frame=surface_geometry_native_frame(now);const auto native=InputNativeContext::from_frame(frame);
+  return frame.valid&&context.self_generation==frame.owner_generation&&context.native.fresh(now)&&native.fresh(now)&&frame.owner==NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}&&
+   context.native.generations==native.generations&&context.native.air_episode()==native.air_episode()&&context.native.airborne==native.airborne&&
+   native.physics_step>=context.native.physics_step&&native.sampled_at>=context.native.sampled_at&&population_surface_current(selected);
+ }catch(...){return false;}
+}
+bool traffic_geometry_current(void* user,const SurfaceGeometryContext& context)noexcept{
+ return traffic_callback_current(user,context,static_cast<TrafficCallback*>(user)->selected);
+}
+}
+void tick_arcade_traffic_surface(std::uintptr_t park) noexcept {
+ PreserveError preserve;invalidate_traffic_surface();
+ try{
+  auto& local=local_runtime();std::unique_lock native(local.native_mutex);auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex);
+  auto& r=traffic_runtime();if(r.observing)return;
+  struct ObservationPhase {bool& active;explicit ObservationPhase(bool& value):active(value){active=true;}~ObservationPhase(){active=false;}} observation{r.observing};
+  const auto fail=[&]{r.provider.invalidate();r.selected={};r.query={};invalidate_population_surface();};
+  const auto now=GetTickCount64();const auto gate=surface_client_gate;TrafficScope scope;
+  if(!enabled()||!gate.client||gate.base!=local.base||now<gate.sampled_at||now-gate.sampled_at>150||
+     !traffic_scope(gate.client,park,scope)||scope.client_context!=gate.context){fail();return;}
+  const auto frame=surface_geometry_native_frame(now);NoBailSkater owner{};SurfaceSelf self;
+  if(!frame.valid||!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||
+     !read_surface_self(scope.client_context,owner,self)){fail();return;}
+  const auto& e=park_editor_detail::editor_state();std::vector<std::uint64_t> members;
+  if(!e.surface_api.ready||!e.picking_api.ready||!e.picking_api.mapping||!e.picking_api.map_entity||!traffic_members(scope.traffic,members)){fail();return;}
+  // Observe only the already queried body. Direct or existing ready-table mapping
+  // must independently resolve to authoritative traffic membership. No nearest
+  // target search, ancestry guess, player support or car-grab selection is added.
+  const auto measured=surface_geometry_observation(now);
+  if(!measured.valid){fail();return;}
+  auto id=measured.body_owner;
+  if(std::find(members.begin(),members.end(),id)==members.end())id=traffic_mapped(id);
+  if(!(id>>32)||std::find(members.begin(),members.end(),id)==members.end()){fail();return;}
+  alignas(16) std::array<std::uint64_t,3> query{};
+  if(traffic_query(query.data(),id)!=query.data()||query[0]!=id||!query[1]||!query[2]){fail();return;}
+  const bool same=r.scope==scope&&r.selected.id==id&&r.query==query&&r.body==measured.body&&population_surface_current(r.selected);
+  if(!same){r.provider.invalidate();invalidate_population_surface();}
+  const auto selected=select_population_surface(id);if(!selected.generation){fail();return;}
+  r.scope=scope;r.selected=selected;r.query=query;r.body=measured.body;
+  SurfaceGeometryContext context{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
+   scope.client_context,measured.context.world,world.root_generation,self.entity,frame.owner_generation,SurfaceGeometryPhase::park};
+  TrafficCallback callback{{native,lifetime,GetCurrentThreadId(),gate.client,owner,self,context,e.surface_api,e.picking_api,true},scope,members,selected,query,placements_runtime().valid,placements_runtime().query,placements_runtime().pose};
+  TrafficSurfaceNativeApi api;api.base=local.base;api.ready=true;api.valid=&traffic_valid;api.query=&traffic_query;api.pose=&traffic_pose;
+  api.body_valid=&traffic_body_valid;api.body_entity=&traffic_body_entity;api.mapping_ready=true;api.mapping=&traffic_mapping;api.map_entity=&traffic_map;
+  api.read_bytes=&memory::read_bytes;api.user=&callback;api.seconds=&traffic_seconds;api.milliseconds=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&traffic_callback_current;
+  if(!traffic_callback_current(&callback,context,selected)){fail();return;}
+  if(!r.provider.surface_serial()){
+   const auto pose=capture_traffic_surface_pose(api,context,selected);
+   SurfaceGeometryNativeApi geometry;geometry.base=local.base;geometry.surface=e.surface_api;
+   geometry.picking={e.picking_api.hit_body,&traffic_body_valid,&traffic_body_entity,true};geometry.user=&callback;
+   geometry.now=api.milliseconds;geometry.current=&traffic_geometry_current;geometry.read_bytes=&memory::read_bytes;
+   // Re-query the same measured footprint after the selected pose capture,
+   // preserving the source25ms acquisition budget and actual body token.
+   SurfaceGeometryRequest request;constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
+   for(std::size_t i=0;i<5;++i)request.segments[i]={{measured.point[0]+offsets[i][0],measured.point[1]+.75f,measured.point[2]+offsets[i][1]},
+    {measured.point[0]+offsets[i][0],measured.point[1]-2.f,measured.point[2]+offsets[i][1]}};
+   const auto queried=query_surface_geometry(geometry,context,request);
+   if(!pose.valid||!queried.valid||queried.body!=measured.body||!r.provider.bind(api,pose,queried)){fail();return;}
+  }
+  const auto result=r.provider.observe(api,context,selected);
+  if(!traffic_callback_current(&callback,context,selected)){fail();return;}
+  publish_traffic_surface(result);
+  if(!population_surface_current(selected))invalidate_traffic_surface();
+  callback.base.entered=false;
+ }catch(...){traffic_runtime().provider.invalidate();invalidate_population_surface();invalidate_traffic_surface();}
 }
 
 }

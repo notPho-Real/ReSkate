@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "arcade_surface_geometry.h"
+#include "arcade_traffic_surface_provider.h"
 #include "arcade_input_types.h"
 
 namespace dingosdk::arcade_mode {
@@ -18,6 +19,9 @@ NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept;
 void publish_surface_geometry(const SurfaceGeometrySample&) noexcept;
 void invalidate_surface_geometry() noexcept;
 SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept;
+void publish_traffic_surface(const TrafficSurfaceMotion&) noexcept;
+void invalidate_traffic_surface() noexcept;
+TrafficSurfaceMotion traffic_surface_observation(std::uint64_t now,double seconds) noexcept;
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;

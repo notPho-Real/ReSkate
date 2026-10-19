@@ -1,3 +1,4 @@
+#include "Extension/World/local_population_controls.h"
 #include "arcade_mode.h"
 #include "arcade_air_motion.h"
 #include "arcade_movement.h"
@@ -96,6 +97,8 @@ std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
 SurfaceGeometrySample surface_geometry_snapshot;
 std::atomic<bool> surface_geometry_available{};
+TrafficSurfaceMotion traffic_surface_snapshot;
+std::atomic<bool> traffic_surface_available{};
 std::array<AirRotation, 4> rotations;
 std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
@@ -725,6 +728,7 @@ NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept {
     return lock.owns_lock() && mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) ?
         arcade_input.native_context(now) : NativeInputFrame{};
 }
+void invalidate_traffic_surface() noexcept {traffic_surface_available.store(false,std::memory_order_release);}
 void invalidate_surface_geometry() noexcept {surface_geometry_available.store(false,std::memory_order_release);}
 void publish_surface_geometry(const SurfaceGeometrySample& sample) noexcept {
     invalidate_surface_geometry();
@@ -747,6 +751,28 @@ SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept {
     // Cached identity/age only. This getter never calls a native query or grants writes.
     return surface_geometry_snapshot.fresh_for(current,now) && surface_geometry_available.load(std::memory_order_acquire) ?
         surface_geometry_snapshot : SurfaceGeometrySample{};
+}
+void publish_traffic_surface(const TrafficSurfaceMotion& sample) noexcept {
+    invalidate_traffic_surface();if(!sample.valid)return;
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    const auto now=GetTickCount64();
+    if(!lock.owns_lock()||!mode_enabled.load(std::memory_order_acquire)||!profile_runtime::population_surface_current(sample.selected))return;
+    const auto frame=arcade_input.native_context(now);const auto native=InputNativeContext::from_frame(frame);
+    if(!frame.valid||!native.fresh(now)||!sample.context.native.fresh(now)||now<sample.observed_ms||now-sample.observed_ms>150||
+       sample.context.owner!=std::array<std::uintptr_t,5>{frame.owner.base,frame.owner.entity,frame.owner.core,frame.owner.context,frame.owner.rig}||
+       sample.context.native.generations!=native.generations||sample.context.native.air_episode()!=native.air_episode()||sample.context.native.airborne!=native.airborne)return;
+    traffic_surface_snapshot=sample;traffic_surface_available.store(true,std::memory_order_release);
+}
+TrafficSurfaceMotion traffic_surface_observation(std::uint64_t now,double seconds) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if(!lock.owns_lock()||!mode_enabled.load(std::memory_order_acquire)||!traffic_surface_available.load(std::memory_order_acquire))return {};
+    const auto& s=traffic_surface_snapshot;const auto frame=arcade_input.native_context(now);const auto native=InputNativeContext::from_frame(frame);
+    if(!s.valid||!frame.valid||!native.fresh(now)||!s.context.native.fresh(now)||now<s.observed_ms||now-s.observed_ms>150||
+       !std::isfinite(seconds)||seconds<s.sampled_at||seconds-s.sampled_at>.1||
+       s.context.owner!=std::array<std::uintptr_t,5>{frame.owner.base,frame.owner.entity,frame.owner.core,frame.owner.context,frame.owner.rig}||
+       s.context.native.generations!=native.generations||s.context.native.air_episode()!=native.air_episode()||s.context.native.airborne!=native.airborne||
+       !profile_runtime::population_surface_current(s.selected)||!traffic_surface_available.load(std::memory_order_acquire))return {};
+    return s; // Copied observed point/time only; no native call or support/write permission.
 }
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
@@ -822,7 +848,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 }
 
 void set_enabled(bool value, bool persist) noexcept {
-    invalidate_surface_geometry();
+    invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
     invalidate_grind_observer();

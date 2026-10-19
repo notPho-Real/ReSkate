@@ -61,6 +61,7 @@ bool queue_local_park_paste(const EditorPasteRequest &);
 void tick_local_park_editor() noexcept;
 // Called only from the existing native client update callback. Observation only.
 void tick_arcade_surface_geometry(std::uintptr_t client) noexcept;
+void tick_arcade_traffic_surface(std::uintptr_t park) noexcept;
 ControllerBindingsModel local_profile_controller_bindings();
 bool set_local_freecam_controller(bool);
 bool local_freecam_controller();

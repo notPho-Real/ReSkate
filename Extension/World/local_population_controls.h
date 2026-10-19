@@ -2,6 +2,7 @@
 #include "Engine/Core/Log/logging.h"
 #include "Extension/Profile/runtime_internal.h"
 #include "local_world_controls.h"
+#include "Extension/ArcadeMode/arcade_traffic_surface_provider.h"
 
 namespace dingosdk::profile_runtime {
 struct PopulationLease { float original{}, applied{}; bool owned{}; };
@@ -25,9 +26,21 @@ struct PopulationRuntime {
     std::map<std::uintptr_t, PopulationNode> nodes;
     std::map<std::uintptr_t, PopulationConfig> configs;
     std::array<std::uint64_t, 2> observed_at{};
+    // One selected observation, owned by this population adapter. No table of
+    // synthetic targets or parallel incarnation/removal journal is introduced.
+    void (*surface_remove)(std::uintptr_t,std::uint64_t){};
+    std::atomic<bool> surface_removal_ready{}, surface_exhausted{};
+    std::atomic<unsigned> surface_removals_active{};
+    std::atomic<std::uint64_t> surface_selected{}, surface_generation{}, surface_revision{};
+
 };
 
 PopulationRuntime& population_runtime();
+void start_population_surface_observer() noexcept;
+void invalidate_population_surface() noexcept;
+arcade_mode::TrafficSurfaceSelection select_population_surface(std::uint64_t id) noexcept;
+bool population_surface_current(arcade_mode::TrafficSurfaceSelection) noexcept;
+
 
 inline constexpr std::array<unsigned, 5> population_offsets{0x70,0x58,0x54,0x5c,0x64};
 

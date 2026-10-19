@@ -117,6 +117,7 @@ void start_world_controls() noexcept {
             if (hook_enable(target) != HookOk) throw std::runtime_error("Cannot enable world controls");
         r.environment_active.store(true, std::memory_order_release);
         r.population_active.store(true, std::memory_order_release);
+        start_population_surface_observer();
         dingosdk::logging::event(dingosdk::logging::Channel::world, "{\"event\":\"world_controls_initialized\",\"active\":true}");
     } catch (...) {
         for (auto* target : created) hook_disable(target);

@@ -12,6 +12,8 @@ struct ParkRuntime {
     Notify notify{};
     Notify original_notify{};
     std::atomic<bool> active{};
+    // Set only for the scoped post-update observer call under native_mutex.
+    DWORD surface_thread{};std::uintptr_t surface_park{};
     ParksModel model;
     ParkLaunchRandomization launch_randomization;
     ParkChoices sent;

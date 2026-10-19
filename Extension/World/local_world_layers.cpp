@@ -81,7 +81,7 @@ std::uintptr_t seasonal_destroy_hook(std::uintptr_t entity, unsigned flags) {
     {
         PreserveError preserve;
         std::lock_guard lock(r.lifetime_mutex);
-        arcade_mode::invalidate_surface_geometry();
+        arcade_mode::invalidate_surface_geometry();arcade_mode::invalidate_traffic_surface();
         if (const auto found = r.subworld_logs.find(entity); found != r.subworld_logs.end()) {
             logging::log(logging::Level::debug, logging::Channel::subworld,
                 "Destroying subworld reference: {} (instance {}).", found->second.bundle, found->second.identity.generation);
@@ -93,7 +93,7 @@ std::uintptr_t seasonal_destroy_hook(std::uintptr_t entity, unsigned flags) {
 }
 
 void reset_world_layer_session() {
-    arcade_mode::invalidate_surface_geometry();
+    arcade_mode::invalidate_surface_geometry();arcade_mode::invalidate_traffic_surface();
     auto& r = world_layers_runtime();
     r.context = 0; r.root_generation = 0; r.next_poll = 0;
     r.original.assign(world_layer_nodes().size(), std::nullopt);

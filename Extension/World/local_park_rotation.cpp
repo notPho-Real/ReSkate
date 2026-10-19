@@ -1,3 +1,6 @@
+#include "Extension/ArcadeMode/arcade_mode.h"
+#include "local_population_controls.h"
+#include "Extension/Profile/local_profile_runtime.h"
 #include "Engine/Core/Log/logging.h"
 #include "Extension/Objects/local_placements_runtime.h"
 #include "Extension/Profile/runtime_internal.h"
@@ -160,6 +163,12 @@ void park_tick_hook(std::uintptr_t manager, float delta) {
         update_park_rotation(manager, GetTickCount64());
         update_world_layers(manager, GetTickCount64());
         update_placement_poses();
+        struct SurfacePhase {
+            ParkRuntime& owner;
+            SurfacePhase(ParkRuntime& value,std::uintptr_t park):owner(value){owner.surface_thread=GetCurrentThreadId();owner.surface_park=park;}
+            ~SurfacePhase(){owner.surface_thread=0;owner.surface_park=0;}
+        } phase{r,manager};
+        tick_arcade_traffic_surface(manager);
     } catch (...) {
         dingosdk::logging::event(dingosdk::logging::Channel::world, "{\"event\":\"local_park_update_failed\"}");
     }
@@ -170,6 +179,8 @@ void park_construct_hook(std::uintptr_t context) {
     if (!park_runtime().active.load(std::memory_order_acquire)) return;
     PreserveError preserve;
     std::lock_guard lock(local_runtime().native_mutex);
+    arcade_mode::invalidate_traffic_surface();
+    invalidate_population_surface();
     reset_park_session(); // also handles allocators reusing a previous manager
     auto& r = park_runtime();
     r.observed_owner = 0; r.observed_ready.reset(); r.next_observation = 0;

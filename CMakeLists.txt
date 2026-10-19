@@ -473,6 +473,12 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
     add_executable(dingosdk_arcade_manual_balance_join_tests Extension/ArcadeMode/Test/arcade_manual_balance_join_tests.cpp)
     target_include_directories(dingosdk_arcade_manual_balance_join_tests PRIVATE "${PROJECT_SOURCE_DIR}")
     add_test(NAME arcade_manual_balance_join COMMAND dingosdk_arcade_manual_balance_join_tests)
+    add_executable(dingosdk_arcade_surface_motion_tests Extension/ArcadeMode/Test/arcade_surface_motion_tests.cpp)
+    target_include_directories(dingosdk_arcade_surface_motion_tests PRIVATE "${PROJECT_SOURCE_DIR}")
+    add_test(NAME arcade_surface_motion COMMAND dingosdk_arcade_surface_motion_tests)
+    add_executable(dingosdk_arcade_traffic_surface_provider_tests Extension/ArcadeMode/arcade_traffic_surface_provider.cpp Extension/ArcadeMode/Test/arcade_traffic_surface_provider_tests.cpp)
+    target_include_directories(dingosdk_arcade_traffic_surface_provider_tests PRIVATE "${PROJECT_SOURCE_DIR}")
+    add_test(NAME arcade_traffic_surface_provider COMMAND dingosdk_arcade_traffic_surface_provider_tests)
     # Native SDK query/HUD targets borrow Windows-only runtime headers/ImGui.
     # Portable model tests remain available without the Windows UI target.
     if(WIN32)

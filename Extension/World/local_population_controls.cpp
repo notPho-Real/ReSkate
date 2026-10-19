@@ -1,4 +1,6 @@
 #include "Engine/Core/Log/logging.h"
+#include "Engine/Core/Hooks/hooks.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/Profile/runtime_internal.h"
 #include "local_population_controls.h"
 #include "local_world_controls.h"
@@ -6,6 +8,62 @@
 
 namespace dingosdk::profile_runtime {
 PopulationRuntime& population_runtime() { static auto* r = new PopulationRuntime; return *r; }
+
+// Published removal ABI/fingerprint from davad00/ReSkate (GPL-3.0),
+// 992e35fddb5bcef914e2ec20b13e9316393b6763, traffic_vehicle_provider.cpp.
+namespace {
+constexpr std::uintptr_t surface_removal_rva=0x329f640;
+constexpr std::array<unsigned char,32> surface_removal_bytes{
+ 0x48,0x89,0x5c,0x24,0x18,0x48,0x89,0x74,0x24,0x20,0x55,0x48,0x8d,0x6c,0x24,0xa9,
+ 0x48,0x81,0xec,0xb0,0x00,0x00,0x00,0x48,0x8b,0x05,0x62,0x4d,0xf2,0x03,0x48,0x33};
+bool advance_surface_counter(std::atomic<std::uint64_t>& counter) noexcept {
+ auto value=counter.load(std::memory_order_acquire);
+ while(value!=UINT64_MAX){if(counter.compare_exchange_weak(value,value+1,std::memory_order_acq_rel))return true;}
+ population_runtime().surface_exhausted.store(true,std::memory_order_release);return false;
+}
+void population_surface_remove(std::uintptr_t manager,std::uint64_t id) {
+ const auto incoming=GetLastError();auto& p=population_runtime();
+ p.surface_removals_active.fetch_add(1,std::memory_order_acq_rel);
+ const bool selected=id&&p.surface_selected.load(std::memory_order_acquire)==id;
+ if(selected){advance_surface_counter(p.surface_revision);arcade_mode::invalidate_traffic_surface();}
+ SetLastError(incoming);p.surface_remove(manager,id);const auto returned=GetLastError();
+ if(id&&p.surface_selected.load(std::memory_order_acquire)==id){advance_surface_counter(p.surface_revision);arcade_mode::invalidate_traffic_surface();}
+ p.surface_removals_active.fetch_sub(1,std::memory_order_acq_rel);SetLastError(returned);
+}
+}
+void invalidate_population_surface() noexcept {
+ auto& p=population_runtime();p.surface_selected.store(0,std::memory_order_release);
+ advance_surface_counter(p.surface_generation);arcade_mode::invalidate_traffic_surface();
+}
+arcade_mode::TrafficSurfaceSelection select_population_surface(std::uint64_t id) noexcept {
+ auto& p=population_runtime();
+ if(!(id>>32)||!p.surface_removal_ready.load(std::memory_order_acquire)||p.surface_exhausted.load(std::memory_order_acquire)||
+    p.surface_removals_active.load(std::memory_order_acquire))return {};
+ // The caller holds native_mutex and has already proved traffic membership.
+ if(p.surface_selected.load(std::memory_order_acquire)!=id){
+  invalidate_population_surface();p.surface_selected.store(id,std::memory_order_release);
+ }
+ arcade_mode::TrafficSurfaceSelection out{id,p.surface_generation.load(std::memory_order_acquire),p.surface_revision.load(std::memory_order_acquire),true};
+ return population_surface_current(out)?out:arcade_mode::TrafficSurfaceSelection{};
+}
+bool population_surface_current(arcade_mode::TrafficSurfaceSelection s) noexcept {
+ auto& p=population_runtime();
+ return s.removal_free&&(s.id>>32)&&s.generation&&p.surface_removal_ready.load(std::memory_order_acquire)&&
+  !p.surface_exhausted.load(std::memory_order_acquire)&&!p.surface_removals_active.load(std::memory_order_acquire)&&
+  p.surface_selected.load(std::memory_order_acquire)==s.id&&p.surface_generation.load(std::memory_order_acquire)==s.generation&&
+  p.surface_revision.load(std::memory_order_acquire)==s.removals&&!p.surface_removals_active.load(std::memory_order_acquire);
+}
+void start_population_surface_observer() noexcept {
+ auto& p=population_runtime();if(p.surface_removal_ready.load(std::memory_order_acquire))return;
+ try{
+  const auto base=local_runtime().base;std::array<unsigned char,32> bytes{};
+  if(!base||!memory::read_bytes(base+surface_removal_rva,bytes.data(),bytes.size())||bytes!=surface_removal_bytes)return;
+  auto* target=reinterpret_cast<void*>(base+surface_removal_rva);
+  if(hook_prepare(target,reinterpret_cast<void*>(&population_surface_remove),reinterpret_cast<void**>(&p.surface_remove))!=HookOk)return;
+  if(hook_enable(target)!=HookOk)return;
+  p.surface_removal_ready.store(true,std::memory_order_release);
+ }catch(...){invalidate_population_surface();}
+}
 
 bool population_identity(std::uintptr_t manager, int realm) {
     std::uintptr_t vt{}, global{}; int actual{};
@@ -54,6 +112,7 @@ void population_release_config(std::uintptr_t manager) {
 }
 
 std::uintptr_t population_construct(std::uintptr_t manager, int realm, std::uintptr_t allocator) {
+    invalidate_population_surface();
     auto& p = population_runtime(); const auto result = p.construct(manager, realm, allocator);
     PreserveError preserve;
     try {
@@ -64,6 +123,7 @@ std::uintptr_t population_construct(std::uintptr_t manager, int realm, std::uint
 }
 
 std::uintptr_t population_destroy(std::uintptr_t manager, unsigned flags) {
+    invalidate_population_surface();
     auto& p = population_runtime();
     { PreserveError preserve; std::lock_guard lock(world_control_runtime().mutex);
       population_release_config(manager); p.nodes.erase(manager); }
