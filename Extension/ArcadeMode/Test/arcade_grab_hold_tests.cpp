@@ -11,6 +11,14 @@ void check(bool value, const char* why) {
 }
 int main() {
     ActionContext air{true, true, true, false, true, false};
+    {
+        ActionDispatch undelivered;
+        undelivered.request_grab(ArcadeTrick::basic_bs_grab,100,air,true);
+        check(undelivered.release_grab(100)==DispatchResult::unavailable,
+              "undelivered release explicitly reports missing execution rather than a completed native stage");
+        check(!undelivered.sample(100,air).owns_triggers&&!undelivered.busy(),
+              "release before any pad delivery cannot fabricate an initialization or out stage");
+    }
     for (auto held_ms : {1u, 500u, 534u, 1000u, 10000u}) {
         ActionDispatch dispatch;
         check(dispatch.request_grab(ArcadeTrick::basic_bs_grab, 100, air, true) == DispatchResult::started,

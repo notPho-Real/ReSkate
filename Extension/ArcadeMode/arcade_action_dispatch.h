@@ -30,7 +30,9 @@ public:
         if (plan.readiness != ActionReadiness::candidate) return DispatchResult::unavailable;
         return grab_.start(plan, now, true, true, held) ? DispatchResult::started : DispatchResult::unavailable;
     }
-    void release_grab(std::uint64_t now) noexcept { grab_.release(now); }
+    DispatchResult release_grab(std::uint64_t now) noexcept {
+        return grab_.release(now) ? DispatchResult::started : DispatchResult::unavailable;
+    }
     DispatchResult request_revert(RevertSide side, RevertContext stance, std::uint64_t now,
                                   const ActionContext& context) noexcept {
         const auto gate = eligibility(context);

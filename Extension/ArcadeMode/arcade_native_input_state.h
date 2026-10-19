@@ -18,6 +18,7 @@ struct NativeInputFrame {
     std::uint64_t owner_generation{}, contact_generation{}, action_generation{}, physics_step{}, sampled_at{};
     std::uint32_t state{}, mode{}, contacts{}, stance_and_push{};
     std::int32_t flip_id{-1};
+    std::uintptr_t selection_object{}; // Internal identity, not a native action occurrence.
     // Generations invalidate correlation; they are not action occurrences.
     // Rail family does not establish a named grind, slide, Lip, early/established
     // phase or geometry. Grab initialization/ForceInit remains unknown.
@@ -40,13 +41,13 @@ public:
             if ((sample.state != frame_.state || sample.crouch_mode != frame_.mode || contacts != frame_.contacts) &&
                 !increment(contact_generation_)) return {};
             if ((sample.state != frame_.state || stance_and_push != frame_.stance_and_push || flip.valid != frame_.flip_known ||
-                 (flip.valid && flip.id != frame_.flip_id)) && !increment(action_generation_)) return {};
+                 (flip.valid && (flip.id != frame_.flip_id || flip.object != frame_.selection_object))) && !increment(action_generation_)) return {};
         }
         if (!increment(step_)) return {};
         namespace rail = game::build::v20260929::grind_exit;
         frame_ = {true, sample.state >= rail::grind_states_first && sample.state < rail::grind_states_end,
             flip.valid, owner, owner_generation_, contact_generation_, action_generation_, step_, now,
-            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1};
+            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0};
         continuity_ = true;
         return frame_;
     }

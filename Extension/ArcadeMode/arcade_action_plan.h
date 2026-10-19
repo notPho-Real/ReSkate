@@ -97,14 +97,18 @@ public:
         // Only the established trigger-only native grab has a proven hold pad.
         // Named modifier candidates retain their existing bounded recipes.
         if (held && (plan.requested != ArcadeTrick::basic_bs_grab || plan.count != 2)) return false;
-        plan_ = plan; began_ = last_ = now; active_ = true; held_ = held; released_ = false;
+        plan_ = plan; began_ = last_ = now; active_ = true; held_ = held; released_ = emitted_ = false;
         return true;
     }
-    void cancel() noexcept { active_ = held_ = released_ = false; }
-    void release(std::uint64_t now) noexcept {
-        if (!active_ || !held_ || released_) return;
-        if (now < last_) { cancel(); return; }
+    void cancel() noexcept { active_ = held_ = released_ = emitted_ = false; }
+    // Acknowledges only the existing pad recipe, never native minimum-init.
+    // A tap released before its first pad cannot skip straight to an out pad.
+    bool release(std::uint64_t now) noexcept {
+        if (!active_ || !held_) return false;
+        if (now < last_ || !emitted_) { cancel(); return false; }
+        if (released_) return true;
         released_ = true; released_at_ = last_ = now;
+        return true;
     }
     bool busy() const noexcept { return active_; }
     Sample sample(std::uint64_t now, bool gameplay_fresh, bool observed_airborne, bool conflict = false) noexcept {
@@ -114,7 +118,7 @@ public:
         }
         last_ = now;
         if (held_) {
-            if (!released_) return {true, false, false, 0, plan_.steps[0].pad};
+            if (!released_) { emitted_ = true; return {true, false, false, 0, plan_.steps[0].pad}; }
             if (now - released_at_ < plan_.steps[1].duration_ms)
                 return {true, false, false, 1, plan_.steps[1].pad};
             cancel(); return {false, true, false};
@@ -129,6 +133,6 @@ public:
 private:
     NativeActionPlan plan_{};
     std::uint64_t began_{}, last_{}, released_at_{};
-    bool active_{}, held_{}, released_{};
+    bool active_{}, held_{}, released_{}, emitted_{};
 };
 }

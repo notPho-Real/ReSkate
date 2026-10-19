@@ -6,6 +6,7 @@ namespace dingosdk::arcade_mode {
 struct NativeFlipSelection {
     bool valid{};
     std::int32_t id{-1};
+    std::uintptr_t object{}; // Internal lifetime identity; never serialized or logged.
     bool operator==(const NativeFlipSelection&) const = default;
 };
 // Reader is a bounded read(address, typed_value). Owner validation is the caller's
@@ -20,6 +21,6 @@ NativeFlipSelection read_flip_selection(Reader&& read, std::uintptr_t core) noex
     if (!read(core + layout::core_selection, before) || before < 0x10000 || before > highest - layout::selection_flip ||
         !read(before + layout::selection_flip, id) || id < -1 || id > 63 ||
         !read(core + layout::core_selection, after) || after != before) return {};
-    return {true, id};
+    return {true, id, before};
 }
 }

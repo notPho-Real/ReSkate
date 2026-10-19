@@ -946,7 +946,7 @@ using namespace dingosdk::arcade_mode::baseline;
             }
             return false;
         };
-        check(read_flip_selection(read, core) == NativeFlipSelection{true, 2}, "read the actual native flip selection");
+        check(read_flip_selection(read, core) == NativeFlipSelection{true, 2, selection}, "read the actual native flip selection");
         replace = true;
         check(!read_flip_selection(read, core).valid, "selection replacement invalidates native trick evidence");
         replace = false; unreadable = true;
@@ -957,7 +957,7 @@ using namespace dingosdk::arcade_mode::baseline;
             check(!read_flip_selection(read, core).valid, "out-of-range native identifiers are rejected");
         }
         id = -1;
-        check(read_flip_selection(read, core) == NativeFlipSelection{true, -1}, "native no-trick sentinel remains distinct from unknown");
+        check(read_flip_selection(read, core) == NativeFlipSelection{true, -1, selection}, "native no-trick sentinel remains distinct from unknown");
         check(!read_flip_selection(read, 0).valid && !read_flip_selection(read, UINTPTR_MAX).valid,
             "native selection never follows null or overflowing core addresses");
     }
