@@ -24,6 +24,8 @@ struct InputAdmission {
     InputAdapter extensions{};
     InputSurfaceState surface{};
     bool named_grab_bindings{};
+    InputBalanceControls balance_controls{};
+    InputBoardBinding board_binding{};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -31,7 +33,7 @@ class InputSession {
 public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
-        push_.reset(); board_.reset(); rail_ = holding_ = air_action_ = false;
+        push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
@@ -39,21 +41,23 @@ public:
         if (authored_.schedule() == schedule) return;
         reset(); authored_.set_schedule(schedule);
     }
-    bool busy() const noexcept { return auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || extension_started_; }
+    bool busy() const noexcept { return auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
     const UnifiedInput::Diagnostic& diagnostic() const noexcept { return input_.diagnostic(); }
     const InputHistory& history() const noexcept { return input_.history(); }
     InputRequest pending_manual() const noexcept { return input_.pending_manual(); }
+    InputRequest pending_grab() const noexcept { return input_.pending_grab(); }
     NativeGesture::Output poll(std::uint64_t now, PhysicalInputSample physical,
                               std::int16_t rx, std::int16_t ry, InputAdmission admission) noexcept {
         NativeGesture::Output output{physical.buttons, rx, ry};
-        if (clocked_ && admission.input_policy != policy_) reset();
+        if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_)) reset();
+        offboard_ = admission.offboard; board_binding_ = admission.board_binding;
         policy_ = admission.input_policy;
         if (clocked_ && admission.action_mode != mode_) {
             auxiliary_.cancel(); grab_hold_button_ = 0; input_.cancel_auxiliary();
         }
         mode_ = admission.action_mode;
-        if (!admission.gameplay || admission.offboard || admission.pose == SkatePose::bail ||
-            (admission.pose == SkatePose::unknown && !admission.may_start && !manual_.busy()) ||
+        if (!admission.gameplay || (physical.buttons & 0x0030u) || admission.pose == SkatePose::bail ||
+            (!admission.offboard && admission.pose == SkatePose::unknown && !manual_.busy()) ||
             (clocked_ && (now < last_ || admission.tick < last_tick_))) {
             reset();
             if (admission.gameplay && admission.offboard) output.right_x = output.right_y = 0;
@@ -61,7 +65,7 @@ public:
         }
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
-        output.buttons &= static_cast<std::uint16_t>(~(classic_a | classic_x | 15u | 0x8000u));
+        if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~(classic_a | classic_x | 15u | 0x8000u));
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
@@ -75,25 +79,26 @@ public:
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
             input_.pending_manual().action != InputAction::none;
-        const InputContext context = admission.observed_lip ? InputContext::lip : admission.pose == SkatePose::air ? InputContext::air :
+        const InputContext context = admission.offboard ? InputContext::foot : admission.observed_lip ? InputContext::lip : admission.pose == SkatePose::air ? InputContext::air :
             manual_contact && !awaiting_admission ? InputContext::balance :
             admission.pose == SkatePose::grind ? InputContext::rail : InputContext::ground;
-        const bool action_enabled = admission.action_mode != ActionExperiment::off;
+        const bool action_enabled = !admission.offboard && admission.action_mode != ActionExperiment::off;
         if (!admission.action_fresh || !action_enabled) auxiliary_.cancel();
-        output.action.consume_buttons = admission.action_fresh &&
+        output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
              (admission.action_mode == ActionExperiment::classic && context == InputContext::air)) ? 0x2000 : 0;
-        output.action.consume_rt = admission.action_fresh &&
+        output.action.consume_rt = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::classic || admission.action_mode == ActionExperiment::revert_frontside ||
              admission.action_mode == ActionExperiment::revert_backside);
         const bool manual_conflict = authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers;
         InputEnvironment environment{context, true, admission.external_owner, admission.nollie, admission.observed_balance_branch ? admission.observed_balance_branch : admission.pose == SkatePose::nose_manual ? 13u : 0u,
             admission.manual_safe && !admission.external_owner && !triggers,
             admission.manual_prepare && !admission.external_owner && !triggers, manual_.busy() || reset_manual,
-            action_enabled && admission.action_fresh, !authored_.busy() && !auxiliary_.busy(), admission.may_start,
+            action_enabled && admission.action_fresh, !authored_.busy() && !auxiliary_.busy(), admission.may_start && !admission.offboard,
             admission.pose == SkatePose::riding || admission.pose == SkatePose::air || manual_.busy() || awaiting_admission,
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
-            admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs};
+            admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
+            admission.may_toggle_board && !board_active_, admission.board_binding};
         input_.poll(now, physical, environment, {this, &receive});
         if (reset_manual) input_.reset_manual_continuity();
         // A released A ends native setup even when another request superseded
@@ -126,18 +131,24 @@ public:
         }
         ActionContext action_context{admission.action_mode != ActionExperiment::observe, admission.action_fresh,
             context == InputContext::air, context == InputContext::ground, admission.inspected_stance,
-            busy || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
+            busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
         if (!admission.inspected_stance || (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
         const auto& action = output.action.pad;
         output.action.owned = action.owns_right_stick || action.owns_left_stick || action.owns_triggers || action.owns_face_buttons;
-        const auto board = board_.poll(now, output.buttons, true,
-            admission.may_toggle_board && !busy && !output.action.owned && !triggers && !(physical.buttons & ~BoardChord::pair));
-        output.buttons = board.buttons;
-        if (board.pulse) output.phase = 3;
+        const bool board_permitted = admission.may_toggle_board && !busy && !output.action.owned && !triggers &&
+            !admission.external_owner && !(physical.buttons & static_cast<std::uint16_t>(~board_control_));
+        if (!board_permitted || (board_active_ && now - board_at_ >= BoardChord::pulse_ms)) board_active_ = false;
+        const auto board = board_.poll(now, board_active_ ? BoardChord::pair : 0, true, board_permitted);
+        if (!(physical.buttons & board_consumed_)) board_consumed_ = 0;
+        output.buttons &= static_cast<std::uint16_t>(~board_consumed_);
+        if (board.pulse) {
+            output.buttons = static_cast<std::uint16_t>((output.buttons & ~board_control_) | BoardChord::native_y);
+            output.phase = 3; busy = true;
+        }
         const bool conflict = physical.buttons || triggers || busy || output.action.owned || admission.external_owner;
-        if (push_.poll(now, physical.x, physical.y, admission.speed, true, admission.may_push && !conflict))
+        if (push_.poll(now, physical.x, physical.y, admission.speed, true, !admission.offboard && admission.pose == SkatePose::riding && admission.may_push && !conflict))
             output.buttons |= NativeGesture::x;
         output.movement_intent = push_.movement_intent();
         output.command_busy = busy || output.action.owned || board.pulse;
@@ -163,6 +174,12 @@ private:
         const bool airborne = admission.pose == SkatePose::air;
         const auto context = admission.pose == SkatePose::grind ? GestureContext::from_grind : launch_context_;
         switch (request.action) {
+        case InputAction::board_toggle:
+            if (!admission.may_toggle_board || authored_.busy() || manual_.busy() || auxiliary_.busy() ||
+                admission.external_owner || physical_.lt > 30 || physical_.rt > 30 ||
+                (physical_.buttons & static_cast<std::uint16_t>(~request.control))) return InputDisposition::cancelled;
+            board_.reset(); board_.poll(now_,0,true,true); board_active_ = true;
+            board_at_ = now_; board_control_ = board_consumed_ = request.control; return InputDisposition::started;
         case InputAction::crouch:
             // Lip exits require their own admitted actor and release policy.
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
@@ -252,7 +269,9 @@ private:
             out.trick = classic && !request.named_binding && request.presses == 1 ? ArcadeTrick::basic_bs_grab :
                 select_named_trick(TrickFamily::grab, direction(request.direction), request.presses);
             if (out.trick == ArcadeTrick::basic_bs_grab && request.control && !(physical_.buttons & request.control)) {
-                out.result = DispatchResult::unsafe_context; return InputDisposition::cancelled;
+                // Recognition survives release. The native adapter must supply its
+                // minimum initialization/out stage before a released tap can run.
+                out.result = DispatchResult::unavailable; return InputDisposition::waiting;
             }
             out.result = classic && (out.trick != ArcadeTrick::basic_bs_grab || admission.nollie) ? DispatchResult::unavailable :
                 admission.action_mode == ActionExperiment::grabs || classic ? auxiliary_.request_grab(out.trick, now_, context, out.trick == ArcadeTrick::basic_bs_grab) : DispatchResult::disabled;
@@ -282,6 +301,10 @@ private:
     ActionDispatch auxiliary_{};
     AutomaticPush push_{};
     BoardChord board_{};
+    bool board_active_{}, offboard_{};
+    std::uint64_t board_at_{};
+    std::uint16_t board_control_{BoardChord::pair}, board_consumed_{};
+    InputBoardBinding board_binding_{};
     ActionExperiment mode_{ActionExperiment::off};
     InputPolicy policy_{InputPolicy::production()};
     InputAdmission admission_{};

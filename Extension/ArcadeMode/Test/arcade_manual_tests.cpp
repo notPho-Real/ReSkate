@@ -182,7 +182,7 @@ int run_arcade_manual_tests() {
         }
     }
     for (const auto pose : {SkatePose::riding, SkatePose::air}) {
-        const auto window = pose == SkatePose::air ? 400u : 275u;
+        const auto window = pose == SkatePose::air ? 399u : 275u;
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
@@ -194,7 +194,7 @@ int run_arcade_manual_tests() {
                     const auto out = poll(manual, 10 + window + offset, buttons ? 0 : -first,
                         pose, buttons ? (nose ? 1 : 2) : 0);
                     check(out.owns_stick == (offset == 0),
-                        "ground220 plus55ms sampling slack and air400 have exact independent boundaries");
+                        "ground220 plus55ms allowance and strict air400 have independent boundaries");
                 }
             }
         }

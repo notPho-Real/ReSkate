@@ -111,7 +111,7 @@ void normalization_tests() {
     input.sample(10, {0x1001, 0, 25000, 255, 255});
     check(input.history().events().empty(), "held startup input is baseline, not press");
     input.sample(20, {});
-    check(input.history().events().size() == 8, "buttons directions and triggers release exactly once");
+    check(input.history().events().size() == 6, "one general direction, two explicit Manual projections and three physical controls release once");
     input.discard_intent(); input.sample(30, {});
     check(input.history().events().empty(), "discarding intent retains physical baseline");
     input.sample(40, {0x4000, 25000, 25000, 30, 128});
@@ -195,6 +195,47 @@ void queue_lifecycle_tests() {
     queue.push({InputAction::manual, InputContext::air, 30, 730, 1});
     queue.dispatch(31, 1, InputContext::rail, {}, report);
     check(reports == 5 && queue.slots()[0].action == InputAction::none, "grind context cancels pending manual rather than extending landing admission");
+}
+
+void queue_action_cancellation_tests() {
+    struct Cancelling {
+        InputRequestQueue* queue;
+        InputAction target;
+        bool replace;
+        unsigned calls{};
+        static InputDisposition receive(void* state, const InputRequest& request) noexcept {
+            auto& self = *static_cast<Cancelling*>(state);
+            ++self.calls;
+            if (self.calls > 1) return InputDisposition::waiting;
+            self.queue->cancel(self.target);
+            if (self.replace) {
+                auto replacement = request;
+                replacement.recognized_at = 30;
+                self.queue->push(replacement);
+            }
+            return InputDisposition::waiting;
+        }
+    };
+    for (InputAction action : {InputAction::grab, InputAction::manual, InputAction::rail_select})
+    for (bool same_action : {false, true}) for (bool replace : {false, true}) {
+        InputRequestQueue queue;
+        const auto unrelated = action == InputAction::manual ? InputAction::nose_manual : InputAction::flip;
+        Cancelling sink{&queue, same_action ? action : unrelated, replace};
+        queue.push({action, InputContext::air, 10, 100, 1});
+        unsigned cancelled{};
+        queue.dispatch(20, 1, InputContext::air, {&sink, Cancelling::receive},
+            [&](InputDispatchEvent event) { cancelled += event.disposition == InputDisposition::cancelled; });
+        unsigned original{}, replacement{};
+        for (const auto& request : queue.slots()) if (request.action == action) {
+            original += request.recognized_at == 10;
+            replacement += request.recognized_at == 30;
+        }
+        const bool dedicated = action != InputAction::grab;
+        check(original == (same_action || (dedicated && replace) ? 0u : 1u), "action cancellation during a waiting callback cannot restore cancelled intent or discard unrelated intent");
+        check(replacement == (replace ? 1u : 0u), "cancellation preserves replacement requests inserted after the boundary");
+        check(cancelled == (same_action || (dedicated && replace) ? 1u : 0u), "cancelled or replaced in-flight intent is reported exactly once");
+        if (same_action) check(sink.calls == (replace && !dedicated ? 2u : 1u), "a cancelled request cannot reenter the adapter; an ordinary replacement can advance immediately");
+    }
 }
 
 void router_tests() {
@@ -300,7 +341,7 @@ void sampled_replay_tests() {
         const InputEnvironment air{InputContext::air, true};
         input.poll(0, {}, air, adapter.bind()); input.poll(10, {0, 0, 25000}, air, adapter.bind());
         input.poll(10 + gap, {0, 0, -25000}, air, adapter.bind());
-        check((adapter.calls != 0) == (gap <= 400), "air recognition boundary is independent of ground slack");
+        check((adapter.calls != 0) == (gap < 400), "air query rejects its exact400ms endpoint independently of the ground sampling allowance");
     }
     for (const unsigned gap : {100u, 499u, 500u, 600u}) {
         UnifiedInput input; Adapter adapter;
@@ -314,6 +355,6 @@ void sampled_replay_tests() {
 
 }
 int main() {
-    journal_tests(); overlap_footprint_tests(); normalization_tests(); queue_tests(); queue_lifecycle_tests(); router_tests(); deferred_recognition_tests(); sampled_replay_tests();
+    journal_tests(); overlap_footprint_tests(); normalization_tests(); queue_tests(); queue_lifecycle_tests(); queue_action_cancellation_tests(); router_tests(); deferred_recognition_tests(); sampled_replay_tests();
     std::cout << checks << " event architecture checks passed\n";
 }

@@ -80,8 +80,9 @@ std::atomic<std::uint64_t> motion_capture_until{};
 std::atomic<std::uint64_t> movement_eligible_until{};
 bool native_board_velocity(std::array<float, 3>& velocity) noexcept;
 std::atomic<bool> authored_mirror_x{};
-// Canonical normalization and220ms reference query; compatibility55ms is an explicit alternative policy.
-ArcadeInput arcade_input(true, InputPolicy::strict());
+// Preserve the named production Manual sampling allowance. Canonical strict
+// normalization remains an explicit policy rather than an implicit migration.
+ArcadeInput arcade_input(true, InputPolicy::production());
 std::mutex ollie_mutex;
 std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
 bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
@@ -258,9 +259,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             manual_closed ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
             arcade_input.cancel_manuals();
-        manual_balance_admitted.store(manual_observation.confirmed &&
-            combo_session.model().state().balance_kind == BalanceKind::manual &&
-            !manual_closed, std::memory_order_relaxed);
+        const bool balance_admitted = manual_observation.confirmed &&
+            combo_session.model().state().balance_kind == BalanceKind::manual && !manual_closed;
+        manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);
+        arcade_input.publish_balance_controls(balance_admitted ? InputBalanceControls::vertical(
+            pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual) :
+            InputBalanceControls{}, native_frame);
         const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
         manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 &&

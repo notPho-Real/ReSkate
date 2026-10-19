@@ -26,15 +26,24 @@ public:
     bool publish_authority(std::uint64_t now, std::uint64_t owner, unsigned source, bool focused) noexcept {
         focused = focused && owner && source < 0x100 && (source & 1u);
         const bool changed = owner_ != owner || source_ != source || focused_ != focused;
-        if (changed) cancel_commands();
+        if (changed) { cancel_commands(); balance_controls_ = {}; balance_frame_ = {}; }
         owner_ = owner; source_ = source; focused_ = focused; authority_at_ = now;
         return changed;
     }
-    void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; cancel_commands(); }
+    void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
     void publish_native_context(NativeInputFrame frame) noexcept { native_ = frame; native_required_ = true; }
     NativeInputFrame native_context(std::uint64_t now) const noexcept {
         return native_.valid && native_.owner_generation == owner_ && now >= native_.sampled_at &&
             now-native_.sampled_at <= 150 ? native_ : NativeInputFrame{};
+    }
+    // Controls are admitted by the native mechanic owner, not inferred from
+    // a rail enum or from the control being held. Bind them to its exact episode.
+    void publish_balance_controls(InputBalanceControls controls, NativeInputFrame proof) noexcept {
+        balance_controls_ = controls.admitted && proof.valid ? controls : InputBalanceControls{};
+        balance_frame_ = proof;
+    }
+    const InputHistory* history(unsigned user) const noexcept {
+        return user < sessions_.size() ? &sessions_[user].history() : nullptr;
     }
     std::uint64_t owner_epoch() const noexcept { return owner_; }
     bool admitted(unsigned user, std::uint64_t now) const noexcept {
@@ -89,6 +98,12 @@ public:
                 admission.manual_balance_admitted = false;
             }
             admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;
+            if (balance_controls_.admitted && balance_frame_.owner_generation == native.owner_generation &&
+                balance_frame_.contact_generation == native.contact_generation &&
+                balance_frame_.action_generation == native.action_generation) {
+                admission.balance_controls = balance_controls_;
+                admission.observed_lip = balance_controls_.kind == InputBalanceKind::lip;
+            }
         }
         return sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
     }
@@ -96,7 +111,8 @@ private:
     bool enabled_{}, native_bound_{}, focused_{}, native_required_{};
     InputPolicy policy_;
     Physical physical_{};
-    NativeInputFrame native_{};
+    NativeInputFrame native_{}, balance_frame_{};
+    InputBalanceControls balance_controls_{};
     std::uint64_t owner_{}, authority_at_{};
     unsigned source_{};
     std::array<InputSession, 4> sessions_{};
