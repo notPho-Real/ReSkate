@@ -108,6 +108,8 @@ int main(){
       "delivered pending landing preserves physical repeat history before delayed identity without creating balance");
   request.owns=false;acquisition.observe(1034,frame,request,true);
   check(!acquisition.preserves_history(1034,frame),"withdrawn command cannot preserve history through ordinary landing indefinitely");
+  for(std::uint64_t at=1100;at<=2200;at+=100){if(at==2200)s.words[1]=nose?0x8000:0x4000;frame=observer.observe(at,owner,s,{true,-1});}
+  check(!acquisition.step(2200,frame,nose?SkatePose::nose_manual:SkatePose::manual,false,true),"withdrawn unacquired command cannot claim an unrelated later native contact");
  }
  for(auto age:{149u,150u,151u,249u,250u,251u}){
   check(BalanceHudLease::fresh(std::chrono::milliseconds(age))==(age<=150),"HUD cannot extend the native observation lease to the former250ms stale-display interval");

@@ -14,6 +14,7 @@ public:
         if (!eligible || !fresh(now,frame)) { reset(); return; }
         if (active_ && !same_owner(frame)) reset();
         delivered_ = command.owns;
+        if (!command.owns && !acquired_) { reset(); return; }
         if (!command.owns || (command.request != -1 && command.request != 1) || command.request_at > now) return;
         if (!active_) {
             active_ = true; owner_ = frame.owner; generation_ = frame.owner_generation;
