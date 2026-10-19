@@ -65,7 +65,10 @@ public:
             // have separate deadlines. Rebounds cannot renew any of them.
             if (air_prepared_ && !landed_ && !confirmed_) {
                 if (now - requested_at_ > air_request_ms) { cancel(); return {}; }
-                if (observed != SkatePose::air) { landed_ = true; requested_at_ = now; }
+                // Missing observation is neither ground nor wheel contact. It
+                // cannot turn the recognition deadline into a fresh lease.
+                if (observed == SkatePose::riding || observed == SkatePose::manual ||
+                    observed == SkatePose::nose_manual) { landed_ = true; requested_at_ = now; }
             }
             const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;
             const auto opposite = requested_ < 0 ? SkatePose::nose_manual : SkatePose::manual;

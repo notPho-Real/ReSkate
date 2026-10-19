@@ -238,7 +238,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // Publish one pose/eligibility snapshot to XInput. A pending direction
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
-        if (!valid || owner_changed || observation_gap || bail) {
+        // Safe putdown clears the complete old input episode once. Repeated
+        // contact polls keep neutral ownership without erasing fresh escape input.
+        if (!valid || owner_changed || observation_gap || bail || release.started) {
             arcade_input.cancel_commands();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();
