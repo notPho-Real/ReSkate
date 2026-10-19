@@ -75,9 +75,7 @@ public:
     NativeInputFrame balance_admission(std::uint64_t now, InputBalanceKind kind) const noexcept {
         const auto native = native_context(now);
         return native.valid && balance_controls_.admitted && balance_controls_.kind == kind &&
-            now >= balance_frame_.sampled_at && now-balance_frame_.sampled_at <= 150 &&
-            balance_frame_.owner_generation == native.owner_generation &&
-            balance_frame_.contact_generation == native.contact_generation &&
+            balance_controls_current(now,native) &&
             balance_frame_.action_generation == native.action_generation ? balance_frame_ : NativeInputFrame{};
     }
     const InputHistory* history(unsigned user) const noexcept {
@@ -176,8 +174,7 @@ public:
                 admission.manual_balance_admitted = false;
             }
             admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;
-            if (balance_controls_.admitted && now >= balance_frame_.sampled_at && now-balance_frame_.sampled_at <= 150 &&
-                balance_frame_.owner_generation == native.owner_generation && balance_frame_.contact_generation == native.contact_generation) {
+            if (balance_controls_current(now,native)) {
                 admission.balance_controls = balance_controls_;
                 // Phase/identity admission needs all three generations; physical
                 // correction exclusions retain their independent owner/contact binding.
@@ -195,6 +192,17 @@ public:
         return output;
     }
 private:
+    bool balance_controls_current(std::uint64_t now,const NativeInputFrame& native) const noexcept {
+        // A generation is an invalidation counter, not sufficient owner proof.
+        // Retain the component's original lease and physical observation order.
+        return native.valid && balance_controls_.admitted && balance_frame_.valid &&
+            balance_frame_.owner.valid() && balance_frame_.owner == native.owner &&
+            balance_frame_.physics_step && balance_frame_.physics_step <= native.physics_step &&
+            balance_frame_.sampled_at <= native.sampled_at && now >= balance_frame_.sampled_at &&
+            now-balance_frame_.sampled_at <= 150 &&
+            balance_frame_.owner_generation == native.owner_generation &&
+            balance_frame_.contact_generation == native.contact_generation;
+    }
     bool enabled_{}, native_bound_{}, focused_{};
     InputPolicy policy_;
     Physical physical_{};
