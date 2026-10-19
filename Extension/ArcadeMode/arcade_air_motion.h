@@ -2,6 +2,7 @@
 #include "arcade_gameplay_profile.h"
 #include <array>
 #include <cmath>
+#include <limits>
 
 namespace dingosdk::arcade_mode {
 // An accepted crouch command starts charge acquisition. This is an execution
@@ -88,7 +89,20 @@ public:
             vertical_ = true; pending_ = false;
         } else if (taking_off) {
             vy_ = frame.velocity_y; vertical_ = true; // A step off a ledge is not an extra jump.
-        } else if (vertical_) vy_ -= 1350 * GameplayProfile::metres_per_inch * frame.dt;
+        } else if (vertical_) {
+            const float expected = vy_ - 1350 * GameplayProfile::metres_per_inch * frame.dt;
+            const auto same = [](float a, float b) {
+                return std::abs(a-b) <= 8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
+            };
+            if (same(frame.velocity_y, vy_)) vy_ = expected;
+            else if (same(frame.velocity_y, expected)) vy_ = frame.velocity_y;
+            else {
+                // A native impulse/contact or an unmodelled trajectory wins.
+                // Without independent force identity, never overwrite it with
+                // a cached ballistic path or count it as a new charged launch.
+                vy_ = frame.velocity_y; vertical_ = false;
+            }
+        }
         const bool angular = intent.angular_allowed && (intent.yaw_rate != 0 || spun_);
         if (intent.angular_allowed) {
             yaw_ = std::remainder(yaw_ + static_cast<double>(intent.yaw_rate) * frame.dt, 6.2831853071795864769);
@@ -101,28 +115,35 @@ public:
     template<std::size_t N>
     static bool apply_bodies(const AirMotionOutput& output,
         std::array<std::array<float, 3>, N>& velocities,
-        std::array<std::array<float, 3>, N>& spins) noexcept {
+        std::array<std::array<float, 3>, N>& spins,
+        const std::array<float, 3>& up = {0, 1, 0}) noexcept {
         static_assert(N > 0);
         if (!output.ready || (!output.vertical && !output.angular)) return false;
         const float dy = output.vertical ? output.velocity_y - velocities[0][1] : 0;
-        const float ds = output.angular ? output.spin_y - spins[0][1] : 0;
+        const float length = std::hypot(up[0], up[1], up[2]);
+        if (!std::isfinite(length) || length < .5f || length > 1.5f) return false;
+        const std::array<float, 3> axis{up[0]/length, up[1]/length, up[2]/length};
+        const float current = spins[0][0]*axis[0] + spins[0][1]*axis[1] + spins[0][2]*axis[2];
+        const float ds = output.angular ? output.spin_y-current : 0;
         for (std::size_t i = 0; i < N; ++i) {
             for (unsigned axis = 0; axis < 3; ++axis) {
                 const float v = velocities[i][axis] + (axis == 1 ? dy : 0);
-                const float s = spins[i][axis] + (axis == 1 ? ds : 0);
+                const float s = spins[i][axis] + ds * up[axis] / length;
                 if (!std::isfinite(v) || !std::isfinite(s) || std::abs(v) >= 1000 || std::abs(s) >= 1000) return false;
             }
         }
         for (std::size_t i = 0; i < N; ++i) {
-            velocities[i][1] += dy; spins[i][1] += ds;
+            velocities[i][1] += dy;
+            for (unsigned component = 0; component < 3; ++component) spins[i][component] += ds*axis[component];
         }
         return true;
     }
     static void rotate_target(std::array<float, 16>& matrix, float yaw) noexcept {
         const float c = std::cos(yaw), s = std::sin(yaw);
-        for (unsigned column : {0u, 4u, 8u}) {
-            const float x = matrix[column], z = matrix[column + 2];
-            matrix[column] = c * x + s * z; matrix[column + 2] = -s * x + c * z;
+        // Compose around the current local up basis, preserving that basis.
+        for (unsigned axis = 0; axis < 3; ++axis) {
+            const float x = matrix[axis], z = matrix[8+axis];
+            matrix[axis] = c*x-s*z; matrix[8+axis] = s*x+c*z;
         }
     }
 private:

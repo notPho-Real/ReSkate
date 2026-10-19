@@ -516,7 +516,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             }
         } else a.ground_resistance.reset();
         if (!output.vertical && !output.angular) return;
-        source_require(arcade_mode::AirMotion::apply_bodies(output, velocities, spins), "Air motion result is invalid.");
+        source_require(arcade_mode::AirMotion::apply_bodies(output, velocities, spins, bodies.up), "Air motion result is invalid.");
         for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
             if (output.vertical) body_write(bodies.parts[i] + 0x70, velocities[i]);
             if (output.angular) body_write(bodies.parts[i] + 0x90, spins[i]);

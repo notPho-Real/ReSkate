@@ -15,7 +15,10 @@ struct Fixture {
     AirMotionIntent intent{true, true, 1000, 0, 0, 0, 0, 1};
     AirMotionFrame frame{1000, 1, 100, 1.0f / 60, 5, 2, 0, true};
     AirMotionOutput sample(std::uint64_t now, unsigned state) {
-        intent.sampled_at = frame.now = now; frame.state = state; return controller.step(intent, frame);
+        intent.sampled_at = frame.now = now; frame.state = state;
+        const auto output=controller.step(intent,frame);
+        if(output.vertical) frame.velocity_y=output.velocity_y; // The production writer delivers this root velocity.
+        return output;
     }
 };
 }
@@ -47,6 +50,7 @@ int main() {
         f.intent.release_at = 1051; // A reread cannot renew a consumed identity.
         check(f.sample(1068, 201).velocity_y < next.velocity_y, "same launch token cannot relaunch or renew gravity history");
         check(!f.sample(1085, 100).vertical, "native contact ends controlled air motion without forcing state");
+        f.frame.velocity_y=30;
         check(near(f.sample(1102, 200).velocity_y, 30),
               "a later uncommanded air episode does not reuse the old launch token");
     }
@@ -130,5 +134,41 @@ int main() {
     velocities = original_velocities; spins = original_spins;
     check(!AirMotion::apply_bodies(AirMotionOutput{}, velocities, spins) && velocities == original_velocities && spins == original_spins,
           "unready execution cannot mutate a body batch");
+    for (float pitch : {-.5235987756f,.5235987756f,3.14159265359f}) for (float yaw : {-1.57079632679f,1.57079632679f}) {
+        const float c=std::cos(pitch), s=std::sin(pitch);
+        std::array<float,16> tilted{1,0,0,0, 0,c,s,0, 0,-s,c,0, 4,5,6,1};
+        const auto original=tilted;
+        AirMotion::rotate_target(tilted,yaw);
+        check(tilted[4]==original[4]&&tilted[5]==original[5]&&tilted[6]==original[6],
+              "local-Y rotation preserves a pitched or inverted up basis exactly");
+        check(near(tilted[8],std::sin(yaw))&&near(tilted[9],-std::cos(yaw)*s)&&near(tilted[10],std::cos(yaw)*c),
+              "rotated heading follows local frame composition instead of world-Y motion");
+        AirMotion::rotate_target(tilted,-yaw);
+        for(unsigned i=0;i<16;++i) check(near(tilted[i],original[i]),"opposite local turn restores the full native transform");
+        velocities=original_velocities; spins=original_spins;
+        const std::array<float,3> up{0,c,s};
+        check(AirMotion::apply_bodies(AirMotionOutput{true,false,true,0,7.75f,0},velocities,spins,up),
+              "local angular target reaches the physical body batch");
+        check(near(spins[0][1]*c+spins[0][2]*s,7.75f)&&near(spins[0][1]*(-s)+spins[0][2]*c,
+              original_spins[0][1]*(-s)+original_spins[0][2]*c)&&velocities==original_velocities,
+              "physical angular correction selects local-up rate while preserving perpendicular spin and linear motion");
+    }
+    for(float impulse : {-5.0f,4.0f}) {
+        Fixture external;external.sample(1000,100);
+        const auto launched=external.sample(1017,200);
+        external.frame.velocity_y=launched.velocity_y+impulse;
+        external.intent.yaw_rate=7.75f;
+        const auto changed=external.sample(1034,201);
+        check(!changed.vertical&&changed.angular&&near(changed.velocity_y,launched.velocity_y+impulse),
+              "a changed native vertical impulse relinquishes cached gravity while preserving local angular ownership");
+        check(!external.sample(1051,201).vertical,"same-air native takeover cannot silently restart cached ballistic ownership");
+        external.sample(1068,100);
+        check(external.sample(1085,200).vertical,"a new independently grounded air episode can reacquire ordinary gravity");
+    }
+    Fixture integrated;integrated.sample(1000,100);
+    const auto first_air=integrated.sample(1017,200);
+    integrated.frame.velocity_y=first_air.velocity_y-34.29f/60;
+    check(near(integrated.sample(1034,201).velocity_y,first_air.velocity_y-34.29f/60),
+          "already integrated selected native gravity is credited rather than applied twice");
     std::cout << checks << " native air motion execution checks passed\n";
 }
