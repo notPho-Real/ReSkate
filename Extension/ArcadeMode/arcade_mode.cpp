@@ -57,6 +57,7 @@ namespace dingosdk::arcade_mode {
 namespace {
 std::atomic<bool> ready{};
 std::atomic<bool> mode_enabled{};
+std::atomic<bool> auto_kick{true};
 bool preference_loaded{};
 std::uintptr_t score_probe_base{};
 // Only touched by the client thread, after initialization has been published.
@@ -928,6 +929,13 @@ bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
         manual_balance_admitted.load(std::memory_order_relaxed) && proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
 }
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
+bool auto_kick_enabled() noexcept { return auto_kick.load(std::memory_order_acquire); }
+void set_auto_kick(bool value, bool persist) noexcept {
+    auto_kick.store(value,std::memory_order_release);
+    // Withdraw the old drive budget until a physical poll publishes new controls.
+    set_arcade_push_intent(false);
+    if (persist) profile_runtime::set_local_preference("ArcadeAutoKick",value);
+}
 
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
     const auto restore = [&]() noexcept {
@@ -1078,6 +1086,7 @@ void on_client_tick() noexcept {
         const bool observed_clock = valid_clock && input_clock_valid.load(std::memory_order_acquire) &&
             stepped_at && clock_now >= stepped_at && clock_now-stepped_at <= 150;
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
+            set_auto_kick(profile_runtime::local_preference("ArcadeAutoKick").value_or(true),false);
             set_enabled(profile_runtime::local_preference("ArcadeMode").value_or(false), false);
             preference_loaded = true;
         }
@@ -1368,7 +1377,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         input_capture_correlation.maintain(now,arcade_input.native_context(now),input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(user,input_capture_correlation.captures(CaptureCorrelationSource::recognition));
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start || may_exit_grind, may_push, admission.speed,
+            game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,
@@ -1432,11 +1441,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
         const bool crouched = pose == SkatePose::riding && (physical_buttons & classic_a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
+        const auto ground_controls = GroundControl::physical(auto_kick_enabled(),physical_buttons,
+            action_physical.left_x,action_physical.left_y);
+        const bool square_push = rotation_enabled && admission.drive && ground_controls.known && ground_controls.square && pose == SkatePose::riding &&
+            !manual_hop.active() && physical_left_trigger <= 30 && physical_right_trigger <= 30 &&
+            !result.suppress_reverse && (!result.command_busy || crouched) && !action.owned && !reference;
+        if (!ground_controls.auto_kick && square_push) result.buttons |= classic_x;
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
         // A balance hop must not gain an ordinary crouch-kick assistance budget.
         const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && admission.drive && !offboard && !manual_hop.active() &&
-            drive_until >= now && drive_until - now <= 150 && result.movement_intent &&
-            pose == SkatePose::riding && (!physical_buttons || (physical_buttons == classic_a && crouched)) &&
+            drive_until >= now && drive_until - now <= 150 && ((ground_controls.auto_kick && result.movement_intent) || square_push) && !ground_controls.down &&
+            pose == SkatePose::riding && !(physical_buttons & static_cast<std::uint16_t>(~(classic_x | (crouched ? classic_a : 0)))) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
         if (user == 0) set_arcade_push_intent(drive_safe, crouched);
@@ -1465,7 +1480,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

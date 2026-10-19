@@ -38,6 +38,13 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+    auto auto_kick = action("arcadeautokick", "Read or change automatic ground kicking (saved)", Group::gameplay,
+        {argument("on|off", Type::boolean, true)});
+    auto_kick.run = [](const Model&, const Values& values, const Output& out) {
+        if (!values.empty()) arcade_mode::set_auto_kick(std::get<bool>(values[0]));
+        out(arcade_mode::auto_kick_enabled() ? "Automatic kicking ON" : "Automatic kicking OFF");
+    };
+    registry.add(std::move(auto_kick));
     auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..31)",Group::gameplay,
         {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true)});
     capture.run=[](const Model&,const Values& values,const Output& out){

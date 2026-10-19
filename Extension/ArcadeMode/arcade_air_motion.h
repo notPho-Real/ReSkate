@@ -52,6 +52,11 @@ struct NativeAirSpinProof {
     bool fresh(std::uint64_t now) const noexcept {
         return valid && owner.valid() && owner_generation && physics_step && now >= sampled_at && now-sampled_at <= 150;
     }
+    bool same_owner_observation(const NativeInputFrame& current, std::uint64_t now) const noexcept {
+        return fresh(now) && current.valid && current.owner.valid() && current.owner_generation && current.physics_step &&
+            now >= current.sampled_at && now-current.sampled_at <= 150 && owner == current.owner &&
+            owner_generation == current.owner_generation && physics_step <= current.physics_step && sampled_at <= current.sampled_at;
+    }
     bool matches(const NativeAirSpinProof& current, std::uint64_t now) const noexcept {
         return fresh(now) && current.fresh(now) && airborne && current.airborne && episode &&
             owner == current.owner && owner_generation == current.owner_generation &&
@@ -66,6 +71,7 @@ struct AirMotionIntent {
     float yaw_rate{};
     std::uint64_t generation{};
     NativeAirSpinProof angular_proof{};
+    GroundControl ground_controls{};
 };
 struct AirMotionFrame {
     std::uint64_t now{}, owner{};

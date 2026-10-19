@@ -25,6 +25,9 @@ TrafficSurfaceMotion traffic_surface_observation(std::uint64_t now,double second
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;
+// Saved ordinary-ground preference; the default retains automatic kicking.
+bool auto_kick_enabled() noexcept;
+void set_auto_kick(bool value, bool persist = true) noexcept;
 // Game update thread, via the normal menu/console command dispatcher.
 void set_enabled(bool value, bool persist = true) noexcept;
 // Unsaved development A/B selection; changing it requires Arcade Mode OFF.

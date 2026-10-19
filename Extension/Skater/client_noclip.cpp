@@ -299,6 +299,7 @@ struct PushSpeed {
     std::uint64_t drive_epoch{};
 };
 PushSpeed& push_speed() { static auto* value = new PushSpeed; return *value; }
+bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual = nullptr) noexcept;
 void trainer_push_speed(std::uintptr_t core) noexcept {
     auto& p = push_speed();
     const auto now = GetTickCount64();
@@ -328,6 +329,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 && std::abs(reader.value<float>(bodies.context, 0x1880)) > 0.05f);
         bool arcade_safe{}, arcade_start{}, arcade_crouched{};
+        arcade_mode::NativeInputFrame drive_frame{};
         if (arcade) {
             const auto epoch = p.arcade_epoch.load(std::memory_order_relaxed);
             if (epoch != p.drive_epoch) {
@@ -342,6 +344,9 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             if (owner != p.arcade_owner) {
                 p.arcade_drive.reset(); p.arcade_push_contacts.reset(); p.arcade_owner = owner;
             }
+            arcade_mode::NativeRequestSample sampled{};sampled.valid=true;sampled.state=physics;sampled.crouch_mode=mode;
+            sampled.words[0]=requests;sampled.words[1]=contacts;
+            drive_frame = arcade_mode::native_air_context(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled);
             const bool contact_recovery = p.arcade_push_contacts.poll(now, true, physics, mode, contacts,
                 (requests & 0x40u) != 0, false);
             const auto ground = arcade_mode::ground_motion_context(physics, mode, contacts,
@@ -362,6 +367,12 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         reader.verify();
         if (arcade) {
             if (!arcade_safe) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return; }
+            arcade_mode::AirMotionIntent controls{};
+            if (!read_arcade_air(controls) || !controls.enabled || now < controls.sampled_at || now-controls.sampled_at > 150 ||
+                !controls.angular_proof.same_owner_observation(drive_frame,now) ||
+                !controls.ground_controls.can_kick(std::hypot(std::hypot(velocities[0][0],velocities[0][2]),velocities[0][1]),arcade_crouched)) {
+                p.arcade_drive.reset(); return;
+            }
             const float change = p.arcade_drive.step(bodies.seconds, bodies.root, velocities[0],
                 arcade_crouched, arcade_start);
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
@@ -445,7 +456,7 @@ struct AtomicAirSpinProof {
 };
 struct ArcadeAir {
     std::atomic<std::uint64_t> version{}, sampled{}, release_sequence{}, release_at{}, ready_until{}, epoch{};
-    std::atomic<unsigned> charge{};
+    std::atomic<unsigned> charge{}, ground_controls{};
     std::atomic<float> yaw_rate{};
     std::atomic<bool> enabled{}, angular_allowed{};
     std::array<std::atomic<std::uintptr_t>,5> manual_owner{};
@@ -465,7 +476,7 @@ struct ArcadeAir {
     std::uint64_t stepped_at{}, generation{};
 };
 ArcadeAir& arcade_air() { static auto* value = new ArcadeAir; return *value; }
-bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual = nullptr) noexcept {
+bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual) noexcept {
     auto& a = arcade_air();
     const auto before = a.version.load(std::memory_order_acquire);
     if (before & 1u) return false;
@@ -474,6 +485,7 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
         a.release_at.load(std::memory_order_relaxed), a.charge.load(std::memory_order_relaxed),
         a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
     out.angular_proof = a.spin_proof.load();
+    out.ground_controls = arcade_mode::GroundControl::decode(a.ground_controls.load(std::memory_order_relaxed));
     if (manual) {
         for (std::size_t i=0;i<manual->owner.size();++i) manual->owner[i]=a.manual_owner[i].load(std::memory_order_relaxed);
         manual->sampled_at=a.manual_sampled.load(std::memory_order_relaxed);
@@ -549,8 +561,14 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         if ((physics == 100 || physics == 103) && ordinary && (contacts == 0xc000u || balancing) &&
             mode <= 2 && std::abs(velocities[0][1]) < .3f) {
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
+            const auto& controls = intent.ground_controls;
+            const bool controls_current = intent.angular_proof.same_owner_observation(native_frame,now);
+            const float total_speed = std::hypot(speed,velocities[0][1]);
+            const float facing_dot = velocities[0][0]*bodies.forward[0] + velocities[0][1]*bodies.forward[1] + velocities[0][2]*bodies.forward[2];
+            const bool selected_brake = controls_current && controls.known ? controls.trying_to_brake(total_speed,facing_dot) : braking;
+            const arcade_mode::GroundFriction friction{!controls_current || !controls.known || controls.auto_kick,false};
             const float change = a.ground_resistance.step(bodies.seconds, speed,
-                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), braking, balancing);
+                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
                 for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
@@ -762,7 +780,8 @@ void set_arcade_push_intent(bool active, bool crouched) noexcept {
 }
 void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
-    const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof) noexcept {
+    const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof,
+    const arcade_mode::GroundControl* ground_controls) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -774,6 +793,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
     a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
     a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
+    a.ground_controls.store(active && ground_controls ? ground_controls->encode() : 0,std::memory_order_relaxed);
     auto spin = angular_proof ? arcade_mode::NativeAirSpinProof::from_frame(*angular_proof) : arcade_mode::NativeAirSpinProof{};
     spin.valid = active && spin.valid;
     a.spin_proof.store(spin);

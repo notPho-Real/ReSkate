@@ -27,6 +27,43 @@ struct NativeManualContact {
         return true;
     }
 };
+// Physical ground controls; unknown native slope/vector flags are separate
+// capabilities and never select a slope exception or locked-vector branch.
+struct GroundControl {
+    bool known{}, auto_kick{true}, square{}, down{}, left{}, right{};
+    // Same pad precedence and axis quantization as the admitted production
+    // physical input. No event recognition or synthetic direction is produced.
+    static constexpr GroundControl physical(bool automatic, std::uint16_t buttons, short x, short y) noexcept {
+        const auto pad = buttons & 15u;
+        return {!(buttons&0x30u) && (pad&3u)!=3u && (pad&12u)!=12u,automatic,bool(buttons&0x4000u),
+            pad ? bool(pad&2u) : y < -13000,
+            pad ? bool(pad&4u) : x < -13000,
+            pad ? bool(pad&8u) : x > 13000};
+    }
+    static constexpr GroundControl decode(unsigned bits) noexcept {
+        return {bool(bits&1u),bool(bits&2u),bool(bits&4u),bool(bits&8u),bool(bits&16u),bool(bits&32u)};
+    }
+    constexpr unsigned encode() const noexcept {
+        return (known?1u:0u)|(auto_kick?2u:0u)|(square?4u:0u)|(down?8u:0u)|(left?16u:0u)|(right?32u:0u);
+    }
+    bool trying_to_brake(float speed, float facing_dot, bool pressing_down_brakes = true) const noexcept {
+        if (!known || !std::isfinite(speed) || speed < 0 || !std::isfinite(facing_dot)) return false;
+        constexpr float slow = 50 * GameplayProfile::metres_per_inch;
+        return (!auto_kick && !square && speed < slow) ||
+            (down && pressing_down_brakes && (speed < slow || (!left && !right) || facing_dot < 0));
+    }
+    bool can_kick(float speed, bool crouched, GameplayProfile profile = {}, bool force_disabled = false) const noexcept {
+        return known && !force_disabled && std::isfinite(speed) && speed >= 0 && (auto_kick || square) && !down &&
+            speed <= profile.kick_speed(crouched);
+    }
+};
+struct GroundFriction {
+    static constexpr float default_rolling = .00001f;
+    bool auto_kick{true}, bailing{};
+    float rolling{default_rolling};
+    bool valid() const noexcept { return std::isfinite(rolling) && rolling >= 0; }
+    bool enabled() const noexcept { return auto_kick || bailing || rolling != default_rolling; }
+};
 struct GroundMotionContext {
     bool eligible{}, crouched{}, may_start{};
 };
@@ -134,7 +171,7 @@ class GroundResistance {
 public:
     explicit GroundResistance(GameplayProfile profile = {}) noexcept : profile_(profile) {}
     void reset() noexcept { primed_ = limits_known_ = false; previous_ = 0; }
-    float selected_speed(float speed, float dt, bool crouched, bool braking = false, bool limits_known = true, bool ground_friction = true) const noexcept {
+    float selected_speed(float speed, float dt, bool crouched, bool braking = false, bool limits_known = true, bool ground_friction = true, GroundFriction friction = {}) const noexcept {
         if (!std::isfinite(speed) || speed < 0 || !std::isfinite(dt) || dt <= 0 || dt > .1f) return speed;
         if (limits_known) speed = std::min(speed, profile_.hard_speed());
         const auto wind = [dt](float v, float coefficient) {
@@ -145,9 +182,9 @@ public:
             const float impulse = 900 * GameplayProfile::metres_per_inch * dt;
             speed = speed < 2*impulse ? 0 : std::max(0.0f, speed-impulse);
         }
-        if (!limits_known || !ground_friction) return speed;
+        if (!limits_known || !ground_friction || !friction.valid() || !friction.enabled()) return speed;
         speed = wind(speed, crouched ? .000002f : .00001f);
-        return std::max(0.0f, speed - .00001f * GameplayProfile::metres_per_inch * 60 * dt);
+        return std::max(0.0f, speed - friction.rolling * GameplayProfile::metres_per_inch * 60 * dt);
     }
     // Observe actual ordinary-ground speed without applying a second ground
     // budget. Air carries only known ordinary limits, not unknown fast arrivals.
@@ -157,13 +194,13 @@ public:
         primed_ = true; previous_ = speed;
     }
     float step_air(float dt, float speed) noexcept {
-        return step_selected(dt,speed,false,false,false,false);
+        return step_selected(dt,speed,false,false,false,false,{});
     }
-    float step(float dt, float speed, bool crouched, bool braking = false, bool manual = false) noexcept {
-        return step_selected(dt,speed,crouched,braking,manual,true);
+    float step(float dt, float speed, bool crouched, bool braking = false, bool manual = false, GroundFriction friction = {}) noexcept {
+        return step_selected(dt,speed,crouched,braking,manual,true,friction);
     }
 private:
-    float step_selected(float dt, float speed, bool crouched, bool braking, bool manual, bool ground_friction) noexcept {
+    float step_selected(float dt, float speed, bool crouched, bool braking, bool manual, bool ground_friction, GroundFriction friction) noexcept {
         // Admitted basic balance coasts; it does not add kick or brake budget.
         if (manual) { crouched = false; braking = false; }
         if (!std::isfinite(speed) || speed < 0 || speed >= 1000 ||
@@ -175,7 +212,7 @@ private:
         }
         if (speed <= profile_.soft_speed()) limits_known_ = true;
         const float baseline = std::max(previous_, speed);
-        const float required_loss = std::max(0.0f, baseline - selected_speed(baseline, dt, crouched, braking, limits_known_, ground_friction));
+        const float required_loss = std::max(0.0f, baseline - selected_speed(baseline, dt, crouched, braking, limits_known_, ground_friction,friction));
         const float native_loss = std::max(0.0f, previous_ - speed);
         const float extra_loss = std::max(0.0f, required_loss - native_loss);
         const float target = std::min(limits_known_ ? profile_.hard_speed() : speed, std::max(0.0f, speed - extra_loss));

@@ -22,16 +22,15 @@ installed source identity and the controlled Deck comparison. Delivery and
 reference each produced five exact IDs in eight initial trials; one reference
 trial had incomplete evidence. Neither mode has repeatability acceptance.
 
-Automatic skating uses left-stick movement intent and the existing guarded
-board-root velocity reader. It emits bounded native push-button pulses below
-cruise speed, with separate resume and stop thresholds. It does not write or
-clamp velocity. Both wheel contacts and ordinary riding state are required;
-menus, manual/grind/air/bail states, stale evidence and conflicting actions
-suppress pushing. Movement must release/rearm across mode and menu boundaries.
-Basic Deck acceptance passed: ON accelerated to 5.49 m/s, identical OFF input
-remained stationary, and braking/resumption worked without stuck input. Downhill
-and varied-context repeatability remain open. Sanitized results are linked from
-the current checkpoint.
+Automatic skating uses left-stick movement intent and the existing native held
+push adapter. `arcadeautokick on|off` saves the ordinary-ground preference;
+it defaults ON. With it OFF, hold X to request a push. Ordinary ground drive
+and resistance use the existing guarded body writer, preserve vertical and
+relative body velocities, and credit observed native speed loss. Physical Down,
+turning, reverse-facing motion and low speed select the brake policy. Missing
+support-plane and locked-vector facts do not select their special branches.
+Native resistance remains authoritative when it exceeds the selected budget.
+Manual, rail, air, bail, menu, owner loss and stale evidence exclude ground drive.
 
 LB+RB within 120 ms requests one native board toggle from a verified safe riding
 or grounded offboard state. Both bumpers must release before another request;
