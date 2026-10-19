@@ -256,6 +256,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
         { std::lock_guard lock(ollie_mutex); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); }
         physical_manual.reset(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
+        balance_control.reset_manual();
     }
     const auto score = score_activity();
     NativeInputFrame native_frame{};
@@ -272,12 +273,13 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
     if (!valid || owner_changed) {
         physical_manual.reset();
+        balance_control.reset_manual();
         cancel_balance_bail();
         combo_session.invalidate();
         combo_tick_at = 0;
     }
     const bool bail = valid && had_combo_owner && !owner_changed && wipeouts != observed_wipeouts;
-    if (bail || observation_gap) physical_manual.reset();
+    if (bail || observation_gap) { physical_manual.reset(); balance_control.reset_manual(); }
     had_combo_owner = valid;
     combo_owner = valid ? owner : NoBailSkater{};
     observed_wipeouts = wipeouts;
@@ -329,6 +331,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         std::lock_guard lock(ollie_mutex);
         auto controls=InputBalanceControls::vertical(pose==SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
         controls.admitted=manual_observation.confirmed && !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown();
+        if (controls.admitted) balance_control.begin_manual(now);
+        else balance_control.reset_manual();
         configured_manual=arcade_input.configured_controls(now,controls,native_frame);
     }
     const auto correction = manual_pose ? balance_control.poll_manual(now,combo_session.model().state().balance,
@@ -1225,6 +1229,7 @@ void on_client_tick() noexcept {
             cancel_balance_bail();
             manual_identity.reset(manual_label);
             physical_manual.reset(); manual_release.reset();
+            balance_control.reset_manual();
             had_combo_owner = false;
             combo_owner = {};
             {

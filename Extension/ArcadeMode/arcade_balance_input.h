@@ -45,6 +45,11 @@ inline float balance_correction(BalanceKind kind, short left_x, short left_y, bo
 class BalanceControl {
 public:
     void reset_manual() noexcept { manual_ = released_ = false; control_ = {}; }
+    // Native setup owns this clock independently of the physical-input lease.
+    // Repeated admitted observations cannot renew an existing section.
+    void begin_manual(std::uint64_t now) noexcept {
+        if (!manual_) { manual_ = true; began_ = last_ = now; released_ = false; control_ = {}; }
+    }
     float poll(std::uint64_t now, BalanceKind kind, float lean, short x, short y,
                bool available, std::uint32_t buttons = 0) noexcept {
         if (kind == BalanceKind::manual) return poll_manual(now,lean,manual_balance_buttons(y,buttons,x),available);
@@ -53,12 +58,15 @@ public:
     }
     float poll_manual(std::uint64_t now, float lean, ManualBalanceButtons buttons, bool available) noexcept {
         control_ = {};
-        if (!available) { manual_ = released_ = false; return 0; }
-        const auto correction = manual_balance_correction(buttons);
         if (!std::isfinite(lean) || (manual_ && now < last_)) {
             manual_ = released_ = false; return 0;
         }
-        if (!manual_) { manual_ = true; began_ = now; released_ = false; }
+        if (!available) {
+            if (manual_) { last_ = now; control_ = {0,false,released_,now-began_}; }
+            return 0;
+        }
+        const auto correction = manual_balance_correction(buttons);
+        begin_manual(now);
         last_ = now;
         const auto elapsed = now - began_;
         if (correction == 0 || elapsed > 0) released_ = true;

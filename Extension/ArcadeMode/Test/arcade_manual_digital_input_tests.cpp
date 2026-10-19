@@ -56,8 +56,8 @@ void release_and_boundaries(){
   check(controls.poll_manual(3*cadence,0,{false,true},true)==1 && controls.manual_input().elapsed_ms>elapsed,
    "fresh opposite or repressed correction retains original section clock");
   check(controls.poll_manual(4*cadence,0,{true,true},false)==0 && !controls.manual_input().held,"unavailable input cannot correct balance");
-  check(controls.poll_manual(5*cadence,0,{true,true},true)==0,"reacquisition establishes a new entry baseline even through a held control");
-  check(controls.poll_manual(6*cadence,0,{true,true},true)==-1,"A priority survives held input after the new entry instant");
+  check(controls.poll_manual(5*cadence,0,{true,true},true)==-1,"same-section input reacquisition retains its original clock and armed state");
+  check(controls.poll_manual(6*cadence,0,{true,true},true)==-1,"A priority survives held input without a renewed entry instant");
   controls.reset_manual();check(!controls.manual_input().held && !controls.manual_input().released,"StopBalance clears control state without altering physical history");
   check(controls.poll_manual(7*cadence,0,{true,false},true)==0,"new owner or menu reset cannot borrow the previous section's released flag");
   check(controls.poll_manual(6*cadence,0,{true,false},true)==0,"clock rollback cancels correction continuity");
@@ -74,6 +74,35 @@ void release_and_boundaries(){
   }
   check(model.closed() && out.exit==(unsafe?BalanceExit::bail:BalanceExit::putdown),"digital controls retain direction-specific protected endpoints for both types at30/60Hz");
   check(!model.begin(nose),"digital repress cannot reopen a closed physical section");
+ }
+}
+void input_lease_continuity(){
+ for(std::uint64_t cadence:{17u,34u})for(int lean:{-1,1})for(ManualBalanceButtons buttons:{ManualBalanceButtons{true,false},{false,true},{true,true}}){
+  BalanceControl controls;controls.begin_manual(1000);
+  controls.poll_manual(1000,static_cast<float>(lean),buttons,true);
+  controls.poll_manual(2000,static_cast<float>(lean),buttons,true);
+  const float expected=manual_balance_correction(buttons);
+  check(controls.manual_input().released&&controls.manual_input().elapsed_ms==1000,"native setup owns original section clock and historical arming");
+  check(controls.poll_manual(2150,static_cast<float>(lean),buttons,true)==expected,"last fresh lease sample retains original section age");
+  check(controls.poll_manual(2151,static_cast<float>(lean),buttons,false)==0&&!controls.manual_input().held&&controls.manual_input().amount==0,
+        "expired input withdraws force without ending native balance");
+  check(controls.manual_input().released&&controls.manual_input().elapsed_ms==1151,"missing input preserves original section time and armed state");
+  controls.begin_manual(2151+cadence);
+  check(controls.poll_manual(2151+cadence,static_cast<float>(lean),buttons,true)==expected&&controls.manual_input().elapsed_ms==1151+cadence,
+        "same-section admission and input reacquisition cannot renew the first-second safe period");
+  controls.reset_manual();controls.begin_manual(3000);
+  check(controls.poll_manual(3000,static_cast<float>(lean),buttons,true)==0&&!controls.manual_input().released,
+        "actual new section cannot inherit the old armed state");
+  check(controls.poll_manual(3000+cadence,static_cast<float>(lean),buttons,true)==(expected*static_cast<float>(lean)>0?0:expected),
+        "genuine new section reinstates only its own outward protection");
+  controls.poll_manual(2999,static_cast<float>(lean),buttons,false);
+  check(controls.poll_manual(3100,0,buttons,true)==0,"rollback during a missing input lease retires clock continuity");
+ }
+ for(std::uint64_t elapsed:{999u,1000u,1001u}){
+  BalanceControl controls;controls.begin_manual(1000);controls.poll_manual(1000,1,{},false);
+  const float value=controls.poll_manual(1000+elapsed,1,{false,true},true);
+  check(value==(elapsed<1000?0:1)&&controls.manual_input().elapsed_ms==elapsed,
+        "native section start precedes first available input rather than borrowing its timestamp");
  }
 }
 void thumb_travel(){
@@ -139,4 +168,4 @@ void admitted_pad_boundary(){
  }
 }
 }
-int main(){digital_states();timing_and_physics();release_and_boundaries();thumb_travel();exclusions();admitted_pad_boundary();std::cout<<checks<<" digital manual input checks passed\n";}
+int main(){digital_states();timing_and_physics();release_and_boundaries();input_lease_continuity();thumb_travel();exclusions();admitted_pad_boundary();std::cout<<checks<<" digital manual input checks passed\n";}
