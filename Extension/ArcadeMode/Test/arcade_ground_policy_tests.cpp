@@ -178,5 +178,26 @@ int main(){
   for(auto row:{std::pair{1200u,0u},std::pair{1217u,2u},std::pair{1234u,0u},std::pair{1251u,2u},std::pair{1268u,0u},std::pair{1285u,0x200u}})result=poll(row.first,row.second);
   check(result.ground_turn.serial>serial,"new physical recognition after Session reset has a new command identity");
  }
+
+ for(unsigned fault=0;fault<13;++fault){
+  Frame f;GroundTurnAngularLease lease;GroundTurnAngularLease::Parts parts{};GroundTurnAngularLease::Spins spins{};
+  for(unsigned i=0;i<32;++i){parts[i]=100+i;spins[i]={i*.02f,10.f+i*.03f,i*.04f};}
+  std::array<float,3> up{0,1,0};
+  lease.record(f.native,parts,spins,up);const auto original=spins;f.step(1017);bool permitted=true;
+  if(fault==1)++f.native.owner.core;
+  if(fault==2)++f.native.owner_generation;
+  if(fault==3)++f.native.contact_generation;
+  if(fault==4)++f.native.action_generation;
+  if(fault==5)f.native.state=200;
+  if(fault==6)f.native.contacts=0x4000;
+  if(fault==7)++parts[9];
+  if(fault==8)spins[9][0]+=1;
+  if(fault==9)permitted=false;
+  if(fault==10)f.native.sampled_at=1200;
+  if(fault==12)up[0]=.005f;
+  const unsigned now=fault==11?1151:1017;
+  check(lease.release(f.native,parts,spins,up,now,permitted)==(fault==0),"angular release requires the exact verified write, owner/contact/action/body and qualified current context");
+  check(!lease.release(f.native,parts,original,up,now,true),"consumed or revoked angular receipt cannot later release another owner's rate");
+ }
  std::cout<<checks<<" ground steering and action policy checks passed\n";
 }

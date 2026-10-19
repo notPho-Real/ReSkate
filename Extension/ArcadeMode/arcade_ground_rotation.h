@@ -120,4 +120,36 @@ private:
     double elapsed_{},angle_{};
     GroundYawOutput turn_output_{};
 };
+// Receipt for a verified half-turn body write, not a native action identity.
+// A single conditional neutral handoff can remove our common local-up rate;
+// any new owner, contact/action generation, body or changed impulse revokes it.
+class GroundTurnAngularLease {
+public:
+    using Parts = std::array<std::uintptr_t,32>;
+    using Spins = std::array<std::array<float,3>,32>;
+    void clear() noexcept { pending_=false; }
+    void record(const NativeInputFrame& frame,const Parts& parts,const Spins& spins,const std::array<float,3>& up) noexcept {
+        frame_=frame; parts_=parts; spins_=spins; up_=up; pending_=true;
+    }
+    bool release(const NativeInputFrame& current,const Parts& parts,const Spins& spins,const std::array<float,3>& up,
+                 std::uint64_t now,bool permitted) noexcept {
+        const bool owned = pending_ && permitted && current.valid && frame_.valid &&
+            current.owner==frame_.owner && current.owner_generation==frame_.owner_generation &&
+            current.contact_generation==frame_.contact_generation && current.action_generation==frame_.action_generation &&
+            frame_.physics_step && frame_.physics_step<=current.physics_step &&
+            now>=frame_.sampled_at && now-frame_.sampled_at<=150 &&
+            frame_.sampled_at<=current.sampled_at && current.sampled_at<=now && now-current.sampled_at<=150 &&
+            (current.state==100 || current.state==103) && current.mode<=2 && current.contacts==0xc000u &&
+            parts==parts_ && spins==spins_ && up==up_;
+        clear(); // Successful or revoked, this receipt is considered only once.
+        return owned;
+    }
+private:
+    NativeInputFrame frame_{};
+    Parts parts_{};
+    Spins spins_{};
+    std::array<float,3> up_{};
+    bool pending_{};
+};
+
 }
