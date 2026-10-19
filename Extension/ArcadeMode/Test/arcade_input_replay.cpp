@@ -64,6 +64,9 @@ void replay(std::string_view name, const std::vector<Frame>& frames, unsigned st
         const auto action = action_input.poll(tested::ActionExperiment::classic, frame.now, physical,
             enabled, frame.fresh && frame.game && !frame.offboard, frame.pose, true, out.command_busy);
 #else
+        // This input-only replay supplies no independent manual identity.
+        // Contact cannot waive preparation expiry; admitted long holds are
+        // exercised by the composed manual lifecycle corpus instead.
         auto out = input.poll(frame.user, frame.now, frame.buttons, frame.x, frame.y, 0, 0,
             frame.game, frame.start, true, frame.speed, frame.lt > 30 || frame.rt > 30, true,
             true, tick, frame.lt > 30, prepared, false, frame.safe, frame.pose,

@@ -51,7 +51,7 @@ public:
         return true;
     }
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
-                  bool conflicting, std::uint16_t buttons) noexcept {
+                  bool conflicting, std::uint16_t buttons, bool balance_admitted = false) noexcept {
         if (!gameplay || !safe || conflicting || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
             (buttons & 3u) == 3u || (buttons & 12u) == 12u || observed == SkatePose::bail ||
             observed == SkatePose::grind || (clocked_ && now < last_)) {
@@ -94,7 +94,10 @@ public:
             }
             // Brief observer gaps must not drop a held native manual. A failed
             // request or an observed exit always has a bounded release path.
-            if ((!confirmed_ && now - requested_at_ >= 1200) ||
+            // Physical contact alone cannot waive the preparation bound. Only
+            // independently admitted balance can maintain a continuing hold;
+            // admitted corrected balances have no arbitrary lifespan limit.
+            if (((!confirmed_ || !balance_admitted) && now - requested_at_ >= 1200) ||
                 (confirmed_ && now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }

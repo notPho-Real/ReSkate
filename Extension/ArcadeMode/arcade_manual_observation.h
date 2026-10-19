@@ -27,6 +27,7 @@ public:
     void reset() noexcept {
         primed_ = confirmed_ = false;
         candidate_ = SkatePose::unknown;
+        pending_ = {};
         // Preserve consumed label identity across toggles/owner changes. A
         // persistent history label or replay can never rearm a fresh section.
     }
@@ -35,6 +36,12 @@ public:
     }
     ManualObservationResult poll(SkatePose raw, const ScoreLabelOccurrence& label,
                                  const ManualObservationContext& context) noexcept {
+        // Generic scoring activity is not manual identity. Use the separately
+        // validated physical contact as the candidate even when that generic
+        // flag is inactive; admission still requires a fresh matching history
+        // edge below. Contact alone continues to return riding.
+        if (raw == SkatePose::riding && (context.contact == SkatePose::manual ||
+            context.contact == SkatePose::nose_manual)) raw = context.contact;
         // A fresh native label admits a section once. Thereafter the current
         // owner's physical wheel contact maintains it, independently of score
         // polling. A short two-wheel contact gap must not blink the meter and
@@ -74,15 +81,39 @@ public:
         const bool conflicting = repeated && label.labels && !same_edge(label, last_edge_);
         const bool edge = label.labels && !repeated && !reordered && !skipped;
         if (reordered || skipped || conflicting || !label.valid ||
-            label.uncertainty != ScoreLabelUncertainty::none) confirmed_ = false;
+            label.uncertainty != ScoreLabelUncertainty::none) {
+            confirmed_ = false; pending_ = {};
+        }
+        const bool fresh_edge = label.valid && label.uncertainty == ScoreLabelUncertainty::none &&
+            label.sequence && label.sampled_at >= label.observed_at && context.now >= label.sampled_at &&
+            context.now - label.observed_at <= ScoreLabelEdges::freshness_ms;
+        // History and wheel contact are sampled separately. Retain one unused
+        // attributable edge across an air/riding sample, within the existing
+        // freshness bound and same validated context. This grants no pose yet.
+        if (edge && fresh_edge && !manual && (raw == SkatePose::air || raw == SkatePose::riding) &&
+            (label.labels == score_label_bit(1) || label.labels == score_label_bit(2))) {
+            pending_ = label; pending_pose_ = raw;
+        }
         consume(label);
+        if (pending_.sequence && (context.now < pending_.observed_at ||
+            context.now - pending_.observed_at > ScoreLabelEdges::freshness_ms ||
+            pending_.sequence != sequence_ ||
+            (pending_pose_ == SkatePose::riding && raw == SkatePose::air) ||
+            (context.contact == SkatePose::manual && pending_.labels != score_label_bit(1)) ||
+            (context.contact == SkatePose::nose_manual && pending_.labels != score_label_bit(2)) ||
+            (raw != SkatePose::air && raw != SkatePose::riding && !manual))) pending_ = {};
+        if (pending_.sequence) pending_pose_ = raw;
         if (!manual) return unconfirmed();
         const auto expected = score_label_bit(raw == SkatePose::manual ? 1 : 2);
         const bool fresh = label.valid && label.uncertainty == ScoreLabelUncertainty::none &&
             label.sequence && label.labels == expected && label.observed_at >= candidate_at_ &&
             label.sampled_at >= label.observed_at && context.now >= label.sampled_at &&
             context.now - label.observed_at <= ScoreLabelEdges::freshness_ms;
-        const bool admitted = edge && fresh && !confirmed_;
+        const bool ordered_contact = pending_.sequence && pending_.labels == expected && context.contact == raw;
+        const bool admitted = ((edge && fresh) || ordered_contact) && !confirmed_;
+        // Matching contact consumes the pending correlation once. Opposite
+        // contact also discards it; it cannot survive another native section.
+        pending_ = {};
         if (admitted) { confirmed_ = true; contact_at_ = context.now; }
         return {confirmed_ ? raw : SkatePose::riding, confirmed_, admitted};
     }
@@ -98,6 +129,8 @@ private:
         }
     }
     ScoreLabelOccurrence last_edge_{};
+    ScoreLabelOccurrence pending_{};
+    SkatePose pending_pose_{SkatePose::unknown};
     SkatePose candidate_{SkatePose::unknown};
     std::uint64_t sequence_{}, generation_{}, last_at_{}, candidate_at_{}, contact_at_{};
     bool primed_{}, confirmed_{};

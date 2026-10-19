@@ -71,6 +71,7 @@ std::atomic<std::uint64_t> manual_prepare_until{};
 std::atomic<std::uint64_t> action_eligible_until{};
 std::atomic<std::uint64_t> air_flip_ready_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
+std::atomic<bool> manual_balance_admitted{};
 std::atomic<float> push_speed{};
 std::atomic<std::uint64_t> motion_capture_until{};
 std::atomic<std::uint64_t> movement_eligible_until{};
@@ -173,11 +174,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
     // Native contact prepares controls; a matching observed label establishes
     // manual identity for balance/linking. Neither establishes monetary ownership.
-    const auto pose = manual_identity.poll(candidate_pose, manual_label,
+    const auto manual_observation = manual_identity.poll(candidate_pose, manual_label,
         {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
          owner_changed, observation_gap,
          manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u},
-             (native.words[0] & 0x40u) != 0)}).pose;
+             (native.words[0] & 0x40u) != 0)});
+    const auto pose = manual_observation.pose;
     const bool manual_safe = valid && !owner_changed && !bail &&
         ((native.state == 100 && native.crouch_mode == 1) || (native.state >= 200 && native.state < 300));
     action_eligible_until.store(action_input_eligible({valid, false, false, bail, native.state,
@@ -201,6 +203,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         if (!valid || owner_changed || bail ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
             arcade_input.cancel_manuals();
+        manual_balance_admitted.store(manual_observation.confirmed &&
+            combo_session.model().state().balance_kind == BalanceKind::manual &&
+            !combo_session.failed_section(), std::memory_order_relaxed);
         const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
         manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 &&
@@ -666,6 +671,7 @@ void set_enabled(bool value, bool persist) noexcept {
         action_eligible_until.store(0, std::memory_order_release);
         air_flip_ready_until.store(0, std::memory_order_release);
         manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
+        manual_balance_admitted.store(false, std::memory_order_relaxed);
         previous_pad = {};
         previous_source_pad = {};
     }
@@ -818,6 +824,7 @@ void on_client_tick() noexcept {
                 manual_eligible_until.store(0, std::memory_order_release);
                 manual_prepare_until.store(0, std::memory_order_release);
                 manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
+                manual_balance_admitted.store(false, std::memory_order_relaxed);
             }
             action_eligible_until.store(0, std::memory_order_release);
             combo_session.invalidate();
@@ -940,7 +947,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             authored_mirror_x.load(std::memory_order_acquire), manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
-            action_experiment, action_safe, authored_mirror_x.load(std::memory_order_acquire));
+            action_experiment, action_safe, authored_mirror_x.load(std::memory_order_acquire),
+            manual_balance_admitted.load(std::memory_order_relaxed));
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.

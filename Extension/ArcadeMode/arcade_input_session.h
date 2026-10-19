@@ -17,6 +17,7 @@ struct InputAdmission {
     std::span<const PreparedGesture> catalog{};
     unsigned observed_balance_branch{};
     bool observed_lip{}; // Reserved for independently verified native contact admission.
+    bool manual_balance_admitted{}; // Independent identity plus active nonfailed balance.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -57,7 +58,7 @@ public:
         const bool triggers = physical.lt > 30 || physical.rt > 30;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted);
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const InputContext context = admission.observed_lip ? InputContext::lip : admission.pose == SkatePose::air ? InputContext::air :
             admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual ? InputContext::balance :
@@ -88,7 +89,7 @@ public:
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted);
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;

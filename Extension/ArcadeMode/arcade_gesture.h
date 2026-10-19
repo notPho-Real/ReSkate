@@ -35,13 +35,14 @@ public:
             bool = false, bool manual_prepare_only = false,
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
-            bool action_fresh = false, bool inspected_stance = false) noexcept {
+            bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false) noexcept {
         if (!enabled_ || user >= sessions_.size()) return {buttons, rx, ry};
         // Older callers can supply held-trigger admission without analog values.
         if (triggers_held && !lt && !rt) lt = 31;
         InputAdmission admission{game_input, may_start, may_push, may_toggle_board, authored,
             nollie, mirror_x, manual_safe, manual_prepare_only, offboard, action_busy,
             flip_ready, neutral_ready, action_fresh, inspected_stance, observed, mode, speed, tick, catalog};
+        admission.manual_balance_admitted = manual_balance_admitted;
         return sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
     }
 private:
