@@ -37,6 +37,14 @@ struct InputRailOutput {
     bool held{}, blocked{};
     ActionDispatch::Output occupied{};
 };
+// One recognized physical half-turn command, never a native actor/phase ID.
+// The input owner preserves this original observation until cancellation.
+struct GroundTurnCommand {
+    std::uint64_t serial{}, requested_at{};
+    InputGenerations generations{};
+    std::uint64_t physics_step{}, sampled_at{};
+    bool operator==(const GroundTurnCommand&) const = default;
+};
 // Output contracts only; all production recognition belongs to InputSession.
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
@@ -51,6 +59,7 @@ struct NativeGesture {
         ActionInputOutput action{};
         InputJumpEdge jump{};
         InputRailOutput rail{};
+        GroundTurnCommand ground_turn{};
     };
 };
 }

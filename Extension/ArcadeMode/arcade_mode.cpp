@@ -1501,7 +1501,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch,
+                rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

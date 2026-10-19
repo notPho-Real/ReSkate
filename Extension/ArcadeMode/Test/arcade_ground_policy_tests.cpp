@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "Extension/ArcadeMode/arcade_ground_actions.h"
+#include "Extension/ArcadeMode/arcade_input_session.h"
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
@@ -99,5 +100,83 @@ int main(){
   check(backwards_facing_change(speed_squared,dot,10.f,SpinFact::clear,SpinFact::clear,SpinFact::clear)==(dot<0&&speed_squared>100),"backwards facing uses strict physical dot and speed-squared tests");
  check(!backwards_facing_change(101,-1,{},SpinFact::clear,SpinFact::clear,SpinFact::clear)&&
        !backwards_facing_change(101,-1,10.f,SpinFact::clear,SpinFact::unknown,SpinFact::clear),"missing threshold or Skitching facts cannot authorize a facing flip");
+
+ // Compose physical recognition with the once-only grounded writer policy.
+ for(unsigned cadence:{17u,34u,75u}){
+  Frame f;InputSession session;InputAdmission admission{};admission.gameplay=admission.authored=admission.may_start=true;admission.pose=SkatePose::riding;
+  NativeGesture::Output result{};
+  auto poll=[&](unsigned now,std::uint16_t buttons){
+   f.step(now);admission.tick=now;admission.native_context={true,true,{f.native.owner_generation,f.native.contact_generation,f.native.action_generation},f.native.physics_step,f.native.sampled_at,false};
+   return session.poll(now,{buttons},0,0,admission);
+  };
+  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,row.second);
+  check(result.ground_turn.serial&&!result.unsupported,"actual Session dispatch starts recognized ground command");
+  const auto command=result.ground_turn;GroundYaw controller;float accumulated=0;unsigned elapsed=0;
+  for(;;){
+   if(elapsed)result=poll(1085+elapsed,0);
+   check(result.ground_turn==command,"polling preserves original command identity and recognition clock");
+   auto intent=f.intent();intent.ground_controls.left=true;intent.spin.left_pressed_at=1000;
+   const float dt=cadence/1000.f;
+   const auto output=controller.step(intent,f.native,1085+elapsed,dt,{1,0,2},true,false,&result.ground_turn);
+   accumulated+=output.angle_delta;
+   check(output.ready&&output.angular&&!output.velocity_owned,"physical command owns yaw while preserving native translation");
+   check(near(accumulated,static_cast<float>(TapSpin::pi*std::min(elapsed,300u)/300.)),"physical command follows clipped300ms half-turn");
+   check(GroundYaw::target_current(output,intent,f.native,1085+elapsed,false,&command),"current command reaches physical target policy");
+   const auto again=controller.step(intent,f.native,1085+elapsed,dt,{1,0,2},true,false,&command);
+   check(again.angle_delta==output.angle_delta&&again.rate==output.rate,"duplicate physics read does not advance elapsed or restart final step");
+   auto future=f.native;++future.physics_step;
+   check(!GroundYaw::target_current(output,intent,future,1085+elapsed,false,&command),"command target cannot leak into another physical step");
+   if(elapsed>=300)break;
+   elapsed+=cadence;
+  }
+  result=poll(1085+elapsed+cadence,0);auto intent=f.intent();
+  const auto after=controller.step(intent,f.native,f.native.sampled_at,cadence/1000.f,{1,0,2},true,false,&command);
+  check(after.angle_delta==0&&after.rate==0&&!after.command.serial,"first physical step after completion adds no command rotation");
+  controller.reset();f.step(f.native.sampled_at+cadence);intent=f.intent();
+  check(!controller.step(intent,f.native,f.native.sampled_at,cadence/1000.f,{1,0,2},true,false,&command).command.serial,"spent command cannot replay after reset");
+ }
+ for(unsigned fault=0;fault<12;++fault){
+  Frame f;auto intent=f.intent();GroundTurnCommand command{1,1000,{f.native.owner_generation,f.native.contact_generation,f.native.action_generation},f.native.physics_step,1000};GroundYaw controller;
+  check(controller.step(intent,f.native,1000,.017f,{1,0,2},true,false,&command).command.serial==1,"cancellation starts with independently qualified command");
+  f.step(1017);intent=f.intent();bool ordinary=true,other=false;auto velocity=std::array<float,3>{1,0,2};auto selected=command;
+  if(fault==0){++f.owner.core;f.step(1017);intent=f.intent();}
+  if(fault==1){++selected.generations.contact;}
+  if(fault==2){++selected.generations.action;}
+  if(fault==3){f.raw.state=200;f.step(1017);intent=f.intent();}
+  if(fault==4){f.raw.words[1]=0x4000;f.step(1017);intent=f.intent();}
+  if(fault==5)ordinary=false;
+  if(fault==6)other=true;
+  if(fault==7)intent.enabled=false;
+  if(fault==8)intent.angular_allowed=false;
+  if(fault==9)intent.spin.physical_armed=false;
+  if(fault==10)velocity[0]=std::numeric_limits<float>::quiet_NaN();
+  const auto output=controller.step(intent,f.native,1017,.017f,velocity,ordinary,other,fault==11?nullptr:&selected);
+  check(!output.command.serial&&!output.angular,"owner/contact/action/AIR/Manual/upright/OFF/conflict/nonfinite/withdrawal retires command");
+  f.raw.state=100;f.raw.words[1]=0xc000;f.step(1034);intent=f.intent();
+  check(!controller.step(intent,f.native,1034,.017f,{1,0,2},true,false,&command).command.serial,"returning eligibility cannot revive retired command");
+ }
+
+ for(unsigned fault=0;fault<10;++fault){
+  Frame f;InputSession session;InputAdmission admission{};admission.gameplay=admission.authored=admission.may_start=true;admission.pose=SkatePose::riding;
+  auto poll=[&](unsigned now,std::uint16_t buttons){f.step(now);admission.tick=now;admission.native_context={true,true,{f.native.owner_generation,f.native.contact_generation,f.native.action_generation},f.native.physics_step,f.native.sampled_at,false};return session.poll(now,{buttons},0,0,admission);};
+  NativeGesture::Output result{};
+  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,row.second);
+  const auto serial=result.ground_turn.serial;check(serial!=0,"Session cancellation fixture begins recognized command");
+  if(fault==0)admission.gameplay=false;
+  if(fault==1)admission.pose=SkatePose::air;
+  if(fault==2)admission.pose=SkatePose::manual;
+  if(fault==3)admission.pose=SkatePose::grind;
+  if(fault==4)admission.observed_lip=true;
+  if(fault==5)admission.external_owner=true;
+  if(fault==6)admission.offboard=true;
+  if(fault==7)++f.owner.core;
+  if(fault==8)admission.pose=SkatePose::bail;
+  result=poll(1102,fault==9?0x1000:0);
+  if(result.ground_turn.serial)std::cerr<<"Session fault="<<fault<<"\n";
+  check(!result.ground_turn.serial,"actual Session withdraws turn for gameplay/AIR/Manual/rail/Lip/external/offboard/owner/bail/jump loss");
+  session.reset();admission={};admission.gameplay=admission.authored=admission.may_start=true;admission.pose=SkatePose::riding;
+  for(auto row:{std::pair{1200u,0u},std::pair{1217u,2u},std::pair{1234u,0u},std::pair{1251u,2u},std::pair{1268u,0u},std::pair{1285u,0x200u}})result=poll(row.first,row.second);
+  check(result.ground_turn.serial>serial,"new physical recognition after Session reset has a new command identity");
+ }
  std::cout<<checks<<" ground steering and action policy checks passed\n";
 }

@@ -300,7 +300,8 @@ struct PushSpeed {
     std::uint64_t drive_epoch{};
 };
 PushSpeed& push_speed() { static auto* value = new PushSpeed; return *value; }
-bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual = nullptr) noexcept;
+bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual = nullptr,
+                     arcade_mode::GroundTurnCommand* ground_turn = nullptr) noexcept;
 void trainer_push_speed(std::uintptr_t core) noexcept {
     auto& p = push_speed();
     const auto now = GetTickCount64();
@@ -469,6 +470,8 @@ struct ArcadeAir {
     std::array<std::atomic<std::uint64_t>,3> manual_generations{};
     AtomicAirSpinProof spin_proof, ready_proof;
     arcade_mode::AtomicLaunchDescriptor launch;
+    std::atomic<std::uint64_t> turn_serial{},turn_at{},turn_step{},turn_sampled{};
+    std::array<std::atomic<std::uint64_t>,3> turn_generations{};
     std::atomic<std::uint64_t> ready_version{};
     // SourceState::busy protects the remaining physics/motion-thread state.
     arcade_mode::AirMotion controller;
@@ -482,7 +485,8 @@ struct ArcadeAir {
     std::uint64_t stepped_at{}, generation{};
 };
 ArcadeAir& arcade_air() { static auto* value = new ArcadeAir; return *value; }
-bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual) noexcept {
+bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual,
+                     arcade_mode::GroundTurnCommand* ground_turn) noexcept {
     auto& a = arcade_air();
     const auto before = a.version.load(std::memory_order_acquire);
     if (before & 1u) return false;
@@ -492,6 +496,9 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
         a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
     out.angular_proof = a.spin_proof.load();
     out.launch = a.launch.load();
+    if(ground_turn)*ground_turn={a.turn_serial.load(std::memory_order_relaxed),a.turn_at.load(std::memory_order_relaxed),
+        {a.turn_generations[0].load(std::memory_order_relaxed),a.turn_generations[1].load(std::memory_order_relaxed),a.turn_generations[2].load(std::memory_order_relaxed)},
+        a.turn_step.load(std::memory_order_relaxed),a.turn_sampled.load(std::memory_order_relaxed)};
     out.ground_controls = arcade_mode::GroundControl::decode(a.ground_controls.load(std::memory_order_relaxed));
     out.spin = {a.spin_mode.load(std::memory_order_relaxed)==1 ? arcade_mode::SpinMode::tap : arcade_mode::SpinMode::held,
         a.spin_epoch.load(std::memory_order_relaxed),a.spin_serial.load(std::memory_order_relaxed),a.spin_balance.load(std::memory_order_relaxed),
@@ -513,13 +520,17 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
     auto& a = arcade_air();
     arcade_mode::AirMotionIntent intent{};
     arcade_mode::NativeManualContact manual{};
+    arcade_mode::GroundTurnCommand ground_turn{};
     const auto now = GetTickCount64();
-    if (!read_arcade_air(intent,&manual) || !intent.enabled || now < intent.sampled_at || now - intent.sampled_at > 150 ||
-        multiplayer_session_active()) { a.ready_until.store(0, std::memory_order_release); return; }
     auto& state = source_state();
     if (!state.initialized.load(std::memory_order_acquire) || !state.velocity_guard_active.load(std::memory_order_acquire) ||
         !state.motion_original.load(std::memory_order_acquire) || state.busy.test_and_set(std::memory_order_acquire)) return;
     SourceBusyScope scope{state.busy};
+    if (!read_arcade_air(intent,&manual,&ground_turn) || !intent.enabled || now < intent.sampled_at || now - intent.sampled_at > 150 ||
+        multiplayer_session_active()) {
+        a.ground_yaw.cancel(&ground_turn); a.ground_output={};
+        a.ready_until.store(0, std::memory_order_release); return;
+    }
     try {
         source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor, "Air motion yields to editing or flight.");
         const auto& identity = push_speed();
@@ -596,7 +607,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
                 push_speed().arcade_drive.account_resistance(change);
             }
         } else a.ground_resistance.reset();
-        a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted);
+        a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         const auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
         if (!applied.vertical && !applied.angular && !applied.horizontal) return;
         source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
@@ -614,8 +625,9 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     auto& a = arcade_air();
     arcade_mode::AirMotionIntent intent{};
     arcade_mode::NativeManualContact current_manual{};
+    arcade_mode::GroundTurnCommand ground_turn{};
     const auto now = GetTickCount64();
-    if (!read_arcade_air(intent,&current_manual) || !intent.enabled || intent.generation != a.generation ||
+    if (!read_arcade_air(intent,&current_manual,&ground_turn) || !intent.enabled || intent.generation != a.generation ||
         (!a.output.ready && !a.ground_output.ready) || !a.owner.core || now < a.stepped_at ||
         now - a.stepped_at > 150 || now < intent.sampled_at || now - intent.sampled_at > 150 || multiplayer_session_active()) return false;
     const bool requested_angular = a.output.angular && intent.angular_allowed;
@@ -637,14 +649,14 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
         {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled);
     if(state==100 || state==103){
         if(!arcade_mode::AirMotion::ordinary_basis(bodies.up))return false;
-        if(!arcade_mode::GroundYaw::target_current(a.ground_output,intent,current_frame,now,current_manual.admitted))return false;
+        if(!arcade_mode::GroundYaw::target_current(a.ground_output,intent,current_frame,now,current_manual.admitted,&ground_turn))return false;
         source_require(reader.value<std::uint8_t>(owner.entity,0x7e0)==0 &&
             reader.raw(reinterpret_cast<std::uintptr_t>(supplied),target.data(),sizeof(target)) && valid_flight_transform(target),
             "Invalid native ground motion target.");
         // The existing physical rig target is distinct from a display matrix.
         // No display field is assumed or overwritten by this physical adapter.
         for(unsigned column:{0u,4u,8u})for(unsigned axis=0;axis<3;++axis)target[column+axis]=bodies.matrix[column+axis];
-        arcade_mode::AirMotion::rotate_target(target,a.ground_output.rate*bodies.seconds);
+        arcade_mode::AirMotion::rotate_target(target,a.ground_output.angle_delta);
         source_require(valid_flight_transform(target),"Ground motion target is out of bounds.");
         reader.verify();return no_bail_skater(owner) && owner==a.owner;
     }
@@ -819,7 +831,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
     const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof,
     const arcade_mode::GroundControl* ground_controls, const arcade_mode::SpinCommand* spin_command,
-    const arcade_mode::LaunchDescriptor* launch) noexcept {
+    const arcade_mode::LaunchDescriptor* launch, const arcade_mode::GroundTurnCommand* ground_turn) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -830,6 +842,12 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.release_at.store(release_at, std::memory_order_relaxed);
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
     a.launch.store(active && launch ? *launch : arcade_mode::LaunchDescriptor{});
+    const auto turn=active&&angular_allowed&&ground_turn ? *ground_turn : arcade_mode::GroundTurnCommand{};
+    a.turn_serial.store(turn.serial,std::memory_order_relaxed);a.turn_at.store(turn.requested_at,std::memory_order_relaxed);
+    a.turn_step.store(turn.physics_step,std::memory_order_relaxed);a.turn_sampled.store(turn.sampled_at,std::memory_order_relaxed);
+    a.turn_generations[0].store(turn.generations.owner,std::memory_order_relaxed);
+    a.turn_generations[1].store(turn.generations.contact,std::memory_order_relaxed);
+    a.turn_generations[2].store(turn.generations.action,std::memory_order_relaxed);
     a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
     a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
     a.ground_controls.store(active && ground_controls ? ground_controls->encode() : 0,std::memory_order_relaxed);
