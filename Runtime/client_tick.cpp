@@ -817,6 +817,7 @@ void update_model(std::uintptr_t client, TickState& frame) {
     }
     if (r.observer_failed) return; // Keep the bounded restore/telemetry path available after catalog failure.
     dingosdk::arcade_mode::on_client_tick();
+    dingosdk::tick_arcade_surface_geometry(client);
     dingosdk::hall_of_meat::on_client_tick();
     dingosdk::road_rash::on_client_tick(client);
     dingosdk::board_break::on_client_tick(client);

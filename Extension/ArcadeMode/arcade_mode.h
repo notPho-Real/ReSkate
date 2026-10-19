@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "arcade_surface_geometry.h"
 #include "arcade_input_types.h"
 
 namespace dingosdk::arcade_mode {
@@ -12,6 +13,11 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
                                    const NativeRequestSample& sample) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
+// Existing client callback supplies immutable query observations only.
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept;
+void publish_surface_geometry(const SurfaceGeometrySample&) noexcept;
+void invalidate_surface_geometry() noexcept;
+SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept;
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;

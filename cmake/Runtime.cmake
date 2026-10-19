@@ -141,6 +141,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Skater/physics_tuning.cpp
     Extension/Multiplayer/Remote/remote_collision.cpp
     Extension/Skater/physics_tuning_model.cpp
+    Extension/ArcadeMode/arcade_surface_geometry.cpp
     Extension/ArcadeMode/arcade_mode.cpp
     Extension/ArcadeMode/arcade_authored_gestures.cpp
     Extension/ArcadeMode/arcade_score_probe.cpp

@@ -94,6 +94,8 @@ std::array<PlaybackPacket, 4> playback_packets;
 std::array<std::uint64_t, 4> playback_polls{};
 std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
+SurfaceGeometrySample surface_geometry_snapshot;
+std::atomic<bool> surface_geometry_available{};
 std::array<AirRotation, 4> rotations;
 std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
@@ -718,6 +720,34 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
     const auto frame = native_input_state.correlate(now,owner,sample);
     return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
 }
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    return lock.owns_lock() && mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) ?
+        arcade_input.native_context(now) : NativeInputFrame{};
+}
+void invalidate_surface_geometry() noexcept {surface_geometry_available.store(false,std::memory_order_release);}
+void publish_surface_geometry(const SurfaceGeometrySample& sample) noexcept {
+    invalidate_surface_geometry();
+    if (!sample.valid) return;
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if (!lock.owns_lock() || !mode_enabled.load(std::memory_order_acquire)) return;
+    const auto now=GetTickCount64();const auto native=arcade_input.native_context(now);
+    auto current=sample.context;current.owner={native.owner.base,native.owner.entity,native.owner.core,native.owner.context,native.owner.rig};
+    current.native=InputNativeContext::from_frame(native);
+    if (!sample.fresh_for(current,now)) return;
+    surface_geometry_snapshot=sample;
+    surface_geometry_available.store(true,std::memory_order_release);
+}
+SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if (!lock.owns_lock() || !surface_geometry_available.load(std::memory_order_acquire) || !mode_enabled.load(std::memory_order_acquire)) return {};
+    const auto native=arcade_input.native_context(now);auto current=surface_geometry_snapshot.context;
+    current.owner={native.owner.base,native.owner.entity,native.owner.core,native.owner.context,native.owner.rig};
+    current.native=InputNativeContext::from_frame(native);
+    // Cached identity/age only. This getter never calls a native query or grants writes.
+    return surface_geometry_snapshot.fresh_for(current,now) && surface_geometry_available.load(std::memory_order_acquire) ?
+        surface_geometry_snapshot : SurfaceGeometrySample{};
+}
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if (!lock.owns_lock()) return false;
@@ -792,6 +822,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 }
 
 void set_enabled(bool value, bool persist) noexcept {
+    invalidate_surface_geometry();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
     invalidate_grind_observer();

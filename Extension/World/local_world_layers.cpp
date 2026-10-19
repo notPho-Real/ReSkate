@@ -1,3 +1,4 @@
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Engine/Core/Log/logging.h"
 #include "Extension/Profile/runtime_internal.h"
 #include "local_park_rotation.h"
@@ -80,6 +81,7 @@ std::uintptr_t seasonal_destroy_hook(std::uintptr_t entity, unsigned flags) {
     {
         PreserveError preserve;
         std::lock_guard lock(r.lifetime_mutex);
+        arcade_mode::invalidate_surface_geometry();
         if (const auto found = r.subworld_logs.find(entity); found != r.subworld_logs.end()) {
             logging::log(logging::Level::debug, logging::Channel::subworld,
                 "Destroying subworld reference: {} (instance {}).", found->second.bundle, found->second.identity.generation);
@@ -91,6 +93,7 @@ std::uintptr_t seasonal_destroy_hook(std::uintptr_t entity, unsigned flags) {
 }
 
 void reset_world_layer_session() {
+    arcade_mode::invalidate_surface_geometry();
     auto& r = world_layers_runtime();
     r.context = 0; r.root_generation = 0; r.next_poll = 0;
     r.original.assign(world_layer_nodes().size(), std::nullopt);

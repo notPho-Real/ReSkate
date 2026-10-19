@@ -1,3 +1,4 @@
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/News/live_news.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Vfs/mod_catalog.h"
@@ -341,10 +342,12 @@ void update_local_customization() noexcept {
     }
 }
 void local_profile_before_level_transition(unsigned next) noexcept {
+    arcade_mode::invalidate_surface_geometry();
     PreserveError preserve;
     auto& s = local_runtime();
     if (!s.active.load(std::memory_order_acquire)) return;
     std::lock_guard lock(s.native_mutex);
+    arcade_mode::invalidate_surface_geometry();
     music_shelf_before_level_transition(next);
     item_browser::before_level_transition(next, s.base);
     news_runtime().pending.before_transition(next);
