@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_gameplay_profile.h"
 #include "arcade_movement.h"
+#include "arcade_native_input_state.h"
 #include <array>
 #include <cmath>
 #include <limits>
@@ -39,12 +40,32 @@ private:
     bool charging_{}, clocked_{}, semantic_seen_{};
     std::uint64_t semantic_at_{}, semantic_pressed_{};
 };
+// Original physics proof accompanying a current held-input publication. It
+// identifies continuous AIR, never a native animation or trick occurrence.
+struct NativeAirSpinProof {
+    NativeInputOwner owner{};
+    std::uint64_t owner_generation{}, episode{}, departure{}, physics_step{}, sampled_at{};
+    bool valid{}, airborne{};
+    static NativeAirSpinProof from_frame(const NativeInputFrame& f) noexcept {
+        return {f.owner,f.owner_generation,f.airborne_episode,f.air_departure,f.physics_step,f.sampled_at,f.valid,f.airborne};
+    }
+    bool fresh(std::uint64_t now) const noexcept {
+        return valid && owner.valid() && owner_generation && physics_step && now >= sampled_at && now-sampled_at <= 150;
+    }
+    bool matches(const NativeAirSpinProof& current, std::uint64_t now) const noexcept {
+        return fresh(now) && current.fresh(now) && airborne && current.airborne && episode &&
+            owner == current.owner && owner_generation == current.owner_generation &&
+            episode == current.episode && departure == current.departure &&
+            physics_step <= current.physics_step && sampled_at <= current.sampled_at;
+    }
+};
 struct AirMotionIntent {
     bool enabled{}, angular_allowed{};
     std::uint64_t sampled_at{}, release_sequence{}, release_at{};
     unsigned charge_ms{};
     float yaw_rate{};
     std::uint64_t generation{};
+    NativeAirSpinProof angular_proof{};
 };
 struct AirMotionFrame {
     std::uint64_t now{}, owner{};
@@ -52,6 +73,8 @@ struct AirMotionFrame {
     float dt{}, root_y{}, velocity_y{}, spin_y{};
     bool ordinary_ground{};
     float velocity_x{}, velocity_z{};
+    bool native_required{}; // Production always requires original native proof.
+    NativeAirSpinProof native{};
 };
 struct AirMotionOutput {
     bool ready{}, vertical{}, angular{};
@@ -68,6 +91,13 @@ public:
     // step. Integrate that next interval from the selected current velocity.
     static float next_height(float root_y, const AirMotionOutput& output, float dt) noexcept {
         return root_y + output.velocity_y*dt - .5f*ordinary_gravity*dt*dt;
+    }
+    static bool angular_target_current(const AirMotionOutput& output, const AirMotionIntent& intent,
+            const NativeAirSpinProof& output_proof, const NativeAirSpinProof& current, std::uint64_t now) noexcept {
+        return output.angular && intent.enabled && intent.angular_allowed && output.spin_y == intent.yaw_rate &&
+            now >= intent.sampled_at && now-intent.sampled_at <= 150 &&
+            intent.sampled_at >= intent.angular_proof.sampled_at &&
+            output_proof.matches(current,now) && intent.angular_proof.matches(current,now);
     }
     explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
     void reset() noexcept {
@@ -136,9 +166,15 @@ public:
                 vy_ = frame.velocity_y; vertical_ = false;
             }
         }
-        const float yaw_rate = spin_blocked_ ? 0 : intent.yaw_rate;
-        const bool angular = intent.angular_allowed && (yaw_rate != 0 || spun_);
-        if (intent.angular_allowed) {
+        const bool native_admitted = !frame.native_required ||
+            (frame.native.owner.core == frame.owner && intent.angular_proof.matches(frame.native,frame.now) &&
+             intent.sampled_at >= intent.angular_proof.sampled_at);
+        // A genuinely fresh current-flight publication of the SAME held input
+        // replaces the old flight ticket. Retimestamping an old ticket cannot.
+        if (frame.native_required && native_admitted) spin_blocked_ = false;
+        const float yaw_rate = native_admitted && !spin_blocked_ ? intent.yaw_rate : 0;
+        const bool angular = native_admitted && intent.angular_allowed && (yaw_rate != 0 || spun_);
+        if (native_admitted && intent.angular_allowed) {
             yaw_ = std::remainder(yaw_ + static_cast<double>(yaw_rate) * frame.dt, 6.2831853071795864769);
             spun_ = yaw_rate != 0;
         } else spun_ = false;

@@ -715,6 +715,13 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 }
 
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
+NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
+                                   const NativeRequestSample& sample) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if (!lock.owns_lock() || !mode_enabled.load(std::memory_order_acquire) || !arcade_input.admitted(0,now)) return {};
+    const auto frame = native_input_state.correlate(now,owner,sample);
+    return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
+}
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if (!lock.owns_lock()) return false;
@@ -1201,10 +1208,16 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
         if (user == 0) set_arcade_push_intent(drive_safe, crouched);
-        const auto rotation_pose = native_rotation_pose(arcade_input.native_context(now),pose,hop_origin.valid);
-        const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,
-            rotation_pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
-            arcade_air_motion_ready());
+        const auto rotation_native = arcade_input.native_context(now);
+        const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
+        const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
+        // Unqualified AIR has no selected-rate adapter. Do not substitute the
+        // legacy delayed .97-stick recipe for a proven physical angular rate.
+        auto rotation = rotations[user].poll(now, physical_buttons,rotation_enabled,rotation_pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
+            native_rate_ready);
+        // Keep current held-state tracking while rate admission is unavailable,
+        // but emit neither its legacy fallback pad nor an unqualified rate.
+        if (rotation_pose == SkatePose::air && !native_rate_ready) rotation = {};
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
@@ -1218,8 +1231,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             const NativeManualContact manual{{contact.owner.base,contact.owner.entity,contact.owner.core,
                 contact.owner.context,contact.owner.rig},contact.sampled_at,contact.contacts,manual_admitted,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
+            const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

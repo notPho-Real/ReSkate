@@ -4,6 +4,12 @@
 
 namespace dingosdk::arcade_mode {
 struct NativeManualContact;
+struct NativeInputFrame;
+struct NativeInputOwner;
+struct NativeRequestSample;
+// Nonblocking original physics correlation for the existing motion writer.
+NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
+                                   const NativeRequestSample& sample) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Development observer and guarded native-input gesture on this branch.
