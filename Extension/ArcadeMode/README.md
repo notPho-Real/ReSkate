@@ -21,6 +21,13 @@ stick/prewind recipes are outside that path. NoSpin, orientation-control and
 transfer flags remain explicitly unknown without native producers. Their full
 contextual behavior, native handedness and player acceptance remain unverified.
 
+Basic Manual/Nose correction uses digital strength with A priority.
+The current controller bridge retains its existing normalization; configured
+layout publication remains pending. Qualified native LS Y output consumes the
+physical kernel's post-integration protected correction and original component
+proof. It preserves steering X, RS hold and packet ownership/restoration. Hop,
+endpoint, stale proof and competing channel ownership withdraw this correction.
+
 ## Controls under development
 
 The A/X adapter uses the game's authored gestures. A hold/release has recorded

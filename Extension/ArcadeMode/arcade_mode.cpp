@@ -378,6 +378,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         arcade_input.publish_balance_controls(balance_admitted ? InputBalanceControls::vertical(
             pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual) :
             InputBalanceControls{}, native_frame);
+        arcade_input.publish_manual_correction(physical.applied_correction,native_frame,
+            balance_admitted && physical.valid && physical.active);
         if(balance_admitted){
             if(capture_correlation_add(capture_admission_sequence))capture_event(CaptureCorrelationSource::manual_admission,capture_admission_sequence,now,native_frame);
             else input_capture_correlation.lost();
@@ -1491,6 +1493,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Single shoulders must not leak to native catch/grab bindings.
         if (rotation_enabled) result.buttons &= ~BoardChord::pair;
         if (rotation.owns_left) { left_x = rotation.x; left_y = rotation.y; }
+        const auto manual_correction=arcade_input.manual_correction(now,
+            manual_balance_buttons(action_physical.left_y,physical_buttons,action_physical.left_x),
+            rotation_enabled && !manual_hop.active() && !reference && !action.owned && !result.authored_playback &&
+            (!result.command_busy || result.manual.owns) &&
+            result.phase!=3 && !rail_pad.owns_right_stick && !rail_pad.button_mask && !rotation.owns_left &&
+            !(physical_buttons & (classic_a | 0x0030u)) && (physical_buttons&3u)!=3u &&
+            physical_left_trigger<=30 && physical_right_trigger<=30);
+        if(manual_correction.owns_y)left_y=manual_correction.y;
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
@@ -1498,7 +1508,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || rail_pad.owns_right_stick);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick);
         neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
             result.right_x, result.right_y);
         packet_mask = physical_packet ^ output_packet;

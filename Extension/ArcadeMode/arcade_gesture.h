@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_input_session.h"
+#include "arcade_balance_input.h"
 #include "arcade_native_input_state.h"
 #include "arcade_rail_adapter.h"
 #include "arcade_rail_adapter_probe.h"
@@ -111,6 +112,31 @@ public:
             balance_controls_current(now,native) &&
             balance_frame_.action_generation == native.action_generation ? balance_frame_ : NativeInputFrame{};
     }
+    struct ManualCorrectionOutput { bool owns_y{}; std::int16_t y{}; };
+    // The physical kernel publishes its actual protected force decision with
+    // the original component observation. Input polls only consume that lease.
+    void publish_manual_correction(float amount,const NativeInputFrame& proof,bool available) noexcept {
+        manual_correction_known_=available && proof.valid && (amount==-1 || amount==0 || amount==1);
+        manual_correction_=manual_correction_known_ ? amount : 0;
+        manual_correction_frame_=manual_correction_known_ ? proof : NativeInputFrame{};
+    }
+    ManualCorrectionOutput manual_correction(std::uint64_t now,ManualBalanceButtons physical,bool compatible) const noexcept {
+        const auto native=native_context(now);const auto& proof=manual_correction_frame_;
+        const bool basic=balance_controls_.kind==InputBalanceKind::manual || balance_controls_.kind==InputBalanceKind::nose;
+        if(!compatible || !manual_correction_known_ || !basic || !balance_controls_current(now,native) ||
+            native.state!=100 || native.mode!=1 || (native.stance_and_push&0x40u) ||
+            (native.contacts!=0xc000u && native.contacts!=0x4000u && native.contacts!=0x8000u) ||
+            balance_frame_.action_generation!=native.action_generation || !proof.valid || !proof.owner.valid() ||
+            !proof.owner_generation || !proof.contact_generation || !proof.action_generation ||
+            proof.owner!=native.owner || !proof.physics_step || proof.physics_step>native.physics_step ||
+            proof.sampled_at>native.sampled_at || now<proof.sampled_at || now-proof.sampled_at>150 ||
+            proof.owner_generation!=native.owner_generation || proof.contact_generation!=native.contact_generation ||
+            proof.action_generation!=native.action_generation)return {};
+        // Release/opposite physical input withdraws an old force immediately;
+        // only a later physical-kernel decision can select the new force.
+        const auto current=manual_balance_correction(physical);
+        return {true,manual_balance_native_y(current==manual_correction_ ? manual_correction_ : 0)};
+    }
     const InputHistory* history(unsigned user) const noexcept {
         return user < sessions_.size() ? &sessions_[user].history() : nullptr;
     }
@@ -136,14 +162,14 @@ public:
         enabled_ = value; cancel_commands();
         if (native_bound_) invalidate_authority();
     }
-    void cancel_commands() noexcept { for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
+    void cancel_commands() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
     // Command-owner metadata only: an ordinary jump's right-stick tail does
     // not own the independent air rotation channel. This is not native clip
     // readiness, completion, or a NoSpin observation.
     bool allows_air_rotation(unsigned user, bool authored_playback) const noexcept {
         return !authored_playback || (user < ordinary_jump_playback_.size() && ordinary_jump_playback_[user]);
     }
-    void cancel_manuals() noexcept { for (auto& session : sessions_) session.cancel_manual(); }
+    void cancel_manuals() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.cancel_manual(); }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
@@ -259,6 +285,9 @@ private:
     RailAdapter native_rail_{};
     RailAdapterMethod native_rail_method_{};
     InputBalanceControls balance_controls_{};
+    NativeInputFrame manual_correction_frame_{};
+    float manual_correction_{};
+    bool manual_correction_known_{};
     std::uint64_t owner_{}, authority_at_{};
     unsigned source_{};
     std::array<InputSession, 4> sessions_{};

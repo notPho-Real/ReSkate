@@ -13,6 +13,7 @@ struct PhysicalBalanceSample {
     bool valid{}, active{};
     float position{}, velocity{}, elapsed{}, repeat_pressure{};
     BalanceExit exit{BalanceExit::none};
+    float applied_correction{}; // Effective digital input after this step's protection.
 };
 // Physical balance state is independent of score, multipliers and input
 // recognition. Callers admit native identity/contact before starting a section.
@@ -55,11 +56,15 @@ public:
         const auto instability = p.instability_base + time_ * p.instability_rate;
         // Position integrates the previous velocity before this frame's input.
         lean_ += (lean_ * p.gravity + speed_) * instability * frames;
+        float applied_correction=0;
         if (control.held && control.released) {
             // Safe-period direction is tested after integrating this step's
             // lean. A suppressed held branch does not consume neutral noise.
             const bool suppressed = control.elapsed_ms < 1000 && control.amount * lean_ > 0;
-            if (!suppressed) speed_ += p.correction_acceleration * frames * std::clamp(control.amount, -1.0f, 1.0f);
+            if (!suppressed) {
+                applied_correction=std::clamp(control.amount,-1.0f,1.0f);
+                speed_ += p.correction_acceleration * frames * applied_correction;
+            }
         }
         else if (std::abs(speed_) < p.minimum_speed) {
             const auto bound = static_cast<unsigned>(p.random_speed) | 1u;
@@ -72,7 +77,7 @@ public:
             active_ = false; closed_ = true;
         }
         return {true, active_, std::clamp(lean_ / GameplayProfile::balance_display_scale, -1.0f, 1.0f),
-            speed_ / GameplayProfile::balance_display_scale, time_, cheese_, outcome};
+            speed_ / GameplayProfile::balance_display_scale, time_, cheese_, outcome,applied_correction};
     }
 private:
     static float sign(float value) noexcept { return value < 0 ? -1.0f : 1.0f; }

@@ -1371,10 +1371,10 @@ using namespace dingosdk::arcade_mode::baseline;
     check(balance_correction(BalanceKind::manual, 0, -32768, true, 1) == -1 &&
           balance_correction(BalanceKind::manual, 0, 32767, true, 2) == 1,
           "manual D-pad correction overrides the steering stick in its requested direction");
-    check(balance_correction(BalanceKind::manual, 0, 32767, true, 3) == 0 &&
+    check(balance_correction(BalanceKind::manual, 0, 32767, true, 3) == -1 &&
           balance_correction(BalanceKind::manual, 0, 0, false, 1) == 0 &&
           balance_correction(BalanceKind::grind, -32768, 0, true, 1) == -1,
-          "opposed or unavailable manual correction stays neutral and grind correction is unchanged");
+          "A wins both-held correction; unavailable input is neutral and grind correction is unchanged");
     {
         Model m;
         check(!balance_meter(m.state()).visible, "idle meter hidden");
