@@ -37,5 +37,27 @@ int main(){
     const auto bail=state.observe(3034,owner,sample(),{true,-1},true);check(bail.owner_generation>after.owner_generation,"wipeout invalidates same-address ownership episode");
     const auto gap=state.observe(3200,owner,sample(),{true,-1});check(gap.owner_generation>bail.owner_generation,"observation gap cannot bridge action/contact correlation");
     check(!state.observe(3217,{},sample(),{}).valid&&!state.correlate(3218,owner,sample()).valid,"invalid owner clears all published context");
+    NativeInputState flights;
+    const auto flight = flights.observe(10,owner,sample(200),{true,-1,11});
+    check(flight.airborne && flight.airborne_episode && !flight.air_departure,"first verified AIR establishes flight without fabricated departure");
+    const auto ack = flights.observe(15,owner,sample(201),{true,2,12});
+    check(ack.airborne_episode == flight.airborne_episode && ack.air_departure == flight.air_departure &&
+        ack.action_generation != flight.action_generation,"own selection acknowledgment and continuous200/201 are one flight");
+    const auto ground = flights.observe(20,owner,sample(),{true,-1});
+    const auto relaunch = flights.observe(30,owner,sample(200),{true,-1});
+    const auto polled = flights.correlate(40,owner,sample(200));
+    check(!ground.airborne && ground.air_departure == flight.air_departure+1,"actual departure retained at physics cadence");
+    check(polled.valid && polled.airborne && polled.airborne_episode == relaunch.airborne_episode &&
+        polled.airborne_episode != flight.airborne_episode && polled.air_departure == ground.air_departure,
+        "AIR-ground-AIR between input polls retains both flight and departure boundaries");
+    const auto unknown = flights.observe(45,owner,sample(999),{});
+    check(!unknown.airborne && unknown.air_departure == polled.air_departure+1,"unknown state ends verified AIR without claiming a landing");
+    const auto fresh = flights.observe(50,owner,sample(200),{}); flights.invalidate();
+    const auto reacquired = flights.observe(60,owner,sample(200),{});
+    check(reacquired.owner_generation != fresh.owner_generation && reacquired.airborne_episode != fresh.airborne_episode &&
+        reacquired.air_departure == fresh.air_departure,"invalidity separates owner and flight without fabricating departure");
+    auto replacement = owner; ++replacement.rig;
+    const auto replaced = flights.observe(70,replacement,sample(),{});
+    check(!replaced.airborne && replaced.air_departure == reacquired.air_departure,"owner replacement is not an observed departure of the old owner");
     std::cout<<checks<<" shared native input state checks passed\n";
 }
