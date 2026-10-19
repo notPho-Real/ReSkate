@@ -158,6 +158,8 @@ private:
         const auto context = admission.pose == SkatePose::grind ? GestureContext::from_grind : launch_context_;
         switch (request.action) {
         case InputAction::crouch:
+            // Lip exits require their own admitted actor and release policy.
+            if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
             if (!admission.may_start || authored_.busy() || auxiliary_.busy() || manual_.busy()) return InputDisposition::cancelled;
             launch_context_ = admission.pose == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground;
             holding_ = start(request.nollie ? 16 : 1, request.nollie, true, launch_context_, false);

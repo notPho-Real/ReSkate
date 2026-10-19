@@ -234,5 +234,32 @@ void grab_release_and_reset() {
     }
 }
 
+void initial_rail_deadlines() {
+    struct Waiting {
+        unsigned calls{};InputRequest last{};
+        static InputDisposition receive(void* state,const InputRequest& request) noexcept {
+            auto& self=*static_cast<Waiting*>(state);++self.calls;self.last=request;return InputDisposition::waiting;
+        }
+        InputAdapter adapter() noexcept{return {this,receive};}
+    };
+    for(bool nose:{false,true})for(unsigned age:{399u,400u,401u}) {
+        UnifiedInput input;Waiting target;InputEnvironment e{InputContext::ground,true};e.policy=InputPolicy::strict();
+        const auto y=static_cast<std::int16_t>(nose?25000:-25000);
+        input.poll(0,{},e,target.adapter());input.poll(10,{0,0,y},e,target.adapter());input.poll(20,{},e,target.adapter());
+        input.poll(30,{0,0,y},e,target.adapter());input.poll(10+age,{0x8000,0,y},e,target.adapter());
+        check((input.pending_rail().action==InputAction::rail_select)==(age<400),"initial repeated vertical rail query excludes the exact400ms boundary");
+        if(age<400)check(input.pending_rail().variant==(nose?20:21),"initial rail selection remains a semantic family independent of native identity");
+    }
+    UnifiedInput input;Waiting target;InputEnvironment e{InputContext::air,true};e.policy=InputPolicy::strict();
+    input.poll(0,{},e,target.adapter());input.poll(10,{0,0,25000},e,target.adapter());input.poll(20,{},e,target.adapter());
+    input.poll(30,{0,0,25000},e,target.adapter());input.poll(40,{0x8000,0,25000},e,target.adapter());
+    check(input.pending_rail().recognized_at==40 && input.pending_rail().deadline==1040,"rail request lifetime begins at recognition rather than the first query edge");
+    e.context=InputContext::rail;input.poll(1040,{},e,target.adapter());
+    check(input.pending_rail().action==InputAction::rail_select,"extra-grind pending lifetime includes its exact1000ms endpoint across contact");
+    input.poll(1041,{},e,target.adapter());
+    check(input.pending_rail().action==InputAction::none && input.diagnostic().dispatch[0].disposition==InputDisposition::expired,
+        "extra-grind expires after1000ms without renewing on contact or readiness polls");
 }
-int main() { grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
+
+}
+int main() { initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }

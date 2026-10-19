@@ -282,6 +282,9 @@ void jump_release_metadata() {
             "charge uses physical timestamps with a fixed200ms ceiling");
         check(!h.poll(300+duration).jump.released,"one physical release cannot manufacture a second launch token");
     }
+    Harness lip;lip.admission.observed_lip=true;lip.poll(0);const auto no_lip_actor=lip.poll(10,{0x1000});
+    check(no_lip_actor.unsupported && !no_lip_actor.phase && !no_lip_actor.authored_playback && !no_lip_actor.requested_id,
+        "lip exit cannot substitute ordinary grounded authored setup without an admitted lip actor");
     Harness absent; absent.admission.authored=false;absent.poll(0);absent.poll(10,{0x1000});
     const auto out=absent.poll(60);
     check(out.jump.released && !out.jump.setup_admitted && !out.authored_playback && !out.requested_id,
