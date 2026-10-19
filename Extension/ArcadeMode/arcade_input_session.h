@@ -18,7 +18,7 @@ struct InputAdmission {
     unsigned observed_balance_branch{};
     bool observed_lip{}; // Reserved for independently verified native contact admission.
     bool manual_balance_admitted{}; // Independent identity plus active nonfailed balance.
-    InputPolicy input_policy{};
+    InputPolicy input_policy{InputPolicy::production()};
     bool branch_ready{true};
     InputRailState rail{};
     InputAdapter extensions{};
@@ -46,6 +46,12 @@ public:
     NativeGesture::Output poll(std::uint64_t now, PhysicalInputSample physical,
                               std::int16_t rx, std::int16_t ry, InputAdmission admission) noexcept {
         NativeGesture::Output output{physical.buttons, rx, ry};
+        if (clocked_ && admission.input_policy != policy_) reset();
+        policy_ = admission.input_policy;
+        if (clocked_ && admission.action_mode != mode_) {
+            auxiliary_.cancel(); grab_hold_button_ = 0; input_.cancel_auxiliary();
+        }
+        mode_ = admission.action_mode;
         if (!admission.gameplay || admission.offboard || admission.pose == SkatePose::bail ||
             (admission.pose == SkatePose::unknown && !admission.may_start && !manual_.busy()) ||
             (clocked_ && (now < last_ || admission.tick < last_tick_))) {
@@ -160,14 +166,15 @@ private:
         case InputAction::crouch:
             // Lip exits require their own admitted actor and release policy.
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
-            if (!admission.may_start || authored_.busy() || auxiliary_.busy() || manual_.busy()) return InputDisposition::cancelled;
+            if (airborne || !admission.may_start || authored_.busy() || auxiliary_.busy() || manual_.busy()) return InputDisposition::cancelled;
             launch_context_ = admission.pose == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground;
             holding_ = start(request.nollie ? 16 : 1, request.nollie, true, launch_context_, false);
             if (holding_) { jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; }
             return holding_ ? InputDisposition::started : InputDisposition::unsupported;
         case InputAction::ollie_release:
             out.jump = {true,holding_,request.nollie,launch_context_ == GestureContext::from_grind,request.physical_pressed_at,request.physical_released_at};
-            authored_.release(admission.tick); holding_ = false; return InputDisposition::started;
+            if (holding_) authored_.release(admission.tick);
+            holding_ = false; return InputDisposition::started;
         case InputAction::flip:
             if (!airborne) return InputDisposition::cancelled;
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
@@ -198,7 +205,8 @@ private:
         case InputAction::rail_select: case InputAction::rail_change: case InputAction::lip_select: case InputAction::lip_change:
             if (!admission.rail.fresh) return request.action == InputAction::rail_select &&
                 (admission.pose == SkatePose::riding || admission.pose == SkatePose::air) ? InputDisposition::waiting : InputDisposition::cancelled;
-            if (request.rail_generation && request.rail_generation != admission.rail.generation) return InputDisposition::cancelled;
+            if ((request.action != InputAction::rail_select || request.rail_generation != 0) &&
+                request.rail_generation != admission.rail.generation) return InputDisposition::cancelled;
             if (request.action == InputAction::lip_select && admission.rail.phase == InputRailPhase::lip_selection) {
                 if (admission.rail.gameframe < admission.rail.selection_frame) return InputDisposition::cancelled;
                 if (admission.rail.gameframe - admission.rail.selection_frame < 2) return InputDisposition::waiting;
@@ -210,7 +218,14 @@ private:
             if (request.action == InputAction::wall_command && !(request.variant == 1 ? admission.surface.can_plant : admission.surface.can_push)) return InputDisposition::cancelled;
             if (request.action == InputAction::transfer_command && !admission.surface.can_transfer) return InputDisposition::cancelled;
             return request_extension(request);
-        case InputAction::balance_branch_one: case InputAction::balance_branch_two: case InputAction::balance_variant: case InputAction::lip_request: case InputAction::balance_return:
+        case InputAction::balance_branch_one: case InputAction::balance_branch_two: case InputAction::balance_variant: case InputAction::balance_return: {
+            const auto origin = admission.observed_balance_branch ? admission.observed_balance_branch :
+                admission.pose == SkatePose::nose_manual ? 13u : 0u;
+            if (!admission.manual_balance_admitted || !admission.branch_ready || origin != request.balance_origin)
+                return InputDisposition::cancelled;
+            return request_extension(request);
+        }
+        case InputAction::lip_request:
             return request_extension(request);
         default: return InputDisposition::unsupported;
         }
@@ -267,6 +282,8 @@ private:
     ActionDispatch auxiliary_{};
     AutomaticPush push_{};
     BoardChord board_{};
+    ActionExperiment mode_{ActionExperiment::off};
+    InputPolicy policy_{InputPolicy::production()};
     InputAdmission admission_{};
     PhysicalInputSample physical_{};
     NativeGesture::Output* current_{};

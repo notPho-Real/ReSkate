@@ -311,5 +311,66 @@ void composed_manual_deadline() {
     }
 }
 
+void policy_and_mode_boundaries() {
+    check(InputPolicy::production()==InputPolicy{} && InputPolicy::production().manual_sample_allowance==55,
+        "production explicitly preserves the approved Manual sampling allowance");
+    struct Waiting {
+        unsigned calls{};
+        static InputDisposition receive(void* state,const InputRequest&) noexcept {++static_cast<Waiting*>(state)->calls;return InputDisposition::waiting;}
+        InputAdapter adapter() noexcept{return{this,receive};}
+    } target;
+    UnifiedInput input;InputEnvironment e{InputContext::ground,true};
+    input.poll(0,{},e,target.adapter());input.poll(10,{0,0,25000},e,target.adapter());input.poll(110,{0,0,-25000},e,target.adapter());
+    check(input.pending_manual().action==InputAction::manual,"precondition retains the original policy request");
+    const auto session=input.diagnostic().session;const auto calls=target.calls;e.policy=InputPolicy::strict();
+    input.poll(120,{0,0,-25000},e,target.adapter());
+    check(input.pending_manual().action==InputAction::none && input.diagnostic().session>session && target.calls==calls && input.history().events().empty(),
+        "policy changes cancel old requests and baseline held controls without synthesizing edges");
+    check(input.diagnostic().policy==InputPolicy::strict(),"diagnostics disclose the actual installed policy");
+    input.poll(130,{0,0,-25000},e,target.adapter());check(target.calls==calls,"held-through-policy-change is not a new press");
+    for(bool policy_change:{false,true}) {
+        InputSession native;InputAdmission a{};a.gameplay=a.action_fresh=a.inspected_stance=true;a.pose=SkatePose::air;a.action_mode=ActionExperiment::classic;
+        native.poll(0,{},0,0,a);check(native.poll(10,{0x2000},0,0,a).action.owned,"hold starts before policy or adapter selector changes");
+        if(policy_change)a.input_policy=InputPolicy::strict();else a.action_mode=ActionExperiment::revert_frontside;
+        check(!native.poll(20,{0x2000},0,0,a).action.owned,"policy or adapter selection changes release the old native channels");
+        a.action_mode=ActionExperiment::classic;
+        check(!native.poll(30,{0x2000},0,0,a).action.owned,"returning to a selector cannot replay a held physical control");
+        native.poll(40,{},0,0,a);check(native.poll(80,{0x2000},0,0,a).action.owned,"release rearms a fresh command under the selected policy");
+    }
+    InputSession authored;InputAdmission a{};const std::array catalog{PreparedGesture{1,false,GestureContext::ground,
+        std::vector<AuthoredStickStep>{{0,0,-32767},{10,0,0}}}};
+    a.catalog=catalog;a.gameplay=a.authored=a.may_start=true;a.pose=SkatePose::riding;
+    authored.poll(0,{},0,0,a);check(authored.poll(10,{0x1000},0,0,a).authored_playback,"setup starts before policy replacement");
+    a.input_policy=InputPolicy::strict();check(!authored.poll(20,{0x1000},0,0,a).authored_playback,"policy replacement cancels authored playback as well as the journal");
+    check(!authored.poll(30,{},0,0,a).jump.released,"cancelled setup cannot emit a later launch token");
 }
-int main() { composed_manual_deadline(); prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
+void state_bound_transition_requests() {
+    struct Waiting {
+        unsigned calls{};bool ready{};InputRequest last{};
+        static InputDisposition receive(void* state,const InputRequest& request) noexcept {
+            auto& self=*static_cast<Waiting*>(state);++self.calls;self.last=request;return self.ready?InputDisposition::started:InputDisposition::waiting;
+        }
+        InputAdapter adapter() noexcept{return{this,receive};}
+    };
+    for(unsigned invalidation=0;invalidation<4;++invalidation) {
+        InputSession session;Waiting target;InputAdmission a{};a.gameplay=a.manual_balance_admitted=a.branch_ready=true;
+        a.pose=SkatePose::manual;a.extensions=target.adapter();a.input_policy=InputPolicy::strict();
+        session.poll(0,{},0,0,a);session.poll(10,{0x4000},0,0,a);session.poll(20,{},0,0,a);session.poll(100,{0x4000},0,0,a);
+        check(target.calls==1 && target.last.balance_origin==0 && target.last.unbounded,"queued transition captures its independently supplied origin without an invented short expiry");
+        if(invalidation==1)a.observed_balance_branch=2;if(invalidation==2)a.manual_balance_admitted=false;if(invalidation==3)a.branch_ready=false;
+        target.ready=true;const auto out=session.poll(500,{},0,0,a);
+        check(target.calls==(invalidation?1u:2u) && !out.phase && out.command_busy==(invalidation==0),
+            "a waiting transition dispatches only in its original admitted ready state");
+    }
+    for(std::uint64_t generation:{0u,1u})for(bool replaced:{false,true}) {
+        InputSession session;Waiting target;InputAdmission a{};a.gameplay=true;a.pose=SkatePose::grind;a.input_policy=InputPolicy::strict();a.extensions=target.adapter();
+        a.rail.phase=InputRailPhase::established;a.rail.fresh=a.rail.ready=true;a.rail.generation=generation;
+        session.poll(0,{},0,0,a);session.poll(10,{0x8000},0,0,a);session.poll(20,{},0,0,a);session.poll(30,{0x4000},0,0,a);
+        check(target.calls==0,"native geometry is still required before a retained transition can execute");
+        a.rail.geometry_known=true;if(replaced)++a.rail.generation;target.ready=true;session.poll(40,{},0,0,a);
+        check(target.calls==(replaced?0u:1u),"generation zero is a bound rail origin and cannot act as a wildcard after contact replacement");
+    }
+}
+
+}
+int main() { policy_and_mode_boundaries(); state_bound_transition_requests(); composed_manual_deadline(); prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }

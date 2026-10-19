@@ -17,6 +17,8 @@ struct InputPolicy {
     std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
     bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{true};
     bool operator==(const InputPolicy&) const = default;
+    // Preserve the admitted physical Manual baseline and its explicit allowance.
+    static constexpr InputPolicy production() noexcept { return {}; }
     static constexpr InputPolicy strict() noexcept {
         return {InputNormalization::analog, 0, false, false, false};
     }

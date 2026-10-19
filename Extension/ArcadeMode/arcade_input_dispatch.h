@@ -30,6 +30,7 @@ struct InputRequest {
     std::uint64_t physical_pressed_at{}, physical_released_at{};
     bool direction_inherited{}, named_binding{};
     std::uint64_t surface_generation{}, first_input_at{}, last_input_at{};
+    unsigned balance_origin{};
 };
 struct InputEnvironment {
     InputContext context{};
@@ -43,7 +44,7 @@ struct InputEnvironment {
     bool ollie_allowed{true};
     bool manual_context_known{true};
     bool deferred_grabs{};
-    InputPolicy policy{};
+    InputPolicy policy{InputPolicy::production()};
     bool branch_ready{true};
     InputRailState rail{};
     InputSurfaceState surface{};
@@ -150,6 +151,7 @@ public:
         bool suppress_reverse{}, unresolved_definition{}, branch_context_unavailable{};
         std::array<InputDispatchEvent, 8> dispatch{};
         std::size_t dispatched{};
+        InputPolicy policy{InputPolicy::production()};
     };
     void reset() noexcept {
         events_.reset(); pending_.clear(); ++session_; crouched_ = false;
@@ -167,6 +169,9 @@ public:
     const InputHistory& history() const noexcept { return events_.history(); }
     InputRequest pending_manual() const noexcept { return pending_.slots()[0]; }
     void acknowledge_jump_release() noexcept { pending_.cancel(InputAction::ollie_release); }
+    void cancel_auxiliary() noexcept {
+        pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
+    }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
         cancel_manual(); manual_unknown_ = true;
@@ -183,6 +188,8 @@ public:
     }
     void poll(std::uint64_t now, PhysicalInputSample physical, InputEnvironment environment,
               InputAdapter adapter = {}) noexcept {
+        if (clocked_ && environment.policy != policy_) reset();
+        policy_ = environment.policy; diagnostic_.policy = policy_;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
         if (!environment.gameplay || environment.context == InputContext::unknown ||
             environment.context == InputContext::foot || (clocked_ && now < last_)) {
@@ -325,13 +332,15 @@ private:
             presses, environment.nollie, action == InputAction::manual || action == InputAction::nose_manual || action == InputAction::rail_select, variant, now > limit - delay ? limit : now + delay,
             ((action == InputAction::manual || action == InputAction::nose_manual) && environment.context == InputContext::ground) ||
                 action == InputAction::rail_change || action == InputAction::lip_change || action == InputAction::lip_select ||
+                action == InputAction::balance_branch_one || action == InputAction::balance_branch_two ||
+                action == InputAction::balance_variant || action == InputAction::balance_return ||
                 (!environment.policy.bounded_handoff && (action == InputAction::flip || action == InputAction::grab)), modifier,
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
             static_cast<std::uint16_t>(action == InputAction::grab ? 0x2000u : action == InputAction::flip ? 0x4000u :
                 action == InputAction::crouch || action == InputAction::ollie_release ? 0x1000u : 0u),
             action == InputAction::crouch || action == InputAction::ollie_release ? crouch_at_ : now,
             action == InputAction::ollie_release ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
-            footprint ? footprint->first_at : now, footprint ? footprint->last_at : now};
+            footprint ? footprint->first_at : now, footprint ? footprint->last_at : now, environment.balance_branch};
         ++diagnostic_.recognized;
         if (!pending_.push(request)) ++diagnostic_.queue_full;
     }
@@ -700,6 +709,7 @@ private:
         diagnostic_.suppress_reverse = environment.context == InputContext::ground && physical.y < -11000 &&
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
     }
+    InputPolicy policy_{InputPolicy::production()};
     InputEvents events_{};
     InputRequestQueue pending_{};
     Diagnostic diagnostic_{};

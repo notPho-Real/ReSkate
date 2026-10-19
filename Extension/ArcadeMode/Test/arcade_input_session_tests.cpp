@@ -326,8 +326,21 @@ void repeated_air_safety() {
     }
 }
 
+void airborne_setup_eligibility() {
+    Harness h;h.admission.pose=SkatePose::air;h.poll(0);
+    const auto press=h.poll(10,{0x1000});
+    check(!press.authored_playback && !press.requested_id && !press.phase,
+        "a lingering ground admission deadline cannot start a grounded setup after observed takeoff");
+    check(!h.poll(50,{0x1000}).authored_playback,"held airborne input cannot create a grounded setup later");
+    const auto release=h.poll(80);
+    check(release.jump.released && !release.jump.setup_admitted && !release.authored_playback,
+        "physical release remains observable but cannot claim a native setup that was never admitted");
+    h.admission.pose=SkatePose::riding;check(h.poll(100,{0x1000}).authored_playback,
+        "a fresh grounded physical press can start the existing native setup");
+}
+
 }
 int main() {
-    repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
+    airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
     std::cout << checks << " production input session checks passed\n";
 }
