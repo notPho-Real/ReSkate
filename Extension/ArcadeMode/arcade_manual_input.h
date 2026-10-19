@@ -33,6 +33,7 @@ public:
     struct Output { bool owns_stick{}, confirmed{}; std::int16_t y{}; bool suppress_reverse{}; };
     static constexpr auto ground_pair_ms = InputTiming::ground_pair_ms, ground_sample_slack_ms = InputTiming::ground_sample_slack_ms;
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
+    static constexpr std::uint64_t acquisition_ms = 1200;
     void cancel() noexcept { confirmed_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = false; requested_ = 0; hard_reset_ = true; }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
@@ -100,7 +101,7 @@ public:
             // Physical contact alone cannot waive the preparation bound. Only
             // independently admitted balance can maintain a continuing hold;
             // admitted corrected balances have no arbitrary lifespan limit.
-            if (((!confirmed_ || !balance_admitted) && now - requested_at_ >= 1200) ||
+            if (((!confirmed_ || !balance_admitted) && now - requested_at_ >= acquisition_ms) ||
                 (confirmed_ && now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }

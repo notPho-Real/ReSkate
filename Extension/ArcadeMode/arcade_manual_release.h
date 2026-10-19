@@ -9,6 +9,7 @@ class ManualRelease {
 public:
     struct Output { bool pending{}, completed{}, started{}; };
     void reset() noexcept { pending_ = requested_ = clocked_ = false; }
+    bool pending() const noexcept { return pending_; }
     Output step(std::uint64_t now, std::uint64_t owner_epoch, bool valid,
                 SkatePose physical, bool putdown) noexcept {
         if (!valid || !owner_epoch || (clocked_ && (now < last_ || now-last_ > 150)) ||

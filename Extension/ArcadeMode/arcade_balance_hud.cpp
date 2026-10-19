@@ -1,6 +1,7 @@
 #include "arcade_balance_hud.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_layout.h"
+#include "arcade_balance_hud_lease.h"
 #include <imgui.h>
 #include <mutex>
 #include <chrono>
@@ -12,22 +13,23 @@ BalanceMeter meter;
 unsigned danger_level{};
 std::chrono::steady_clock::time_point updated;
 }
-void publish_balance_hud(const State& state, unsigned danger) noexcept {
+void publish_balance_hud(const State& state, unsigned danger, std::uint64_t source_age_ms) noexcept {
     std::lock_guard lock(hud_mutex);
-    meter = balance_meter(state);
+    meter = source_age_ms <= BalanceHudLease::lifetime_ms ? balance_meter(state) : BalanceMeter{};
     danger_level = danger;
-    updated = std::chrono::steady_clock::now();
+    updated = std::chrono::steady_clock::now() - std::chrono::milliseconds(
+        static_cast<std::int64_t>(std::min(source_age_ms,BalanceHudLease::lifetime_ms + 1)));
 }
 bool balance_hud_pending() noexcept {
     std::lock_guard lock(hud_mutex);
-    return meter.visible && std::chrono::steady_clock::now() - updated <= std::chrono::milliseconds(250);
+    return meter.visible && BalanceHudLease::fresh(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - updated));
 }
 void draw_balance_hud() noexcept {
     BalanceMeter view;
     unsigned danger{};
     {
         std::lock_guard lock(hud_mutex);
-        if (std::chrono::steady_clock::now() - updated > std::chrono::milliseconds(250)) return;
+        if (!BalanceHudLease::fresh(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - updated))) return;
         view = meter;
         danger = danger_level;
     }

@@ -6,6 +6,7 @@ struct ManualObservationContext {
     std::uint64_t now{}, generation{};
     bool enabled{}, valid{}, activity_fresh{}, owner_changed{}, gap{};
     SkatePose contact{SkatePose::unknown};
+    bool pushing{};
 };
 inline SkatePose manual_contact_pose(const NativeComboObservation& native, bool pushing) noexcept {
     if (!native.valid || native.bailed || pushing || native.state != 100 || native.mode != 1)
@@ -40,12 +41,21 @@ public:
         // validated physical contact as the candidate even when that generic
         // flag is inactive; admission still requires a fresh matching history
         // edge below. Contact alone continues to return riding.
-        if (raw == SkatePose::riding && (context.contact == SkatePose::manual ||
+        if (raw == SkatePose::unknown && context.contact == SkatePose::riding) raw = SkatePose::riding;
+        if ((raw == SkatePose::riding || raw == SkatePose::unknown) && (context.contact == SkatePose::manual ||
             context.contact == SkatePose::nose_manual)) raw = context.contact;
         // A fresh native label admits a section once. Thereafter the current
         // owner's physical wheel contact maintains it, independently of score
         // polling. A short two-wheel contact gap must not blink the meter and
         // leave a still-held native manual without its balance lifecycle.
+        if (context.pushing) {
+            consume(label); reset();
+            // A real push excludes balance, but remains an observed owner
+            // baseline. Its subsequent Manual identity need not be discarded.
+            primed_ = context.enabled && context.valid && context.generation && !context.owner_changed && !context.gap;
+            generation_ = context.generation; last_at_ = candidate_at_ = context.now; candidate_ = SkatePose::riding;
+            return {raw == SkatePose::manual || raw == SkatePose::nose_manual ? SkatePose::riding : raw};
+        }
         const bool same_context = primed_ && context.enabled && context.valid && context.generation &&
             context.generation == generation_ && !context.owner_changed && !context.gap &&
             context.now >= last_at_ && context.now - last_at_ <= ScoreLabelEdges::freshness_ms;
@@ -60,7 +70,8 @@ public:
         const auto unconfirmed = [&] {
             return ManualObservationResult{manual ? SkatePose::riding : raw};
         };
-        if (!context.enabled || !context.valid || !context.activity_fresh || !context.generation ||
+        if (!context.enabled || !context.valid || (!context.activity_fresh && context.contact != SkatePose::manual &&
+                context.contact != SkatePose::nose_manual && raw != SkatePose::air && raw != SkatePose::riding) || !context.generation ||
             context.owner_changed || context.gap) {
             consume(label); reset(); return unconfirmed();
         }

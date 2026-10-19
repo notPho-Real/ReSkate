@@ -96,8 +96,8 @@ int main() {
             f.sample(1060, rows, SkatePose::air);
         }
         f.context.contact = fault == 11 ? SkatePose::unknown : SkatePose::manual;
-        check(!f.sample(fault == 10 ? 1220 : 1067, rows, SkatePose::manual).confirmed,
-              "pending history never crosses context, stale age, opposite contact or missing physical corroboration");
+        check(f.sample(fault == 10 ? 1220 : 1067, rows, SkatePose::manual).confirmed == (fault == 5),
+              "independent identity/contact survives generic activity loss but never crosses native context, stale age, opposite contact or missing physical corroboration");
         f.context = {1240, 1, true, true, true, false, false, SkatePose::riding};
         f.sample(1240, rows, SkatePose::riding);
         f.context.contact = SkatePose::manual;
