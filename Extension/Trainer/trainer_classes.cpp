@@ -1,4 +1,5 @@
 #include "trainer_classes.h"
+#include "trainer_flip_curve.h"
 #include "Engine/Core/Log/logging.h"
 #include <windows.h>
 #include <algorithm>
@@ -62,16 +63,11 @@ int mirror_field(const MirrorSlot &slot) noexcept {
 // A curve of the flip trick tuning: where its points are and the outputs they shipped with.
 // A point is 0x1c bytes with its input at +0xc and its output at +0x14 (the layout the physics
 // tuning's FloatCurves have); the count sits four bytes before the first point.
-struct FlipCurve {
-    std::uintptr_t curve{}, points{};
-    std::vector<float> outputs;
-    float low{}, high{}; // the bounds the curve clamps its output to (+0x20, +0x24)
-};
-constexpr std::size_t curve_point = 0x1c, curve_x = 0xc, curve_y = 0x14, curve_points_at = 0x18;
+using FlipCurve = flip_curve_detail::Curve;
 struct Found {
     std::mutex mutex;
     std::vector<FlipCurve> flip;
-    float flip_wanted{1}, flip_written{1};
+    float flip_wanted{1};
     Copies copies;
     MirrorCopies mirror_copies;
     std::array<std::array<int, 15>, mirror_count> mirror_fields{};
@@ -185,6 +181,16 @@ bool put(std::uintptr_t address, float value) noexcept {
         return false;
     }
 }
+// A curve cell is changed only if it still contains the value just validated.
+// This is the existing writable float surface, not a native action entry point.
+bool compare_curve_value(std::uintptr_t address,float expected,float value) noexcept {
+    static_assert(sizeof(LONG)==sizeof(float));
+    if((address&3u) || !std::isfinite(expected) || !std::isfinite(value))return false;
+    __try {
+        const auto before=std::bit_cast<LONG>(expected),after=std::bit_cast<LONG>(value);
+        return InterlockedCompareExchange(reinterpret_cast<volatile LONG*>(address),after,before)==before;
+    } __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
 template <class T> bool peek(std::uintptr_t address, T &value) noexcept {
     __try {
         std::memcpy(&value, reinterpret_cast<const void *>(address), sizeof(T));
@@ -222,21 +228,10 @@ void collect_eights(std::uintptr_t start, std::size_t size, const std::vector<st
     } __except (EXCEPTION_EXECUTE_HANDLER) {}
 }
 // One curve's points: false unless it has `count` points starting at (x0, y0).
-bool read_curve(std::uintptr_t curve, std::uint32_t count, float x0, float y0, FlipCurve &out) noexcept {
-    std::uintptr_t points{};
-    std::uint32_t n{};
-    float x{}, y{};
-    if (!peek(curve + curve_points_at, points) || !points || !peek(points - 4, n) || (n & 0x7fffffffu) != count) return false;
-    if (!peek(points + curve_x, x) || !peek(points + curve_y, y) || std::abs(x - x0) > 0.01f || std::abs(y - y0) > 0.01f) return false;
-    out.curve = curve;
-    out.points = points;
-    if (!peek(curve + 0x20, out.low) || !peek(curve + 0x24, out.high)) return false;
-    out.outputs.clear();
-    for (std::uint32_t i = 0; i < count; ++i) {
-        if (!peek(points + i * curve_point + curve_y, y)) return false;
-        out.outputs.push_back(y);
-    }
-    return true;
+bool read_curve(std::uintptr_t curve, std::uint32_t count, float x0, float y0, FlipCurve &out,
+                std::uintptr_t type) noexcept {
+    auto read = [](std::uintptr_t address, auto& value) noexcept { return peek(address,value); };
+    return flip_curve_detail::capture(read,curve,type,count,x0,y0,out);
 }
 // The flip trick tuning's speed curves. `curve_type`: the first eight bytes of any FloatCurve.
 // The class's fields in memory order (the game's data): ExperimentalFlipTrickSpeedCurve,
@@ -255,8 +250,8 @@ std::vector<FlipCurve> find_flip_curves(std::uintptr_t curve_type) {
         std::array<std::uintptr_t, 8> curves{};
         if (!peek(run, curves)) continue;
         std::array<FlipCurve, 4> speed;
-        if (!read_curve(curves[0], 3, 0.0f, 0.4f, speed[0]) || !read_curve(curves[1], 3, 0.35f, 0.65f, speed[1]) ||
-            !read_curve(curves[4], 3, 0.0f, 0.05f, speed[2]) || !read_curve(curves[5], 2, 0.0f, 1.0f, speed[3]))
+        if (!read_curve(curves[0], 3, 0.0f, 0.4f, speed[0], curve_type) || !read_curve(curves[1], 3, 0.35f, 0.65f, speed[1], curve_type) ||
+            !read_curve(curves[4], 3, 0.0f, 0.05f, speed[2], curve_type) || !read_curve(curves[5], 2, 0.0f, 1.0f, speed[3], curve_type))
             continue;
         for (auto &curve : speed)
             if (std::ranges::none_of(result, [&](const FlipCurve &known) { return known.points == curve.points; })) result.push_back(std::move(curve));
@@ -358,7 +353,6 @@ DWORD WINAPI search(void *) noexcept {
                 std::lock_guard lock(f.mutex);
                 flip_found = curves.size();
                 f.flip = std::move(curves);
-                f.flip_written = 1;
                 f.dirty = true;
             }
         }
@@ -411,24 +405,22 @@ bool classes_wanted() noexcept {
 std::size_t apply_classes() noexcept {
     auto &f = found();
     std::unique_lock lock(f.mutex, std::try_to_lock);
-    if (!lock.owns_lock() || !f.ready || !f.dirty) return 0;
+    if (!lock.owns_lock() || !f.ready) return 0;
+    const bool curves_pending=std::any_of(f.flip.begin(),f.flip.end(),[&](const FlipCurve& curve){
+        return flip_curve_detail::needs_work(curve,f.flip_wanted);
+    });
+    if(!f.dirty && !curves_pending)return 0;
+    const bool changed=f.dirty;
     f.dirty = false;
     std::size_t count{};
-    if (f.flip_wanted != f.flip_written && !f.flip.empty()) {
-        // A curve whose first output is not what was last written is no longer that curve.
-        std::erase_if(f.flip, [&](const FlipCurve &curve) {
-            float y{};
-            return curve.outputs.empty() || !peek(curve.points + curve_y, y) || std::abs(y - curve.outputs[0] * f.flip_written) > 0.001f * std::max(1.0f, std::abs(y));
-        });
-        for (const auto &curve : f.flip) {
-            for (std::size_t i = 0; i < curve.outputs.size(); ++i)
-                if (put(curve.points + i * curve_point + curve_y, curve.outputs[i] * f.flip_wanted)) ++count;
-            // The bounds move with the outputs, or the curve clamps the scaled values back.
-            (void)put(curve.curve + 0x20, curve.low > 0 ? curve.low * f.flip_wanted : curve.low);
-            (void)put(curve.curve + 0x24, curve.high > 0 ? curve.high * f.flip_wanted : curve.high);
-        }
-        f.flip_written = f.flip_wanted;
-    }
+    auto read = [](std::uintptr_t address,auto& value) noexcept { return peek(address,value); };
+    auto write = [](std::uintptr_t address,float expected,float value) noexcept { return compare_curve_value(address,expected,value); };
+    std::erase_if(f.flip,[&](FlipCurve& curve){
+        if(!changed && !flip_curve_detail::needs_work(curve,f.flip_wanted))return false;
+        const auto result=flip_curve_detail::apply(read,write,curve,f.flip_wanted);
+        count+=result.outputs_written;
+        return result.status==flip_curve_detail::Status::retired;
+    });
     for (std::size_t m = 0; m < mirror_count; ++m) {
         auto &list = f.mirror_copies[m];
         bool differs = false;
