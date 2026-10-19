@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_board.h"
 #include "arcade_combo_session.h"
+#include "arcade_gameplay_profile.h"
 #include <algorithm>
 #include <cmath>
 
@@ -10,10 +11,11 @@ namespace dingosdk::arcade_mode {
 // Only controller translation is reused; angular motion remains game-owned.
 class AirRotation {
 public:
-    struct Output { bool owns_left{}; std::int16_t x{}, y{}; };
+    struct Output { bool owns_left{}; std::int16_t x{}, y{}; float yaw_rate{}; };
     void reset() noexcept { *this = {}; }
     Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay,
-                SkatePose pose, bool crouched, bool native_nollie, bool conflict = false) noexcept {
+                SkatePose pose, bool crouched, bool native_nollie, bool conflict = false,
+                bool native_rate_control = false) noexcept {
         if (!gameplay || (clocked_ && now < previous_time_)) { reset(); return {}; }
         clocked_ = true; previous_time_ = now;
         const auto held = static_cast<std::uint16_t>(buttons & BoardChord::pair);
@@ -39,6 +41,7 @@ public:
             blocked_ = true; active_ = false; return {};
         }
         const float side = held == BoardChord::lb ? -1.0f : 1.0f;
+        if (air && native_rate_control) return {true, 0, 0, side * GameplayProfile{}.angular_speed()};
         float x = side * .97f, y = 0;
         const auto elapsed = now - began_;
         if (prewind_ && elapsed < 90) {

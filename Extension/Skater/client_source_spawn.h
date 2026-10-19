@@ -29,6 +29,12 @@ void set_push_speed(std::uintptr_t client, std::uintptr_t entity, float factor, 
 // and revalidates Trainer's local owner, contacts and native braking each step.
 // Expires after150ms; disabled in multiplayer. False relinquishes immediately.
 void set_arcade_push_intent(bool active, bool crouched = false) noexcept;
+// Serialized Arcade input producer. An accepted crouch/release supplies the
+// monotonic event identity; physical A without that admission cannot launch.
+// Native physics still selects takeoff/contact/bail. Leases expire after150ms.
+void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
+    unsigned charge_ms, float yaw_rate, bool angular_allowed) noexcept;
+bool arcade_air_motion_ready() noexcept;
 // Engine-thread-only interactive controls. Presentation callbacks only queue requests.
 overlay::DebugModel on_client_debug_tick(std::uintptr_t base, std::uintptr_t client,
     bool can_control, bool camera_phase_observed, const overlay::DebugRequest* request = nullptr,

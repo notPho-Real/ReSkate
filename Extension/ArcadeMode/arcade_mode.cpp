@@ -1,4 +1,5 @@
 #include "arcade_mode.h"
+#include "arcade_air_motion.h"
 #include "arcade_fixture_geometry.h"
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
@@ -86,6 +87,7 @@ std::array<std::uint64_t, 4> playback_polls{};
 std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
 std::array<AirRotation, 4> rotations;
+std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
 std::array<PadEvidence, 4> previous_pad{};
@@ -697,6 +699,8 @@ void set_enabled(bool value, bool persist) noexcept {
         push_eligible_until.store(0, std::memory_order_release);
         movement_eligible_until.store(0, std::memory_order_release);
         set_arcade_push_intent(false);
+        set_arcade_air_intent(false, 0, 0, 0, 0, false);
+        for (auto& charge : native_charges) charge.cancel();
         board_eligible_until.store(0, std::memory_order_release);
         offboard_valid_until.store(0, std::memory_order_release);
         manual_eligible_until.store(0, std::memory_order_release);
@@ -860,6 +864,8 @@ void on_client_tick() noexcept {
                 manual_prepare_until.store(0, std::memory_order_release);
                 manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
                 manual_balance_admitted.store(false, std::memory_order_relaxed);
+                set_arcade_air_intent(false, 0, 0, 0, 0, false);
+                for (auto& charge : native_charges) charge.cancel();
             }
             action_eligible_until.store(0, std::memory_order_release);
             combo_session.invalidate();
@@ -1014,7 +1020,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             !result.suppress_reverse && (!result.command_busy || crouched);
         if (user == 0) set_arcade_push_intent(drive_safe, crouched);
         const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,
-            pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3);
+            pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
+            arcade_air_motion_ready());
+        if (user == 0) {
+            const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
+            const auto release = native_charges[user].poll(now,
+                result.requested_id == 1 || result.requested_id == 16,
+                (physical_buttons & classic_a) != 0, charge_valid);
+            const bool angular_allowed = !reference && !action.owned && !result.authored_playback && result.phase != 3;
+            set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed);
+        }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.
         if (rotation_enabled) result.buttons &= ~BoardChord::pair;

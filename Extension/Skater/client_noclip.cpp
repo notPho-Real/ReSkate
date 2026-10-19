@@ -11,6 +11,7 @@
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_push.h"
+#include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "free_flight.h"
 #include <cmath>
 
@@ -33,7 +34,8 @@ bool body_writable(std::size_t index, std::uintptr_t body) {
         cache.until = now + 1000;
     }
     if (cache.bodies[index] == body) return true;
-    if (!source_writable(body + 0x60, 0x20)) return false;
+    // Validate the complete flags/linear/angular region before either writer.
+    if (!source_writable(body + 0x60, 0x40)) return false;
     cache.bodies[index] = body;
     return true;
 }
@@ -72,6 +74,8 @@ NoclipBodies debug_noclip_bodies(std::uintptr_t base, std::uintptr_t client, std
     NoclipBodies result;
     result.root = skater.skater_position;
     result.forward = {transform[8], 0, transform[10]};
+    result.up = {transform[4], transform[5], transform[6]};
+    result.matrix = transform;
     result.core = reader.pointer(component, 0x70);
     source_require(reader.pointer(result.core) == base + addr::no_bail::bail_core_vtable, "Skater physics is unavailable.");
     const auto board = reader.pointer(reader.pointer(result.core, 0x430), 0x18);
@@ -415,12 +419,122 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         }
     } catch (...) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); }
 }
+// The command channel has one serialized Arcade producer. Native callbacks
+// take one coherent snapshot; they never wait for an input-thread publication.
+struct ArcadeAir {
+    std::atomic<std::uint64_t> version{}, sampled{}, release_sequence{}, release_at{}, ready_until{}, epoch{};
+    std::atomic<unsigned> charge{};
+    std::atomic<float> yaw_rate{};
+    std::atomic<bool> enabled{}, angular_allowed{};
+    // SourceState::busy protects the remaining physics/motion-thread state.
+    arcade_mode::AirMotion controller;
+    arcade_mode::AirMotionOutput output{};
+    NoBailSkater owner{};
+    std::uintptr_t client{};
+    std::uint64_t stepped_at{}, generation{};
+};
+ArcadeAir& arcade_air() { static auto* value = new ArcadeAir; return *value; }
+bool read_arcade_air(arcade_mode::AirMotionIntent& out) noexcept {
+    auto& a = arcade_air();
+    const auto before = a.version.load(std::memory_order_acquire);
+    if (before & 1u) return false;
+    out = {a.enabled.load(std::memory_order_relaxed), a.angular_allowed.load(std::memory_order_relaxed),
+        a.sampled.load(std::memory_order_relaxed), a.release_sequence.load(std::memory_order_relaxed),
+        a.release_at.load(std::memory_order_relaxed), a.charge.load(std::memory_order_relaxed),
+        a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
+    return before == a.version.load(std::memory_order_acquire);
+}
+void arcade_air_apply(std::uintptr_t core) noexcept {
+    auto& a = arcade_air();
+    arcade_mode::AirMotionIntent intent{};
+    const auto now = GetTickCount64();
+    if (!read_arcade_air(intent) || !intent.enabled || now < intent.sampled_at || now - intent.sampled_at > 150 ||
+        multiplayer_session_active()) { a.ready_until.store(0, std::memory_order_release); return; }
+    auto& state = source_state();
+    if (!state.initialized.load(std::memory_order_acquire) || !state.velocity_guard_active.load(std::memory_order_acquire) ||
+        !state.motion_original.load(std::memory_order_acquire) || state.busy.test_and_set(std::memory_order_acquire)) return;
+    SourceBusyScope scope{state.busy};
+    try {
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor, "Air motion yields to editing or flight.");
+        const auto& identity = push_speed();
+        source_require(now < identity.expires.load(std::memory_order_acquire), "Air motion identity is stale.");
+        const auto client = identity.client.load(std::memory_order_relaxed), entity = identity.entity.load(std::memory_order_relaxed);
+        const auto bodies = debug_noclip_bodies(state.trial.base, client, entity);
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner.core == core && bodies.core == core && !bodies.offboard && !bodies.wipeout &&
+            owner.base == state.trial.base && owner.entity == entity && owner.context == bodies.context && owner.rig == bodies.rig_wrapper,
+            "Air motion local ownership changed.");
+        SourceReader reader;
+        source_require(reader.value<std::uint8_t>(entity, 0x7e0) == 0, "Air motion yields to teleport.");
+        namespace native = game::build::v20260929::arcade_native_probe;
+        const auto physics = reader.value<std::uint32_t>(bodies.context, native::selected_state);
+        std::array<std::array<float, 3>, 32> velocities{}, spins{};
+        std::array<std::uint32_t, 32> flags{};
+        for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
+            velocities[i] = reader.value<std::array<float, 3>>(bodies.parts[i], 0x70);
+            spins[i] = reader.value<std::array<float, 3>>(bodies.parts[i], 0x90);
+            flags[i] = reader.value<std::uint32_t>(bodies.parts[i], 0x60);
+            for (float v : spins[i]) source_require(std::isfinite(v) && std::abs(v) < 1000, "Invalid native angular velocity.");
+        }
+        const bool ordinary = std::isfinite(bodies.up[0]) && std::isfinite(bodies.up[1]) && std::isfinite(bodies.up[2]) &&
+            std::abs(bodies.up[0]) <= .01f && std::abs(bodies.up[2]) <= .01f && bodies.up[1] >= .99f && bodies.up[1] <= 1.01f;
+        if (a.owner != owner) a.controller.reset();
+        const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
+            bodies.root[1], velocities[0][1], spins[0][1], ordinary});
+        NoBailSkater after{};
+        reader.verify();
+        source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
+        a.owner = owner; a.client = client; a.output = output; a.stepped_at = now; a.generation = intent.generation;
+        a.ready_until.store(output.ready ? now + 150 : 0, std::memory_order_release);
+        if (!output.vertical && !output.angular) return;
+        source_require(arcade_mode::AirMotion::apply_bodies(output, velocities, spins), "Air motion result is invalid.");
+        for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
+            if (output.vertical) body_write(bodies.parts[i] + 0x70, velocities[i]);
+            if (output.angular) body_write(bodies.parts[i] + 0x90, spins[i]);
+            body_write(bodies.parts[i] + 0x60, flags[i] | (output.vertical ? 8u : 0u) | (output.angular ? 0x20u : 0u));
+        }
+    } catch (...) { a.controller.reset(); a.output = {}; a.ready_until.store(0, std::memory_order_release); }
+}
+bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
+    const std::array<float, 16>* supplied, std::array<float, 16>& target) {
+    auto& a = arcade_air();
+    arcade_mode::AirMotionIntent intent{};
+    const auto now = GetTickCount64();
+    if (!read_arcade_air(intent) || !intent.enabled || intent.generation != a.generation ||
+        !a.output.ready || !a.owner.core || now < a.stepped_at ||
+        now - a.stepped_at > 150 || now < intent.sampled_at || now - intent.sampled_at > 150 || multiplayer_session_active()) return false;
+    const bool angular = a.output.angular && intent.angular_allowed;
+    if (!a.output.vertical && !angular) return false;
+    SourceReader reader;
+    if (reader.pointer(a.owner.core, 0x438) != rig || reader.pointer(a.owner.core, 0x3c0) != context) return false;
+    const auto bodies = debug_noclip_bodies(a.owner.base, a.client, a.owner.entity);
+    NoBailSkater owner{};
+    if (bodies.offboard || bodies.wipeout || !no_bail_skater(owner) || owner != a.owner) return false;
+    namespace native = game::build::v20260929::arcade_native_probe;
+    const auto state = reader.value<std::uint32_t>(context, native::selected_state);
+    if (state != 200 && state != 201) return false;
+    source_require(reader.value<std::uint8_t>(owner.entity, 0x7e0) == 0 &&
+        reader.raw(reinterpret_cast<std::uintptr_t>(supplied), target.data(), sizeof(target)) && valid_flight_transform(target),
+        "Invalid native air motion target.");
+    if (a.output.vertical) target[13] = bodies.root[1] + a.output.velocity_y * bodies.seconds;
+    if (angular) {
+        // Like the existing translation controller, anchor to actual motion
+        // and lead one simulation step. Never reintegrate a free-running target.
+        for (unsigned column : {0u, 4u, 8u})
+            for (unsigned axis = 0; axis < 3; ++axis) target[column + axis] = bodies.matrix[column + axis];
+        arcade_mode::AirMotion::rotate_target(target, a.output.spin_y * bodies.seconds);
+    }
+    source_require(valid_flight_transform(target), "Air motion target is out of bounds.");
+    reader.verify();
+    return no_bail_skater(owner) && owner == a.owner;
+}
 void noclip_physics_update(std::uintptr_t core) {
     const auto original = source_state().velocity_update_original.load(std::memory_order_acquire);
     if (original) original(core);
     noclip_apply_velocity(core);
     trainer_apply_jump_scale(core);
     trainer_push_speed(core);
+    arcade_air_apply(core);
 }
 bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float,16>* supplied, std::array<float,16>& target) noexcept {
@@ -430,6 +544,10 @@ bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
         state.busy.test_and_set(std::memory_order_acquire)) return false;
     SourceBusyScope scope{state.busy};
     auto& debug = state.trial.debug;
+    if (!debug.noclip && !debug.park_editor && !debug.offboard_up_velocity.valid) {
+        try { if (arcade_air_target(rig, context, supplied, target)) return true; }
+        catch (...) { arcade_air().ready_until.store(0, std::memory_order_release); }
+    }
     auto& boost = debug.offboard_up_velocity;
     if (!debug.noclip && boost.valid && boost.applied) {
         try {
@@ -552,6 +670,25 @@ void set_arcade_push_intent(bool active, bool crouched) noexcept {
     if ((!active && previous) || (active && previous < now)) p.arcade_epoch.fetch_add(1, std::memory_order_relaxed);
     p.arcade_crouched.store(crouched, std::memory_order_relaxed);
     p.arcade_expires.store(active ? now + 150 : 0, std::memory_order_release);
+}
+void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
+    unsigned charge_ms, float yaw_rate, bool angular_allowed) noexcept {
+    auto& a = arcade_air();
+    if (!active) a.ready_until.store(0, std::memory_order_release);
+    a.version.fetch_add(1, std::memory_order_acq_rel);
+    if (a.enabled.load(std::memory_order_relaxed) != active) a.epoch.fetch_add(1, std::memory_order_relaxed);
+    a.enabled.store(active, std::memory_order_relaxed);
+    a.sampled.store(GetTickCount64(), std::memory_order_relaxed);
+    a.release_sequence.store(release_sequence, std::memory_order_relaxed);
+    a.release_at.store(release_at, std::memory_order_relaxed);
+    a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
+    a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
+    a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
+    a.version.fetch_add(1, std::memory_order_release);
+}
+bool arcade_air_motion_ready() noexcept {
+    const auto now = GetTickCount64(), until = arcade_air().ready_until.load(std::memory_order_acquire);
+    return until && until >= now && until - now <= 150;
 }
 JumpScaleResult take_jump_scale_result() noexcept {
     auto& j = jump_scale();
