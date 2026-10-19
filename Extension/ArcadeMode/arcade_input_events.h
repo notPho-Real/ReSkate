@@ -19,9 +19,16 @@ struct InputBalanceControls {
     InputBalanceKind kind{};
     InputToken first{}, second{};
     bool admitted{};
+    InputGenerations generations{};
+    bool correlated(InputNativeContext context) const noexcept {
+        return admitted && context.correlates(generations);
+    }
     static constexpr InputBalanceControls vertical(InputBalanceKind kind = InputBalanceKind::manual) noexcept {
         return {kind,{InputSource::direction,8,InputEdge::press},{InputSource::direction,2,InputEdge::press},true};
     }
+};
+struct InputConsumption {
+    static constexpr std::uint32_t regular = 1, manual = 2, extra_grind = 8, extra = 16;
 };
 struct InputEvent {
     InputToken token{};

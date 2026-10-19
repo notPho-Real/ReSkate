@@ -7,6 +7,45 @@ struct InputTiming {
     static constexpr std::uint64_t air_pair_ms = 400, air_request_ms = 700;
     static constexpr std::uint64_t direction_ms = 500, extra_press_ms = 300;
     static constexpr std::uint64_t takeoff_preload_ms = 160, readiness_ms = 200;
+    static constexpr std::uint64_t native_sample_lease_ms = 150;
+};
+struct InputGenerations {
+    std::uint64_t owner{}, contact{}, action{};
+    bool operator==(const InputGenerations&) const = default;
+};
+// Correlation from an independently sampled native producer, never a trick
+// occurrence or animation clock. Polling cannot renew the producer's lease.
+struct InputNativeContext {
+    bool required{}, valid{};
+    InputGenerations generations{};
+    std::uint64_t physics_step{}, sampled_at{};
+    bool rail_family{};
+    bool operator==(const InputNativeContext&) const = default;
+    bool fresh(std::uint64_t now) const noexcept {
+        return valid && generations.owner && generations.contact && generations.action && physics_step &&
+            now >= sampled_at && now - sampled_at <= InputTiming::native_sample_lease_ms;
+    }
+    bool correlates(InputGenerations publication) const noexcept {
+        return !required || (valid && generations.owner && generations.contact &&
+            publication.owner == generations.owner && publication.contact == generations.contact);
+    }
+    bool correlates_action(InputGenerations publication) const noexcept {
+        return correlates(publication) && (!required || publication.action == generations.action);
+    }
+    bool follows(const InputNativeContext& previous) const noexcept {
+        if (!previous.valid) return true;
+        if (physics_step < previous.physics_step || sampled_at < previous.sampled_at) return false;
+        if (generations.owner != previous.generations.owner)
+            return generations.owner > previous.generations.owner && physics_step > previous.physics_step;
+        return physics_step >= previous.physics_step && sampled_at >= previous.sampled_at &&
+            generations.contact >= previous.generations.contact && generations.action >= previous.generations.action &&
+            (physics_step != previous.physics_step || *this == previous);
+    }
+    template<class Frame>
+    static InputNativeContext from_frame(const Frame& frame) noexcept {
+        return {true,frame.valid,{frame.owner_generation,frame.contact_generation,frame.action_generation},
+            frame.physics_step,frame.sampled_at,frame.rail_family};
+    }
 };
 }
 
@@ -38,6 +77,7 @@ struct InputRailState {
     std::uint64_t generation{}, gameframe{}, selection_frame{};
     unsigned excluded_variant{}, lip_table{};
     bool fresh{}, ready{}, geometry_known{}, right{}, parallel{}, backwards{}, regular{}, frontside{};
+    InputGenerations generations{};
     constexpr std::uint8_t geometry_index() const noexcept {
         return static_cast<std::uint8_t>((right ? 1u : 0u) | (parallel ? 2u : 0u) |
             (backwards ? 4u : 0u) | (regular ? 8u : 0u));
@@ -50,5 +90,6 @@ struct InputSurfaceState {
     std::uint64_t generation{}, physics_step{};
     bool fresh{}, can_plant{}, can_push{}, can_transfer{};
     std::uint16_t transfer_buttons{}; // Zero keeps an unselected platform binding unavailable.
+    InputGenerations generations{};
 };
 }
