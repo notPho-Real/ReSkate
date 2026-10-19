@@ -85,7 +85,7 @@ class NativeActionPlayback {
 public:
     struct Sample { bool owns_pad{}, finished{}, cancelled{}; unsigned phase{}; NativeActionPad pad{}; };
     bool start(const NativeActionPlan& plan, std::uint64_t now, bool experimental_enabled,
-               bool observed_airborne) noexcept {
+               bool observed_airborne, bool held = false) noexcept {
         if (active_ || !experimental_enabled || !observed_airborne ||
             plan.readiness != ActionReadiness::candidate || !plan.count || plan.count > plan.steps.size()) return false;
         unsigned total{};
@@ -94,10 +94,18 @@ public:
             total += plan.steps[i].duration_ms;
         }
         if (total > 1500) return false;
-        plan_ = plan; began_ = last_ = now; active_ = true;
+        // Only the established trigger-only native grab has a proven hold pad.
+        // Named modifier candidates retain their existing bounded recipes.
+        if (held && (plan.requested != ArcadeTrick::basic_bs_grab || plan.count != 2)) return false;
+        plan_ = plan; began_ = last_ = now; active_ = true; held_ = held; released_ = false;
         return true;
     }
-    void cancel() noexcept { active_ = false; }
+    void cancel() noexcept { active_ = held_ = released_ = false; }
+    void release(std::uint64_t now) noexcept {
+        if (!active_ || !held_ || released_) return;
+        if (now < last_) { cancel(); return; }
+        released_ = true; released_at_ = last_ = now;
+    }
     bool busy() const noexcept { return active_; }
     Sample sample(std::uint64_t now, bool gameplay_fresh, bool observed_airborne, bool conflict = false) noexcept {
         if (!active_) return {};
@@ -105,6 +113,12 @@ public:
             cancel(); return {false, false, true};
         }
         last_ = now;
+        if (held_) {
+            if (!released_) return {true, false, false, 0, plan_.steps[0].pad};
+            if (now - released_at_ < plan_.steps[1].duration_ms)
+                return {true, false, false, 1, plan_.steps[1].pad};
+            cancel(); return {false, true, false};
+        }
         auto elapsed = now - began_;
         for (unsigned i = 0; i < plan_.count; ++i) {
             if (elapsed < plan_.steps[i].duration_ms) return {true, false, false, i, plan_.steps[i].pad};
@@ -114,7 +128,7 @@ public:
     }
 private:
     NativeActionPlan plan_{};
-    std::uint64_t began_{}, last_{};
-    bool active_{};
+    std::uint64_t began_{}, last_{}, released_at_{};
+    bool active_{}, held_{}, released_{};
 };
 }

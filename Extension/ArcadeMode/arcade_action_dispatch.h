@@ -20,15 +20,17 @@ public:
     };
     void cancel() noexcept { grab_.cancel(); revert_.cancel(); }
     bool busy() const noexcept { return grab_.busy() || revert_.busy(); }
-    DispatchResult request_grab(ArcadeTrick trick, std::uint64_t now, const ActionContext& context) noexcept {
+    DispatchResult request_grab(ArcadeTrick trick, std::uint64_t now, const ActionContext& context,
+                                bool held = false) noexcept {
         const auto gate = eligibility(context);
         if (gate != DispatchResult::started) return gate;
         if (!context.airborne) return DispatchResult::unsafe_context;
         const auto plan = grab_plan(trick, context.inspected_grab_stance);
         if (plan.readiness == ActionReadiness::context_unverified) return DispatchResult::unsafe_context;
         if (plan.readiness != ActionReadiness::candidate) return DispatchResult::unavailable;
-        return grab_.start(plan, now, true, true) ? DispatchResult::started : DispatchResult::unavailable;
+        return grab_.start(plan, now, true, true, held) ? DispatchResult::started : DispatchResult::unavailable;
     }
+    void release_grab(std::uint64_t now) noexcept { grab_.release(now); }
     DispatchResult request_revert(RevertSide side, RevertContext stance, std::uint64_t now,
                                   const ActionContext& context) noexcept {
         const auto gate = eligibility(context);
