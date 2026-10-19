@@ -5,6 +5,20 @@
 #include <cmath>
 
 namespace dingosdk::arcade_mode {
+struct GroundMotionContext {
+    bool eligible{}, crouched{}, may_start{};
+};
+// Actual native ground class/contact plus delivered held setup. Requesting a
+// crouch cannot select its budget before the native crouch class admits it.
+constexpr GroundMotionContext ground_motion_context(unsigned state, unsigned mode,
+        unsigned contacts, bool pushing, bool braking, bool held_setup) noexcept {
+    const bool crouched = state == 103 && held_setup;
+    const bool ground = state == 100 || state == 103;
+    const bool wheels = contacts == 0xc000u;
+    const bool kick_contact = pushing && (contacts == 0x4000u || contacts == 0x8000u);
+    const bool eligible = ground && mode <= 2 && !braking && (wheels || kick_contact);
+    return {eligible, crouched, eligible && wheels && ((state == 100 && mode == 1) || crouched)};
+}
 // Selected ground kick response, in SI units. This supplies a bounded
 // acceleration budget through the existing Trainer body writer. Native
 // steering, vertical velocity and collisions remain authoritative.
@@ -56,8 +70,12 @@ public:
             // only bounded ground steering drag, never a collision-sized loss.
             const bool flat = std::abs(velocity[1]) < .3f && std::abs(position[1] - position_[1]) < .025f;
             const float budget = acceleration * dt - std::max(0.0f, speed - previous_speed_);
-            const float goal = std::min(limit, flat ? previous_speed_ + acceleration * dt : speed + std::max(0.0f, budget));
-            change = std::clamp(goal - speed, 0.0f, (acceleration + 18) * dt);
+            // Kick eligibility is inclusive at the threshold; a full step can
+            // cross it. Excess speed is coasted, never reduced to kick speed.
+            if (previous_speed_ <= limit) {
+                const float goal = flat ? previous_speed_ + acceleration * dt : speed + std::max(0.0f, budget);
+                change = std::clamp(goal - speed, 0.0f, (acceleration + 18) * dt);
+            }
         } else {
             primed_ = true; position_ = position;
             // The guarded caller permits this only on native two-wheel ground.
@@ -81,35 +99,43 @@ private:
 class GroundResistance {
 public:
     explicit GroundResistance(GameplayProfile profile = {}) noexcept : profile_(profile) {}
-    void reset() noexcept { primed_ = false; previous_ = 0; }
-    float selected_speed(float speed, float dt, bool crouched) const noexcept {
+    void reset() noexcept { primed_ = limits_known_ = false; previous_ = 0; }
+    float selected_speed(float speed, float dt, bool crouched, bool braking = false, bool limits_known = true) const noexcept {
         if (!std::isfinite(speed) || speed < 0 || !std::isfinite(dt) || dt <= 0 || dt > .1f) return speed;
-        speed = std::min(speed, profile_.hard_speed());
+        if (limits_known) speed = std::min(speed, profile_.hard_speed());
         const auto wind = [dt](float v, float coefficient) {
             return std::max(0.0f, v - coefficient / GameplayProfile::metres_per_inch * 60 * dt * v * v);
         };
-        if (speed > profile_.soft_speed()) speed = wind(speed, .0001f);
+        if (limits_known && speed > profile_.soft_speed()) speed = wind(speed, .0001f);
+        if (braking) {
+            const float impulse = 900 * GameplayProfile::metres_per_inch * dt;
+            speed = speed < 2*impulse ? 0 : std::max(0.0f, speed-impulse);
+        }
+        if (!limits_known) return speed;
         speed = wind(speed, crouched ? .000002f : .00001f);
         return std::max(0.0f, speed - .00001f * GameplayProfile::metres_per_inch * 60 * dt);
     }
-    float step(float dt, float speed, bool crouched) noexcept {
+    float step(float dt, float speed, bool crouched, bool braking = false) noexcept {
         if (!std::isfinite(speed) || speed < 0 || speed >= 1000 ||
             !std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
         if (!primed_) {
-            if (speed > profile_.soft_speed()) return 0;
+            limits_known_ = speed <= profile_.soft_speed();
+            if (!limits_known_ && !braking) return 0;
             previous_ = speed; primed_ = true; return 0;
         }
-        const float required_loss = std::max(0.0f, previous_ - selected_speed(previous_, dt, crouched));
+        if (speed <= profile_.soft_speed()) limits_known_ = true;
+        const float baseline = std::max(previous_, speed);
+        const float required_loss = std::max(0.0f, baseline - selected_speed(baseline, dt, crouched, braking, limits_known_));
         const float native_loss = std::max(0.0f, previous_ - speed);
         const float extra_loss = std::max(0.0f, required_loss - native_loss);
-        const float target = std::min(profile_.hard_speed(), std::max(0.0f, speed - extra_loss));
+        const float target = std::min(limits_known_ ? profile_.hard_speed() : speed, std::max(0.0f, speed - extra_loss));
         previous_ = target;
         return target - speed;
     }
 private:
     GameplayProfile profile_;
     float previous_{};
-    bool primed_{};
+    bool primed_{}, limits_known_{};
 };
 
 }

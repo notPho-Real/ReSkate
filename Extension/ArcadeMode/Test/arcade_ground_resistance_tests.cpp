@@ -24,7 +24,7 @@ int main() {
                   "native resistance is credited once; stronger native drag is never restored");
         }
         resistance.reset(); resistance.step(dt,10,crouched);
-        check(near(10.3f+resistance.step(dt,10.3f,crouched),10.3f-loss),
+        check(near(10.3f+resistance.step(dt,10.3f,crouched),10.3f-((crouched ? .000002f : .00001f)/.0254f*60*dt*10.3f*10.3f+.00001f*.0254f*60*dt)),
               "native acceleration does not erase the selected resistance budget");
         resistance.reset(); resistance.step(dt,20,crouched);
         check(20+resistance.step(dt,20,crouched)>profile.kick_speed(crouched),
@@ -49,20 +49,56 @@ int main() {
         check(resistance.step(invalid,10,false)==0 && resistance.step(1.0f/60,40,false)==0,
               "invalid cadence clears the prior resistance episode");
     }
-    for (bool crouched : {false,true}) {
-        GroundDrive drive; GroundResistance resistance;
+    for(auto stats : {GameplayStats::standard,GameplayStats::maxed}) for (bool crouched : {false,true}) for(float dt : {1.0f/30,1.0f/60}) {
+        const GameplayProfile selected{stats};
+        GroundDrive drive(selected); GroundResistance resistance(selected);
         std::array<float,3> position{}, velocity{0,0,1};
-        const float dt=1.0f/60;
+        float oracle=1;
         for (unsigned i=0;i<300;++i) {
             position[2]+=velocity[2]*dt;
             velocity[2]+=drive.step(dt,position,velocity,crouched,true);
             const float change=resistance.step(dt,velocity[2],crouched);
             velocity[2]+=change; drive.account_resistance(change);
-            check(velocity[2]>=0 && velocity[2]<=profile.kick_speed(crouched)+.0001f,
-                  "composed production drive and resistance remain bounded without undoing the preceding loss");
+            if(i) {
+                if(oracle<=selected.kick_speed(crouched)) oracle+=selected.kick_acceleration(crouched)*dt;
+                oracle=std::max(0.0f,oracle-(crouched?.000002f:.00001f)/.0254f*60*dt*oracle*oracle-.00001f*.0254f*60*dt);
+            }
+            check(near(velocity[2],oracle),"composed production flat-ground path matches the independent discrete kick-then-friction oracle at both profiles and cadences");
         }
-        check(velocity[2]<profile.kick_speed(crouched)-.001f && velocity[2]>profile.kick_speed(crouched)-.5f,
-              "steady kick response retains coast resistance rather than canceling it next frame");
+        check(velocity[2]>selected.kick_speed(crouched)-.5f&&velocity[2]<selected.kick_speed(crouched)+selected.kick_acceleration(crouched)*dt,
+              "steady response crosses the kick eligibility threshold without turning it into an absolute cap");
+        for(int offset : {-1,0,1}) {
+            const float limit=selected.kick_speed(crouched);
+            const float initial=offset<0?std::nextafter(limit,0.0f):offset>0?std::nextafter(limit,100.0f):limit;
+            GroundDrive boundary(selected);boundary.step(dt,{}, {0,0,initial},crouched);
+            const float increment=boundary.step(dt,{0,0,initial*dt},{0,0,initial},crouched);
+            check(offset>0?increment==0:near(increment,selected.kick_acceleration(crouched)*dt),
+                  "native kick gate permits a complete step at the exact threshold and rejects just above it");
+        }
+    }
+    for(float dt : {1.0f/30,1.0f/60}) for(bool crouched : {false,true}) {
+        GroundResistance brake;
+        const float impulse=22.86f*dt;
+        check(brake.selected_speed(std::nextafter(2*impulse,0.0f),dt,crouched,true)==0,
+              "braking stops strictly below twice its step impulse without reversing velocity");
+        check(brake.selected_speed(2*impulse,dt,crouched,true)>impulse-.001f,
+              "the exact braking threshold applies one impulse instead of an early stop");
+        brake.step(dt,10,crouched);
+        const float expected=brake.selected_speed(10,dt,crouched,true);
+        check(near(10+brake.step(dt,10,crouched,true),expected),"selected native brake request reaches the resistance budget");
+        brake.reset();brake.step(dt,10,crouched);
+        check(brake.step(dt,expected-.1f,crouched,true)==0,"stronger native braking or collision loss is never restored");
+        brake.reset();brake.step(dt,40,crouched,true);
+        check(near(40+brake.step(dt,40,crouched,true),40-impulse),
+              "braking an unknown fast arrival retains transfer caps and applies only independently requested brake deceleration");
+    }
+    for(unsigned state : {100u,103u,200u,403u}) for(bool setup : {false,true}) {
+        const auto context=ground_motion_context(state,0,0xc000,false,false,setup);
+        check(context.eligible==(state==100||state==103)&&context.crouched==(state==103&&setup),
+              "actual ground class and delivered held setup jointly select crouched acceleration");
+        check(context.may_start==(state==103&&setup),"an independently grounded crouch may start from rest");
+        check(!ground_motion_context(state,0,0xc000,false,true,setup).eligible,
+              "native braking always vetoes acceleration regardless of setup state");
     }
     std::cout<<checks<<" ground resistance checks passed\n";
 }

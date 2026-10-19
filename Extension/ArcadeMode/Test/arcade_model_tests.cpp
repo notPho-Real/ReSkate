@@ -145,10 +145,10 @@ int main() {
                 const float previous = speed;
                 const float native = speed < 9.1f ? std::min(9.1f, speed + .2f) : speed - .15f;
                 speed = native + drive.step(dt, {0,0,position}, {0,0,native}, crouched);
-                check(std::abs(speed - std::min(limit, previous + acceleration * dt)) < .001f,
-                    "acceleration budget counts native push gain and bounds held speed at30/60Hz");
+                check(std::abs(speed - (previous <= limit ? std::max(native, previous + acceleration * dt) : native)) < .001f,
+                    "acceleration credits native gain and uses the inclusive kick eligibility threshold at30/60Hz");
             }
-            check(std::abs(speed - limit) < .001f, "native held-push target cannot impose its lower cap on the adapter");
+            check(speed > limit-.2f && speed <= limit+acceleration*dt, "native held-push target cannot impose its lower cap on the adapter");
             check(drive.step(dt, {0,0,position}, {0,0,1}, crouched) == 0,
                 "collision-sized native deceleration cannot be replenished");
             drive.reset();

@@ -326,7 +326,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         // What the game's brake code tests: a brake held (bit 2) or one squeezed by some amount (bit 1, +0x1880).
         const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 && std::abs(reader.value<float>(bodies.context, 0x1880)) > 0.05f);
-        bool arcade_safe{}, arcade_start{};
+        bool arcade_safe{}, arcade_start{}, arcade_crouched{};
         if (arcade) {
             const auto epoch = p.arcade_epoch.load(std::memory_order_relaxed);
             if (epoch != p.drive_epoch) {
@@ -343,11 +343,10 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             }
             const bool contact_recovery = p.arcade_push_contacts.poll(now, true, physics, mode, contacts,
                 (requests & 0x40u) != 0, false);
-            arcade_start = physics == 100 && mode == 1 && contacts == 0xc000u;
-            arcade_safe = !braking && !state.trial.debug.park_editor && mode <= 2 &&
-                (physics == 100 || physics == 103) && !bodies.wipeout &&
-                (contacts == 0xc000u || (((requests & 0x40u) || contact_recovery) &&
-                    (contacts == 0x4000u || contacts == 0x8000u))) &&
+            const auto ground = arcade_mode::ground_motion_context(physics, mode, contacts,
+                (requests & 0x40u) || contact_recovery, braking, p.arcade_crouched.load(std::memory_order_relaxed));
+            arcade_start = ground.may_start; arcade_crouched = ground.crouched;
+            arcade_safe = ground.eligible && !state.trial.debug.park_editor && !bodies.wipeout &&
                 reader.value<std::uint8_t>(p.entity, 0x7e0) == 0 && no_bail_skater(owner) &&
                 owner.base == state.trial.base && owner.entity == p.entity && owner.core == core &&
                 owner.context == bodies.context && owner.rig == bodies.rig_wrapper;
@@ -363,7 +362,7 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         if (arcade) {
             if (!arcade_safe) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return; }
             const float change = p.arcade_drive.step(bodies.seconds, bodies.root, velocities[0],
-                p.arcade_crouched.load(std::memory_order_relaxed), arcade_start);
+                arcade_crouched, arcade_start);
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
             if (!(change > .0001f)) return;
             const auto direction = speed >= .05f ?
@@ -496,9 +495,10 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 &&
             std::abs(reader.value<float>(bodies.context, 0x1880)) > .05f);
         if ((physics == 100 || physics == 103) && ordinary && contacts == 0xc000u &&
-            (mode == 1 || mode == 2) && std::abs(velocities[0][1]) < .3f && !braking) {
+            mode <= 2 && std::abs(velocities[0][1]) < .3f) {
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
-            const float change = a.ground_resistance.step(bodies.seconds, speed, mode == 2);
+            const float change = a.ground_resistance.step(bodies.seconds, speed,
+                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), braking);
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
                 for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
