@@ -100,5 +100,27 @@ int main() {
         check(!ground_motion_context(state,0,0xc000,false,true,setup).eligible,
               "native braking always vetoes acceleration regardless of setup state");
     }
+    for(unsigned contacts:{0x4000u,0x8000u,0xc000u}) {
+        NativeManualContact proof{{1,2,3,4,5},1000,contacts,true,1,2,3};
+        check(proof.generation_matches(1,2,3),"manual movement binds to the independently admitted native episode");
+        check(!proof.generation_matches(2,2,3)&&!proof.generation_matches(1,3,3)&&!proof.generation_matches(1,2,4),
+              "owner/contact/action changes independently retire the old movement proof");
+        check(proof.matches(1000,{1,2,3,4,5},100,1,contacts),"independent Manual/Nose proof admits its current physical wheel contact");
+        check(proof.matches(1150,{1,2,3,4,5},100,1,contacts)&&!proof.matches(1151,{1,2,3,4,5},100,1,contacts),
+              "manual movement proof preserves its original inclusive150ms observation lease");
+        check(!proof.matches(999,{1,2,3,4,5},100,1,contacts),"future observation cannot authorize movement");
+        for(unsigned field=0;field<5;++field){auto changed=proof.owner;++changed[field];check(!proof.matches(1017,changed,100,1,contacts),"all five native owner links must match before manual resistance");}
+        for(unsigned state:{103u,200u,401u,701u})check(!proof.matches(1017,proof.owner,state,1,contacts),"crouch/air/rail/transition cannot inherit a basic manual resistance proof");
+        for(unsigned mode:{0u,2u,3u})check(!proof.matches(1017,proof.owner,100,mode,contacts),"native mode must still admit physical ground balance");
+        check(!proof.matches(1017,proof.owner,100,1,0),"lost native wheel contact yields without changing momentum");
+        proof.admitted=false;check(!proof.matches(1017,proof.owner,100,1,contacts),"contact without independent balance identity grants no movement correction");
+        for(float dt:{1.0f/30,1.0f/60})for(bool native_brake:{false,true}){
+            GroundResistance resistance;resistance.step(dt,10,true,native_brake,true);
+            const float target=10-.00001f/.0254f*60*dt*100-.00001f*.0254f*60*dt;
+            check(near(10+resistance.step(dt,10,true,native_brake,true),target),"admitted manual uses ordinary coast resistance rather than crouch or brake budget");
+            resistance.reset();resistance.step(dt,10,false,false,true);
+            check(resistance.step(dt,9,false,true,true)==0,"stronger native collision/brake loss remains authoritative during manual movement");
+        }
+    }
     std::cout<<checks<<" ground resistance checks passed\n";
 }

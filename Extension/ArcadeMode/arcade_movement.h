@@ -5,6 +5,27 @@
 #include <cmath>
 
 namespace dingosdk::arcade_mode {
+// Independent Manual/Nose admission, tied to one observed native contact.
+// Internal owner links are never logged or serialized.
+struct NativeManualContact {
+    std::array<std::uintptr_t,5> owner{};
+    std::uint64_t sampled_at{};
+    std::uint32_t contacts{};
+    bool admitted{};
+    std::uint64_t owner_generation{}, contact_generation{}, action_generation{};
+    bool generation_matches(std::uint64_t owner, std::uint64_t contact, std::uint64_t action) const noexcept {
+        return admitted && owner_generation && contact_generation && action_generation &&
+            owner_generation == owner && contact_generation == contact && action_generation == action;
+    }
+    bool matches(std::uint64_t now, const std::array<std::uintptr_t,5>& current,
+                 unsigned state, unsigned mode, unsigned observed_contacts) const noexcept {
+        if (!admitted || !owner_generation || !contact_generation || !action_generation || now < sampled_at || now-sampled_at > 150 || owner != current ||
+            state != 100 || mode != 1 || contacts != observed_contacts ||
+            (contacts != 0x4000u && contacts != 0x8000u && contacts != 0xc000u)) return false;
+        for (const auto link : owner) if (!link) return false;
+        return true;
+    }
+};
 struct GroundMotionContext {
     bool eligible{}, crouched{}, may_start{};
 };
@@ -115,7 +136,9 @@ public:
         speed = wind(speed, crouched ? .000002f : .00001f);
         return std::max(0.0f, speed - .00001f * GameplayProfile::metres_per_inch * 60 * dt);
     }
-    float step(float dt, float speed, bool crouched, bool braking = false) noexcept {
+    float step(float dt, float speed, bool crouched, bool braking = false, bool manual = false) noexcept {
+        // Admitted basic balance coasts; it does not add kick or brake budget.
+        if (manual) { crouched = false; braking = false; }
         if (!std::isfinite(speed) || speed < 0 || speed >= 1000 ||
             !std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
         if (!primed_) {

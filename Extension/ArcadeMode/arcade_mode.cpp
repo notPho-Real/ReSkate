@@ -1,5 +1,6 @@
 #include "arcade_mode.h"
 #include "arcade_air_motion.h"
+#include "arcade_movement.h"
 #include "arcade_fixture_geometry.h"
 #include "arcade_observation.h"
 #include "arcade_native_probe.h"
@@ -689,6 +690,14 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 }
 
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
+bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if (!lock.owns_lock()) return false;
+    const auto now = GetTickCount64();
+    const auto frame = arcade_input.native_context(now);
+    return mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) && frame.valid &&
+        proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
+}
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
 
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
@@ -1154,8 +1163,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid);
             const bool angular_allowed = !reference && !action.owned && !result.authored_playback && result.phase != 3;
+            const auto contact = arcade_input.native_context(now);
+            const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
+                (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
+                !result.authored_playback && !action.owned && !reference;
+            const NativeManualContact manual{{contact.owner.base,contact.owner.entity,contact.owner.core,
+                contact.owner.context,contact.owner.rig},contact.sampled_at,contact.contacts,manual_admitted,
+                contact.owner_generation,contact.contact_generation,contact.action_generation};
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

@@ -3,6 +3,9 @@
 #include "arcade_input_types.h"
 
 namespace dingosdk::arcade_mode {
+struct NativeManualContact;
+// Bounded physics-side check; contention or changed native generation yields.
+bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;

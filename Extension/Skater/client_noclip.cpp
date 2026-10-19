@@ -10,6 +10,7 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
 #include "Extension/ArcadeMode/arcade_movement.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/ArcadeMode/arcade_push.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "free_flight.h"
@@ -425,6 +426,11 @@ struct ArcadeAir {
     std::atomic<unsigned> charge{};
     std::atomic<float> yaw_rate{};
     std::atomic<bool> enabled{}, angular_allowed{};
+    std::array<std::atomic<std::uintptr_t>,5> manual_owner{};
+    std::atomic<std::uint64_t> manual_sampled{};
+    std::atomic<std::uint32_t> manual_contacts{};
+    std::atomic<bool> manual_admitted{};
+    std::array<std::atomic<std::uint64_t>,3> manual_generations{};
     // SourceState::busy protects the remaining physics/motion-thread state.
     arcade_mode::AirMotion controller;
     arcade_mode::GroundResistance ground_resistance;
@@ -434,7 +440,7 @@ struct ArcadeAir {
     std::uint64_t stepped_at{}, generation{};
 };
 ArcadeAir& arcade_air() { static auto* value = new ArcadeAir; return *value; }
-bool read_arcade_air(arcade_mode::AirMotionIntent& out) noexcept {
+bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManualContact* manual = nullptr) noexcept {
     auto& a = arcade_air();
     const auto before = a.version.load(std::memory_order_acquire);
     if (before & 1u) return false;
@@ -442,13 +448,23 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out) noexcept {
         a.sampled.load(std::memory_order_relaxed), a.release_sequence.load(std::memory_order_relaxed),
         a.release_at.load(std::memory_order_relaxed), a.charge.load(std::memory_order_relaxed),
         a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
+    if (manual) {
+        for (std::size_t i=0;i<manual->owner.size();++i) manual->owner[i]=a.manual_owner[i].load(std::memory_order_relaxed);
+        manual->sampled_at=a.manual_sampled.load(std::memory_order_relaxed);
+        manual->contacts=a.manual_contacts.load(std::memory_order_relaxed);
+        manual->admitted=a.manual_admitted.load(std::memory_order_relaxed);
+        manual->owner_generation=a.manual_generations[0].load(std::memory_order_relaxed);
+        manual->contact_generation=a.manual_generations[1].load(std::memory_order_relaxed);
+        manual->action_generation=a.manual_generations[2].load(std::memory_order_relaxed);
+    }
     return before == a.version.load(std::memory_order_acquire);
 }
 void arcade_air_apply(std::uintptr_t core) noexcept {
     auto& a = arcade_air();
     arcade_mode::AirMotionIntent intent{};
+    arcade_mode::NativeManualContact manual{};
     const auto now = GetTickCount64();
-    if (!read_arcade_air(intent) || !intent.enabled || now < intent.sampled_at || now - intent.sampled_at > 150 ||
+    if (!read_arcade_air(intent,&manual) || !intent.enabled || now < intent.sampled_at || now - intent.sampled_at > 150 ||
         multiplayer_session_active()) { a.ready_until.store(0, std::memory_order_release); return; }
     auto& state = source_state();
     if (!state.initialized.load(std::memory_order_acquire) || !state.velocity_guard_active.load(std::memory_order_acquire) ||
@@ -487,18 +503,21 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
         a.owner = owner; a.client = client; a.output = output; a.stepped_at = now; a.generation = intent.generation;
         a.ready_until.store(output.ready ? now + 150 : 0, std::memory_order_release);
-        // Only ordinary two-wheel ground is eligible. The fast-arrival guard
-        // inside GroundResistance preserves unknown transfer-limit overrides.
+        // Ordinary ground and independently admitted Manual/Nose use the same
+        // resistance adapter. Native collision/braking loss is never restored.
+        // Fast arrivals retain the existing unknown-override protection.
         const auto contacts = reader.value<std::uint32_t>(bodies.context, native::request_words + 4) & 0xc000u;
         const auto mode = reader.value<std::uint32_t>(bodies.rig_wrapper, native::crouch_mode);
         const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
         const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 &&
             std::abs(reader.value<float>(bodies.context, 0x1880)) > .05f);
-        if ((physics == 100 || physics == 103) && ordinary && contacts == 0xc000u &&
+        const bool balancing = manual.matches(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},physics,mode,contacts) &&
+            arcade_mode::native_manual_contact_current(manual);
+        if ((physics == 100 || physics == 103) && ordinary && (contacts == 0xc000u || balancing) &&
             mode <= 2 && std::abs(velocities[0][1]) < .3f) {
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
             const float change = a.ground_resistance.step(bodies.seconds, speed,
-                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), braking);
+                physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), braking, balancing);
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
                 for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
@@ -701,7 +720,8 @@ void set_arcade_push_intent(bool active, bool crouched) noexcept {
     p.arcade_expires.store(active ? now + 150 : 0, std::memory_order_release);
 }
 void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
-    unsigned charge_ms, float yaw_rate, bool angular_allowed) noexcept {
+    unsigned charge_ms, float yaw_rate, bool angular_allowed,
+    const arcade_mode::NativeManualContact* manual) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -713,6 +733,14 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
     a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
     a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
+    for (std::size_t i=0;i<a.manual_owner.size();++i)
+        a.manual_owner[i].store(manual?manual->owner[i]:0,std::memory_order_relaxed);
+    a.manual_sampled.store(manual?manual->sampled_at:0,std::memory_order_relaxed);
+    a.manual_contacts.store(manual?manual->contacts:0,std::memory_order_relaxed);
+    a.manual_admitted.store(active&&manual&&manual->admitted,std::memory_order_relaxed);
+    a.manual_generations[0].store(manual?manual->owner_generation:0,std::memory_order_relaxed);
+    a.manual_generations[1].store(manual?manual->contact_generation:0,std::memory_order_relaxed);
+    a.manual_generations[2].store(manual?manual->action_generation:0,std::memory_order_relaxed);
     a.version.fetch_add(1, std::memory_order_release);
 }
 bool arcade_air_motion_ready() noexcept {
