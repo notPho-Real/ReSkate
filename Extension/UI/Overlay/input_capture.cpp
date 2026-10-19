@@ -11,6 +11,7 @@
 #include <cstring>
 #include <string>
 #include <mutex>
+#include <memory>
 #include <set>
 #include <span>
 #include <tuple>
@@ -41,11 +42,20 @@ void note_input_record(const RAWINPUT& record) noexcept;
 HeldInput& held_input() { static auto* value = new HeldInput; return *value; }
 
 struct InputCaptureHooks {
-    Hook hid_attributes, read_file, overlapped, overlapped_ex, completion, completion_ex, close_handle;
+    Hook hid_attributes, read_file, overlapped, overlapped_ex, completion, completion_ex, close_handle, completion_port, completion_modes;
     struct HidRead { HANDLE file; void* buffer; DWORD capacity; PlayStationPad kind; };
+    struct HidMode { HANDLE port{}; ULONG_PTR key{}; bool skip_success{}, skip_known{}; };
+    struct HidOperation {
+        HidRead read; HidMode mode;
+        bool event_only{}, returned{}, immediate{}, finished{}, claimed{}, packet_seen{}, packet_expected{}, unavailable{};
+    };
+    struct HidSlot { std::shared_ptr<HidOperation> operation; bool unavailable{}; };
+    static constexpr std::size_t hid_limit = 128;
     std::mutex hid_mutex;
     std::map<HANDLE, PlayStationPad> hid_devices;
-    std::map<OVERLAPPED*, HidRead> hid_reads;
+    std::map<HANDLE, HidMode> hid_modes;
+    std::map<OVERLAPPED*, HidSlot> hid_reads;
+    std::atomic<unsigned> hid_unavailable{};
     Hook register_raw;
     Hook async_key, key, keyboard, raw_data, raw_buffer, capture, release_capture, cursor, show_cursor, physical_cursor, cursor_position;
     std::array<Hook, 5> xinput_state, xinput_extended, xinput_keystroke;
@@ -121,21 +131,105 @@ void handle_hid(const InputCaptureHooks::HidRead& read,DWORD size) noexcept {
         pad.left_trigger=value.left_trigger;pad.right_trigger=value.right_trigger;pad.left_x=value.left_x;
     });
 }
-void complete_hid(OVERLAPPED* request, DWORD bytes, bool success, bool finished) {
-    auto& h = input_hooks();
-    InputCaptureHooks::HidRead read{};
+// Local operation objects correlate the initiating wrapper and result polls.
+// IOCP packets have no such token: they are admitted only by observed port/key
+// and a slot with no unresolved address reuse. Never guess a packet generation.
+using HidOperation = std::shared_ptr<InputCaptureHooks::HidOperation>;
+HidOperation begin_hid(const InputCaptureHooks::HidRead& read, OVERLAPPED* request) {
+    auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);
+    // A completed-but-unclaimed report must not later write into a buffer the
+    // caller has already lent to another operation, even at another address.
+    for(auto& [address,slot]:h.hid_reads)if(address!=request&&slot.operation->read.buffer==read.buffer&&!slot.operation->claimed){
+        slot.unavailable=true;slot.operation->unavailable=true;++h.hid_unavailable;
+    }
+    const auto old=h.hid_reads.find(request);
+    if(old!=h.hid_reads.end()) {
+        const auto& prior=*old->second.operation;
+        if(old->second.unavailable || !prior.finished ||
+           (!prior.packet_seen && !prior.event_only && (!prior.returned || prior.packet_expected))) {
+            old->second.unavailable=true;old->second.operation->unavailable=true;++h.hid_unavailable;return {};
+        }
+    } else if(h.hid_reads.size()>=InputCaptureHooks::hid_limit) {++h.hid_unavailable;return {};}
+    auto operation=std::make_shared<InputCaptureHooks::HidOperation>();operation->read=read;
+    if(const auto mode=h.hid_modes.find(read.file);mode!=h.hid_modes.end())operation->mode=mode->second;
+    operation->event_only=(reinterpret_cast<ULONG_PTR>(request->hEvent)&1)!=0;
+    operation->packet_expected=!operation->event_only;
+    h.hid_reads[request]={operation,false};return operation;
+}
+HidOperation hid_operation(HANDLE file,OVERLAPPED* request) {
+    auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);const auto found=h.hid_reads.find(request);
+    return found!=h.hid_reads.end()&&!found->second.unavailable&&found->second.operation->read.file==file ? found->second.operation:HidOperation{};
+}
+void finish_hid_locked(OVERLAPPED* request,const HidOperation& operation,DWORD bytes,bool success) {
+    auto& h=input_hooks();const auto found=h.hid_reads.find(request);
+    if(found==h.hid_reads.end()||found->second.operation!=operation||found->second.unavailable||operation->unavailable)return;
+    // Claim AND writeback are serialized: another completion wrapper cannot
+    // expose the buffer while the winning callback is still masking it.
+    if(success&&!operation->claimed){operation->claimed=true;handle_hid(operation->read,bytes);}
+    if(operation->returned&&operation->finished&&(!operation->packet_expected||operation->packet_seen))h.hid_reads.erase(found);
+}
+void returned_hid(OVERLAPPED* request,const HidOperation& operation,DWORD bytes,bool success,DWORD error) {
+    if(!operation)return;
+    auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);
+    operation->returned=true;operation->immediate=success;
+    if(success){operation->finished=true;operation->packet_expected=!operation->event_only&&!operation->mode.skip_success;}
+    else if(error!=ERROR_IO_PENDING){operation->finished=true;operation->packet_expected=false;}
+    // Unknown immediate notification mode is unavailable until a real packet
+    // proves that this operation has a port completion. Native bytes survive.
+    const bool admitted=operation->event_only||operation->mode.skip_known||operation->packet_seen||block_polled_input();
+    if(success&&!admitted)++h.hid_unavailable;
+    finish_hid_locked(request,operation,bytes,success&&admitted);
+}
+void complete_hid(OVERLAPPED* request,const HidOperation& operation,DWORD bytes,bool success,bool finished) {
+    if(!operation)return;
+    auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);
+    if(finished)operation->finished=true;
+    finish_hid_locked(request,operation,bytes,success);
+}
+void complete_hid_packet(HANDLE port,ULONG_PTR key,OVERLAPPED* request,DWORD bytes,bool success) {
+    auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);const auto found=h.hid_reads.find(request);
+    if(found==h.hid_reads.end()||found->second.unavailable)return;
+    const auto operation=found->second.operation;
+    if(operation->event_only||operation->mode.port!=port||operation->mode.key!=key||!port)return;
+    operation->packet_seen=true;operation->finished=true;
+    if(operation->returned&&operation->immediate&&!operation->mode.skip_known){
+        // An observed immediate-success packet proves the default mode for
+        // this handle. A later successful setter can only add the skip bit.
+        const auto mode=h.hid_modes.find(operation->read.file);
+        if(mode!=h.hid_modes.end()&&!mode->second.skip_success)mode->second.skip_known=true;
+    }
+    finish_hid_locked(request,operation,bytes,success);
+}
+HANDLE WINAPI captured_completion_port(HANDLE file,HANDLE port,ULONG_PTR key,DWORD threads) {
+    auto& h=input_hooks();HANDLE result{};DWORD error{};
+    {
+        // Serialize these non-alertable configuration calls with close and
+        // read registration; a recycled handle cannot inherit a late update.
+        std::lock_guard lock(h.hid_mutex);
+        result=original<decltype(&CreateIoCompletionPort)>(h.completion_port)(file,port,key,threads);error=GetLastError();
+        if(result&&file!=INVALID_HANDLE_VALUE){
+            if(h.hid_modes.contains(file)||h.hid_modes.size()<InputCaptureHooks::hid_limit){auto& mode=h.hid_modes[file];mode.port=result;mode.key=key;}
+            else ++h.hid_unavailable;
+        }
+    }
+    SetLastError(error);return result;
+}
+BOOL WINAPI captured_completion_modes(HANDLE file,UCHAR flags) {
+    auto& h=input_hooks();BOOL result{};DWORD error{};
     {
         std::lock_guard lock(h.hid_mutex);
-        const auto found = h.hid_reads.find(request);
-        if (found == h.hid_reads.end()) return;
-        read = found->second;
-        if (finished) h.hid_reads.erase(found);
+        result=original<decltype(&SetFileCompletionNotificationModes)>(h.completion_modes)(file,flags);error=GetLastError();
+        if(result&&(flags&FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)){
+            if(h.hid_modes.contains(file)||h.hid_modes.size()<InputCaptureHooks::hid_limit){auto& mode=h.hid_modes[file];mode.skip_success=true;mode.skip_known=true;}
+            else ++h.hid_unavailable;
+        }
     }
-    if (success) handle_hid(read, bytes);
+    SetLastError(error);return result;
 }
 BOOL WINAPI captured_read_file(HANDLE file, LPVOID buffer, DWORD size, LPDWORD bytes, LPOVERLAPPED request) {
     auto& h = input_hooks();
     InputCaptureHooks::HidRead read{file, buffer, size, PlayStationPad::none};
+    HidOperation operation;
     if (!overlay_input_access) {
         // Some readers inspect a temporary enumeration handle, then open a
         // second handle for reports. Identify that handle as well.
@@ -159,53 +253,69 @@ BOOL WINAPI captured_read_file(HANDLE file, LPVOID buffer, DWORD size, LPDWORD b
         const auto found = h.hid_devices.find(file);
         if (found != h.hid_devices.end() && found->second != PlayStationPad::none) {
             read.kind = found->second;
-            if (request) h.hid_reads[request] = read;
         }
     }
+    if(request&&read.kind!=PlayStationPad::none)operation=begin_hid(read,request);
     const auto result = original<decltype(&ReadFile)>(h.read_file)(file, buffer, size, bytes, request);
     const auto error = GetLastError();
     if (read.kind != PlayStationPad::none) {
-        if (result) handle_hid(read, bytes ? *bytes : request ? static_cast<DWORD>(request->InternalHigh) : 0);
-        if (!result && error != ERROR_IO_PENDING && request) complete_hid(request, 0, false, true);
+        const auto transferred=result ? (bytes ? *bytes : request ? static_cast<DWORD>(request->InternalHigh) : 0) : 0;
+        if(request){
+            returned_hid(request,operation,transferred,result!=FALSE,error);
+            if(result&&!operation&&block_polled_input())neutral_hid(read,transferred);
+        }
+        else if(result)handle_hid(read,transferred);
+        if(h.hid_unavailable.load(std::memory_order_relaxed)){
+            static std::atomic<bool> reported{};
+            if(!reported.exchange(true))logging::write(logging::Level::warning,logging::Channel::input,
+                "Sony HID completion ownership unavailable for an unobserved mode, unresolved reuse or bounded tracking limit; native input retained.");
+        }
     }
     SetLastError(error);
     return result;
 }
 BOOL WINAPI captured_overlapped(HANDLE file, LPOVERLAPPED request, LPDWORD bytes, BOOL wait) {
+    const auto operation=hid_operation(file,request);
     const auto result = original<decltype(&GetOverlappedResult)>(input_hooks().overlapped)(file, request, bytes, wait);
     const auto error = GetLastError();
-    complete_hid(request, result && bytes ? *bytes : 0, result != FALSE, result || error != ERROR_IO_INCOMPLETE);
+    complete_hid(request, operation, result && bytes ? *bytes : 0, result != FALSE, result || error != ERROR_IO_INCOMPLETE);
     SetLastError(error); return result;
 }
 BOOL WINAPI captured_overlapped_ex(HANDLE file, LPOVERLAPPED request, LPDWORD bytes, DWORD timeout, BOOL alertable) {
+    const auto operation=hid_operation(file,request);
     const auto result = original<decltype(&GetOverlappedResultEx)>(input_hooks().overlapped_ex)(file, request, bytes, timeout, alertable);
     const auto error = GetLastError();
-    complete_hid(request, result && bytes ? *bytes : 0, result != FALSE,
+    complete_hid(request, operation, result && bytes ? *bytes : 0, result != FALSE,
         result || (error != ERROR_IO_INCOMPLETE && error != WAIT_TIMEOUT && error != WAIT_IO_COMPLETION));
     SetLastError(error); return result;
 }
 BOOL WINAPI captured_completion(HANDLE port, LPDWORD bytes, PULONG_PTR key, LPOVERLAPPED* request, DWORD timeout) {
     const auto result = original<decltype(&GetQueuedCompletionStatus)>(input_hooks().completion)(port, bytes, key, request, timeout);
     const auto error = GetLastError();
-    if (request && *request) complete_hid(*request, result && bytes ? *bytes : 0, result != FALSE, true);
+    if (request && *request && key) complete_hid_packet(port,*key,*request, result && bytes ? *bytes : 0, result != FALSE);
     SetLastError(error); return result;
 }
 BOOL WINAPI captured_completion_ex(HANDLE port, LPOVERLAPPED_ENTRY entries, ULONG count, PULONG removed, DWORD timeout, BOOL alertable) {
     const auto result = original<decltype(&GetQueuedCompletionStatusEx)>(input_hooks().completion_ex)(port, entries, count, removed, timeout, alertable);
     const auto error = GetLastError();
     if (result && entries && removed) for (ULONG i = 0; i < *removed; ++i)
-        complete_hid(entries[i].lpOverlapped, entries[i].dwNumberOfBytesTransferred,
-            static_cast<LONG>(entries[i].Internal) >= 0, true);
+        complete_hid_packet(port,entries[i].lpCompletionKey,entries[i].lpOverlapped,entries[i].dwNumberOfBytesTransferred,
+            static_cast<LONG>(entries[i].Internal) >= 0);
     SetLastError(error); return result;
 }
 BOOL WINAPI captured_close_handle(HANDLE file) {
-    auto& h = input_hooks();
+    auto& h=input_hooks();BOOL result{};DWORD error{};
     {
         std::lock_guard lock(h.hid_mutex);
-        if (h.hid_devices.erase(file))
-            std::erase_if(h.hid_reads, [&](const auto& entry) { return entry.second.file == file; });
+        // Cancellation/close does not drain queued packets. Retain a bounded
+        // unavailable address marker rather than misattribute a reused handle.
+        for(auto& [request,slot]:h.hid_reads)if(slot.operation->read.file==file||slot.operation->mode.port==file){
+            (void)request;slot.unavailable=true;slot.operation->unavailable=true;
+        }
+        result=original<decltype(&CloseHandle)>(h.close_handle)(file);error=GetLastError();
+        if(result){h.hid_devices.erase(file);h.hid_modes.erase(file);}
     }
-    return original<decltype(&CloseHandle)>(h.close_handle)(file);
+    SetLastError(error);return result;
 }
 
 // Where the jump at an entry point goes, through any stubs on the way: the first address inside
@@ -864,7 +974,9 @@ bool install_input_capture() {
     const auto kernel_hook = [&](Hook& hook, const char* name, void* detour) {
         return install(hook, reinterpret_cast<void*>(GetProcAddress(kernel, name)), detour);
     };
-    if (!kernel_hook(h.read_file, "ReadFile", reinterpret_cast<void*>(captured_read_file)) ||
+    if (!kernel_hook(h.completion_port, "CreateIoCompletionPort", reinterpret_cast<void*>(captured_completion_port)) ||
+        !kernel_hook(h.completion_modes, "SetFileCompletionNotificationModes", reinterpret_cast<void*>(captured_completion_modes)) ||
+        !kernel_hook(h.read_file, "ReadFile", reinterpret_cast<void*>(captured_read_file)) ||
         !kernel_hook(h.overlapped, "GetOverlappedResult", reinterpret_cast<void*>(captured_overlapped)) ||
         !kernel_hook(h.overlapped_ex, "GetOverlappedResultEx", reinterpret_cast<void*>(captured_overlapped_ex)) ||
         !kernel_hook(h.completion, "GetQueuedCompletionStatus", reinterpret_cast<void*>(captured_completion)) ||
