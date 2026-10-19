@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <span>
 
 namespace dingosdk::arcade_mode {
 // Independent Manual/Nose admission, tied to one observed native contact.
@@ -51,6 +52,18 @@ public:
     static constexpr float crouched_acceleration = GameplayProfile{}.kick_acceleration(true);
     explicit GroundDrive(GameplayProfile profile = {}) noexcept : profile_(profile) {}
     void reset() noexcept { const auto selected = profile_; *this = GroundDrive(selected); }
+    // Validate all articulated velocities before delivering a uniform horizontal
+    // acceleration. Preserve each body's vertical and relative momentum.
+    static bool apply_bodies(std::span<std::array<float,3>> velocities, float dx, float dz) noexcept {
+        if (velocities.empty() || !std::isfinite(dx) || !std::isfinite(dz)) return false;
+        for (const auto& v : velocities) for (unsigned axis=0;axis<3;++axis) {
+            if (!std::isfinite(v[axis]) || std::abs(v[axis]) >= 1000) return false;
+            const float result = v[axis] + (axis == 0 ? dx : axis == 2 ? dz : 0);
+            if (!std::isfinite(result) || std::abs(result) >= 1000) return false;
+        }
+        for (auto& v : velocities) { v[0] += dx; v[2] += dz; }
+        return true;
+    }
     void account_resistance(float change) noexcept {
         if (primed_ && std::isfinite(change) && change < 0) previous_speed_ = std::max(0.0f, previous_speed_ + change);
     }

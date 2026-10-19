@@ -374,10 +374,12 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
                 p.arcade_drive.reset(); return;
             }
             const float dx = direction[0] / direction_length * change, dz = direction[2] / direction_length * change;
-            // Uniform bounded addition preserves relative body motion. No
-            // transform, vertical component, spin or contact flag is changed.
+            // Validate the complete batch before any native write; uniform
+            // additions preserve articulated relative and vertical momentum.
+            if (!arcade_mode::GroundDrive::apply_bodies({velocities.data(),count},dx,dz)) {
+                p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return;
+            }
             for (std::size_t i = 0; i < count; ++i) {
-                velocities[i][0] += dx; velocities[i][2] += dz;
                 body_write(bodies.parts[i] + 0x70, velocities[i]);
                 body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
             }
@@ -564,7 +566,7 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     source_require(reader.value<std::uint8_t>(owner.entity, 0x7e0) == 0 &&
         reader.raw(reinterpret_cast<std::uintptr_t>(supplied), target.data(), sizeof(target)) && valid_flight_transform(target),
         "Invalid native air motion target.");
-    if (a.output.vertical) target[13] = bodies.root[1] + a.output.velocity_y * bodies.seconds;
+    if (a.output.vertical) target[13] = arcade_mode::AirMotion::next_height(bodies.root[1],a.output,bodies.seconds);
     if (angular) {
         // Like the existing translation controller, anchor to actual motion
         // and lead one simulation step. Never reintegrate a free-running target.

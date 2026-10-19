@@ -63,11 +63,17 @@ struct AirMotionOutput {
 // ground entry is required before this controller can own an air episode.
 class AirMotion {
 public:
+    static constexpr float ordinary_gravity = 1350 * GameplayProfile::metres_per_inch;
+    // Existing native motion targets lead actual root motion by one simulation
+    // step. Integrate that next interval from the selected current velocity.
+    static float next_height(float root_y, const AirMotionOutput& output, float dt) noexcept {
+        return root_y + output.velocity_y*dt - .5f*ordinary_gravity*dt*dt;
+    }
     explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
     void reset() noexcept {
         air_limits_.reset();
         owner_ = seen_release_ = pending_at_ = 0;
-        pending_ = grounded_ = ordinary_ = vertical_ = spun_ = limits_active_ = false; yaw_ = 0;
+        pending_ = grounded_ = ordinary_ = vertical_ = spun_ = limits_active_ = air_seen_ = spin_blocked_ = false; yaw_ = 0;
     }
     AirMotionOutput step(const AirMotionIntent& intent, const AirMotionFrame& frame) noexcept {
         if (!intent.enabled || !frame.owner || frame.now < intent.sampled_at || frame.now - intent.sampled_at > 150 ||
@@ -95,13 +101,19 @@ public:
             pending_at_ = intent.release_at; charge_ = std::min(intent.charge_ms, 200u);
         }
         if (pending_ && (frame.now < pending_at_ || frame.now - pending_at_ > 150)) pending_ = false;
+        if (intent.angular_allowed && intent.yaw_rate == 0) spin_blocked_ = false;
         if (ground) {
+            // Physics can observe landing and relaunch between input polls.
+            // A stale held rate cannot restart the completed spin episode.
+            if (air_seen_ && intent.yaw_rate != 0) spin_blocked_ = true;
+            air_seen_ = false;
             grounded_ = true; ordinary_ = frame.ordinary_ground; limits_active_ = ordinary_;
             if (ordinary_) air_limits_.observe_ordinary(std::hypot(frame.velocity_x,frame.velocity_z));
             else air_limits_.reset();
             ground_vy_ = frame.velocity_y; vertical_ = spun_ = false; yaw_ = 0;
             return {ordinary_, false, false};
         }
+        air_seen_ = true;
         const bool taking_off = grounded_;
         grounded_ = false;
         if (!ordinary_) return {};
@@ -111,7 +123,7 @@ public:
         } else if (taking_off) {
             vy_ = frame.velocity_y; vertical_ = true; // A step off a ledge is not an extra jump.
         } else if (vertical_) {
-            const float expected = vy_ - 1350 * GameplayProfile::metres_per_inch * frame.dt;
+            const float expected = vy_ - ordinary_gravity * frame.dt;
             const auto same = [](float a, float b) {
                 return std::abs(a-b) <= 8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
             };
@@ -124,12 +136,13 @@ public:
                 vy_ = frame.velocity_y; vertical_ = false;
             }
         }
-        const bool angular = intent.angular_allowed && (intent.yaw_rate != 0 || spun_);
+        const float yaw_rate = spin_blocked_ ? 0 : intent.yaw_rate;
+        const bool angular = intent.angular_allowed && (yaw_rate != 0 || spun_);
         if (intent.angular_allowed) {
-            yaw_ = std::remainder(yaw_ + static_cast<double>(intent.yaw_rate) * frame.dt, 6.2831853071795864769);
-            spun_ = intent.yaw_rate != 0;
+            yaw_ = std::remainder(yaw_ + static_cast<double>(yaw_rate) * frame.dt, 6.2831853071795864769);
+            spun_ = yaw_rate != 0;
         } else spun_ = false;
-        AirMotionOutput output{true, vertical_, angular, vy_, intent.yaw_rate, static_cast<float>(yaw_)};
+        AirMotionOutput output{true, vertical_, angular, vy_, yaw_rate, static_cast<float>(yaw_)};
         // Default ordinary flight carries the same hard/soft limits as ground,
         // without rolling drag. A native trajectory takeover also withdraws
         // this ordinary-flight authority; transfer overrides remain native-owned.
@@ -190,6 +203,6 @@ private:
     unsigned charge_{};
     float ground_vy_{}, vy_{};
     double yaw_{};
-    bool pending_{}, grounded_{}, ordinary_{}, vertical_{}, spun_{}, clocked_{}, limits_active_{};
+    bool pending_{}, grounded_{}, ordinary_{}, vertical_{}, spun_{}, clocked_{}, limits_active_{}, air_seen_{}, spin_blocked_{};
 };
 }

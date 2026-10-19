@@ -2,10 +2,23 @@
 #include "arcade_board.h"
 #include "arcade_combo_session.h"
 #include "arcade_gameplay_profile.h"
+#include "arcade_native_input_state.h"
 #include <algorithm>
 #include <cmath>
 
 namespace dingosdk::arcade_mode {
+// Reconcile only verified physical classes for the native spin consumer.
+// A client pose from the preceding tick cannot prolong airborne rotation.
+inline SkatePose native_rotation_pose(const NativeInputFrame& frame, SkatePose observed, bool balance_admitted) noexcept {
+    if (!frame.valid) return SkatePose::unknown;
+    if (frame.airborne) return SkatePose::air;
+    if (frame.rail_family) return SkatePose::grind;
+    if (frame.state == 100 || frame.state == 103) {
+        if (frame.state == 100 && balance_admitted && (observed == SkatePose::manual || observed == SkatePose::nose_manual)) return observed;
+        return SkatePose::riding;
+    }
+    return SkatePose::unknown;
+}
 // Native LS spin/prewind method adapted from GoalTrains/reskatedualstick,
 // src/translate.h at1181aa819bea2eb49042b3f67e6ff5c7c9c4e348 (GPL-3.0).
 // Only controller translation is reused; angular motion remains game-owned.
@@ -28,9 +41,12 @@ public:
             blocked_ = true; active_ = false; return {};
         }
         if (!waiting_) { waiting_ = true; pressed_at_ = now; }
-        if (now - pressed_at_ <= BoardChord::window_ms) return {};
         const bool air = pose == SkatePose::air;
+        // The supported airborne rate adapter has no board-mount action to
+        // arbitrate. Source held-spin is immediate; retain the existing ground
+        // chord/prewind and unsupported-adapter fallback paths.
         if (was_air_ && !air) { blocked_ = true; active_ = false; return {}; }
+        if (!(air && native_rate_control) && now - pressed_at_ <= BoardChord::window_ms) return {};
         if (!active_) {
             if (!air && !crouched) return {};
             active_ = true; began_ = now; prewind_ = !air; nollie_ = native_nollie;

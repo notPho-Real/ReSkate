@@ -73,7 +73,13 @@ public:
         enabled_ = value; cancel_commands();
         if (native_bound_) invalidate_authority();
     }
-    void cancel_commands() noexcept { for (auto& session : sessions_) session.reset(); }
+    void cancel_commands() noexcept { for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; }
+    // Command-owner metadata only: an ordinary jump's right-stick tail does
+    // not own the independent air rotation channel. This is not native clip
+    // readiness, completion, or a NoSpin observation.
+    bool allows_air_rotation(unsigned user, bool authored_playback) const noexcept {
+        return !authored_playback || (user < ordinary_jump_playback_.size() && ordinary_jump_playback_[user]);
+    }
     void cancel_manuals() noexcept { for (auto& session : sessions_) session.cancel_manual(); }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
@@ -155,7 +161,12 @@ public:
                 }
             }
         }
-        return sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
+        const auto output = sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
+        if (output.requested_id) ordinary_jump_playback_[user] =
+            (output.requested_id == 1 || output.requested_id == 16) && !admission.offboard &&
+            admission.pose != SkatePose::grind && admission.pose != SkatePose::grind_exit_transition;
+        if (!output.authored_playback) ordinary_jump_playback_[user] = false;
+        return output;
     }
 private:
     bool enabled_{}, native_bound_{}, focused_{};
@@ -166,5 +177,6 @@ private:
     std::uint64_t owner_{}, authority_at_{};
     unsigned source_{};
     std::array<InputSession, 4> sessions_{};
+    std::array<bool, 4> ordinary_jump_playback_{};
 };
 }

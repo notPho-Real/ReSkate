@@ -1179,14 +1179,16 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
         if (user == 0) set_arcade_push_intent(drive_safe, crouched);
+        const auto rotation_pose = native_rotation_pose(arcade_input.native_context(now),pose,hop_origin.valid);
         const auto rotation = rotations[user].poll(now, physical_buttons, rotation_enabled,
-            pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
+            rotation_pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
             arcade_air_motion_ready());
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid);
-            const bool angular_allowed = !reference && !action.owned && !result.authored_playback && result.phase != 3;
+            const bool angular_allowed = !reference && !action.owned &&
+                arcade_input.allows_air_rotation(user,result.authored_playback) && result.phase != 3;
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
                 (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
