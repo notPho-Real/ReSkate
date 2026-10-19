@@ -17,6 +17,7 @@ struct Runtime {
     std::atomic_flag guard = ATOMIC_FLAG_INIT, step_guard = ATOMIC_FLAG_INIT;
     GrindObserverOwner owner{};
     GrindStateBindings bindings{};
+    RailAdapterLipBindings lip_bindings{};
     bool arcade{}, speed_valid{};
     int speed_mm_s{};
     GrindQueue<256> queue;
@@ -26,6 +27,7 @@ struct Runtime {
     // Discovery and logging belong exclusively to the background worker.
     multiplayer::NativeTypeScanCursor cursor{};
     GrindStateBindings candidates{};
+    RailAdapterLipBindings lip_candidates{};
     std::uint64_t scanned_pages{}, completed_scans{};
 };
 std::atomic<Runtime*> runtime{};
@@ -37,43 +39,52 @@ bool visit(void* context, std::uintptr_t begin, std::size_t bytes) noexcept {
     if (r.candidates.generation != r.generation.load() || GetTickCount64() > r.expires.load()) return false;
     ++r.scanned_pages;
     inspect_grind_candidates(Read{}, begin, bytes, r.candidates.generation, r.candidates);
-    return !r.candidates.objects[0] || !r.candidates.objects[1];
+    inspect_rail_lip_candidates(Read{},begin,bytes,r.candidates.generation,r.lip_candidates);
+    return !r.candidates.objects[0] || !r.candidates.objects[1] ||
+        std::any_of(r.lip_candidates.objects.begin(),r.lip_candidates.objects.end(),[](auto p){return !p;});
 }
 void worker(Runtime& r) noexcept {
     std::uint64_t scan_generation{}, published_generation{}, report_at{}, retry_at{};
     std::uintptr_t scan_base{};
+    RailAdapterLipBindings published_lip{};
     for (;;) {
         try {
             const auto now = GetTickCount64(), generation = r.generation.load();
             const auto base = r.image_base.load();
             if (base != scan_base) {
-                scan_base = base; r.cursor = {}; r.candidates = {}; scan_generation = 0;
+                scan_base = base; r.cursor = {}; r.candidates = {}; r.lip_candidates = {}; scan_generation = 0;
             }
             if (generation != scan_generation) {
                 scan_generation = generation; retry_at = 0;
                 r.candidates = refresh_grind_candidates(Read{}, r.candidates, generation);
+                r.lip_candidates = refresh_rail_lip_candidates(Read{},r.lip_candidates,generation);
                 // Keep only the global page traversal position across fixture
                 // resets. Restarting it every trial can starve late assets.
                 // Bindings are independently revalidated for the new generation.
             }
-            if (now <= r.expires.load() && now >= retry_at &&
-                (!r.candidates.objects[0] || !r.candidates.objects[1])) {
+            // Assets may unload without changing the local skater. Revalidate
+            // optional hints before deciding discovery is complete.
+            r.lip_candidates = refresh_rail_lip_candidates(Read{},r.lip_candidates,generation);
+            const bool missing = !r.candidates.objects[0] || !r.candidates.objects[1] ||
+                std::any_of(r.lip_candidates.objects.begin(),r.lip_candidates.objects.end(),[](auto p){return !p;});
+            if (now <= r.expires.load() && now >= retry_at && missing) {
                 const bool lowered = SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) != 0;
                 multiplayer::visit_native_pages_step(r.cursor, 2 * 1024 * 1024, 64, visit, &r);
                 if (lowered) SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_END);
-                if (r.cursor.complete && (!r.candidates.objects[0] || !r.candidates.objects[1])) {
+                if (r.cursor.complete && missing) {
                     ++r.completed_scans;
                     r.cursor = {}; retry_at = now + 1000;
                 }
             }
-            // A generation's immutable binding needs one publication. Taking
-            // the foreground guard every25ms after discovery needlessly makes
-            // valid physics observations contend with a background reader.
-            if (published_generation != generation && r.candidates.objects[0] && r.candidates.objects[1] &&
-                !r.guard.test_and_set(std::memory_order_acquire)) {
+            // Publish independent value snapshots. Missing optional Lip assets
+            // never delay the two-enum consumer; partial fields can arrive later.
+            const bool publish_grind = published_generation != generation && r.candidates.objects[0] && r.candidates.objects[1];
+            const bool publish_lip = published_lip.generation != r.lip_candidates.generation ||
+                published_lip.objects != r.lip_candidates.objects;
+            if ((publish_grind || publish_lip) && !r.guard.test_and_set(std::memory_order_acquire)) {
                 if (r.generation.load() == generation && now <= r.expires.load()) {
-                    r.bindings = r.candidates;
-                    published_generation = generation;
+                    if (publish_grind) { r.bindings = r.candidates; published_generation = generation; }
+                    if (publish_lip) { r.lip_bindings = r.lip_candidates; published_lip = r.lip_candidates; }
                 }
                 r.guard.clear(std::memory_order_release);
             }
@@ -120,7 +131,7 @@ void grind_observer_tick(std::uintptr_t base, std::uint64_t now, bool gameplay,
         const auto expiry = r->expires.load();
         if (owner.valid != r->owner.valid || (valid && (!grind_observer_detail::same(owner, r->owner) ||
             (expiry && now > expiry))) || arcade_enabled != r->arcade) {
-            r->expires.store(0); owner.generation = ++r->generation; r->bindings = {{}, owner.generation};
+            r->expires.store(0); owner.generation = ++r->generation; r->bindings = {{}, owner.generation}; r->lip_bindings = {{},owner.generation};
         }
         r->owner = owner; r->arcade = arcade_enabled;
         r->speed_valid = speed_valid && std::isfinite(speed) && speed >= 0 && speed <= 1000;
@@ -129,25 +140,26 @@ void grind_observer_tick(std::uintptr_t base, std::uint64_t now, bool gameplay,
         r->guard.clear(std::memory_order_release);
     } catch (...) { invalidate_grind_observer(); }
 }
-void observe_grind_step(const NoBailSkater& supplied) noexcept {
+RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied) noexcept {
     auto* r = runtime.load(std::memory_order_acquire);
-    if (!r) return;
+    if (!r) return {};
     const auto now = GetTickCount64(), generation = r->generation.load();
-    if (now > r->expires.load()) return;
-    if (r->guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return; }
+    if (now > r->expires.load()) return {};
+    if (r->guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return {}; }
     const auto owner = r->owner;
-    auto bindings = r->bindings;
+    const auto bindings = r->bindings;
+    const auto lip_bindings = r->lip_bindings;
     GrindRow row{};
     row.ms = now; row.generation = generation; row.arcade = r->arcade;
     row.speed_valid = r->speed_valid; row.speed_mm_s = r->speed_mm_s;
     r->guard.clear(std::memory_order_release);
-    if (!grind_observer_detail::same(owner, owner_of(supplied, generation, now))) return;
+    if (!grind_observer_detail::fresh(owner,now) || !grind_observer_detail::same(owner, owner_of(supplied, generation, now))) return {};
     auto resolve = [&]() noexcept {
         NoBailSkater value{};
-        if (r->generation.load() != generation || now > r->expires.load() || !no_bail_skater(value)) return GrindObserverOwner{};
+        if (r->generation.load() != generation || GetTickCount64() > r->expires.load() || !no_bail_skater(value)) return GrindObserverOwner{};
         return owner_of(value, generation, now);
     };
-    bindings.generation = generation;
+    auto lip = read_rail_adapter_lip(Read{},resolve,lip_bindings,now,true);
     const auto sample = read_native_grind(Read{}, resolve, bindings, now, true);
     // Enum binding can be unavailable without hiding independent native physics.
     std::uint32_t after{};
@@ -158,7 +170,8 @@ void observe_grind_step(const NoBailSkater& supplied) noexcept {
         row.grind_valid = sample.grind_type_valid; row.grind = sample.grind_type;
         row.skate_valid = sample.skate_grind_type_valid; row.skate = sample.skate_grind_type;
     }
-    if (r->step_guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return; }
+    if (!row.valid || lip.physics_state != row.state) lip = {};
+    if (r->step_guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return lip; }
     row = r->transitions.sample(row);
     const auto& old = r->previous;
     if (row.edge != GrindEdge::sample || now >= r->next_sample || row.generation != old.generation ||
@@ -167,6 +180,7 @@ void observe_grind_step(const NoBailSkater& supplied) noexcept {
         r->queue.push(row); r->previous = row; r->next_sample = now + 100;
     }
     r->step_guard.clear(std::memory_order_release);
+    return lip;
 }
 void observe_grind_pad(unsigned user, std::uint64_t now, bool y, short x, short ry, bool arcade) noexcept {
     auto* r = runtime.load(std::memory_order_acquire);

@@ -2,6 +2,7 @@
 #include "arcade_input_session.h"
 #include "arcade_native_input_state.h"
 #include "arcade_rail_adapter.h"
+#include "arcade_rail_adapter_probe.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include <array>
 #include <cstdint>
@@ -35,12 +36,31 @@ public:
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
     void publish_native_context(NativeInputFrame frame) noexcept {
         native_ = frame;
+        if (!frame.valid) native_lip_ = {};
         // Existing physics production calls this for every validated step;
         // client rereads retain the original timestamp and step identity.
         native_rail_.observe(frame);
         // Central admission deliberately limits the candidate catch to verified
         // AIR. Rail contact is not a mapped darkslide or catch-setting proof.
         if (native_rail_method_ == RailAdapterMethod::dark_catch && (!frame.valid || !frame.airborne)) native_rail_.cancel();
+    }
+    // Read-only native fields. They never admit a named action or a Lip phase.
+    void publish_native_lip(RailAdapterLipSnapshot observation, const NativeInputFrame& frame) noexcept {
+        const auto& owner = observation.owner;
+        const bool matches = observation.valid && frame.valid && owner.valid && owner.generation &&
+            NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig} == frame.owner &&
+            observation.physics_state == frame.state && observation.sampled_at == owner.sampled_at &&
+            frame.sampled_at >= observation.sampled_at && frame.sampled_at-observation.sampled_at <= 150;
+        native_lip_ = matches ? observation : RailAdapterLipSnapshot{};
+        native_lip_frame_ = matches ? frame : NativeInputFrame{};
+    }
+    RailAdapterLipSnapshot native_lip_observation(std::uint64_t now) const noexcept {
+        const auto frame = native_context(now);
+        return frame.valid && native_lip_.valid && now >= native_lip_.sampled_at && now-native_lip_.sampled_at <= 150 &&
+            native_lip_frame_.owner == frame.owner && native_lip_frame_.owner_generation == frame.owner_generation &&
+            native_lip_frame_.contact_generation == frame.contact_generation && native_lip_frame_.action_generation == frame.action_generation &&
+            native_lip_frame_.physics_step && native_lip_frame_.physics_step <= frame.physics_step &&
+            native_lip_frame_.sampled_at <= frame.sampled_at ? native_lip_ : RailAdapterLipSnapshot{};
     }
     // Invoked only after a newly consumed semantic request with its ORIGINAL
     // deadline. Channel compatibility is explicit; no method is activated by
@@ -213,6 +233,8 @@ private:
     InputPolicy policy_;
     Physical physical_{};
     NativeInputFrame native_{}, balance_frame_{};
+    RailAdapterLipSnapshot native_lip_{};
+    NativeInputFrame native_lip_frame_{};
     RailAdapter native_rail_{};
     RailAdapterMethod native_rail_method_{};
     InputBalanceControls balance_controls_{};

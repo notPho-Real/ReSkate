@@ -543,7 +543,7 @@ bool start_input_telemetry() noexcept {
 
 // Read-only physics-step evidence retains short transitions between client ticks.
 void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) noexcept {
-    observe_grind_step(owner);
+    const auto lip_observation = observe_grind_step(owner);
     using namespace game::build::v20260929::arcade_native_probe;
     NativeRequestSample sample{};
     if (!memory::peek(owner.context + request_words, sample.words) ||
@@ -581,6 +581,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         if (clock_valid) {
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
             arcade_input.publish_native_context(frame);
+            arcade_input.publish_native_lip(lip_observation,frame);
             if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
             else arcade_input.invalidate_authority();
         } else {

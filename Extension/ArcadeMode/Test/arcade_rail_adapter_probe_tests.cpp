@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_rail_adapter_probe.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -11,7 +12,7 @@ struct Memory {
     static constexpr std::uintptr_t base=0x20000;
     std::array<unsigned char,32768> data{};
     std::size_t next{},reads{};
-    std::uintptr_t blocked{},mutation_at{};
+    std::uintptr_t blocked{},mutation_at{},mutation_target{};
     unsigned matches{},mutate_on{};
     std::uint32_t mutation{};
     GrindObserverOwner owner{};
@@ -21,7 +22,7 @@ struct Memory {
     template<class T> void put(std::uintptr_t at,T value) {std::memcpy(data.data()+at-base,&value,sizeof(value));}
     template<class T> bool operator()(std::uintptr_t at,T& out) {
         ++reads;if(at==blocked || at<base || at-base>data.size()-sizeof(T))return false;
-        if(at==mutation_at && ++matches==mutate_on)put(at,mutation);
+        if(at==mutation_at && ++matches==mutate_on)put(mutation_target?mutation_target:at,mutation);
         std::memcpy(&out,data.data()+at-base,sizeof(out));return true;
     }
     Memory() {
@@ -99,5 +100,80 @@ int main() {
     check(out.valid && out.lip && !out.handplant,"independent physical Lip flag observed");
     active.put(active.page+0xc0,std::uint8_t{1});out=active.sample();
     check(out.lip && out.handplant,"handplant remains separate from Lip and named mapping");
+    // The existing page walker supplies these bounded fixture spans to BOTH
+    // allowlists; there is no second scanner or all-fields readiness barrier.
+    RailAdapterLipBindings discovered{};
+    for(std::size_t at=0;at<memory.data.size();at+=4096)
+        inspect_rail_lip_candidates(memory,Memory::base+at,4096,7,discovered);
+    check(discovered.objects==memory.bindings.objects && discovered.generation==7,"existing resident-span discovery resolves exact five asset objects");
+    const auto published=discovered;discovered.objects[0]=0;
+    check(published.objects==memory.bindings.objects,"published binding value is independent of later worker candidate changes");
+    check(refresh_rail_lip_candidates(memory,published,8).objects==published.objects,"generation change revalidates immutable asset hints");
+    auto retired=memory;retired.put(published.objects[2]+0x28,std::uint32_t{0});
+    const auto refreshed=refresh_rail_lip_candidates(retired,published,8);
+    check(!refreshed.objects[2]&&refreshed.objects[1]&&refreshed.generation==8,"unloaded hint stays absent while independent fields rebind");
+    const auto reads=memory.reads;RailAdapterLipBindings invalid{};
+    check(!inspect_rail_lip_candidates(memory,Memory::base,4097,7,invalid)&&memory.reads==reads,"existing page-span bound preserved");
+    for(std::size_t index=0;index<5;++index){
+        const auto mask=std::uint8_t(1u<<index);const auto object=memory.bindings.objects[index];
+        for(unsigned fault=0;fault<5;++fault){
+            auto field=memory;
+            if(fault==0)field.put(object+0x28,0x01000010u|(0x80u<<12));
+            if(fault==1)field.put(object+0x28,0x01000000u|(0x71cu<<12));
+            if(fault==2)field.put(object+0x40+rail_adapter_probe_detail::assets[index].name.size(),'x');
+            if(fault==3)field.put(object+0x18,object+0x800);
+            if(fault==4)field.blocked=field.page+0x80+index*0x20;
+            check(field.sample().fields==std::uint8_t(31u&~mask),"page/index/value/terminated-name/locality/read failure invalidates ONLY affected field");
+        }
+        for(bool name:{false,true}){
+            auto replaced=memory;replaced.mutation_at=replaced.page+0x80+index*0x20;replaced.mutate_on=1;
+            replaced.mutation_target=name?object+0x40:object-0x10;replaced.mutation=0;
+            check(!(replaced.sample().fields&mask),"GUID/name replacement after first validation cannot publish an old value");
+        }
+        auto bad_name=memory;bad_name.put(object+0x40,'x');RailAdapterLipBindings candidates{};
+        inspect_rail_lip_candidates(bad_name,object-0x10,4,7,candidates);
+        check(!candidates.objects[index],"discovery requires exact name in addition to exact GUID");
+    }
+    for(std::size_t index=3;index<5;++index)for(unsigned axis=0;axis<3;++axis){
+        auto nan=memory;nan.put(nan.page+0x80+index*0x20+axis*4,std::numeric_limits<float>::quiet_NaN());
+        check(!(nan.sample().fields&(1u<<index)),"NaN in every vector axis remains unavailable rather than zero geometry");
+    }
+    // Existing two-enum reading is independent of absent optional bindings.
+    auto separate=memory;GrindStateBindings enums{{},7};
+    for(unsigned index=0;index<2;++index){
+        const auto id=separate.alloc(0x100),object=id+0x10,name=object+0x40;enums.objects[index]=object;
+        separate.put(id,grind_observer_detail::assets[index].id);separate.put(object+0x18,name);
+        std::memcpy(separate.data.data()+name-Memory::base,grind_observer_detail::assets[index].name.data(),grind_observer_detail::assets[index].name.size());
+        const auto offset=0x200u+index*0x20u;separate.put(object+0x28,0x01000000u|(offset<<12));
+        separate.put(separate.page+offset,index+5);separate.put(separate.page+0x71c+(offset>>5)*4,std::uint32_t{1});
+    }
+    separate.put(separate.owner.context+0x1414,std::uint32_t{401});
+    for(unsigned missing=0;missing<=5;++missing){
+        separate.owner.sampled_at=100;
+        auto optional=separate.bindings;
+        for(unsigned i=0;i<missing;++i)optional.objects[i]=0;
+        const auto raw=read_native_grind(separate,[&]{return separate.owner;},enums,100,true);
+        const auto partial=read_rail_adapter_lip(separate,[&]{return separate.owner;},optional,100,true);
+        check(raw.valid&&raw.grind_type_valid&&raw.skate_grind_type_valid,"missing optional Lip fields never starve two-enum readiness");
+        check(partial.valid&&partial.fields==std::uint8_t(31u&~((1u<<missing)-1)),"optional field validity is preserved independently");
+        NativeInputState producer;NativeInputOwner owner{separate.owner.base,separate.owner.entity,separate.owner.core,separate.owner.context,separate.owner.rig};
+        NativeRequestSample sample{};sample.valid=true;sample.state=401;sample.crouch_mode=1;
+        auto frame=producer.observe(100,owner,sample,{true,-1});ArcadeInput facade(true);facade.enable(true);
+        facade.publish_native_context(frame);facade.publish_authority(100,frame.owner_generation,1,true);facade.publish_native_lip(partial,frame);
+        check(facade.native_lip_observation(100).fields==partial.fields,"actual producer/facade joins read-only partial observations without actor readiness");
+        check(facade.request_native_rail(RailAdapterMethod::align,100,200,true)==RailAdapterResult::started,"generic rail remains independently admitted with missing optional fields");
+        check(facade.sample_native_rail(100,true,true).owns_right_stick,"existing generic RS adapter remains available");
+        frame=producer.observe(250,owner,sample,{true,-1});facade.publish_native_context(frame);facade.publish_authority(250,frame.owner_generation,1,true);
+        check(facade.native_lip_observation(250).valid,"original read timestamp includes150ms endpoint");
+        frame=producer.observe(251,owner,sample,{true,-1});facade.publish_native_context(frame);facade.publish_authority(251,frame.owner_generation,1,true);
+        check(!facade.native_lip_observation(251).valid,"new client/physics context and repeated getters cannot renew old field evidence");
+        facade.publish_native_lip(partial,frame);check(!facade.native_lip_observation(251).valid,"republishing original expired fields cannot borrow fresh native frame time");
+        separate.owner.sampled_at=251;
+        const auto fresh=read_rail_adapter_lip(separate,[&]{return separate.owner;},optional,251,true);
+        facade.publish_native_lip(fresh,frame);
+        check(facade.native_lip_observation(251).valid,"a new actual physical read can establish a new original observation");
+        ++owner.rig;frame=producer.observe(260,owner,sample,{true,-1});facade.publish_native_context(frame);facade.publish_authority(260,frame.owner_generation,1,true);
+        check(!facade.native_lip_observation(260).valid,"full owner/generation replacement cannot retain old optional native fields");
+    }
     std::cout<<checks<<" rail lip probe checks passed\n";
 }

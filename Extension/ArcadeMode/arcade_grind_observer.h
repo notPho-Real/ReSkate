@@ -113,8 +113,8 @@ template<class Read> bool value(Read& read, unsigned index, std::uintptr_t objec
 // cancellation/publication. This helper never enumerates process memory or
 // exposes partial bindings to a game thread. A trailing candidate may be checked
 // with bounded reads outside the span, guarded by Read, to handle page boundaries.
-template<class Read> unsigned inspect_grind_candidates(Read&& read, std::uintptr_t begin,
-    std::size_t bytes, std::uint64_t generation, GrindStateBindings& bindings) noexcept {
+template<class Read, class Bindings, class Assets, class Matches> unsigned inspect_state_candidates(Read&& read, std::uintptr_t begin,
+    std::size_t bytes, std::uint64_t generation, Bindings& bindings, const Assets& assets, Matches&& matches) noexcept {
     using namespace grind_observer_detail;
     if (!generation || !pointer(begin) || bytes > 4096 || bytes < 4 || bytes > highest - begin) return 0;
     if (bindings.generation != generation) bindings = {{}, generation};
@@ -130,13 +130,19 @@ template<class Read> unsigned inspect_grind_candidates(Read&& read, std::uintptr
             const auto object = begin + offset + 0x10;
             std::uint32_t handle{}, known_handle{};
             const auto known = bindings.objects[index];
-            if (known && asset_matches(read, index, known) && get(read, known, 0x28, known_handle) && (known_handle >> 24)) continue;
-            if (asset_matches(read, index, object) && get(read, object, 0x28, handle) && (handle >> 24)) {
+            if (known && matches(read, index, known) && get(read, known, 0x28, known_handle) && (known_handle >> 24)) continue;
+            if (matches(read, index, object) && get(read, object, 0x28, handle) && (handle >> 24)) {
                 bindings.objects[index] = object; ++found;
             }
         }
     }
     return found;
+}
+
+template<class Read> unsigned inspect_grind_candidates(Read&& read, std::uintptr_t begin,
+    std::size_t bytes, std::uint64_t generation, GrindStateBindings& bindings) noexcept {
+    return inspect_state_candidates(read,begin,bytes,generation,bindings,grind_observer_detail::assets,
+        [](auto& reader,unsigned index,std::uintptr_t object){return grind_observer_detail::asset_matches(reader,index,object);});
 }
 
 // Global assets may survive a skater reset, but their previous bindings do not.

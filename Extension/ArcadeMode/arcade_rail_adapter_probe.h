@@ -54,9 +54,28 @@ template<class Read, class Value> bool value(Read& read, std::size_t index,
         !get(read,page,0x71c + (offset >> 5) * 4,bits) || !(bits & mask) ||
         !get(read,page,offset,sampled) || !get(read,object,0x28,after_handle) || after_handle != handle ||
         !get(read,block,0x60 + number * 8,after_page) || after_page != page ||
-        !get(read,page,0x71c + (offset >> 5) * 4,after_bits) || !(after_bits & mask)) return false;
+        !get(read,page,0x71c + (offset >> 5) * 4,after_bits) || !(after_bits & mask) ||
+        !matches(read,index,object)) return false;
     out = sampled; return true;
 }
+}
+// Exact asset declarations and state-page reads from andrewnakas/reskate-trainer
+// (GPL-3.0), f9c6dbdda278ceee532199756740a52491aceaba,
+// Extension/Trainer/trainer_gamestate.cpp transition_objects/value_address/
+// read_transition_state. Discovery consumes only the existing worker's bounded
+// resident spans; it does not create another process scanner.
+template<class Read> unsigned inspect_rail_lip_candidates(Read&& read, std::uintptr_t begin,
+        std::size_t bytes, std::uint64_t generation, RailAdapterLipBindings& bindings) noexcept {
+    return inspect_state_candidates(read,begin,bytes,generation,bindings,rail_adapter_probe_detail::assets,
+        [](auto& reader,unsigned index,std::uintptr_t object){return rail_adapter_probe_detail::matches(reader,index,object);});
+}
+template<class Read> RailAdapterLipBindings refresh_rail_lip_candidates(Read&& read,
+        const RailAdapterLipBindings& previous, std::uint64_t generation) noexcept {
+    RailAdapterLipBindings next{{},generation};
+    if (!generation) return next;
+    for (auto hint : previous.objects) if (hint > 0x10010)
+        inspect_rail_lip_candidates(read,hint-0x10,4,generation,next);
+    return next;
 }
 // Read-only, non-atomic diagnostic observation. Partial validity stays explicit.
 // It must not independently authorize a native action or install a trick table.
