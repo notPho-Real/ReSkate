@@ -30,6 +30,7 @@ struct InputMatch {
     std::array<std::uint64_t, 100> events{};
     std::uint64_t first_at{}, last_at{};
     std::size_t count{};
+    std::uint64_t held_reuse{};
     explicit operator bool() const noexcept { return count != 0; }
 };
 // Allocation-free event journal. Timestamps and sequence identities survive ring
@@ -159,6 +160,111 @@ public:
         }
         return {};
     }
+    static bool direction_token(InputToken token) noexcept {
+        return token.source == InputSource::stick || token.source == InputSource::pad;
+    }
+    static bool cardinal_token(InputToken token) noexcept {
+        return direction_token(token) && (token.code == 2 || token.code == 4 || token.code == 6 || token.code == 8);
+    }
+    InputMatch air_action(InputToken face, InputToken direction, bool direction_held,
+                          std::uint64_t window, std::uint64_t now,
+                          std::uint32_t reject = ~std::uint32_t{0}) const noexcept {
+        if (!direction_held) {
+            // This branch shares the press-only intervening rule; it does not
+            // require the historical pair to remain physically held.
+            return overlap(face, direction, window, now, true, true, true, reject);
+        }
+        const std::array steps{face};
+        auto result = match({steps, window, reject}, now);
+        if (!result) return {};
+        for (std::size_t i = size_; i > 0; ) {
+            const auto& event = at(--i);
+            if (event.token == direction) {
+                result.events[result.count++] = event.sequence;
+                result.held_reuse = event.sequence;
+                if (event.at < result.first_at) result.first_at = event.at;
+                if (event.at > result.last_at) result.last_at = event.at;
+                break;
+            }
+        }
+        return result;
+    }
+    InputMatch release_and_tap(InputToken first, InputToken second, std::uint64_t window,
+                               std::uint64_t now, std::uint32_t reject = ~std::uint32_t{0}) const noexcept {
+        std::array<const InputEvent*, 3> recent{};
+        std::size_t count{};
+        for (std::size_t i = size_; i > 0 && count < recent.size(); ) {
+            const auto& event = at(--i);
+            const auto source = event.token.source;
+            // Vertical projections and raw pad bits are compatibility views,
+            // not additional reference events in this predicate's channel.
+            if ((event.owners & reject) || cardinal_token(event.token) ||
+                source == InputSource::vertical_stick || source == InputSource::vertical_pad ||
+                (source == InputSource::buttons && event.token.code < 4)) continue;
+            recent[count++] = &event;
+        }
+        if (count != recent.size()) return {};
+        first.edge = InputEdge::release;
+        const InputToken released{second.source, second.code, InputEdge::release};
+        if (recent[0]->token != released || recent[1]->token != second || recent[2]->token != first) return {};
+        InputMatch result{}; result.count = 3;
+        for (std::size_t i = 0; i < recent.size(); ++i) {
+            const auto& event = *recent[recent.size() - 1 - i];
+            if (event.at > now || now - event.at >= window) return {};
+            result.events[i] = event.sequence;
+        }
+        result.first_at = recent[2]->at; result.last_at = recent[0]->at;
+        return result;
+    }
+    InputMatch released_pair(InputToken a, InputToken b, std::uint64_t window, std::uint64_t now,
+                             InputToken press = {}, bool require_press = false,
+                             std::uint32_t reject = ~std::uint32_t{0}) const noexcept {
+        a.edge = b.edge = InputEdge::release;
+        bool got_a{}, got_b{}, got_press = !require_press;
+        InputMatch result{};
+        for (std::size_t i = size_; i > 0; ) {
+            const auto& event = at(--i);
+            if (event.at > now || now - event.at >= window) return {};
+            if (event.owners & reject) continue;
+            bool selected{};
+            if (!got_a && event.token == a) { got_a = true; selected = true; }
+            if (!got_b && event.token == b) { got_b = true; selected = true; }
+            if (!got_press && event.token == press) { got_press = true; selected = true; }
+            if (selected) {
+                if (!result.count) result.last_at = event.at;
+                result.events[result.count++] = event.sequence; result.first_at = event.at;
+            }
+            if (event.token.edge == InputEdge::press &&
+                ((got_a && !got_b && event.token.source == a.source && event.token.code == a.code) ||
+                 (got_b && !got_a && event.token.source == b.source && event.token.code == b.code))) return {};
+            if (got_a && got_b && got_press) return result;
+        }
+        return {};
+    }
+    InputMatch extra_action(InputToken face, InputToken previous_direction, std::uint64_t window,
+                            std::uint64_t now, std::uint32_t reject = ~std::uint32_t{0}) const noexcept {
+        InputMatch result{};
+        const InputEvent* selected{};
+        for (std::size_t i = size_; i > 0; ) {
+            const auto& event = at(--i);
+            if (event.at > now || now - event.at >= window) break;
+            if ((event.owners & reject) || event.token.edge != InputEdge::press) continue;
+            if (event.token == face) selected = &event;
+            else if (direction_token(event.token)) {
+                if (event.token != previous_direction) return {};
+                result.events[result.count++] = event.sequence;
+            }
+        }
+        if (!selected) return {};
+        result.events[result.count++] = selected->sequence;
+        result.first_at = result.last_at = selected->at;
+        for (std::size_t i = 0; i < size_; ++i)
+            for (std::size_t m = 0; m < result.count; ++m) if (at(i).sequence == result.events[m]) {
+                if (at(i).at < result.first_at) result.first_at = at(i).at;
+                if (at(i).at > result.last_at) result.last_at = at(i).at;
+            }
+        return result;
+    }
     void invalidate(InputSource source, std::uint32_t category) noexcept {
         for (std::size_t i = 0; i < size_; ++i)
             if (at(i).token.source == source) at(i).owners |= category;
@@ -195,7 +301,7 @@ public:
         for (std::size_t m = 0; m < match.count; ++m) {
             bool found{};
             for (std::size_t i = 0; i < size_; ++i) if (at(i).sequence == match.events[m]) {
-                if (at(i).owners & reject_owners) return false;
+                if (at(i).sequence != match.held_reuse && (at(i).owners & reject_owners)) return false;
                 indices[m] = i; found = true; break;
             }
             if (!found) return false;
