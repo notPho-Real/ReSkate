@@ -58,6 +58,57 @@ struct HeartbeatEvidence {
 struct NativeCaptureEvidence { std::uint64_t id{}; bool begin{}; unsigned samples{}; };
 struct NativeSampleEvidence { std::uint64_t id{}, ms{}; NativeRequestSample sample{}; };
 struct InputEdgeEvidence { char button{}; std::uint64_t count{}; Observation sample{}; };
+// Explicit capture only, on the existing bounded client queue. Owner is an
+// anonymous capture-local token for the full owner tuple, never an address.
+enum class CaptureCorrelationKind : std::uint8_t { begin, event, end };
+enum class CaptureCorrelationSource : std::uint8_t { boundary, input, recognition, native, manual_admission, manual_termination };
+struct CaptureCorrelationEvidence {
+    std::uint64_t capture{}, ordinal{}, source_sequence{}, ms{}, native_ms{}, owner{};
+    std::uint64_t owner_generation{}, contact_generation{}, action_generation{}, physics_step{};
+    std::uint64_t first_event{}, last_event{}, first_ms{}, last_ms{}, recognized_ms{};
+    std::uint64_t expected{}, drained{}, dropped{}, drop_begin{}, drop_end{}, first_ordinal{}, last_ordinal{};
+    unsigned schema{1}, required_sources{31};
+    CaptureCorrelationKind kind{};
+    CaptureCorrelationSource source{};
+    bool native_valid{}, events_known{}, complete{}, overflow{};
+};
+// Overflow/reset is evidence loss. Do not use modular arithmetic to make a
+// wrapped capture/cumulative-drop counter appear complete.
+inline bool capture_correlation_add(std::uint64_t& value,std::uint64_t amount=1) noexcept {
+    if (amount>UINT64_MAX-value) { value=UINT64_MAX; return false; }
+    value+=amount; return true;
+}
+inline bool capture_correlation_delta(std::uint64_t before,std::uint64_t after,std::uint64_t& delta) noexcept {
+    delta=0; if (after<before) return false; delta=after-before; return true;
+}
+inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexcept {
+    if (r.schema!=1 || !r.capture || !r.required_sources || r.required_sources>31 || r.owner>UINT32_MAX ||
+        r.kind>CaptureCorrelationKind::end || r.source>CaptureCorrelationSource::manual_termination) return false;
+    if (r.native_valid && (!r.owner || !r.owner_generation || !r.contact_generation || !r.action_generation || !r.physics_step ||
+        r.native_ms>r.ms || r.ms-r.native_ms>InputTiming::native_sample_lease_ms)) return false;
+    if (r.events_known && ((r.first_event==0)!=(r.last_event==0) || r.first_event>r.last_event ||
+        (r.first_event && (r.first_ms>r.last_ms || r.last_ms>r.ms)) ||
+        (!r.first_event && (r.first_ms || r.last_ms)))) return false;
+    if (!r.events_known && (r.first_event || r.last_event || r.first_ms || r.last_ms)) return false;
+    if (r.recognized_ms>r.ms || (r.recognized_ms && r.first_event && r.recognized_ms<r.last_ms)) return false;
+    if (r.kind==CaptureCorrelationKind::event)
+        return r.ordinal && r.source!=CaptureCorrelationSource::boundary && r.source_sequence && !r.complete &&
+            !r.expected && !r.drained && !r.dropped && !r.drop_begin && !r.drop_end && !r.first_ordinal && !r.last_ordinal &&
+            (r.source!=CaptureCorrelationSource::native || !r.native_valid || r.ms==r.native_ms);
+    if (r.source!=CaptureCorrelationSource::boundary || r.source_sequence || r.first_event || r.last_event ||
+        r.first_ms || r.last_ms || r.recognized_ms) return false;
+    if (r.kind==CaptureCorrelationKind::begin)
+        return !r.ordinal && !r.complete && !r.expected && !r.drained && !r.dropped &&
+            r.drop_begin==r.drop_end && !r.first_ordinal && !r.last_ordinal;
+    return r.expected<UINT64_MAX && r.ordinal==r.expected+1 && r.drained<=r.expected &&
+        r.dropped==r.expected-r.drained && ((!r.drained && !r.first_ordinal && !r.last_ordinal) ||
+        (r.drained && r.first_ordinal && r.first_ordinal<=r.last_ordinal && r.last_ordinal<=r.expected));
+}
+inline bool capture_correlation_complete(const CaptureCorrelationEvidence& r) noexcept {
+    return capture_correlation_valid(r) && r.kind==CaptureCorrelationKind::end && r.complete &&
+        r.native_valid && r.events_known && !r.overflow && r.expected && r.drained==r.expected && !r.dropped &&
+        r.drop_begin==r.drop_end && r.first_ordinal==1 && r.last_ordinal==r.expected;
+}
 // Probe paths contain at most four schema hashes/array indexes, never native
 // text or pointers. Fixed keys also avoid formatting paths under ModelWriteLock.
 struct ScoreProbePath {
@@ -121,10 +172,11 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+    if (const auto* capture = std::get_if<CaptureCorrelationEvidence>(&row)) return capture_correlation_valid(*capture);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();

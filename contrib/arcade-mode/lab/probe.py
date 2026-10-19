@@ -246,6 +246,150 @@ def parse_native_captures(text):
     return captures
 
 
+CAPTURE_CORRELATION_NUMBERS = (
+    'schema', 'capture', 'kind', 'source', 'required_sources', 'ordinal', 'source_sequence',
+    'ms', 'native_ms', 'owner', 'owner_generation', 'contact_generation', 'action_generation',
+    'physics_step', 'first_event', 'last_event', 'first_ms', 'last_ms', 'recognized_ms',
+    'expected', 'drained', 'dropped', 'drop_begin', 'drop_end', 'first_ordinal', 'last_ordinal')
+CAPTURE_CORRELATION_FLAGS = ('native_valid', 'events_known', 'complete', 'overflow')
+
+
+def parse_capture_correlation(text):
+    """Explicit bounded capture accounting; schema completeness is never native acceptance."""
+    prefix = 'ARCADE INPUT CAPTURE: '
+    pattern = re.compile(' '.join(key + r'=([0-9]{1,20})' for key in CAPTURE_CORRELATION_NUMBERS) +
+                         ' ' + ' '.join(key + r'=(true|false)' for key in CAPTURE_CORRELATION_FLAGS) + r'\.')
+    states, malformed, unassigned, truncated, newest = {}, 0, 0, 0, 0
+    maximum = (1 << 64) - 1
+    for line in text.splitlines():
+        if prefix not in line:
+            continue
+        payload = line.split(prefix, 1)[1]
+        match = pattern.fullmatch(payload)
+        if not match:
+            malformed += 1
+            identity = re.search(r'(?:^| )capture=([0-9]{1,20})(?: |$)', payload)
+            state = states.get(int(identity[1])) if identity else None
+            if state is not None:
+                state['errors'].add('malformed')
+            else:
+                unassigned += 1
+            continue
+        values = match.groups()
+        row = dict(zip(CAPTURE_CORRELATION_NUMBERS, map(int, values[:len(CAPTURE_CORRELATION_NUMBERS)])))
+        row.update(zip(CAPTURE_CORRELATION_FLAGS, (v == 'true' for v in values[len(CAPTURE_CORRELATION_NUMBERS):])))
+        cid, kind = row['capture'], row['kind']
+        invalid = (any(row[k] > maximum for k in CAPTURE_CORRELATION_NUMBERS) or row['schema'] != 1 or
+                   not cid or kind > 2 or row['source'] > 5 or not 0 < row['required_sources'] <= 31 or
+                   row['owner'] > 0xffffffff)
+        if kind == 0 and cid not in states and cid > newest and not invalid:
+            if len(states) >= 16:
+                del states[next(iter(states))]
+                truncated += 1
+            states[cid] = dict(begin=row, end=None, events=[], errors=set())
+            newest = cid
+        state = states.get(cid)
+        if state is None:
+            malformed += 1
+            unassigned += 1
+            continue
+        b = state['begin']
+        if invalid:
+            malformed += 1
+            state['errors'].add('invalid_field')
+            continue
+        if row['native_valid'] and (not all(row[k] for k in ('owner', 'owner_generation', 'contact_generation',
+                                                          'action_generation', 'physics_step')) or
+                                    not 0 <= row['ms'] - row['native_ms'] <= 150):
+            state['errors'].add('native_provenance')
+        if not row['native_valid'] or not row['events_known'] or row['overflow']:
+            state['errors'].add('unavailable_provenance')
+        if row['events_known']:
+            if (bool(row['first_event']) != bool(row['last_event']) or row['first_event'] > row['last_event'] or
+                (row['first_event'] and not row['first_ms'] <= row['last_ms'] <= row['ms']) or
+                (not row['first_event'] and (row['first_ms'] or row['last_ms']))):
+                state['errors'].add('event_provenance')
+        elif any(row[k] for k in ('first_event', 'last_event', 'first_ms', 'last_ms')):
+            state['errors'].add('event_provenance')
+        if row['recognized_ms'] > row['ms'] or (row['recognized_ms'] and row['first_event'] and
+                                               row['recognized_ms'] < row['last_ms']):
+            state['errors'].add('recognition_provenance')
+        if (row['owner'], row['owner_generation']) != (b['owner'], b['owner_generation']):
+            state['errors'].add('owner_changed')
+        if row['required_sources'] != b['required_sources'] or row['ms'] < b['ms']:
+            state['errors'].add('boundary_provenance')
+        if kind == 1:
+            if state['end'] is not None or not row['ordinal'] or not row['source'] or not row['source_sequence'] or row['complete'] or any(
+                    row[k] for k in ('expected', 'drained', 'dropped', 'drop_begin', 'drop_end', 'first_ordinal', 'last_ordinal')):
+                state['errors'].add('event_shape')
+            if row['source'] == 3 and row['native_valid'] and row['ms'] != row['native_ms']:
+                state['errors'].add('native_restamped')
+            if len(state['events']) < 4096:
+                state['events'].append(row)
+            else:
+                state['errors'].add('truncated')
+                truncated += 1
+        else:
+            if row['source'] or row['source_sequence'] or any(row[k] for k in ('first_event', 'last_event', 'first_ms', 'last_ms', 'recognized_ms')):
+                state['errors'].add('boundary_shape')
+            if kind == 0:
+                if row is not b or row['ordinal'] or row['complete'] or any(row[k] for k in (
+                        'expected', 'drained', 'dropped', 'first_ordinal', 'last_ordinal')) or row['drop_begin'] != row['drop_end']:
+                    state['errors'].add('begin_shape')
+            elif state['end'] is not None:
+                state['errors'].add('duplicate_end')
+            else:
+                state['end'] = row
+    captures = []
+    for cid, state in states.items():
+        b, end, events, errors = state['begin'], state['end'], state['events'], state['errors']
+        events.sort(key=lambda r: r['ordinal'])
+        by_source, by_step, seen_sources = {}, {}, 0
+        for row in [b, *events, *([end] if end else [])]:
+            if row['native_valid']:
+                signature = tuple(row[k] for k in ('native_ms', 'contact_generation', 'action_generation'))
+                if row['physics_step'] in by_step and by_step[row['physics_step']] != signature:
+                    errors.add('step_provenance')
+                by_step[row['physics_step']] = signature
+        for row in events:
+            seen_sources |= 1 << (row['source'] - 1) if row['source'] else 0
+            prior = by_source.get(row['source'])
+            if prior and (row['source_sequence'] <= prior['source_sequence'] or any(row[k] < prior[k] for k in
+                    ('ms', 'native_ms', 'physics_step', 'contact_generation', 'action_generation'))):
+                errors.add('counter_rollback')
+            by_source[row['source']] = row
+        steps = sorted(by_step)
+        for a, z in zip(steps, steps[1:]):
+            if any(x > y for x, y in zip(by_step[a], by_step[z])):
+                errors.add('step_rollback')
+        if end is None:
+            errors.add('missing_end')
+        else:
+            expected = end['expected']
+            if (not 0 < expected <= 4096 or end['ordinal'] != expected + 1 or end['drained'] != len(events) or
+                end['drained'] > expected or end['dropped'] != expected - end['drained'] or
+                [r['ordinal'] for r in events] != list(range(1, expected + 1))):
+                errors.add('accounting')
+            if (end['first_ordinal'], end['last_ordinal']) != ((events[0]['ordinal'], events[-1]['ordinal']) if events else (0, 0)):
+                errors.add('event_bounds')
+            if end['drop_begin'] != b['drop_begin'] or end['drop_end'] < end['drop_begin']:
+                errors.add('drop_counter_rollback')
+            if end['dropped'] or end['drop_end'] != end['drop_begin']:
+                errors.add('dropped')
+            if any(end[k] < r[k] for r in [b, *events] for k in ('native_ms', 'physics_step', 'contact_generation', 'action_generation')):
+                errors.add('end_provenance')
+            if any(r['ms'] > end['ms'] for r in events) or not end['complete']:
+                errors.add('incomplete_end')
+        if seen_sources & b['required_sources'] != b['required_sources']:
+            errors.add('missing_source')
+        captures.append(dict(id=cid, begin=b, end=end, events=events, errors=sorted(errors), complete=not errors))
+    eligible = bool(captures) and all(c['complete'] for c in captures) and not (malformed or unassigned or truncated)
+    return dict(captures=captures, capture_completeness='COMPLETE' if eligible else 'INCOMPLETE' if captures or malformed else 'MISSING',
+                malformed=malformed, unassigned=unassigned, truncated=truncated,
+                evidence_gap=bool(malformed or unassigned or truncated or any(c['errors'] for c in captures)),
+                native_acceptance='UNVERIFIED', causal_acceptance='UNVERIFIED')
+
+
 def parse_combo_samples(text):
     """Numeric allowlist only; no unrelated text or memory addresses returned."""
     samples, events, balance, failures, bails, reverts, dropped = [], [], [], [], [], [], 0
@@ -1339,7 +1483,8 @@ def native_trace(request, **kwargs):
     captures = parse_native_captures(text[start:] if start >= 0 else "")
     return {"schema": 1, "kind": "native_request_trace",
             **{key: verified[key] for key in ("source_commit", "installed_dll_sha256", "installation_id", "timestamp")},
-            "captures": captures, "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
+            "captures": captures, "capture_correlation": parse_capture_correlation(text[start:] if start >= 0 else ""),
+            "combo_observations": parse_combo_samples(text[start:] if start >= 0 else ""),
             "score_observations": parse_score_samples(text[start:] if start >= 0 else ""),
             "push_observations": parse_push_samples(text[start:] if start >= 0 else ""),
             "foot_observations": parse_foot_motion(text[start:] if start >= 0 else ""),

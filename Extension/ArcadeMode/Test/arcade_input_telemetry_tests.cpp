@@ -163,6 +163,60 @@ void score_probe_rows() {
         value.path == path && value.value == 27 && value.label && value.limit,
         "sanitized counts, path, label and discovery-limit markers survive detached publication");
 }
+void capture_correlation_rows() {
+    CaptureCorrelationEvidence row{};
+    row.capture=1; row.ms=100; row.native_ms=100; row.owner=1;
+    row.owner_generation=1; row.contact_generation=1; row.action_generation=1; row.physics_step=1;
+    row.native_valid=true; row.events_known=true;
+    check(capture_correlation_valid(row), "capture boundary preserves original immutable proof");
+    row.kind=CaptureCorrelationKind::event; row.source=CaptureCorrelationSource::input;
+    row.ordinal=1; row.source_sequence=1; row.first_event=5; row.last_event=6;
+    row.first_ms=90; row.last_ms=99; row.recognized_ms=100;
+    check(capture_correlation_valid(row), "event footprint retains original first last and recognition times");
+    const auto original=row;
+    row.ms=250;
+    check(capture_correlation_valid(row), "original native lease includes exact150ms boundary");
+    row.ms=251;
+    check(!capture_correlation_valid(row), "native proof cannot be renewed by a delayed producer");
+    row=original; row.native_ms=101;
+    check(!capture_correlation_valid(row), "future proof rejected");
+    row=original; row.source=CaptureCorrelationSource::native; row.ms=101;
+    check(!capture_correlation_valid(row), "native observation time cannot be restamped");
+    row=original; row.recognized_ms=98;
+    check(!capture_correlation_valid(row), "recognition cannot precede its final physical edge");
+    row=original; row.events_known=false;
+    check(!capture_correlation_valid(row), "unavailable footprints cannot retain invented edge fields");
+    row=original; row.owner=UINT64_MAX;
+    check(!capture_correlation_valid(row), "anonymous owner token remains bounded");
+    row=original; row.source=static_cast<CaptureCorrelationSource>(6);
+    check(!capture_correlation_valid(row), "unknown source enums rejected");
+    row=original; row.kind=CaptureCorrelationKind::end; row.source=CaptureCorrelationSource::boundary;
+    row.source_sequence=0; row.ordinal=2; row.first_event=0; row.last_event=0;
+    row.first_ms=0; row.last_ms=0; row.recognized_ms=0;
+    row.expected=1; row.drained=1; row.first_ordinal=1; row.last_ordinal=1; row.complete=true;
+    check(capture_correlation_complete(row), "footer consistency requires explicit exact accounting");
+    row.drop_end=1;
+    check(!capture_correlation_complete(row), "shared channel losses conservatively prevent completeness");
+    row.drop_end=0; row.native_valid=false;
+    check(capture_correlation_valid(row) && !capture_correlation_complete(row), "unavailable native proof stays diagnostic only");
+    row.native_valid=true; row.overflow=true;
+    check(!capture_correlation_complete(row), "counter overflow prevents completeness");
+    std::uint64_t count=UINT64_MAX-1, delta=99;
+    check(capture_correlation_add(count) && count==UINT64_MAX, "checked counter accepts last representable value");
+    check(!capture_correlation_add(count) && count==UINT64_MAX, "counter saturates instead of rolling over");
+    check(!capture_correlation_delta(UINT64_MAX, 0, delta) && delta==0, "drop counter reset or wrap is loss");
+    check(capture_correlation_delta(9, 12, delta) && delta==3, "bounded drop delta preserves exact losses");
+    InputTelemetry state; InputTelemetryLink link; link.publish(state);
+    row=original;
+    for (unsigned i=0; i<64; ++i) check(link.client(row), "capture reuses existing bounded client capacity");
+    check(!link.client(row) && state.client.take_dropped()==1, "capture loss is counted on existing channel");
+    row.owner=2;
+    std::array<ClientTelemetry,64> out{};
+    check(state.client.take(out)==64 && std::get<CaptureCorrelationEvidence>(out[0]).owner==1,
+        "queued capture rows own detached copies of original owner proof");
+    row=original; row.native_ms=101;
+    check(!link.client(row) && state.client.take_dropped()==1, "invalid capture attempt contributes to drop accounting");
+}
 void concurrent_producers() {
     constexpr unsigned producers = 4, iterations = 20000;
     InputTelemetryQueue<Row, 64> queue;
@@ -211,6 +265,7 @@ int main() {
     transition_and_startup();
     client_rows();
     score_probe_rows();
+    capture_correlation_rows();
     concurrent_producers();
     std::cout << checks << " input telemetry checks passed\n";
 }
