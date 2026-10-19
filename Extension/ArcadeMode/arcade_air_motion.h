@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_gameplay_profile.h"
+#include "arcade_movement.h"
 #include <array>
 #include <cmath>
 #include <limits>
@@ -50,24 +51,30 @@ struct AirMotionFrame {
     unsigned state{};
     float dt{}, root_y{}, velocity_y{}, spin_y{};
     bool ordinary_ground{};
+    float velocity_x{}, velocity_z{};
 };
 struct AirMotionOutput {
     bool ready{}, vertical{}, angular{};
     float velocity_y{}, spin_y{}, yaw{};
+    bool horizontal{};
+    float delta_x{}, delta_z{};
 };
 // The host still chooses takeoff, air, collision, landing and bail. Ordinary
 // ground entry is required before this controller can own an air episode.
 class AirMotion {
 public:
-    explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile) {}
+    explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
     void reset() noexcept {
+        air_limits_.reset();
         owner_ = seen_release_ = pending_at_ = 0;
-        pending_ = grounded_ = ordinary_ = vertical_ = spun_ = false; yaw_ = 0;
+        pending_ = grounded_ = ordinary_ = vertical_ = spun_ = limits_active_ = false; yaw_ = 0;
     }
     AirMotionOutput step(const AirMotionIntent& intent, const AirMotionFrame& frame) noexcept {
         if (!intent.enabled || !frame.owner || frame.now < intent.sampled_at || frame.now - intent.sampled_at > 150 ||
             !std::isfinite(frame.dt) || frame.dt <= 0 || frame.dt > .1f ||
             !std::isfinite(frame.root_y) || !std::isfinite(frame.velocity_y) || !std::isfinite(frame.spin_y) ||
+            !std::isfinite(frame.velocity_x) || !std::isfinite(frame.velocity_z) ||
+            std::abs(frame.velocity_x) >= 1000 || std::abs(frame.velocity_z) >= 1000 ||
             std::abs(frame.root_y) > 1000000 || std::abs(frame.velocity_y) >= 1000 || std::abs(frame.spin_y) >= 1000 ||
             !std::isfinite(intent.yaw_rate) || std::abs(intent.yaw_rate) > profile_.angular_speed() + .0001f ||
             (clocked_ && (frame.now < last_ || frame.now - last_ > 150))) {
@@ -89,7 +96,9 @@ public:
         }
         if (pending_ && (frame.now < pending_at_ || frame.now - pending_at_ > 150)) pending_ = false;
         if (ground) {
-            grounded_ = true; ordinary_ = frame.ordinary_ground;
+            grounded_ = true; ordinary_ = frame.ordinary_ground; limits_active_ = ordinary_;
+            if (ordinary_) air_limits_.observe_ordinary(std::hypot(frame.velocity_x,frame.velocity_z));
+            else air_limits_.reset();
             ground_vy_ = frame.velocity_y; vertical_ = spun_ = false; yaw_ = 0;
             return {ordinary_, false, false};
         }
@@ -120,7 +129,21 @@ public:
             yaw_ = std::remainder(yaw_ + static_cast<double>(intent.yaw_rate) * frame.dt, 6.2831853071795864769);
             spun_ = intent.yaw_rate != 0;
         } else spun_ = false;
-        return {true, vertical_, angular, vy_, intent.yaw_rate, static_cast<float>(yaw_)};
+        AirMotionOutput output{true, vertical_, angular, vy_, intent.yaw_rate, static_cast<float>(yaw_)};
+        // Default ordinary flight carries the same hard/soft limits as ground,
+        // without rolling drag. A native trajectory takeover also withdraws
+        // this ordinary-flight authority; transfer overrides remain native-owned.
+        if (!frame.ordinary_ground) limits_active_ = false;
+        if (vertical_ && limits_active_) {
+            const float speed = std::hypot(frame.velocity_x,frame.velocity_z);
+            const float change = air_limits_.step_air(frame.dt,speed);
+            if (change < 0 && speed > 0) {
+                output.horizontal = true;
+                output.delta_x = frame.velocity_x/speed*change;
+                output.delta_z = frame.velocity_z/speed*change;
+            }
+        } else air_limits_.reset();
+        return output;
     }
     // Validate the whole batch before changing any body. Uniform deltas keep
     // articulated relative motion while selecting the root's vertical/spin rate.
@@ -130,8 +153,10 @@ public:
         std::array<std::array<float, 3>, N>& spins,
         const std::array<float, 3>& up = {0, 1, 0}) noexcept {
         static_assert(N > 0);
-        if (!output.ready || (!output.vertical && !output.angular)) return false;
+        if (!output.ready || (!output.vertical && !output.angular && !output.horizontal)) return false;
         const float dy = output.vertical ? output.velocity_y - velocities[0][1] : 0;
+        const float dx = output.horizontal ? output.delta_x : 0;
+        const float dz = output.horizontal ? output.delta_z : 0;
         const float length = std::hypot(up[0], up[1], up[2]);
         if (!std::isfinite(length) || length < .5f || length > 1.5f) return false;
         const std::array<float, 3> axis{up[0]/length, up[1]/length, up[2]/length};
@@ -139,13 +164,13 @@ public:
         const float ds = output.angular ? output.spin_y-current : 0;
         for (std::size_t i = 0; i < N; ++i) {
             for (unsigned axis = 0; axis < 3; ++axis) {
-                const float v = velocities[i][axis] + (axis == 1 ? dy : 0);
+                const float v = velocities[i][axis] + (axis == 1 ? dy : axis == 0 ? dx : dz);
                 const float s = spins[i][axis] + ds * up[axis] / length;
                 if (!std::isfinite(v) || !std::isfinite(s) || std::abs(v) >= 1000 || std::abs(s) >= 1000) return false;
             }
         }
         for (std::size_t i = 0; i < N; ++i) {
-            velocities[i][1] += dy;
+            velocities[i][0] += dx; velocities[i][1] += dy; velocities[i][2] += dz;
             for (unsigned component = 0; component < 3; ++component) spins[i][component] += ds*axis[component];
         }
         return true;
@@ -160,10 +185,11 @@ public:
     }
 private:
     GameplayProfile profile_;
+    GroundResistance air_limits_;
     std::uint64_t owner_{}, seen_release_{}, pending_at_{}, last_{}, generation_{};
     unsigned charge_{};
     float ground_vy_{}, vy_{};
     double yaw_{};
-    bool pending_{}, grounded_{}, ordinary_{}, vertical_{}, spun_{}, clocked_{};
+    bool pending_{}, grounded_{}, ordinary_{}, vertical_{}, spun_{}, clocked_{}, limits_active_{};
 };
 }

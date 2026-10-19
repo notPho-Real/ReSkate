@@ -121,7 +121,7 @@ class GroundResistance {
 public:
     explicit GroundResistance(GameplayProfile profile = {}) noexcept : profile_(profile) {}
     void reset() noexcept { primed_ = limits_known_ = false; previous_ = 0; }
-    float selected_speed(float speed, float dt, bool crouched, bool braking = false, bool limits_known = true) const noexcept {
+    float selected_speed(float speed, float dt, bool crouched, bool braking = false, bool limits_known = true, bool ground_friction = true) const noexcept {
         if (!std::isfinite(speed) || speed < 0 || !std::isfinite(dt) || dt <= 0 || dt > .1f) return speed;
         if (limits_known) speed = std::min(speed, profile_.hard_speed());
         const auto wind = [dt](float v, float coefficient) {
@@ -132,11 +132,25 @@ public:
             const float impulse = 900 * GameplayProfile::metres_per_inch * dt;
             speed = speed < 2*impulse ? 0 : std::max(0.0f, speed-impulse);
         }
-        if (!limits_known) return speed;
+        if (!limits_known || !ground_friction) return speed;
         speed = wind(speed, crouched ? .000002f : .00001f);
         return std::max(0.0f, speed - .00001f * GameplayProfile::metres_per_inch * 60 * dt);
     }
+    // Observe actual ordinary-ground speed without applying a second ground
+    // budget. Air carries only known ordinary limits, not unknown fast arrivals.
+    void observe_ordinary(float speed) noexcept {
+        if (!std::isfinite(speed) || speed < 0 || speed >= 1000) { reset(); return; }
+        limits_known_ = limits_known_ || speed <= profile_.soft_speed();
+        primed_ = true; previous_ = speed;
+    }
+    float step_air(float dt, float speed) noexcept {
+        return step_selected(dt,speed,false,false,false,false);
+    }
     float step(float dt, float speed, bool crouched, bool braking = false, bool manual = false) noexcept {
+        return step_selected(dt,speed,crouched,braking,manual,true);
+    }
+private:
+    float step_selected(float dt, float speed, bool crouched, bool braking, bool manual, bool ground_friction) noexcept {
         // Admitted basic balance coasts; it does not add kick or brake budget.
         if (manual) { crouched = false; braking = false; }
         if (!std::isfinite(speed) || speed < 0 || speed >= 1000 ||
@@ -148,7 +162,7 @@ public:
         }
         if (speed <= profile_.soft_speed()) limits_known_ = true;
         const float baseline = std::max(previous_, speed);
-        const float required_loss = std::max(0.0f, baseline - selected_speed(baseline, dt, crouched, braking, limits_known_));
+        const float required_loss = std::max(0.0f, baseline - selected_speed(baseline, dt, crouched, braking, limits_known_, ground_friction));
         const float native_loss = std::max(0.0f, previous_ - speed);
         const float extra_loss = std::max(0.0f, required_loss - native_loss);
         const float target = std::min(limits_known_ ? profile_.hard_speed() : speed, std::max(0.0f, speed - extra_loss));

@@ -497,7 +497,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         if (a.owner != owner || a.generation != intent.generation ||
             (a.stepped_at && (now < a.stepped_at || now - a.stepped_at > 150))) { a.controller.reset(); a.ground_resistance.reset(); }
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
-            bodies.root[1], velocities[0][1], spins[0][1], ordinary});
+            bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2]});
         NoBailSkater after{};
         reader.verify();
         source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
@@ -534,12 +534,12 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
                 push_speed().arcade_drive.account_resistance(change);
             }
         } else a.ground_resistance.reset();
-        if (!output.vertical && !output.angular) return;
+        if (!output.vertical && !output.angular && !output.horizontal) return;
         source_require(arcade_mode::AirMotion::apply_bodies(output, velocities, spins, bodies.up), "Air motion result is invalid.");
         for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
-            if (output.vertical) body_write(bodies.parts[i] + 0x70, velocities[i]);
+            if (output.vertical || output.horizontal) body_write(bodies.parts[i] + 0x70, velocities[i]);
             if (output.angular) body_write(bodies.parts[i] + 0x90, spins[i]);
-            body_write(bodies.parts[i] + 0x60, flags[i] | (output.vertical ? 8u : 0u) | (output.angular ? 0x20u : 0u));
+            body_write(bodies.parts[i] + 0x60, flags[i] | ((output.vertical || output.horizontal) ? 8u : 0u) | (output.angular ? 0x20u : 0u));
         }
     } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.output = {}; a.ready_until.store(0, std::memory_order_release); }
 }
