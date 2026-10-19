@@ -103,6 +103,14 @@ std::array<AirRotation, 4> rotations;
 std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
+CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
+std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
+bool capture_row(const CaptureCorrelationEvidence& row) noexcept {return input_telemetry.client(row);}
+void capture_event(CaptureCorrelationSource source,std::uint64_t sequence,std::uint64_t now,const NativeInputFrame& proof,bool known=true) noexcept {
+    CaptureCorrelationEvidence row;row.source=source;row.source_sequence=sequence;row.ms=now;row.events_known=known;
+    input_capture_correlation.event(row,proof,input_telemetry.client_dropped(),capture_row);
+}
+
 std::array<PadEvidence, 4> previous_pad{};
 std::array<PadEvidence, 4> previous_source_pad{};
 std::uint64_t pad_sequence{};
@@ -291,6 +299,15 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         arcade_input.publish_balance_controls(balance_admitted ? InputBalanceControls::vertical(
             pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual) :
             InputBalanceControls{}, native_frame);
+        if(balance_admitted){
+            if(capture_correlation_add(capture_admission_sequence))capture_event(CaptureCorrelationSource::manual_admission,capture_admission_sequence,now,native_frame);
+            else input_capture_correlation.lost();
+        }
+        if(termination!=BalanceExit::none){
+            if(capture_correlation_add(capture_termination_sequence))capture_event(CaptureCorrelationSource::manual_termination,capture_termination_sequence,now,native_frame);
+            else input_capture_correlation.lost();
+        }
+
         const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
         manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 &&
@@ -337,8 +354,10 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
         2 : combo_session.model().danger(), BalanceHudSource{native_frame.sampled_at, native_frame.valid});
 }
+bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept;
 // Only this background sink formats the live input/client snapshots.
 void write_client_telemetry(const ClientTelemetry& row) noexcept {
+    if(const auto* capture=std::get_if<CaptureCorrelationEvidence>(&row)){write_capture_correlation(*capture);return;}
     std::visit([](const auto& r) {
         using T = std::decay_t<decltype(r)>;
         if constexpr (std::is_same_v<T, Observation>)
@@ -448,6 +467,14 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
         }
     }, row);
 }
+bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept {
+    if(!capture_correlation_valid(r))return false;
+    try {
+        const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={}.",
+            r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow);
+        return logging::write_command_evidence(text);
+    }catch(...){return false;}
+}
 void write_input_gap(bool pad, std::uint64_t dropped) noexcept {
     if (!dropped) return;
     // Identical loss deltas must not be suppressed as repeated messages. The
@@ -458,6 +485,7 @@ void write_input_gap(bool pad, std::uint64_t dropped) noexcept {
         "ARCADE COMBO GAP: dropped={}.", dropped);
 }
 DWORD WINAPI input_telemetry_worker(void* context) noexcept {
+    CaptureCorrelationDrain capture_drain;
     auto& telemetry = *static_cast<InputTelemetry*>(context);
     for (;;) {
         std::array<PadTelemetry, 16> pad_rows{};
@@ -523,6 +551,13 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
         const auto client_count = telemetry.client.take(client_rows);
         write_input_gap(false, telemetry.client.take_dropped());
         for (std::size_t i = 0; i < client_count; ++i) {
+            if(const auto* capture=std::get_if<CaptureCorrelationEvidence>(&client_rows[i])){
+                const auto row=capture->kind==CaptureCorrelationKind::end ? capture_drain.footer(*capture,telemetry.client.dropped()):*capture;
+                const bool accepted=write_capture_correlation(row);
+                if(row.kind!=CaptureCorrelationKind::end)capture_drain.written(row,accepted);
+                if(!accepted)telemetry.client.lose();
+                continue;
+            }
             // A queued old heartbeat must not masquerade as newly fresh riding.
             if (!client_telemetry_fresh(client_rows[i], GetTickCount64())) {
                 telemetry.client.lose();
@@ -556,6 +591,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
         native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
         return;
@@ -572,6 +608,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
         native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
         return;
@@ -586,11 +623,14 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         if (clock_valid) {
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
             arcade_input.publish_native_context(frame);
+            if(frame.valid)capture_event(CaptureCorrelationSource::native,frame.physics_step,frame.sampled_at,frame);
+            else input_capture_correlation.maintain(now,{},input_telemetry.client_dropped(),capture_row);
             arcade_input.publish_native_lip(lip_observation,frame);
             if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
             else arcade_input.invalidate_authority();
         } else {
             native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
     }
@@ -716,6 +756,21 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 }
 
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
+bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept {
+    std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=arcade_input.native_context(now);
+    if(!duration_ms){
+        if(!input_capture_correlation.active())return false;
+        input_capture_correlation.end(now,frame,input_telemetry.client_dropped(),capture_row);return true;
+    }
+    if(!enabled()||!input_telemetry.available())return false;
+    const bool begun=input_capture_correlation.begin(now,duration_ms,required_sources,frame,input_telemetry.client_dropped(),capture_row);
+    if(begun){
+        capture_input_cursor=0;
+        if(const auto* history=arcade_input.history(0);history&&!history->events().empty())capture_input_cursor=history->events().back().sequence;
+    }
+    return begun;
+}
+
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
                                    const NativeRequestSample& sample) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
@@ -855,6 +910,7 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
+        if(!value)input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
         native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset();
         arcade_input.enable(value);
         arcade_input.cancel_commands();
@@ -923,6 +979,10 @@ void on_client_tick() noexcept {
         const bool valid_clock = std::isfinite(step) && step >= .001f && step <= .1f;
         const auto stepped_at = input_step_at.load(std::memory_order_acquire);
         const auto clock_now = GetTickCount64();
+        {
+            std::lock_guard lock(ollie_mutex);
+            input_capture_correlation.maintain(clock_now,arcade_input.native_context(clock_now),input_telemetry.client_dropped(),capture_row);
+        }
         const bool observed_clock = valid_clock && input_clock_valid.load(std::memory_order_acquire) &&
             stepped_at && clock_now >= stepped_at && clock_now-stepped_at <= 150;
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
@@ -1213,6 +1273,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);
         const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
+        const auto* before_diagnostic=arcade_input.input_diagnostic(user);
+        const auto recognized_before=before_diagnostic?before_diagnostic->recognized:0;
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push, admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -1222,6 +1284,33 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
             manual_balance_admitted.load(std::memory_order_relaxed));
+        const auto capture_proof=arcade_input.native_context(now);
+        input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
+        if(input_capture_correlation.active()){
+            std::uint64_t preceding_sequence{};
+            if(const auto* history=arcade_input.history(user))for(const auto& event:history->events()){
+                if(preceding_sequence&&event.sequence<=preceding_sequence)input_capture_correlation.lost();
+                preceding_sequence=event.sequence;
+                if(event.sequence<=capture_input_cursor)continue;
+                if(capture_input_cursor&&event.sequence-capture_input_cursor!=1)input_capture_correlation.lost();
+                capture_input_cursor=event.sequence;
+                CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::input;row.source_sequence=event.sequence;row.ms=event.at;
+                row.first_event=row.last_event=event.sequence;row.first_ms=row.last_ms=event.at;row.events_known=true;
+                input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
+            }
+            const auto* diagnostic=arcade_input.input_diagnostic(user);
+            if(diagnostic&&diagnostic->recognized>recognized_before){
+                CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::recognition;row.ms=row.recognized_ms=now;
+                // The current adapter exposes the recognition counter, but not
+                // the complete immutable matched-event IDs. Keep that footprint
+                // unavailable rather than reconstructing it from journal times.
+                row.events_known=false;
+                if(capture_correlation_add(capture_recognition_sequence)){
+                    row.source_sequence=capture_recognition_sequence;
+                    input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
+                }else input_capture_correlation.lost();
+            }else if(diagnostic&&diagnostic->recognized<recognized_before)input_capture_correlation.lost();
+        }
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
         // stance needing authored flip reflection. Do not invert this for grabs.

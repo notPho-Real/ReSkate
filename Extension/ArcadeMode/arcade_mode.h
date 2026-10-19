@@ -34,6 +34,8 @@ PlaybackExperiment playback_experiment() noexcept;
 // Unsaved, explicit lab-only action selection; requires Arcade Mode OFF.
 bool set_action_experiment(ActionExperiment value) noexcept;
 ActionExperiment action_experiment() noexcept;
+// Explicit finite diagnostic capture on the existing client channel; zero stops.
+bool set_input_capture(unsigned duration_ms,unsigned required_sources=31) noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Uses the existing validated native camera lease on the client thread.

@@ -95,12 +95,15 @@ struct FlightInput {
 
 // May change what the GAME reads from an XInput pad (never what ReSkate itself reads). `user` is
 // the XInput slot, or slot3 for native PlayStation HID reads. Called on the
-// game polling/completion thread, once per completed read that returns a
-// pad. The grind exit control's grab and lean guards (grind_exit_control.h).
+// game polling/completion thread, once per completed available pad. An
+// unavailable marker retires ownership without supplying a physical edge.
+// The grind exit control's grab and lean guards (grind_exit_control.h).
 struct GamepadValues {
     std::uint16_t buttons = 0;
     std::uint8_t left_trigger = 0, right_trigger = 0;
     std::int16_t left_x = 0, left_y = 0, right_x = 0, right_y = 0;
+    // Unavailable retires this source's ownership; it is not a physical release.
+    bool available = true;
 };
 using GamepadFilter = void (*)(unsigned user, GamepadValues& pad) noexcept;
 

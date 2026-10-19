@@ -110,6 +110,9 @@ public:
     const InputHistory* history(unsigned user) const noexcept {
         return user < sessions_.size() ? &sessions_[user].history() : nullptr;
     }
+    const UnifiedInput::Diagnostic* input_diagnostic(unsigned user) const noexcept {
+        return user<sessions_.size()?&sessions_[user].diagnostic():nullptr;
+    }
     std::uint64_t owner_epoch() const noexcept { return owner_; }
     bool admitted(unsigned user, std::uint64_t now) const noexcept {
         return enabled_ && (!native_bound_ || (user == 0 && focused_ && now >= authority_at_ && now-authority_at_ <= 150));

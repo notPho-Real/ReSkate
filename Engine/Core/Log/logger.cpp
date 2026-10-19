@@ -210,6 +210,20 @@ void set_level(Level level) noexcept { detail::PreserveError preserve; try { sta
 void write(Level level, Channel channel, std::string_view message) noexcept {
     write(level, default_context(channel), channel, message);
 }
+bool write_command_evidence(std::string_view message) noexcept {
+    detail::PreserveError preserve;
+    try {
+        if(message.empty())return false;
+        auto text=detail::clean(message);if(text.empty()||text!=message)return false;
+        auto& s=state();std::lock_guard lock(s.mutex);
+        const auto context=default_context(Channel::command);
+        if(!s.initialized||!s.file_output.load()||!s.loggers[static_cast<std::size_t>(context)])return false;
+        // SharedFile writes synchronously; its existing error handler clears
+        // file_output on failure/short write before the logger returns.
+        emit_locked(s,Level::info,context,Channel::command,text);
+        return s.file_output.load();
+    }catch(...){return false;}
+}
 void write(Level level, Context context, Channel channel, std::string_view message) noexcept {
     detail::PreserveError preserve;
     try {

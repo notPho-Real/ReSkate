@@ -72,7 +72,7 @@ struct Decision {
     float along{}, before_side{}, after_side{}, up{}, rail_speed{}, toe_across{};
 };
 struct Trigger {
-    bool pressed{}, claimed{};
+    bool pressed{}, claimed{}, await_release{};
     std::int64_t pressed_at{}, released{};
 };
 
@@ -235,6 +235,13 @@ void on_step(const NoBailSkater& skater, float, bool) noexcept {
 // Any thread the game polls its pad from.
 void filter_pad(unsigned user, overlay::GamepadValues& pad) noexcept {
     auto& c = control();
+    if(!pad.available){
+        AcquireSRWLockExclusive(&c.trigger_lock);
+        c.triggers[user&3]={};
+        for(auto& trigger:c.triggers[user&3])trigger.await_release=true;
+        ReleaseSRWLockExclusive(&c.trigger_lock);
+        return;
+    }
     if (!c.enabled.load(std::memory_order_acquire)) return;
     const auto now = qpc_now();
     const bool grinding = grinding_now(c, now);
@@ -246,6 +253,10 @@ void filter_pad(unsigned user, overlay::GamepadValues& pad) noexcept {
     for (std::size_t side = 0; side < 2; ++side) {
         auto& t = c.triggers[user & 3][side];
         const auto raw = *values[side];
+        if(t.await_release){
+            if(raw<=release_level)t.await_release=false;
+            continue;
+        }
         if (!t.pressed && raw >= press_level) {
             t.pressed = true;
             t.pressed_at = now;

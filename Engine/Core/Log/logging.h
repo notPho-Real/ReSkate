@@ -41,6 +41,9 @@ void vprintf(Level level, Context context, Channel channel, const char* format, 
 void printf(Level level, Context context, Channel channel, const char* format, ...) noexcept;
 void write(Level level, Channel channel, std::string_view message) noexcept;
 void write(Level level, Channel channel, std::wstring_view message) noexcept;
+// Existing synchronous command/file sinks; false means file delivery was not
+// confirmed. Bounded evidence accounting must count this result, not enqueue.
+bool write_command_evidence(std::string_view message) noexcept;
 void vprintf(Level level, Channel channel, const char* format, va_list args) noexcept;
 void printf(Level level, Channel channel, const char* format, ...) noexcept;
 template<class... Args>

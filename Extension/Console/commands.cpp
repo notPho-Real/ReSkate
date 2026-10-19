@@ -38,6 +38,15 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+    auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..31)",Group::gameplay,
+        {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true)});
+    capture.run=[](const Model&,const Values& values,const Output& out){
+        const auto duration=std::get<std::uint64_t>(values[0]);const auto scope=values.size()>1?std::get<std::uint64_t>(values[1]):31;
+        if(duration>5000||!scope||scope>31||!arcade_mode::set_input_capture(static_cast<unsigned>(duration),static_cast<unsigned>(scope)))
+            out("Capture unavailable: require fresh native owner, active telemetry, duration1..5000 and source mask1..31; duration0 stops an active capture.");
+        else out(duration?"Input correlation capture started; completeness and native acceptance remain unverified.":"Input correlation capture stopped.");
+    };
+    registry.add(std::move(capture));
     auto playback_mode = argument("delivery|timeline|reference|off", Type::text, true);
     playback_mode.choices = {"delivery", "timeline", "reference", "off"};
     auto playback = action("arcadeplayback", "Unsaved playback A/B diagnostic; change with Arcade Mode OFF",

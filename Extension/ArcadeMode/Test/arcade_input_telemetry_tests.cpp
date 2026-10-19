@@ -260,12 +260,67 @@ void concurrent_producers() {
         "queue remains live after concurrent contention");
 }
 }
+namespace {
+NativeInputFrame capture_frame(std::uint64_t at=1000,std::uint64_t step=10){
+    NativeInputFrame f;f.valid=true;f.owner={11,12,13,14,15};f.owner_generation=f.contact_generation=f.action_generation=1;f.physics_step=step;f.sampled_at=at;return f;
+}
+void capture_producer_drain(){
+    for(unsigned fault=0;fault<8;++fault){
+        InputTelemetry telemetry;InputTelemetryLink link;link.publish(telemetry);CaptureCorrelationProducer producer;CaptureCorrelationDrain drain;
+        unsigned attempts{};std::vector<CaptureCorrelationEvidence> written;
+        auto sink=[&](const CaptureCorrelationEvidence& r){
+            check(capture_correlation_valid(r),"actual producer constructs structurally valid immutable rows");
+            ++attempts;
+            if((fault==1&&r.kind==CaptureCorrelationKind::begin)||(fault==2&&r.kind==CaptureCorrelationKind::event&&r.source==CaptureCorrelationSource::input)){
+                telemetry.client.lose();return false;
+            }
+            return link.client(r);
+        };
+        const auto f=capture_frame();check(producer.begin(1000,100,5,f,link.client_dropped(),sink),"explicit finite capture begins with actual full-owner native proof");
+        check(!producer.begin(1001,100,5,f,0,sink),"active capture cannot be restarted or reuse its ID");
+        CaptureCorrelationEvidence native;native.ms=1000;native.source=CaptureCorrelationSource::native;native.source_sequence=f.physics_step;native.events_known=true;
+        producer.event(native,f,link.client_dropped(),sink);
+        CaptureCorrelationEvidence input;input.ms=1000;input.source=CaptureCorrelationSource::input;input.source_sequence=51;input.first_event=input.last_event=51;input.first_ms=input.last_ms=1000;input.events_known=fault!=3;
+        if(!input.events_known)input.first_event=input.last_event=input.first_ms=input.last_ms=0;
+        producer.event(input,f,link.client_dropped(),sink);
+        if(fault==4)telemetry.client.lose();
+        auto end=f;
+        if(fault==5){++end.owner_generation;end.owner.core=99;}
+        if(fault==6)producer.lost();
+        producer.end(1010,end,link.client_dropped(),sink);
+        check(!producer.active()&&attempts==4,"begin/two attempts/end are finite and end retains attempted event count");
+        std::array<ClientTelemetry,64> rows;const auto n=telemetry.client.take(rows);
+        for(std::size_t i=0;i<n;++i){
+            auto row=std::get<CaptureCorrelationEvidence>(rows[i]);
+            if(row.kind==CaptureCorrelationKind::end)row=drain.footer(row,telemetry.client.dropped());
+            const bool accepted=!(fault==7&&row.kind==CaptureCorrelationKind::event&&row.source==CaptureCorrelationSource::input);
+            if(row.kind!=CaptureCorrelationKind::end)drain.written(row,accepted);
+            if(accepted)written.push_back(row);
+        }
+        const auto& footer=written.back();check(footer.kind==CaptureCorrelationKind::end&&footer.ms==1010&&footer.native_ms==1000&&footer.physics_step==10,"drain never restamps original end/native time or physics step");
+        check(capture_correlation_complete(footer)==(fault==0),"only complete boundaries, written events, known footprints, owner continuity and no losses can pass");
+        check(footer.expected==2&&footer.drained==(fault==2||fault==7?1u:2u)&&footer.dropped==footer.expected-footer.drained,"footer counts actual accepted sink writes including validation/enqueue and sink failures");
+        if(fault==5)check(!footer.native_valid&&footer.owner_generation==1,"owner change invalidates capture without substituting a late owner proof");
+        check(producer.begin(1020,100,5,capture_frame(1020,11),link.client_dropped(),sink),"new explicit capture can start after retirement with a distinct ID");
+    }
+    {
+        CaptureCorrelationProducer producer;std::vector<CaptureCorrelationEvidence> rows;auto sink=[&](const auto& row){rows.push_back(row);return true;};auto f=capture_frame();
+        check(!producer.begin(1000,0,31,f,0,sink)&&!producer.begin(1000,5001,31,f,0,sink)&&!producer.begin(1000,10,32,f,0,sink),"duration/scope are explicitly bounded");
+        check(producer.begin(1000,100,4,f,0,sink),"native-only scope uses the existing channel");
+        CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::native;row.source_sequence=10;row.ms=1000;row.events_known=true;producer.event(row,f,0,sink);
+        producer.maintain(1101,capture_frame(1101,11),0,sink);check(!producer.active()&&rows.back().ms==1101&&rows.back().native_ms==1101,"finite expiry uses actual callback time and its actual proof");
+        const auto prior=rows.front().capture;check(producer.begin(1110,100,4,capture_frame(1110,12),0,sink)&&rows.back().capture>prior,"capture IDs are unique and monotonically increasing");
+        producer.maintain(1300,{},0,sink);check(!producer.active()&&!rows.back().native_valid,"missing/stale native proof cannot renew capture or create synthetic completeness");
+    }
+}
+}
 int main() {
     saturation_and_recovery();
     transition_and_startup();
     client_rows();
     score_probe_rows();
     capture_correlation_rows();
+    capture_producer_drain();
     concurrent_producers();
     std::cout << checks << " input telemetry checks passed\n";
 }

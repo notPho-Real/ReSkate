@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_native_probe.h"
 #include "arcade_native_trick.h"
+#include "arcade_native_input_state.h"
 #include "arcade_observation.h"
 #include "arcade_manual_history.h"
 #include "arcade_manual_input.h"
@@ -208,6 +209,7 @@ template<class Row, std::size_t N> class InputTelemetryQueue {
     struct Slot { std::atomic<std::uint64_t> turn{}; Row row{}; };
     std::array<Slot, N> rows_{};
     std::atomic<std::uint64_t> write_{}, dropped_{};
+    std::atomic<bool> drop_overflow_{};
     std::uint64_t read_{}; // Single background consumer, including drop reports.
     std::uint64_t reported_{};
 public:
@@ -241,8 +243,8 @@ public:
         }
         return n;
     }
-    void lose() noexcept { dropped_.fetch_add(1, std::memory_order_relaxed); }
-    std::uint64_t dropped() const noexcept { return dropped_.load(std::memory_order_relaxed); }
+    void lose() noexcept { if(dropped_.fetch_add(1,std::memory_order_relaxed)==UINT64_MAX)drop_overflow_.store(true,std::memory_order_release); }
+    std::uint64_t dropped() const noexcept { return drop_overflow_.load(std::memory_order_acquire)?UINT64_MAX:dropped_.load(std::memory_order_relaxed); }
     std::uint64_t take_dropped() noexcept {
         const auto total = dropped();
         const auto delta = total - reported_;
@@ -273,12 +275,106 @@ struct InputTelemetry {
     ComboTelemetry<64> combo;
     InputTelemetryQueue<ClientTelemetry, 64> client;
 };
+// Serialized by the existing input mutex. Actual producer snapshots only;
+// the full owner tuple stays private and becomes capture-local token1 on wire.
+class CaptureCorrelationProducer {
+    NativeInputFrame proof_{};
+    std::uint64_t next_{},id_{},started_{},until_{},expected_{},drops_{};
+    std::array<std::uint64_t,6> sequences_{};
+    unsigned scope_{};bool active_{},known_{true},overflow_{};
+    static bool fresh(const NativeInputFrame& f,std::uint64_t now) noexcept {
+        return f.valid&&f.owner.valid()&&f.owner_generation&&f.contact_generation&&f.action_generation&&f.physics_step&&
+            f.sampled_at<=now&&now-f.sampled_at<=InputTiming::native_sample_lease_ms;
+    }
+    CaptureCorrelationEvidence snapshot(std::uint64_t now,const NativeInputFrame& f) const noexcept {
+        CaptureCorrelationEvidence r;r.capture=id_;r.required_sources=scope_;r.ms=now;r.native_ms=f.sampled_at;r.owner=1;
+        r.owner_generation=f.owner_generation;r.contact_generation=f.contact_generation;r.action_generation=f.action_generation;r.physics_step=f.physics_step;
+        r.native_valid=fresh(f,now);return r;
+    }
+    bool current(std::uint64_t now,const NativeInputFrame& f) const noexcept {
+        return fresh(f,now)&&f.owner==proof_.owner&&f.owner_generation==proof_.owner_generation&&now>=started_;
+    }
+public:
+    bool active()const noexcept{return active_;}
+    void lost()noexcept{overflow_=true;}
+    template<class Sink> bool begin(std::uint64_t now,std::uint64_t duration,unsigned scope,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
+        if(active_||!duration||duration>5000||!scope||scope>31||!fresh(f,now)||next_==UINT64_MAX||duration>UINT64_MAX-now)return false;
+        id_=++next_;started_=now;until_=now+duration;scope_=scope;proof_=f;expected_=0;drops_=drops;sequences_={};known_=true;overflow_=drops==UINT64_MAX;active_=true;
+        auto r=snapshot(now,f);r.kind=CaptureCorrelationKind::begin;r.events_known=true;r.drop_begin=r.drop_end=drops;r.overflow=overflow_;
+        // Lost begin remains an incomplete capture, never silently restarted.
+        sink(r);return true;
+    }
+    template<class Sink> void end(std::uint64_t now,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink,bool forced=false) noexcept {
+        if(!active_)return;
+        const bool same=current(now,f);const auto& original=same&&f.physics_step>=proof_.physics_step?f:proof_;
+        auto r=snapshot(now,original);r.native_valid=r.native_valid&&same&&!forced;r.kind=CaptureCorrelationKind::end;
+        r.expected=expected_;r.ordinal=expected_;if(!capture_correlation_add(r.ordinal))overflow_=true;
+        r.dropped=expected_;r.events_known=known_;r.drop_begin=drops_;r.drop_end=drops;r.overflow=overflow_||drops<drops_||drops==UINT64_MAX;
+        r.complete=!forced&&r.native_valid&&known_&&!r.overflow;active_=false;sink(r);
+    }
+    template<class Sink> void maintain(std::uint64_t now,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
+        if(active_&&(!current(now,f)||now>until_))end(now,f,drops,sink,!current(now,f));
+    }
+    template<class Sink> void event(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
+        maintain(row.ms,f,drops,sink);if(!active_)return;
+        const auto source=static_cast<unsigned>(row.source);
+        if(!source||source>5||!(scope_&(1u<<(source-1))))return;
+        if(row.source_sequence<=sequences_[source])overflow_=true;
+        sequences_[source]=row.source_sequence;
+        const auto payload=row;row=snapshot(payload.ms,f);row.kind=CaptureCorrelationKind::event;row.source=payload.source;row.source_sequence=payload.source_sequence;
+        row.first_event=payload.first_event;row.last_event=payload.last_event;row.first_ms=payload.first_ms;row.last_ms=payload.last_ms;row.recognized_ms=payload.recognized_ms;row.events_known=payload.events_known;
+        known_=known_&&row.events_known;
+        if(!capture_correlation_add(expected_))overflow_=true;row.ordinal=expected_;row.overflow=overflow_;
+        if(f.physics_step>=proof_.physics_step)proof_=f;
+        // Count the attempt before validation/enqueue. A lost row is retained in
+        // expected and becomes a footer loss, not an invented drained event.
+        sink(row);
+    }
+};
+// Existing client worker only. Counts successful sink writes, not reservations.
+// A footer is finalized after all earlier queue rows have been drained.
+class CaptureCorrelationDrain {
+    struct Capture {
+        std::uint64_t id{},written{},first{},last{};unsigned sources{};bool began{},known{true},overflow{};
+    };
+    std::array<Capture,16> captures_{};
+    Capture* find(std::uint64_t id) noexcept {
+        for(auto& c:captures_)if(c.id==id)return &c;
+        for(auto& c:captures_)if(!c.id){c.id=id;return &c;}
+        return nullptr;
+    }
+public:
+    void written(const CaptureCorrelationEvidence& row,bool accepted) noexcept {
+        auto* c=find(row.capture);if(!c)return;
+        if(row.kind==CaptureCorrelationKind::begin){if(c->began)c->overflow=true;c->began=accepted;return;}
+        if(row.kind!=CaptureCorrelationKind::event||!accepted)return;
+        if(!capture_correlation_add(c->written))c->overflow=true;
+        if(!c->first)c->first=row.ordinal;c->last=row.ordinal;
+        c->sources|=1u<<(static_cast<unsigned>(row.source)-1);
+        c->known=c->known&&row.events_known;c->overflow=c->overflow||row.overflow;
+    }
+    CaptureCorrelationEvidence footer(CaptureCorrelationEvidence row,std::uint64_t drops) noexcept {
+        auto* c=find(row.capture);row.drop_end=drops;
+        if(!c){row.complete=false;row.overflow=true;row.drained=0;row.dropped=row.expected;return row;}
+        row.drained=c->written;row.first_ordinal=c->first;row.last_ordinal=c->last;
+        row.overflow=row.overflow||c->overflow||row.drained>row.expected||drops==UINT64_MAX||drops<row.drop_begin;
+        row.dropped=row.expected>=row.drained?row.expected-row.drained:0;
+        row.complete=row.complete&&c->began&&c->known&&!row.overflow&&
+            (c->sources&row.required_sources)==row.required_sources&&row.drained==row.expected&&row.drop_begin==drops;
+        // Releasing a worker slot does not reuse the producer's capture ID.
+        *c={};return row;
+    }
+};
 // Published only after a worker starts. Its storage, like the pinned runtime,
 // lasts until process teardown; toggling gameplay never resets a live queue.
 class InputTelemetryLink {
     std::atomic<InputTelemetry*> target_{};
 public:
     void publish(InputTelemetry& target) noexcept { target_.store(&target, std::memory_order_release); }
+    bool available() const noexcept { return target_.load(std::memory_order_acquire)!=nullptr; }
+    std::uint64_t client_dropped() const noexcept {
+        const auto* target=target_.load(std::memory_order_acquire);return target?target->client.dropped():UINT64_MAX;
+    }
     bool pad(const PadTelemetry& row) noexcept {
         if (auto* target = target_.load(std::memory_order_acquire)) return target->pad.push(row);
         return false;

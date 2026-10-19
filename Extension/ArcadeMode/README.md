@@ -235,3 +235,17 @@ queue. Discovery and diagnostic logging run on a background worker. Ownership,
 sequence category and duplicate line-end routes are unresolved, so these
 observations do not award or bank Arcade points. Windows/Deck verification is
 pending; local sanitizer checks do not establish native acceptance.
+
+
+The unsaved `arcadeinputcapture <milliseconds> [source-mask]` diagnostic records a
+finite capture through the existing 64-slot client channel; duration0 stops it.
+Duration is bounded to1..5000ms. Source bits are1 input journal,2 recognition,
+4 native physics,8 admitted Manual,16 Manual termination (default31). It requires
+fresh native ownership and active telemetry. Only anonymous capture-local owner
+tokens, original times/sequences and native generations/steps reach the log.
+The existing worker counts confirmed synchronous file writes before the footer;
+queue, sink, boundary, provenance or required-source loss remains incomplete.
+Recognition currently lacks the complete matched-event IDs, so its footprint
+is explicitly unavailable and prevents complete accounting for that scope.
+Input scope covers the shared physical-event journal; ordinary pad diagnostics
+remain separate. Capture completeness never verifies a native action or cause.
