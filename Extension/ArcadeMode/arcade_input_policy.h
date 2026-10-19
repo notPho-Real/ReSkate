@@ -13,6 +13,10 @@ struct InputGenerations {
     std::uint64_t owner{}, contact{}, action{};
     bool operator==(const InputGenerations&) const = default;
 };
+struct InputAirEpisode {
+    std::uint64_t number{}, departure{};
+    bool operator==(const InputAirEpisode&) const = default;
+};
 // Correlation from an independently sampled native producer, never a trick
 // occurrence or animation clock. Polling cannot renew the producer's lease.
 struct InputNativeContext {
@@ -20,6 +24,11 @@ struct InputNativeContext {
     InputGenerations generations{};
     std::uint64_t physics_step{}, sampled_at{};
     bool rail_family{};
+    // Physics-observed flight and departure identities, never action or
+    // animation completion. A departure need not be a landing.
+    bool airborne{};
+    std::uint64_t airborne_episode{}, air_departure{};
+    InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
         return valid && generations.owner && generations.contact && generations.action && physics_step &&
@@ -39,12 +48,18 @@ struct InputNativeContext {
             return generations.owner > previous.generations.owner && physics_step > previous.physics_step;
         return physics_step >= previous.physics_step && sampled_at >= previous.sampled_at &&
             generations.contact >= previous.generations.contact && generations.action >= previous.generations.action &&
+            airborne_episode >= previous.airborne_episode && air_departure >= previous.air_departure &&
             (physics_step != previous.physics_step || *this == previous);
     }
     template<class Frame>
     static InputNativeContext from_frame(const Frame& frame) noexcept {
-        return {true,frame.valid,{frame.owner_generation,frame.contact_generation,frame.action_generation},
+        InputNativeContext context{true,frame.valid,{frame.owner_generation,frame.contact_generation,frame.action_generation},
             frame.physics_step,frame.sampled_at,frame.rail_family};
+        if constexpr (requires { frame.airborne; frame.airborne_episode; frame.air_departure; }) {
+            context.airborne = frame.airborne; context.airborne_episode = frame.airborne_episode;
+            context.air_departure = frame.air_departure;
+        }
+        return context;
     }
 };
 }

@@ -7,9 +7,10 @@ namespace dingosdk::arcade_mode {
 enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
 enum class InputAction : std::uint8_t {
     none, crouch, ollie_release, flip, grab, rail_request, revert, manual, nose_manual,
-    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle
+    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn
 };
 enum class InputDisposition : std::uint8_t { waiting, started, unsupported, cancelled, expired };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction };
 struct InputRequest {
     InputAction action{};
     InputContext context{};
@@ -33,6 +34,8 @@ struct InputRequest {
     unsigned balance_origin{};
     InputGenerations generations{};
     std::uint8_t generation_mask{};
+    InputForm form{};
+    InputAirEpisode air_episode{};
 };
 struct InputEnvironment {
     InputContext context{};
@@ -42,7 +45,6 @@ struct InputEnvironment {
     unsigned balance_branch{};
     bool manual_safe{true}, manual_prepare{}, manual_active{};
     bool auxiliary_enabled{true};
-    bool flip_available{true};
     bool ollie_allowed{true};
     bool manual_context_known{true};
     bool deferred_grabs{};
@@ -146,6 +148,8 @@ private:
             ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
             ((request.generation_mask & 4u) && request.generations.action != native.generations.action)))
             return InputDisposition::cancelled;
+        if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
+            return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
             !(request.action == InputAction::rail_select &&
@@ -158,7 +162,7 @@ private:
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
-    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::board_toggle) + 1> cancellations_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::ground_turn) + 1> cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
 // all admission and safety contracts. No native memory or score dependencies.
@@ -197,6 +201,12 @@ public:
     void cancel_auxiliary() noexcept {
         pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
     }
+    void cancel_air_episode() noexcept {
+        pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
+        active_flip_ = active_grab_ = waiting_direction_ = false; direction_ = 0;
+        // Keep physical held state and independently queued Manual/rail intent.
+        events_.discard_intent();
+    }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
         cancel_manual(); manual_unknown_ = true;
@@ -221,6 +231,7 @@ public:
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
+                if (native.air_episode() != native_.air_episode()) cancel_air_episode();
                 if (native.generations.action != native_.generations.action) {
                     waiting_direction_ = false;
                 }
@@ -284,6 +295,7 @@ public:
         recognize_surface(now, environment);
         recognize_branches(now, environment);
         recognize_rail_extras(now, environment);
+        recognize_ground_prefix(now,environment);
         // Every sample's edges are evaluated once, even if no adapter is ready.
         const auto journal = events_.history().events();
         for (const auto& event : journal) {
@@ -340,13 +352,15 @@ public:
                 pending_.cancel(InputAction::lip_select); pending_.cancel(InputAction::rail_select);
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::flip) {
-                active_flip_ = true; active_flip_count_ = event.request.presses; flip_started_ = now;
+                active_flip_ = event.request.form == InputForm::ordinary;
+                active_flip_count_ = active_flip_ ? event.request.presses : 0; flip_started_ = now;
                 flip_direction_ = event.request.direction; flip_source_ = event.request.direction_source; flip_nollie_ = event.request.nollie;
                 flip_generations_ = event.request.generations;
                 diagnostic_.flip_table_at = now;
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
-                active_grab_ = event.request.named_binding; active_grab_count_ = event.request.presses; grab_started_ = now;
+                active_grab_ = event.request.named_binding && event.request.form == InputForm::ordinary;
+                active_grab_count_ = active_grab_ ? event.request.presses : 0; grab_started_ = now;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
                 grab_generations_ = event.request.generations;
             }
@@ -362,6 +376,7 @@ public:
     }
 private:
     static constexpr std::uint32_t manual_owner = InputConsumption::manual;
+    static constexpr std::uint32_t ordinary_reject = ~manual_owner;
     static constexpr std::uint32_t branch_owner = InputConsumption::extra;
     static constexpr std::uint32_t rail_owner = InputConsumption::extra_grind;
     static constexpr std::uint8_t generation_dependencies(InputAction action, InputContext context) noexcept {
@@ -381,7 +396,8 @@ private:
         events_.history().consume(match, InputConsumption::regular);
     }
     void enqueue(InputAction action, std::uint64_t now, std::uint64_t duration,
-                 InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr) noexcept {
+                 InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr,
+                 InputForm form = InputForm::ordinary, std::int16_t defined_direction = 0) noexcept {
         const auto limit = std::numeric_limits<std::uint64_t>::max();
         const auto deadline = now > limit - duration ? limit : now + duration;
         InputRequest request{action, environment.context, now, deadline, session_,
@@ -390,11 +406,12 @@ private:
             ((action == InputAction::manual || action == InputAction::nose_manual) && environment.context == InputContext::ground) ||
                 action == InputAction::rail_change || action == InputAction::lip_change || action == InputAction::lip_select ||
                 action == InputAction::balance_branch_one || action == InputAction::balance_branch_two ||
-                action == InputAction::balance_variant || action == InputAction::balance_return ||
+                action == InputAction::balance_variant || action == InputAction::balance_return || action == InputAction::ground_turn ||
                 (!environment.policy.bounded_handoff && (action == InputAction::flip || action == InputAction::grab)), modifier,
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
             static_cast<std::uint16_t>(action == InputAction::grab ? 0x2000u : action == InputAction::flip ? 0x4000u :
                 action == InputAction::crouch || action == InputAction::ollie_release ? 0x1000u :
+                action == InputAction::ground_turn ? 0x0200u :
                 action == InputAction::board_toggle ? (environment.board_binding.pattern == InputBoardPattern::shoulder_overlap ? 0x0300u : environment.board_binding.control_mask) : 0u),
             action == InputAction::crouch || action == InputAction::ollie_release ? crouch_at_ : now,
             action == InputAction::ollie_release ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
@@ -402,6 +419,14 @@ private:
         if (environment.native_context.required) {
             request.generations = environment.native_context.generations;
             request.generation_mask = generation_dependencies(action,environment.context);
+            if (action == InputAction::flip || action == InputAction::grab)
+                request.air_episode = environment.native_context.air_episode();
+        }
+        request.form = form;
+        if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
+        if (form == InputForm::repeated_direction) {
+            request.direction = defined_direction; request.direction_source = InputSource::direction;
+            request.direction_inherited = false;
         }
         ++diagnostic_.recognized;
         if (!pending_.push(request)) ++diagnostic_.queue_full;
@@ -423,20 +448,54 @@ private:
         if (match && events_.history().consume(match,InputConsumption::regular))
             enqueue(InputAction::board_toggle,now,1,environment,1,0,0,0,{},&match);
     }
+    InputMatch directional_prefix(InputAction action, InputContext context, std::uint64_t now, std::int16_t& selected) const noexcept {
+        // Ordinary rows precede base directional actions. Repeating a direction
+        // is distinct from a face press within an installed parent's extra table.
+        struct Definition { InputAction action; InputContext context; std::int16_t direction, terminal; std::uint64_t window; };
+        static constexpr std::array definitions{
+            Definition{InputAction::ground_turn,InputContext::ground,2,9,333},
+            Definition{InputAction::flip,InputContext::air,4,14,300},
+            Definition{InputAction::flip,InputContext::air,6,14,300},
+            Definition{InputAction::flip,InputContext::air,8,14,300},
+            Definition{InputAction::flip,InputContext::air,2,14,300},
+            Definition{InputAction::grab,InputContext::air,4,13,300},
+            Definition{InputAction::grab,InputContext::air,6,13,300},
+            Definition{InputAction::grab,InputContext::air,8,13,300},
+            Definition{InputAction::grab,InputContext::air,2,13,300}};
+        for (const auto& definition : definitions) {
+            if (definition.action != action || definition.context != context) continue;
+            const InputToken token{InputSource::direction,definition.direction,InputEdge::press};
+            const auto match = events_.history().triple(token,token,{InputSource::buttons,definition.terminal,InputEdge::press},
+                definition.window,2,now,ordinary_reject);
+            if (match) { selected = definition.direction; return match; }
+        }
+        return {};
+    }
+    void recognize_ground_prefix(std::uint64_t now, InputEnvironment environment) noexcept {
+        std::int16_t selected{};
+        const auto match = directional_prefix(InputAction::ground_turn,environment.context,now,selected);
+        if (match && events_.history().consume(match,InputConsumption::regular,ordinary_reject))
+            enqueue(InputAction::ground_turn,now,0,environment,1,1,0,0,{},&match);
+    }
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
         unsigned presses = 1;
-        const auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
+        auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
         const InputToken face{InputSource::buttons,13,InputEdge::press};
         InputMatch match{};
+        InputForm form{};
         if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ <= 250) {
             match = events_.history().extra_action(face, {grab_source_,grab_direction_,InputEdge::press}, 300, now, ~manual_owner);
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
+        if (!match && !environment.deferred_grabs) {
+            match = directional_prefix(InputAction::grab,environment.context,now,selected);
+            if (match) form = InputForm::repeated_direction;
+        }
         if (!match) {
             if (selected && !environment.deferred_grabs) {
                 const InputToken direction{direction_source_,selected,InputEdge::press};
-                match = events_.history().air_action(face,direction,events_.held(direction),500,now);
-            } else { const std::array tokens{face}; match = events_.history().match({tokens,500},now); }
+                match = events_.history().air_action(face,direction,events_.held(direction),500,now,ordinary_reject);
+            } else { const std::array tokens{face}; match = events_.history().match({tokens,500,ordinary_reject},now); }
         }
         if (!match) return;
         if (environment.deferred_grabs) {
@@ -449,15 +508,16 @@ private:
             if (presses > 1) pending_.cancel(InputAction::grab);
         }
         const bool extra = presses > 1 && !environment.deferred_grabs;
-        if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, extra ? ~manual_owner : ~std::uint32_t{0})) return;
+        if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
         if (extra && environment.native_context.required) environment.native_context.generations = grab_generations_;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
-            extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match);
+            extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,selected);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment) noexcept {
         const InputToken face{InputSource::buttons,14,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
+        InputForm form{}; std::int16_t defined_direction{};
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
         if (active_flip_ && child && now - flip_started_ <= 233) {
@@ -465,16 +525,20 @@ private:
             if (match) presses = active_flip_count_ < std::numeric_limits<unsigned>::max() ? active_flip_count_ + 1 : active_flip_count_;
         }
         if (!match) {
+            match = directional_prefix(InputAction::flip,environment.context,now,defined_direction);
+            if (match) form = InputForm::repeated_direction;
+        }
+        if (!match) {
             const InputToken direction{direction_source_, direction_, InputEdge::press};
-            match = events_.history().air_action(face, direction, events_.held(direction), 500, now);
+            match = events_.history().air_action(face, direction, events_.held(direction), 500, now,ordinary_reject);
         }
         if (!match || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
-            presses > 1 ? ~manual_owner : ~std::uint32_t{0})) return false;
+            ordinary_reject)) return false;
         auto selected = environment;
         if (presses > 1) selected.nollie = flip_nollie_;
         if (presses > 1 && selected.native_context.required) selected.native_context.generations = flip_generations_;
         enqueue(InputAction::flip, now, InputTiming::readiness_ms, selected, presses, 0, 0, 0,
-            presses > 1 ? InputToken{flip_source_,flip_direction_,InputEdge::press} : InputToken{}, &match);
+            presses > 1 ? InputToken{flip_source_,flip_direction_,InputEdge::press} : InputToken{}, &match,form,defined_direction);
         direction_ = 0; return true;
     }
     void recognize_surface(std::uint64_t now, InputEnvironment environment) noexcept {
@@ -485,12 +549,12 @@ private:
         const InputToken jump{InputSource::buttons,12,InputEdge::press};
         if (surface.can_plant) {
             for (auto code : {std::int16_t{2},std::int16_t{1},std::int16_t{3}})
-                for (auto source : {InputSource::direction,InputSource::stick,InputSource::pad}) for (bool reverse : {false,true}) {
-                    const InputToken direction{source,code,InputEdge::press};
+                for (bool reverse : {false,true}) {
+                    const InputToken direction{InputSource::direction,code,InputEdge::press};
                     const std::array tokens{reverse ? jump : direction, reverse ? direction : jump};
                     const auto match = events_.history().match({tokens,450},now);
                     if (match && events_.history().consume(match,InputConsumption::regular)) {
-                        enqueue(InputAction::wall_command,now,1,environment,1,1); return;
+                        enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match); return;
                     }
                 }
         }
@@ -516,12 +580,12 @@ private:
             constexpr std::array<std::int16_t, 8> front{9, 3, 1, 7, 8, 6, 4, 2};
             constexpr std::array<std::int16_t, 8> back{9, 3, 1, 7, 8, 6, 2, 4};
             const auto& directions = rail.frontside ? front : back;
-            for (auto direction : directions) for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                const auto match = events_.history().triple({source, direction, InputEdge::press}, y, y, 1000, 0, now, ~manual_owner);
+            for (auto direction : directions) {
+                const auto match = events_.history().triple({InputSource::direction, direction, InputEdge::press}, y, y, 1000, 0, now, ~manual_owner);
                 if (match && events_.history().consume(match, branch_owner, ~manual_owner)) {
                     const auto index = direction == 9 ? 10u : direction == 3 ? 11u : direction == 1 ? 12u : direction == 7 ? 13u :
                         direction == 8 ? 14u : direction == 6 ? 15u : direction == 4 ? 16u : 17u;
-                    enqueue(InputAction::rail_change, now, 0, environment, 1, static_cast<std::uint8_t>(index)); return;
+                    enqueue(InputAction::rail_change, now, 0, environment, 1, static_cast<std::uint8_t>(index),0,0,{},&match); return;
                 }
             }
         }
@@ -538,7 +602,7 @@ private:
             const std::array tokens{InputToken{InputSource::buttons, pair.first, InputEdge::press}, InputToken{InputSource::buttons, pair.second, InputEdge::press}};
             const auto match = events_.history().match({tokens, window, ~manual_owner}, now);
             if (!match || !events_.history().consume(match, branch_owner, ~manual_owner)) return false;
-            enqueue(action, now, 0, environment, 1, pair.target); return true;
+            enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };
         if (rail.phase == InputRailPhase::established) {
             for (auto pair : rail.frontside ? front : back) if (query(pair, 300, InputAction::rail_change)) return;
@@ -550,13 +614,12 @@ private:
     }
     void recognize_rail_selection(std::uint64_t now, InputEnvironment environment) noexcept {
         if (environment.context == InputContext::ground || environment.context == InputContext::air) {
-            for (auto direction : {std::int16_t{8}, std::int16_t{2}})
-                for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                    const InputToken token{source, direction, InputEdge::press};
-                    const auto match = events_.history().triple(token, token, {InputSource::buttons, 15, InputEdge::press}, 400, 2, now, ~manual_owner);
-                    if (match && events_.history().consume(match, rail_owner, ~manual_owner))
-                        enqueue(InputAction::rail_select, now, 1000, environment, 1, direction == 8 ? 20 : 21);
-                }
+            for (auto direction : {std::int16_t{8}, std::int16_t{2}}) {
+                const InputToken token{InputSource::direction, direction, InputEdge::press};
+                const auto match = events_.history().triple(token, token, {InputSource::buttons, 15, InputEdge::press}, 400, 2, now, ~manual_owner);
+                if (match && events_.history().consume(match, rail_owner, ~manual_owner))
+                    enqueue(InputAction::rail_select, now, 1000, environment, 1, direction == 8 ? 20 : 21,0,0,{},&match);
+            }
         }
         if (environment.context != InputContext::lip || !environment.rail.fresh || environment.rail.phase != InputRailPhase::lip_selection) {
             lip_clocked_ = false; return;
@@ -572,8 +635,8 @@ private:
             return;
         }
         constexpr std::array<std::int16_t,8> order{7,9,1,3,4,6,2,8};
-        for (auto direction : order) for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-            const std::array tokens{InputToken{source, direction, InputEdge::press}};
+        for (auto direction : order) {
+            const std::array tokens{InputToken{InputSource::direction, direction, InputEdge::press}};
             const auto match = events_.history().match({tokens,500,~rail_owner},now);
             if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
                 enqueue(InputAction::lip_select,now,0,environment,1,static_cast<std::uint8_t>(direction),0,0,{},&match); lip_had_input_ = true;
@@ -703,13 +766,9 @@ private:
                 return events_.history().match({tokens, rule.window, ~manual_owner}, now);
             }
             if (rule.kind == 2) {
-                for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                    const auto match = events_.history().triple({source, rule.first, InputEdge::press},
-                        {source, rule.second, InputEdge::press}, {InputSource::buttons, 14, InputEdge::press},
-                        rule.window, 2, now, ~manual_owner);
-                    if (match) return match;
-                }
-                return InputMatch{};
+                return events_.history().triple({InputSource::direction, rule.first, InputEdge::press},
+                    {InputSource::direction, rule.second, InputEdge::press}, {InputSource::buttons, 14, InputEdge::press},
+                    rule.window, 2, now, ~manual_owner);
             }
             const std::array tokens{InputToken{InputSource::buttons, rule.first, InputEdge::press},
                 InputToken{InputSource::buttons, rule.second, InputEdge::press}};
