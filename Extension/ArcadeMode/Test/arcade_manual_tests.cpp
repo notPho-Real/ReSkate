@@ -183,12 +183,13 @@ int run_arcade_manual_tests() {
     }
     // Dpad override cannot create another canonical press when the same
     // logical direction was already held at startup by the stick.
-    for (unsigned frame : {17u,34u}) for (bool nose : {false,true}) {
+    for (unsigned frame : {17u,34u}) for (bool held_up : {false,true}) {
         dingosdk::arcade_mode::test::SessionManual manual;
         bool requested=false;
         for(unsigned ms=0;ms<450;ms+=frame){
-            const auto buttons=static_cast<std::uint16_t>(ms>=100&&ms<180 ? (nose?2:1) : ms>=250&&ms<330 ? (nose?1:2) : 0);
-            requested=requested||poll(manual,ms,25000,SkatePose::riding,buttons).owns_stick;
+            const bool pad_held=(ms>=100&&ms<180)||(ms>=250&&ms<330);
+            const auto buttons=static_cast<std::uint16_t>(pad_held ? (held_up?1:2) : 0);
+            requested=requested||poll(manual,ms,held_up?25000:-25000,SkatePose::riding,buttons).owns_stick;
         }
         check(!requested,"startup-held stick and same-direction Dpad override cannot fabricate a fresh canonical Manual pair");
     }
@@ -487,8 +488,8 @@ int run_arcade_manual_tests() {
                 poll(manual, 1000, 25000, SkatePose::riding, first);
                 if (neutral_between) poll(manual, 1000 + frame_ms, 25000);
                 const auto out = poll(manual, 1000 + 2 * frame_ms, 25000, SkatePose::riding, second);
-                check(out.owns_stick == (nose && !neutral_between),
-                    "held canonical Up cannot be re-pressed by Dpad Up or unchanged-stick reacquisition");
+                check(out.owns_stick == nose,
+                    "fresh Dpad Down then effective Up qualifies Nose Manual, including release back to held stick; same logical Up alone supplies no new press");
             }
         }
         dingosdk::arcade_mode::test::SessionManual manual;

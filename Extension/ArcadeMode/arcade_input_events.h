@@ -415,7 +415,7 @@ struct InputDigitalState {
 class InputEvents {
 public:
     void reset() noexcept {
-        history_.reset(); previous_ = {}; digital_ = {}; reacquired_ = false; stick_ = pad_ = vertical_stick_ = vertical_pad_ = canonical_ = 0; armed_ = false; held_clocks_ = {};
+        history_.reset(); previous_ = {}; digital_ = {}; stick_ = pad_ = vertical_stick_ = vertical_pad_ = canonical_ = 0; armed_ = false; held_clocks_ = {};
     }
     void discard_intent() noexcept { history_.clear_intent(); }
     void sample(std::uint64_t now, PhysicalInputSample input, bool balance_exclusions = false, bool manual_owned = false, InputPolicy policy = {}) noexcept {
@@ -437,18 +437,15 @@ public:
         return state;
     }
     const InputDigitalState& digital_state() const noexcept {return digital_;}
-    bool direction_reacquired() const noexcept {return reacquired_;}
     void sample(std::uint64_t now, PhysicalInputSample input, InputBalanceControls controls, bool, InputPolicy policy) noexcept {
         if (policy != policy_) { reset(); policy_ = policy; }
         const auto state=normalize(input,now,true,policy_);
-        reacquired_=armed_ && digital_.pad_buttons && !state.pad_buttons && state.stick_buttons &&
-            state.stick_buttons==digital_.stick_buttons;
         digital_=state;
         if (policy_.normalization == InputNormalization::analog) { sample_analog(now, input, controls); return; }
         exclusions_ = controls;
         const bool continuous = history_.advance(now);
         if (!armed_ || !continuous) {
-            reacquired_=false;if (!continuous) held_clocks_ = {};
+            if (!continuous) held_clocks_ = {};
             previous_ = input; armed_ = true;
             stick_=encode(state.stick_buttons&8u?1:state.stick_buttons&4u?-1:0,state.stick_buttons&2u?-1:state.stick_buttons&1u?1:0);
             pad_=encode(state.pad_buttons&8u?1:state.pad_buttons&4u?-1:0,state.pad_buttons&2u?-1:state.pad_buttons&1u?1:0);
@@ -549,7 +546,7 @@ private:
         pad_=encode(digital_.pad_buttons&8u?1:digital_.pad_buttons&4u?-1:0,digital_.pad_buttons&2u?-1:digital_.pad_buttons&1u?1:0);
         vertical_stick_=digital_.stick_buttons&1u?1:digital_.stick_buttons&2u?-1:0;
         vertical_pad_=digital_.pad_buttons&1u?1:digital_.pad_buttons&2u?-1:0;
-        if (!armed_ || !continuous) { reacquired_=false;if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = digital_.direction; armed_ = true; observe_held(now); return; }
+        if (!armed_ || !continuous) { if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = digital_.direction; armed_ = true; observe_held(now); return; }
         direction(now, InputSource::direction, digital_.direction, canonical_);
         // Current layout maps the physical controls into the fixed event order.
         // Trigger thresholds remain a declared layout policy, separate from axes.
@@ -595,7 +592,6 @@ private:
     InputHistory history_{};
     PhysicalInputSample previous_{};
     InputDigitalState digital_{};
-    bool reacquired_{};
     std::int16_t stick_{}, pad_{}, vertical_stick_{}, vertical_pad_{}, canonical_{};
     InputPolicy policy_{};
     struct HeldClock { int value{}; std::uint64_t since{}; };

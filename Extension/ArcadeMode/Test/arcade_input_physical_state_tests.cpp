@@ -65,7 +65,7 @@ void manual_false_pairs_and_ownership(){
   input.poll(10,{2,0,25000},env,sink.adapter());
   if(fresh)input.poll(15,{2,0,-25000},env,sink.adapter());
   input.poll(20,{0,0,25000},env,sink.adapter());
-  check(sink.nose==(fresh?1u:0u),"Dpad release cannot re-press an unchanged held stick but permits an actual fresh physical reversal");
+  check(sink.nose==1,"opposite Dpad release exposes a fresh logical Up regardless of hidden stick movement");
  }
 }
 void pair_windows_and_sampling(){

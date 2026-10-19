@@ -1014,9 +1014,9 @@ private:
             diagnostic_.stick_at = diagnostic_.pad_at = 0; return;
         }
         const auto pad = physical.buttons & 15u;
-        if(events_.direction_reacquired())for(const auto& event:events_.history().events())
-            if(event.at==now && event.token.source==InputSource::direction && event.token.edge==InputEdge::press)
-                events_.history().consume(InputMatch::single(event),manual_owner,0);
+        // Eligibility follows effective logical direction edges. Releasing a
+        // pad override can expose a held stick as a genuinely new direction;
+        // unchanged logical input is already suppressed by the event recorder.
         const auto window = environment.context == InputContext::air ? InputTiming::air_pair_ms :
             InputTiming::ground_pair_ms + environment.policy.manual_sample_allowance;
         const bool inclusive = environment.context == InputContext::ground && environment.policy.inclusive_manual;
