@@ -13,6 +13,7 @@
 #include "arcade_manual_observation.h"
 #include "arcade_manual_release.h"
 #include "arcade_manual_hop.h"
+#include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
@@ -81,7 +82,7 @@ std::atomic<float> push_speed{};
 std::atomic<std::uint64_t> motion_capture_until{};
 std::atomic<std::uint64_t> movement_eligible_until{};
 bool native_board_velocity(std::array<float, 3>& velocity) noexcept;
-std::atomic<bool> authored_mirror_x{};
+NativeInputReadiness native_readiness; // Protected by ollie_mutex.
 // Preserve the named production Manual sampling allowance. Canonical strict
 // normalization remains an explicit policy rather than an implicit migration.
 ArcadeInput arcade_input(true, InputPolicy::production());
@@ -534,7 +535,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.context + selected_state, sample.state) ||
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
         return;
@@ -550,7 +551,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
         return;
@@ -568,7 +569,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
             else arcade_input.invalidate_authority();
         } else {
-            native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
     }
@@ -774,7 +775,7 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); arcade_input.publish_native_context({}); manual_hop.reset();
+        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset();
         arcade_input.enable(value);
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
@@ -916,11 +917,13 @@ void on_client_tick() noexcept {
         }
         NoBailSkater native_owner{};
         const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
+        NativeInputFrame client_frame{};
         {
             std::lock_guard lock(ollie_mutex);
             if (!gameplay || !focus_available || !watch.valid || !native.valid) native_input_state.invalidate();
             const auto authority_now = GetTickCount64();
             const auto frame = native_input_state.correlate(authority_now,input_owner(native_owner),native);
+            client_frame = frame;
             gameplay = gameplay && frame.valid;
             gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
             arcade_input.publish_native_context(frame);
@@ -933,11 +936,6 @@ void on_client_tick() noexcept {
                 reset_physical_manual.store(true,std::memory_order_release);
             }
         }
-        // Reuse the existing guarded stance flag in request_words[0]. On this
-        // Deck, the clear-bit stance needs lateral reflection: authored 2/3
-        // otherwise produced native 3/2. Other stance contexts remain HIL gates.
-        if (native.valid) authored_mirror_x.store(
-            !(native.words[0] & game::build::v20260929::grind_exit::stance_switch_mask), std::memory_order_release);
         float speed{};
         // Initial push requires ordinary two-wheel contact. Its independently
         // observed native request may continue through its own one-wheel kick.
@@ -1009,6 +1007,28 @@ void on_client_tick() noexcept {
         // permission quickly if client ticks, game focus, or owner reads stop.
         ollie_eligible_until.store(gameplay && native.valid && native.state == 100 && native.crouch_mode == 1
             ? now + 150 : 0, std::memory_order_release);
+        {
+            std::lock_guard lock(ollie_mutex);
+            const auto publication_at = GetTickCount64();
+            const auto frame = native_input_state.correlate(publication_at,input_owner(native_owner),native);
+            // Revalidate the originating observation after client-side work. A
+            // same-address owner replacement must not acquire these permissions.
+            const bool correlated = client_frame.valid && frame.valid && client_frame.owner == frame.owner &&
+                client_frame.owner_generation == frame.owner_generation &&
+                client_frame.contact_generation == frame.contact_generation &&
+                client_frame.action_generation == frame.action_generation;
+            const auto live = [publication_at](const auto& until) {
+                const auto value = until.load(std::memory_order_acquire);
+                return value >= publication_at && value-publication_at <= 150;
+            };
+            if (correlated) native_readiness.publish(client_frame,
+                {gameplay && focus_available && watch.valid, live(ollie_eligible_until), live(push_eligible_until),
+                 live(board_eligible_until), live(movement_eligible_until), live(manual_eligible_until),
+                 live(manual_prepare_until), live(manual_release_until), live(action_eligible_until), speed});
+            else if (!gameplay || !focus_available || !watch.valid) native_readiness.reset();
+            // A concurrent same-owner selection change defers new permissions;
+            // it must not erase an actor's own continuously verified AIR flight.
+        }
         if (enabled() && request_probe_ready && (pressed & face_buttons[0])) {
             capture_started = now;
             ++capture_id;
@@ -1033,7 +1053,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
-            native_input_state.invalidate(); arcade_input.publish_native_context({}); manual_hop.reset();
+            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();
@@ -1073,21 +1093,6 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
     const auto physical_left_trigger = left_trigger, physical_right_trigger = right_trigger;
     const ActionPhysicalPad action_physical{buttons, left_x, left_y, left_trigger, right_trigger};
     auto now = GetTickCount64();
-    const auto deadline = ollie_eligible_until.load(std::memory_order_acquire);
-    const auto gameplay_deadline = gameplay_valid_until.load(std::memory_order_acquire);
-    game_input = game_input && input_clock_valid.load(std::memory_order_acquire) &&
-        gameplay_deadline >= now && gameplay_deadline - now <= 150 && !(buttons & 0x0010u);
-    const bool may_start = game_input && deadline >= now && deadline - now <= 150;
-    const auto push_deadline = push_eligible_until.load(std::memory_order_acquire);
-    const bool may_push = game_input && push_deadline >= now && push_deadline - now <= 150;
-    const auto board_deadline = board_eligible_until.load(std::memory_order_acquire);
-    const bool may_toggle_board = game_input && board_deadline >= now && board_deadline - now <= 150;
-    const auto offboard_deadline = offboard_valid_until.load(std::memory_order_acquire);
-    const bool offboard = game_input && offboard_deadline >= now && offboard_deadline - now <= 150;
-    const auto action_deadline = action_eligible_until.load(std::memory_order_acquire);
-    const bool action_safe = game_input && action_deadline >= now && action_deadline - now <= 150;
-    const auto flip_deadline = air_flip_ready_until.load(std::memory_order_acquire);
-    const bool flip_ready = game_input && flip_deadline >= now && flip_deadline - now <= 150;
     NativeGesture::Output result{};
     const auto prepared = prepared_catalog.load(std::memory_order_acquire);
     const bool authored = prepared && !prepared->empty();
@@ -1107,26 +1112,35 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             neutral_delivery = {}; playback_packets = {};
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
+        const auto admission = native_readiness.sample(now,arcade_input.native_context(now));
+        game_input = game_input && input_clock_valid.load(std::memory_order_acquire) &&
+            admission.gameplay && !(physical_buttons & 0x0010u);
+        const bool may_start = admission.start;
+        const bool may_push = admission.push;
+        const bool may_toggle_board = admission.board;
+        const bool offboard = admission.offboard;
+        const bool action_safe = admission.action;
+        const bool flip_ready = admission.flip_ready;
         if (!game_input) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(user,now);
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
-        const bool releasing_manual = game_input && !offboard && release_deadline >= now && release_deadline - now <= 150;
+        const bool releasing_manual = game_input && admission.releasing && !offboard && release_deadline >= now && release_deadline - now <= 150;
         if (releasing_manual) arcade_input.cancel_manuals();
         const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
-        const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
+        const bool manual_safe = game_input && admission.manual && manual_deadline >= now && manual_deadline - now <= 150;
         const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
-        const bool manual_prepare = game_input && prepare_deadline >= now && prepare_deadline - now <= 150;
+        const bool manual_prepare = game_input && admission.prepare && prepare_deadline >= now && prepare_deadline - now <= 150;
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);
-        const bool may_exit_grind = game_input && observed == SkatePose::grind;
+        const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
-            game_input, may_start || may_exit_grind, may_push, push_speed.load(std::memory_order_relaxed),
+            game_input, may_start || may_exit_grind, may_push, admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
-            authored_mirror_x.load(std::memory_order_acquire), manual_safe,
+            admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
-            action_experiment, action_safe, authored_mirror_x.load(std::memory_order_acquire),
+            action_experiment, action_safe, admission.mirror_x,
             manual_balance_admitted.load(std::memory_order_relaxed));
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
@@ -1159,7 +1173,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
         // A balance hop must not gain an ordinary crouch-kick assistance budget.
-        const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard && !manual_hop.active() &&
+        const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && admission.drive && !offboard && !manual_hop.active() &&
             drive_until >= now && drive_until - now <= 150 && result.movement_intent &&
             pose == SkatePose::riding && (!physical_buttons || (physical_buttons == classic_a && crouched)) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
