@@ -2,8 +2,14 @@
 #include "arcade_gameplay_profile.h"
 #include "arcade_model.h"
 #include <cmath>
+#include <initializer_list>
 
 namespace dingosdk::arcade_mode {
+struct ManualBalanceAdjustment {
+    float time_multiplier{1}, time_add_seconds{};
+    float lean_multiplier{1}, lean_add_signed{};
+    float speed_multiplier{1}, speed_add_signed{};
+};
 struct PhysicalManualControl {
     float amount{};
     bool held{}, released{};
@@ -26,6 +32,26 @@ public:
     bool active() const noexcept { return active_; }
     bool closed() const noexcept { return closed_; }
     bool nose() const noexcept { return nose_; }
+    // The caller must already own a qualified native transition. This changes
+    // retained dynamics only: no type, setup, section clock or history reset.
+    bool adjust(const ManualBalanceAdjustment& adjustment) noexcept {
+        if (!active_ || closed_) return false;
+        for (float value : {adjustment.time_multiplier, adjustment.time_add_seconds,
+                adjustment.lean_multiplier, adjustment.lean_add_signed,
+                adjustment.speed_multiplier, adjustment.speed_add_signed})
+            if (!std::isfinite(value)) return false;
+        const float time = time_ * adjustment.time_multiplier;
+        const float lean = lean_ * adjustment.lean_multiplier;
+        const float speed = speed_ * adjustment.speed_multiplier;
+        const float adjusted_time = time + adjustment.time_add_seconds;
+        const float adjusted_lean = lean + adjustment.lean_add_signed * sign(lean);
+        const float adjusted_speed = speed + adjustment.speed_add_signed * sign(speed);
+        if (!std::isfinite(time) || !std::isfinite(lean) || !std::isfinite(speed) ||
+            !std::isfinite(adjusted_time) || !std::isfinite(adjusted_lean) || !std::isfinite(adjusted_speed))
+            return false;
+        time_ = std::max(0.0f, adjusted_time); lean_ = adjusted_lean; speed_ = adjusted_speed;
+        return true;
+    }
     bool begin(bool nose) noexcept {
         if (closed_) return false;
         if (active_ && nose_ == nose) return true; // Only the same type keeps its current setup.

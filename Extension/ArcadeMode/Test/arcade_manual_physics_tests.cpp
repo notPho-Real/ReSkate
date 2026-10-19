@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -16,8 +17,62 @@ void check(bool value, const char* why) {
     if (!value) { std::cerr << "FAIL: " << why << '\n'; std::exit(1); }
 }
 bool near(float a, float b) { return std::abs(a - b) < .00002f; }
+void retained_adjustments() {
+    const auto p = GameplayProfile{}.balance(PhysicalBalanceKind::manual);
+    const auto sign = [](float value) { return value < 0 ? -1.f : 1.f; };
+    for (bool nose : {false,true}) for (float dt : {.017f,.034f})
+        for (float initial_lean : {-2.f,0.f,2.f}) for (float initial_speed : {-3.f,0.f,3.f}) {
+        ManualPhysics physics;check(physics.begin(nose),"retained adjustment begins from qualified selected balance type");
+        check(physics.adjust({1,.5f,0,initial_lean,0,initial_speed}),"zero signed operands take the positive additive direction");
+        float time=.5f,lean=initial_lean,speed=initial_speed,cheese=p.cheese;
+        for (const ManualBalanceAdjustment adjustment : {
+                ManualBalanceAdjustment{2,.25f,-.5f,1,-2,.5f},
+                ManualBalanceAdjustment{1,-100,1,0,1,0},ManualBalanceAdjustment{}}) {
+            time=std::max(0.f,time*adjustment.time_multiplier+adjustment.time_add_seconds);
+            lean*=adjustment.lean_multiplier;lean+=adjustment.lean_add_signed*sign(lean);
+            speed*=adjustment.speed_multiplier;speed+=adjustment.speed_add_signed*sign(speed);
+            check(physics.adjust(adjustment)&&physics.nose()==nose,"six retained operations preserve the selected endpoint type");
+            check(physics.begin(nose),"same-type request after adjustment cannot renew setup or history");
+            const float frames=dt*60;time+=dt;
+            cheese=std::max(0.f,cheese-p.cheese/p.cheese_frames*frames);
+            lean+=(lean*p.gravity+speed)*(p.instability_base+time*p.instability_rate)*frames;
+            const auto actual=physics.sample(dt,PhysicalManualControl{0,true,true,1000});
+            check(actual.active&&actual.elapsed==time&&actual.position==lean/GameplayProfile::balance_display_scale&&
+                actual.velocity==speed/GameplayProfile::balance_display_scale&&actual.repeat_pressure==cheese,
+                "17/34ms evolution retains exact adjusted time, lean, velocity and decaying history without a second setup");
+        }
+    }
+    for (bool nose : {false,true}) for (unsigned field=0;field<6;++field)
+        for(float invalid : {std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity(),-std::numeric_limits<float>::infinity()}) {
+        ManualPhysics physics;physics.begin(nose);physics.sample(.017f,1);auto expected=physics;
+        ManualBalanceAdjustment adjustment;
+        switch(field){case 0:adjustment.time_multiplier=invalid;break;case 1:adjustment.time_add_seconds=invalid;break;
+            case 2:adjustment.lean_multiplier=invalid;break;case 3:adjustment.lean_add_signed=invalid;break;
+            case 4:adjustment.speed_multiplier=invalid;break;case 5:adjustment.speed_add_signed=invalid;break;}
+        check(!physics.adjust(adjustment)&&physics.active()&&physics.nose()==nose,"nonfinite operation is rejected without changing active type");
+        const auto actual=physics.sample(.034f,0),prior=expected.sample(.034f,0);
+        check(actual.position==prior.position&&actual.velocity==prior.velocity&&actual.elapsed==prior.elapsed&&actual.repeat_pressure==prior.repeat_pressure,
+              "rejected adjustment leaves retained history and the next random drift draw unchanged");
+    }
+    for(unsigned field=0;field<3;++field){
+        ManualPhysics physics;physics.begin(false);physics.adjust({1,2,0,2,0,2});auto expected=physics;
+        ManualBalanceAdjustment adjustment;
+        if(field==0)adjustment.time_multiplier=std::numeric_limits<float>::max();
+        if(field==1)adjustment.lean_multiplier=std::numeric_limits<float>::max();
+        if(field==2)adjustment.speed_multiplier=std::numeric_limits<float>::max();
+        check(!physics.adjust(adjustment),"finite operand overflow rejects the entire six-operation adjustment");
+        const auto actual=physics.sample(.017f,0),prior=expected.sample(.017f,0);
+        check(actual.position==prior.position&&actual.velocity==prior.velocity&&actual.elapsed==prior.elapsed&&actual.repeat_pressure==prior.repeat_pressure,
+              "overflow never commits an earlier part of an adjustment");
+    }
+    ManualPhysics inactive;check(!inactive.adjust({}),"unstarted balance cannot acquire state through an adjustment");
+    inactive.begin(false);inactive.stop();check(!inactive.adjust({}),"stopped balance cannot be revived by an adjustment");
+    inactive.begin(false);inactive.adjust({1,0,0,5000,0,1});inactive.sample(.017f,0);
+    check(inactive.closed()&&!inactive.adjust({})&&!inactive.begin(false),"closed physical endpoint cannot be reopened through adjustment or same-type setup");
+}
 }
 int main() {
+    retained_adjustments();
     for (bool nose : {false, true}) {
         ManualPhysics physics;
         check(physics.begin(nose), "independently admitted manual starts selected physical dynamics");
