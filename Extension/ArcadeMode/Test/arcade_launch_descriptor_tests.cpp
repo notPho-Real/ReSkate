@@ -131,5 +131,47 @@ void unavailable(){
     current.launch={};
     check(!AirMotion::vertical_target_current(cached,current,proof,proof,1000,10,.017f),"cached target cannot restore vertical ownership through an unknown current descriptor");
 }
+void landing_rearms_ordinary_flight(){
+    for(unsigned cadence:{17u,34u})for(unsigned ground:{100u,103u}){
+        AirMotion writer;AirMotionIntent intent{true,false,1000};
+        AirMotionFrame frame{1000,1,ground,.001f*static_cast<float>(cadence),0,0,0,true};
+        const auto step=[&](unsigned state,bool ordinary,float velocity){
+            intent.sampled_at=frame.now+=cadence;frame.state=state;frame.ordinary_ground=ordinary;frame.velocity_y=velocity;
+            return writer.step(intent,frame);
+        };
+        writer.step(intent,frame);
+        check(!step(200,false,-1).vertical,"unqualified departure withdraws vertical ownership");
+        check(!step(201,true,-1).vertical,"restored basis within the same flight cannot rearm vertical ownership");
+        step(ground,false,0);
+        check(!step(200,true,-1).vertical,"unqualified ground cannot rearm a later flight");
+        step(ground,true,0);
+        const auto ledge=step(200,true,-1);
+        check(ledge.vertical&&near(ledge.velocity_y,-1),"qualified ordinary landing rearms release-free ledge motion from observed native velocity");
+        const auto continued=step(201,true,ledge.velocity_y);
+        check(continued.vertical&&near(continued.velocity_y,-1-AirMotion::ordinary_gravity*frame.dt),"rearmed ledge continues ordinary gravity without adding charged impulse");
+        const NativeAirSpinProof proof{{1,2,3,4,5},1,1,0,1,frame.now,true,true};
+        check(AirMotion::vertical_target_current(continued,intent,proof,proof,frame.now,continued.velocity_y,frame.dt),
+            "rearmed current-flight motion retains the existing cached target guard");
+        step(ground,true,0);intent.release_sequence=1;intent.release_at=frame.now;intent.charge_ms=500;
+        step(ground,true,0);const auto charged=step(200,true,30);
+        check(charged.vertical&&near(charged.velocity_y,GameplayProfile{}.jump_speed(200)),"fresh ordinary release after recovery applies its original capped charge once");
+        step(ground,true,0);const auto reused=step(200,true,-1);
+        check(reused.vertical&&near(reused.velocity_y,-1),"landing cannot replay an already consumed charge token");
+    }
+    for(unsigned cadence:{17u,34u})for(const auto unsupported:{LaunchDescriptor{},
+        LaunchDescriptor{LaunchFamily::extended,LaunchContext::flat,0},
+        LaunchDescriptor{LaunchFamily::ordinary,LaunchContext::rail,0}}){
+        AirMotion writer;AirMotionIntent intent{true,false,1000};
+        AirMotionFrame frame{1000,1,100,.001f*static_cast<float>(cadence),0,0,0,true};writer.step(intent,frame);
+        const auto step=[&](unsigned state){intent.sampled_at=frame.now+=cadence;frame.state=state;frame.velocity_y=-1;return writer.step(intent,frame);};
+        intent.release_sequence=1;intent.release_at=1000;intent.charge_ms=200;intent.launch=unsupported;step(100);
+        check(!step(200).vertical,"unsupported nonzero release cannot borrow ordinary launch motion");
+        step(100);
+        check(!step(200).vertical,"ordinary landing cannot promote a repeated unsupported release token");
+        intent.release_sequence=0;step(100);const auto ledge=step(200);
+        check(ledge.vertical&&near(ledge.velocity_y,-1),"withdrawn unsupported intent permits a later qualified release-free ordinary ledge");
+    }
 }
-int main(){policy();release_transport_writer();unavailable();std::cout<<checks<<" launch descriptor checks, "<<failures<<" failed\n";return failures?1:0;}
+
+}
+int main(){policy();release_transport_writer();unavailable();landing_rearms_ordinary_flight();std::cout<<checks<<" launch descriptor checks, "<<failures<<" failed\n";return failures?1:0;}
