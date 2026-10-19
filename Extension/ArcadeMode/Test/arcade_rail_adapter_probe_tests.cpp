@@ -295,5 +295,27 @@ int main() {
         ++owner.rig;frame=producer.observe(260,owner,sample,{true,-1});facade.publish_native_context(frame);facade.publish_authority(260,frame.owner_generation,1,true);
         check(!facade.native_lip_observation(260).valid,"full owner/generation replacement cannot retain old optional native fields");
     }
+    // A prior positive Lip read cannot be rebound to a new contact/action
+    // generation merely because the owner and numeric rail state recur.
+    for(unsigned fault=0;fault<5;++fault){
+        Memory memory;memory.put(memory.owner.context+0x1414,std::uint32_t{401});
+        const auto observation=memory.sample();
+        NativeInputState physics;NativeRequestSample sample{};
+        sample.valid=true;sample.state=401;sample.crouch_mode=1;
+        NativeInputOwner owner{memory.owner.base,memory.owner.entity,memory.owner.core,memory.owner.context,memory.owner.rig};
+        auto frame=physics.observe(100,owner,sample,{true,-1});
+        ArcadeInput facade(true);facade.enable(true);
+        facade.publish_native_context(frame);facade.publish_authority(100,frame.owner_generation,1,true);
+        facade.publish_native_lip(observation,frame);
+        check(facade.native_lip_observation(100).valid,"same physical observation publishes optional Lip fields");
+        if(fault==0){sample.state=100;physics.observe(110,owner,sample,{true,-1});sample.state=401;frame=physics.observe(120,owner,sample,{true,-1});}
+        if(fault==1)frame=physics.observe(120,owner,sample,{true,8});
+        if(fault==2)frame.physics_step=0;
+        if(fault==3)frame.contact_generation=0;
+        if(fault==4)frame.action_generation=0;
+        facade.publish_native_context(frame);facade.publish_authority(frame.sampled_at,frame.owner_generation,1,true);
+        facade.publish_native_lip(observation,frame);
+        check(!facade.native_lip_observation(frame.sampled_at).valid,"old fields and incomplete generation proofs cannot gain a new Lip exclusion lifetime");
+    }
     std::cout<<checks<<" rail lip probe checks passed\n";
 }

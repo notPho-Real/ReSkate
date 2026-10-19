@@ -665,7 +665,10 @@ bool start_input_telemetry() noexcept {
 
 // Read-only physics-step evidence retains short transitions between client ticks.
 void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) noexcept {
-    const auto lip_observation = observe_grind_step(owner);
+    // One original physics-observation clock joins optional native fields to
+    // the contact/action generations produced below. Client polls cannot rebind it.
+    const auto now = GetTickCount64();
+    const auto lip_observation = observe_grind_step(owner,now);
     using namespace game::build::v20260929::arcade_native_probe;
     NativeRequestSample sample{};
     if (!memory::peek(owner.context + request_words, sample.words) ||
@@ -696,7 +699,6 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         return;
     }
     sample.valid = true;
-    const auto now = GetTickCount64();
     // The existing validated local physics listener is the update authority.
     // Client callbacks and repeated XInput polls never advance authored time.
     const bool clock_valid = std::isfinite(seconds) && seconds >= .001f && seconds <= .1f;

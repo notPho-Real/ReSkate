@@ -47,10 +47,14 @@ public:
     // Read-only native fields. They never admit a named action or a Lip phase.
     void publish_native_lip(RailAdapterLipSnapshot observation, const NativeInputFrame& frame) noexcept {
         const auto& owner = observation.owner;
-        const bool matches = observation.valid && frame.valid && owner.valid && owner.generation &&
+        // Both readers belong to one physics observation. A lease permits
+        // consuming it later, never attaching old fields to a newer episode.
+        const bool matches = observation.valid && frame.valid && frame.owner.valid() &&
+            frame.owner_generation && frame.contact_generation && frame.action_generation && frame.physics_step &&
+            owner.valid && owner.generation &&
             NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig} == frame.owner &&
             observation.physics_state == frame.state && observation.sampled_at == owner.sampled_at &&
-            frame.sampled_at >= observation.sampled_at && frame.sampled_at-observation.sampled_at <= 150;
+            frame.sampled_at == observation.sampled_at;
         native_lip_ = matches ? observation : RailAdapterLipSnapshot{};
         native_lip_frame_ = matches ? frame : NativeInputFrame{};
     }

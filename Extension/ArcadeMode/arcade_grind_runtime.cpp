@@ -140,11 +140,12 @@ void grind_observer_tick(std::uintptr_t base, std::uint64_t now, bool gameplay,
         r->guard.clear(std::memory_order_release);
     } catch (...) { invalidate_grind_observer(); }
 }
-RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied) noexcept {
+RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied, std::uint64_t now) noexcept {
     auto* r = runtime.load(std::memory_order_acquire);
     if (!r) return {};
-    const auto now = GetTickCount64(), generation = r->generation.load();
-    if (now > r->expires.load()) return {};
+    const auto generation = r->generation.load();
+    const auto current = GetTickCount64();
+    if (now > r->expires.load() || current < now || current-now > 150) return {};
     if (r->guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return {}; }
     const auto owner = r->owner;
     const auto bindings = r->bindings;
