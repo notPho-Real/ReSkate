@@ -56,6 +56,11 @@ public:
         const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now);
         return native_rail_.sample(now,held,enabled_,permitted,!channels_compatible);
     }
+    RailAdapterPad sample_native_rail(const InputRailOutput& handoff, std::uint64_t now,
+            bool channels_compatible) noexcept {
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now) && channels_compatible;
+        return native_rail_.sample(handoff,now,enabled_,permitted);
+    }
     RailAdapterPhase native_rail_phase(std::uint64_t now) const noexcept {
         return native_context(now).valid ? native_rail_.phase() : RailAdapterPhase::unavailable;
     }
@@ -128,6 +133,7 @@ public:
             flip_ready, neutral_ready, action_fresh, inspected_stance, observed, mode, speed, tick, catalog};
         admission.manual_balance_admitted = manual_balance_admitted;
         admission.input_policy = policy_;
+        admission.export_rail_requests = native_bound_;
         const auto native = native_context(now);
         if (native_bound_) admission.native_context = InputNativeContext::from_frame(native);
         if (native_bound_ && !native.valid) admission.gameplay = false;

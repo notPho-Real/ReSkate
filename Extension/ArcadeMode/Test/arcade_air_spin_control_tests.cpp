@@ -46,8 +46,8 @@ int main(int argc,char**argv){
             check(air.owns_left&&std::abs(air.yaw_rate)==7.75f,"ground-held shoulder selects full source rate on actual takeoff without restarting a prewind delay");
             check(!spin.poll(1034+lead,side,true,SkatePose::riding,false,false,false,true).owns_left,
                 "actual landing ends the airborne shoulder episode immediately");
-            check(!spin.poll(1051+lead,side,true,SkatePose::air,false,false,false,true).owns_left,
-                "held shoulder cannot silently resume after a seen landing");
+            check(spin.poll(1051+lead,side,true,SkatePose::air,false,false,false,true).owns_left,
+                "fresh eligible AIR resumes the current held shoulder after observed ground");
             spin.poll(1068+lead,0,true,SkatePose::air,false,false,false,true);
             check(spin.poll(1085+lead,side,true,SkatePose::air,false,false,false,true).owns_left,
                 "release then fresh shoulder press restores ordinary-air rotation");
@@ -56,8 +56,8 @@ int main(int argc,char**argv){
             AirRotation spin;spin.poll(1000,0,true,SkatePose::air,false,false,false,true);
             spin.poll(1017,side,true,SkatePose::air,false,false,false,true);
             check(!spin.poll(1017+delay,BoardChord::pair,true,SkatePose::air,false,false,false,true).owns_left &&
-                !spin.poll(1034+delay,side,true,SkatePose::air,false,false,false,true).owns_left,
-                "simultaneous or late both-shoulder chord cancels spin and partial release cannot restart it");
+                spin.poll(1034+delay,side,true,SkatePose::air,false,false,false,true).owns_left,
+                "opposed AIR shoulders select zero; a remaining held shoulder resumes without an admitted board transition");
         }
         for(unsigned fault=0;fault<5;++fault) {
             AirRotation spin;spin.poll(1000,0,true,SkatePose::air,false,false,false,true);

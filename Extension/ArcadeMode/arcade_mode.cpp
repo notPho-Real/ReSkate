@@ -1192,6 +1192,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // active flip. The timeline arm isolates scheduling with ordinary masking.
         if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
         else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
+        // The semantic session owns recognition; this existing actor owns only
+        // its admitted RS channel. Native Manual release remains independent.
+        const auto rail_pad = arcade_input.sample_native_rail(result.rail,now,
+            game_input && !offboard && !releasing_manual && !reference && !action.owned);
+        if (rail_pad.owns_right_stick) { result.right_x = rail_pad.right_x; result.right_y = rail_pad.right_y; }
+
         const auto pose = manual_observed.load(std::memory_order_relaxed);
         const auto hop_origin = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
         manual_hop.command(now,arcade_input.native_context(now),hop_origin,pose,
@@ -1246,7 +1252,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || rail_pad.owns_right_stick);
         neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
             result.right_x, result.right_y);
         packet_mask = physical_packet ^ output_packet;

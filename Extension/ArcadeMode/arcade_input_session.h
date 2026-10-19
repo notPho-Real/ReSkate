@@ -28,6 +28,7 @@ struct InputAdmission {
     InputBoardBinding board_binding{};
     InputNativeContext native_context{};
     InputGenerations balance_generations{};
+    bool export_rail_requests{};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -37,7 +38,7 @@ public:
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr;
-        air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false;
+        air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false; rail_request_ = {};
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
@@ -77,8 +78,8 @@ public:
                 admission.manual_balance_admitted = false;
             }
         }
-        if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_)) reset();
-        offboard_ = admission.offboard; board_binding_ = admission.board_binding;
+        if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_ || admission.export_rail_requests != export_rail_)) reset();
+        offboard_ = admission.offboard; board_binding_ = admission.board_binding; export_rail_ = admission.export_rail_requests;
         policy_ = admission.input_policy;
         if (clocked_ && admission.action_mode != mode_) {
             auxiliary_.cancel(); grab_hold_button_ = 0; input_.cancel_auxiliary();
@@ -98,6 +99,8 @@ public:
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
         if (admission.external_owner || auxiliary_.busy()) { authored_.cancel(); holding_ = false; }
+        const bool rail_released = rail_ && !(physical.buttons & 0x8000u);
+        if (rail_released) rail_request_.physical_released_at = now;
         if (!(physical.buttons & 0x8000u)) rail_ = false;
         const bool triggers = physical.lt > 30 || physical.rt > 30;
         const bool manual_was_active = manual_.busy();
@@ -151,7 +154,7 @@ public:
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
             admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed};
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
-        if (rail_ && !busy && !triggers && !auxiliary_.busy() &&
+        if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {
             output.right_x = 0;
             output.right_y = rail_direction_ == TrickDirection::up ? 20000 : rail_direction_ == TrickDirection::down ? -20000 : 0;
@@ -180,7 +183,11 @@ public:
         if (push_.poll(now, physical.x, physical.y, admission.speed, true, !admission.offboard && admission.pose == SkatePose::riding && admission.may_push && !conflict))
             output.buttons |= NativeGesture::x;
         output.movement_intent = push_.movement_intent();
-        output.command_busy = busy || output.action.owned || board.pulse;
+        if (export_rail_ && (rail_ || rail_released)) {
+            output.rail = {rail_request_,rail_,busy || triggers || auxiliary_.busy() || board.pulse || admission.external_owner,output.action.pad};
+            output.rail.occupied.owns_right_stick = output.rail.occupied.owns_right_stick || busy || admission.external_owner;
+        }
+        output.command_busy = busy || output.action.owned || board.pulse || (export_rail_ && rail_);
         current_ = nullptr;
         return output;
     }
@@ -250,7 +257,7 @@ private:
             if (rail_direction_ != TrickDirection::none && rail_direction_ != TrickDirection::up && rail_direction_ != TrickDirection::down) {
                 out.unsupported = true; return InputDisposition::unsupported;
             }
-            rail_ = true; return InputDisposition::started;
+            rail_ = true; rail_request_ = request; return InputDisposition::started;
         case InputAction::grab: case InputAction::revert:
             return request_auxiliary(request);
         case InputAction::rail_select: case InputAction::rail_change: case InputAction::lip_select: case InputAction::lip_change:
@@ -343,7 +350,8 @@ private:
     ActionDispatch auxiliary_{};
     AutomaticPush push_{};
     BoardChord board_{};
-    bool board_active_{}, offboard_{};
+    bool board_active_{}, offboard_{}, export_rail_{};
+    InputRequest rail_request_{};
     std::uint64_t board_at_{};
     std::uint16_t board_control_{BoardChord::pair}, board_consumed_{};
     InputBoardBinding board_binding_{};

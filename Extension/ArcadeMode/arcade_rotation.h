@@ -29,24 +29,33 @@ public:
     Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay,
                 SkatePose pose, bool crouched, bool native_nollie, bool conflict = false,
                 bool native_rate_control = false) noexcept {
-        if (!gameplay || (clocked_ && now < previous_time_)) { reset(); return {}; }
+        if (!gameplay || (buttons & 0x0030u) || pose == SkatePose::unknown || pose == SkatePose::bail ||
+            (clocked_ && now < previous_time_)) { reset(); return {}; }
         clocked_ = true; previous_time_ = now;
         const auto held = static_cast<std::uint16_t>(buttons & BoardChord::pair);
         if (!held) { armed_ = true; blocked_ = waiting_ = active_ = was_air_ = false; return {}; }
+        if (native_rate_control && pose == SkatePose::air) {
+            // Continuous rate control uses the current eligible held sample.
+            // Opposing shoulders and temporary reservations produce zero only
+            // while present; they do not consume a later held direction.
+            blocked_ = waiting_ = active_ = false; was_air_ = true;
+            if (!armed_ || conflict || held == BoardChord::pair) return {};
+            const float side = held == BoardChord::lb ? -1.0f : 1.0f;
+            return {true,0,0,side * GameplayProfile{}.angular_speed()};
+        }
+        if (native_rate_control && was_air_) {
+            blocked_ = waiting_ = active_ = was_air_ = false;
+        }
         if (!armed_ || blocked_) return {};
-        // Both shoulders always defer to BoardChord, including a late second
-        // press. Neither partial release nor a held pair can restart rotation.
+        // The stick/prewind fallback retains its existing chord arbitration.
         if (held == BoardChord::pair || conflict ||
             (pose != SkatePose::riding && pose != SkatePose::air)) {
             blocked_ = true; active_ = false; return {};
         }
         if (!waiting_) { waiting_ = true; pressed_at_ = now; }
         const bool air = pose == SkatePose::air;
-        // The supported airborne rate adapter has no board-mount action to
-        // arbitrate. Source held-spin is immediate; retain the existing ground
-        // chord/prewind and unsupported-adapter fallback paths.
         if (was_air_ && !air) { blocked_ = true; active_ = false; return {}; }
-        if (!(air && native_rate_control) && now - pressed_at_ <= BoardChord::window_ms) return {};
+        if (now - pressed_at_ <= BoardChord::window_ms) return {};
         if (!active_) {
             if (!air && !crouched) return {};
             active_ = true; began_ = now; prewind_ = !air; nollie_ = native_nollie;
@@ -57,7 +66,6 @@ public:
             blocked_ = true; active_ = false; return {};
         }
         const float side = held == BoardChord::lb ? -1.0f : 1.0f;
-        if (air && native_rate_control) return {true, 0, 0, side * GameplayProfile{}.angular_speed()};
         float x = side * .97f, y = 0;
         const auto elapsed = now - began_;
         if (prewind_ && elapsed < 90) {

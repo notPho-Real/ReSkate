@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_input_policy.h"
+#include "arcade_input_types.h"
 #include "Engine/Game/Build/20260929/grind_exit.h"
 
 namespace dingosdk::arcade_mode {
@@ -60,10 +61,50 @@ public:
             method_ == RailAdapterMethod::tail_pressure ? std::int16_t{-20000} : std::int16_t{0};
         return {true,0,tilt,0,0};
     }
+    // Consumes a semantic handoff; it never reads a journal or recognizes a
+    // physical level as a new command. The original deadline gates first issue.
+    RailAdapterPad sample(const InputRailOutput& handoff, std::uint64_t now,
+            bool enabled, bool admitted) noexcept {
+        const auto& request = handoff.request;
+        const auto retire = [&]() noexcept { cancel(); semantic_retired_ = true; };
+        if (request.action != InputAction::rail_request || !handoff.held || !enabled) { retire(); return {}; }
+        if (request.session < semantic_.session || (request.session == semantic_.session &&
+            request.input_sequence < semantic_.input_sequence)) { retire(); return {}; }
+        if (request.session != semantic_.session || request.input_sequence != semantic_.input_sequence) {
+            cancel(); semantic_ = request; semantic_started_ = semantic_retired_ = false;
+        } else if (request != semantic_) { retire(); return {}; }
+        if (semantic_retired_) return {};
+        if (!request.session || !request.input_sequence || request.control != 0x8000 || request.presses != 1 ||
+            request.variant || request.modifier || request.form != InputForm::ordinary ||
+            (request.context != InputContext::ground && request.context != InputContext::air && request.context != InputContext::rail) ||
+            !native_.fresh(now) || !request.generations.owner || request.generations.owner != native_.generations.owner ||
+            now < request.recognized_at || now < request.physical_pressed_at) { retire(); return {}; }
+        if (semantic_started_ && (!active_ || !admitted)) { retire(); return {}; }
+        const bool occupied = handoff.blocked || handoff.occupied.owns_right_stick;
+        if (occupied) { if (semantic_started_) retire(); return {}; }
+        if (!semantic_started_) {
+            if (!request.unbounded && (request.inclusive_deadline ? now > request.deadline : now >= request.deadline)) { retire(); return {}; }
+            if (now < request.ready_at || !admitted || phase_ == RailAdapterPhase::unavailable) return {};
+            RailAdapterMethod method{};
+            switch (request.direction) {
+            case 0: method = RailAdapterMethod::align; break;
+            case 8: method = RailAdapterMethod::nose_pressure; break;
+            case 2: method = RailAdapterMethod::tail_pressure; break;
+            default: retire(); return {};
+            }
+            // Accepted held actuation has no renewed recognition lease. Native
+            // continuity, physical release and explicit admission end ownership.
+            if (this->request(method,now,UINT64_MAX,true,true,false) != RailAdapterResult::started) return {};
+            semantic_started_ = true;
+        }
+        return sample(now,true,true,true,false);
+    }
     bool active() const noexcept { return active_; }
     RailAdapterPhase phase() const noexcept { return phase_; }
 private:
     InputNativeContext native_{};
+    InputRequest semantic_{};
+    bool semantic_started_{}, semantic_retired_{};
     RailAdapterMethod method_{};
     RailAdapterPhase phase_{};
     std::uint32_t state_{};
