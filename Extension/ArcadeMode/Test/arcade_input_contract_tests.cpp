@@ -90,8 +90,26 @@ void extra_queries() {
         } else for (const auto& event : h.events()) check(event.owners == 0, "failed extra query leaves its footprint reusable");
     }
 }
+void held_clocks() {
+    InputEvents input; const InputToken up{InputSource::direction,8,InputEdge::press};
+    input.sample(0,{},false,false,InputPolicy::strict()); input.sample(10,{1},true,false,InputPolicy::strict());
+    for (unsigned age : {129u,130u,131u}) check(input.held_longer(up,130,10+age) == (age>130), "held-duration predicate uses strict greater-than");
+    input.discard_intent();
+    check(input.history().events().empty() && input.held_longer(up,130,150), "intent clearing cannot erase independently observed held duration");
+    for (unsigned i=0;i<120;++i) input.sample(160+i,{static_cast<std::uint16_t>(1u | (i%2 ? 0x4000u : 0u))},true,false,InputPolicy::strict());
+    check(input.held_longer(up,130,300), "held duration survives ring overwrite without adding fake events");
+    input.sample(310,{},false,false,InputPolicy::strict()); input.sample(320,{1},false,false,InputPolicy::strict());
+    check(!input.held_longer(up,130,450) && input.held_longer(up,130,451), "release and repress establish a new held clock");
+    input.sample(100,{1},false,false,InputPolicy::strict());
+    check(!input.held_longer(up,130,230) && input.held_longer(up,130,231), "clock rollback establishes a fresh observation baseline");
+    check(input.history().events().empty(), "held rollback is not a new press");
+    InputEvents vertical;
+    vertical.sample(0,{}); vertical.sample(100,{0,0,-25000});
+    check(!vertical.held_longer({InputSource::vertical_stick,-1,InputEdge::press},130,230), "negative projection cannot alias the neutral hold clock");
+}
+
 }
 int main() {
-    air_queries(); release_queries(); extra_queries();
+    air_queries(); release_queries(); extra_queries(); held_clocks();
     std::cout << checks << " source input contract checks passed\n";
 }
