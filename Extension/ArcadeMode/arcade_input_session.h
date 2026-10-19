@@ -37,6 +37,7 @@ public:
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr;
+        air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
@@ -58,6 +59,12 @@ public:
         }
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
+            if (air_action_ && (!native.airborne || native.air_episode() != air_actor_episode_)) {
+                authored_.cancel(); air_action_ = false; air_actor_episode_ = {};
+            }
+            if (grab_actor_ && (!native.airborne || native.air_episode() != grab_actor_episode_)) {
+                auxiliary_.cancel(); grab_hold_button_ = 0; grab_actor_ = false; grab_actor_episode_ = {};
+            }
             native_ = native;
             if (!admission.balance_controls.correlated(native))
                 admission.balance_controls.admitted = false;
@@ -156,6 +163,7 @@ public:
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
         if (!admission.inspected_stance || (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
+        if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
         output.action.owned = action.owns_right_stick || action.owns_left_stick || action.owns_triggers || action.owns_face_buttons;
         const bool board_permitted = admission.may_toggle_board && !busy && !output.action.owned && !triggers &&
@@ -215,11 +223,15 @@ private:
             holding_ = false; return InputDisposition::started;
         case InputAction::flip:
             if (!airborne) return InputDisposition::cancelled;
+            if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
+                out.unsupported = true; return InputDisposition::unsupported;
+            }
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             if (request.form != InputForm::ordinary) return request_extension(request);
             {
                 const auto id = native_flip_id(select_named_trick(TrickFamily::flip, direction(request.direction), request.presses), request.nollie);
                 air_action_ = start(id, request.nollie, false, context, true);
+                if (air_action_) air_actor_episode_ = admission.native_context.air_episode();
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;
             }
         case InputAction::manual: case InputAction::nose_manual:
@@ -286,6 +298,9 @@ private:
         if (authored_.busy() || manual_.busy() || auxiliary_.busy() || rail_) return InputDisposition::waiting;
         if (request.form != InputForm::ordinary) return request_extension(request);
         out.requested = true; out.request_kind = grab ? 1u : admission.action_mode == ActionExperiment::revert_backside ? 4u : 3u;
+        if (grab && admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
+            current_->unsupported = true; out.result = DispatchResult::unavailable; return InputDisposition::unsupported;
+        }
         ActionContext context{admission.action_mode != ActionExperiment::observe, true,
             admission.pose == SkatePose::air, admission.pose == SkatePose::riding, admission.inspected_stance,
             admission.external_owner || (physical_.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
@@ -300,6 +315,9 @@ private:
             out.result = classic && (out.trick != ArcadeTrick::basic_bs_grab || admission.nollie) ? DispatchResult::unavailable :
                 admission.action_mode == ActionExperiment::grabs || classic ? auxiliary_.request_grab(out.trick, now_, context, out.trick == ArcadeTrick::basic_bs_grab) : DispatchResult::disabled;
             if (out.result == DispatchResult::started && out.trick == ArcadeTrick::basic_bs_grab) grab_hold_button_ = request.control;
+            if (out.result == DispatchResult::started) {
+                grab_actor_ = true; grab_actor_episode_ = admission.native_context.air_episode();
+            }
         } else {
             out.result = !admission.inspected_stance || (classic && admission.nollie) ? DispatchResult::unsafe_context :
                 auxiliary_.request_revert(admission.action_mode == ActionExperiment::revert_backside ? RevertSide::backside : RevertSide::frontside,
@@ -332,6 +350,8 @@ private:
     ActionExperiment mode_{ActionExperiment::off};
     InputPolicy policy_{InputPolicy::production()};
     InputNativeContext native_{};
+    InputAirEpisode air_actor_episode_{}, grab_actor_episode_{};
+    bool grab_actor_{};
     bool native_required_{};
     InputAdmission admission_{};
     PhysicalInputSample physical_{};

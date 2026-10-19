@@ -35,6 +35,7 @@ struct InputRequest {
     InputGenerations generations{};
     std::uint8_t generation_mask{};
     InputForm form{};
+    InputAirEpisode air_episode{};
 };
 struct InputEnvironment {
     InputContext context{};
@@ -147,6 +148,8 @@ private:
             ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
             ((request.generation_mask & 4u) && request.generations.action != native.generations.action)))
             return InputDisposition::cancelled;
+        if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
+            return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
             !(request.action == InputAction::rail_select &&
@@ -198,6 +201,12 @@ public:
     void cancel_auxiliary() noexcept {
         pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
     }
+    void cancel_air_episode() noexcept {
+        pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
+        active_flip_ = active_grab_ = waiting_direction_ = false; direction_ = 0;
+        // Keep physical held state and independently queued Manual/rail intent.
+        events_.discard_intent();
+    }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
         cancel_manual(); manual_unknown_ = true;
@@ -222,6 +231,7 @@ public:
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
+                if (native.air_episode() != native_.air_episode()) cancel_air_episode();
                 if (native.generations.action != native_.generations.action) {
                     waiting_direction_ = false;
                 }
@@ -409,6 +419,8 @@ private:
         if (environment.native_context.required) {
             request.generations = environment.native_context.generations;
             request.generation_mask = generation_dependencies(action,environment.context);
+            if (action == InputAction::flip || action == InputAction::grab)
+                request.air_episode = environment.native_context.air_episode();
         }
         request.form = form;
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }

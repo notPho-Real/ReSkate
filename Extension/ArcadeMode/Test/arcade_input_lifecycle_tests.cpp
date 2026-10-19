@@ -8,7 +8,7 @@ void check(bool value,const char* reason) {
     ++checks;if(!value){std::cerr<<"FAIL: "<<reason<<'\n';std::exit(1);}
 }
 InputNativeContext frame(std::uint64_t now,InputGenerations generations={1,1,1}) {
-    return {true,true,generations,now+1,now,false};
+    return {true,true,generations,now+1,now,false,true,1,0};
 }
 struct Receiver {
     unsigned calls{};InputRequest last{};InputDisposition result{InputDisposition::waiting};
