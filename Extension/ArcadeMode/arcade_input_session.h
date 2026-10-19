@@ -216,6 +216,7 @@ private:
         case InputAction::flip:
             if (!airborne) return InputDisposition::cancelled;
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
+            if (request.form != InputForm::ordinary) return request_extension(request);
             {
                 const auto id = native_flip_id(select_named_trick(TrickFamily::flip, direction(request.direction), request.presses), request.nollie);
                 air_action_ = start(id, request.nollie, false, context, true);
@@ -264,6 +265,7 @@ private:
             return request_extension(request);
         }
         case InputAction::lip_request:
+        case InputAction::ground_turn:
             return request_extension(request);
         default: return InputDisposition::unsupported;
         }
@@ -282,6 +284,7 @@ private:
         const bool classic = admission.action_mode == ActionExperiment::classic;
         if (!admission.action_fresh || admission.action_mode == ActionExperiment::off) return InputDisposition::cancelled;
         if (authored_.busy() || manual_.busy() || auxiliary_.busy() || rail_) return InputDisposition::waiting;
+        if (request.form != InputForm::ordinary) return request_extension(request);
         out.requested = true; out.request_kind = grab ? 1u : admission.action_mode == ActionExperiment::revert_backside ? 4u : 3u;
         ActionContext context{admission.action_mode != ActionExperiment::observe, true,
             admission.pose == SkatePose::air, admission.pose == SkatePose::riding, admission.inspected_stance,
