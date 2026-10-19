@@ -179,8 +179,8 @@ private:
         case InputAction::manual: case InputAction::nose_manual:
             if (admission.external_owner || physical_.lt > 30 || physical_.rt > 30 ||
                 (physical_.buttons & 0xf030u) || (physical_.buttons & 0x0300u) == 0x0300u) return InputDisposition::cancelled;
-            if (request.context == InputContext::air && now_ - request.recognized_at >= InputTiming::air_request_ms)
-                return InputDisposition::expired; // Existing native preparation deadline is half-open.
+            if (request.context == InputContext::air && now_ - request.recognized_at > InputTiming::air_request_ms)
+                return InputDisposition::expired; // Queue and native adapter share the inclusive preparation deadline.
             if (!admission.manual_safe) return admission.manual_prepare ? InputDisposition::waiting : InputDisposition::cancelled;
             if (authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             return manual_.request(now_, request.action == InputAction::manual ? -1 : 1, airborne, admission.manual_safe,

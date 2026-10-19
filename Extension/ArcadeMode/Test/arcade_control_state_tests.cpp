@@ -298,5 +298,18 @@ void prepared_pair_safety() {
     }
 }
 
+void composed_manual_deadline() {
+    for(bool landed:{false,true})for(unsigned age:{699u,700u,701u})for(const auto first:{std::int16_t{25000},std::int16_t{-25000}}) {
+        InputSession session;InputAdmission a{};a.gameplay=a.manual_prepare=true;a.pose=SkatePose::air;a.input_policy=InputPolicy::strict();
+        session.poll(0,{},0,0,a);session.poll(10,{0,0,first},0,0,a);
+        session.poll(110,{0,0,static_cast<std::int16_t>(-first)},0,0,a);
+        check(session.pending_manual().recognized_at==110,"air intent timestamp is fixed before readiness");
+        a.manual_prepare=false;a.manual_safe=true;if(landed)a.pose=SkatePose::riding;
+        const auto out=session.poll(110+age,{},0,0,a);
+        check(out.manual.owns==(age<=700),"composed native readiness admits at699/700ms and expires at701ms across landing");
+        if(age<=700)check(out.manual.request_at==(landed?110+age:110),"landing settling clock is separate from the original airborne pending lifetime");
+    }
 }
-int main() { prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
+
+}
+int main() { composed_manual_deadline(); prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
