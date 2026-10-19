@@ -26,7 +26,7 @@ struct PhysicalBalanceSample {
 class ManualPhysics {
 public:
     explicit ManualPhysics(GameplayProfile profile = {}, std::uint32_t seed = 1) noexcept
-        : profile_(profile), random_(seed ? seed : 1) {}
+        : profile_(profile), random_(seed) {}
     void reset() noexcept { lean_ = speed_ = time_ = cheese_ = section_ = 0; active_ = closed_ = false; }
     void stop() noexcept { active_ = closed_ = false; section_ = 0; }
     bool active() const noexcept { return active_; }
@@ -81,7 +81,10 @@ public:
         if (cheese_ > .01f) cheese_ = std::max(0.0f, cheese_ - p.cheese / p.cheese_frames * frames);
         const auto instability = p.instability_base + time_ * p.instability_rate;
         // Position integrates the previous velocity before this frame's input.
-        lean_ += (lean_ * p.gravity + speed_) * instability * frames;
+        // Ordered scalar updates; each term is scaled by dt, then by60.
+        // This defines the portable local model, not native binary equivalence.
+        lean_ += ((lean_ * p.gravity * instability) * dt) * 60;
+        lean_ += ((speed_ * instability) * dt) * 60;
         float applied_correction=0;
         if (control.held && control.released) {
             // Safe-period direction is tested after integrating this step's
@@ -94,8 +97,8 @@ public:
         }
         else if (std::abs(speed_) < p.minimum_speed) {
             const auto bound = static_cast<unsigned>(p.random_speed) | 1u;
-            speed_ = static_cast<float>(next() % bound) * sign(speed_);
-        } else speed_ += static_cast<float>(next() % 50u) / 100 * sign(speed_);
+            speed_ = static_cast<float>(drift_draw(bound)) * sign(speed_);
+        } else speed_ += static_cast<float>(drift_draw(50)) / 100 * sign(speed_);
         BalanceExit outcome{};
         if (std::abs(lean_) > p.endpoint) {
             const bool safe = nose_ ? lean_ > 0 : lean_ < 0;
@@ -107,12 +110,24 @@ public:
     }
 private:
     static float sign(float value) noexcept { return value < 0 ? -1.0f : 1.0f; }
-    std::uint32_t next() noexcept {
-        random_ ^= random_ << 13; random_ ^= random_ >> 17; random_ ^= random_ << 5;
-        return random_;
+    static std::uint32_t signed_shift(std::uint32_t bits, unsigned places) noexcept {
+        // Sign extension in unsigned storage: no signed overflow or
+        // implementation-defined negative right shift. places is3 or4.
+        return (bits >> places) | ((0u - (bits >> 31)) << (32u - places));
+    }
+    std::uint32_t drift_draw(std::uint32_t bound) noexcept {
+        // A local three-word stream with explicit modulo2^32 state updates.
+        // It is not the game's global seed, reseeding or interleaved stream.
+        const auto product = std::uint64_t{random_} * random_factor_ + random_offset_;
+        random_ = static_cast<std::uint32_t>(product);
+        random_factor_ = (random_factor_ ^ random_) + signed_shift(random_,4);
+        random_offset_ += signed_shift(random_,3) - 0x10101010u;
+        return static_cast<std::uint32_t>((std::uint64_t{random_ & 0xffffu} * bound) >> 16);
     }
     GameplayProfile profile_;
-    std::uint32_t random_;
+    // Constructor seed (including zero) owns the stream lifetime. Physical
+    // reset/stop, same-type continuation and adjustments never rewind it.
+    std::uint32_t random_, random_factor_{314159265u}, random_offset_{178453311u};
     float lean_{}, speed_{}, time_{}, cheese_{}, section_{};
     bool active_{}, closed_{}, nose_{};
 };
