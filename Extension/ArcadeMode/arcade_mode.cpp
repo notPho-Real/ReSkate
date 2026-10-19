@@ -696,7 +696,7 @@ bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
     const auto now = GetTickCount64();
     const auto frame = arcade_input.native_context(now);
     return mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) && frame.valid &&
-        proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
+        manual_balance_admitted.load(std::memory_order_relaxed) && proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
 }
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
 
