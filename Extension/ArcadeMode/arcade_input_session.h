@@ -118,6 +118,13 @@ public:
             admission.pose == SkatePose::grind ? InputContext::rail : InputContext::ground;
         const bool action_enabled = !admission.offboard && admission.action_mode != ActionExperiment::off;
         if (!admission.action_fresh || !action_enabled) auxiliary_.cancel();
+        // Retire prior auxiliary state before admitting this poll's commands.
+        // This output is not delivered; the normal sample below still applies
+        // all current input ownership and native context guards.
+        const ActionContext prior_action_context{admission.action_mode != ActionExperiment::observe,
+            admission.action_fresh, context == InputContext::air, context == InputContext::ground,
+            admission.inspected_stance, admission.external_owner};
+        (void) auxiliary_.sample(now,prior_action_context);
         output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
              (admission.action_mode == ActionExperiment::classic && context == InputContext::air)) ? 0x2000 : 0;
