@@ -204,7 +204,16 @@ void complete_hid_packet(HANDLE port,ULONG_PTR key,OVERLAPPED* request,DWORD byt
     auto& h=input_hooks();std::lock_guard lock(h.hid_mutex);const auto found=h.hid_reads.find(request);
     if(found==h.hid_reads.end()||found->second.unavailable)return;
     const auto operation=found->second.operation;
-    if(operation->event_only||operation->mode.port!=port||operation->mode.key!=key||!port)return;
+    if(operation->event_only)return;
+    if(!operation->mode.port){
+        // A pre-existing association is unobservable here. This wrapper may
+        // already have exposed the buffer, so a later successful result poll
+        // is not first-delivery proof. Retain passthrough without claiming this
+        // packet, finishing its obligation or inventing an OS generation.
+        if(!operation->passthrough){operation->passthrough=true;++h.hid_unavailable;invalidate_hid_filter();}
+        return;
+    }
+    if(operation->mode.port!=port||operation->mode.key!=key||!port)return;
     operation->packet_seen=true;operation->finished=true;
     if(operation->returned&&operation->immediate&&!operation->mode.skip_known){
         // An observed immediate-success packet proves the default mode for
