@@ -396,8 +396,15 @@ void tick_arcade_traffic_surface(std::uintptr_t park) noexcept {
   struct ObservationPhase {bool& active;explicit ObservationPhase(bool& value):active(value){active=true;}~ObservationPhase(){active=false;}} observation{r.observing};
   const auto fail=[&]{r.provider.invalidate();r.selected={};r.query={};invalidate_population_surface();};
   const auto now=GetTickCount64();const auto gate=surface_client_gate;TrafficScope scope;
-  if(!enabled()||!gate.client||gate.base!=local.base||now<gate.sampled_at||now-gate.sampled_at>150||
-     !traffic_scope(gate.client,park,scope)||scope.client_context!=gate.context){fail();return;}
+  if(!enabled()||!gate.client||gate.base!=local.base||now<gate.sampled_at){fail();return;}
+  // Expiry revokes the copied observation above, not the selected material
+  // point's identity. Renewal below must revalidate every owner and binding;
+  // the motion estimator independently warms an actual pose gap.
+  if(now-gate.sampled_at>150){
+   if(r.selected.generation&&!population_surface_current(r.selected))fail();
+   return;
+  }
+  if(!traffic_scope(gate.client,park,scope)||scope.client_context!=gate.context){fail();return;}
   const auto frame=surface_geometry_native_frame(now);NoBailSkater owner{};SurfaceSelf self;
   if(!frame.valid||!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||
      !read_surface_self(scope.client_context,owner,self)){fail();return;}

@@ -54,13 +54,22 @@ bool population_surface_current(arcade_mode::TrafficSurfaceSelection s) noexcept
   p.surface_revision.load(std::memory_order_acquire)==s.removals&&!p.surface_removals_active.load(std::memory_order_acquire);
 }
 void start_population_surface_observer() noexcept {
+ PreserveError preserve;
  auto& p=population_runtime();if(p.surface_removal_ready.load(std::memory_order_acquire))return;
+ struct OwnedPreparation {
+  PopulationRuntime& runtime;void* target{};
+  ~OwnedPreparation(){
+   if(target)try{if(hook_remove(target)==HookOk)runtime.surface_remove=nullptr;}catch(...){}
+  }
+ } preparation{p};
  try{
   const auto base=local_runtime().base;std::array<unsigned char,32> bytes{};
   if(!base||!memory::read_bytes(base+surface_removal_rva,bytes.data(),bytes.size())||bytes!=surface_removal_bytes)return;
   auto* target=reinterpret_cast<void*>(base+surface_removal_rva);
   if(hook_prepare(target,reinterpret_cast<void*>(&population_surface_remove),reinterpret_cast<void**>(&p.surface_remove))!=HookOk)return;
+  preparation.target=target;
   if(hook_enable(target)!=HookOk)return;
+  preparation.target=nullptr;
   p.surface_removal_ready.store(true,std::memory_order_release);
  }catch(...){invalidate_population_surface();}
 }
