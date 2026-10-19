@@ -168,17 +168,17 @@ int main() {
         using namespace dingosdk::arcade_mode;
 using namespace dingosdk::arcade_mode::baseline;
         BalanceControl input;
-        check(input.poll(BalanceKind::manual, 0, -32768, true) == 0 &&
-              input.poll(BalanceKind::manual, 0, -32768, true) == 0,
-              "held entry direction does not immediately steer the new manual meter");
-        check(input.poll(BalanceKind::manual, 0, 32767, true) == 1,
-              "a fresh opposite correction tap takes control without a perfect neutral frame");
-        input.poll(BalanceKind::none, 0, 0, true);
-        input.poll(BalanceKind::manual, 0, -32768, true);
-        input.poll(BalanceKind::manual, 0, 0, true);
-        check(input.poll(BalanceKind::manual, 0, 0, true, 2) == -1,
-              "a released command hands manual correction to the next D-pad tap");
-        check(input.poll(BalanceKind::grind, -32768, 32767, true) == -1,
+        check(input.poll(1000, BalanceKind::manual, 0, 0, -32768, true) == 0 &&
+              input.poll(1000, BalanceKind::manual, 0, 0, -32768, true) == 0,
+              "entry-held correction is ignored at the actual entry instant");
+        check(input.poll(1001, BalanceKind::manual, .2f, 0, 32767, true) == -1,
+              "inward correction is available once elapsed time becomes positive");
+        input.poll(1010, BalanceKind::none, 0, 0, 0, true);
+        input.poll(1020, BalanceKind::manual, 0, 0, -32768, true);
+        input.poll(1020, BalanceKind::manual, 0, 0, 0, true);
+        check(input.poll(1020, BalanceKind::manual, -.2f, 0, 0, true, 2) == 1,
+              "a neutral release enables a fresh inward D-pad correction");
+        check(input.poll(1030, BalanceKind::grind, 0, -32768, 32767, true) == -1,
               "grind correction retains its original immediate analog response");
         Tuning t;
         t.fatigue_per_second = t.mode_fatigue_per_second = t.fatigue_per_link = 0;
@@ -1364,12 +1364,12 @@ using namespace dingosdk::arcade_mode::baseline;
     }
     check(balance_correction(BalanceKind::grind, -32768, 32767, true) == -1, "left corrects grind left");
     check(balance_correction(BalanceKind::grind, 32767, -32768, true) == 1, "right corrects grind right");
-    check(balance_correction(BalanceKind::manual, -32768, 32767, true) == 1, "up corrects manual up");
-    check(balance_correction(BalanceKind::manual, 32767, -32768, true) == -1, "down corrects manual down");
+    check(balance_correction(BalanceKind::manual, -32768, 32767, true) == -1, "up decreases manual lean");
+    check(balance_correction(BalanceKind::manual, 32767, -32768, true) == 1, "down increases manual lean");
     check(balance_correction(BalanceKind::manual, 32767, 32767, false) == 0, "unavailable input is neutral");
     check(balance_correction(BalanceKind::grind, 7849, 32767, true) == 0, "balance deadzone suppresses idle noise");
-    check(balance_correction(BalanceKind::manual, 0, -32768, true, 1) == 1 &&
-          balance_correction(BalanceKind::manual, 0, 32767, true, 2) == -1,
+    check(balance_correction(BalanceKind::manual, 0, -32768, true, 1) == -1 &&
+          balance_correction(BalanceKind::manual, 0, 32767, true, 2) == 1,
           "manual D-pad correction overrides the steering stick in its requested direction");
     check(balance_correction(BalanceKind::manual, 0, 32767, true, 3) == 0 &&
           balance_correction(BalanceKind::manual, 0, 0, false, 1) == 0 &&

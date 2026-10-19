@@ -187,7 +187,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
     combo_tick_at = now;
     const auto kind = combo_session.model().state().balance_kind;
-    const auto correction = balance_control.poll(kind, input.left_x, input.left_y, input.available, input.buttons);
+    const auto correction = balance_control.poll(now, balance_kind(pose), combo_session.model().state().balance,
+        input.left_x, input.left_y, input.available, input.buttons);
     const bool was_active = combo_session.model().state().combo_active;
     const bool had_revert = combo_session.model().state().revert_pending;
     const bool native_revert = observed_native_revert({valid && !owner_changed,
