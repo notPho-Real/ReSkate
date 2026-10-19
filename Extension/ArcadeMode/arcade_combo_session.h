@@ -18,6 +18,7 @@ public:
     explicit ComboSession(Tuning tuning = {}) noexcept : model_(tuning) {}
     const Model& model() const noexcept { return model_; }
     bool failed_section() const noexcept { return failed_section_; }
+    bool manual_putdown() const noexcept { return manual_putdown_; }
     const State& balance_display_state() const noexcept {
         // A protected or pending native bail can leave the physical manual in
         // place. Keep its failed meter at the edge until that native section
@@ -44,6 +45,7 @@ public:
         model_.bail();
         previous_ = SkatePose::unknown;
         failed_section_ = false;
+        manual_putdown_ = false;
         exit_elapsed_ = 0;
     }
     bool step(SkatePose pose, float dt, float correction, bool observed_revert = false) noexcept {
@@ -55,7 +57,7 @@ public:
         if (pose == SkatePose::bail) {
             model_.bail();
             scoring_.poll(model_);
-            previous_ = pose; failed_section_ = false; exit_elapsed_ = 0;
+            previous_ = pose; failed_section_ = manual_putdown_ = false; exit_elapsed_ = 0;
             return false;
         }
         // The fixed rail records 403 -> 701 -> 200/201. Preserve fatigue across
@@ -76,12 +78,17 @@ public:
         }
         exit_elapsed_ = 0;
         const auto kind = balance_kind(pose);
-        const bool failure = model_.tick(dt, correction);
+        // Basic Manual and Nose Manual swap their physical endpoint outcomes.
+        // Rail balance retains its existing two-sided failure behavior.
+        const auto endpoints = previous_ == SkatePose::manual ? BalanceEndpoints::positive_bail :
+            previous_ == SkatePose::nose_manual ? BalanceEndpoints::negative_bail : BalanceEndpoints::bail_both;
+        const bool failure = model_.tick(dt, correction, 1, endpoints);
+        if (model_.balance_exit() == BalanceExit::putdown) manual_putdown_ = true;
         if (failure) failed_section_ = true;
-        if (kind == BalanceKind::none) failed_section_ = false;
+        if (kind == BalanceKind::none) failed_section_ = manual_putdown_ = false;
         if (pose != previous_) {
             if (kind != BalanceKind::none) {
-                if (!failed_section_) model_.begin_balance(kind);
+                if (!failed_section_ && !manual_putdown_) model_.begin_balance(kind);
             } else if (pose == SkatePose::air) {
                 // An observed takeoff starts/links the lifecycle. Native trick
                 // scoring is not yet exposed; do not fabricate awarded points.
@@ -103,6 +110,7 @@ private:
     ScoreSettlement scoring_;
     SkatePose previous_{SkatePose::unknown};
     bool failed_section_{};
+    bool manual_putdown_{};
     float exit_elapsed_{};
 };
 }

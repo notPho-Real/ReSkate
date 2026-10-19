@@ -45,6 +45,7 @@ struct PadTelemetry {
 struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipSelection flip; };
 struct RevertLinkEvidence { std::uint64_t ms{}, sequence{}, labels{}; bool accepted{}; unsigned remaining_ms{}; };
 struct BalanceFailureEvidence { std::uint64_t ms{}; unsigned kind{}; std::uint64_t request{}; };
+struct BalanceTerminationEvidence { std::uint64_t ms{}; unsigned pose{}, outcome{}; };
 struct BalanceSampleEvidence { std::uint64_t ms{}; unsigned kind{}; float x{}, v{}, input{}, difficulty{}; short raw_x{}, raw_y{}; };
 struct ComboEventEvidence { std::uint64_t ms{}; unsigned pose{}; bool active{}, failed{}; float fatigue{}, grind{}, manual{}; };
 struct BalanceBailEvidence { std::uint64_t ms{}, request{}; unsigned result{}; };
@@ -117,7 +118,7 @@ inline bool foot_motion_valid(const FootMotionEvidence& r) noexcept {
 }
 struct ScoreNodeEvidence { ScoreProbePath path{}; unsigned kind{}, size{}; };
 struct ScoreValueEvidence { std::uint64_t ms{}; ScoreProbePath path{}; std::uint32_t value{}; bool label{}, limit{}; };
-using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence,
+using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence, BalanceTerminationEvidence,
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,

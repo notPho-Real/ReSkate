@@ -6,6 +6,8 @@
 
 namespace dingosdk::arcade_mode {
 enum class BalanceKind : std::uint8_t { none, grind, manual };
+enum class BalanceExit : std::uint8_t { none, putdown, bail };
+enum class BalanceEndpoints : std::uint8_t { bail_both, positive_bail, negative_bail };
 enum class SettlementKind : std::uint8_t { none, bank, bail };
 struct ModelSettlement {
     std::uint64_t sequence{}, points{};
@@ -66,8 +68,9 @@ public:
     }
     const State& state() const noexcept { return state_; }
     const State& failed_balance() const noexcept { return failed_balance_; }
+    BalanceExit balance_exit() const noexcept { return balance_exit_; }
     const ModelSettlement& last_settlement() const noexcept { return settlement_; }
-    void reset() noexcept { state_ = {}; failed_balance_ = {}; remainder_ = 0; elapsed_ = 0; }
+    void reset() noexcept { state_ = {}; failed_balance_ = {}; balance_exit_ = BalanceExit::none; remainder_ = 0; elapsed_ = 0; }
     std::uint64_t take_banked_points() noexcept { const auto p = banked_; banked_ = 0; return p; }
     float difficulty() const noexcept {
         const float mode = state_.balance_kind == BalanceKind::grind ? state_.grind_fatigue : state_.manual_fatigue;
@@ -140,7 +143,9 @@ public:
     }
     // Returns true on balance failure. Expired landing/revert grace banks into
     // take_banked_points(), independently of active-combo reset/bail.
-    bool tick(float dt, float correction = 0.0f, float drift_sign = 1.0f) noexcept {
+    bool tick(float dt, float correction = 0.0f, float drift_sign = 1.0f,
+              BalanceEndpoints endpoints = BalanceEndpoints::bail_both) noexcept {
+        balance_exit_ = BalanceExit::none;
         dt = bounded(dt, 0.0f, 1.0f);
         if (!state_.combo_active || dt == 0.0f) return false;
         remainder_ += static_cast<double>(dt);
@@ -182,9 +187,16 @@ public:
                 authority * bounded(correction, -1.0f, 1.0f) + edge * state_.balance * (tuning_.edge_instability + d));
             state_.balance += h * state_.balance_velocity;
             if (std::abs(state_.balance) >= 1.0f) {
+                const bool putdown = state_.balance_kind == BalanceKind::manual &&
+                    ((endpoints == BalanceEndpoints::positive_bail && state_.balance < 0) ||
+                     (endpoints == BalanceEndpoints::negative_bail && state_.balance > 0));
+                if (putdown) {
+                    end_balance(); landing(); balance_exit_ = BalanceExit::putdown;
+                    return false;
+                }
                 auto failed = state_;
                 failed.balance = std::clamp(failed.balance, -1.0f, 1.0f);
-                bail(); failed_balance_ = failed;
+                bail(); failed_balance_ = failed; balance_exit_ = BalanceExit::bail;
                 return true;
             }
         }
@@ -192,6 +204,7 @@ public:
     }
 private:
     State failed_balance_{};
+    BalanceExit balance_exit_{};
     std::uint64_t total_points() const noexcept {
         const auto maximum = std::numeric_limits<std::uint64_t>::max();
         return state_.multiplier && state_.raw_points > maximum / state_.multiplier

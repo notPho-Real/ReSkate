@@ -194,6 +194,10 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
     const bool failed = combo_session.step(pose, dt, correction, native_revert);
+    const auto termination = combo_session.model().balance_exit();
+    if (termination != BalanceExit::none)
+        input_telemetry.client(BalanceTerminationEvidence{now, static_cast<unsigned>(pose),
+            static_cast<unsigned>(termination)});
     const bool manual_prepare = manual_revert_preparation(valid && !owner_changed, bail,
         native.state, native.crouch_mode, combo_session.model().state().revert_pending);
     {
@@ -201,6 +205,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
         if (!valid || owner_changed || bail ||
+            combo_session.manual_putdown() ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
             arcade_input.cancel_manuals();
         manual_balance_admitted.store(manual_observation.confirmed &&
@@ -278,6 +283,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
         else if constexpr (std::is_same_v<T, BalanceBailEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE BAIL: ms={} request={} result={}.", r.ms, r.request, r.result);
+        else if constexpr (std::is_same_v<T, BalanceTerminationEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE BALANCE TERMINATION: ms={} pose={} outcome={} native_exit_verified=false.",
+                r.ms, r.pose, r.outcome);
         else if constexpr (std::is_same_v<T, ScoreEdgeEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",

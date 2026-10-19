@@ -194,15 +194,15 @@ using namespace dingosdk::arcade_mode::baseline;
         check(std::abs(grind.state().balance_velocity) < .15f,
               "manual response tuning leaves the accepted grind damping unchanged");
         ComboSession session;
-        session.step(SkatePose::nose_manual, 0, 0);
+        session.step(SkatePose::manual, 0, 0);
         bool failed = false;
         for (unsigned frame = 0; frame < 1200 && !failed; ++frame)
-            failed = session.step(SkatePose::nose_manual, 1.0f/60, 0);
+            failed = session.step(SkatePose::manual, 1.0f/60, 0);
         check(failed && !session.model().state().combo_active &&
               balance_meter(session.balance_display_state()).visible &&
               std::abs(session.balance_display_state().balance) == 1,
               "failed native manual retains an edge meter while native exit or bail is pending");
-        session.step(SkatePose::nose_manual, 1.0f/60, 0);
+        session.step(SkatePose::manual, 1.0f/60, 0);
         check(!session.model().state().combo_active && balance_meter(session.balance_display_state()).visible,
               "pending physical manual cannot restart the failed model or lose its failure display");
         session.step(SkatePose::riding, 1.0f/60, 0);
