@@ -44,6 +44,24 @@ int main(){
     check(compatibility.poll(3292,-25000).manual.owns,"separately selected55ms sampling compatibility remains available without changing the reference constant");
     compatibility.input.set_input_policy(InputPolicy::strict());
     check(!compatibility.input.busy(0),"normalization policy changes cancel all synthetic state");
+    NativeInputState observer;
+    NativeRequestSample rail_sample{};rail_sample.valid=true;rail_sample.state=401;rail_sample.crouch_mode=1;
+    ArcadeInput rail_input(true,InputPolicy::strict());rail_input.enable(true);
+    auto rail_poll=[&](std::uint64_t now,short y) {
+        const auto frame=observer.observe(now,{1,2,3,4,5},rail_sample,{true,-1});
+        rail_input.publish_native_context(frame);rail_input.publish_authority(now,frame.owner_generation,1,true);
+        return rail_input.poll(0,now,0,0,y,0,0,true,true,true,0,false,false,false,now/17,false,{},false,true,SkatePose::riding);
+    };
+    rail_poll(3500,0);rail_poll(3517,25000);
+    check(!rail_poll(3534,-25000).manual.owns,"real401 rail context overrides stale grounded admission without fabricating Manual state");
+    const auto published=rail_input.native_context(3534);
+    check(published.valid&&published.rail_family&&published.physics_step==3&&published.contact_generation&&published.action_generation,
+          "facade publishes correlated native generations and rail-family exclusion evidence");
+    rail_input.publish_authority(3700,published.owner_generation,1,true);
+    const auto stale=rail_input.poll(0,3700,0,0,0,321,-456,true,true);
+    check(stale.right_x==321&&stale.right_y==-456&&!rail_input.busy(0),"fresh client authority cannot renew an expired native context");
+    rail_input.publish_native_context({});
+    check(!rail_input.native_context(3534).valid,"native observation loss explicitly removes exclusion evidence");
     NativeCharge charge;
     check(!charge.semantic_release(4100,true,false,false,4000,4100,true).sequence,"unadmitted physical release cannot create a native launch identity");
     const auto release=charge.semantic_release(4250,true,true,false,4000,4200,true);

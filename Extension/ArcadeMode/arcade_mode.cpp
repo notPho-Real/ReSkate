@@ -100,6 +100,8 @@ std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
 std::atomic<std::uint64_t> input_game_tick{}, input_step_serial{}, input_step_at{}, input_owner_epoch{1};
+NativeInputState native_input_state; // Protected by ollie_mutex; native physics is the sole producer.
+NativeInputOwner input_owner(const NoBailSkater& owner) noexcept { return {owner.base,owner.entity,owner.core,owner.context,owner.rig}; }
 NativePushContact push_contact_policy;
 NoBailSkater push_contact_owner{};
 std::atomic<bool> reset_push_contact_policy{true};
@@ -165,11 +167,16 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         physical_manual.reset(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
     }
     const auto score = score_activity();
-    const bool valid = native.valid && input.available && watch_valid &&
+    NativeInputFrame native_frame{};
+    {
+        std::lock_guard lock(ollie_mutex);
+        native_frame = native_input_state.correlate(GetTickCount64(),input_owner(owner),native);
+    }
+    const bool valid = native_frame.valid && native.valid && input.available && watch_valid &&
         std::isfinite(simulation_step) && simulation_step >= .001f && simulation_step <= .1f;
-    const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
-    if (valid && (!had_combo_owner || owner_changed) && manual_identity_epoch)
-        manual_identity_epoch = manual_identity_epoch == UINT64_MAX ? 0 : manual_identity_epoch + 1;
+    const bool owner_changed = valid && had_combo_owner &&
+        (owner != combo_owner || manual_identity_epoch != native_frame.owner_generation);
+    if (valid) manual_identity_epoch = native_frame.owner_generation;
     const bool observation_gap = combo_tick_at &&
         (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
     if (!valid || owner_changed) {
@@ -516,7 +523,13 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     NativeRequestSample sample{};
     if (!memory::peek(owner.context + request_words, sample.words) ||
         !memory::peek(owner.context + selected_state, sample.state) ||
-        !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) return;
+        !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
+        std::lock_guard lock(ollie_mutex);
+        native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+        input_clock_valid.store(false,std::memory_order_release);
+        return;
+    }
     const auto flip = read_flip_selection([](auto address, auto& value) { return memory::peek(address, value); }, owner.core);
     const bool offboard = sample.state == game::build::v20260929::no_bail::offboard_physics_state;
     // Same physics-step reader used by Hall of Meat; Trainer's position carries
@@ -525,15 +538,31 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         ? hall_of_meat::read_step(owner, seconds, wipeout) : hall_of_meat::Step{};
     const auto motion = offboard ? trainer::telemetry() : trainer::Telemetry{};
     NoBailSkater after{};
-    if (!no_bail_skater(after) || owner.core != after.core || owner.entity != after.entity ||
-        owner.context != after.context || owner.rig != after.rig) return;
+    if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
+        owner.context != after.context || owner.rig != after.rig) {
+        std::lock_guard lock(ollie_mutex);
+        native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+        input_clock_valid.store(false,std::memory_order_release);
+        return;
+    }
     sample.valid = true;
     const auto now = GetTickCount64();
     // The existing validated local physics listener is the update authority.
     // Client callbacks and repeated XInput polls never advance authored time.
-    static NoBailSkater clock_owner{};
-    if (owner != clock_owner || wipeout) { clock_owner = owner; input_owner_epoch.fetch_add(1,std::memory_order_acq_rel); }
     const bool clock_valid = std::isfinite(seconds) && seconds >= .001f && seconds <= .1f;
+    {
+        std::lock_guard lock(ollie_mutex);
+        if (clock_valid) {
+            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
+            arcade_input.publish_native_context(frame);
+            if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
+            else arcade_input.invalidate_authority();
+        } else {
+            native_input_state.invalidate(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+            set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+        }
+    }
     input_clock_valid.store(clock_valid,std::memory_order_release);
     if (clock_valid) {
         input_game_tick.store(authored_clock.advance(simulation_time::rate_of(seconds)),std::memory_order_release);
@@ -598,7 +627,7 @@ NativeRequestSample native_request_sample(NoBailSkater& validated_owner) noexcep
         !memory::peek(owner.context + request_words, result.words) ||
         !memory::peek(owner.context + selected_state, result.state) ||
         !memory::peek(owner.rig + crouch_mode, result.crouch_mode) ||
-        !no_bail_skater(after) || owner.core != after.core || owner.context != after.context ||
+        !no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.context != after.context ||
         owner.rig != after.rig || owner.entity != after.entity) return {};
     result.valid = true;
     validated_owner = after;
@@ -727,6 +756,7 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
+        native_input_state.invalidate(); arcade_input.publish_native_context({});
         arcade_input.enable(value);
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
@@ -848,7 +878,7 @@ void on_client_tick() noexcept {
         const auto trainer_view = trainer::view();
         motion_capture_until.store(trainer_view && trainer_view->logging && ui.available && !ui.in_menu ? now + 150 : 0,
             std::memory_order_release);
-        const bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
+        bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         tick_arcade_fixture_geometry(now, gameplay);
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
@@ -870,8 +900,14 @@ void on_client_tick() noexcept {
         const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
         {
             std::lock_guard lock(ollie_mutex);
-            if (arcade_input.publish_authority(now, native.valid ? input_owner_epoch.load(std::memory_order_acquire) : 0,
-                    input.device, gameplay && focus_available && watch.valid && native.valid)) {
+            if (!gameplay || !focus_available || !watch.valid || !native.valid) native_input_state.invalidate();
+            const auto authority_now = GetTickCount64();
+            const auto frame = native_input_state.correlate(authority_now,input_owner(native_owner),native);
+            gameplay = gameplay && frame.valid;
+            gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
+            arcade_input.publish_native_context(frame);
+            if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
+                    input.device, gameplay && focus_available && watch.valid && frame.valid)) {
                 for (auto& rotation : rotations) rotation.reset();
                 for (auto& charge : native_charges) charge.cancel();
                 neutral_delivery = {}; playback_packets = {};
@@ -979,6 +1015,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
+            native_input_state.invalidate(); arcade_input.publish_native_context({});
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();

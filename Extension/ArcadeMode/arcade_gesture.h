@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_input_session.h"
+#include "arcade_native_input_state.h"
 #include <array>
 #include <cstdint>
 
@@ -30,6 +31,11 @@ public:
         return changed;
     }
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; cancel_commands(); }
+    void publish_native_context(NativeInputFrame frame) noexcept { native_ = frame; native_required_ = true; }
+    NativeInputFrame native_context(std::uint64_t now) const noexcept {
+        return native_.valid && native_.owner_generation == owner_ && now >= native_.sampled_at &&
+            now-native_.sampled_at <= 150 ? native_ : NativeInputFrame{};
+    }
     std::uint64_t owner_epoch() const noexcept { return owner_; }
     bool admitted(unsigned user, std::uint64_t now) const noexcept {
         return enabled_ && (!native_bound_ || (user == 0 && focused_ && now >= authority_at_ && now-authority_at_ <= 150));
@@ -71,12 +77,26 @@ public:
             flip_ready, neutral_ready, action_fresh, inspected_stance, observed, mode, speed, tick, catalog};
         admission.manual_balance_admitted = manual_balance_admitted;
         admission.input_policy = policy_;
+        const auto native = native_context(now);
+        if (native_bound_ && native_required_ && !native.valid) { cancel_commands(); return {buttons,rx,ry}; }
+        if (native_bound_ && native.valid) {
+            // The native400 family covers physical rail contact independently
+            // of the current Manual/HUD observer. Named rail phases and Lip
+            // remain unavailable until their own verified signals exist.
+            if (native.rail_family) {
+                admission.pose = SkatePose::grind;
+                admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
+                admission.manual_balance_admitted = false;
+            }
+            admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;
+        }
         return sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
     }
 private:
-    bool enabled_{}, native_bound_{}, focused_{};
+    bool enabled_{}, native_bound_{}, focused_{}, native_required_{};
     InputPolicy policy_;
     Physical physical_{};
+    NativeInputFrame native_{};
     std::uint64_t owner_{}, authority_at_{};
     unsigned source_{};
     std::array<InputSession, 4> sessions_{};
