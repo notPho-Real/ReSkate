@@ -36,6 +36,8 @@ struct InputRequest {
     std::uint8_t generation_mask{};
     InputForm form{};
     InputAirEpisode air_episode{};
+    std::uint64_t input_sequence{};
+    bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
     InputContext context{};
@@ -336,8 +338,10 @@ public:
                 environment.context == InputContext::air || environment.context == InputContext::rail || environment.context == InputContext::lip))
                 {
                     pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
+                    InputMatch press{}; press.count = 1; press.events[0] = event.sequence;
+                    press.first_at = press.last_at = event.at;
                     enqueue(environment.context == InputContext::lip ? InputAction::lip_request : InputAction::rail_request,
-                        now, InputTiming::readiness_ms, environment);
+                        now, InputTiming::readiness_ms, environment,1,0,0,0,{},&press);
                 }
         }
         if (!journal.empty()) last_event_ = journal.back().sequence;
@@ -421,6 +425,11 @@ private:
             request.generation_mask = generation_dependencies(action,environment.context);
             if (action == InputAction::flip || action == InputAction::grab)
                 request.air_episode = environment.native_context.air_episode();
+        }
+        if (action == InputAction::rail_request || action == InputAction::lip_request) {
+            request.control = 0x8000;
+            request.physical_pressed_at = footprint ? footprint->first_at : now;
+            request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
         }
         request.form = form;
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }

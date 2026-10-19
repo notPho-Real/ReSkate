@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_manual_input.h"
 #include "arcade_action_dispatch.h"
+#include "arcade_input_dispatch.h"
 namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
@@ -26,6 +27,13 @@ struct InputJumpEdge {
         return elapsed > 200 ? 200u : static_cast<unsigned>(elapsed);
     }
 };
+// An already recognized held command. Empty output withdraws the handoff.
+// Occupied channels belong to other input actors, never the rail candidate.
+struct InputRailOutput {
+    InputRequest request{};
+    bool held{}, blocked{};
+    ActionDispatch::Output occupied{};
+};
 // Output contracts only; all production recognition belongs to InputSession.
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
@@ -39,6 +47,7 @@ struct NativeGesture {
         ManualInputDiagnostic manual{};
         ActionInputOutput action{};
         InputJumpEdge jump{};
+        InputRailOutput rail{};
     };
 };
 }
