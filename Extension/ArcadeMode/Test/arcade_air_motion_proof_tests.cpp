@@ -72,5 +72,40 @@ int main(){
   p.publish(30,7.75f);p.intent.angular_allowed=false;
   check(!AirMotion::angular_target_current(fresh,p.intent,now,now,30),"current competing owner revokes cached orientation target authority");
  }
- std::cout<<checks<<" native angular publication proof checks passed\n";
+ // Vertical targets use the same original flight identity as angular output,
+ // plus the delivered root velocity; an independent native impulse takes over.
+ for(unsigned cadence:{17u,34u})for(unsigned charge:{0u,199u,200u})for(unsigned fault=0;fault<25;++fault){
+  Pipeline p;p.body.dt=static_cast<float>(cadence)*.001f;
+  p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.observe(1017,103);p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.charge_ms=charge;p.publish(1017,0);p.sample();
+  p.observe(1051,200);p.publish(1051,0);auto output=p.sample();
+  check(output.vertical && std::abs(output.velocity_y-GameplayProfile{}.jump_speed(charge))<.0001f,
+        "qualified ordinary launch keeps the selected absolute charge mapping");
+  auto original=NativeAirSpinProof::from_frame(p.native);auto current=original;
+  float velocity=output.velocity_y,dt=p.body.dt;std::uint64_t now=1051;
+  if(fault==1)++original.physics_step;
+  if(fault==2)p.intent.sampled_at=now+1;
+  if(fault==3)++current.owner.context;
+  if(fault==4){p.observe(1068,100);p.observe(1085,200);current=NativeAirSpinProof::from_frame(p.native);now=1085;p.intent.sampled_at=now;}
+  if(fault==5)current.valid=false;
+  if(fault==6)original.sampled_at=now-151;
+  if(fault==7)dt=0;
+  if(fault==8)dt=.101f;
+  if(fault==9)velocity=std::numeric_limits<float>::quiet_NaN();
+  if(fault==10)velocity=0;
+  if(fault==11)velocity+=4;
+  if(fault==12)velocity-=AirMotion::ordinary_gravity*dt;
+  if(fault==13){velocity-=AirMotion::ordinary_gravity*dt;velocity=std::nextafter(velocity,0.f);}
+  if(fault==14)output.vertical=false;
+  if(fault==15)current.airborne=false;
+  if(fault==16)++current.owner_generation;
+  if(fault==17)++current.episode;
+  if(fault==18)p.intent.enabled=false;
+  if(fault==19)p.intent.sampled_at=now-151;
+  if(fault>=20){const std::array links{&NativeInputOwner::base,&NativeInputOwner::entity,&NativeInputOwner::core,&NativeInputOwner::context,&NativeInputOwner::rig};++(current.owner.*links[fault-20]);}
+  const bool expected=fault==0 || fault==12 || fault==13;
+  check(AirMotion::vertical_target_current(output,p.intent,original,current,now,velocity,dt)==expected,
+        "cached vertical target requires original current flight, valid cadence, fresh input and unsuperseded native velocity");
+ }
+ std::cout<<checks<<" native motion publication proof checks passed\n";
 }

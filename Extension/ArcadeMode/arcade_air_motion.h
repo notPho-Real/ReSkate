@@ -102,6 +102,21 @@ public:
     static float next_height(float root_y, const AirMotionOutput& output, float dt) noexcept {
         return root_y + output.velocity_y*dt - .5f*ordinary_gravity*dt*dt;
     }
+    static bool same_velocity(float a,float b) noexcept {
+        return std::isfinite(a) && std::isfinite(b) &&
+            std::abs(a-b)<=8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
+    }
+    static bool vertical_target_current(const AirMotionOutput& output,const AirMotionIntent& intent,
+            const NativeAirSpinProof& output_proof,const NativeAirSpinProof& current,
+            std::uint64_t now,float velocity_y,float dt) noexcept {
+        // A cached physical target must belong to this flight and still own
+        // the delivered velocity. A collision or another native impulse wins.
+        return output.ready && output.vertical && intent.enabled &&
+            now>=intent.sampled_at && now-intent.sampled_at<=150 && output_proof.matches(current,now) &&
+            std::isfinite(dt) && dt>0 && dt<=.1f &&
+            (same_velocity(velocity_y,output.velocity_y) ||
+             same_velocity(velocity_y,output.velocity_y-ordinary_gravity*dt));
+    }
     static bool angular_target_current(const AirMotionOutput& output, const AirMotionIntent& intent,
             const NativeAirSpinProof& output_proof, const NativeAirSpinProof& current, std::uint64_t now) noexcept {
         return output.angular && intent.enabled && intent.angular_allowed && intent.spin.facts.no_spin!=SpinFact::set &&
@@ -167,11 +182,8 @@ public:
             vy_ = frame.velocity_y; vertical_ = true; // A step off a ledge is not an extra jump.
         } else if (vertical_) {
             const float expected = vy_ - ordinary_gravity * frame.dt;
-            const auto same = [](float a, float b) {
-                return std::abs(a-b) <= 8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
-            };
-            if (same(frame.velocity_y, vy_)) vy_ = expected;
-            else if (same(frame.velocity_y, expected)) vy_ = frame.velocity_y;
+            if (same_velocity(frame.velocity_y, vy_)) vy_ = expected;
+            else if (same_velocity(frame.velocity_y, expected)) vy_ = frame.velocity_y;
             else {
                 // A native impulse/contact or an unmodelled trajectory wins.
                 // Without independent force identity, never overwrite it with

@@ -650,11 +650,17 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     }
     const auto current=arcade_mode::NativeAirSpinProof::from_frame(current_frame);
     const bool angular = arcade_mode::AirMotion::angular_target_current(a.output,intent,a.output_proof,current,now);
-    if (!a.output.vertical && !angular) return false;
+    const float velocity_y=a.output.vertical ? reader.value<std::array<float,3>>(bodies.parts[0],0x70)[1] : 0;
+    const bool vertical=a.output.vertical && arcade_mode::AirMotion::vertical_target_current(a.output,intent,a.output_proof,current,now,
+        velocity_y,bodies.seconds);
+    if (!vertical && !angular) return false;
     source_require(reader.value<std::uint8_t>(owner.entity, 0x7e0) == 0 &&
         reader.raw(reinterpret_cast<std::uintptr_t>(supplied), target.data(), sizeof(target)) && valid_flight_transform(target),
         "Invalid native air motion target.");
-    if (a.output.vertical) target[13] = arcade_mode::AirMotion::next_height(bodies.root[1],a.output,bodies.seconds);
+    if (vertical) {
+        auto observed_output=a.output;observed_output.velocity_y=velocity_y;
+        target[13] = arcade_mode::AirMotion::next_height(bodies.root[1],observed_output,bodies.seconds);
+    }
     if (angular) {
         // Like the existing translation controller, anchor to actual motion
         // and lead one simulation step. Never reintegrate a free-running target.
