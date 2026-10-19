@@ -296,8 +296,37 @@ void jump_release_metadata() {
     check(!blocked.poll(40).jump.released,"imperative release acknowledgment removes the blocked queued release");
 }
 
+void repeated_air_safety() {
+    for(unsigned step:{17u,34u}) {
+        InputSession session;InputAdmission a{};const auto prepared=catalog();
+        a.gameplay=a.authored=a.action_fresh=a.inspected_stance=a.may_start=true;
+        a.action_mode=ActionExperiment::classic;a.pose=SkatePose::air;a.catalog=prepared;
+        unsigned dispatched{};
+        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,510u,578u};
+        for(unsigned now=0;now<1000;now+=step) {
+            a.tick=now/step;
+            const auto buttons=static_cast<std::uint16_t>(((now>=150&&now<200)||(now>=350&&now<400)||(now>=550&&now<600))?0x4000:0);
+            const auto out=session.poll(now,{buttons,static_cast<std::int16_t>(now>=100?-25000:0),0},0,0,a);
+            const auto& d=session.diagnostic();
+            for(std::size_t i=0;i<d.dispatched;++i) {
+                const auto& event=d.dispatch[i];check(dispatched<times.size() && now==times[dispatched],
+                    "identical physical traces preserve recognition separately from authored readiness at both cadences");
+                const bool extra=dispatched==1;
+                check(event.request.action==InputAction::flip && event.request.presses==(extra?2u:1u) &&
+                    event.request.direction==4 && event.request.direction_inherited==extra,
+                    "only an admitted parent extra inherits direction; fresh held-direction actions remain ordinary");
+                check(extra ? event.disposition==InputDisposition::unsupported && out.unsupported && !out.requested_id :
+                    event.disposition==InputDisposition::started && out.requested_id==2,
+                    "unsupported repetition never substitutes a native identity or advances its parent table");
+                ++dispatched;
+            }
+        }
+        check(dispatched==3,"every physical air action has exactly one terminal dispatch disposition");
+    }
+}
+
 }
 int main() {
-    jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
+    repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
     std::cout << checks << " production input session checks passed\n";
 }

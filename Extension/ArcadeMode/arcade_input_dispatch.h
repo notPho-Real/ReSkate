@@ -340,7 +340,7 @@ private:
         const auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
         const InputToken face{InputSource::buttons,13,InputEdge::press};
         InputMatch match{};
-        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ < 250) {
+        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ <= 250) {
             match = events_.history().extra_action(face, {grab_source_,grab_direction_,InputEdge::press}, 300, now, ~manual_owner);
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
@@ -371,7 +371,7 @@ private:
         InputMatch match{}; unsigned presses = 1;
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
-        if (active_flip_ && child && now - flip_started_ < 233) {
+        if (active_flip_ && child && now - flip_started_ <= 233) {
             match = events_.history().extra_action(face, {flip_source_,flip_direction_,InputEdge::press}, 300, now, ~manual_owner);
             if (match) presses = active_flip_count_ < std::numeric_limits<unsigned>::max() ? active_flip_count_ + 1 : active_flip_count_;
         }

@@ -261,5 +261,42 @@ void initial_rail_deadlines() {
         "extra-grind expires after1000ms without renewing on contact or readiness polls");
 }
 
+void extra_table_expiry() {
+    struct Actor { unsigned calls{};InputRequest last{};
+        static InputDisposition receive(void* state,const InputRequest& request) noexcept {
+            auto& self=*static_cast<Actor*>(state);++self.calls;self.last=request;return InputDisposition::started;
+        }
+        InputAdapter adapter() noexcept{return{this,receive};}
+    };
+    for(bool grab:{false,true}) {
+        const unsigned lifetime=grab?250:233;const auto face=static_cast<std::uint16_t>(grab?0x2000:0x4000);
+        for(unsigned elapsed:{lifetime-1,lifetime,lifetime+1}) {
+            UnifiedInput input;Actor actor;InputEnvironment e{InputContext::air,true};e.policy=InputPolicy::strict();e.named_grabs=grab;
+            input.poll(0,{},e,actor.adapter());input.poll(10,{face,-25000,0},e,actor.adapter());input.poll(20,{},e,actor.adapter());
+            input.poll(10+elapsed,{face},e,actor.adapter());
+            check(elapsed<=lifetime ? actor.calls==2 && actor.last.presses==2 :
+                grab ? actor.calls==2 && actor.last.presses==1 && !actor.last.direction_inherited : actor.calls==1,
+                "extra table remains installed through its deadline and expires only afterwards");
+            if(elapsed<=lifetime)check(actor.last.presses==2 && actor.last.direction_inherited,
+                "strict query window remains separate from inclusive extra table lifetime");
+        }
+    }
 }
-int main() { initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
+
+void prepared_pair_safety() {
+    for(const auto first:{std::int16_t{25000},std::int16_t{-25000}}) {
+        InputSession session;InputAdmission a{};a.gameplay=a.manual_prepare=true;a.pose=SkatePose::riding;
+        session.poll(2000,{},0,0,a);session.poll(2010,{0,0,first},0,0,a);
+        const auto opposite=static_cast<std::int16_t>(-first);
+        check(!session.poll(2020,{0,0,opposite},0,0,a).manual.owns && session.pending_manual().recognized_at==2020,
+            "the recovery pair is recognized while preparation alone cannot actuate");
+        a.manual_safe=true;a.manual_prepare=false;const auto ready=session.poll(2030,{0,0,opposite},0,0,a);
+        check(ready.manual.owns && ready.right_y==(first>0?-20000:20000) && session.pending_manual().action==InputAction::none,
+            "fresh native safety dispatches the original recovery pair without a new physical edge");
+        a.manual_safe=false;a.manual_prepare=true;
+        check(!session.poll(2031,{},0,0,a).manual.owns,"preparation cannot retain an already active unsafe native owner");
+    }
+}
+
+}
+int main() { prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
