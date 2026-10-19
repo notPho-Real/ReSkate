@@ -15,6 +15,7 @@
 #include "arcade_manual_release.h"
 #include "arcade_manual_hop.h"
 #include "arcade_manual_acquisition.h"
+#include "arcade_manual_balance_entry.h"
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
@@ -233,6 +234,7 @@ ComboSession combo_session(native_combo_tuning());
 ManualPhysics physical_manual;
 ManualRelease manual_release;
 ManualAcquisition manual_acquisition; // Input mutex protects request-to-native cleanup.
+GroundManualBalance ground_manual_balance; // Same mutex; delivered basic ground contact only.
 ManualHopContinuity manual_hop; // Input mutex protects admitted jump continuity.
 std::atomic<bool> reset_physical_manual{true};
 ManualObservation manual_identity;
@@ -250,7 +252,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
                   bool native_push_contact, float simulation_step) noexcept {
     if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
-        { std::lock_guard lock(ollie_mutex); manual_hop.reset(); manual_acquisition.reset(); }
+        { std::lock_guard lock(ollie_mutex); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); }
         physical_manual.reset(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
     }
     const auto score = score_activity();
@@ -280,20 +282,29 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool activity_fresh = score.valid && now >= score.sampled_at && now - score.sampled_at <= 150;
     const auto candidate_pose = observed_pose({valid, activity_fresh,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
-    // Native contact prepares controls; a matching observed label establishes
-    // manual identity for balance/linking. Neither establishes monetary ownership.
+    // Basic delivered ground gestures join a new physical contact before name
+    // presentation. Independent history remains the route for other entries.
+    // Neither path establishes monetary ownership or an animation clock.
     // A delivering putdown owns termination. Delayed presentation cannot
     // re-admit balance or retain the old identity after actual completion.
     if (manual_release.pending()) manual_identity.reset(manual_label);
-    const auto manual_observation = manual_identity.poll(candidate_pose, manual_label,
+    const auto history_observation = manual_identity.poll(candidate_pose, manual_label,
         {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
          owner_changed, observation_gap,
          manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u},
              (native.words[0] & 0x40u) != 0), (native.words[0] & 0x40u) != 0});
+    ManualObservationResult manual_observation{};
     const auto physical_contact = manual_acquisition_pose(native_frame,bail);
     bool acquisition_putdown{}, acquiring_history{};
     {
         std::lock_guard lock(ollie_mutex);
+        const auto ground = ground_manual_balance.sample(now,native_frame,
+            enabled() && valid && !owner_changed && !observation_gap && !bail,
+            !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown());
+        // Original history and owned physical contact retain distinct admission
+        // evidence; an absent/delayed name cannot suppress acquired balance.
+        manual_observation = manual_balance_observation(ground,history_observation);
+        if (ground.confirmed) manual_identity.reset(manual_label); // One physical section cannot also queue a delayed history admission.
         acquisition_putdown = manual_acquisition.step(now,native_frame,physical_contact,manual_observation.confirmed,
             valid && !owner_changed && !observation_gap && !bail, (native.words[0] & 0x40u) != 0);
         acquiring_history = manual_acquisition.preserves_history(now,native_frame);
@@ -990,7 +1001,7 @@ void set_enabled(bool value, bool persist) noexcept {
             input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
             arcade_input.set_recognition_capture(0,false);
         }
-        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset();
+        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
         arcade_input.enable(value);
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
@@ -1190,7 +1201,7 @@ void on_client_tick() noexcept {
             combo_owner = {};
             {
                 std::lock_guard lock(ollie_mutex);
-                arcade_input.cancel_manuals(); manual_hop.reset(); manual_acquisition.reset();
+                arcade_input.cancel_manuals(); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
                 manual_eligible_until.store(0, std::memory_order_release);
                 manual_prepare_until.store(0, std::memory_order_release);
                 manual_release_until.store(0, std::memory_order_release);
@@ -1272,7 +1283,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
-            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset();
+            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();
@@ -1384,8 +1395,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // stance needing authored flip reflection. Do not invert this for grabs.
         // Revert mirroring outside that baseline remains a separate native test.
         const auto& action = result.action;
-        manual_acquisition.observe(now,arcade_input.native_context(now),result.manual,
-            game_input && !offboard && !result.authored_playback && !action.owned && !(physical_buttons & (classic_a | 0x0030u)));
+        const auto manual_delivery_frame = arcade_input.native_context(now);
+        const bool manual_delivery = game_input && !offboard && !result.authored_playback && !action.owned &&
+            !(physical_buttons & (classic_a | 0x0030u));
+        manual_acquisition.observe(now,manual_delivery_frame,result.manual,manual_delivery);
+        ground_manual_balance.observe(now,manual_delivery_frame,result.manual,manual_delivery);
         result.buttons &= ~action.consume_buttons;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }

@@ -86,6 +86,14 @@ the session journal recognizes directional commands. Balance corrections cannot 
 one; confirmed takeoff, incompatible poses and competing commands release
 ownership. New command repeatability and combined gameplay still need Deck tests.
 
+Basic ground Manual/Nose balance can start before a history name appears. The
+existing native gesture must first be delivered on two-wheel ground; a later
+fresh physics step must acquire the requested wheel contact under the same full
+owner. A push, existing one-wheel pose, expired delivery or reused command cannot
+start balance. The acquired section uses the existing correction, failure and
+neutral-putdown paths. Direct airborne-to-one-wheel and advanced entries retain
+the separate history admission route; no native animation phase is inferred.
+
 Continuous sanitized HUD-label appearance tracking supplies independent evidence.
 Persistent rereads never emit another occurrence; ambiguous histories, coalesced
 edges and stale samples are explicit. These edges are collected but do not yet
