@@ -264,7 +264,48 @@ namespace {
 NativeInputFrame capture_frame(std::uint64_t at=1000,std::uint64_t step=10){
     NativeInputFrame f;f.valid=true;f.owner={11,12,13,14,15};f.owner_generation=f.contact_generation=f.action_generation=1;f.physics_step=step;f.sampled_at=at;return f;
 }
+void recognition_v2_rows(){
+    CaptureCorrelationEvidence row;row.schema=2;row.capture=1;row.kind=CaptureCorrelationKind::event;row.source=CaptureCorrelationSource::recognition;
+    row.required_sources=31;row.ordinal=row.source_sequence=1;row.ms=row.recognized_ms=1034;row.native_ms=1017;row.owner=1;
+    row.owner_generation=row.contact_generation=row.action_generation=1;row.physics_step=2;row.native_valid=row.events_known=true;
+    row.recognition_id=7;row.recognition_session=3;row.action=3;row.context=2;row.footprint_kind=1;row.member_count=2;
+    row.first_event=2;row.last_event=8;row.first_ms=1000;row.last_ms=1034;row.held_reuse=2;
+    check(capture_correlation_valid(row),"v2 summary retains exact membership count and original held footprint bounds");
+    row.member_index=1;row.member_event=8;check(capture_correlation_valid(row),"matcher order may put newest edge before reused older edge");
+    row.member_index=2;row.member_event=2;check(capture_correlation_valid(row),"held reuse keeps its real old event identity");
+    const auto valid=row;row.member_event=9;check(!capture_correlation_valid(row),"member cannot lie outside original exact bounds");
+    row=valid;row.member_index=3;check(!capture_correlation_valid(row),"member index cannot exceed count");
+    row=valid;row.recognition_id=0;check(!capture_correlation_valid(row),"exhausted recognition identity cannot become a valid transport row");
+    row=valid;row.source=CaptureCorrelationSource::input;check(!capture_correlation_valid(row),"other sources cannot carry invented recognition metadata");
+    row=valid;row.schema=1;check(!capture_correlation_valid(row),"legacy bounds must not pretend to carry v2 membership");
+    row=valid;row.footprint_kind=2;row.member_index=row.member_count=row.member_event=row.held_reuse=row.first_event=row.last_event=row.first_ms=row.last_ms=0;
+    check(capture_correlation_valid(row),"known input-free default has recognition time but no fabricated physical events");
+    row.first_event=row.last_event=1;check(!capture_correlation_valid(row),"input-free evidence cannot carry physical event bounds");row.first_event=row.last_event=0;
+    row.footprint_kind=0;row.events_known=false;check(capture_correlation_valid(row),"unknown footprint remains explicit unavailable data");
+    row.events_known=true;check(!capture_correlation_valid(row),"unknown footprint cannot be relabeled known empty");
+    for(bool coherent:{false,true}){
+        CaptureCorrelationProducer producer;std::vector<CaptureCorrelationEvidence> rows;auto sink=[&](const auto& r){rows.push_back(r);return true;};
+        const auto frame=capture_frame();producer.begin(1000,100,2,frame,0,sink);
+        auto authority=capture_frame(1034,12);authority.action_generation=2;
+        auto original=InputNativeContext::from_frame(authority);if(!coherent)original.generations.action=1;
+        row=valid;row.ms=row.recognized_ms=1034;row.source_sequence=1;row.ordinal=0;
+        producer.recognition(row,original,true,1034,authority,0,sink);
+        check(rows.back().native_valid==coherent,"same-step proof cannot mix parent lineage generation with a newer observation clock");
+        check(rows.back().native_ms==1034&&rows.back().physics_step==12&&rows.back().action_generation==(coherent?2u:1u),"proof fields are original values even when explicitly unavailable");
+    }
+}
+
 void capture_producer_drain(){
+    {
+        CaptureCorrelationProducer producer;CaptureCorrelationDrain drain;std::vector<CaptureCorrelationEvidence> rows;
+        auto sink=[&](const auto& r){rows.push_back(r);return true;};const auto f=capture_frame();
+        producer.begin(1000,100,4,f,0,sink);CaptureCorrelationEvidence event;event.source=CaptureCorrelationSource::native;event.source_sequence=10;event.ms=1000;event.events_known=true;
+        producer.event(event,f,0,sink);producer.omitted(3);producer.end(1010,f,0,sink);
+        drain.written(rows[0],true);drain.written(rows[1],true);const auto end=drain.footer(rows[2],0);
+        check(end.expected==4&&end.drained==1&&end.dropped==3&&!end.complete&&!end.events_known,
+            "missing diagnostic attempts count exactly once without fabricated event rows");
+    }
+
     for(unsigned fault=0;fault<8;++fault){
         InputTelemetry telemetry;InputTelemetryLink link;link.publish(telemetry);CaptureCorrelationProducer producer;CaptureCorrelationDrain drain;
         unsigned attempts{};std::vector<CaptureCorrelationEvidence> written;
@@ -321,6 +362,7 @@ int main() {
     score_probe_rows();
     capture_correlation_rows();
     capture_producer_drain();
+    recognition_v2_rows();
     concurrent_producers();
     std::cout << checks << " input telemetry checks passed\n";
 }

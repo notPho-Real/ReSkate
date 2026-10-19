@@ -353,10 +353,32 @@ void sampled_replay_tests() {
     }
 }
 
+void recognition_capture_opt_in_tests(){
+    static_assert(sizeof(InputRequest)<=256,"requests must not embed full100-ID evidence arrays");
+    static_assert(sizeof(UnifiedInput)<32768,"ordinary input storage remains close to its original fixed footprint");
+    UnifiedInput input;Adapter adapter;adapter.result=InputDisposition::waiting;
+    const InputEnvironment ground{InputContext::ground,true};
+    input.poll(0,{},ground,adapter.bind());input.poll(1,{0x1000},ground,adapter.bind());
+    check(input.diagnostic().recognized==1&&input.diagnostic().recognition_count==0&&!adapter.last.recognition,
+        "ordinary gameplay recognizes and queues without allocating detached capture evidence");
+    input.set_recognition_capture(true);input.poll(2,{},ground,adapter.bind());
+    check(input.diagnostic().recognition_count==1&&input.diagnostic().recognition[0].request.recognition,
+        "explicit diagnostic opt-in captures new attempts only");
+    const auto identity=input.diagnostic().recognition[0].request.recognition;
+    check(identity->footprint.count==2&&identity->footprint.first_at==1&&identity->footprint.last_at==2,
+        "enabling diagnostics does not fabricate a fresh initiating press");
+    input.set_recognition_capture(false);
+    check(input.diagnostic().recognition_count==0&&identity->footprint.last_at==2,
+        "disabling capture releases unread diagnostics without mutating retained immutable evidence");
+    input.poll(3,{0x1000},ground,adapter.bind());
+    check(input.diagnostic().recognition_count==0&&!adapter.last.recognition,
+        "later ordinary recognition remains metadata-free after disabling capture");
+}
+
 void recognition_capture_tests() {
     // Two recognitions in one physical sample retain independent exact edges.
     for (const std::uint64_t cadence : {17u,34u}) {
-        UnifiedInput input; Adapter adapter; adapter.result=InputDisposition::waiting;
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; adapter.result=InputDisposition::waiting;
         InputEnvironment ground{InputContext::ground,true};
         const auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
             ground.native_context={true,true,{1,1,1},now+1,now,false};
@@ -368,32 +390,32 @@ void recognition_capture_tests() {
         std::uint64_t press_id{};
         for(std::size_t i=0;i<d.recognition_count;++i) {
             const auto& attempt=d.recognition[i]; const auto& r=attempt.request;
-            check(attempt.queued && r.recognition.sequence && r.session==d.session && r.recognized_at==cadence,
+            check(attempt.queued && r.recognition->sequence && r.session==d.session && r.recognized_at==cadence,
                 "attempt retains stable sequence action session and original recognition time");
-            check(r.recognition.footprint_kind==InputFootprintKind::events && r.recognition.footprint.count==1 &&
-                r.recognition.footprint.first_at==cadence && r.recognition.footprint.last_at==cadence,
+            check(r.recognition->footprint_kind==InputFootprintKind::events && r.recognition->footprint.count==1 &&
+                r.recognition->footprint.first_at==cadence && r.recognition->footprint.last_at==cadence,
                 "single-edge commands publish actual sequence footprint and time bounds");
-            const auto id=r.recognition.footprint.events[0]; bool exact{};
+            const auto id=r.recognition->footprint.events[0]; bool exact{};
             for(const auto& event:input.history().events()) if(event.sequence==id)
                 exact=event.token==(r.action==InputAction::crouch ? a : InputToken{InputSource::triggers,1,InputEdge::press});
-            check(exact && r.recognition.observation_known && r.recognition.observation==ground.native_context,
+            check(exact && r.recognition->observation_known && r.recognition->observation==ground.native_context,
                 "attempt proof is the actual immutable observation and exact initiating edge");
             if(r.action==InputAction::crouch) press_id=id;
-            if(i)check(r.recognition.sequence==d.recognition[i-1].request.recognition.sequence+1,
+            if(i)check(r.recognition->sequence==d.recognition[i-1].request.recognition->sequence+1,
                 "multiple attempts in one poll have distinct ordered identities");
         }
         poll(2*cadence,{});
         check(input.diagnostic().recognition_count==1, "release emits one new attempt without republishing old recognition");
         const auto release=input.diagnostic().recognition[0].request;
-        check(release.action==InputAction::ollie_release && release.recognition.footprint.count==2 &&
-            release.recognition.footprint.events[0]==press_id && release.recognition.footprint.first_at==cadence &&
-            release.recognition.footprint.last_at==2*cadence,
+        check(release.action==InputAction::ollie_release && release.recognition->footprint.count==2 &&
+            release.recognition->footprint.events[0]==press_id && release.recognition->footprint.first_at==cadence &&
+            release.recognition->footprint.last_at==2*cadence,
             "release preserves both original crouch press and physical release rather than synthetic poll edges");
         poll(3*cadence,{});
         check(input.diagnostic().recognition_count==0, "held or neutral polls do not renew recognition identity");
     }
     for (const std::uint64_t cadence : {17u,34u}) {
-        UnifiedInput input; Adapter adapter; adapter.result=InputDisposition::waiting;
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; adapter.result=InputDisposition::waiting;
         InputEnvironment air{InputContext::air,true};
         auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
             air.native_context={true,true,{1,1,1},now+1,now,false};
@@ -401,10 +423,10 @@ void recognition_capture_tests() {
         };
         poll(0,{}); poll(cadence,{0,-25000}); poll(2*cadence,{0x4000,-25000});
         const auto original=input.diagnostic().recognition[0].request;
-        check(original.recognition.footprint.count==2 && original.recognition.footprint.held_reuse &&
-            original.recognition.footprint.first_at==cadence && original.recognition.footprint.last_at==2*cadence,
+        check(original.recognition->footprint.count==2 && original.recognition->footprint.held_reuse &&
+            original.recognition->footprint.first_at==cadence && original.recognition->footprint.last_at==2*cadence,
             "held-direction reuse exports exact matcher IDs and original bounds");
-        const auto direction_id=original.recognition.footprint.held_reuse;
+        const auto direction_id=original.recognition->footprint.held_reuse;
         bool exact{}; for(const auto& event:input.history().events())if(event.sequence==direction_id)
             exact=event.token==InputToken{InputSource::direction,4,InputEdge::press};
         check(exact, "held reuse refers to a real original direction event");
@@ -415,7 +437,7 @@ void recognition_capture_tests() {
             "waiting and dispatch preserve original proof IDs and times across new observation polls");
     }
     {
-        UnifiedInput input; Adapter adapter; adapter.result=InputDisposition::waiting;
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; adapter.result=InputDisposition::waiting;
         InputEnvironment air{InputContext::air,true};
         input.poll(0,{},air,adapter.bind()); input.poll(1,{0,-25000},air,adapter.bind());
         for(std::uint64_t i=0;i<=InputRequestQueue::capacity;++i) {
@@ -423,14 +445,14 @@ void recognition_capture_tests() {
             const auto& d=input.diagnostic();
             check(d.recognition_count==1 && d.recognition[0].queued==(i<InputRequestQueue::capacity),
                 "queue-full attempt remains observable with its own identity and exact admission result");
-            check(!d.recognition[0].request.recognition.observation_known,
+            check(!d.recognition[0].request.recognition->observation_known,
                 "pure-model missing native proof remains explicitly unknown");
             input.poll(3+2*i,{0,-25000},air,adapter.bind());
         }
         check(input.diagnostic().queue_full==1, "queue-full diagnostic counts the rejected attempt exactly once");
     }
     {
-        UnifiedInput input; Adapter adapter; InputEnvironment lip{InputContext::lip,true};
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; InputEnvironment lip{InputContext::lip,true};
         lip.rail.phase=InputRailPhase::lip_selection; lip.rail.fresh=true; lip.rail.generation=1;
         lip.rail.selection_frame=100;
         input.poll(0,{},lip,adapter.bind());
@@ -450,31 +472,31 @@ void recognition_capture_tests() {
             "per-poll omission resets while cumulative loss survives");
     }
     {
-        UnifiedInput input; Adapter adapter; InputEnvironment lip{InputContext::lip,true};
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; InputEnvironment lip{InputContext::lip,true};
         lip.rail.phase=InputRailPhase::lip_selection; lip.rail.fresh=true; lip.rail.generation=1;
         lip.rail.gameframe=2;
         input.poll(0,{},lip,adapter.bind());
         const auto& r=input.diagnostic().recognition[0].request;
-        check(input.diagnostic().recognition_count==1 && r.recognition.footprint_kind==InputFootprintKind::input_free &&
-            !r.recognition.footprint.count && !r.recognition.footprint.first_at && !r.recognition.observation_known,
+        check(input.diagnostic().recognition_count==1 && r.recognition->footprint_kind==InputFootprintKind::input_free &&
+            !r.recognition->footprint.count && !r.recognition->footprint.first_at && !r.recognition->observation_known,
             "autonomous default is explicitly input-free without invented edges or proof");
-        UnifiedInput held; InputEnvironment surface{InputContext::air,true}; surface.surface.fresh=surface.surface.can_push=true;
+        UnifiedInput held; held.set_recognition_capture(true); InputEnvironment surface{InputContext::air,true}; surface.surface.fresh=surface.surface.can_push=true;
         held.poll(0,{},surface,adapter.bind()); surface.surface.physics_step=1; held.poll(10,{0x8000},surface,adapter.bind());
         check(held.diagnostic().recognition_count==1 &&
-            held.diagnostic().recognition[0].request.recognition.footprint_kind==InputFootprintKind::unknown,
+            held.diagnostic().recognition[0].request.recognition->footprint_kind==InputFootprintKind::unknown,
             "unspecified held-control footprint stays unknown instead of being mislabeled input-free");
     }
     {
-        UnifiedInput input; Adapter adapter; const InputEnvironment ground{InputContext::ground,true};
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; const InputEnvironment ground{InputContext::ground,true};
         input.poll(0,{},ground,adapter.bind());input.poll(1,{0x1000},ground,adapter.bind());
-        const auto press=input.diagnostic().recognition[0].request.recognition.footprint;
+        const auto press=input.diagnostic().recognition[0].request.recognition->footprint;
         for(std::uint64_t now=2;now<122;++now)
             input.poll(now,{0x1000,static_cast<std::int16_t>(now%2 ? -25000 : 25000)},ground,adapter.bind());
         bool evicted=true;for(const auto& event:input.history().events())evicted=evicted && event.sequence!=press.events[0];
         input.poll(122,{},ground,adapter.bind());
         const auto& release=input.diagnostic().recognition[0].request;
-        check(evicted && release.action==InputAction::ollie_release && release.recognition.footprint.count==2 &&
-            release.recognition.footprint.events[0]==press.events[0] && release.recognition.footprint.first_at==1,
+        check(evicted && release.action==InputAction::ollie_release && release.recognition->footprint.count==2 &&
+            release.recognition->footprint.events[0]==press.events[0] && release.recognition->footprint.first_at==1,
             "release keeps original press identity even after bounded history rotation");
     }
     {
@@ -482,13 +504,13 @@ void recognition_capture_tests() {
         check(input_diagnostic_increment(counter) && counter==std::numeric_limits<std::uint64_t>::max() &&
             !input_diagnostic_increment(counter) && counter==std::numeric_limits<std::uint64_t>::max(),
             "diagnostic identity allocator saturates without rollover");
-        UnifiedInput input; Adapter adapter; const InputEnvironment ground{InputContext::ground,true};
+        UnifiedInput input; input.set_recognition_capture(true); Adapter adapter; const InputEnvironment ground{InputContext::ground,true};
         input.poll(0,{},ground,adapter.bind());
         auto& d=const_cast<UnifiedInput::Diagnostic&>(input.diagnostic());
         d.recognized=std::numeric_limits<std::uint64_t>::max();
         input.poll(10,{0x1000},ground,adapter.bind());
-        check(d.recognition_count==1 && d.recognition_overflow && d.recognition[0].request.recognition.sequence_overflow &&
-            !d.recognition[0].request.recognition.sequence,
+        check(d.recognition_count==1 && d.recognition_overflow && d.recognition[0].request.recognition->sequence_overflow &&
+            !d.recognition[0].request.recognition->sequence,
             "exhausted attempt counter exports explicit unavailable identity without changing recognition or wrapping");
     }
 }
@@ -496,6 +518,7 @@ void recognition_capture_tests() {
 }
 int main() {
     recognition_capture_tests();
+    recognition_capture_opt_in_tests();
     journal_tests(); overlap_footprint_tests(); normalization_tests(); queue_tests(); queue_lifecycle_tests(); queue_action_cancellation_tests(); router_tests(); deferred_recognition_tests(); sampled_replay_tests();
     std::cout << checks << " event architecture checks passed\n";
 }

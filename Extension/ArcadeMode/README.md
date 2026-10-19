@@ -245,7 +245,14 @@ fresh native ownership and active telemetry. Only anonymous capture-local owner
 tokens, original times/sequences and native generations/steps reach the log.
 The existing worker counts confirmed synchronous file writes before the footer;
 queue, sink, boundary, provenance or required-source loss remains incomplete.
-Recognition currently lacks the complete matched-event IDs, so its footprint
-is explicitly unavailable and prevents complete accounting for that scope.
+Schema2 recognition rows preserve each actual attempt's stable ID, session,
+queue result, original observation and exact matched-event IDs in matcher order.
+A summary is followed by its numbered member rows on that same channel. Held
+reuse retains its original event ID/time; input-free and unknown footprints
+remain distinct. Metadata allocation is opt-in; ordinary input requests do not
+embed a100-ID evidence array. Omitted diagnostic batches and missed polls are
+charged once, while a recorded queue rejection is a complete attempt outcome.
+Schema1 remains readable, but its recognition bounds cannot prove membership.
+Missing/duplicate members and exhausted identities prevent complete accounting.
 Input scope covers the shared physical-event journal; ordinary pad diagnostics
 remain separate. Capture completeness never verifies a native action or cause.

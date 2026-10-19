@@ -252,20 +252,30 @@ CAPTURE_CORRELATION_NUMBERS = (
     'physics_step', 'first_event', 'last_event', 'first_ms', 'last_ms', 'recognized_ms',
     'expected', 'drained', 'dropped', 'drop_begin', 'drop_end', 'first_ordinal', 'last_ordinal')
 CAPTURE_CORRELATION_FLAGS = ('native_valid', 'events_known', 'complete', 'overflow')
+CAPTURE_RECOGNITION_NUMBERS = ('recognition_id', 'recognition_session', 'action', 'context', 'footprint_kind',
+                               'member_index', 'member_count', 'member_event', 'held_reuse')
+CAPTURE_CORRELATION_V2_NUMBERS = CAPTURE_CORRELATION_NUMBERS[:19] + CAPTURE_RECOGNITION_NUMBERS + CAPTURE_CORRELATION_NUMBERS[19:]
+CAPTURE_CORRELATION_V2_FLAGS = CAPTURE_CORRELATION_FLAGS + ('queue_admitted',)
+
 
 
 def parse_capture_correlation(text):
     """Explicit bounded capture accounting; schema completeness is never native acceptance."""
     prefix = 'ARCADE INPUT CAPTURE: '
-    pattern = re.compile(' '.join(key + r'=([0-9]{1,20})' for key in CAPTURE_CORRELATION_NUMBERS) +
-                         ' ' + ' '.join(key + r'=(true|false)' for key in CAPTURE_CORRELATION_FLAGS) + r'\.')
+    schemas = {1: (CAPTURE_CORRELATION_NUMBERS, CAPTURE_CORRELATION_FLAGS),
+               2: (CAPTURE_CORRELATION_V2_NUMBERS, CAPTURE_CORRELATION_V2_FLAGS)}
+    patterns = {version: re.compile(' '.join(key + r'=([0-9]{1,20})' for key in numbers) +
+                                   ' ' + ' '.join(key + r'=(true|false)' for key in flags) + r'\.')
+                for version, (numbers, flags) in schemas.items()}
     states, malformed, unassigned, truncated, newest = {}, 0, 0, 0, 0
     maximum = (1 << 64) - 1
     for line in text.splitlines():
         if prefix not in line:
             continue
         payload = line.split(prefix, 1)[1]
-        match = pattern.fullmatch(payload)
+        version = 2 if payload.startswith('schema=2 ') else 1
+        numbers, flags = schemas[version]
+        match = patterns[version].fullmatch(payload)
         if not match:
             malformed += 1
             identity = re.search(r'(?:^| )capture=([0-9]{1,20})(?: |$)', payload)
@@ -276,10 +286,13 @@ def parse_capture_correlation(text):
                 unassigned += 1
             continue
         values = match.groups()
-        row = dict(zip(CAPTURE_CORRELATION_NUMBERS, map(int, values[:len(CAPTURE_CORRELATION_NUMBERS)])))
-        row.update(zip(CAPTURE_CORRELATION_FLAGS, (v == 'true' for v in values[len(CAPTURE_CORRELATION_NUMBERS):])))
+        row = dict(zip(numbers, map(int, values[:len(numbers)])))
+        row.update(zip(flags, (v == 'true' for v in values[len(numbers):])))
+        for key in CAPTURE_RECOGNITION_NUMBERS:
+            row.setdefault(key, 0)
+        row.setdefault('queue_admitted', False)
         cid, kind = row['capture'], row['kind']
-        invalid = (any(row[k] > maximum for k in CAPTURE_CORRELATION_NUMBERS) or row['schema'] != 1 or
+        invalid = (any(row[k] > maximum for k in numbers) or row['schema'] not in schemas or
                    not cid or kind > 2 or row['source'] > 5 or not 0 < row['required_sources'] <= 31 or
                    row['owner'] > 0xffffffff)
         if kind == 0 and cid not in states and cid > newest and not invalid:
@@ -298,6 +311,28 @@ def parse_capture_correlation(text):
             malformed += 1
             state['errors'].add('invalid_field')
             continue
+        if row['schema'] != b['schema']:
+            state['errors'].add('mixed_schema')
+        recognition = row['schema'] == 2 and kind == 1 and row['source'] == 2
+        if recognition:
+            bad = (not row['recognition_id'] or not 0 < row['action'] <= 21 or row['context'] > 6 or
+                   row['footprint_kind'] > 2 or row['member_count'] > 100 or
+                   row['member_index'] > row['member_count'] or row['recognized_ms'] != row['ms'])
+            if row['footprint_kind'] == 1:
+                bad |= (not row['events_known'] or not row['member_count'] or not row['first_event'] or
+                        (not row['member_index'] and bool(row['member_event'])) or
+                        (bool(row['member_index']) and not row['first_event'] <= row['member_event'] <= row['last_event']))
+            else:
+                bad |= (any(row[k] for k in ('first_event', 'last_event', 'first_ms', 'last_ms', 'member_count', 'member_index', 'member_event', 'held_reuse')) or
+                        (row['footprint_kind'] == 2 and not row['events_known']) or
+                        (row['footprint_kind'] == 0 and row['events_known']))
+            if bad:
+                state['errors'].add('recognition_shape')
+        elif any(row[k] for k in CAPTURE_RECOGNITION_NUMBERS) or row['queue_admitted']:
+            state['errors'].add('unexpected_recognition')
+        if row['schema'] == 1 and kind == 1 and row['source'] == 2:
+            # Legacy bounds decode, but cannot prove exact membership or admission.
+            state['errors'].add('recognition_members_unavailable')
         if row['native_valid'] and (not all(row[k] for k in ('owner', 'owner_generation', 'contact_generation',
                                                           'action_generation', 'physics_step')) or
                                     not 0 <= row['ms'] - row['native_ms'] <= 150):
@@ -362,6 +397,42 @@ def parse_capture_correlation(text):
         for a, z in zip(steps, steps[1:]):
             if any(x > y for x, y in zip(by_step[a], by_step[z])):
                 errors.add('step_rollback')
+        groups = {}
+        for row in events:
+            if row['schema'] != 2 or row['source'] != 2:
+                continue
+            identity = (row['recognition_session'], row['recognition_id'])
+            group = groups.setdefault(identity, {})
+            index = row['member_index']
+            if index in group:
+                errors.add('duplicate_recognition_member')
+            group[index] = row
+        recognitions = []
+        prior_recognition = 0
+        for identity, group in groups.items():
+            summary = group.get(0)
+            if summary is None:
+                errors.add('missing_recognition_summary')
+                continue
+            if identity[1] <= prior_recognition:
+                errors.add('recognition_counter_rollback')
+            prior_recognition = identity[1]
+            count = summary['member_count']
+            if set(group) != set(range(count + 1)):
+                errors.add('missing_recognition_member')
+            signature = ('ms', 'native_ms', 'owner', 'owner_generation', 'contact_generation', 'action_generation',
+                         'physics_step', 'first_event', 'last_event', 'first_ms', 'last_ms', 'recognized_ms',
+                         'action', 'context', 'footprint_kind', 'member_count', 'held_reuse', 'queue_admitted',
+                         'native_valid', 'events_known')
+            if any(row[key] != summary[key] for row in group.values() for key in signature):
+                errors.add('recognition_member_provenance')
+            members = [group[i]['member_event'] for i in range(1, count + 1) if i in group]
+            if count and (len(members) != count or not all(members) or
+                          (min(members), max(members)) != (summary['first_event'], summary['last_event']) or
+                          (summary['held_reuse'] and summary['held_reuse'] not in members)):
+                errors.add('recognition_members')
+            recognitions.append(dict(id=identity[1], session=identity[0], events=members,
+                                     held_reuse=summary['held_reuse'], queue_admitted=summary['queue_admitted']))
         if end is None:
             errors.add('missing_end')
         else:
@@ -382,7 +453,7 @@ def parse_capture_correlation(text):
                 errors.add('incomplete_end')
         if seen_sources & b['required_sources'] != b['required_sources']:
             errors.add('missing_source')
-        captures.append(dict(id=cid, begin=b, end=end, events=events, errors=sorted(errors), complete=not errors))
+        captures.append(dict(id=cid, begin=b, end=end, events=events, recognitions=recognitions, errors=sorted(errors), complete=not errors))
     eligible = bool(captures) and all(c['complete'] for c in captures) and not (malformed or unassigned or truncated)
     return dict(captures=captures, capture_completeness='COMPLETE' if eligible else 'INCOMPLETE' if captures or malformed else 'MISSING',
                 malformed=malformed, unassigned=unassigned, truncated=truncated,

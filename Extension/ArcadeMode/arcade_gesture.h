@@ -110,6 +110,9 @@ public:
     const InputHistory* history(unsigned user) const noexcept {
         return user < sessions_.size() ? &sessions_[user].history() : nullptr;
     }
+    void set_recognition_capture(unsigned user,bool enabled) noexcept {
+        if(user<sessions_.size())sessions_[user].set_recognition_capture(enabled);
+    }
     const UnifiedInput::Diagnostic* input_diagnostic(unsigned user) const noexcept {
         return user<sessions_.size()?&sessions_[user].diagnostic():nullptr;
     }

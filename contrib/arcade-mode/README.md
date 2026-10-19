@@ -64,6 +64,27 @@ be closed; installation uses the existing lock and atomic DLL replacement. Steam
 launch options are unchanged. Permanent scripts/config live in
 `~/.local/share/reskate-arcade` and need no root access.
 
+## Finite input diagnostics
+
+`arcadeinputcapture <milliseconds> [source-mask]` uses the existing bounded
+client telemetry channel; duration is at most5000ms and0 stops a running
+capture. The default mask31 requires physical input, recognition, native
+sampling, Manual admission and Manual termination evidence. A narrower mask
+reports completeness only for its selected sources.
+
+Schema2 retains each recognition attempt's stable identity, original observation,
+queue admission result and exact matched event IDs in matcher order. One summary
+and its ordered members share that channel. Reused held inputs retain their old
+IDs and times. Missing members, omitted batches, stale ownership, counter
+exhaustion or an unconfirmed sink write prevent complete evidence. Queue rejection
+is a recorded outcome. Unknown input footprints remain unavailable; an input-free
+action has an explicitly empty footprint. Recognition metadata allocation is
+limited to explicit captures; ordinary requests keep no event-array copy.
+
+The parser still reads schema1. Its recognition bounds cannot establish exact
+membership. Capture completeness establishes transport coverage for the declared
+sources; native action, causal and player acceptance require separate evidence.
+
 ## Tests and remaining hardware verification
 
 `python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v`

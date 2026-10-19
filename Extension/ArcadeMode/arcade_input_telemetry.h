@@ -74,10 +74,13 @@ struct CaptureCorrelationEvidence {
     std::uint64_t owner_generation{}, contact_generation{}, action_generation{}, physics_step{};
     std::uint64_t first_event{}, last_event{}, first_ms{}, last_ms{}, recognized_ms{};
     std::uint64_t expected{}, drained{}, dropped{}, drop_begin{}, drop_end{}, first_ordinal{}, last_ordinal{};
+    // V2: one recognition summary plus ordered member rows on this SAME queue.
+    std::uint64_t recognition_id{}, recognition_session{}, action{}, context{}, footprint_kind{};
+    std::uint64_t member_index{}, member_count{}, member_event{}, held_reuse{};
     unsigned schema{1}, required_sources{31};
     CaptureCorrelationKind kind{};
     CaptureCorrelationSource source{};
-    bool native_valid{}, events_known{}, complete{}, overflow{};
+    bool native_valid{}, events_known{}, complete{}, overflow{}, queue_admitted{};
 };
 // Overflow/reset is evidence loss. Do not use modular arithmetic to make a
 // wrapped capture/cumulative-drop counter appear complete.
@@ -89,7 +92,7 @@ inline bool capture_correlation_delta(std::uint64_t before,std::uint64_t after,s
     delta=0; if (after<before) return false; delta=after-before; return true;
 }
 inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexcept {
-    if (r.schema!=1 || !r.capture || !r.required_sources || r.required_sources>31 || r.owner>UINT32_MAX ||
+    if ((r.schema!=1&&r.schema!=2) || !r.capture || !r.required_sources || r.required_sources>31 || r.owner>UINT32_MAX ||
         r.kind>CaptureCorrelationKind::end || r.source>CaptureCorrelationSource::manual_termination) return false;
     if (r.native_valid && (!r.owner || !r.owner_generation || !r.contact_generation || !r.action_generation || !r.physics_step ||
         r.native_ms>r.ms || r.ms-r.native_ms>InputTiming::native_sample_lease_ms)) return false;
@@ -98,6 +101,15 @@ inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexc
         (!r.first_event && (r.first_ms || r.last_ms)))) return false;
     if (!r.events_known && (r.first_event || r.last_event || r.first_ms || r.last_ms)) return false;
     if (r.recognized_ms>r.ms || (r.recognized_ms && r.first_event && r.recognized_ms<r.last_ms)) return false;
+    const bool recognition=r.schema==2&&r.kind==CaptureCorrelationKind::event&&r.source==CaptureCorrelationSource::recognition;
+    if(recognition){
+        if(!r.recognition_id||!r.action||r.action>21||r.context>6||r.footprint_kind>2||r.member_count>100||r.member_index>r.member_count||r.recognized_ms!=r.ms)return false;
+        if(r.footprint_kind==1){
+            if(!r.events_known||!r.member_count||!r.first_event||
+               (!r.member_index&&r.member_event)||(r.member_index&&(!r.member_event||r.member_event<r.first_event||r.member_event>r.last_event)))return false;
+        }else if(r.first_event||r.last_event||r.first_ms||r.last_ms||r.member_count||r.member_index||r.member_event||r.held_reuse||
+                 (r.footprint_kind==2&&!r.events_known)||(r.footprint_kind==0&&r.events_known))return false;
+    }else if(r.recognition_id||r.recognition_session||r.action||r.context||r.footprint_kind||r.member_index||r.member_count||r.member_event||r.held_reuse||r.queue_admitted)return false;
     if (r.kind==CaptureCorrelationKind::event)
         return r.ordinal && r.source!=CaptureCorrelationSource::boundary && r.source_sequence && !r.complete &&
             !r.expected && !r.drained && !r.dropped && !r.drop_begin && !r.drop_end && !r.first_ordinal && !r.last_ordinal &&
@@ -287,7 +299,7 @@ class CaptureCorrelationProducer {
             f.sampled_at<=now&&now-f.sampled_at<=InputTiming::native_sample_lease_ms;
     }
     CaptureCorrelationEvidence snapshot(std::uint64_t now,const NativeInputFrame& f) const noexcept {
-        CaptureCorrelationEvidence r;r.capture=id_;r.required_sources=scope_;r.ms=now;r.native_ms=f.sampled_at;r.owner=1;
+        CaptureCorrelationEvidence r;r.schema=2;r.capture=id_;r.required_sources=scope_;r.ms=now;r.native_ms=f.sampled_at;r.owner=1;
         r.owner_generation=f.owner_generation;r.contact_generation=f.contact_generation;r.action_generation=f.action_generation;r.physics_step=f.physics_step;
         r.native_valid=fresh(f,now);return r;
     }
@@ -296,6 +308,14 @@ class CaptureCorrelationProducer {
     }
 public:
     bool active()const noexcept{return active_;}
+    bool captures(CaptureCorrelationSource source)const noexcept{
+        const auto value=static_cast<unsigned>(source);return active_&&value&&value<=5&&(scope_&(1u<<(value-1)));
+    }
+    void omitted(std::uint64_t attempts)noexcept{
+        if(!active_||!attempts)return;
+        if(!capture_correlation_add(expected_,attempts))overflow_=true;
+        known_=false;
+    }
     void lost()noexcept{overflow_=true;}
     template<class Sink> bool begin(std::uint64_t now,std::uint64_t duration,unsigned scope,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
         if(active_||!duration||duration>5000||!scope||scope>31||!fresh(f,now)||next_==UINT64_MAX||duration>UINT64_MAX-now)return false;
@@ -315,20 +335,39 @@ public:
     template<class Sink> void maintain(std::uint64_t now,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
         if(active_&&(!current(now,f)||now>until_))end(now,f,drops,sink,!current(now,f));
     }
-    template<class Sink> void event(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
-        maintain(row.ms,f,drops,sink);if(!active_)return;
+private:
+    template<class Sink> void submit(CaptureCorrelationEvidence row,Sink&& sink)noexcept{
         const auto source=static_cast<unsigned>(row.source);
         if(!source||source>5||!(scope_&(1u<<(source-1))))return;
         if(row.source_sequence<=sequences_[source])overflow_=true;
         sequences_[source]=row.source_sequence;
-        const auto payload=row;row=snapshot(payload.ms,f);row.kind=CaptureCorrelationKind::event;row.source=payload.source;row.source_sequence=payload.source_sequence;
-        row.first_event=payload.first_event;row.last_event=payload.last_event;row.first_ms=payload.first_ms;row.last_ms=payload.last_ms;row.recognized_ms=payload.recognized_ms;row.events_known=payload.events_known;
-        known_=known_&&row.events_known;
+        row.schema=2;row.capture=id_;row.required_sources=scope_;row.owner=1;row.kind=CaptureCorrelationKind::event;
+        known_=known_&&row.events_known&&row.native_valid;
         if(!capture_correlation_add(expected_))overflow_=true;row.ordinal=expected_;row.overflow=overflow_;
-        if(f.physics_step>=proof_.physics_step)proof_=f;
-        // Count the attempt before validation/enqueue. A lost row is retained in
-        // expected and becomes a footer loss, not an invented drained event.
         sink(row);
+    }
+public:
+    template<class Sink> void event(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
+        maintain(row.ms,f,drops,sink);if(!active_||!captures(row.source))return;
+        row.native_ms=f.sampled_at;row.owner_generation=f.owner_generation;row.contact_generation=f.contact_generation;row.action_generation=f.action_generation;row.physics_step=f.physics_step;row.native_valid=fresh(f,row.ms);
+        if(f.physics_step>=proof_.physics_step)proof_=f;
+        submit(row,sink);
+    }
+    template<class Sink> void recognition(CaptureCorrelationEvidence row,const InputNativeContext& original,bool known,
+            std::uint64_t delivery_now,const NativeInputFrame& authority,std::uint64_t drops,Sink&& sink)noexcept{
+        maintain(delivery_now,authority,drops,sink);if(!active_||!captures(row.source))return;
+        if(row.ms<started_||row.ms>until_||row.ms>delivery_now){omitted(1);lost();return;}
+        // The original observation supplies every serialized proof scalar. The
+        // current frame only proves continuity with the capture's private owner;
+        // it never substitutes newer generation/time/step values into this row.
+        row.native_ms=original.sampled_at;row.owner_generation=original.generations.owner;
+        row.contact_generation=original.generations.contact;row.action_generation=original.generations.action;row.physics_step=original.physics_step;
+        row.native_valid=known&&original.required&&original.fresh(row.ms)&&original.generations.owner==proof_.owner_generation&&
+            original.physics_step<=authority.physics_step&&original.sampled_at<=authority.sampled_at&&
+            original.generations.contact<=authority.contact_generation&&original.generations.action<=authority.action_generation&&
+            (original.physics_step!=authority.physics_step||(original.sampled_at==authority.sampled_at&&
+             original.generations.contact==authority.contact_generation&&original.generations.action==authority.action_generation));
+        submit(row,sink);
     }
 };
 // Existing client worker only. Counts successful sink writes, not reservations.
@@ -351,7 +390,7 @@ public:
         if(!capture_correlation_add(c->written))c->overflow=true;
         if(!c->first)c->first=row.ordinal;c->last=row.ordinal;
         c->sources|=1u<<(static_cast<unsigned>(row.source)-1);
-        c->known=c->known&&row.events_known;c->overflow=c->overflow||row.overflow;
+        c->known=c->known&&row.events_known&&row.native_valid;c->overflow=c->overflow||row.overflow;
     }
     CaptureCorrelationEvidence footer(CaptureCorrelationEvidence row,std::uint64_t drops) noexcept {
         auto* c=find(row.capture);row.drop_end=drops;

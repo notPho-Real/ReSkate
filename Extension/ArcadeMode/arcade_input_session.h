@@ -45,6 +45,7 @@ public:
         if (authored_.schedule() == schedule) return;
         reset(); authored_.set_schedule(schedule);
     }
+    void set_recognition_capture(bool enabled) noexcept {input_.set_recognition_capture(enabled);}
     bool busy() const noexcept { return auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
     const UnifiedInput::Diagnostic& diagnostic() const noexcept { return input_.diagnostic(); }
     const InputHistory& history() const noexcept { return input_.history(); }

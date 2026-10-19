@@ -2,6 +2,7 @@
 #include "arcade_input_events.h"
 #include "arcade_input_policy.h"
 #include <limits>
+#include <memory>
 
 namespace dingosdk::arcade_mode {
 enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
@@ -52,7 +53,9 @@ struct InputRequest {
     InputForm form{};
     InputAirEpisode air_episode{};
     std::uint64_t input_sequence{};
-    InputRecognitionIdentity recognition{};
+    // Optional immutable evidence. Ordinary requests never carry/copy a100-ID
+    // array; allocation occurs only during an explicit diagnostic capture.
+    std::shared_ptr<const InputRecognitionIdentity> recognition{};
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -202,8 +205,16 @@ public:
         bool recognition_overflow{};
         InputPolicy policy{InputPolicy::production()};
     };
+    void set_recognition_capture(bool enabled) noexcept {
+        if(recognition_capture_==enabled)return;
+        recognition_capture_=enabled;
+        diagnostic_.recognition={};diagnostic_.recognition_count=0;diagnostic_.recognition_omitted=0;
+        // Pending requests retain their immutable identity through later dispatch.
+        // Unread per-poll diagnostics need no extra ownership after capture ends.
+        for(auto& event:diagnostic_.dispatch)event.request.recognition.reset();
+    }
     void reset() noexcept {
-        events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_footprint_ = {};
+        events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
         previous_context_ = InputContext::unknown; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
@@ -335,18 +346,18 @@ public:
             }
             if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == 1 &&
                 event.token.edge == InputEdge::press && environment.context == InputContext::ground)
-                { const auto match = InputMatch::single(event); consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
+                { const auto match = consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;
             if (code == 12) {
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
-                    consume(event); crouched_ = true; crouch_nollie_ = environment.nollie; crouch_at_ = event.at;
-                    const auto match = InputMatch::single(event); crouch_footprint_ = match;
+                    const auto match=consume(event);crouched_=true;crouch_nollie_=environment.nollie;crouch_at_=event.at;
+                    crouch_sequence_=event.sequence;
                     enqueue(InputAction::crouch, now, 1, environment,1,0,0,0,{},&match);
                 } else if (event.token.edge == InputEdge::release && crouched_) {
-                    consume(event); auto context = environment; context.nollie = crouch_nollie_;
-                    auto match = crouch_footprint_;
-                    match.events[match.count++] = event.sequence; match.last_at = event.at;
+                    auto match=consume(event);auto context=environment;context.nollie=crouch_nollie_;
+                    match.events[0]=crouch_sequence_;match.events[1]=event.sequence;match.count=2;
+                    match.first_at=crouch_at_;match.last_at=event.at;
                     enqueue(InputAction::ollie_release, now, 1, context,1,0,0,0,{},&match); crouched_ = false;
                 }
             }
@@ -422,9 +433,9 @@ private:
         default: return 7;
         }
     }
-    void consume(const InputEvent& event) noexcept {
-        const auto match = InputMatch::single(event);
-        events_.history().consume(match, InputConsumption::regular);
+    InputMatch consume(const InputEvent& event) noexcept {
+        auto match=InputMatch::single(event);
+        events_.history().consume(match,InputConsumption::regular);return match;
     }
     void enqueue(InputAction action, std::uint64_t now, std::uint64_t duration,
                  InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr,
@@ -466,22 +477,30 @@ private:
             request.direction = defined_direction; request.direction_source = InputSource::direction;
             request.direction_inherited = false;
         }
-        auto& identity = request.recognition;
-        identity.sequence_overflow = !input_diagnostic_increment(diagnostic_.recognized);
-        identity.sequence = identity.sequence_overflow ? 0 : diagnostic_.recognized;
-        identity.observation = environment.native_context;
-        identity.observation_known = environment.native_context.required && environment.native_context.fresh(now);
-        identity.footprint_kind = footprint && footprint->count ? InputFootprintKind::events : footprint_kind;
-        if (footprint) identity.footprint = *footprint;
-        diagnostic_.recognition_overflow = diagnostic_.recognition_overflow || identity.sequence_overflow;
-        const bool queued = pending_.push(request);
-        if (!queued && !input_diagnostic_increment(diagnostic_.queue_full)) diagnostic_.recognition_overflow = true;
-        if (diagnostic_.recognition_count < diagnostic_.recognition.size())
-            diagnostic_.recognition[diagnostic_.recognition_count++] = {request,queued};
-        else {
-            const bool cumulative = input_diagnostic_increment(diagnostic_.recognition_dropped);
-            const bool current = input_diagnostic_increment(diagnostic_.recognition_omitted);
-            if (!cumulative || !current) diagnostic_.recognition_overflow = true;
+        const bool sequence_overflow=!input_diagnostic_increment(diagnostic_.recognized);
+        diagnostic_.recognition_overflow=diagnostic_.recognition_overflow||sequence_overflow;
+        if(recognition_capture_){
+            try{
+                auto identity=std::make_shared<InputRecognitionIdentity>();
+                identity->sequence_overflow=sequence_overflow;
+                identity->sequence=sequence_overflow?0:diagnostic_.recognized;
+                identity->observation=environment.native_context;
+                identity->observation_known=environment.native_context.required&&environment.native_context.fresh(now);
+                identity->footprint_kind=footprint&&footprint->count?InputFootprintKind::events:footprint_kind;
+                if(footprint)identity->footprint=*footprint;
+                request.recognition=std::move(identity);
+            }catch(...){ /* Metadata loss must not change request admission. */ }
+        }
+        const bool queued=pending_.push(request);
+        if(!queued&&!input_diagnostic_increment(diagnostic_.queue_full))diagnostic_.recognition_overflow=true;
+        if(recognition_capture_){
+            if(request.recognition&&diagnostic_.recognition_count<diagnostic_.recognition.size())
+                diagnostic_.recognition[diagnostic_.recognition_count++]={request,queued};
+            else{
+                const bool cumulative=input_diagnostic_increment(diagnostic_.recognition_dropped);
+                const bool current=input_diagnostic_increment(diagnostic_.recognition_omitted);
+                if(!cumulative||!current)diagnostic_.recognition_overflow=true;
+            }
         }
     }
     void recognize_board(std::uint64_t now, InputEnvironment environment) noexcept {
@@ -911,7 +930,8 @@ private:
     InputEvents events_{};
     InputRequestQueue pending_{};
     Diagnostic diagnostic_{};
-    InputMatch crouch_footprint_{};
+    std::uint64_t crouch_sequence_{};
+    bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
     std::uint64_t lip_generation_{}, manual_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};

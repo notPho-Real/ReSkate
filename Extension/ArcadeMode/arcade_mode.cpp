@@ -105,12 +105,78 @@ std::array<NativeCharge, 4> native_charges;
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
 std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
+std::uint64_t capture_attempt_cursor{},capture_omission_cursor{},capture_sample_cursor{};
 bool capture_row(const CaptureCorrelationEvidence& row) noexcept {return input_telemetry.client(row);}
 void capture_event(CaptureCorrelationSource source,std::uint64_t sequence,std::uint64_t now,const NativeInputFrame& proof,bool known=true) noexcept {
+    if(!input_capture_correlation.active())return;
+    if(!input_capture_correlation.captures(source)){
+        input_capture_correlation.maintain(now,proof,input_telemetry.client_dropped(),capture_row);return;
+    }
     CaptureCorrelationEvidence row;row.source=source;row.source_sequence=sequence;row.ms=now;row.events_known=known;
     input_capture_correlation.event(row,proof,input_telemetry.client_dropped(),capture_row);
 }
 
+// Consume the actual per-poll batch while holding ollie_mutex. Each observed
+// attempt has one summary; exact ordered members use the SAME bounded channel.
+void capture_recognitions(const UnifiedInput::Diagnostic& diagnostic,std::uint64_t delivery_now,const NativeInputFrame& authority)noexcept{
+    if(!input_capture_correlation.captures(CaptureCorrelationSource::recognition)||diagnostic.samples==capture_sample_cursor)return;
+    std::uint64_t span{},omission_delta{};
+    const auto previous=capture_attempt_cursor;
+    if(diagnostic.samples<capture_sample_cursor||!capture_correlation_delta(previous,diagnostic.recognized,span)||
+       !capture_correlation_delta(capture_omission_cursor,diagnostic.recognition_dropped,omission_delta))input_capture_correlation.lost();
+    capture_sample_cursor=diagnostic.samples;capture_attempt_cursor=diagnostic.recognized;capture_omission_cursor=diagnostic.recognition_dropped;
+    if(diagnostic.recognition_overflow)input_capture_correlation.lost();
+    std::uint64_t seen{},last_sequence=previous,unidentified{},charged_missing{};
+    const auto charge_missing=[&](std::uint64_t count){
+        input_capture_correlation.omitted(count);
+        if(!capture_correlation_add(charged_missing,count)||!capture_correlation_add(capture_recognition_sequence,count))input_capture_correlation.lost();
+    };
+    if(diagnostic.recognition_count>diagnostic.recognition.size())input_capture_correlation.lost();
+    const auto count=std::min(diagnostic.recognition_count,diagnostic.recognition.size());
+    for(std::size_t i=0;i<count;++i){
+        const auto& attempt=diagnostic.recognition[i];const auto& request=attempt.request;
+        const auto identity=request.recognition; // Constant-size immutable ownership, not an array copy.
+        if(!identity||!identity->sequence||identity->sequence_overflow){++unidentified;input_capture_correlation.lost();continue;}
+        if(identity->sequence<=previous)continue; // A reset without a new poll cannot republish a row.
+        if(identity->sequence<=last_sequence||identity->sequence>diagnostic.recognized){input_capture_correlation.lost();continue;}
+        charge_missing(identity->sequence-last_sequence-1);
+        last_sequence=identity->sequence;++seen;
+        CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::recognition;row.ms=row.recognized_ms=request.recognized_at;
+        row.recognition_id=identity->sequence;row.recognition_session=request.session;row.action=static_cast<unsigned>(request.action);row.context=static_cast<unsigned>(request.context);
+        row.queue_admitted=attempt.queued;row.footprint_kind=static_cast<unsigned>(identity->footprint_kind);
+        const auto& footprint=identity->footprint;
+        if(identity->footprint_kind==InputFootprintKind::events){
+            if(!footprint.count||footprint.count>footprint.events.size()){input_capture_correlation.omitted(1);input_capture_correlation.lost();continue;}
+            row.member_count=footprint.count;row.first_event=UINT64_MAX;
+            bool valid=true,held=!footprint.held_reuse;
+            for(std::size_t j=0;j<footprint.count;++j){const auto id=footprint.events[j];valid=valid&&id;held=held||id==footprint.held_reuse;row.first_event=std::min(row.first_event,id);row.last_event=std::max(row.last_event,id);}
+            if(!valid||!held||footprint.first_at>footprint.last_at||footprint.last_at>request.recognized_at){input_capture_correlation.omitted(1);input_capture_correlation.lost();continue;}
+            row.first_ms=footprint.first_at;row.last_ms=footprint.last_at;row.held_reuse=footprint.held_reuse;row.events_known=true;
+        }else if(identity->footprint_kind==InputFootprintKind::input_free){
+            if(footprint.count||footprint.held_reuse||footprint.first_at||footprint.last_at){input_capture_correlation.omitted(1);input_capture_correlation.lost();continue;}
+            row.events_known=true;
+        }
+        const auto emit=[&](CaptureCorrelationEvidence event){
+            if(!capture_correlation_add(capture_recognition_sequence)){input_capture_correlation.omitted(1);input_capture_correlation.lost();return;}
+            event.source_sequence=capture_recognition_sequence;
+            input_capture_correlation.recognition(event,identity->observation,identity->observation_known,delivery_now,authority,input_telemetry.client_dropped(),capture_row);
+        };
+        emit(row);
+        for(std::size_t j=0;j<row.member_count;++j){row.member_index=j+1;row.member_event=footprint.events[j];emit(row);}
+    }
+    // The cumulative attempt span already includes current diagnostic omissions
+    // AND missed polls. Never add the omission counter a second time. Unknown
+    // omitted-member arrays were never encoded: count their mandatory summary
+    // as lost, with unavailable completeness instead of inventing member rows.
+    if(seen>span){input_capture_correlation.lost();return;}
+    auto missing=span-seen;
+    if(omission_delta>missing||diagnostic.recognition_omitted>missing)input_capture_correlation.lost();
+    if(diagnostic.recognized==UINT64_MAX&&previous==UINT64_MAX){
+        if(!capture_correlation_add(missing,unidentified)||!capture_correlation_add(missing,diagnostic.recognition_omitted))input_capture_correlation.lost();
+    }else if(unidentified)input_capture_correlation.lost();
+    if(charged_missing>missing)input_capture_correlation.lost();
+    else charge_missing(missing-charged_missing);
+}
 std::array<PadEvidence, 4> previous_pad{};
 std::array<PadEvidence, 4> previous_source_pad{};
 std::uint64_t pad_sequence{};
@@ -470,8 +536,13 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
 bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept {
     if(!capture_correlation_valid(r))return false;
     try {
-        const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={}.",
+        if(r.schema==1){
+            const auto legacy=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={}.",
             r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow);
+            return logging::write_command_evidence(legacy);
+        }
+        const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={}.",
+            r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.recognition_id,r.recognition_session,r.action,r.context,r.footprint_kind,r.member_index,r.member_count,r.member_event,r.held_reuse,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow,r.queue_admitted);
         return logging::write_command_evidence(text);
     }catch(...){return false;}
 }
@@ -760,11 +831,16 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=arcade_input.native_context(now);
     if(!duration_ms){
         if(!input_capture_correlation.active())return false;
-        input_capture_correlation.end(now,frame,input_telemetry.client_dropped(),capture_row);return true;
+        input_capture_correlation.end(now,frame,input_telemetry.client_dropped(),capture_row);
+        arcade_input.set_recognition_capture(0,false);return true;
     }
     if(!enabled()||!input_telemetry.available())return false;
     const bool begun=input_capture_correlation.begin(now,duration_ms,required_sources,frame,input_telemetry.client_dropped(),capture_row);
     if(begun){
+        arcade_input.set_recognition_capture(0,(required_sources&2u)!=0);
+        if(const auto* diagnostic=arcade_input.input_diagnostic(0)){
+            capture_attempt_cursor=diagnostic->recognized;capture_omission_cursor=diagnostic->recognition_dropped;capture_sample_cursor=diagnostic->samples;
+        }
         capture_input_cursor=0;
         if(const auto* history=arcade_input.history(0);history&&!history->events().empty())capture_input_cursor=history->events().back().sequence;
     }
@@ -910,7 +986,10 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
-        if(!value)input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
+        if(!value){
+            input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
+            arcade_input.set_recognition_capture(0,false);
+        }
         native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset();
         arcade_input.enable(value);
         arcade_input.cancel_commands();
@@ -1273,8 +1352,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto action_experiment = action_mode.load(std::memory_order_relaxed);
         const auto observed = manual_observed.load(std::memory_order_relaxed);
         const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
-        const auto* before_diagnostic=arcade_input.input_diagnostic(user);
-        const auto recognized_before=before_diagnostic?before_diagnostic->recognized:0;
+        input_capture_correlation.maintain(now,arcade_input.native_context(now),input_telemetry.client_dropped(),capture_row);
+        arcade_input.set_recognition_capture(user,input_capture_correlation.captures(CaptureCorrelationSource::recognition));
         result = arcade_input.poll(user, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push, admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -1298,18 +1377,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 row.first_event=row.last_event=event.sequence;row.first_ms=row.last_ms=event.at;row.events_known=true;
                 input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
             }
-            const auto* diagnostic=arcade_input.input_diagnostic(user);
-            if(diagnostic&&diagnostic->recognized>recognized_before){
-                CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::recognition;row.ms=row.recognized_ms=now;
-                // The current adapter exposes the recognition counter, but not
-                // the complete immutable matched-event IDs. Keep that footprint
-                // unavailable rather than reconstructing it from journal times.
-                row.events_known=false;
-                if(capture_correlation_add(capture_recognition_sequence)){
-                    row.source_sequence=capture_recognition_sequence;
-                    input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
-                }else input_capture_correlation.lost();
-            }else if(diagnostic&&diagnostic->recognized<recognized_before)input_capture_correlation.lost();
+            if(const auto* diagnostic=arcade_input.input_diagnostic(user))capture_recognitions(*diagnostic,now,capture_proof);
         }
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the

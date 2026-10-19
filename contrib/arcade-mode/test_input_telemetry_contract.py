@@ -66,27 +66,36 @@ class InputTelemetryContract(unittest.TestCase):
 class CaptureCorrelationContract(unittest.TestCase):
     @staticmethod
     def fixture():
-        base = dict.fromkeys(PROBE.CAPTURE_CORRELATION_NUMBERS, 0)
-        base.update(schema=1, capture=1, required_sources=31, ms=100, native_ms=100,
+        base = dict.fromkeys(PROBE.CAPTURE_CORRELATION_V2_NUMBERS, 0)
+        base.update(schema=2, capture=1, required_sources=31, ms=100, native_ms=100,
                     owner=1, owner_generation=1, contact_generation=1, action_generation=1, physics_step=1)
-        base.update(native_valid=True, events_known=True, complete=False, overflow=False)
+        base.update(native_valid=True, events_known=True, complete=False, overflow=False, queue_admitted=False)
         rows = [base.copy()]
         for source in range(1, 6):
-            row = dict(base, kind=1, source=source, ordinal=source, source_sequence=1,
-                       ms=100+source, native_ms=100+source, physics_step=1+source,
-                       first_event=source, last_event=source, first_ms=100+source, last_ms=100+source)
+            row = dict(base, kind=1, source=source, source_sequence=1, ms=100+source,
+                       native_ms=100+source, physics_step=1+source, first_event=source, last_event=source,
+                       first_ms=100+source, last_ms=100+source)
             if source == 2:
-                row['recognized_ms'] = row['ms']
+                row.update(recognized_ms=row['ms'], recognition_id=1, recognition_session=1,
+                           action=7, context=1, footprint_kind=1, member_count=1, queue_admitted=True)
             rows.append(row)
-        rows.append(dict(base, kind=2, ordinal=6, ms=106, native_ms=106, physics_step=7,
-                         expected=5, drained=5, first_ordinal=1, last_ordinal=5, complete=True))
+            if source == 2:
+                rows.append(dict(row, member_index=1, member_event=2, source_sequence=2))
+        for ordinal, row in enumerate(rows):
+            row['ordinal'] = ordinal
+        rows.append(dict(base, kind=2, ordinal=7, ms=106, native_ms=106, physics_step=7,
+                         expected=6, drained=6, first_ordinal=1, last_ordinal=6, complete=True))
         return rows
 
     @staticmethod
     def wire(rows):
-        return "\n".join('Command: ARCADE INPUT CAPTURE: ' + ' '.join(
-            f'{key}={row[key]}' for key in PROBE.CAPTURE_CORRELATION_NUMBERS) + ' ' + ' '.join(
-            f'{key}={str(row[key]).lower()}' for key in PROBE.CAPTURE_CORRELATION_FLAGS) + '.' for row in rows)
+        lines = []
+        for row in rows:
+            numbers = PROBE.CAPTURE_CORRELATION_V2_NUMBERS if row['schema'] == 2 else PROBE.CAPTURE_CORRELATION_NUMBERS
+            flags = PROBE.CAPTURE_CORRELATION_V2_FLAGS if row['schema'] == 2 else PROBE.CAPTURE_CORRELATION_FLAGS
+            lines.append('Command: ARCADE INPUT CAPTURE: ' + ' '.join(f'{key}={row[key]}' for key in numbers) +
+                         ' ' + ' '.join(f'{key}={str(row[key]).lower()}' for key in flags) + '.')
+        return "\n".join(lines)
 
     def parse(self, rows):
         return PROBE.parse_capture_correlation(self.wire(rows))
@@ -107,7 +116,7 @@ class CaptureCorrelationContract(unittest.TestCase):
             self.assertEqual(result['capture_completeness'], 'COMPLETE')
             self.assertFalse(result['evidence_gap'])
             self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
-            self.assertEqual([r['ordinal'] for r in result['captures'][0]['events']], list(range(1, 6)))
+            self.assertEqual([r['ordinal'] for r in result['captures'][0]['events']], list(range(1, 7)))
 
     def test_loss_and_truncation(self):
         rows = self.fixture()
@@ -129,8 +138,8 @@ class CaptureCorrelationContract(unittest.TestCase):
     def test_missing_malformed_and_untrusted_fields(self):
         for transform in (lambda t: t.replace('owner=1 ', '', 1),
                           lambda t: t.replace('owner=1 ', 'owner=1 owner=1 ', 1),
-                          lambda t: t.replace('schema=1', 'schema=18446744073709551616', 1),
-                          lambda t: t.replace('overflow=false.', 'overflow=false. extra=opaque', 1)):
+                          lambda t: t.replace('schema=2', 'schema=18446744073709551616', 1),
+                          lambda t: t.replace('queue_admitted=false.', 'queue_admitted=false. extra=opaque', 1)):
             result = PROBE.parse_capture_correlation(transform(self.wire(self.fixture())))
             self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
             self.assertGreater(result['malformed'], 0)
@@ -147,7 +156,7 @@ class CaptureCorrelationContract(unittest.TestCase):
             with self.subTest(changes=changes):
                 rows = self.fixture(); rows[1].update(changes)
                 self.assert_incomplete(rows, error)
-        rows = self.fixture(); rows[3]['ms'] += 1
+        rows = self.fixture(); rows[4]['ms'] += 1
         self.assert_incomplete(rows, 'native_restamped')
         rows = self.fixture(); rows[1].update(ms=250, native_ms=100)
         rows[-1].update(ms=260, native_ms=260)
@@ -157,8 +166,10 @@ class CaptureCorrelationContract(unittest.TestCase):
         # A delayed worker cannot restamp the producer's original proof.
         rows = self.fixture(); rows[2].update(ms=150, recognized_ms=102)
         rows[-1].update(ms=160)
-        self.assertEqual(self.parse(rows)['capture_completeness'], 'COMPLETE')
-        self.assertEqual(self.parse(rows)['captures'][0]['events'][1]['recognized_ms'], 102)
+        self.assert_incomplete(rows, 'recognition_shape')
+        original = PROBE.parse_capture_correlation(self.wire(self.fixture()).replace('Command:', 'late sink Command:'))
+        self.assertEqual(original['capture_completeness'], 'COMPLETE')
+        self.assertEqual(original['captures'][0]['events'][1]['recognized_ms'], 102)
 
     def test_counter_rollover_reuse_and_scope(self):
         rows = self.fixture(); rows.insert(-1, dict(rows[1], ordinal=6, source_sequence=1))
@@ -171,14 +182,14 @@ class CaptureCorrelationContract(unittest.TestCase):
         rows = self.fixture(); rows[0].update(drop_begin=(1<<64)-1, drop_end=(1<<64)-1)
         rows[-1].update(drop_begin=(1<<64)-1, drop_end=0)
         self.assert_incomplete(rows, 'drop_counter_rollback')
-        rows = self.fixture(); rows[3]['physics_step'] = 1
+        rows = self.fixture(); rows[4]['physics_step'] = 1
         self.assert_incomplete(rows, 'step_provenance')
-        rows = self.fixture(); rows[3]['physics_step'] = (1<<64)-1
+        rows = self.fixture(); rows[4]['physics_step'] = (1<<64)-1
         self.assert_incomplete(rows, 'step_rollback')
         self.assert_incomplete(self.fixture()+self.fixture(), 'begin_shape')
         rolled = [dict(row, capture=(1<<64)-1) for row in self.fixture()] + self.fixture()
         self.assertEqual(self.parse(rolled)['capture_completeness'], 'INCOMPLETE')
-        self.assert_incomplete(self.fixture()[:3]+self.fixture()[4:], 'missing_source')
+        self.assert_incomplete(self.fixture()[:4]+self.fixture()[5:], 'missing_source')
         all_rows = []
         for cid in range(1, 18):
             all_rows.extend(dict(row, capture=cid) for row in self.fixture())
@@ -188,6 +199,78 @@ class CaptureCorrelationContract(unittest.TestCase):
         self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
         rows = self.fixture()[:-1]+[dict(row, capture=2) for row in self.fixture()]
         self.assert_incomplete(rows, 'missing_end')
+
+    @staticmethod
+    def renumber(rows):
+        for ordinal, row in enumerate(rows[:-1]):
+            row['ordinal'] = ordinal
+        count = len(rows)-2
+        rows[-1].update(ordinal=count+1, expected=count, drained=count, dropped=0,
+                        first_ordinal=1 if count else 0, last_ordinal=count)
+        return rows
+
+    def test_exact_members_cannot_be_replaced_by_bounds(self):
+        rows = self.fixture()
+        del rows[3]
+        self.assert_incomplete(self.renumber(rows), 'missing_recognition_member')
+        rows = self.fixture()
+        rows.insert(4, dict(rows[3], source_sequence=3))
+        self.assert_incomplete(self.renumber(rows), 'duplicate_recognition_member')
+        rows = self.fixture(); rows[3]['member_event'] = 1
+        self.assert_incomplete(rows, 'recognition_members')
+        rows = self.fixture(); rows[3]['recognition_id'] = 2
+        self.assert_incomplete(rows, 'missing_recognition_summary')
+
+    def test_matcher_order_held_reuse_and_admission(self):
+        rows = self.fixture(); summary = rows[2]
+        summary.update(first_event=4, last_event=9, first_ms=1, member_count=3, held_reuse=4)
+        rows[3:4] = [dict(summary, member_index=i, member_event=event, source_sequence=i+1)
+                     for i, event in enumerate((9, 4, 6), 1)]
+        self.renumber(rows)
+        result = self.parse(rows)
+        self.assertEqual(result['capture_completeness'], 'COMPLETE')
+        recognition = result['captures'][0]['recognitions'][0]
+        self.assertEqual(recognition['events'], [9, 4, 6])
+        self.assertEqual(recognition['held_reuse'], 4)
+        for row in rows:
+            if row['source'] == 2:
+                row['queue_admitted'] = False
+        self.assertEqual(self.parse(rows)['capture_completeness'], 'COMPLETE')
+        self.assertFalse(self.parse(rows)['captures'][0]['recognitions'][0]['queue_admitted'])
+        rows[3]['queue_admitted'] = True
+        self.assert_incomplete(rows, 'recognition_member_provenance')
+        rows[3]['queue_admitted'] = False
+        for row in rows:
+            if row['source'] == 2:
+                row['held_reuse'] = 7
+        self.assert_incomplete(rows, 'recognition_members')
+
+    def test_legacy_decodes_without_claiming_exact_recognition(self):
+        rows = self.fixture()
+        for row in rows:
+            row['schema'] = 1
+        self.assert_incomplete(rows, 'recognition_members_unavailable')
+        scoped = [row for row in rows if row['source'] in (0, 1, 3)]
+        for row in scoped:
+            row['required_sources'] = 5
+        result = self.parse(self.renumber(scoped))
+        self.assertEqual(result['capture_completeness'], 'COMPLETE')
+        self.assertEqual(result['captures'][0]['begin']['required_sources'], 5)
+        self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
+        rows = self.fixture(); rows[1]['schema'] = 1
+        self.assert_incomplete(rows, 'mixed_schema')
+
+    def test_unknown_and_input_free_remain_distinct(self):
+        rows = self.fixture(); del rows[3]
+        rows[2].update(footprint_kind=2, member_count=0, first_event=0, last_event=0, first_ms=0, last_ms=0)
+        self.assertEqual(self.parse(self.renumber(rows))['capture_completeness'], 'COMPLETE')
+        rows[2].update(first_event=1, last_event=1)
+        self.assert_incomplete(rows, 'recognition_shape')
+        rows[2].update(first_event=0, last_event=0)
+        rows[2]['footprint_kind'] = 0
+        rows[2]['events_known'] = False
+        rows[-1]['complete'] = False
+        self.assert_incomplete(rows, 'unavailable_provenance')
 
 
 if __name__ == "__main__":
