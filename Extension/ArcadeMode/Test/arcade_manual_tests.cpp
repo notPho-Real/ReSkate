@@ -303,8 +303,8 @@ int run_arcade_manual_tests() {
         check(!recovery(1025, 0).owns_stick,
             "preparation exception cannot retain an already active synthetic request");
         manual.cancel(); recovery(2000, 0); recovery(2010, first);
-        check(!recovery(2020, -first).owns_stick && !poll(manual, 2030, -first).owns_stick,
-            "opposite edge while unsafe cancels without delayed actuation");
+        check(!recovery(2020, -first).owns_stick && poll(manual, 2030, -first).owns_stick,
+            "recognized recovery pair waits for readiness before bounded actuation");
         manual.cancel(); recovery(3000, 0); recovery(3010, first);
         poll(manual, 3020);
         check(!poll(manual, 3511, -first).owns_stick, "preparation cannot extend the sampled ground direction deadline");

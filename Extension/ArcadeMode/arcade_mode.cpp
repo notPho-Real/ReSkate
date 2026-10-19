@@ -80,7 +80,8 @@ std::atomic<std::uint64_t> motion_capture_until{};
 std::atomic<std::uint64_t> movement_eligible_until{};
 bool native_board_velocity(std::array<float, 3>& velocity) noexcept;
 std::atomic<bool> authored_mirror_x{};
-ArcadeInput arcade_input;
+// Canonical normalization and220ms reference query; compatibility55ms is an explicit alternative policy.
+ArcadeInput arcade_input(true, InputPolicy::strict());
 std::mutex ollie_mutex;
 std::atomic<PlaybackExperiment> playback_mode{PlaybackExperiment::delivery};
 bool playback_diagnostics{}; // Protected by ollie_mutex; off in ordinary gameplay.
@@ -98,7 +99,7 @@ std::uint64_t pad_sequence{};
 std::once_flag authored_started;
 std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalog;
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
-std::atomic<std::uint64_t> input_game_tick{};
+std::atomic<std::uint64_t> input_game_tick{}, input_step_serial{}, input_step_at{}, input_owner_epoch{1};
 NativePushContact push_contact_policy;
 NoBailSkater push_contact_owner{};
 std::atomic<bool> reset_push_contact_policy{true};
@@ -237,6 +238,13 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // Publish one pose/eligibility snapshot to XInput. A pending direction
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
+        if (!valid || owner_changed || observation_gap || bail) {
+            arcade_input.cancel_commands();
+            for (auto& rotation : rotations) rotation.reset();
+            for (auto& charge : native_charges) charge.cancel();
+            neutral_delivery = {}; playback_packets = {};
+            set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+        }
         if (!valid || owner_changed || bail ||
             manual_closed ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
@@ -519,6 +527,18 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         owner.context != after.context || owner.rig != after.rig) return;
     sample.valid = true;
     const auto now = GetTickCount64();
+    // The existing validated local physics listener is the update authority.
+    // Client callbacks and repeated XInput polls never advance authored time.
+    static NoBailSkater clock_owner{};
+    if (owner != clock_owner || wipeout) { clock_owner = owner; input_owner_epoch.fetch_add(1,std::memory_order_acq_rel); }
+    const bool clock_valid = std::isfinite(seconds) && seconds >= .001f && seconds <= .1f;
+    input_clock_valid.store(clock_valid,std::memory_order_release);
+    if (clock_valid) {
+        input_game_tick.store(authored_clock.advance(simulation_time::rate_of(seconds)),std::memory_order_release);
+        input_step_serial.fetch_add(1,std::memory_order_release);
+        input_step_at.store(now,std::memory_order_release);
+    }
+
     const auto capture = motion_capture_until.load(std::memory_order_acquire);
     if (capture >= now && capture - now <= 150 && seconds > 0 && seconds <= .1f) {
         static std::uint64_t sequence{};
@@ -770,9 +790,10 @@ void on_client_tick() noexcept {
     try {
         const float step = hall_of_meat::step_length();
         const bool valid_clock = std::isfinite(step) && step >= .001f && step <= .1f;
-        input_game_tick.store(authored_clock.advance(valid_clock ? simulation_time::rate_of(step) : 0),
-            std::memory_order_release);
-        input_clock_valid.store(valid_clock, std::memory_order_release);
+        const auto stepped_at = input_step_at.load(std::memory_order_acquire);
+        const auto clock_now = GetTickCount64();
+        const bool observed_clock = valid_clock && input_clock_valid.load(std::memory_order_acquire) &&
+            stepped_at && clock_now >= stepped_at && clock_now-stepped_at <= 150;
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
             set_enabled(profile_runtime::local_preference("ArcadeMode").value_or(false), false);
             preference_loaded = true;
@@ -784,6 +805,16 @@ void on_client_tick() noexcept {
         }
         ControllerInput input{};
         DingoSDKOverlayReadControllerInput(&input);
+        const bool focus_available = input.available;
+        {
+            std::lock_guard lock(ollie_mutex);
+            const auto pad = arcade_input.physical(GetTickCount64());
+            input.available = input.available && input.device < 0x100 && (input.device & 1u) && pad.valid;
+            if (input.available) {
+                input.buttons = pad.buttons | (pad.lt > 30 ? 0x10000u : 0u) | (pad.rt > 30 ? 0x20000u : 0u);
+                input.left_x=pad.lx; input.left_y=pad.ly; input.right_x=pad.rx; input.right_y=pad.ry;
+            }
+        }
         const auto buttons = input.available ? input.buttons : 0u;
         const auto pressed = buttons & ~previous_buttons;
         previous_buttons = buttons; // Reporting failures must never replay an edge.
@@ -815,7 +846,7 @@ void on_client_tick() noexcept {
         const auto trainer_view = trainer::view();
         motion_capture_until.store(trainer_view && trainer_view->logging && ui.available && !ui.in_menu ? now + 150 : 0,
             std::memory_order_release);
-        const bool gameplay = enabled() && ui.available && !ui.in_menu && input.available;
+        const bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         tick_arcade_fixture_geometry(now, gameplay);
         gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
@@ -835,6 +866,17 @@ void on_client_tick() noexcept {
         }
         NoBailSkater native_owner{};
         const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
+        {
+            std::lock_guard lock(ollie_mutex);
+            if (arcade_input.publish_authority(now, native.valid ? input_owner_epoch.load(std::memory_order_acquire) : 0,
+                    input.device, gameplay && focus_available && watch.valid && native.valid)) {
+                for (auto& rotation : rotations) rotation.reset();
+                for (auto& charge : native_charges) charge.cancel();
+                neutral_delivery = {}; playback_packets = {};
+                set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+                reset_physical_manual.store(true,std::memory_order_release);
+            }
+        }
         // Reuse the existing guarded stance flag in request_words[0]. On this
         // Deck, the clear-bit stance needs lateral reflection: authored 2/3
         // otherwise produced native 3/2. Other stance contexts remain HIL gates.
@@ -933,6 +975,13 @@ void on_client_tick() noexcept {
         }
     } catch (...) {
         input_clock_valid.store(false, std::memory_order_release);
+        {
+            std::lock_guard lock(ollie_mutex);
+            arcade_input.invalidate_authority();
+            for (auto& rotation : rotations) rotation.reset();
+            for (auto& charge : native_charges) charge.cancel();
+            set_arcade_air_intent(false,0,0,0,0,false);
+        }
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);
@@ -961,7 +1010,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                       short& right_y, bool game_input, short& left_x, short& left_y,
                       unsigned char& left_trigger, unsigned char& right_trigger,
                       std::uint32_t physical_packet) noexcept {
-    if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
+    if (user != 0 || !ready.load(std::memory_order_acquire)) return 0;
     const auto physical_buttons = buttons;
     const auto physical_right_x = right_x, physical_right_y = right_y;
     const auto physical_left_trigger = left_trigger, physical_right_trigger = right_trigger;
@@ -991,6 +1040,18 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         std::lock_guard lock(ollie_mutex);
         // A client publication while acquiring the lock must not look future-dated.
         now = GetTickCount64();
+        arcade_input.observe_physical(user,{true,now,physical_buttons,action_physical.left_x,action_physical.left_y,
+            physical_right_x,physical_right_y,physical_left_trigger,physical_right_trigger});
+        const auto owner_epoch = input_owner_epoch.load(std::memory_order_acquire);
+        if (owner_epoch != arcade_input.owner_epoch()) {
+            arcade_input.invalidate_authority();
+            for (auto& rotation : rotations) rotation.reset();
+            for (auto& charge : native_charges) charge.cancel();
+            neutral_delivery = {}; playback_packets = {};
+            set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+        }
+        if (!game_input) arcade_input.invalidate_authority();
+        game_input = game_input && arcade_input.admitted(user,now);
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
         const bool releasing_manual = game_input && !offboard && release_deadline >= now && release_deadline - now <= 150;
         if (releasing_manual) arcade_input.cancel_manuals();
@@ -1047,9 +1108,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             arcade_air_motion_ready());
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
-            const auto release = native_charges[user].poll(now,
-                result.requested_id == 1 || result.requested_id == 16,
-                (physical_buttons & classic_a) != 0, charge_valid);
+            const auto release = native_charges[user].semantic_release(now, result.jump.released,
+                result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid);
             const bool angular_allowed = !reference && !action.owned && !result.authored_playback && result.phase != 3;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
                 angular_allowed ? rotation.yaw_rate : 0, angular_allowed);

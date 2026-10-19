@@ -11,6 +11,17 @@ class NativeCharge {
 public:
     struct Release { std::uint64_t sequence{}, ms{}; unsigned charge_ms{}; };
     void cancel() noexcept { charging_ = false; released_ = {}; }
+    Release semantic_release(std::uint64_t now, bool released, bool admitted,
+                             bool from_rail, std::uint64_t pressed, std::uint64_t at, bool valid) noexcept {
+        if (!valid || (clocked_ && now < last_)) { cancel(); clocked_ = false; return {}; }
+        clocked_ = true; last_ = now;
+        if (released && admitted && !from_rail && at >= pressed && now >= at && now-at <= 150 &&
+            (!semantic_seen_ || at != semantic_at_ || pressed != semantic_pressed_)) {
+            semantic_seen_ = true; semantic_at_ = at; semantic_pressed_ = pressed;
+            if (sequence_ != UINT64_MAX) released_ = {++sequence_, at, static_cast<unsigned>(std::min<std::uint64_t>(at-pressed,200))};
+        }
+        return released_;
+    }
     Release poll(std::uint64_t now, bool accepted_crouch, bool held, bool valid) noexcept {
         if (!valid || (clocked_ && now < last_)) { cancel(); clocked_ = false; return {}; }
         clocked_ = true; last_ = now;
@@ -24,7 +35,8 @@ public:
 private:
     Release released_{};
     std::uint64_t began_{}, last_{}, sequence_{};
-    bool charging_{}, clocked_{};
+    bool charging_{}, clocked_{}, semantic_seen_{};
+    std::uint64_t semantic_at_{}, semantic_pressed_{};
 };
 struct AirMotionIntent {
     bool enabled{}, angular_allowed{};

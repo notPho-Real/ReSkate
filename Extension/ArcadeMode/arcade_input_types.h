@@ -18,6 +18,14 @@ struct ActionInputOutput {
     unsigned request_kind{};
     DispatchResult result{DispatchResult::disabled};
 };
+struct InputJumpEdge {
+    bool released{}, setup_admitted{}, nollie{}, from_rail{};
+    std::uint64_t pressed_at{}, released_at{};
+    unsigned charge_ms() const noexcept {
+        const auto elapsed = released_at >= pressed_at ? released_at - pressed_at : 0;
+        return elapsed > 200 ? 200u : static_cast<unsigned>(elapsed);
+    }
+};
 // Output contracts only; all production recognition belongs to InputSession.
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
@@ -30,6 +38,7 @@ struct NativeGesture {
         bool unsupported{}, authored_playback{}, command_busy{}, suppress_reverse{}, movement_intent{};
         ManualInputDiagnostic manual{};
         ActionInputOutput action{};
+        InputJumpEdge jump{};
     };
 };
 }

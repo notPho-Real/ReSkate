@@ -26,6 +26,7 @@ struct Harness {
     InputAdmission admission{};
     Harness() {
         admission.gameplay = admission.authored = admission.manual_safe = admission.action_fresh = true;
+        admission.manual_balance_admitted = true;
         admission.may_start = admission.inspected_stance = true;
         admission.action_mode = ActionExperiment::classic;
         admission.pose = SkatePose::riding; admission.catalog = prepared;
@@ -52,12 +53,13 @@ void native_adapters() {
     out = h.poll(417, {0x2000, 25000, 0});
     check(out.action.requested && out.action.owned && out.action.trick == ArcadeTrick::basic_bs_grab &&
         out.action.pad.right_trigger == 255 && !out.action.pad.owns_left_stick, "basic grab adapter owns only measured channels with actual identity");
-    check(h.poll(916, {0x2000}).action.pad.right_trigger == 255, "basic grab hold retains original500ms duration");
-    check(h.poll(917, {0x2000}).action.pad.right_trigger == 0, "basic grab explicit neutral release starts at500ms");
-    check(!h.poll(951, {0x2000}).action.owned, "basic grab releases ownership at original534ms deadline");
-    check(!h.poll(968, {0x2000}).action.requested, "held B cannot replay after native recipe completes");
+    check(h.poll(916, {0x2000}).action.pad.right_trigger == 255, "basic grab remains held before the former fixed duration");
+    check(h.poll(917, {0x2000}).action.pad.right_trigger == 255, "basic grab holds beyond old fixed500ms duration");
+    check(h.poll(934).action.pad.right_trigger == 0, "physical release begins explicit native neutral");
+    check(!h.poll(968).action.owned, "basic grab releases ownership after its34ms neutral tail");
+    check(!h.poll(985).action.requested, "held B cannot replay after native recipe completes");
     h.admission.pose = SkatePose::riding;
-    check(h.poll(985, {0x2000}).buttons == 0x2000, "grounded B remains physical native brake");
+    check(h.poll(1002, {0x2000}).buttons == 0x2000, "grounded B remains physical native brake");
     h.session.reset(); h.poll(1000);
     out = h.poll(1017, {0, 0, 0, 0, 255});
     check(out.action.owned && out.action.pad.right_y == -32767 && out.action.request_kind == 3,
@@ -133,15 +135,15 @@ void unsupported_branches() {
 void balance_transition_contracts() {
     constexpr std::array first{14u, 14u, 13u, 13u, 13u, 15u, 15u, 15u};
     constexpr std::array second{13u, 15u, 14u, 15u, 13u, 15u, 14u, 13u};
-    constexpr std::array target{13u, 0u, 0u, 14u, 0u, 0u, 0u, 0u};
+    constexpr std::array target{13u, 0u, 0u, 14u, 0u, 0u, 255u, 0u};
     for (unsigned i = 0; i < first.size(); ++i) {
         Harness h; h.admission.pose = SkatePose::manual; h.admission.observed_balance_branch = i + 1; h.poll(0);
         h.poll(17, {static_cast<std::uint16_t>(1u << first[i])}); h.poll(34);
         const auto out = h.poll(85, {static_cast<std::uint16_t>(1u << second[i])});
         const auto& diagnostic = h.session.diagnostic();
-        check(out.unsupported && !out.phase && !out.manual.owns && !out.requested_id,
-            "excluded current branch falls through to an unsupported return without native pose fabrication");
-        check(diagnostic.dispatched == 1 && diagnostic.dispatch[0].request.variant == target[i],
+        check((out.unsupported || (target[i] == 255 && diagnostic.unresolved_definition)) && !out.phase && !out.manual.owns && !out.requested_id,
+            "excluded current branch preserves unsupported or unresolved execution without native pose fabrication");
+        check(target[i] == 255 ? diagnostic.dispatched == 0 : diagnostic.dispatched == 1 && diagnostic.dispatch[0].request.variant == target[i],
             "duplicate fallback rows retain their original table and exclusion order");
         const auto recognized = diagnostic.recognized;
         h.poll(102);
@@ -261,7 +263,7 @@ void unsupported_contexts() {
     for (unsigned branch : {0u, 2u, 6u}) {
         Harness h; h.admission.pose = SkatePose::manual; h.admission.observed_balance_branch = branch; h.poll(0);
         h.poll(17, {0x4000}); h.poll(34); out = h.poll(85, {0x4000});
-        check(out.unsupported && h.session.diagnostic().dispatch[0].request.variant == 10,
+        check(out.unsupported && h.session.diagnostic().dispatch[0].request.variant == (branch == 0 ? 22 : branch == 2 ? 42 : 51),
             "posture extra repeated press precedes generic branch matching");
         Harness left; left.admission.pose = SkatePose::manual; left.admission.observed_balance_branch = branch; left.poll(0);
         out = left.poll(17, {0, 0, 0, 255, 0});
@@ -269,8 +271,76 @@ void unsupported_contexts() {
     }
 }
 
+void jump_release_metadata() {
+    for (unsigned duration : {0u,5u,50u,199u,200u,250u}) for (bool nollie : {false,true}) for (bool rail : {false,true}) {
+        Harness h; h.admission.nollie=nollie;
+        if (rail) { h.admission.pose=SkatePose::grind; for(auto& gesture:h.prepared) gesture.context=GestureContext::from_grind; }
+        h.poll(0); h.poll(10,{0x1000}); h.admission.nollie=!nollie;
+        const auto out=h.poll(10+duration);
+        check(out.jump.released && out.jump.setup_admitted && out.jump.nollie==nollie && out.jump.from_rail==rail,
+            "release metadata preserves the admitted setup context and press stance");
+        check(out.jump.pressed_at==10 && out.jump.released_at==10+duration && out.jump.charge_ms()==(duration>200?200:duration),
+            "charge uses physical timestamps with a fixed200ms ceiling");
+        check(!h.poll(300+duration).jump.released,"one physical release cannot manufacture a second launch token");
+    }
+    Harness lip;lip.admission.observed_lip=true;lip.poll(0);const auto no_lip_actor=lip.poll(10,{0x1000});
+    check(no_lip_actor.unsupported && !no_lip_actor.phase && !no_lip_actor.authored_playback && !no_lip_actor.requested_id,
+        "lip exit cannot substitute ordinary grounded authored setup without an admitted lip actor");
+    Harness absent; absent.admission.authored=false;absent.poll(0);absent.poll(10,{0x1000});
+    const auto out=absent.poll(60);
+    check(out.jump.released && !out.jump.setup_admitted && !out.authored_playback && !out.requested_id,
+        "missing setup assets preserve recognition without fabricating native launch admission");
+    Harness blocked;blocked.poll(0);blocked.poll(10,{0x1000});blocked.admission.pose=SkatePose::air;blocked.admission.flip_ready=false;
+    blocked.poll(20,{0x5000,-25000,0});const auto released=blocked.poll(30,{0x4000,-25000,0});
+    check(released.jump.released && released.jump.setup_admitted && released.jump.charge_ms()==20,
+        "a waiting flip cannot swallow physical release of an admitted setup");
+    check(!blocked.poll(40).jump.released,"imperative release acknowledgment removes the blocked queued release");
+}
+
+void repeated_air_safety() {
+    for(unsigned step:{17u,34u}) {
+        InputSession session;InputAdmission a{};const auto prepared=catalog();
+        a.gameplay=a.authored=a.action_fresh=a.inspected_stance=a.may_start=true;
+        a.action_mode=ActionExperiment::classic;a.pose=SkatePose::air;a.catalog=prepared;
+        unsigned dispatched{};
+        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,510u,578u};
+        for(unsigned now=0;now<1000;now+=step) {
+            a.tick=now/step;
+            const auto buttons=static_cast<std::uint16_t>(((now>=150&&now<200)||(now>=350&&now<400)||(now>=550&&now<600))?0x4000:0);
+            const auto out=session.poll(now,{buttons,static_cast<std::int16_t>(now>=100?-25000:0),0},0,0,a);
+            const auto& d=session.diagnostic();
+            for(std::size_t i=0;i<d.dispatched;++i) {
+                const auto& event=d.dispatch[i];check(dispatched<times.size() && now==times[dispatched],
+                    "identical physical traces preserve recognition separately from authored readiness at both cadences");
+                const bool extra=dispatched==1;
+                check(event.request.action==InputAction::flip && event.request.presses==(extra?2u:1u) &&
+                    event.request.direction==4 && event.request.direction_inherited==extra,
+                    "only an admitted parent extra inherits direction; fresh held-direction actions remain ordinary");
+                check(extra ? event.disposition==InputDisposition::unsupported && out.unsupported && !out.requested_id :
+                    event.disposition==InputDisposition::started && out.requested_id==2,
+                    "unsupported repetition never substitutes a native identity or advances its parent table");
+                ++dispatched;
+            }
+        }
+        check(dispatched==3,"every physical air action has exactly one terminal dispatch disposition");
+    }
+}
+
+void airborne_setup_eligibility() {
+    Harness h;h.admission.pose=SkatePose::air;h.poll(0);
+    const auto press=h.poll(10,{0x1000});
+    check(!press.authored_playback && !press.requested_id && !press.phase,
+        "a lingering ground admission deadline cannot start a grounded setup after observed takeoff");
+    check(!h.poll(50,{0x1000}).authored_playback,"held airborne input cannot create a grounded setup later");
+    const auto release=h.poll(80);
+    check(release.jump.released && !release.jump.setup_admitted && !release.authored_playback,
+        "physical release remains observable but cannot claim a native setup that was never admitted");
+    h.admission.pose=SkatePose::riding;check(h.poll(100,{0x1000}).authored_playback,
+        "a fresh grounded physical press can start the existing native setup");
+}
+
 }
 int main() {
-    native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
+    airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
     std::cout << checks << " production input session checks passed\n";
 }
