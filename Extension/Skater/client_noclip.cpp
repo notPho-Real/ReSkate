@@ -468,6 +468,7 @@ struct ArcadeAir {
     std::atomic<bool> manual_admitted{};
     std::array<std::atomic<std::uint64_t>,3> manual_generations{};
     AtomicAirSpinProof spin_proof, ready_proof;
+    arcade_mode::AtomicLaunchDescriptor launch;
     std::atomic<std::uint64_t> ready_version{};
     // SourceState::busy protects the remaining physics/motion-thread state.
     arcade_mode::AirMotion controller;
@@ -490,6 +491,7 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
         a.release_at.load(std::memory_order_relaxed), a.charge.load(std::memory_order_relaxed),
         a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
     out.angular_proof = a.spin_proof.load();
+    out.launch = a.launch.load();
     out.ground_controls = arcade_mode::GroundControl::decode(a.ground_controls.load(std::memory_order_relaxed));
     out.spin = {a.spin_mode.load(std::memory_order_relaxed)==1 ? arcade_mode::SpinMode::tap : arcade_mode::SpinMode::held,
         a.spin_epoch.load(std::memory_order_relaxed),a.spin_serial.load(std::memory_order_relaxed),a.spin_balance.load(std::memory_order_relaxed),
@@ -540,8 +542,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             flags[i] = reader.value<std::uint32_t>(bodies.parts[i], 0x60);
             for (float v : spins[i]) source_require(std::isfinite(v) && std::abs(v) < 1000, "Invalid native angular velocity.");
         }
-        const bool ordinary = std::isfinite(bodies.up[0]) && std::isfinite(bodies.up[1]) && std::isfinite(bodies.up[2]) &&
-            std::abs(bodies.up[0]) <= .01f && std::abs(bodies.up[2]) <= .01f && bodies.up[1] >= .99f && bodies.up[1] <= 1.01f;
+        const bool ordinary = arcade_mode::AirMotion::ordinary_basis(bodies.up);
         if (a.owner != owner || a.generation != intent.generation ||
             (a.stepped_at && (now < a.stepped_at || now - a.stepped_at > 150))) { a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; }
         const auto contacts = reader.value<std::uint32_t>(bodies.context, native::request_words + 4) & 0xc000u;
@@ -635,8 +636,7 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const auto current_frame=arcade_mode::native_air_context(now,
         {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled);
     if(state==100 || state==103){
-        if(!std::isfinite(bodies.up[0]) || !std::isfinite(bodies.up[1]) || !std::isfinite(bodies.up[2]) ||
-            std::abs(bodies.up[0])>.01f || std::abs(bodies.up[2])>.01f || bodies.up[1]<.99f || bodies.up[1]>1.01f)return false;
+        if(!arcade_mode::AirMotion::ordinary_basis(bodies.up))return false;
         if(!arcade_mode::GroundYaw::target_current(a.ground_output,intent,current_frame,now,current_manual.admitted))return false;
         source_require(reader.value<std::uint8_t>(owner.entity,0x7e0)==0 &&
             reader.raw(reinterpret_cast<std::uintptr_t>(supplied),target.data(),sizeof(target)) && valid_flight_transform(target),
@@ -651,7 +651,7 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const auto current=arcade_mode::NativeAirSpinProof::from_frame(current_frame);
     const bool angular = arcade_mode::AirMotion::angular_target_current(a.output,intent,a.output_proof,current,now);
     const float velocity_y=a.output.vertical ? reader.value<std::array<float,3>>(bodies.parts[0],0x70)[1] : 0;
-    const bool vertical=a.output.vertical && arcade_mode::AirMotion::vertical_target_current(a.output,intent,a.output_proof,current,now,
+    const bool vertical=arcade_mode::AirMotion::ordinary_basis(bodies.up) && a.output.vertical && arcade_mode::AirMotion::vertical_target_current(a.output,intent,a.output_proof,current,now,
         velocity_y,bodies.seconds);
     if (!vertical && !angular) return false;
     source_require(reader.value<std::uint8_t>(owner.entity, 0x7e0) == 0 &&
@@ -818,7 +818,8 @@ void set_arcade_push_intent(bool active, bool crouched) noexcept {
 void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
     const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof,
-    const arcade_mode::GroundControl* ground_controls, const arcade_mode::SpinCommand* spin_command) noexcept {
+    const arcade_mode::GroundControl* ground_controls, const arcade_mode::SpinCommand* spin_command,
+    const arcade_mode::LaunchDescriptor* launch) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -828,6 +829,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.release_sequence.store(release_sequence, std::memory_order_relaxed);
     a.release_at.store(release_at, std::memory_order_relaxed);
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
+    a.launch.store(active && launch ? *launch : arcade_mode::LaunchDescriptor{});
     a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
     a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
     a.ground_controls.store(active && ground_controls ? ground_controls->encode() : 0,std::memory_order_relaxed);

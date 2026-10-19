@@ -29,6 +29,7 @@ struct InputAdmission {
     InputNativeContext native_context{};
     InputGenerations balance_generations{};
     bool export_rail_requests{};
+    LaunchDescriptor launch{LaunchDescriptor::ordinary()};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -37,7 +38,7 @@ public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
-        clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr;
+        clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false; rail_request_ = {};
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
@@ -149,7 +150,7 @@ public:
         // A released A ends native setup even when another request superseded
         // recognition in this poll. No new edge or jump is synthesized here.
         if (holding_ && !(physical.buttons & classic_a)) {
-            output.jump = {true,true,jump_nollie_,launch_context_ == GestureContext::from_grind,jump_pressed_at_,now};
+            output.jump = {true,true,jump_nollie_,launch_context_ == GestureContext::from_grind,jump_pressed_at_,now,jump_launch_};
             authored_.release(admission.tick); holding_ = false; input_.acknowledge_jump_release();
         }
         const auto authored = authored_.sample(admission.tick, now);
@@ -233,13 +234,18 @@ private:
         case InputAction::crouch:
             // Lip exits require their own admitted actor and release policy.
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
+            if (!admission.launch.ordinary_writer()) { out.unsupported = true; return InputDisposition::unsupported; }
             if (airborne || !admission.may_start || authored_.busy() || auxiliary_.busy() || manual_.busy()) return InputDisposition::cancelled;
             launch_context_ = admission.pose == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground;
             holding_ = start(request.nollie ? 16 : 1, request.nollie, true, launch_context_, false);
-            if (holding_) { jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; }
+            if (holding_) {
+                jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; jump_launch_ = admission.launch;
+                if(launch_context_==GestureContext::from_grind)jump_launch_.context=LaunchContext::rail;
+                out.jump={false,false,jump_nollie_,launch_context_==GestureContext::from_grind,jump_pressed_at_,0,jump_launch_,true};
+            }
             return holding_ ? InputDisposition::started : InputDisposition::unsupported;
         case InputAction::ollie_release:
-            out.jump = {true,holding_,request.nollie,launch_context_ == GestureContext::from_grind,request.physical_pressed_at,request.physical_released_at};
+            out.jump = {true,holding_,request.nollie,launch_context_ == GestureContext::from_grind,request.physical_pressed_at,request.physical_released_at,jump_launch_};
             if (holding_) authored_.release(admission.tick);
             holding_ = false; return InputDisposition::started;
         case InputAction::flip:
@@ -384,6 +390,7 @@ private:
     PhysicalInputSample physical_{};
     NativeGesture::Output* current_{};
     GestureContext launch_context_{GestureContext::ground};
+    LaunchDescriptor jump_launch_{};
     TrickDirection rail_direction_{};
     std::uint64_t now_{}, last_{}, last_tick_{}, jump_pressed_at_{};
     bool jump_nollie_{}, extension_started_{};

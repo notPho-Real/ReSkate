@@ -1487,8 +1487,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
+            if(result.jump.setup_started)native_charges[user].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid);
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
-                result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid);
+                result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch);
             const bool angular_allowed = !reference && !action.owned &&
                 arcade_input.allows_air_rotation(user,result.authored_playback) && result.phase != 3;
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
@@ -1500,7 +1501,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

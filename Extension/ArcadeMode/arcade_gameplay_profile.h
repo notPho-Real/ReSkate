@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <cstdint>
+#include "arcade_launch_descriptor.h"
 
 namespace dingosdk::arcade_mode {
 enum class GameplayStats : std::uint8_t { standard = 5, maxed = 10 };
@@ -50,6 +51,11 @@ struct GameplayProfile {
             boneless ? value(489, 525, standard_switch()) : value(414, 450, standard_switch());
         return (low * standard_switch() + (high - low * standard_switch()) *
             static_cast<float>(std::min(charge_ms, 200u)) / 200) * metres_per_inch;
+    }
+    float launch_speed(unsigned charge_ms, LaunchDescriptor launch) const noexcept {
+        if(!launch.known())return 0;
+        if(launch.context==LaunchContext::explicit_speed)return launch.speed_mps;
+        return jump_speed(charge_ms,launch.context==LaunchContext::vertical,launch.family==LaunchFamily::extended);
     }
     constexpr PhysicalBalanceParameters balance(PhysicalBalanceKind kind) const noexcept {
         const auto s = standard_switch();
