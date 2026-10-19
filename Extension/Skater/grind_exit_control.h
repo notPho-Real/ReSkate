@@ -41,7 +41,8 @@ bool start(std::uintptr_t image_base) noexcept;
 // skater's facing, writes the physics thread's decisions to the log.
 void on_client_tick(std::uintptr_t client) noexcept;
 // The console verbs: exits on|off|status, stance goofy|regular, sides toeheel|travel,
-// guard on|off, leanguard on|off, prewindow <seconds>, sidespeed <m/s>.
+// strength <10 to 100> (default100), guard on|off, leanguard on|off,
+// prewindow <seconds>, sidespeed <m/s>.
 std::string command(const std::vector<std::string>& words);
 
 // For the menus, any thread.

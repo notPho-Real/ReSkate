@@ -79,4 +79,40 @@ inline std::optional<PlayStationGamepad> parse_playstation_report(PlayStationPad
         return detail::playstation_common(report + 3, report + 7, report[10], report[11]);
     return {};
 }
+// Native HID exit-input repair adapted from Belcross-Dev/ReSkate (GPL-3.0),
+// 72aa7b87c00cbf29c9fe382c1dfabc1132518430, input_capture.cpp filter_hid.
+// Only the existing filter's trigger/left-X channels are written back.
+inline void refresh_playstation_bluetooth_crc(std::uint8_t* report,std::size_t size) noexcept {
+    if (!report || size != 78 || (report[0] != 0x31 && report[0] != 0x11)) return;
+    std::uint32_t crc=0xffffffffu;
+    const auto feed=[&](std::uint8_t byte){
+        crc^=byte;
+        for(unsigned bit=0;bit<8;++bit)crc=(crc>>1)^(0xedb88320u&(0u-(crc&1u)));
+    };
+    feed(0xa1);
+    for(std::size_t i=0;i<size-4;++i)feed(report[i]);
+    crc=~crc;
+    for(unsigned i=0;i<4;++i)report[size-4+i]=static_cast<std::uint8_t>(crc>>(i*8));
+}
+template<class Filter> bool filter_playstation_exit_report(PlayStationPad kind,
+        std::uint8_t* report,std::size_t size,Filter&& filter) noexcept {
+    const bool bluetooth=playstation_bluetooth(size);
+    const auto before=parse_playstation_report(kind,bluetooth,report,size);
+    if (!before) return false;
+    auto pad=*before;filter(pad);
+    if (pad.left_trigger==before->left_trigger && pad.right_trigger==before->right_trigger && pad.left_x==before->left_x) return false;
+    std::uint8_t *sticks{},*shoulder{},*left{},*right{};
+    const auto id=report[0];
+    if (kind==PlayStationPad::dualsense && ((id==0x01&&!bluetooth)||id==0x31)) {
+        auto* data=report+(id==0x31?2:1);sticks=data;left=data+4;right=data+5;shoulder=data+8;
+    } else if(id==0x01) {sticks=report+1;shoulder=report+6;left=report+8;right=report+9;}
+    else if(kind==PlayStationPad::dualshock4 && id==0x11) {sticks=report+3;shoulder=report+8;left=report+10;right=report+11;}
+    else return false;
+    if (pad.left_trigger!=before->left_trigger) {*left=pad.left_trigger;if(!pad.left_trigger)*shoulder=static_cast<std::uint8_t>(*shoulder&~0x04u);}
+    if (pad.right_trigger!=before->right_trigger) {*right=pad.right_trigger;if(!pad.right_trigger)*shoulder=static_cast<std::uint8_t>(*shoulder&~0x08u);}
+    if (pad.left_x!=before->left_x)sticks[0]=static_cast<std::uint8_t>(std::clamp(static_cast<int>(pad.left_x)/258+128,0,255));
+    refresh_playstation_bluetooth_crc(report,size);
+    return true;
+}
+
 }

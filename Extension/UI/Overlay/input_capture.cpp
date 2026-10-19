@@ -101,24 +101,25 @@ void neutral_hid(const InputCaptureHooks::HidRead& read, DWORD size) {
         data[4] = 8; data[5] = 0; data[6] &= 0xfc; // retain DS4 sequence bits
         data[7] = data[8] = 0;
     }
-    // Full Bluetooth reports have a CRC over the 0xA1 input prefix and payload.
-    // A stale checksum makes the native reader discard the neutral report.
-    if (size == 78 && (bytes[0] == 0x31 || bytes[0] == 0x11)) {
-        std::uint32_t crc = 0xffffffffu;
-        const auto feed = [&](std::uint8_t byte) {
-            crc ^= byte;
-            for (unsigned bit = 0; bit < 8; ++bit) crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
-        };
-        feed(0xa1);
-        for (DWORD i = 0; i < size - 4; ++i) feed(bytes[i]);
-        crc = ~crc;
-        std::memcpy(bytes + size - 4, &crc, sizeof(crc));
-    }
+    refresh_playstation_bluetooth_crc(bytes,size);
     static std::atomic<bool> reported{};
     if (!reported.exchange(true)) logging::printf(logging::Level::info, logging::Channel::input,
         "Native PlayStation HID report neutralized; overlay retains its independent input stream. (%s over %s, report 0x%02x of %lu bytes, "
         "the game's buffer %lu.)", read.kind == PlayStationPad::dualsense ? "DualSense" : "DualShock 4",
         bluetooth ? "Bluetooth" : "USB", bytes[0], size, read.capacity);
+}
+std::atomic<dingosdk::overlay::GamepadFilter>& gamepad_filter();
+// Reuse the single installed gamepad filter on completed native Sony reads;
+// no new hook/recognizer and no changes to the overlay's independent stream.
+void handle_hid(const InputCaptureHooks::HidRead& read,DWORD size) noexcept {
+    if (block_polled_input()) {neutral_hid(read,size);return;}
+    const auto filter=gamepad_filter().load(std::memory_order_acquire);
+    if (!filter || !read.buffer || size>read.capacity) return;
+    filter_playstation_exit_report(read.kind,static_cast<std::uint8_t*>(read.buffer),size,[&](PlayStationGamepad& pad){
+        dingosdk::overlay::GamepadValues value{pad.buttons,pad.left_trigger,pad.right_trigger,pad.left_x,pad.left_y,pad.right_x,pad.right_y};
+        filter(3,value);
+        pad.left_trigger=value.left_trigger;pad.right_trigger=value.right_trigger;pad.left_x=value.left_x;
+    });
 }
 void complete_hid(OVERLAPPED* request, DWORD bytes, bool success, bool finished) {
     auto& h = input_hooks();
@@ -130,7 +131,7 @@ void complete_hid(OVERLAPPED* request, DWORD bytes, bool success, bool finished)
         read = found->second;
         if (finished) h.hid_reads.erase(found);
     }
-    if (success) neutral_hid(read, bytes);
+    if (success) handle_hid(read, bytes);
 }
 BOOL WINAPI captured_read_file(HANDLE file, LPVOID buffer, DWORD size, LPDWORD bytes, LPOVERLAPPED request) {
     auto& h = input_hooks();
@@ -164,7 +165,7 @@ BOOL WINAPI captured_read_file(HANDLE file, LPVOID buffer, DWORD size, LPDWORD b
     const auto result = original<decltype(&ReadFile)>(h.read_file)(file, buffer, size, bytes, request);
     const auto error = GetLastError();
     if (read.kind != PlayStationPad::none) {
-        if (result) neutral_hid(read, bytes ? *bytes : request ? static_cast<DWORD>(request->InternalHigh) : 0);
+        if (result) handle_hid(read, bytes ? *bytes : request ? static_cast<DWORD>(request->InternalHigh) : 0);
         if (!result && error != ERROR_IO_PENDING && request) complete_hid(request, 0, false, true);
     }
     SetLastError(error);

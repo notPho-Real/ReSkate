@@ -94,7 +94,8 @@ struct FlightInput {
 };
 
 // May change what the GAME reads from an XInput pad (never what ReSkate itself reads). `user` is
-// the XInput slot. Called on whatever thread the game polls from, once per poll that returns a
+// the XInput slot, or slot3 for native PlayStation HID reads. Called on the
+// game polling/completion thread, once per completed read that returns a
 // pad. The grind exit control's grab and lean guards (grind_exit_control.h).
 struct GamepadValues {
     std::uint16_t buttons = 0;
