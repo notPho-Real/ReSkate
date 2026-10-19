@@ -218,9 +218,9 @@ void grab_release_and_reset() {
     UnifiedInput input;Waiting target;InputEnvironment e{InputContext::air,true};e.policy=InputPolicy::strict();
     input.poll(0,{},e,target.adapter());input.poll(10,{0x2000},e,target.adapter());
     const auto attempted=target.calls; input.poll(20,{},e,target.adapter());target.ready=true;input.poll(30,{},e,target.adapter());
-    check(target.calls==attempted,"a released waiting hold cannot acquire ownership when readiness arrives later");
+    check(target.calls==attempted+2,"release retains the request through both its waiting poll and later initialization poll");
     input.poll(40,{0x2000},e,target.adapter());
-    check(target.calls==attempted+1,"release followed by a genuine new press admits one new hold request");
+    check(target.calls==attempted+3,"release followed by a genuine new press admits a distinct semantic request");
     for(unsigned boundary=0;boundary<5;++boundary) {
         InputSession session;InputAdmission a{};a.gameplay=a.action_fresh=a.inspected_stance=true;a.pose=SkatePose::air;a.action_mode=ActionExperiment::classic;
         session.poll(0,{},0,0,a);check(session.poll(10,{0x2000},0,0,a).action.owned,"hold starts before cancellation boundary");

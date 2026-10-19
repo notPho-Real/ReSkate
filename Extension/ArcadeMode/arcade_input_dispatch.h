@@ -7,7 +7,7 @@ namespace dingosdk::arcade_mode {
 enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
 enum class InputAction : std::uint8_t {
     none, crouch, ollie_release, flip, grab, rail_request, revert, manual, nose_manual,
-    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select
+    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle
 };
 enum class InputDisposition : std::uint8_t { waiting, started, unsupported, cancelled, expired };
 struct InputRequest {
@@ -49,6 +49,9 @@ struct InputEnvironment {
     InputRailState rail{};
     InputSurfaceState surface{};
     bool named_grabs{};
+    InputBalanceControls balance_controls{};
+    bool board_allowed{};
+    InputBoardBinding board_binding{};
 };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
 // Adapter callbacks request existing methods only. They cannot establish native
@@ -86,11 +89,15 @@ public:
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
             pop(); // Removal precedes any adapter/reentrant boundary.
-            const auto epoch = epoch_; ++reserved_;
+            const auto epoch = epoch_;
+            const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
+            ++reserved_;
             const auto result = adapter.request ? adapter.request(adapter.state, request) : InputDisposition::unsupported;
             --reserved_;
             if (result == InputDisposition::waiting) {
-                if (epoch != epoch_) { report(InputDispatchEvent{request, InputDisposition::cancelled}); continue; }
+                if (epoch != epoch_ || cancellation != cancellations_[static_cast<std::size_t>(request.action)]) {
+                    report(InputDispatchEvent{request, InputDisposition::cancelled}); continue;
+                }
                 // The callback's insertions reserve this slot and cannot make
                 // restoring the unchanged waiting request overflow the FIFO.
                 front_ = (front_ + capacity - 1) % capacity;
@@ -106,10 +113,13 @@ public:
             if (result == InputDisposition::waiting && started) return;
             slots_[index] = {};
             const auto epoch = slot_epoch;
+            const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
             if (result == InputDisposition::waiting)
                 result = adapter.request ? adapter.request(adapter.state, request) : InputDisposition::unsupported;
             if (result == InputDisposition::waiting) {
-                if (epoch == slot_epoch && slots_[index].action == InputAction::none) slots_[index] = request;
+                if (epoch == slot_epoch && cancellation == cancellations_[static_cast<std::size_t>(request.action)] &&
+                    slots_[index].action == InputAction::none) slots_[index] = request;
+                else report(InputDispatchEvent{request, InputDisposition::cancelled});
             } else { report(InputDispatchEvent{request, result}); started = started || result == InputDisposition::started; }
         };
         slot_dispatch(0, manual_epoch_);
@@ -117,9 +127,10 @@ public:
 
     }
     void cancel(InputAction action) noexcept {
+        // A request is absent from slots while its adapter runs. Invalidate
+        // that reservation too, without cancelling unrelated waiting actions.
+        ++cancellations_[static_cast<std::size_t>(action)];
         for (auto& slot : slots_) if (slot.action == action) slot = {};
-        if (manual(action)) ++manual_epoch_;
-        if (rail(action)) ++rail_epoch_;
     }
     std::span<const InputRequest> slots() const noexcept { return slots_; }
 private:
@@ -139,6 +150,7 @@ private:
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::board_toggle) + 1> cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
 // all admission and safety contracts. No native memory or score dependencies.
@@ -154,7 +166,7 @@ public:
         InputPolicy policy{InputPolicy::production()};
     };
     void reset() noexcept {
-        events_.reset(); pending_.clear(); ++session_; crouched_ = false;
+        events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false;
         previous_context_ = InputContext::unknown; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
@@ -168,6 +180,10 @@ public:
     }
     const InputHistory& history() const noexcept { return events_.history(); }
     InputRequest pending_manual() const noexcept { return pending_.slots()[0]; }
+    InputRequest pending_grab() const noexcept {
+        for (const auto& request : pending_.slots()) if (request.action == InputAction::grab) return request;
+        return {};
+    }
     void acknowledge_jump_release() noexcept { pending_.cancel(InputAction::ollie_release); }
     void cancel_auxiliary() noexcept {
         pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
@@ -192,7 +208,7 @@ public:
         policy_ = environment.policy; diagnostic_.policy = policy_;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
         if (!environment.gameplay || environment.context == InputContext::unknown ||
-            environment.context == InputContext::foot || (clocked_ && now < last_)) {
+            (clocked_ && now < last_)) {
             reset(); clocked_ = false; return;
         }
         const auto directional = physical.buttons & 15u;
@@ -209,7 +225,10 @@ public:
         }
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
-        events_.sample(now, physical, previous_context_ == InputContext::balance, environment.manual_active, environment.policy);
+        events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
+        balance_controls_ = environment.balance_controls;
+        if (!balance_controls_.admitted && environment.context == InputContext::balance && environment.branch_ready)
+            balance_controls_ = InputBalanceControls::vertical(environment.balance_branch == 13 ? InputBalanceKind::nose : InputBalanceKind::manual);
         diagnostic_.stick = events_.vertical_direction(false); diagnostic_.pad = events_.vertical_direction(true);
         if (environment.conflict) {
             events_.discard_intent(); pending_.clear(); crouched_ = false; stick_resume_ = false;
@@ -233,8 +252,7 @@ public:
             (held_direction == InputEvents::encode(0, 1) || held_direction == InputEvents::encode(0, -1));
         if (held_direction && !balancing_vertical) {
             direction_ = held_direction; direction_at_ = now;
-            direction_source_ = environment.policy.normalization == InputNormalization::analog ? InputSource::direction :
-                (physical.buttons & 15u) ? InputSource::pad : InputSource::stick;
+            direction_source_ = InputSource::direction;
         }
         recognize_surface(now, environment);
         recognize_branches(now, environment);
@@ -253,13 +271,10 @@ public:
             if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == 1 &&
                 event.token.edge == InputEdge::press && environment.context == InputContext::ground)
                 { consume(event); enqueue(InputAction::revert, now, 1, environment); }
-            if (event.token.source == InputSource::buttons && event.token.code == 13 && event.token.edge == InputEdge::release &&
-                !environment.deferred_grabs && !environment.named_grabs)
-                pending_.cancel(InputAction::grab);
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;
             if (code == 12) {
-                if (event.token.edge == InputEdge::press && environment.ollie_allowed) {
+                if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
                     consume(event); crouched_ = true; crouch_nollie_ = environment.nollie; crouch_at_ = event.at;
                     enqueue(InputAction::crouch, now, 1, environment);
                 } else if (event.token.edge == InputEdge::release && crouched_) {
@@ -292,6 +307,7 @@ public:
         }
         recognize_manual(now, physical, environment);
         recognize_rail_selection(now, environment);
+        recognize_board(now, environment);
         pending_.dispatch(now, session_, environment.context, adapter, [&](InputDispatchEvent event) {
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::lip_select) {
                 pending_.cancel(InputAction::lip_select); pending_.cancel(InputAction::rail_select);
@@ -337,12 +353,30 @@ private:
                 (!environment.policy.bounded_handoff && (action == InputAction::flip || action == InputAction::grab)), modifier,
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
             static_cast<std::uint16_t>(action == InputAction::grab ? 0x2000u : action == InputAction::flip ? 0x4000u :
-                action == InputAction::crouch || action == InputAction::ollie_release ? 0x1000u : 0u),
+                action == InputAction::crouch || action == InputAction::ollie_release ? 0x1000u :
+                action == InputAction::board_toggle ? (environment.board_binding.pattern == InputBoardPattern::shoulder_overlap ? 0x0300u : environment.board_binding.control_mask) : 0u),
             action == InputAction::crouch || action == InputAction::ollie_release ? crouch_at_ : now,
             action == InputAction::ollie_release ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
             footprint ? footprint->first_at : now, footprint ? footprint->last_at : now, environment.balance_branch};
         ++diagnostic_.recognized;
         if (!pending_.push(request)) ++diagnostic_.queue_full;
+    }
+    void recognize_board(std::uint64_t now, InputEnvironment environment) noexcept {
+        if (!environment.board_allowed) return;
+        InputMatch match{};
+        const auto& binding = environment.board_binding;
+        if (binding.pattern == InputBoardPattern::shoulder_overlap) {
+            match = events_.history().overlap({InputSource::buttons,8,InputEdge::press},
+                {InputSource::buttons,9,InputEdge::press},400,now);
+        } else if (binding.pattern == InputBoardPattern::single_control) {
+            const auto mask = binding.control_mask;
+            if (!mask || (mask & static_cast<std::uint16_t>(mask-1)) || (mask & 0x003fu)) return;
+            std::int16_t bit{}; while (!(mask & (std::uint16_t{1} << bit))) ++bit;
+            const std::array token{InputToken{InputSource::buttons,bit,InputEdge::press}};
+            match = events_.history().match({token,10},now);
+        }
+        if (match && events_.history().consume(match,1))
+            enqueue(InputAction::board_toggle,now,1,environment,1,0,0,0,{},&match);
     }
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
         unsigned presses = 1;
@@ -398,7 +432,7 @@ private:
     }
     void recognize_surface(std::uint64_t now, InputEnvironment environment) noexcept {
         const auto& surface = environment.surface;
-        if (!surface.fresh) return;
+        if (!surface.fresh || environment.context == InputContext::foot) return;
         if (surface_clocked_ && surface.generation == surface_generation_ && surface.physics_step == surface_step_) return;
         surface_clocked_ = true; surface_generation_ = surface.generation; surface_step_ = surface.physics_step;
         const InputToken jump{InputSource::buttons,12,InputEdge::press};
@@ -677,6 +711,7 @@ private:
         if (pad) events_.reset_manual_stick_baseline();
         const auto window = environment.context == InputContext::air ? InputTiming::air_pair_ms :
             InputTiming::ground_pair_ms + environment.policy.manual_sample_allowance;
+        const bool inclusive = environment.context == InputContext::ground && environment.policy.inclusive_manual;
         bool requested{};
         const bool canonical = environment.policy.normalization == InputNormalization::analog;
         const auto reject = canonical ? ~std::uint32_t{0} : manual_owner;
@@ -689,15 +724,15 @@ private:
                     (source != InputSource::direction || event.token.code == 2 || event.token.code == 8)) {
                     prior = latest; latest = &event;
                 }
-            const bool fresh = latest && (environment.policy.inclusive_manual ? now - latest->at <= window : now - latest->at < window);
+            const bool fresh = latest && (inclusive ? now - latest->at <= window : now - latest->at < window);
             auto& first = (source == InputSource::vertical_pad || (canonical && pad)) ? diagnostic_.pad_first : diagnostic_.stick_first;
             auto& at = (source == InputSource::vertical_pad || (canonical && pad)) ? diagnostic_.pad_at : diagnostic_.stick_at;
             const auto sign = [&](const InputEvent* event) { return event ? canonical ? event->token.code == 8 ? 1 : -1 : static_cast<int>(event->token.code) : 0; };
             first = fresh ? sign(latest) : 0; at = latest ? latest->at : 0;
             if (requested || !fresh || latest->at != now || !prior ||
-                sign(prior) != -sign(latest) || (environment.policy.inclusive_manual ? now - prior->at > window : now - prior->at >= window)) continue;
+                sign(prior) != -sign(latest) || (inclusive ? now - prior->at > window : now - prior->at >= window)) continue;
             const std::array steps{prior->token, latest->token};
-            const auto match = events_.history().match({steps, window, reject, true, false, environment.policy.inclusive_manual}, now);
+            const auto match = events_.history().match({steps, window, reject, true, false, inclusive}, now);
             if (match && events_.history().consume(match, manual_owner, reject)) {
                 // Recognition and native readiness remain separate. The current
                 // safe-state gate, including preparation-only contexts, is retained.
@@ -710,6 +745,7 @@ private:
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
     }
     InputPolicy policy_{InputPolicy::production()};
+    InputBalanceControls balance_controls_{};
     InputEvents events_{};
     InputRequestQueue pending_{};
     Diagnostic diagnostic_{};

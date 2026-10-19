@@ -12,10 +12,16 @@ struct InputTiming {
 
 namespace dingosdk::arcade_mode {
 enum class InputNormalization : std::uint8_t { compatibility, analog };
+enum class InputBoardPattern : std::uint8_t { shoulder_overlap, single_control, unavailable };
+struct InputBoardBinding {
+    InputBoardPattern pattern{};
+    std::uint16_t control_mask{0x0300};
+    bool operator==(const InputBoardBinding&) const = default;
+};
 struct InputPolicy {
     InputNormalization normalization{InputNormalization::compatibility};
     std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
-    bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{true};
+    bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{false};
     bool operator==(const InputPolicy&) const = default;
     // Preserve the admitted physical Manual baseline and its explicit allowance.
     static constexpr InputPolicy production() noexcept { return {}; }
