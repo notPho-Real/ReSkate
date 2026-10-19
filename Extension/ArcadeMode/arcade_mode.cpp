@@ -12,6 +12,7 @@
 #include "arcade_native_events.h"
 #include "arcade_manual_observation.h"
 #include "arcade_manual_release.h"
+#include "arcade_manual_hop.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
@@ -150,6 +151,7 @@ void prepare_authored_catalog() noexcept {
 ComboSession combo_session(native_combo_tuning());
 ManualPhysics physical_manual;
 ManualRelease manual_release;
+ManualHopContinuity manual_hop; // Input mutex protects admitted jump continuity.
 std::atomic<bool> reset_physical_manual{true};
 ManualObservation manual_identity;
 std::uint64_t manual_identity_epoch{1};
@@ -166,6 +168,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
                   bool native_push_contact, float simulation_step) noexcept {
     if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
+        { std::lock_guard lock(ollie_mutex); manual_hop.reset(); }
         physical_manual.reset(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
     }
     const auto score = score_activity();
@@ -220,12 +223,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool native_revert = observed_native_revert({valid && !owner_changed,
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
-    PhysicalBalanceSample physical{true, false};
-    if (manual_pose) {
-        if (!physical_manual.closed()) physical_manual.begin(pose == SkatePose::nose_manual);
-        physical = physical_manual.sample(simulation_step, balance_control.manual_input());
-    } else if (pose == SkatePose::riding || pose == SkatePose::bail || pose == SkatePose::unknown) physical_manual.reset();
-    else physical_manual.stop(); // Airborne hops retain physical repeat history.
+    bool preserve_hop{};
+    {
+        std::lock_guard lock(ollie_mutex);
+        preserve_hop = manual_hop.preserve(native_frame,pose,valid && !owner_changed && !observation_gap && !bail);
+    }
+    const auto physical = manual_physics_pose(physical_manual,pose,simulation_step,balance_control.manual_input(),preserve_hop);
     const bool failed = combo_session.step(pose, dt, correction, native_revert,
         manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
     const auto physical_contact = bail ? SkatePose::bail :
@@ -260,6 +263,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             manual_closed ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
             arcade_input.cancel_manuals();
+        if (manual_closed) manual_hop.reset();
         const bool balance_admitted = manual_observation.confirmed &&
             combo_session.model().state().balance_kind == BalanceKind::manual && !manual_closed;
         manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);
@@ -770,7 +774,7 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); arcade_input.publish_native_context({});
+        native_input_state.invalidate(); arcade_input.publish_native_context({}); manual_hop.reset();
         arcade_input.enable(value);
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
@@ -969,7 +973,7 @@ void on_client_tick() noexcept {
             combo_owner = {};
             {
                 std::lock_guard lock(ollie_mutex);
-                arcade_input.cancel_manuals();
+                arcade_input.cancel_manuals(); manual_hop.reset();
                 manual_eligible_until.store(0, std::memory_order_release);
                 manual_prepare_until.store(0, std::memory_order_release);
                 manual_release_until.store(0, std::memory_order_release);
@@ -1029,7 +1033,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
-            native_input_state.invalidate(); arcade_input.publish_native_context({});
+            native_input_state.invalidate(); arcade_input.publish_native_context({}); manual_hop.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();
@@ -1146,11 +1150,16 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (reference) { result.buttons = 0; left_x = left_y = 0; left_trigger = right_trigger = 0; }
         else if (consume_nollie && !action.pad.owns_triggers) left_trigger = 0;
         const auto pose = manual_observed.load(std::memory_order_relaxed);
+        const auto hop_origin = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
+        manual_hop.command(now,arcade_input.native_context(now),hop_origin,pose,
+            manual_balance_admitted.load(std::memory_order_relaxed),result,(physical_buttons & classic_a) != 0,
+            game_input && !offboard && !reference && !action.owned && !(physical_buttons & 0xe330u) && physical_right_trigger <= 30);
         const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
         const bool crouched = pose == SkatePose::riding && (physical_buttons & classic_a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
-        const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard &&
+        // A balance hop must not gain an ordinary crouch-kick assistance budget.
+        const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard && !manual_hop.active() &&
             drive_until >= now && drive_until - now <= 150 && result.movement_intent &&
             pose == SkatePose::riding && (!physical_buttons || (physical_buttons == classic_a && crouched)) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&

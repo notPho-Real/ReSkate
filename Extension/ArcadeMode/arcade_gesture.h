@@ -105,6 +105,13 @@ public:
             admission.offboard = native.state == game::build::v20260929::arcade_native_probe::offboard_state;
             const bool manual_phase = manual_balance_admitted &&
                 (balance_admission(now,InputBalanceKind::manual).valid || balance_admission(now,InputBalanceKind::nose).valid);
+            // An admitted basic balance selects its own jump family. Physical
+            // LT is an ordinary-ground modifier, not a replacement balance identity.
+            if (native.state == 100 && (buttons & classic_a)) {
+                if (manual_phase) admission.nollie = balance_controls_.kind == InputBalanceKind::nose;
+                else if (manual_balance_admitted && (observed == SkatePose::manual || observed == SkatePose::nose_manual))
+                    admission.may_start = false; // Stale balance authority cannot substitute an ordinary hop.
+            }
             // Caller poses can lag native landing/takeoff. Reconcile only the
             // verified states; contact alone never establishes balance identity.
             if (!admission.offboard && !native.rail_family) {
