@@ -22,6 +22,7 @@ inline float balance_correction(BalanceKind kind, short left_x, short left_y, bo
 }
 class BalanceControl {
 public:
+    void reset_manual() noexcept { manual_ = released_ = false; control_ = {}; }
     float poll(std::uint64_t now, BalanceKind kind, float lean, short x, short y,
                bool available, std::uint32_t buttons = 0) noexcept {
         control_ = {};

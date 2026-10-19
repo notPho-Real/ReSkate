@@ -24,9 +24,10 @@ public:
     void stop() noexcept { active_ = closed_ = false; section_ = 0; }
     bool active() const noexcept { return active_; }
     bool closed() const noexcept { return closed_; }
+    bool nose() const noexcept { return nose_; }
     bool begin(bool nose) noexcept {
         if (closed_) return false;
-        if (active_) return true; // Same physical balance does not reset history.
+        if (active_ && nose_ == nose) return true; // Only the same type keeps its current setup.
         const auto p = profile_.balance(PhysicalBalanceKind::manual);
         if (!(p.endpoint > 0 && p.cheese_frames > 0)) return false;
         if (speed_ != 0) speed_ = std::copysign(std::max(std::abs(speed_ * p.repeat_multiplier), p.repeat_minimum), speed_);

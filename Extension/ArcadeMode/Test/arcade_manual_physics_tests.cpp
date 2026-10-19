@@ -27,7 +27,7 @@ int main() {
               "position integrates the existing velocity and selected instability before correction");
         check(near(initial.velocity, -sign * 9 / 4096), "correction uses ten internal units per reference step");
         check(near(initial.repeat_pressure, 693), "repeat pressure decays by the frame-scaled seven internal units");
-        check(physics.begin(!nose), "same active balance request is idempotent rather than a history reset");
+        check(physics.begin(nose), "same active balance request is idempotent rather than a history reset");
         const auto continued = physics.sample(1.0f / 60, nose ? 1.0f : -1.0f);
         check(continued.elapsed > initial.elapsed && continued.repeat_pressure < initial.repeat_pressure,
               "same active request preserves time and repeat-pressure decay");
@@ -98,6 +98,27 @@ int main() {
         BalanceControl controls;controls.poll(0,BalanceKind::manual,0,0,nose?-32768:32767,true);
         check(!controls.manual_input().released && near(entry.sample(1.0f/60,controls.manual_input()).velocity,
               (nose?-15.0f:15.0f)/4096), "entry-held unreleased input retains the source neutral branch until ignore suppression ends");
+    }
+    for(bool original_nose : {false,true}) {
+        ManualPhysics typed;typed.begin(original_nose);
+        const float direction=original_nose?1.0f:-1.0f;
+        typed.sample(1.0f/60,direction);
+        const auto prior=typed.sample(1.0f/60,direction);
+        check(typed.begin(!original_nose)&&typed.nose()!=original_nose,
+              "independently admitted opposite manual type installs its physical endpoint policy");
+        const auto next=typed.sample(1.0f/60,-direction);
+        check(near(next.velocity,-direction*5.25f/4096)&&next.elapsed>prior.elapsed,
+              "typed transition applies repeat multiplier to retained velocity and preserves accumulated instability");
+        check(near(next.repeat_pressure,693)&&near(prior.repeat_pressure,686),
+              "a changed manual type performs new setup and resets section repeat pressure");
+        typed.begin(!original_nose);
+        check(near(typed.sample(1.0f/60,-direction).repeat_pressure,686),
+              "same-type continuation remains idempotent and cannot renew repeat pressure");
+        BalanceControl controls;controls.poll(0,BalanceKind::manual,0,0,0,true);
+        controls.poll(1100,BalanceKind::manual,0,0,32767,true);controls.reset_manual();
+        controls.poll(1117,BalanceKind::manual,0,0,32767,true);
+        check(!controls.manual_input().released&&controls.manual_input().elapsed_ms==0,
+              "changed-type setup restarts entry-held suppression without erasing physical history");
     }
     ManualPhysics a({}, 19), b({}, 19);
     a.begin(false); b.begin(false);

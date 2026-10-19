@@ -200,6 +200,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const float dt = combo_tick_at && now >= combo_tick_at ? static_cast<float>(now - combo_tick_at) / 1000.0f : 0;
     combo_tick_at = now;
     const auto kind = combo_session.model().state().balance_kind;
+    const bool manual_pose = balance_kind(pose) == BalanceKind::manual;
+    if (manual_pose && physical_manual.active() && physical_manual.nose() != (pose == SkatePose::nose_manual))
+        balance_control.reset_manual();
     const auto correction = balance_control.poll(now, balance_kind(pose), combo_session.model().state().balance,
         input.left_x, input.left_y, input.available, input.buttons);
     const bool was_active = combo_session.model().state().combo_active;
@@ -208,9 +211,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
     PhysicalBalanceSample physical{true, false};
-    const bool manual_pose = balance_kind(pose) == BalanceKind::manual;
     if (manual_pose) {
-        if (!physical_manual.active() && !physical_manual.closed()) physical_manual.begin(pose == SkatePose::nose_manual);
+        if (!physical_manual.closed()) physical_manual.begin(pose == SkatePose::nose_manual);
         physical = physical_manual.sample(simulation_step, balance_control.manual_input());
     } else if (pose == SkatePose::riding || pose == SkatePose::bail || pose == SkatePose::unknown) physical_manual.reset();
     else physical_manual.stop(); // Airborne hops retain physical repeat history.
