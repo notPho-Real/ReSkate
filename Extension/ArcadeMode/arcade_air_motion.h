@@ -197,6 +197,9 @@ public:
             air_seen_ = false;
             tap_spin_.baseline(intent.spin);
             grounded_ = true; ordinary_ = frame.ordinary_ground; limits_active_ = ordinary_;
+            // Qualified ground ends the prior flight's geometry rejection.
+            // A current unsupported release still cannot borrow ordinary motion.
+            if (ordinary_) launch_blocked_ = intent.release_sequence && !intent.launch.ordinary_writer();
             if (ordinary_) air_limits_.observe_ordinary(std::hypot(frame.velocity_x,frame.velocity_z));
             else air_limits_.reset();
             ground_vy_ = frame.velocity_y; vertical_ = spun_ = false; yaw_ = 0;
