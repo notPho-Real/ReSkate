@@ -108,8 +108,40 @@ void held_clocks() {
     check(!vertical.held_longer({InputSource::vertical_stick,-1,InputEdge::press},130,230), "negative projection cannot alias the neutral hold clock");
 }
 
+PhysicalInputSample sample_direction(std::int16_t code) {
+    const auto x=code==4 || code==7 || code==1 ? -25000 : code==6 || code==9 || code==3 ? 25000 : 0;
+    const auto y=code>=7 ? 25000 : code<=3 ? -25000 : 0;
+    return {0,static_cast<std::int16_t>(x),static_cast<std::int16_t>(y)};
+}
+void event_ordinals_and_recovery() {
+    constexpr std::array<std::int16_t,8> order{8,2,4,6,7,9,1,3};
+    for(std::size_t prior=0;prior<order.size();++prior) for(std::size_t next=0;next<order.size();++next) {
+        if(prior==next)continue;
+        InputEvents input; input.sample(0,sample_direction(order[prior]),false,false,InputPolicy::strict());
+        input.sample(10,sample_direction(order[next]),false,false,InputPolicy::strict());
+        const auto events=input.history().events();
+        check(events.size()==2 && events[0].token.edge==(next<prior ? InputEdge::press : InputEdge::release),
+            "same-poll direction transitions follow fixed button ordinals rather than a universal release-first rule");
+    }
+    InputEvents input; input.sample(0,{},false,false,InputPolicy::strict());
+    input.sample(10,{0xf3c0,0,0,255,255},false,false,InputPolicy::strict());
+    constexpr std::array<int,10> codes{13,14,15,12,8,0,6,9,1,7};
+    const auto events=input.history().events();check(events.size()==10,"one event per mapped physical edge");
+    for(std::size_t i=0;i<events.size();++i)check(events[i].token.code==codes[i] &&
+        events[i].token.source==((i==5 || i==8) ? InputSource::triggers : InputSource::buttons),
+        "face/shoulder/trigger same-poll recording order is deterministic");
+    InputHistory history;history.record(a,0);history.record(release(a),1);history.record(b,2);
+    const auto first=history.match({std::span<const InputToken>(&a,1),1000},2);check(history.consume(first,1),"recovery positive control includes already used events");
+    check(history.recovery_events(400)==2 && history.events()[0].owners==1,"recovery strict400ms excludes exact boundary but includes presses and releases regardless of use");
+    check(history.recovery_events(400)==2,"recovery recount does not compound an animation-rate accumulator");
+    history.restore(16,400,1000);
+    check(!history.match({std::span<const InputToken>(&b,1),1000},400),"restoring one category cannot reactivate recovery-owned input");
+    history.reset();history.record(a,0);history.record(release(a),100);history.discard_older(a,100,100);
+    check(history.events()[0].owners==~std::uint32_t{0} && history.events()[1].owners==0,"older-than invalidation includes its boundary and both edge kinds");
+}
+
 }
 int main() {
-    air_queries(); release_queries(); extra_queries(); held_clocks();
+    air_queries(); release_queries(); extra_queries(); held_clocks(); event_ordinals_and_recovery();
     std::cout << checks << " source input contract checks passed\n";
 }

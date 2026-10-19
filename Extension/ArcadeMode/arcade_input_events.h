@@ -270,6 +270,18 @@ public:
         for (std::size_t i = 0; i < size_; ++i)
             if (at(i).token.source == source) at(i).owners |= category;
     }
+    void discard_older(InputToken token, std::uint64_t now, std::uint64_t age) noexcept {
+        for(std::size_t i=0;i<size_;++i)
+            if(at(i).token.source==token.source && at(i).token.code==token.code && now>=at(i).at && now-at(i).at>=age)
+                at(i).owners=~std::uint32_t{0};
+    }
+    unsigned recovery_events(std::uint64_t now, std::uint64_t window=400) noexcept {
+        unsigned count{};
+        for(std::size_t i=0;i<size_;++i) if(now>=at(i).at && now-at(i).at<window) {
+            ++count; at(i).owners=~std::uint32_t{0};
+        }
+        return count;
+    }
     void restore(std::uint32_t category, std::uint64_t now, std::uint64_t window) noexcept {
         for (std::size_t i = 0; i < size_; ++i)
             if (now >= at(i).at && now - at(i).at < window) at(i).owners &= ~category;
@@ -454,19 +466,21 @@ private:
         const bool continuous = history_.advance(now);
         if (!armed_ || !continuous) { if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = analog_direction(input); armed_ = true; observe_held(now); return; }
         direction(now, InputSource::direction, analog_direction(input), canonical_);
-        // Pad and analog projections resolve to one canonical direction. Raw pad
-        // bits and manual compatibility projections do not spend journal slots.
-        for (unsigned bit = 4; bit < 16; ++bit) {
-            const auto mask = static_cast<std::uint16_t>(std::uint16_t{1} << bit);
-            if ((input.buttons ^ previous_.buttons) & mask)
-                history_.record({InputSource::buttons, static_cast<std::int16_t>(bit),
-                    input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
-        }
-        for (unsigned trigger = 0; trigger < 2; ++trigger) {
-            const bool held = trigger ? input.rt > 128 : input.lt > 30;
-            const bool was = trigger ? previous_.rt > 128 : previous_.lt > 30;
-            if (held != was) history_.record({InputSource::triggers, static_cast<std::int16_t>(trigger),
-                held ? InputEdge::press : InputEdge::release}, now);
+        // Current layout maps the physical controls into the fixed event order.
+        // Trigger thresholds remain a declared layout policy, separate from axes.
+        constexpr std::array<unsigned,10> order{13,14,15,12,8,16,6,9,17,7};
+        for (const auto control : order) {
+            if (control < 16) {
+                const auto mask = static_cast<std::uint16_t>(std::uint16_t{1} << control);
+                if ((input.buttons ^ previous_.buttons) & mask)
+                    history_.record({InputSource::buttons, static_cast<std::int16_t>(control),
+                        input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
+            } else {
+                const bool held = control == 16 ? input.lt > 30 : input.rt > 128;
+                const bool was = control == 16 ? previous_.lt > 30 : previous_.rt > 128;
+                if (held != was) history_.record({InputSource::triggers,static_cast<std::int16_t>(control-16),
+                    held ? InputEdge::press : InputEdge::release},now);
+            }
         }
         previous_ = input; observe_held(now);
     }
@@ -480,8 +494,14 @@ private:
                 ((source == InputSource::stick || source == InputSource::pad || source == InputSource::direction) &&
                  (code == encode(0, 1) || code == encode(0, -1))));
         };
-        if (old && !excluded(old)) history_.record({source, old, InputEdge::release}, now);
-        if (value && !excluded(value)) history_.record({source, value, InputEdge::press}, now);
+        const auto press = [&] { if (value && !excluded(value)) history_.record({source,value,InputEdge::press},now); };
+        const auto release = [&] { if (old && !excluded(old)) history_.record({source,old,InputEdge::release},now); };
+        if (source == InputSource::direction) {
+            constexpr std::array<std::int16_t,8> order{8,2,4,6,7,9,1,3};
+            std::size_t next = order.size(), prior = order.size();
+            for (std::size_t i=0; i<order.size(); ++i) { if(order[i]==value)next=i; if(order[i]==old)prior=i; }
+            if(next<prior) { press(); release(); } else { release(); press(); }
+        } else { release(); press(); }
         old = value;
     }
     InputHistory history_{};
