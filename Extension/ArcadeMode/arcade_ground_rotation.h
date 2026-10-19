@@ -120,7 +120,8 @@ private:
     double elapsed_{},angle_{};
     GroundYawOutput turn_output_{};
 };
-// Receipt for a verified half-turn body write, not a native action identity.
+// Receipt for a verified ground angular write (steering or half-turn),
+// not a native action identity.
 // A single conditional neutral handoff can remove our common local-up rate;
 // any new owner, contact/action generation, body or changed impulse revokes it.
 class GroundTurnAngularLease {

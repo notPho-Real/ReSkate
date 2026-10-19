@@ -392,6 +392,10 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
             if (!arcade_mode::GroundDrive::apply_bodies({velocities.data(),count},dx,dz)) {
                 p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return;
             }
+            reader.verify();
+            NoBailSkater after{};
+            source_require(no_bail_skater(after) && after == p.arcade_owner,
+                "Ground acceleration ownership changed before writing.");
             for (std::size_t i = 0; i < count; ++i) {
                 body_write(bodies.parts[i] + 0x70, velocities[i]);
                 body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
@@ -637,7 +641,13 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             }
         } else a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
-        const auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
+        auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
+        // Neutral is a withdrawal of our previous ground rate, not permission
+        // to overwrite a new native impulse with an unconditional zero.
+        if (a.ground_output.ready && applied.angular && !a.ground_output.command.serial &&
+            !a.ground_output.controls.left && !a.ground_output.controls.right && a.ground_output.rate==0) {
+            a.ground_output.angular=false; applied.angular=false;
+        }
         if (!a.ground_output.command.serial)
             release_turn(!applied.angular && intent.angular_allowed && !manual.admitted);
         if (!applied.vertical && !applied.angular && !applied.horizontal) return;
@@ -649,7 +659,9 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             if (applied.angular) body_write(bodies.parts[i] + 0x90, spins[i]);
             body_write(bodies.parts[i] + 0x60, flags[i] | ((applied.vertical || applied.horizontal) ? 8u : 0u) | (applied.angular ? 0x20u : 0u));
         }
-        if (a.ground_output.command.serial && applied.angular)
+        // Ordinary steering needs the same conditional withdrawal handoff as
+        // a half-turn; neither may leave a still-owned rate after cancellation.
+        if (a.ground_output.ready && applied.angular)
             a.turn_write.record(native_frame,bodies.parts,spins,bodies.up);
     } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.ready_until.store(0, std::memory_order_release); }
 }
