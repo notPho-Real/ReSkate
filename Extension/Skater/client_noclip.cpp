@@ -481,7 +481,7 @@ struct ArcadeAir {
     arcade_mode::AirMotion controller;
     arcade_mode::GroundResistance ground_resistance;
     arcade_mode::GroundYaw ground_yaw;
-    arcade_mode::GroundTurnAngularLease turn_write;
+    arcade_mode::GroundTurnAngularLease turn_write, air_write;
     arcade_mode::GroundYawOutput ground_output{};
     arcade_mode::AirMotionOutput output{};
     arcade_mode::NativeAirSpinProof output_proof{};
@@ -543,7 +543,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         a.ready_until.store(0, std::memory_order_release); return;
     }
     if (now < intent.sampled_at || now - intent.sampled_at > 150 || multiplayer_session_active()) {
-        a.ground_yaw.cancel(&ground_turn); a.ground_output={}; a.output={}; a.turn_write.clear();
+        a.ground_yaw.cancel(&ground_turn); a.ground_output={}; a.output={}; a.turn_write.clear(); a.air_write.clear();
         a.ready_until.store(0, std::memory_order_release); return;
     }
     try {
@@ -576,24 +576,40 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         const auto requests = reader.value<std::uint32_t>(bodies.context, native::request_words);
         arcade_mode::NativeRequestSample sampled{};sampled.valid=true;sampled.state=physics;sampled.crouch_mode=mode;
         sampled.words[0]=requests;sampled.words[1]=contacts;
-        const auto native_frame = arcade_mode::native_air_context(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled);
-        // Conditional release uses the same validated body collection, reads,
-        // owner recheck and articulated angular writer as the command itself.
-        const auto release_turn = [&](bool permitted) {
-            if (!a.turn_write.release(native_frame,bodies.parts,spins,bodies.up,now,ordinary && permitted)) return;
-            arcade_mode::AirMotionOutput neutral{}; neutral.ready=neutral.angular=true;
-            source_require(arcade_mode::AirMotion::apply_bodies(neutral,velocities,spins,bodies.up), "Invalid ground angular release.");
+        arcade_mode::MotionCleanupProof cleanup{};
+        const auto native_frame = arcade_mode::native_air_context(now,
+            {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup);
+        bool angular_release{};
+        float resistance_change{};
+        // Stage every owned change first. SourceReader keeps original bytes;
+        // no native write may invalidate that snapshot before final validation.
+        const auto commit_motion = [&](bool linear,bool angular) {
+            if (!linear && !angular) return;
             reader.verify(); NoBailSkater after{};
-            source_require(no_bail_skater(after) && after==owner, "Ground angular release ownership changed.");
+            source_require(no_bail_skater(after) && after==owner, "Arcade motion ownership changed before writing.");
             for (std::size_t i=0;i<bodies.parts.size();++i) {
-                body_write(bodies.parts[i]+0x90,spins[i]);
-                body_write(bodies.parts[i]+0x60,flags[i] | 0x20u);
+                if (linear) body_write(bodies.parts[i]+0x70,velocities[i]);
+                if (angular) body_write(bodies.parts[i]+0x90,spins[i]);
+                body_write(bodies.parts[i]+0x60,flags[i] | (linear?8u:0u) | (angular?0x20u:0u));
             }
+            if (resistance_change<0) push_speed().arcade_drive.account_resistance(resistance_change);
+        };
+        const auto release_turn = [&](bool permitted,bool off=false) {
+            bool released{};
+            if (off) {
+                const bool ground=a.turn_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,ordinary && permitted);
+                const bool air=a.air_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,ordinary && permitted);
+                released=ground || air;
+            } else released=a.turn_write.release(native_frame,bodies.parts,spins,bodies.up,now,ordinary && permitted);
+            if (!released) return;
+            arcade_mode::AirMotionOutput neutral{}; neutral.ready=neutral.angular=true;
+            source_require(arcade_mode::AirMotion::apply_bodies(neutral,velocities,spins,bodies.up), "Invalid angular release.");
+            angular_release=true;
         };
         if (!intent.enabled) {
             a.ground_yaw.cancel(&ground_turn); a.ground_output={}; a.output={}; a.controller.reset();
             a.ground_resistance.reset(); a.ready_until.store(0,std::memory_order_release);
-            release_turn(!manual.admitted); return;
+            release_turn(!manual.admitted,true); commit_motion(false,angular_release); return;
         }
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
@@ -631,13 +647,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
                     for (float v : velocities[i])
                         source_require(std::isfinite(v) && std::abs(v) < 1000, "Invalid ground resistance result.");
                 }
-                reader.verify();
-                source_require(no_bail_skater(after) && after == owner, "Ground resistance ownership changed.");
-                for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
-                    body_write(bodies.parts[i] + 0x70, velocities[i]);
-                    body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
-                }
-                push_speed().arcade_drive.account_resistance(change);
+                resistance_change=change;
             }
         } else a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
@@ -650,20 +660,18 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         }
         if (!a.ground_output.command.serial)
             release_turn(!applied.angular && intent.angular_allowed && !manual.admitted);
-        if (!applied.vertical && !applied.angular && !applied.horizontal) return;
-        source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
-        reader.verify();
-        source_require(no_bail_skater(after) && after==owner,"Arcade motion ownership changed before writing.");
-        for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
-            if (applied.vertical || applied.horizontal) body_write(bodies.parts[i] + 0x70, velocities[i]);
-            if (applied.angular) body_write(bodies.parts[i] + 0x90, spins[i]);
-            body_write(bodies.parts[i] + 0x60, flags[i] | ((applied.vertical || applied.horizontal) ? 8u : 0u) | (applied.angular ? 0x20u : 0u));
-        }
+        if (applied.vertical || applied.angular || applied.horizontal)
+            source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
+        commit_motion(resistance_change<0 || applied.vertical || applied.horizontal,applied.angular || angular_release);
         // Ordinary steering needs the same conditional withdrawal handoff as
         // a half-turn; neither may leave a still-owned rate after cancellation.
         if (a.ground_output.ready && applied.angular)
-            a.turn_write.record(native_frame,bodies.parts,spins,bodies.up);
-    } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.ready_until.store(0, std::memory_order_release); }
+            a.turn_write.record(native_frame,bodies.parts,spins,bodies.up,cleanup);
+        if (!a.ground_output.ready && applied.angular) {
+            a.turn_write.clear();
+            a.air_write.record(native_frame,bodies.parts,spins,bodies.up,cleanup);
+        } else a.air_write.clear();
+    } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release); }
 }
 bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float, 16>* supplied, std::array<float, 16>& target) {

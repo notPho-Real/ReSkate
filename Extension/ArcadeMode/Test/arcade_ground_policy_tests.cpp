@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_ground_actions.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
 #include <cstdlib>
+#include <type_traits>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -198,6 +199,30 @@ int main(){
   const unsigned now=fault==11?1151:1017;
   check(lease.release(f.native,parts,spins,up,now,permitted)==(fault==0),"angular release requires the exact verified write, owner/contact/action/body and qualified current context");
   check(!lease.release(f.native,parts,original,up,now,true),"consumed or revoked angular receipt cannot later release another owner's rate");
+ }
+
+ static_assert(!std::is_convertible_v<MotionCleanupProof,NativeInputFrame>);
+ for(bool air:{false,true})for(unsigned fault=0;fault<8;++fault){
+  NativeInputState commands,physical;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample sample{};
+  sample.valid=true;sample.state=air?200:100;sample.crouch_mode=1;sample.words[1]=air?0:0xc000;
+  const auto command=commands.observe(1000,owner,sample,{true,-1});
+  const MotionCleanupProof original{physical.observe(1000,owner,sample,{true,-1})};
+  GroundTurnAngularLease lease;GroundTurnAngularLease::Parts parts{};GroundTurnAngularLease::Spins spins{};
+  for(unsigned i=0;i<32;++i){parts[i]=100+i;spins[i]={0,2.f+i*.1f,0};}
+  const std::array<float,3> up{0,1,0};lease.record(command,parts,spins,up,original);
+  commands.invalidate();
+  check(!commands.correlate(1017,owner,sample).valid,"OFF invalidates normal proof even while a write receipt awaits cleanup");
+  if(fault==1)++owner.core;
+  if(fault==2)sample.words[1]=0x4000;
+  if(fault==3)physical.invalidate();
+  if(fault==4)spins[7][2]=1;
+  if(fault==5)++parts[7];
+  if(fault==6)sample.state=air?100:200;
+  const MotionCleanupProof current{physical.observe(fault==7?1151:1017,owner,sample,{true,-1})};
+  const unsigned now=fault==7?1151:1017;
+  if(fault==0)check(!lease.release_cleanup({},parts,spins,up,now,true),"unavailable cleanup query defers without granting authority or consuming the original receipt");
+  check(lease.release_cleanup(current,parts,spins,up,now,true)==(fault==0),"cleanup-only physical proof can retire an exact write across OFF but cannot cross owner/contact/gap/impulse/body/context loss");
+  check(!lease.release_cleanup(current,parts,spins,up,now,true),"repeated OFF cannot reuse consumed or revoked cleanup authority");
  }
  std::cout<<checks<<" ground steering and action policy checks passed\n";
 }

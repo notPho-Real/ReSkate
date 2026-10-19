@@ -30,6 +30,14 @@ struct NativeInputFrame {
     // Rail family does not establish a named grind, slide, Lip, early/established
     // phase or geometry. Grab initialization/ForceInit remains unknown.
 };
+// Cleanup-only physical continuity. This wrapper cannot be passed as input
+// admission or an ordinary motion intent; OFF never revives command authority.
+struct MotionCleanupProof {
+    NativeInputFrame observed{};
+    bool inspected{}; // False means lock contention, not a new observation.
+    MotionCleanupProof() = default;
+    explicit MotionCleanupProof(NativeInputFrame frame) noexcept : observed(frame), inspected(true) {}
+};
 // Serialized by the existing input mutex. Only a validated native physics step
 // produces frames; client ticks and input polls can only consume them.
 class NativeInputState {

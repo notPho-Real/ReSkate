@@ -10,9 +10,12 @@ struct NativeManualContact;
 struct NativeInputFrame;
 struct NativeInputOwner;
 struct NativeRequestSample;
+struct MotionCleanupProof;
 // Nonblocking original physics correlation for the existing motion writer.
+// Optional typed cleanup proof is sampled under the same lock. It never makes
+// the returned input frame valid while mode/authority is disabled.
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample) noexcept;
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup = nullptr) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Existing client callback supplies immutable query observations only.

@@ -120,8 +120,8 @@ private:
     double elapsed_{},angle_{};
     GroundYawOutput turn_output_{};
 };
-// Receipt for a verified ground angular write (steering or half-turn),
-// not a native action identity.
+// Receipt for a verified angular write, not a native action identity.
+// Ground withdrawal uses command correlation; OFF uses cleanup-only physics.
 // A single conditional neutral handoff can remove our common local-up rate;
 // any new owner, contact/action generation, body or changed impulse revokes it.
 class GroundTurnAngularLease {
@@ -129,8 +129,15 @@ public:
     using Parts = std::array<std::uintptr_t,32>;
     using Spins = std::array<std::array<float,3>,32>;
     void clear() noexcept { pending_=false; }
-    void record(const NativeInputFrame& frame,const Parts& parts,const Spins& spins,const std::array<float,3>& up) noexcept {
-        frame_=frame; parts_=parts; spins_=spins; up_=up; pending_=true;
+    void record(const NativeInputFrame& frame,const Parts& parts,const Spins& spins,const std::array<float,3>& up,
+                const MotionCleanupProof& cleanup = {}) noexcept {
+        frame_=frame; cleanup_={};
+        const auto& observed=cleanup.observed;
+        if (cleanup.inspected && observed.valid && frame.valid && observed.owner==frame.owner && observed.sampled_at>=frame.sampled_at &&
+            observed.state==frame.state && observed.mode==frame.mode && observed.contacts==frame.contacts &&
+            observed.stance_and_push==frame.stance_and_push && observed.flip_known==frame.flip_known &&
+            observed.flip_id==frame.flip_id && observed.selection_object==frame.selection_object) cleanup_=cleanup;
+        parts_=parts; spins_=spins; up_=up; pending_=true;
     }
     bool release(const NativeInputFrame& current,const Parts& parts,const Spins& spins,const std::array<float,3>& up,
                  std::uint64_t now,bool permitted) noexcept {
@@ -145,7 +152,26 @@ public:
         clear(); // Successful or revoked, this receipt is considered only once.
         return owned;
     }
+    bool release_cleanup(const MotionCleanupProof& proof,const Parts& parts,const Spins& spins,
+                         const std::array<float,3>& up,std::uint64_t now,bool permitted) noexcept {
+        if (!proof.inspected) return false; // Contention defers; it grants no write and does not renew the receipt.
+        const auto& current=proof.observed; const auto& origin=cleanup_.observed;
+        const bool context = (origin.state==100 || origin.state==103) ?
+            ((current.state==100 || current.state==103) && current.mode<=2 && current.contacts==0xc000u) :
+            ((origin.state==200 || origin.state==201) && current.airborne && origin.airborne &&
+             current.airborne_episode==origin.airborne_episode && current.air_departure==origin.air_departure);
+        const bool owned = pending_ && permitted && context && frame_.valid && origin.valid && current.valid &&
+            origin.owner.valid() && origin.owner==current.owner && origin.owner==frame_.owner &&
+            origin.owner_generation && origin.owner_generation==current.owner_generation &&
+            origin.contact_generation && origin.contact_generation==current.contact_generation &&
+            origin.action_generation && origin.action_generation==current.action_generation &&
+            origin.physics_step && origin.physics_step<=current.physics_step && origin.sampled_at<=current.sampled_at &&
+            now>=origin.sampled_at && now-origin.sampled_at<=150 && current.sampled_at<=now && now-current.sampled_at<=150 &&
+            parts==parts_ && spins==spins_ && up==up_;
+        clear(); return owned;
+    }
 private:
+    MotionCleanupProof cleanup_{};
     NativeInputFrame frame_{};
     Parts parts_{};
     Spins spins_{};
