@@ -186,5 +186,34 @@ void extra_priority_and_waiting() {
    "a directional triple retains its identity and timestamp across release/readiness delay; landing cancels it before native dispatch");
  }
 }
+void recognition_observation_lineage() {
+ for(bool grab:{false,true})for(const std::uint64_t cadence:{17u,34u}) {
+  UnifiedInput input; Capture capture; InputEnvironment environment{InputContext::air,true};
+  environment.named_grabs=true;
+  const auto poll=[&](std::uint64_t now,PhysicalInputSample physical,std::uint64_t action) {
+   environment.native_context={true,true,{1,1,action},now+1,now,false};
+   environment.native_context.airborne=true;environment.native_context.airborne_episode=1;environment.native_context.air_departure=1;
+   input.poll(now,physical,environment,capture.adapter());
+  };
+  const auto face=static_cast<std::uint16_t>(grab?0x2000:0x4000);
+  poll(0,{},1);poll(cadence,direction(4),1);poll(2*cadence,direction(4,face),1);
+  check(input.diagnostic().recognition_count==1 && capture.calls==1,
+   "semantic parent starts with its own actual observation proof");
+  const auto parent=input.diagnostic().recognition[0].request;
+  poll(3*cadence,direction(4),2);poll(4*cadence,direction(4,face),2);
+  const auto& diagnostic=input.diagnostic();
+  check(diagnostic.recognition_count==1,"extra face produces its own attempt at30/60Hz");
+  const auto& child=diagnostic.recognition[0].request;
+  check(child.presses==2 && child.generations==parent.generations && child.generations.action==1 &&
+   child.recognition.observation==environment.native_context && child.recognition.observation.generations.action==2 &&
+   child.recognition.observation.sampled_at==4*cadence && child.recognition.observation.physics_step==4*cadence+1 &&
+   child.recognition.observation_known && child.recognition.sequence!=parent.recognition.sequence,
+   "extra Flip and Grab preserve inherited semantic lineage separately from real newer native observation proof");
+  check(diagnostic.dispatched==1 && diagnostic.dispatch[0].disposition==InputDisposition::cancelled && capture.calls==1 &&
+   diagnostic.dispatch[0].request.recognition==child.recognition,
+   "unchanged generation eligibility cancels the child while preserving exact diagnostic proof");
+ }
 }
-int main(){active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}
+
+}
+int main(){recognition_observation_lineage();active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}
