@@ -211,10 +211,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
          owner_changed, observation_gap,
          manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u},
              (native.words[0] & 0x40u) != 0), (native.words[0] & 0x40u) != 0});
-    const auto physical_contact = bail ? SkatePose::bail :
-        (native.state == 200 || native.state == 201) ? SkatePose::air :
-        native.state == 403 ? SkatePose::grind :
-        manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, false);
+    const auto physical_contact = manual_acquisition_pose(native_frame,bail);
     bool acquisition_putdown{}, acquiring_history{};
     {
         std::lock_guard lock(ollie_mutex);
@@ -252,7 +249,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
 
     const bool release_context = native.state == 100 || native.state == 103 || native.state == 200 ||
-        native.state == 201 || native.state == 403;
+        native.state == 201 || native_frame.rail_family;
     const auto release = manual_release.step(now, manual_identity_epoch,
         valid && !owner_changed && !observation_gap && release_context, physical_contact, combo_session.manual_putdown() || acquisition_putdown);
     const bool manual_closed = release.pending || combo_session.manual_putdown() || combo_session.failed_section();
