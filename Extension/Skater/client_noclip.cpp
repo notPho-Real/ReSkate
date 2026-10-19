@@ -428,6 +428,7 @@ struct ArcadeAir {
     std::atomic<bool> enabled{}, angular_allowed{};
     // SourceState::busy protects the remaining physics/motion-thread state.
     arcade_mode::AirMotion controller;
+    arcade_mode::GroundResistance ground_resistance;
     arcade_mode::AirMotionOutput output{};
     NoBailSkater owner{};
     std::uintptr_t client{};
@@ -478,7 +479,8 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         }
         const bool ordinary = std::isfinite(bodies.up[0]) && std::isfinite(bodies.up[1]) && std::isfinite(bodies.up[2]) &&
             std::abs(bodies.up[0]) <= .01f && std::abs(bodies.up[2]) <= .01f && bodies.up[1] >= .99f && bodies.up[1] <= 1.01f;
-        if (a.owner != owner) a.controller.reset();
+        if (a.owner != owner || a.generation != intent.generation ||
+            (a.stepped_at && (now < a.stepped_at || now - a.stepped_at > 150))) { a.controller.reset(); a.ground_resistance.reset(); }
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary});
         NoBailSkater after{};
@@ -486,6 +488,33 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
         a.owner = owner; a.client = client; a.output = output; a.stepped_at = now; a.generation = intent.generation;
         a.ready_until.store(output.ready ? now + 150 : 0, std::memory_order_release);
+        // Only ordinary two-wheel ground is eligible. The fast-arrival guard
+        // inside GroundResistance preserves unknown transfer-limit overrides.
+        const auto contacts = reader.value<std::uint32_t>(bodies.context, native::request_words + 4) & 0xc000u;
+        const auto mode = reader.value<std::uint32_t>(bodies.rig_wrapper, native::crouch_mode);
+        const auto requests = reader.value<std::uint32_t>(bodies.context, 0x13c4);
+        const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 &&
+            std::abs(reader.value<float>(bodies.context, 0x1880)) > .05f);
+        if ((physics == 100 || physics == 103) && ordinary && contacts == 0xc000u &&
+            (mode == 1 || mode == 2) && std::abs(velocities[0][1]) < .3f && !braking) {
+            const float speed = std::hypot(velocities[0][0], velocities[0][2]);
+            const float change = a.ground_resistance.step(bodies.seconds, speed, mode == 2);
+            if (change < 0 && speed > 0) {
+                const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
+                for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
+                    velocities[i][0] += dx; velocities[i][2] += dz;
+                    for (float v : velocities[i])
+                        source_require(std::isfinite(v) && std::abs(v) < 1000, "Invalid ground resistance result.");
+                }
+                reader.verify();
+                source_require(no_bail_skater(after) && after == owner, "Ground resistance ownership changed.");
+                for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
+                    body_write(bodies.parts[i] + 0x70, velocities[i]);
+                    body_write(bodies.parts[i] + 0x60, flags[i] | 8u);
+                }
+                push_speed().arcade_drive.account_resistance(change);
+            }
+        } else a.ground_resistance.reset();
         if (!output.vertical && !output.angular) return;
         source_require(arcade_mode::AirMotion::apply_bodies(output, velocities, spins), "Air motion result is invalid.");
         for (std::size_t i = 0; i < bodies.parts.size(); ++i) {
@@ -493,7 +522,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             if (output.angular) body_write(bodies.parts[i] + 0x90, spins[i]);
             body_write(bodies.parts[i] + 0x60, flags[i] | (output.vertical ? 8u : 0u) | (output.angular ? 0x20u : 0u));
         }
-    } catch (...) { a.controller.reset(); a.output = {}; a.ready_until.store(0, std::memory_order_release); }
+    } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.output = {}; a.ready_until.store(0, std::memory_order_release); }
 }
 bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float, 16>* supplied, std::array<float, 16>& target) {

@@ -16,6 +16,9 @@ public:
     static constexpr float crouched_acceleration = GameplayProfile{}.kick_acceleration(true);
     explicit GroundDrive(GameplayProfile profile = {}) noexcept : profile_(profile) {}
     void reset() noexcept { const auto selected = profile_; *this = GroundDrive(selected); }
+    void account_resistance(float change) noexcept {
+        if (primed_ && std::isfinite(change) && change < 0) previous_speed_ = std::max(0.0f, previous_speed_ + change);
+    }
     float step(float dt, const std::array<float, 3>& position,
                const std::array<float, 3>& velocity, bool crouched, bool may_start = false) noexcept {
         if (!std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
@@ -71,4 +74,42 @@ private:
     float previous_speed_{}, travel_time_{}, expected_travel_{};
     std::array<float, 3> position_{}, velocity_{};
 };
+// Additional source-profile ground resistance. Native resistance is credited,
+// never undone; collision/brake losses cannot become compensating acceleration.
+// An episode must first establish ordinary ground below the soft limit. Fast
+// air/rail arrivals remain native-owned because transfer overrides are unknown.
+class GroundResistance {
+public:
+    explicit GroundResistance(GameplayProfile profile = {}) noexcept : profile_(profile) {}
+    void reset() noexcept { primed_ = false; previous_ = 0; }
+    float selected_speed(float speed, float dt, bool crouched) const noexcept {
+        if (!std::isfinite(speed) || speed < 0 || !std::isfinite(dt) || dt <= 0 || dt > .1f) return speed;
+        speed = std::min(speed, profile_.hard_speed());
+        const auto wind = [dt](float v, float coefficient) {
+            return std::max(0.0f, v - coefficient / GameplayProfile::metres_per_inch * 60 * dt * v * v);
+        };
+        if (speed > profile_.soft_speed()) speed = wind(speed, .0001f);
+        speed = wind(speed, crouched ? .000002f : .00001f);
+        return std::max(0.0f, speed - .00001f * GameplayProfile::metres_per_inch * 60 * dt);
+    }
+    float step(float dt, float speed, bool crouched) noexcept {
+        if (!std::isfinite(speed) || speed < 0 || speed >= 1000 ||
+            !std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
+        if (!primed_) {
+            if (speed > profile_.soft_speed()) return 0;
+            previous_ = speed; primed_ = true; return 0;
+        }
+        const float required_loss = std::max(0.0f, previous_ - selected_speed(previous_, dt, crouched));
+        const float native_loss = std::max(0.0f, previous_ - speed);
+        const float extra_loss = std::max(0.0f, required_loss - native_loss);
+        const float target = std::min(profile_.hard_speed(), std::max(0.0f, speed - extra_loss));
+        previous_ = target;
+        return target - speed;
+    }
+private:
+    GameplayProfile profile_;
+    float previous_{};
+    bool primed_{};
+};
+
 }
