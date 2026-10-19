@@ -10,6 +10,7 @@
 #include "arcade_native_score.h"
 #include "arcade_native_events.h"
 #include "arcade_manual_observation.h"
+#include "arcade_manual_release.h"
 #include "arcade_native_trick.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
@@ -69,6 +70,7 @@ std::atomic<std::uint64_t> board_eligible_until{};
 std::atomic<std::uint64_t> offboard_valid_until{};
 std::atomic<std::uint64_t> manual_eligible_until{};
 std::atomic<std::uint64_t> manual_prepare_until{};
+std::atomic<std::uint64_t> manual_release_until{};
 std::atomic<std::uint64_t> action_eligible_until{};
 std::atomic<std::uint64_t> air_flip_ready_until{};
 std::atomic<SkatePose> manual_observed{SkatePose::unknown};
@@ -142,6 +144,7 @@ void prepare_authored_catalog() noexcept {
 }
 ComboSession combo_session(native_combo_tuning());
 ManualPhysics physical_manual;
+ManualRelease manual_release;
 std::atomic<bool> reset_physical_manual{true};
 ManualObservation manual_identity;
 std::uint64_t manual_identity_epoch{1};
@@ -158,7 +161,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
                   bool native_push_contact, float simulation_step) noexcept {
     if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
-        physical_manual.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
+        physical_manual.reset(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
     }
     const auto score = score_activity();
     const bool valid = native.valid && input.available && watch_valid &&
@@ -213,6 +216,15 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     else physical_manual.stop(); // Airborne hops retain physical repeat history.
     const bool failed = combo_session.step(pose, dt, correction, native_revert,
         manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
+    const auto physical_contact = bail ? SkatePose::bail :
+        (native.state == 200 || native.state == 201) ? SkatePose::air :
+        native.state == 403 ? SkatePose::grind :
+        manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, false);
+    const bool release_context = native.state == 100 || native.state == 103 || native.state == 200 ||
+        native.state == 201 || native.state == 403;
+    const auto release = manual_release.step(now, manual_identity_epoch,
+        valid && !owner_changed && !observation_gap && release_context, physical_contact, combo_session.manual_putdown());
+    const bool manual_closed = release.pending || combo_session.manual_putdown() || combo_session.failed_section();
     const auto termination = combo_session.model().balance_exit();
     if (termination != BalanceExit::none)
         input_telemetry.client(BalanceTerminationEvidence{now, static_cast<unsigned>(pose),
@@ -224,12 +236,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // must not cross a context change even when no input poll sees the gap.
         std::lock_guard lock(ollie_mutex);
         if (!valid || owner_changed || bail ||
-            combo_session.manual_putdown() ||
+            manual_closed ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
             arcade_input.cancel_manuals();
         manual_balance_admitted.store(manual_observation.confirmed &&
             combo_session.model().state().balance_kind == BalanceKind::manual &&
-            !combo_session.failed_section(), std::memory_order_relaxed);
+            !manual_closed, std::memory_order_relaxed);
         const auto control_pose = balance_kind(pose) == BalanceKind::manual ? pose : candidate_pose;
         manual_observed.store(manual_input_pose(control_pose,
             valid && native.state == 100 && native.crouch_mode == 1 &&
@@ -237,8 +249,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             combo_session.model().state().balance_kind != BalanceKind::none,
             manual_contact_pose({valid && !bail, false, false, bail, native.state,
                 native.crouch_mode, native.words[1] & 0xc000u}, false)), std::memory_order_relaxed);
-        manual_eligible_until.store(manual_safe ? now + 150 : 0, std::memory_order_release);
-        manual_prepare_until.store(manual_prepare ? now + 150 : 0, std::memory_order_release);
+        manual_eligible_until.store(manual_safe && !manual_closed ? now + 150 : 0, std::memory_order_release);
+        manual_prepare_until.store(manual_prepare && !manual_closed ? now + 150 : 0, std::memory_order_release);
+        manual_release_until.store(release.pending ? now + 150 : 0, std::memory_order_release);
     }
     if (native_revert) {
         const auto& linked = combo_session.model().state();
@@ -705,6 +718,7 @@ void set_enabled(bool value, bool persist) noexcept {
         offboard_valid_until.store(0, std::memory_order_release);
         manual_eligible_until.store(0, std::memory_order_release);
         manual_prepare_until.store(0, std::memory_order_release);
+        manual_release_until.store(0, std::memory_order_release);
         action_eligible_until.store(0, std::memory_order_release);
         air_flip_ready_until.store(0, std::memory_order_release);
         manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
@@ -854,7 +868,7 @@ void on_client_tick() noexcept {
         else {
             cancel_balance_bail();
             manual_identity.reset(manual_label);
-            physical_manual.reset();
+            physical_manual.reset(); manual_release.reset();
             had_combo_owner = false;
             combo_owner = {};
             {
@@ -862,6 +876,7 @@ void on_client_tick() noexcept {
                 arcade_input.cancel_manuals();
                 manual_eligible_until.store(0, std::memory_order_release);
                 manual_prepare_until.store(0, std::memory_order_release);
+                manual_release_until.store(0, std::memory_order_release);
                 manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
                 manual_balance_admitted.store(false, std::memory_order_relaxed);
                 set_arcade_air_intent(false, 0, 0, 0, 0, false);
@@ -974,6 +989,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         std::lock_guard lock(ollie_mutex);
         // A client publication while acquiring the lock must not look future-dated.
         now = GetTickCount64();
+        const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
+        const bool releasing_manual = game_input && !offboard && release_deadline >= now && release_deadline - now <= 150;
+        if (releasing_manual) arcade_input.cancel_manuals();
         const auto manual_deadline = manual_eligible_until.load(std::memory_order_acquire);
         const bool manual_safe = game_input && manual_deadline >= now && manual_deadline - now <= 150;
         const auto prepare_deadline = manual_prepare_until.load(std::memory_order_acquire);
@@ -1001,6 +1019,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (action.pad.owns_left_stick) { left_x = action.pad.left_x; left_y = action.pad.left_y; }
         if (action.pad.owns_triggers) { left_trigger = action.pad.left_trigger; right_trigger = action.pad.right_trigger; }
         if (action.pad.owns_face_buttons) result.buttons = (result.buttons & ~0xf000u) | action.pad.face_buttons;
+        // Neutral is the existing native manual release recipe. Keep it owned
+        // through continuing manual contact, but let authored jump/trick escape.
+        if (releasing_manual && !result.authored_playback && !action.owned) result.right_x = result.right_y = 0;
         const auto experiment = playback_mode.load(std::memory_order_relaxed);
         const bool reference = experiment == PlaybackExperiment::reference && result.authored_playback;
         const bool consume_nollie = authored && mode_enabled.load(std::memory_order_acquire) && game_input && !offboard && left_trigger != 0;
