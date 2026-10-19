@@ -324,8 +324,16 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool manual_pose = balance_kind(pose) == BalanceKind::manual;
     if (manual_pose && physical_manual.active() && physical_manual.nose() != (pose == SkatePose::nose_manual))
         balance_control.reset_manual();
-    const auto correction = balance_control.poll(now, balance_kind(pose), combo_session.model().state().balance,
-        input.left_x, input.left_y, input.available, input.buttons);
+    InputControlPair configured_manual{};
+    if(manual_pose){
+        std::lock_guard lock(ollie_mutex);
+        auto controls=InputBalanceControls::vertical(pose==SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
+        controls.admitted=manual_observation.confirmed && !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown();
+        configured_manual=arcade_input.configured_controls(now,controls,native_frame);
+    }
+    const auto correction = manual_pose ? balance_control.poll_manual(now,combo_session.model().state().balance,
+        {configured_manual.first,configured_manual.second},input.available && configured_manual.available) :
+        balance_control.poll(now,balance_kind(pose),combo_session.model().state().balance,input.left_x,input.left_y,input.available,input.buttons);
     const bool was_active = combo_session.model().state().combo_active;
     const bool had_revert = combo_session.model().state().revert_pending;
     const bool native_revert = observed_native_revert({valid && !owner_changed,
@@ -1450,8 +1458,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;
         const bool crouched = pose == SkatePose::riding && (physical_buttons & classic_a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
-        const auto ground_controls = GroundControl::physical(auto_kick_enabled(),physical_buttons,
-            action_physical.left_x,action_physical.left_y);
+        const auto physical_state=arcade_input.digital_state(now);
+        const auto ground_controls=GroundControl::from_state(auto_kick_enabled(),physical_state);
         const bool square_push = rotation_enabled && admission.drive && ground_controls.known && ground_controls.square && pose == SkatePose::riding &&
             !manual_hop.active() && physical_left_trigger <= 30 && physical_right_trigger <= 30 &&
             !result.suppress_reverse && (!result.command_busy || crouched) && !action.owned && !reference;
@@ -1471,7 +1479,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[user].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
-            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode());
+            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
@@ -1493,12 +1501,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Single shoulders must not leak to native catch/grab bindings.
         if (rotation_enabled) result.buttons &= ~BoardChord::pair;
         if (rotation.owns_left) { left_x = rotation.x; left_y = rotation.y; }
+        const auto configured_balance=arcade_input.configured_balance(now);
         const auto manual_correction=arcade_input.manual_correction(now,
-            manual_balance_buttons(action_physical.left_y,physical_buttons,action_physical.left_x),
-            rotation_enabled && !manual_hop.active() && !reference && !action.owned && !result.authored_playback &&
+            {configured_balance.first,configured_balance.second},
+            configured_balance.available && rotation_enabled && !manual_hop.active() && !reference && !action.owned && !result.authored_playback &&
             (!result.command_busy || result.manual.owns) &&
             result.phase!=3 && !rail_pad.owns_right_stick && !rail_pad.button_mask && !rotation.owns_left &&
-            !(physical_buttons & (classic_a | 0x0030u)) && (physical_buttons&3u)!=3u &&
+            !(physical_buttons & (classic_a | 0x0030u)) &&
             physical_left_trigger<=30 && physical_right_trigger<=30);
         if(manual_correction.owns_y)left_y=manual_correction.y;
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,

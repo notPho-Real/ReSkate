@@ -52,11 +52,18 @@ public:
         return true;
     }
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
-                  bool conflicting, std::uint16_t buttons, bool balance_admitted = false) noexcept {
-        if (!gameplay || !safe || conflicting || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
-            (buttons & 3u) == 3u || (buttons & 12u) == 12u || observed == SkatePose::bail ||
+                  bool conflicting, std::uint16_t buttons, bool balance_admitted = false,
+                  bool trigger_only_conflict = false) noexcept {
+        // Typed, independently admitted balance owns these configured vertical
+        // held controls. Opposed command recognition remains a separate guard;
+        // it must not drop the established native RS balance hold.
+        const auto wanted=requested_<0 ? SkatePose::manual : SkatePose::nose_manual;
+        const bool vertical_balance=balance_admitted && requested_ && confirmed_ && observed==wanted;
+        const bool opposed_vertical=(buttons&3u)==3u && !vertical_balance;
+        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict)) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
+            opposed_vertical || (buttons & 12u) == 12u || observed == SkatePose::bail ||
             observed == SkatePose::grind || (clocked_ && now < last_)) {
-            const bool hard = !gameplay || (buttons & 0x0030u) || (buttons & 3u) == 3u || (buttons & 12u) == 12u ||
+            const bool hard = !gameplay || (buttons & 0x0030u) || opposed_vertical || (buttons & 12u) == 12u ||
                 observed == SkatePose::bail || observed == SkatePose::grind || (clocked_ && now < last_);
             cancel(); hard_reset_ = hard; return {};
         }
@@ -71,7 +78,6 @@ public:
                 if (observed == SkatePose::riding || observed == SkatePose::manual ||
                     observed == SkatePose::nose_manual) { landed_ = true; requested_at_ = now; }
             }
-            const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;
             const auto opposite = requested_ < 0 ? SkatePose::nose_manual : SkatePose::manual;
             // A prepared landing can briefly touch one wheel then rebound. The
             // fixture measured17ms contact followed by150ms air. Retain only

@@ -274,9 +274,14 @@ void extra_table_expiry() {
             UnifiedInput input;Actor actor;InputEnvironment e{InputContext::air,true};e.policy=InputPolicy::strict();e.named_grabs=grab;
             input.poll(0,{},e,actor.adapter());input.poll(10,{face,-25000,0},e,actor.adapter());input.poll(20,{},e,actor.adapter());
             input.poll(10+elapsed,{face},e,actor.adapter());
-            check(elapsed<=lifetime ? actor.calls==2 && actor.last.presses==2 :
-                grab ? actor.calls==2 && actor.last.presses==1 && !actor.last.direction_inherited : actor.calls==1,
-                "extra table remains installed through its deadline and expires only afterwards");
+            check(elapsed<=lifetime ? actor.calls==2 && actor.last.presses==2 : actor.calls==1,
+                "extra table includes its deadline; an expired named face waits without a directionless fallback");
+            if(grab && elapsed>lifetime){
+                input.poll(11+elapsed,{face,25000,0},e,actor.adapter());
+                check(actor.calls==2&&actor.last.presses==1&&!actor.last.direction_inherited&&actor.last.direction==6&&
+                    actor.last.physical_pressed_at==10+elapsed&&actor.last.recognized_at==11+elapsed,
+                    "expired named-Grab face remains buffered for a genuine new direction with original physical press time");
+            }
             if(elapsed<=lifetime)check(actor.last.presses==2 && actor.last.direction_inherited,
                 "strict query window remains separate from inclusive extra table lifetime");
         }

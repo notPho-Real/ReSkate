@@ -84,7 +84,7 @@ void release_grammar() {
 void jump_release_bindings() {
  for(auto binding:{InputJumpBinding::disabled,InputJumpBinding::single_release,InputJumpBinding::repeated_release})
  for(bool repeated:{false,true})for(auto context:{InputContext::ground,InputContext::air,InputContext::balance,InputContext::rail}) {
-  UnifiedInput input;Receiver receiver;InputEnvironment environment{context,true};environment.jump_binding=binding;environment.jump_generation=1;environment.nollie=true;
+  UnifiedInput input;input.set_recognition_capture(true);Receiver receiver;InputEnvironment environment{context,true};environment.jump_binding=binding;environment.jump_generation=1;environment.nollie=true;
   input.poll(0,{},environment,receiver.adapter());input.poll(10,{0,0,25000},environment,receiver.adapter());
   if(repeated){input.poll(20,{},environment,receiver.adapter());input.poll(30,{0,0,25000},environment,receiver.adapter());}
   input.poll(40,{0x1000,0,25000},environment,receiver.adapter());input.poll(50,{0,0,25000},environment,receiver.adapter());
@@ -93,7 +93,7 @@ void jump_release_bindings() {
   check((receiver.last.action==InputAction::jump_variant)==expected,"only explicitly selected grounded release binding can replace ordinary Ollie release");
   if(expected)check(receiver.last.variant==static_cast<std::uint8_t>(binding) && !receiver.last.nollie &&
    receiver.last.jump_generation==1 && receiver.last.control==0x1000 && receiver.last.physical_pressed_at==40 && receiver.last.physical_released_at==50 &&
-   receiver.last.recognized_at==50 && receiver.last.first_input_at==(binding==InputJumpBinding::single_release && repeated?30u:10u) && receiver.last.last_input_at==50,
+   receiver.last.recognized_at==50 && receiver.last.recognition->footprint.count==(binding==InputJumpBinding::single_release?2u:3u),
    "semantic jump destination preserves charge/release and exact pattern while clearing nollie context");
   else check(receiver.last.action==InputAction::ollie_release,"disabled or unmatched release retains supported ordinary jump path");
  }

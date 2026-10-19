@@ -23,6 +23,8 @@ struct SpinCommand {
     std::uint64_t epoch{}, serial{};
     std::int64_t balance{};
     SpinFacts facts{};
+    std::uint64_t left_pressed_at{},right_pressed_at{};
+    bool physical_armed{};
 };
 class TapSpin {
 public:

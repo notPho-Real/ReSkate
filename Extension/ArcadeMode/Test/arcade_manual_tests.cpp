@@ -168,7 +168,7 @@ int run_arcade_manual_tests() {
                             ms >= 100 + duration && ms < 180 + duration ? -1 : 0;
                         const auto buttons = static_cast<std::uint16_t>(!pad || !direction ? 0 :
                             direction * first > 0 ? 1 : 2);
-                        const auto out = poll(manual, ms, pad ? 25000 : static_cast<short>(direction * first),
+                        const auto out = poll(manual, ms, pad ? 0 : static_cast<short>(direction * first),
                             SkatePose::riding, buttons);
                         requested = requested || out.owns_stick;
                     }
@@ -181,13 +181,24 @@ int run_arcade_manual_tests() {
             }
         }
     }
+    // Dpad override cannot create another canonical press when the same
+    // logical direction was already held at startup by the stick.
+    for (unsigned frame : {17u,34u}) for (bool nose : {false,true}) {
+        dingosdk::arcade_mode::test::SessionManual manual;
+        bool requested=false;
+        for(unsigned ms=0;ms<450;ms+=frame){
+            const auto buttons=static_cast<std::uint16_t>(ms>=100&&ms<180 ? (nose?2:1) : ms>=250&&ms<330 ? (nose?1:2) : 0);
+            requested=requested||poll(manual,ms,25000,SkatePose::riding,buttons).owns_stick;
+        }
+        check(!requested,"startup-held stick and same-direction Dpad override cannot fabricate a fresh canonical Manual pair");
+    }
     for (const auto pose : {SkatePose::riding, SkatePose::air}) {
         const auto window = pose == SkatePose::air ? 399u : 275u;
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
                     dingosdk::arcade_mode::test::SessionManual manual;
-                    const short first = nose ? -12500 : 12500;
+                    const short first = nose ? -24000 : 24000;
                     poll(manual, 0, 0, pose);
                     poll(manual, 10, buttons ? 0 : first, pose, buttons ? (nose ? 2 : 1) : 0);
                     poll(manual, 50, 0, pose);
@@ -202,8 +213,8 @@ int run_arcade_manual_tests() {
     {
         dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0, 0, SkatePose::air);
-        poll(manual, 10, 12500, SkatePose::air);
-        poll(manual, 360, -12500, SkatePose::air);
+        poll(manual, 10, 24000, SkatePose::air);
+        poll(manual, 360, -24000, SkatePose::air);
         check(poll(manual, 1059, 0, SkatePose::air).owns_stick &&
               poll(manual, 1060, 0, SkatePose::air).owns_stick &&
               !poll(manual, 1061, 0, SkatePose::air).owns_stick,
@@ -220,8 +231,8 @@ int run_arcade_manual_tests() {
             for (unsigned ms = frame * 2; ms < 180; ms += frame)
                 poll(manual, ms, ms < 100 ? first : 0, SkatePose::riding, 0, ms < 100 ? 16000 : 0);
             const auto out = poll(manual, 180 + frame, -first, SkatePose::riding, 0, -16000);
-            check(out.owns_stick && out.y == (nose ? 20000 : -20000),
-                "natural180ms opposite taps accept diagonal thumb travel at30/60Hz");
+            check(!out.owns_stick,
+                "canonical diagonal thumb travel cannot fabricate vertical-only Manual presses at30/60Hz");
             manual.cancel(); poll(manual, 1000);
             poll(manual, 1010, first);
             poll(manual, 1800, first);
@@ -232,14 +243,14 @@ int run_arcade_manual_tests() {
     {
         dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0);
-        poll(manual, 20, 12500);
+        poll(manual, 20, 24000);
         poll(manual, 50, 9000);
         check(!poll(manual, 80, 12000).owns_stick, "threshold jitter cannot create a second opposite tap");
-        check(poll(manual, 200, -12500).owns_stick, "moderate stick taps do not require a full throw");
+        check(poll(manual, 200, -24000).owns_stick, "moderate stick taps do not require a full throw");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, 0, SkatePose::riding, 5);
-        check(poll(manual, 1220, 0, SkatePose::riding, 10).owns_stick,
-            "diagonal D-pad taps preserve their vertical command component");
+        check(!poll(manual, 1220, 0, SkatePose::riding, 10).owns_stick,
+            "canonical diagonal D-pad presses cannot become a second vertical command history");
     }
     for (const auto candidate : {SkatePose::manual, SkatePose::nose_manual}) {
         check(dingosdk::arcade_mode::manual_input_pose(candidate, true, false) == SkatePose::riding,
@@ -476,18 +487,18 @@ int run_arcade_manual_tests() {
                 poll(manual, 1000, 25000, SkatePose::riding, first);
                 if (neutral_between) poll(manual, 1000 + frame_ms, 25000);
                 const auto out = poll(manual, 1000 + 2 * frame_ms, 25000, SkatePose::riding, second);
-                check(out.owns_stick && out.y == (nose ? 20000 : -20000),
-                    "rapid D-pad pair works over held forward at30/60Hz with or without neutral");
+                check(out.owns_stick == (nose && !neutral_between),
+                    "held canonical Up cannot be re-pressed by Dpad Up or unchanged-stick reacquisition");
             }
         }
         dingosdk::arcade_mode::test::SessionManual manual;
         poll(manual, 0); poll(manual, frame_ms, 25000);
-        check(!poll(manual, frame_ms * 2, 25000, SkatePose::riding, 2).owns_stick,
-            "stick Up cannot combine with an unrelated D-pad Down");
+        check(poll(manual, frame_ms * 2, 25000, SkatePose::riding, 2).owns_stick,
+            "fresh canonical Up then Dpad Down share the one command history");
         manual.cancel(); poll(manual, 0);
         poll(manual, frame_ms, 0, SkatePose::riding, 1);
-        check(!poll(manual, frame_ms * 2, -25000).owns_stick,
-            "D-pad Up cannot combine with an unrelated stick Down");
+        check(poll(manual, frame_ms * 2, -25000).owns_stick,
+            "fresh Dpad Up then newly moved stick Down share the one command history");
     }
     for (const bool nose : {false, true}) {
         dingosdk::arcade_mode::test::SessionManual manual;

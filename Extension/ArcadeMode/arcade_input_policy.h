@@ -73,12 +73,15 @@ struct InputBoardBinding {
     bool operator==(const InputBoardBinding&) const = default;
 };
 struct InputPolicy {
-    InputNormalization normalization{InputNormalization::compatibility};
+    InputNormalization normalization{InputNormalization::analog};
     std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
     bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{false};
     bool operator==(const InputPolicy&) const = default;
     // Preserve the admitted physical Manual baseline and its explicit allowance.
     static constexpr InputPolicy production() noexcept { return {}; }
+    static constexpr InputPolicy compatibility() noexcept {
+        return {InputNormalization::compatibility,InputTiming::ground_sample_slack_ms,true,true,false};
+    }
     static constexpr InputPolicy strict() noexcept {
         return {InputNormalization::analog, 0, false, false, false};
     }

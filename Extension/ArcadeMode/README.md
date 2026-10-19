@@ -21,12 +21,21 @@ stick/prewind recipes are outside that path. NoSpin, orientation-control and
 transfer flags remain explicitly unknown without native producers. Their full
 contextual behavior, native handedness and player acceptance remain unverified.
 
-Basic Manual/Nose correction uses digital strength with A priority.
-The current controller bridge retains its existing normalization; configured
-layout publication remains pending. Qualified native LS Y output consumes the
-physical kernel's post-integration protected correction and original component
-proof. It preserves steering X, RS hold and packet ownership/restoration. Hop,
+Basic Manual/Nose correction uses digital strength with A priority. The model
+and remapper consume original configured pressed-state samples from the shared
+eight-way controller normalizer, with owner/focus and component proof checked
+separately. Qualified native LS Y output consumes the physical kernel's
+post-integration protected correction and original component proof. It preserves steering X, RS hold and packet ownership/restoration. Hop,
 endpoint, stale proof and competing channel ownership withdraw this correction.
+
+Qualified ordinary-ground steering selects 1.8 rad/s, or 3.6 rad/s with Down.
+Below 10 in/s, sharp steering ramps over 600 ms of the selected direction hold.
+It uses the existing articulated-body and physical motion-target writer.
+Native velocity direction and display remain game owned while their lock/display
+bindings are unavailable. Setup-stance and physical Revert policies require
+independently observed native state, occurrence, initialization and completion;
+these producers remain unavailable. The existing 235 ms pad candidate retains its
+own lifetime, separate from the 100 ms script gate and actual animation finish.
 
 ## Controls under development
 

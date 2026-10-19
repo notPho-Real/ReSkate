@@ -32,7 +32,8 @@ public:
         qualified_.epoch=epoch==UINT64_MAX ? UINT64_MAX : epoch+1;
     }
     Output poll_qualified(std::uint64_t now,std::uint16_t buttons,bool left,bool right,
-            bool gameplay,SkatePose pose,bool ready,bool conflict,SpinMode mode,SpinFacts facts={}) noexcept {
+            bool gameplay,SkatePose pose,bool ready,bool conflict,SpinMode mode,SpinFacts facts={},
+            const NativeInputFrame* native=nullptr) noexcept {
         if(!gameplay || (buttons&0x30u) || pose==SkatePose::unknown || pose==SkatePose::bail ||
             (qualified_clocked_ && now<qualified_at_)){reset();return {};}
         const bool mode_changed=qualified_.mode!=mode;
@@ -42,13 +43,22 @@ public:
         if(!held&&!left&&!right)qualified_armed_=true;
         if(left!=left_held_){left_held_=left;left_at_=now;}
         if(right!=right_held_){right_held_=right;right_at_=now;}
+        qualified_.left_pressed_at=left_at_;qualified_.right_pressed_at=right_at_;
+        qualified_.physical_armed=qualified_armed_;
         const bool air=pose==SkatePose::air;
         const auto triggered=static_cast<std::uint16_t>(held&~qualified_buttons_);
         const bool entering=air&&!qualified_air_;
         qualified_buttons_=held;qualified_air_=air;
-        if(!air || !ready || conflict || !qualified_armed_ || facts.no_spin==SpinFact::set)return {false,0,0,0,qualified_};
+        const bool proof_ready=!native || (native->valid && native->owner.valid() && native->owner_generation &&
+            native->contact_generation && native->action_generation && native->physics_step && native->airborne && native->airborne_episode && native->airborne_started_known &&
+            (native->state==200 || native->state==201) && native->airborne_started_at<=native->sampled_at &&
+            now>=native->sampled_at && now-native->sampled_at<=150);
+        if(!air || !ready || !proof_ready || conflict || !qualified_armed_ || facts.no_spin==SpinFact::set)return {false,0,0,0,qualified_};
+        // A new physical edge may follow actual native AIR before the first
+        // AIR input poll. A preheld or transition-coincident edge is distinct.
+        const bool after_native_entry=native && proof_ready && now>native->airborne_started_at;
         bool tap=false;
-        if(mode==SpinMode::tap && !entering && !mode_changed){
+        if(mode==SpinMode::tap && (!entering || after_native_entry) && !mode_changed){
             int change=0;
             if((triggered&BoardChord::lb)&&!(held&BoardChord::rb))++change;
             if((triggered&BoardChord::rb)&&!(held&BoardChord::lb))--change;

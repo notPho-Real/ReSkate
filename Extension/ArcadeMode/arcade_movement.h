@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_gameplay_profile.h"
+#include "arcade_input_events.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -29,22 +30,24 @@ struct NativeManualContact {
 };
 // Physical ground controls; unknown native slope/vector flags are separate
 // capabilities and never select a slope exception or locked-vector branch.
+enum class GroundVelocityLock : std::uint8_t { unknown, unlocked, locked };
 struct GroundControl {
     bool known{}, auto_kick{true}, square{}, down{}, left{}, right{};
-    // Same pad precedence and axis quantization as the admitted production
-    // physical input. No event recognition or synthetic direction is produced.
-    static constexpr GroundControl physical(bool automatic, std::uint16_t buttons, short x, short y) noexcept {
-        const auto pad = buttons & 15u;
-        return {!(buttons&0x30u) && (pad&3u)!=3u && (pad&12u)!=12u,automatic,bool(buttons&0x4000u),
-            pad ? bool(pad&2u) : y < -13000,
-            pad ? bool(pad&4u) : x < -13000,
-            pad ? bool(pad&8u) : x > 13000};
+    GroundVelocityLock velocity_lock{};
+    static GroundControl from_state(bool automatic,const InputDigitalState& state) noexcept {
+        const auto directions=state.buttons&15u;
+        return {state.available && !(state.buttons&0x30u) && (state.pad_buttons&3u)!=3u && (state.pad_buttons&12u)!=12u,
+            automatic,bool(state.buttons&0x4000u),bool(directions&2u),bool(directions&4u),bool(directions&8u)};
+    }
+    static GroundControl physical(bool automatic,std::uint16_t buttons,short x,short y) noexcept {
+        return from_state(automatic,InputEvents::normalize({buttons,x,y},0));
     }
     static constexpr GroundControl decode(unsigned bits) noexcept {
-        return {bool(bits&1u),bool(bits&2u),bool(bits&4u),bool(bits&8u),bool(bits&16u),bool(bits&32u)};
+        return {bool(bits&1u),bool(bits&2u),bool(bits&4u),bool(bits&8u),bool(bits&16u),bool(bits&32u),
+            ((bits>>6)&3u)<=2 ? static_cast<GroundVelocityLock>((bits>>6)&3u) : GroundVelocityLock::unknown};
     }
     constexpr unsigned encode() const noexcept {
-        return (known?1u:0u)|(auto_kick?2u:0u)|(square?4u:0u)|(down?8u:0u)|(left?16u:0u)|(right?32u:0u);
+        return (known?1u:0u)|(auto_kick?2u:0u)|(square?4u:0u)|(down?8u:0u)|(left?16u:0u)|(right?32u:0u)|(static_cast<unsigned>(velocity_lock)<<6);
     }
     bool trying_to_brake(float speed, float facing_dot, bool pressing_down_brakes = true) const noexcept {
         if (!known || !std::isfinite(speed) || speed < 0 || !std::isfinite(facing_dot)) return false;

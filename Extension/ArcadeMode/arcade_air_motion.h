@@ -185,14 +185,15 @@ public:
         // A genuinely fresh current-flight publication of the SAME held input
         // replaces the old flight ticket. Retimestamping an old ticket cannot.
         if (frame.native_required && native_admitted) spin_blocked_ = false;
-        const bool spin_admitted = native_admitted && !spin_blocked_ && intent.angular_allowed && intent.spin.facts.no_spin!=SpinFact::set;
-        if (!spin_admitted) tap_spin_.baseline(intent.spin);
-        const float yaw_rate = spin_admitted ? tap_spin_.step(intent.spin,intent.yaw_rate,frame.dt,profile_.angular_speed()) : 0;
-        const bool angular = spin_admitted && (yaw_rate != 0 || spun_);
-        if (spin_admitted) {
+        const bool spin_context = native_admitted && !spin_blocked_ && intent.angular_allowed;
+        const bool spin_paused = intent.spin.facts.no_spin==SpinFact::set;
+        if (!spin_context) tap_spin_.baseline(intent.spin);
+        const float yaw_rate = spin_context ? tap_spin_.step(intent.spin,intent.yaw_rate,frame.dt,profile_.angular_speed()) : 0;
+        const bool angular = spin_context && !spin_paused && (yaw_rate != 0 || spun_);
+        if (spin_context && !spin_paused) {
             yaw_ = std::remainder(yaw_ + static_cast<double>(yaw_rate) * frame.dt, 6.2831853071795864769);
             spun_ = yaw_rate != 0;
-        } else spun_ = false;
+        } else if(!spin_context) spun_ = false;
         AirMotionOutput output{true, vertical_, angular, vy_, yaw_rate, static_cast<float>(yaw_)};
         output.spin=intent.spin;output.tap_step=tap_spin_.tap_step();
         // Default ordinary flight carries the same hard/soft limits as ground,

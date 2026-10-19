@@ -23,9 +23,36 @@ public:
     struct Physical { bool valid{}; std::uint64_t at{}; std::uint16_t buttons{}; short lx{},ly{},rx{},ry{}; std::uint8_t lt{},rt{}; };
     explicit ArcadeInput(bool native_bound = false, InputPolicy policy = InputPolicy::production()) noexcept
         : native_bound_(native_bound), policy_(policy) {}
-    void observe_physical(unsigned user, Physical pad) noexcept { if (user == 0) physical_ = pad; }
+    void observe_physical(unsigned user, Physical pad) noexcept {
+        if(user==0){physical_=pad;physical_frame_=pad.valid ? native_ : NativeInputFrame{};}
+    }
     Physical physical(std::uint64_t now) const noexcept {
         return physical_.valid && now >= physical_.at && now-physical_.at <= 150 ? physical_ : Physical{};
+    }
+    InputDigitalState digital_state(std::uint64_t now) const noexcept {
+        const auto current=native_context(now);const auto& origin=physical_frame_;
+        if(!physical_.valid || now<physical_.at || now-physical_.at>150 || !current.valid || !origin.valid ||
+            !origin.owner.valid() || origin.owner!=current.owner || origin.owner_generation!=current.owner_generation ||
+            !origin.contact_generation || !origin.action_generation || !origin.physics_step || origin.physics_step>current.physics_step ||
+            origin.sampled_at>current.sampled_at || origin.sampled_at>physical_.at ||
+            origin.contact_generation>current.contact_generation || origin.action_generation>current.action_generation)return {};
+        // Physical held state can span a new contact/action observation. Its
+        // original owner/sample survives; it never supplies action readiness.
+        return InputEvents::normalize({physical_.buttons,physical_.lx,physical_.ly,physical_.lt,physical_.rt},physical_.at,true,policy_);
+    }
+    InputControlPair configured_controls(std::uint64_t now,InputBalanceControls controls,const NativeInputFrame& proof) const noexcept {
+        const auto current=native_context(now);
+        if(!controls.admitted || !current.valid || !proof.valid || !proof.owner.valid() || proof.owner!=current.owner ||
+            !proof.owner_generation || !proof.contact_generation || !proof.action_generation || !proof.physics_step ||
+            proof.owner_generation!=current.owner_generation || proof.contact_generation!=current.contact_generation ||
+            proof.action_generation!=current.action_generation || proof.physics_step>current.physics_step ||
+            proof.sampled_at>current.sampled_at || now<proof.sampled_at || now-proof.sampled_at>150)return {};
+        return digital_state(now).configured(controls);
+    }
+    InputControlPair configured_balance(std::uint64_t now) const noexcept {
+        const auto current=native_context(now);
+        if(!balance_controls_current(now,current) || balance_frame_.action_generation!=current.action_generation)return {};
+        return configured_controls(now,balance_controls_,balance_frame_);
     }
     bool publish_authority(std::uint64_t now, std::uint64_t owner, unsigned source, bool focused) noexcept {
         focused = focused && owner && source < 0x100 && (source & 1u);
@@ -279,6 +306,7 @@ private:
     bool enabled_{}, native_bound_{}, focused_{};
     InputPolicy policy_;
     Physical physical_{};
+    NativeInputFrame physical_frame_{};
     NativeInputFrame native_{}, balance_frame_{};
     RailAdapterLipSnapshot native_lip_{};
     NativeInputFrame native_lip_frame_{};

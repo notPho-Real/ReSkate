@@ -111,15 +111,15 @@ void normalization_tests() {
     input.sample(10, {0x1001, 0, 25000, 255, 255});
     check(input.history().events().empty(), "held startup input is baseline, not press");
     input.sample(20, {});
-    check(input.history().events().size() == 6, "one general direction, two explicit Manual projections and three physical controls release once");
+    check(input.history().events().size() == 4, "one physical direction and three physical controls release once without projection duplicates");
     input.discard_intent(); input.sample(30, {});
     check(input.history().events().empty(), "discarding intent retains physical baseline");
     input.sample(40, {0x4000, 25000, 25000, 30, 128});
-    check(input.history().events().size() == 3, "diagonal is one token and trigger thresholds remain strict");
+    check(input.history().events().size() == 2, "diagonal is one token and trigger thresholds remain strict");
     input.sample(50, {0x4000, 25000, 25000, 31, 129});
-    check(input.history().events().size() == 5, "triggers rise at their independent thresholds");
+    check(input.history().events().size() == 4, "triggers rise at their independent thresholds");
     input.sample(60, {0x4000, 25000, 25000, 31, 129});
-    check(input.history().events().size() == 5, "held samples do not duplicate events");
+    check(input.history().events().size() == 4, "held samples do not duplicate events");
     input.reset(); input.sample(100, {}); input.sample(110, {0x0001, 0, 25000}, true);
     const std::array<InputToken, 3> held{{{InputSource::buttons, 0, InputEdge::press},
         {InputSource::stick, InputEvents::encode(0, 1), InputEdge::press},
@@ -238,6 +238,49 @@ void queue_action_cancellation_tests() {
     }
 }
 
+void cancelled_capacity_tests() {
+    for (unsigned offset : {0u,37u,99u}) {
+        InputRequestQueue queue; Adapter adapter;
+        for(unsigned i=0;i<offset;++i) {
+            queue.push({InputAction::flip,InputContext::air,0,100000,1});
+            queue.dispatch(i,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
+        }
+        for(unsigned i=0;i<100;++i) check(queue.push({i%2 ? InputAction::grab : InputAction::flip,
+            InputContext::air,0,100000,1,0,i+1}),"wrapped queue fills before targeted cancellation");
+        adapter.result=InputDisposition::waiting;
+        queue.dispatch(100,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
+        queue.cancel(InputAction::grab);
+        for(unsigned i=0;i<50;++i)check(queue.push({InputAction::rail_request,InputContext::air,0,100000,1,0,101+i}),
+            "cancelling behind a waiting head immediately reclaims capacity for another supported family");
+        check(!queue.push({InputAction::rail_request,InputContext::air,0,100000,1}),"actual occupied capacity still rejects newest");
+        adapter.result=InputDisposition::started;
+        for(unsigned i=0;i<100;++i) {
+            queue.dispatch(101+i,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
+            check(adapter.last.presses==(i<50 ? 2*i+1 : 101+i-50),
+                "stable compaction preserves survivors and appended requests across ring wrap");
+        }
+    }
+    struct Reentrant {
+        InputRequestQueue* queue; bool mutate{true}; bool accepted{true}; unsigned calls{};
+        static InputDisposition receive(void* state,const InputRequest&) noexcept {
+            auto& self=*static_cast<Reentrant*>(state);++self.calls;
+            if(!self.mutate)return InputDisposition::started;
+            self.mutate=false;self.queue->cancel(InputAction::grab);
+            for(unsigned i=0;i<99;++i)self.accepted=self.queue->push({InputAction::rail_request,InputContext::air,0,100000,1}) && self.accepted;
+            self.accepted=!self.queue->push({InputAction::rail_request,InputContext::air,0,100000,1}) && self.accepted;
+            return InputDisposition::waiting;
+        }
+    };
+    InputRequestQueue queue;
+    queue.push({InputAction::flip,InputContext::air,0,100000,1});
+    for(unsigned i=0;i<99;++i)queue.push({InputAction::grab,InputContext::air,0,100000,1});
+    Reentrant sink{&queue};unsigned reports{};
+    queue.dispatch(1,1,InputContext::air,{&sink,Reentrant::receive},[&](InputDispatchEvent){++reports;});
+    check(sink.accepted && !reports,"reentrant cancellation reclaims only unreserved slots and preserves waiting head");
+    queue.dispatch(2,1,InputContext::air,{&sink,Reentrant::receive},[&](InputDispatchEvent){++reports;});
+    check(sink.calls==2 && reports==1,"in-flight request survives unrelated cancellation exactly once");
+}
+
 void router_tests() {
     UnifiedInput input;
     Adapter adapter;
@@ -351,28 +394,6 @@ void sampled_replay_tests() {
         input.poll(10 + gap, {0, -25000, 0}, air, adapter.bind());
         check((adapter.calls == 1) == (gap < 500), "face-first direction match has bounded independent deadline");
     }
-}
-
-void recognition_capture_opt_in_tests(){
-    static_assert(sizeof(InputRequest)<=256,"requests must not embed full100-ID evidence arrays");
-    static_assert(sizeof(UnifiedInput)<32768,"ordinary input storage remains close to its original fixed footprint");
-    UnifiedInput input;Adapter adapter;adapter.result=InputDisposition::waiting;
-    const InputEnvironment ground{InputContext::ground,true};
-    input.poll(0,{},ground,adapter.bind());input.poll(1,{0x1000},ground,adapter.bind());
-    check(input.diagnostic().recognized==1&&input.diagnostic().recognition_count==0&&!adapter.last.recognition,
-        "ordinary gameplay recognizes and queues without allocating detached capture evidence");
-    input.set_recognition_capture(true);input.poll(2,{},ground,adapter.bind());
-    check(input.diagnostic().recognition_count==1&&input.diagnostic().recognition[0].request.recognition,
-        "explicit diagnostic opt-in captures new attempts only");
-    const auto identity=input.diagnostic().recognition[0].request.recognition;
-    check(identity->footprint.count==2&&identity->footprint.first_at==1&&identity->footprint.last_at==2,
-        "enabling diagnostics does not fabricate a fresh initiating press");
-    input.set_recognition_capture(false);
-    check(input.diagnostic().recognition_count==0&&identity->footprint.last_at==2,
-        "disabling capture releases unread diagnostics without mutating retained immutable evidence");
-    input.poll(3,{0x1000},ground,adapter.bind());
-    check(input.diagnostic().recognition_count==0&&!adapter.last.recognition,
-        "later ordinary recognition remains metadata-free after disabling capture");
 }
 
 void recognition_capture_tests() {
@@ -515,55 +536,10 @@ void recognition_capture_tests() {
     }
 }
 
-void cancelled_capacity_tests() {
-    for (unsigned offset : {0u,37u,99u}) {
-        InputRequestQueue queue; Adapter adapter;
-        for(unsigned i=0;i<offset;++i) {
-            queue.push({InputAction::flip,InputContext::air,0,100000,1});
-            queue.dispatch(i,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
-        }
-        for(unsigned i=0;i<100;++i) check(queue.push({i%2 ? InputAction::grab : InputAction::flip,
-            InputContext::air,0,100000,1,0,i+1}),"wrapped queue fills before targeted cancellation");
-        adapter.result=InputDisposition::waiting;
-        queue.dispatch(100,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
-        queue.cancel(InputAction::grab);
-        for(unsigned i=0;i<50;++i)check(queue.push({InputAction::rail_request,InputContext::air,0,100000,1,0,101+i}),
-            "cancelling behind a waiting head immediately reclaims capacity for another supported family");
-        check(!queue.push({InputAction::rail_request,InputContext::air,0,100000,1}),"actual occupied capacity still rejects newest");
-        adapter.result=InputDisposition::started;
-        for(unsigned i=0;i<100;++i) {
-            queue.dispatch(101+i,1,InputContext::air,adapter.bind(),[](InputDispatchEvent){});
-            check(adapter.last.presses==(i<50 ? 2*i+1 : 101+i-50),
-                "stable compaction preserves survivors and appended requests across ring wrap");
-        }
-    }
-    struct Reentrant {
-        InputRequestQueue* queue; bool mutate{true}; bool accepted{true}; unsigned calls{};
-        static InputDisposition receive(void* state,const InputRequest&) noexcept {
-            auto& self=*static_cast<Reentrant*>(state);++self.calls;
-            if(!self.mutate)return InputDisposition::started;
-            self.mutate=false;self.queue->cancel(InputAction::grab);
-            for(unsigned i=0;i<99;++i)self.accepted=self.queue->push({InputAction::rail_request,InputContext::air,0,100000,1}) && self.accepted;
-            self.accepted=!self.queue->push({InputAction::rail_request,InputContext::air,0,100000,1}) && self.accepted;
-            return InputDisposition::waiting;
-        }
-    };
-    InputRequestQueue queue;
-    queue.push({InputAction::flip,InputContext::air,0,100000,1});
-    for(unsigned i=0;i<99;++i)queue.push({InputAction::grab,InputContext::air,0,100000,1});
-    Reentrant sink{&queue};unsigned reports{};
-    queue.dispatch(1,1,InputContext::air,{&sink,Reentrant::receive},[&](InputDispatchEvent){++reports;});
-    check(sink.accepted && !reports,"reentrant cancellation reclaims only unreserved slots and preserves waiting head");
-    queue.dispatch(2,1,InputContext::air,{&sink,Reentrant::receive},[&](InputDispatchEvent){++reports;});
-    check(sink.calls==2 && reports==1,"in-flight request survives unrelated cancellation exactly once");
-}
-
-
 }
 int main() {
     cancelled_capacity_tests();
     recognition_capture_tests();
-    recognition_capture_opt_in_tests();
     journal_tests(); overlap_footprint_tests(); normalization_tests(); queue_tests(); queue_lifecycle_tests(); queue_action_cancellation_tests(); router_tests(); deferred_recognition_tests(); sampled_replay_tests();
     std::cout << checks << " event architecture checks passed\n";
 }

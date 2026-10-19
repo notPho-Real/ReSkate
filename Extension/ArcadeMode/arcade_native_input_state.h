@@ -23,6 +23,9 @@ struct NativeInputFrame {
     // Departure means leaving verified AIR, not proof of landing/completion.
     bool airborne{};
     std::uint64_t airborne_episode{}, air_departure{};
+    // Original first observed physical AIR step, never animation time.
+    std::uint64_t airborne_started_at{};
+    bool airborne_started_known{};
     // Generations invalidate correlation; they are not action occurrences.
     // Rail family does not establish a named grind, slide, Lip, early/established
     // phase or geometry. Grab initialization/ForceInit remains unknown.
@@ -48,7 +51,10 @@ public:
                  (flip.valid && (flip.id != frame_.flip_id || flip.object != frame_.selection_object))) && !increment(action_generation_)) return {};
         }
         const bool airborne = sample.state == 200 || sample.state == 201;
-        if (airborne && (boundary || !frame_.airborne) && !increment(airborne_episode_)) return {};
+        if (airborne && (boundary || !frame_.airborne)) {
+            if(!increment(airborne_episode_))return {};
+            airborne_started_at_=now;
+        }
         // Invalid reads/owner changes already break owner continuity. They do
         // not manufacture a physical departure or landing observation.
         if (!boundary && frame_.airborne && !airborne && !increment(air_departure_)) return {};
@@ -56,7 +62,7 @@ public:
         namespace rail = game::build::v20260929::grind_exit;
         frame_ = {true, sample.state >= rail::grind_states_first && sample.state < rail::grind_states_end,
             flip.valid, owner, owner_generation_, contact_generation_, action_generation_, step_, now,
-            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_};
+            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_,airborne_started_at_,airborne};
         continuity_ = true;
         return frame_;
     }
@@ -73,7 +79,7 @@ private:
         ++value; return true;
     }
     NativeInputFrame frame_{};
-    std::uint64_t owner_generation_{}, contact_generation_{}, action_generation_{}, step_{}, airborne_episode_{}, air_departure_{};
+    std::uint64_t owner_generation_{}, contact_generation_{}, action_generation_{}, step_{}, airborne_episode_{}, air_departure_{},airborne_started_at_{};
     bool continuity_{}, exhausted_{};
 };
 }

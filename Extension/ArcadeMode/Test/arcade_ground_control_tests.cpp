@@ -36,7 +36,8 @@ int main(){
         const auto pad=static_cast<std::uint16_t>(raw_pad);
         InputEvents events;events.sample(100,{pad,x,y},false,false,InputPolicy::production());
         const auto controls=GroundControl::physical(true,pad,x,y);const auto direction=events.held_direction();
-        const auto code=InputEvents::encode(controls.right?1:controls.left?-1:0,controls.down?-1:pad?bool(pad&1u):y>13000);
+        const auto normalized=InputEvents::normalize({pad,x,y},100);
+        const auto code=InputEvents::encode(controls.right?1:controls.left?-1:0,controls.down?-1:bool(normalized.buttons&1u));
         if(!controls.known||code!=direction)std::cerr<<"x="<<x<<" y="<<y<<" pad="<<pad<<" expected="<<direction<<" got="<<code<<"\n";
         check(controls.known&&code==direction,"ground controls use the existing production physical quantization and pad precedence");
     }

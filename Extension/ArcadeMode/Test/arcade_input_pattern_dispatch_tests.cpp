@@ -63,17 +63,26 @@ void session_manual_prefix() {
 }
 void other_category_prefixes() {
  for(unsigned owner:{InputConsumption::regular,InputConsumption::extra,InputConsumption::extra_grind})for(bool held:{false,true}) {
-  UnifiedInput input;Capture capture;InputEnvironment environment{InputContext::air,true};environment.policy=InputPolicy::strict();
+  UnifiedInput input;Capture capture;InputEnvironment environment{InputContext::air,true};environment.policy=InputPolicy::strict();environment.named_grabs=true;
+  const std::int16_t prefix = owner==InputConsumption::extra ? 6 : 8;
+  if(owner==InputConsumption::extra) {
+   environment.context=InputContext::balance;
+   input.poll(0,{},environment,capture.adapter());input.poll(10,direction(4),environment,capture.adapter());
+   input.poll(20,direction(6),environment,capture.adapter());input.poll(30,{0x4000},environment,capture.adapter());
+   environment.context=InputContext::air;input.poll(200,direction(held?6:0),environment,capture.adapter());
+  } else {
   input.poll(0,{},environment,capture.adapter());input.poll(10,direction(8),environment,capture.adapter());
   if(owner==InputConsumption::extra_grind){input.poll(20,{},environment,capture.adapter());input.poll(30,direction(8),environment,capture.adapter());input.poll(40,direction(8,0x8000),environment,capture.adapter());}
   else {
    input.poll(20,direction(8,0x4000),environment,capture.adapter());
-   if(owner==InputConsumption::extra){input.poll(30,{},environment,capture.adapter());input.poll(40,direction(8),environment,capture.adapter());input.poll(50,direction(8,0x4000),environment,capture.adapter());}
   }
-  bool owned{};for(const auto& event:input.history().events())if(event.token==InputToken{InputSource::direction,8,InputEdge::press})owned=owned || event.owners==owner;
+  }
+  bool owned{};for(const auto& event:input.history().events())if(event.token==InputToken{InputSource::direction,prefix,InputEdge::press})owned=owned || event.owners==owner;
   check(owned,"the actual dispatcher establishes the non-Manual prefix category used by this negative control");
-  input.poll(55,direction(8),environment,capture.adapter());input.poll(60,direction(held?8:0),environment,capture.adapter());const auto calls=capture.calls;
-  input.poll(70,direction(held?8:0,0x2000),environment,capture.adapter());
+  if(owner!=InputConsumption::extra){input.poll(55,direction(8),environment,capture.adapter());input.poll(60,direction(held?8:0),environment,capture.adapter());}
+  const auto calls=capture.calls;
+  input.poll(owner==InputConsumption::extra?210:70,direction(held?prefix:0,0x2000),environment,capture.adapter());
+  if(capture.calls!=calls+(held?1u:0u)) std::cerr<<"category="<<owner<<" held="<<held<<" calls="<<calls<<" actual="<<capture.calls<<"\n";
   check(capture.calls==calls+(held?1u:0u) && (!held || capture.last.action==InputAction::grab),
    "regular/extra/extra-grind consumed released prefixes stay blocked; separately defined held-direction reuse remains allowed");
  }

@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_input_events.h"
+#include "arcade_air_selection.h"
 #include "arcade_input_policy.h"
 #include <limits>
 #include <memory>
@@ -60,6 +61,7 @@ struct InputRequest {
     // array; allocation occurs only during an explicit diagnostic capture.
     std::shared_ptr<const InputRecognitionIdentity> recognition{};
     std::uint64_t jump_generation{};
+    AirSelection air{};
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -233,15 +235,17 @@ public:
     }
     void reset() noexcept {
         events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
-        previous_context_ = InputContext::unknown; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
+        previous_context_ = InputContext::unknown; previous_balance_branch_ = 0; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
-        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = 0; waiting_direction_ = false; clocked_ = false; manual_unknown_ = stick_resume_ = false;
+        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = 0; clocked_ = false; manual_unknown_ = false;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     bool pending_stick() const noexcept {
-        if (waiting_direction_) return true;
+        if (previous_context_ == InputContext::air) for (const auto& event : events_.history().events())
+            if (event.sequence > air_face_after_ && event.token == InputToken{InputSource::buttons,14,InputEdge::press} &&
+                !(event.owners & ordinary_reject) && event.at <= last_ && last_ - event.at < 500) return true;
         for (const auto& request : pending_.slots()) if (request.action == InputAction::flip) return true;
         return false;
     }
@@ -257,7 +261,7 @@ public:
     }
     void cancel_air_episode() noexcept {
         pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
-        active_flip_ = active_grab_ = waiting_direction_ = false; direction_ = 0;
+        active_flip_ = active_grab_ = false; direction_ = 0;
         // Keep physical held state and independently queued Manual/rail intent.
         events_.discard_intent();
     }
@@ -268,12 +272,10 @@ public:
         diagnostic_.stick_at = diagnostic_.pad_at = 0;
     }
     void cancel_manual() noexcept {
-        events_.history().invalidate(InputSource::vertical_stick, manual_owner);
-        events_.history().invalidate(InputSource::vertical_pad, manual_owner);
         // Cancelling Manual intent must not consume shared physical directions.
         const auto journal = events_.history().events();
         if (!journal.empty()) manual_after_ = journal.back().sequence;
-        pending_.cancel(InputAction::manual); pending_.cancel(InputAction::nose_manual); stick_resume_ = false;
+        pending_.cancel(InputAction::manual); pending_.cancel(InputAction::nose_manual);
     }
     void poll(std::uint64_t now, PhysicalInputSample physical, InputEnvironment environment,
               InputAdapter adapter = {}) noexcept {
@@ -288,7 +290,7 @@ public:
             else {
                 if (native.air_episode() != native_.air_episode()) cancel_air_episode();
                 if (native.generations.action != native_.generations.action) {
-                    waiting_direction_ = false;
+                    air_face_after_ = last_event_;
                 }
                 if (native.generations.contact != native_.generations.contact) lip_clocked_ = false;
             }
@@ -315,11 +317,23 @@ public:
         }
         if (previous_context_ == InputContext::balance && environment.context != InputContext::balance)
             events_.history().restore(branch_owner, now, 100);
+        if (previous_context_ == InputContext::balance && (environment.context != InputContext::balance ||
+            previous_balance_branch_ != environment.balance_branch)) {
+            // Observed context selects the table. A queued request from its
+            // predecessor cannot establish or outlive that selection.
+            pending_.cancel(InputAction::balance_branch_one);
+            pending_.cancel(InputAction::balance_branch_two);
+            pending_.cancel(InputAction::balance_variant);
+            pending_.cancel(InputAction::balance_return);
+        }
+        previous_balance_branch_ = environment.balance_branch;
         if (environment.context == InputContext::balance && previous_context_ != InputContext::balance) {
             // Contact installs a new ordinary table; eligible physical history
             // and its category ownership survive the admitted transition.
             pending_.clear_ordinary(); direction_ = 0;
         }
+        if (previous_context_ != InputContext::air && environment.context == InputContext::air)
+            air_face_after_ = last_event_; // Preserve a ground direction preload, never a ground face press.
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
@@ -328,10 +342,10 @@ public:
             balance_controls_ = InputBalanceControls::vertical(environment.balance_branch == 13 ? InputBalanceKind::nose : InputBalanceKind::manual);
         diagnostic_.stick = events_.vertical_direction(false); diagnostic_.pad = events_.vertical_direction(true);
         if (environment.conflict) {
-            events_.discard_intent(); pending_.clear(); crouched_ = false; stick_resume_ = false;
+            events_.discard_intent(); pending_.clear(); crouched_ = false;
             diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
-            direction_ = 0; active_flip_ = active_grab_ = false; waiting_direction_ = false;
+            direction_ = 0; active_flip_ = active_grab_ = false;
             previous_context_ = environment.context;
             return;
         }
@@ -339,11 +353,9 @@ public:
             now >= direction_at_ && now - direction_at_ > InputTiming::takeoff_preload_ms) direction_ = 0;
         if (previous_context_ == InputContext::air && environment.context != InputContext::air) {
             pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
-            direction_ = 0; active_flip_ = active_grab_ = false; waiting_direction_ = false;
+            direction_ = 0; active_flip_ = active_grab_ = false;
         }
         previous_context_ = environment.context;
-        if (waiting_direction_ && (environment.context != InputContext::air || now - face_at_ >= InputTiming::direction_ms))
-            waiting_direction_ = false;
         const auto held_direction = events_.held_direction();
         const bool balancing_vertical = environment.context == InputContext::balance &&
             (held_direction == InputEvents::encode(0, 1) || held_direction == InputEvents::encode(0, -1));
@@ -357,6 +369,7 @@ public:
         recognize_ground_prefix(now,environment);
         // Every sample's edges are evaluated once, even if no adapter is ready.
         const auto journal = events_.history().events();
+        bool grab_pressed{};
         for (const auto& event : journal) {
             if (event.sequence <= last_event_) continue;
             if (event.token.source == InputSource::stick || event.token.source == InputSource::pad || event.token.source == InputSource::direction) {
@@ -387,20 +400,12 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
-            if (code != 14) waiting_direction_ = false;
             if (environment.context == InputContext::air && (code == 14 || code == 13)) {
-                pending_.cancel(code == 14 ? InputAction::grab : InputAction::flip);
-                if (code == 14) {
-                    if (!recognize_flip(now, environment)) { waiting_direction_ = true; face_at_ = now; }
-                } else if (environment.auxiliary_enabled) {
-                    recognize_grab(now, environment);
-                    direction_ = 0;
-                }
+                grab_pressed = grab_pressed || (code == 13 && environment.auxiliary_enabled);
             }
             if (code == 15 && !(environment.surface.fresh && environment.surface.can_push) && environment.rail.phase == InputRailPhase::unavailable && (environment.context == InputContext::ground ||
                 environment.context == InputContext::air || environment.context == InputContext::rail || environment.context == InputContext::lip))
                 {
-                    pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
                     InputMatch press{}; press.count = 1; press.events[0] = event.sequence;
                     press.first_at = press.last_at = event.at;
                     enqueue(environment.context == InputContext::lip ? InputAction::lip_request : InputAction::rail_request,
@@ -408,9 +413,15 @@ public:
                 }
         }
         if (!journal.empty()) last_event_ = journal.back().sequence;
-        if (waiting_direction_ && direction_ && now - direction_at_ < InputTiming::direction_ms) {
-            if (recognize_flip(now, environment)) waiting_direction_ = false;
+        // Match installed ordinary rows in table order, independently of the
+        // physical recording order. Recognition alone never removes another
+        // ordinary match; observed context transitions still cancel it.
+        if (environment.context == InputContext::air) {
+            recognize_flip(now, environment);
+            if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
+                recognize_grab(now, environment);
         }
+        if (grab_pressed) direction_ = 0;
         recognize_manual(now, physical, environment);
         recognize_rail_selection(now, environment);
         recognize_board(now, environment);
@@ -502,9 +513,33 @@ private:
         if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
         request.form = form;
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
-        if (form == InputForm::repeated_direction) {
+        if (form == InputForm::repeated_direction || ((action == InputAction::flip || action == InputAction::grab) && defined_direction)) {
             request.direction = defined_direction; request.direction_source = InputSource::direction;
             request.direction_inherited = false;
+        }
+        if (action == InputAction::flip || action == InputAction::grab) {
+            request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
+                request.direction,presses);
+            if (form == InputForm::repeated_direction) {
+                request.air.trick = ArcadeTrick::none; request.air.predicate = AirInputPredicate::repeated_direction;
+            } else if (action == InputAction::grab && !environment.named_grabs && !environment.deferred_grabs && presses == 1) {
+                request.air = {}; request.air.family = TrickFamily::grab;
+                request.air.trick = ArcadeTrick::basic_bs_grab; request.air.predicate = AirInputPredicate::primitive;
+            }
+            // Original physical edges are evidence for the adapter; recognition
+            // time cannot turn a released buffered tap into a newly held press.
+            if (footprint) for (const auto& event : events_.history().events()) {
+                if (event.token != InputToken{InputSource::buttons,
+                    static_cast<std::int16_t>(action == InputAction::flip ? 14 : 13),InputEdge::press}) continue;
+                for (std::size_t i=0;i<footprint->count;++i) if (footprint->events[i]==event.sequence) {
+                    request.physical_pressed_at=event.at;
+                    for (const auto& release : events_.history().events())
+                        if (release.sequence>event.sequence && release.token.source==event.token.source &&
+                            release.token.code==event.token.code && release.token.edge==InputEdge::release) {
+                            request.physical_released_at=release.at; break;
+                        }
+                }
+            }
         }
         const bool sequence_overflow=!input_diagnostic_increment(diagnostic_.recognized);
         diagnostic_.recognition_overflow=diagnostic_.recognition_overflow||sequence_overflow;
@@ -590,6 +625,12 @@ private:
         if (match && events_.history().consume(match,InputConsumption::regular,ordinary_reject))
             enqueue(InputAction::ground_turn,now,0,environment,1,1,0,0,{},&match);
     }
+    bool air_face_eligible(const InputMatch& match, std::int16_t code) const noexcept {
+        for (const auto& event : events_.history().events())
+            if (event.sequence > air_face_after_ && event.token == InputToken{InputSource::buttons,code,InputEdge::press})
+                for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;
+        return false;
+    }
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
         unsigned presses = 1;
         auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
@@ -597,7 +638,9 @@ private:
         InputMatch match{};
         InputForm form{};
         if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ <= 250) {
-            match = events_.history().extra_action(face, {grab_source_,grab_direction_,InputEdge::press}, 300, now, ~manual_owner);
+            const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
+            const std::array tokens{face};
+            match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
         if (!match && !environment.deferred_grabs) {
@@ -605,12 +648,12 @@ private:
             if (match) form = InputForm::repeated_direction;
         }
         if (!match) {
-            if (selected && !environment.deferred_grabs) {
-                const InputToken direction{direction_source_,selected,InputEdge::press};
-                match = events_.history().air_action(face,direction,events_.held(direction),500,now,ordinary_reject);
+            if (!environment.deferred_grabs && (selected || environment.named_grabs)) {
+                const auto binding = match_air_direction(events_,TrickFamily::grab,now,ordinary_reject);
+                match = binding.match; selected = binding.direction;
             } else { const std::array tokens{face}; match = events_.history().match({tokens,500,ordinary_reject},now); }
         }
-        if (!match) return;
+        if (!match || !air_face_eligible(match,13)) return;
         if (environment.deferred_grabs) {
             for (const auto& request : pending_.slots()) if (request.action == InputAction::grab) {
                 if (now - request.recognized_at > 180) break;
@@ -624,7 +667,7 @@ private:
         if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
-            extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,selected,
+            extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment) noexcept {
@@ -634,7 +677,9 @@ private:
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
         if (active_flip_ && child && now - flip_started_ <= 233) {
-            match = events_.history().extra_action(face, {flip_source_,flip_direction_,InputEdge::press}, 300, now, ~manual_owner);
+            const auto definition = air_selection(TrickFamily::flip,flip_direction_,active_flip_count_ + 1);
+            const std::array tokens{face};
+            match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
             if (match) presses = active_flip_count_ < std::numeric_limits<unsigned>::max() ? active_flip_count_ + 1 : active_flip_count_;
         }
         if (!match) {
@@ -642,10 +687,10 @@ private:
             if (match) form = InputForm::repeated_direction;
         }
         if (!match) {
-            const InputToken direction{direction_source_, direction_, InputEdge::press};
-            match = events_.history().air_action(face, direction, events_.held(direction), 500, now,ordinary_reject);
+            const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
+            match = binding.match; defined_direction = binding.direction;
         }
-        if (!match || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
+        if (!match || !air_face_eligible(match,14) || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
             ordinary_reject)) return false;
         auto selected = environment;
         if (presses > 1) selected.nollie = flip_nollie_;
@@ -925,40 +970,32 @@ private:
             diagnostic_.stick_at = diagnostic_.pad_at = 0; return;
         }
         const auto pad = physical.buttons & 15u;
-        if (pad || stick_resume_) events_.history().invalidate(InputSource::vertical_stick, manual_owner);
-        stick_resume_ = pad != 0;
-        if (pad) events_.reset_manual_stick_baseline();
+        if(events_.direction_reacquired())for(const auto& event:events_.history().events())
+            if(event.at==now && event.token.source==InputSource::direction && event.token.edge==InputEdge::press)
+                events_.history().consume(InputMatch::single(event),manual_owner,0);
         const auto window = environment.context == InputContext::air ? InputTiming::air_pair_ms :
             InputTiming::ground_pair_ms + environment.policy.manual_sample_allowance;
         const bool inclusive = environment.context == InputContext::ground && environment.policy.inclusive_manual;
-        bool requested{};
-        const bool canonical = environment.policy.normalization == InputNormalization::analog;
-        const auto reject = canonical ? ~std::uint32_t{0} : manual_owner;
-        if (canonical) { diagnostic_.stick_first = diagnostic_.pad_first = 0; diagnostic_.stick_at = diagnostic_.pad_at = 0; }
-        for (auto source : {InputSource::vertical_pad, InputSource::vertical_stick, InputSource::direction}) {
-            if (canonical != (source == InputSource::direction)) continue;
-            const InputEvent* latest{}; const InputEvent* prior{};
-            for (const auto& event : events_.history().events())
-                if (event.sequence > manual_after_ && event.token.source == source && event.token.edge == InputEdge::press && !(event.owners & reject) &&
-                    (source != InputSource::direction || event.token.code == 2 || event.token.code == 8)) {
-                    prior = latest; latest = &event;
-                }
-            const bool fresh = latest && (inclusive ? now - latest->at <= window : now - latest->at < window);
-            auto& first = (source == InputSource::vertical_pad || (canonical && pad)) ? diagnostic_.pad_first : diagnostic_.stick_first;
-            auto& at = (source == InputSource::vertical_pad || (canonical && pad)) ? diagnostic_.pad_at : diagnostic_.stick_at;
-            const auto sign = [&](const InputEvent* event) { return event ? canonical ? event->token.code == 8 ? 1 : -1 : static_cast<int>(event->token.code) : 0; };
-            first = fresh ? sign(latest) : 0; at = latest ? latest->at : 0;
-            if (requested || !fresh || latest->at != now || !prior ||
-                sign(prior) != -sign(latest) || (inclusive ? now - prior->at > window : now - prior->at >= window)) continue;
-            const std::array steps{prior->token, latest->token};
-            const auto match = events_.history().match({steps, window, reject, true, false, inclusive}, now);
-            if (match && events_.history().consume(match, manual_owner, reject)) {
-                // Recognition and native readiness remain separate. The current
-                // safe-state gate, including preparation-only contexts, is retained.
-                requested = true;
-                enqueue(sign(latest) > 0 ? InputAction::nose_manual : InputAction::manual,
-                    now, environment.context == InputContext::air ? InputTiming::air_request_ms : 0, environment, 1, 0, 0, 0, {}, &match);
-            }
+        const auto reject = ~std::uint32_t{0};
+        diagnostic_.stick_first = diagnostic_.pad_first = 0;
+        diagnostic_.stick_at = diagnostic_.pad_at = 0;
+        const InputEvent* latest{}; const InputEvent* prior{};
+        for (const auto& event : events_.history().events())
+            if (event.sequence > manual_after_ && event.token.source == InputSource::direction &&
+                event.token.edge == InputEdge::press && !(event.owners & reject) &&
+                (event.token.code == 2 || event.token.code == 8)) { prior=latest;latest=&event; }
+        const bool fresh = latest && (inclusive ? now-latest->at<=window : now-latest->at<window);
+        auto& first=pad?diagnostic_.pad_first:diagnostic_.stick_first;
+        auto& at=pad?diagnostic_.pad_at:diagnostic_.stick_at;
+        const auto sign=[](const InputEvent* event){return event?(event->token.code==8?1:-1):0;};
+        first=fresh?sign(latest):0;at=latest?latest->at:0;
+        if(fresh && latest->at==now && prior && sign(prior)==-sign(latest) &&
+            (inclusive?now-prior->at<=window:now-prior->at<window)) {
+            const std::array steps{prior->token,latest->token};
+            const auto match=events_.history().match({steps,window,reject,true,false,inclusive},now);
+            if(match && events_.history().consume(match,manual_owner,reject))
+                enqueue(sign(latest)>0?InputAction::nose_manual:InputAction::manual,now,
+                    environment.context==InputContext::air?InputTiming::air_request_ms:0,environment,1,0,0,0,{},&match);
         }
         diagnostic_.suppress_reverse = environment.context == InputContext::ground && physical.y < -11000 &&
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
@@ -974,16 +1011,16 @@ private:
     std::uint64_t crouch_sequence_{};
     bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
-    std::uint64_t lip_generation_{}, manual_after_{};
+    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
-    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, face_at_{}, flip_started_{}, grab_started_{};
+    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_started_{};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
     InputContext previous_context_{};
     InputJumpBinding jump_binding_{};
     std::uint64_t jump_generation_{};
-    unsigned active_flip_count_{}, active_grab_count_{};
+    unsigned active_flip_count_{}, active_grab_count_{}, previous_balance_branch_{};
     bool active_flip_{}, active_grab_{};
-    bool clocked_{}, crouched_{}, crouch_nollie_{}, waiting_direction_{}, flip_nollie_{}, manual_unknown_{}, stick_resume_{};
+    bool clocked_{}, crouched_{}, crouch_nollie_{}, flip_nollie_{}, manual_unknown_{};
 };
 }

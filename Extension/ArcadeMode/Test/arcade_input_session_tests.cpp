@@ -83,13 +83,13 @@ void native_adapters() {
 void one_journal_and_boundaries() {
     Harness h; h.poll(0);
     h.poll(17, {0, 0, 25000}); h.poll(34, {0, 0, -25000});
-    check(h.session.history().events().size() >= 4, "manual uses the session's single journal");
+    check(h.session.history().events().size() == 3, "manual uses the session's single journal");
     h.admission.pose = SkatePose::air; h.poll(51, {0x4000, -25000, 0});
     h.poll(68, {0x2000}); h.poll(85, {0x8000}); h.poll(102, {0, 0, 0, 0, 255});
     bool button{}, vertical{}, trigger{};
     for (const auto& event : h.session.history().events()) {
         button = button || event.token.source == InputSource::buttons;
-        vertical = vertical || event.token.source == InputSource::vertical_stick;
+        vertical = vertical || event.token.source == InputSource::direction;
         trigger = trigger || event.token.source == InputSource::triggers;
     }
     check(button && vertical && trigger && InputHistory::capacity == 100, "all action families share one100-entry event/consumption domain");

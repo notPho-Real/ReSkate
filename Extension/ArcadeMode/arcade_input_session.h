@@ -106,9 +106,13 @@ public:
         // fabricate a physical Y release or reset the held-event baseline.
         if (!(physical.buttons & 0x8000u) || admission.observed_lip) rail_ = false;
         const bool triggers = physical.lt > 30 || physical.rt > 30;
+        // Native adapter wiring only: an admitted balance can retain its RS
+        // hold when a stance/branch trigger has no competing channel owner.
+        // Preparation and actual authored/auxiliary/external conflicts still cancel.
+        const bool manual_trigger_only=triggers && !authored_.busy() && !auxiliary_.busy() && !admission.external_owner;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only);
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -154,7 +158,7 @@ public:
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only);
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;
@@ -246,7 +250,11 @@ private:
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             if (request.form != InputForm::ordinary) return request_extension(request);
             {
-                const auto id = native_flip_id(select_named_trick(TrickFamily::flip, direction(request.direction), request.presses), request.nollie);
+                const auto selected=select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
+                if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
+                    out.unsupported=true;return InputDisposition::unsupported;
+                }
+                const auto id = native_flip_id(selected,request.nollie);
                 air_action_ = start(id, request.nollie, false, context, true);
                 if (air_action_) air_actor_episode_ = admission.native_context.air_episode();
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;

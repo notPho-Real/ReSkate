@@ -368,57 +368,109 @@ struct PhysicalInputSample {
     std::int16_t x{}, y{};
     std::uint8_t lt{}, rt{};
 };
+constexpr std::int16_t input_direction_code(int x,int y) noexcept {
+    return static_cast<std::int16_t>(x == 0 && y == 0 ? 0 : 1 + (y + 1) * 3 + x + 1);
+}
+struct InputControlPair {
+    bool first{}, second{}, available{};
+    std::uint64_t sampled_at{};
+};
+// Physical pressed-state publication is separate from eight-way event identity.
+// A diagonal has one command token but retains its cardinal held components.
+struct InputDigitalState {
+    std::uint64_t sampled_at{};
+    std::uint16_t buttons{}, stick_buttons{}, pad_buttons{};
+    std::uint8_t triggers{};
+    std::int16_t direction{};
+    bool available{};
+    static constexpr bool direction_pressed(std::uint16_t bits,std::int16_t code) noexcept {
+        switch(code) {
+        case 8:return (bits&1u)!=0; case 2:return (bits&2u)!=0;
+        case 4:return (bits&4u)!=0; case 6:return (bits&8u)!=0;
+        case 1:case 3:case 7:case 9:
+            return input_direction_code(bits&8u?1:bits&4u?-1:0,bits&2u?-1:bits&1u?1:0)==code;
+        default:return false;
+        }
+    }
+    bool pressed(InputToken token) const noexcept {
+        if(!available || token.edge!=InputEdge::press)return false;
+        switch(token.source) {
+        case InputSource::buttons:return token.code>=0 && token.code<16 && (buttons&(std::uint16_t{1}<<static_cast<unsigned>(token.code)));
+        case InputSource::triggers:return token.code>=0 && token.code<2 && (triggers&(1u<<static_cast<unsigned>(token.code)));
+        case InputSource::direction:return direction_pressed(buttons&15u,token.code);
+        case InputSource::stick:return direction_pressed(stick_buttons,token.code);
+        case InputSource::pad:return direction_pressed(pad_buttons,token.code);
+        case InputSource::vertical_stick:return token.code==1?(stick_buttons&1u)!=0:token.code==-1 && (stick_buttons&2u)!=0;
+        case InputSource::vertical_pad:return token.code==1?(pad_buttons&1u)!=0:token.code==-1 && (pad_buttons&2u)!=0;
+        }
+        return false;
+    }
+    InputControlPair configured(InputBalanceControls controls) const noexcept {
+        if(!available || !controls.admitted || controls.kind==InputBalanceKind::none)return {};
+        return {pressed(controls.first),pressed(controls.second),true,sampled_at};
+    }
+};
 // One physical baseline is independent of whether intent is currently eligible.
 // Unknown sessions are baselined without edges; conflicts discard intent only.
 class InputEvents {
 public:
     void reset() noexcept {
-        history_.reset(); previous_ = {}; stick_ = pad_ = vertical_stick_ = vertical_pad_ = canonical_ = 0; armed_ = false; held_clocks_ = {};
+        history_.reset(); previous_ = {}; digital_ = {}; reacquired_ = false; stick_ = pad_ = vertical_stick_ = vertical_pad_ = canonical_ = 0; armed_ = false; held_clocks_ = {};
     }
     void discard_intent() noexcept { history_.clear_intent(); }
     void sample(std::uint64_t now, PhysicalInputSample input, bool balance_exclusions = false, bool manual_owned = false, InputPolicy policy = {}) noexcept {
         sample(now,input,balance_exclusions ? InputBalanceControls::vertical() : InputBalanceControls{},manual_owned,policy);
     }
-    void sample(std::uint64_t now, PhysicalInputSample input, InputBalanceControls controls, bool manual_owned, InputPolicy policy) noexcept {
+    static InputDigitalState normalize(PhysicalInputSample input,std::uint64_t sampled_at,
+                                       bool available=true,InputPolicy policy=InputPolicy::production()) noexcept {
+        InputDigitalState state{};state.sampled_at=sampled_at;state.available=available;
+        if(!available)return state;
+        const bool reference=policy.normalization==InputNormalization::analog;
+        const auto axis=[&](std::int16_t value){return reference?(value>=13057?1:value<=-12800?-1:0):(value>13000?1:value<-13000?-1:0);};
+        const auto x=axis(input.x),y=axis(input.y);
+        state.stick_buttons=static_cast<std::uint16_t>((y>0?1u:y<0?2u:0u)|(x<0?4u:x>0?8u:0u));
+        state.pad_buttons=static_cast<std::uint16_t>(input.buttons&15u);
+        const auto directions=state.pad_buttons?state.pad_buttons:state.stick_buttons;
+        state.buttons=static_cast<std::uint16_t>((input.buttons&0xfff0u)|directions);
+        state.direction=encode(directions&8u?1:directions&4u?-1:0,directions&2u?-1:directions&1u?1:0);
+        state.triggers=static_cast<std::uint8_t>((input.lt>30?1u:0u)|(input.rt>128?2u:0u));
+        return state;
+    }
+    const InputDigitalState& digital_state() const noexcept {return digital_;}
+    bool direction_reacquired() const noexcept {return reacquired_;}
+    void sample(std::uint64_t now, PhysicalInputSample input, InputBalanceControls controls, bool, InputPolicy policy) noexcept {
         if (policy != policy_) { reset(); policy_ = policy; }
+        const auto state=normalize(input,now,true,policy_);
+        reacquired_=armed_ && digital_.pad_buttons && !state.pad_buttons && state.stick_buttons &&
+            state.stick_buttons==digital_.stick_buttons;
+        digital_=state;
         if (policy_.normalization == InputNormalization::analog) { sample_analog(now, input, controls); return; }
         exclusions_ = controls;
         const bool continuous = history_.advance(now);
         if (!armed_ || !continuous) {
-            if (!continuous) held_clocks_ = {};
-            previous_ = input; armed_ = true; stick_ = quantize(input.x, input.y);
-            const auto pad = input.buttons & 15u;
-            pad_ = ((pad & 3u) == 3u || (pad & 12u) == 12u) ? 0 :
-                encode((pad & 8u ? 1 : 0) - (pad & 4u ? 1 : 0),
-                       (pad & 1u ? 1 : 0) - (pad & 2u ? 1 : 0));
-            canonical_ = pad ? pad_ : stick_;
-            vertical_stick_ = vertical(input.x, input.y, 0);
-            vertical_pad_ = (input.buttons & 3u) == 1 ? 1 : (input.buttons & 3u) == 2 ? -1 : 0;
-            observe_held(now); return;
+            reacquired_=false;if (!continuous) held_clocks_ = {};
+            previous_ = input; armed_ = true;
+            stick_=encode(state.stick_buttons&8u?1:state.stick_buttons&4u?-1:0,state.stick_buttons&2u?-1:state.stick_buttons&1u?1:0);
+            pad_=encode(state.pad_buttons&8u?1:state.pad_buttons&4u?-1:0,state.pad_buttons&2u?-1:state.pad_buttons&1u?1:0);
+            canonical_=state.direction;vertical_stick_=vertical(input.x,input.y,0);
+            vertical_pad_=(input.buttons&3u)==1?1:(input.buttons&3u)==2?-1:0;
+            observe_held(now);return;
         }
-        // Native balance correction does not advance the manual command
-        // projection. General direction/button held state still updates.
-        if (!manual_owned) {
-            direction(now, InputSource::vertical_stick, vertical(input.x, input.y, vertical_stick_), vertical_stick_);
-            direction(now, InputSource::vertical_pad, (input.buttons & 3u) == 1 ? 1 : (input.buttons & 3u) == 2 ? -1 : 0, vertical_pad_);
-        }
-        stick_ = quantize(input.x, input.y);
-        const auto pad = input.buttons & 15u;
-        const int px = (pad & 8u ? 1 : 0) - (pad & 4u ? 1 : 0);
-        const int py = (pad & 1u ? 1 : 0) - (pad & 2u ? 1 : 0);
-        pad_ = ((pad & 3u) == 3u || (pad & 12u) == 12u) ? 0 : encode(px, py);
-        direction(now, InputSource::direction, pad ? pad_ : stick_, canonical_);
+        // Projection state is held metadata, never a second command history.
+        vertical_stick_=vertical(input.x,input.y,vertical_stick_);
+        vertical_pad_=(input.buttons&3u)==1?1:(input.buttons&3u)==2?-1:0;
+        stick_=encode(state.stick_buttons&8u?1:state.stick_buttons&4u?-1:0,state.stick_buttons&2u?-1:state.stick_buttons&1u?1:0);
+        pad_=encode(state.pad_buttons&8u?1:state.pad_buttons&4u?-1:0,state.pad_buttons&2u?-1:state.pad_buttons&1u?1:0);
+        direction(now,InputSource::direction,state.direction,canonical_);
         for (unsigned bit = 4; bit < 16; ++bit) {
             const auto mask = static_cast<std::uint16_t>(std::uint16_t{1} << bit);
             if ((input.buttons ^ previous_.buttons) & mask)
-                record({InputSource::buttons, static_cast<std::int16_t>(bit),
-                    input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
+                record({InputSource::buttons, static_cast<std::int16_t>(bit),input.buttons & mask ? InputEdge::press : InputEdge::release}, now);
         }
         for (unsigned trigger = 0; trigger < 2; ++trigger) {
             const bool held = (trigger ? input.rt > 128 : input.lt > 30);
             const bool was = (trigger ? previous_.rt > 128 : previous_.lt > 30);
-            if (held != was) record({InputSource::triggers, static_cast<std::int16_t>(trigger),
-                held ? InputEdge::press : InputEdge::release}, now);
+            if (held != was) record({InputSource::triggers, static_cast<std::int16_t>(trigger),held ? InputEdge::press : InputEdge::release}, now);
         }
         previous_ = input; observe_held(now);
     }
@@ -428,7 +480,6 @@ public:
         const auto sign = static_cast<std::int16_t>(y > 0 ? 1 : y < 0 ? -1 : 0);
         return v >= (sign == previous ? 8000 : 11000) && v * 4 >= h * 3 ? sign : std::int16_t{0};
     }
-    void reset_manual_stick_baseline() noexcept { vertical_stick_ = 0; held_clocks_[21] = {}; }
     std::int16_t vertical_direction(bool pad) const noexcept {
         if (policy_.normalization == InputNormalization::analog) {
             if (pad != ((previous_.buttons & 15u) != 0)) return 0;
@@ -465,7 +516,7 @@ public:
     InputHistory& history() noexcept { return history_; }
     const InputHistory& history() const noexcept { return history_; }
     static constexpr std::int16_t encode(int x, int y) noexcept {
-        return static_cast<std::int16_t>(x == 0 && y == 0 ? 0 : 1 + (y + 1) * 3 + x + 1);
+        return input_direction_code(x,y);
     }
 private:
     static int held_value(InputToken token) noexcept {
@@ -491,17 +542,15 @@ private:
         update(18, stick_ ? stick_ + 1 : 0); update(19, pad_ ? pad_ + 1 : 0); update(20, canonical_ ? canonical_ + 1 : 0);
         update(21, vertical_stick_ ? vertical_stick_ + 2 : 0); update(22, vertical_pad_ ? vertical_pad_ + 2 : 0);
     }
-    static std::int16_t analog_direction(PhysicalInputSample input) noexcept {
-        const auto pad = input.buttons & 15u;
-        const int x = pad ? (pad & 8u ? 1 : pad & 4u ? -1 : 0) : input.x >= 13057 ? 1 : input.x <= -12800 ? -1 : 0;
-        const int y = pad ? (pad & 2u ? -1 : pad & 1u ? 1 : 0) : input.y >= 13057 ? 1 : input.y <= -12800 ? -1 : 0;
-        return encode(x, y);
-    }
     void sample_analog(std::uint64_t now, PhysicalInputSample input, InputBalanceControls controls) noexcept {
         exclusions_ = controls;
         const bool continuous = history_.advance(now);
-        if (!armed_ || !continuous) { if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = analog_direction(input); armed_ = true; observe_held(now); return; }
-        direction(now, InputSource::direction, analog_direction(input), canonical_);
+        stick_=encode(digital_.stick_buttons&8u?1:digital_.stick_buttons&4u?-1:0,digital_.stick_buttons&2u?-1:digital_.stick_buttons&1u?1:0);
+        pad_=encode(digital_.pad_buttons&8u?1:digital_.pad_buttons&4u?-1:0,digital_.pad_buttons&2u?-1:digital_.pad_buttons&1u?1:0);
+        vertical_stick_=digital_.stick_buttons&1u?1:digital_.stick_buttons&2u?-1:0;
+        vertical_pad_=digital_.pad_buttons&1u?1:digital_.pad_buttons&2u?-1:0;
+        if (!armed_ || !continuous) { reacquired_=false;if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = digital_.direction; armed_ = true; observe_held(now); return; }
+        direction(now, InputSource::direction, digital_.direction, canonical_);
         // Current layout maps the physical controls into the fixed event order.
         // Trigger thresholds remain a declared layout policy, separate from axes.
         constexpr std::array<unsigned,10> order{13,14,15,12,8,16,6,9,17,7};
@@ -519,9 +568,6 @@ private:
             }
         }
         previous_ = input; observe_held(now);
-    }
-    static constexpr std::int16_t quantize(std::int16_t x, std::int16_t y) noexcept {
-        return encode(x > 13000 ? 1 : x < -13000 ? -1 : 0, y > 13000 ? 1 : y < -13000 ? -1 : 0);
     }
     void direction(std::uint64_t now, InputSource source, std::int16_t value, std::int16_t& old) noexcept {
         if (value == old) return;
@@ -548,6 +594,8 @@ private:
     }
     InputHistory history_{};
     PhysicalInputSample previous_{};
+    InputDigitalState digital_{};
+    bool reacquired_{};
     std::int16_t stick_{}, pad_{}, vertical_stick_{}, vertical_pad_{}, canonical_{};
     InputPolicy policy_{};
     struct HeldClock { int value{}; std::uint64_t since{}; };
