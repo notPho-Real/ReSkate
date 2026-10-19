@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_input_session.h"
 #include "arcade_native_input_state.h"
+#include "arcade_rail_adapter.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include <array>
 #include <cstdint>
@@ -32,7 +33,32 @@ public:
         return changed;
     }
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
-    void publish_native_context(NativeInputFrame frame) noexcept { native_ = frame; }
+    void publish_native_context(NativeInputFrame frame) noexcept {
+        native_ = frame;
+        // Existing physics production calls this for every validated step;
+        // client rereads retain the original timestamp and step identity.
+        native_rail_.observe(frame);
+        // Central admission deliberately limits the candidate catch to verified
+        // AIR. Rail contact is not a mapped darkslide or catch-setting proof.
+        if (native_rail_method_ == RailAdapterMethod::dark_catch && (!frame.valid || !frame.airborne)) native_rail_.cancel();
+    }
+    // Invoked only after a newly consumed semantic request with its ORIGINAL
+    // deadline. Channel compatibility is explicit; no method is activated by
+    // held levels, a rail enum, or a missing named/Lip capability.
+    RailAdapterResult request_native_rail(RailAdapterMethod method, std::uint64_t now,
+            std::uint64_t deadline, bool channels_compatible) noexcept {
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now);
+        const auto result = native_rail_.request(method,now,deadline,enabled_,permitted,!channels_compatible);
+        if (result == RailAdapterResult::started) native_rail_method_ = method;
+        return result;
+    }
+    RailAdapterPad sample_native_rail(std::uint64_t now, bool held, bool channels_compatible) noexcept {
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now);
+        return native_rail_.sample(now,held,enabled_,permitted,!channels_compatible);
+    }
+    RailAdapterPhase native_rail_phase(std::uint64_t now) const noexcept {
+        return native_context(now).valid ? native_rail_.phase() : RailAdapterPhase::unavailable;
+    }
     NativeInputFrame native_context(std::uint64_t now) const noexcept {
         return enabled_ && focused_ && now >= authority_at_ && now-authority_at_ <= 150 &&
             native_.valid && native_.owner_generation == owner_ && now >= native_.sampled_at &&
@@ -73,7 +99,7 @@ public:
         enabled_ = value; cancel_commands();
         if (native_bound_) invalidate_authority();
     }
-    void cancel_commands() noexcept { for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; }
+    void cancel_commands() noexcept { for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
     // Command-owner metadata only: an ordinary jump's right-stick tail does
     // not own the independent air rotation channel. This is not native clip
     // readiness, completion, or a NoSpin observation.
@@ -173,6 +199,8 @@ private:
     InputPolicy policy_;
     Physical physical_{};
     NativeInputFrame native_{}, balance_frame_{};
+    RailAdapter native_rail_{};
+    RailAdapterMethod native_rail_method_{};
     InputBalanceControls balance_controls_{};
     std::uint64_t owner_{}, authority_at_{};
     unsigned source_{};

@@ -56,6 +56,12 @@ int run_arcade_balance_layout_tests() {
           balance_hud_layout(std::numeric_limits<float>::infinity(), 800, false).scale == 0,
           "invalid display dimensions suppress drawing");
     check(!balance_meter({}).visible, "idle gameplay has no meter");
+    for(auto kind:{BalanceKind::manual,BalanceKind::grind})for(auto invalid:{std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity()}) {
+        State state{};state.combo_active=true;state.balance_kind=kind;state.balance=invalid;
+        check(!balance_meter(state).visible,"unavailable balance position cannot appear as a centered valid meter");
+        state.balance=0;state.balance_velocity=invalid;
+        check(!balance_meter(state).visible,"unavailable physical balance velocity cannot masquerade as valid presentation");
+    }
     std::cout << checks << " balance layout checks passed\n";
     return 0;
 }

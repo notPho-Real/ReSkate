@@ -56,7 +56,8 @@ struct BalanceMeter {
     float cursor_x{}, cursor_y{}; // normalized offsets from center; screen Y points down
 };
 inline BalanceMeter balance_meter(const State& state) noexcept {
-    if (!state.combo_active || state.balance_kind == BalanceKind::none) return {};
+    if (!state.combo_active || state.balance_kind == BalanceKind::none ||
+        !std::isfinite(state.balance) || !std::isfinite(state.balance_velocity)) return {};
     const bool vertical = state.balance_kind == BalanceKind::manual;
     return {true, vertical, vertical ? 0.0f : state.balance, vertical ? -state.balance : 0.0f};
 }
