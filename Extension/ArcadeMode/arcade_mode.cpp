@@ -188,6 +188,9 @@ std::atomic<std::shared_ptr<const std::vector<AuthoredGesture>>> authored_catalo
 std::atomic<std::shared_ptr<const std::vector<PreparedGesture>>> prepared_catalog;
 std::atomic<std::uint64_t> input_game_tick{}, input_step_serial{}, input_step_at{}, input_owner_epoch{1};
 NativeInputState native_input_state; // Protected by ollie_mutex; native physics is the sole producer.
+// Private physical continuity for verified-write cleanup only. Mode toggles
+// revoke command proof above; they do not pretend the physical rider changed.
+NativeInputState motion_cleanup_state; // Same mutex and sole physics producer.
 NativeInputOwner input_owner(const NoBailSkater& owner) noexcept { return {owner.base,owner.entity,owner.core,owner.context,owner.rig}; }
 NativePushContact push_contact_policy;
 NoBailSkater push_contact_owner{};
@@ -691,7 +694,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.context + selected_state, sample.state) ||
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
@@ -708,7 +711,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
-        native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
@@ -722,6 +725,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         std::lock_guard lock(ollie_mutex);
         if (clock_valid) {
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
+            (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             arcade_input.publish_native_context(frame);
             if(frame.valid)capture_event(CaptureCorrelationSource::native,frame.physics_step,frame.sampled_at,frame);
             else input_capture_correlation.maintain(now,{},input_telemetry.client_dropped(),capture_row);
@@ -729,7 +733,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
             else arcade_input.invalidate_authority();
         } else {
-            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
@@ -877,9 +881,12 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
 }
 
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample) noexcept {
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup) noexcept {
+    if (cleanup) *cleanup={};
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
-    if (!lock.owns_lock() || !mode_enabled.load(std::memory_order_acquire) || !arcade_input.admitted(0,now)) return {};
+    if (!lock.owns_lock()) return {};
+    if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
+    if (!mode_enabled.load(std::memory_order_acquire) || !arcade_input.admitted(0,now)) return {};
     const auto frame = native_input_state.correlate(now,owner,sample);
     return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
 }
@@ -1183,6 +1190,7 @@ void on_client_tick() noexcept {
         {
             std::lock_guard lock(ollie_mutex);
             if (!gameplay || !focus_available || !watch.valid || !native.valid) native_input_state.invalidate();
+            if (!focus_available || !watch.valid || !native.valid || !ui.available || ui.in_menu) motion_cleanup_state.invalidate();
             const auto authority_now = GetTickCount64();
             const auto frame = native_input_state.correlate(authority_now,input_owner(native_owner),native);
             client_frame = frame;
@@ -1316,7 +1324,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
-            native_input_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& charge : native_charges) charge.cancel();
@@ -1501,7 +1509,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch,
+                rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

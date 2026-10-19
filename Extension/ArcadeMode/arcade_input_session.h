@@ -40,6 +40,7 @@ public:
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false; rail_request_ = {};
+        ground_turn_ = {}; // Keep the serial watermark across resets.
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
@@ -202,6 +203,11 @@ public:
             output.rail = {rail_request_,rail_,busy || triggers || auxiliary_.busy() || board.pulse || admission.external_owner,output.action.pad};
             output.rail.occupied.owns_right_stick = output.rail.occupied.owns_right_stick || busy || admission.external_owner;
         }
+        if (context != InputContext::ground || admission.pose != SkatePose::riding || admission.offboard ||
+            admission.observed_lip || busy || output.action.owned || board.pulse || board_active_ ||
+            admission.external_owner || triggers || holding_ || (physical.buttons & classic_a) || !native.required || !native.fresh(now) ||
+            !native.correlates_action(ground_turn_.generations)) ground_turn_ = {};
+        output.ground_turn = ground_turn_;
         output.command_busy = busy || output.action.owned || board.pulse || (export_rail_ && rail_);
         current_ = nullptr;
         return output;
@@ -309,8 +315,22 @@ private:
             return request_extension(request);
         }
         case InputAction::lip_request:
-        case InputAction::ground_turn:
             return request_extension(request);
+        case InputAction::ground_turn: {
+            if (request.variant != 1 || request.context != InputContext::ground ||
+                admission.pose != SkatePose::riding || admission.offboard || admission.observed_lip ||
+                admission.external_owner || authored_.busy() || manual_.busy() || auxiliary_.busy() || board_active_ ||
+                holding_ || (physical_.buttons & classic_a) || physical_.lt > 30 || physical_.rt > 30) return InputDisposition::cancelled;
+            const auto& native=admission.native_context;
+            if (!native.required || !native.fresh(now_) || native.airborne || native.rail_family ||
+                now_ < request.recognized_at || now_-request.recognized_at > 150 ||
+                !native.correlates_action(request.generations) || ground_turn_serial_ == UINT64_MAX)
+                return InputDisposition::unsupported;
+            if (ground_turn_.serial && now_ >= ground_turn_.requested_at && now_-ground_turn_.requested_at < 300)
+                return InputDisposition::cancelled;
+            ground_turn_={++ground_turn_serial_,request.recognized_at,native.generations,native.physics_step,native.sampled_at};
+            return InputDisposition::started;
+        }
         default: return InputDisposition::unsupported;
         }
     }
@@ -391,6 +411,8 @@ private:
     NativeGesture::Output* current_{};
     GestureContext launch_context_{GestureContext::ground};
     LaunchDescriptor jump_launch_{};
+    GroundTurnCommand ground_turn_{};
+    std::uint64_t ground_turn_serial_{};
     TrickDirection rail_direction_{};
     std::uint64_t now_{}, last_{}, last_tick_{}, jump_pressed_at_{};
     bool jump_nollie_{}, extension_started_{};
