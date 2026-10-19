@@ -118,6 +118,15 @@ public:
         }
         return {};
     }
+    InputMatch release_after_presses(InputToken prefix, InputToken terminal, unsigned presses,
+                                     std::uint64_t window, std::uint64_t now,
+                                     std::uint32_t reject = ~std::uint32_t{0}) const noexcept {
+        if (presses != 1 && presses != 2) return {};
+        prefix.edge = InputEdge::press; terminal.edge = InputEdge::release;
+        std::array steps{prefix, prefix, terminal};
+        steps[presses] = terminal;
+        return match({std::span<const InputToken>(steps).first(presses + 1), window, reject}, now);
+    }
     InputMatch overlap(InputToken a, InputToken b, std::uint64_t window,
                        std::uint64_t now, bool require_current = false,
                        bool a_held = false, bool b_held = false,

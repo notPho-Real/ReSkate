@@ -7,9 +7,12 @@ namespace dingosdk::arcade_mode {
 enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
 enum class InputAction : std::uint8_t {
     none, crouch, ollie_release, flip, grab, rail_request, revert, manual, nose_manual,
-    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn
+    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn, jump_variant
 };
 enum class InputDisposition : std::uint8_t { waiting, started, unsupported, cancelled, expired };
+// The caller selects one installed release table only after establishing its
+// exact native actor. Disabled preserves the ordinary jump path.
+enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
 enum class InputForm : std::uint8_t { ordinary, repeated_direction };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
@@ -53,6 +56,7 @@ struct InputRequest {
     InputAirEpisode air_episode{};
     std::uint64_t input_sequence{};
     InputRecognitionIdentity recognition{};
+    std::uint64_t jump_generation{};
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -75,6 +79,8 @@ struct InputEnvironment {
     bool board_allowed{};
     InputBoardBinding board_binding{};
     InputNativeContext native_context{};
+    InputJumpBinding jump_binding{};
+    std::uint64_t jump_generation{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -155,6 +161,18 @@ public:
         // that reservation too, without cancelling unrelated waiting actions.
         ++cancellations_[static_cast<std::size_t>(action)];
         for (auto& slot : slots_) if (slot.action == action) slot = {};
+        // Reclaim cancelled entries even behind a waiting head. Stable in-place
+        // compaction preserves FIFO order and the in-flight reserved slot.
+        std::size_t kept{};
+        for (std::size_t i = 0; i < size_; ++i) {
+            auto& source = slots_[1 + (front_ + i) % capacity];
+            if (source.action != InputAction::none) {
+                if (kept != i) slots_[1 + (front_ + kept) % capacity] = source;
+                ++kept;
+            }
+        }
+        for (std::size_t i = kept; i < size_; ++i) slots_[1 + (front_ + i) % capacity] = {};
+        size_ = kept;
     }
     std::span<const InputRequest> slots() const noexcept { return slots_; }
 private:
@@ -181,7 +199,7 @@ private:
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
-    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::ground_turn) + 1> cancellations_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::jump_variant) + 1> cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
 // all admission and safety contracts. No native memory or score dependencies.
@@ -204,7 +222,7 @@ public:
     };
     void reset() noexcept {
         events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_footprint_ = {};
-        previous_context_ = InputContext::unknown; direction_ = 0; direction_at_ = 0;
+        previous_context_ = InputContext::unknown; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
@@ -280,6 +298,10 @@ public:
             reset(); return;
         }
         clocked_ = true; last_ = now; ++diagnostic_.samples;
+        if (environment.jump_binding != jump_binding_ || environment.jump_generation != jump_generation_) {
+            pending_.cancel(InputAction::jump_variant); jump_binding_ = environment.jump_binding;
+            jump_generation_ = environment.jump_generation;
+        }
         if (previous_context_ == InputContext::balance && environment.context != InputContext::balance)
             events_.history().restore(branch_owner, now, 100);
         if (environment.context == InputContext::balance && previous_context_ != InputContext::balance) {
@@ -344,10 +366,13 @@ public:
                     const auto match = InputMatch::single(event); crouch_footprint_ = match;
                     enqueue(InputAction::crouch, now, 1, environment,1,0,0,0,{},&match);
                 } else if (event.token.edge == InputEdge::release && crouched_) {
-                    consume(event); auto context = environment; context.nollie = crouch_nollie_;
-                    auto match = crouch_footprint_;
-                    match.events[match.count++] = event.sequence; match.last_at = event.at;
-                    enqueue(InputAction::ollie_release, now, 1, context,1,0,0,0,{},&match); crouched_ = false;
+                    if (!recognize_jump_release(now, environment)) {
+                        consume(event); auto context = environment; context.nollie = crouch_nollie_;
+                        auto match = crouch_footprint_;
+                        match.events[match.count++] = event.sequence; match.last_at = event.at;
+                        enqueue(InputAction::ollie_release, now, 1, context,1,0,0,0,{},&match);
+                    }
+                    crouched_ = false;
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
@@ -379,6 +404,8 @@ public:
         recognize_rail_selection(now, environment);
         recognize_board(now, environment);
         pending_.dispatch(now, session_, environment.context, adapter, [&](InputDispatchEvent event) {
+            if (event.disposition == InputDisposition::started && event.request.action == InputAction::jump_variant)
+                pending_.clear_ordinary();
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::lip_select) {
                 pending_.cancel(InputAction::lip_select); pending_.cancel(InputAction::rail_select);
             }
@@ -415,7 +442,7 @@ private:
         // contact/action transitions. Native generations cannot prove completion.
         switch (action) {
         case InputAction::manual: case InputAction::nose_manual:
-        case InputAction::crouch: case InputAction::ollie_release: return 1;
+        case InputAction::crouch: case InputAction::ollie_release: case InputAction::jump_variant: return 1;
         case InputAction::rail_select:
             return context == InputContext::air || context == InputContext::ground ? 1 : 7;
         case InputAction::flip: case InputAction::grab: case InputAction::rail_request: return 5;
@@ -440,14 +467,15 @@ private:
                 action == InputAction::rail_change || action == InputAction::lip_change || action == InputAction::lip_select ||
                 action == InputAction::balance_branch_one || action == InputAction::balance_branch_two ||
                 action == InputAction::balance_variant || action == InputAction::balance_return || action == InputAction::ground_turn ||
+                action == InputAction::jump_variant ||
                 (!environment.policy.bounded_handoff && (action == InputAction::flip || action == InputAction::grab)), modifier,
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
             static_cast<std::uint16_t>(action == InputAction::grab ? 0x2000u : action == InputAction::flip ? 0x4000u :
-                action == InputAction::crouch || action == InputAction::ollie_release ? 0x1000u :
+                action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? 0x1000u :
                 action == InputAction::ground_turn ? 0x0200u :
                 action == InputAction::board_toggle ? (environment.board_binding.pattern == InputBoardPattern::shoulder_overlap ? 0x0300u : environment.board_binding.control_mask) : 0u),
-            action == InputAction::crouch || action == InputAction::ollie_release ? crouch_at_ : now,
-            action == InputAction::ollie_release ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
+            action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? crouch_at_ : now,
+            action == InputAction::ollie_release || action == InputAction::jump_variant ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
             footprint ? footprint->first_at : now, footprint ? footprint->last_at : now, environment.balance_branch};
         if (environment.native_context.required) {
             request.generations = lineage ? *lineage : environment.native_context.generations;
@@ -460,6 +488,7 @@ private:
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
         }
+        if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
         request.form = form;
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
         if (form == InputForm::repeated_direction) {
@@ -483,6 +512,18 @@ private:
             const bool current = input_diagnostic_increment(diagnostic_.recognition_omitted);
             if (!cumulative || !current) diagnostic_.recognition_overflow = true;
         }
+    }
+    bool recognize_jump_release(std::uint64_t now, InputEnvironment environment) noexcept {
+        if (environment.context != InputContext::ground || !environment.jump_generation) return false;
+        const auto binding = environment.jump_binding;
+        if (binding != InputJumpBinding::single_release && binding != InputJumpBinding::repeated_release) return false;
+        const unsigned count = binding == InputJumpBinding::single_release ? 1u : 2u;
+        const auto match = events_.history().release_after_presses({InputSource::direction,8,InputEdge::press},
+            {InputSource::buttons,12,InputEdge::release}, count, count == 1 ? 300u : 500u, now, ordinary_reject);
+        if (!match || !events_.history().consume(match,InputConsumption::regular,ordinary_reject)) return false;
+        environment.nollie = false;
+        enqueue(InputAction::jump_variant,now,0,environment,1,static_cast<std::uint8_t>(binding),0,0,{},&match);
+        return true;
     }
     void recognize_board(std::uint64_t now, InputEnvironment environment) noexcept {
         if (!environment.board_allowed) return;
@@ -919,6 +960,8 @@ private:
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
     InputContext previous_context_{};
+    InputJumpBinding jump_binding_{};
+    std::uint64_t jump_generation_{};
     unsigned active_flip_count_{}, active_grab_count_{};
     bool active_flip_{}, active_grab_{};
     bool clocked_{}, crouched_{}, crouch_nollie_{}, waiting_direction_{}, flip_nollie_{}, manual_unknown_{}, stick_resume_{};
