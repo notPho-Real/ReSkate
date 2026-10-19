@@ -59,6 +59,21 @@ int main() {
         physics.stop(); physics.begin(nose);
         check(physics.active(), "an observed physical exit permits a later fresh section");
     }
+    for (bool nose : {false, true}) {
+        ManualPhysics zero_draw({}, 7); zero_draw.begin(nose);
+        check(zero_draw.sample(1.0f / 60, 0).velocity == 0,
+              "deterministic neutral draw can set either signed initial drift to zero");
+        check(near(zero_draw.sample(1.0f / 60, 0).velocity, 7.0f / 4096),
+              "neutral drift recovers positively from a zero random draw instead of sticking at zero");
+        ManualPhysics zero_velocity({}, 1); zero_velocity.begin(nose);
+        check(zero_velocity.sample(1.0f / 600, nose ? 1.0f : -1.0f).velocity == 0,
+              "physical correction can exactly cancel initial drift");
+        check(near(zero_velocity.sample(1.0f / 60, 0).velocity, 15.0f / 4096),
+              "zero velocity selects positive neutral drift on the next nonzero draw");
+        ManualPhysics signed_drift({}, 1); signed_drift.begin(nose);
+        check(near(signed_drift.sample(1.0f / 60, 0).velocity, (nose ? -15.0f : 15.0f) / 4096),
+              "nonzero positive and negative drift retain their existing signs");
+    }
     ManualPhysics a({}, 19), b({}, 19);
     a.begin(false); b.begin(false);
     for (unsigned i = 0; i < 30; ++i) {

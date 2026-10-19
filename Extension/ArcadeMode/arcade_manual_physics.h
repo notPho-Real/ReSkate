@@ -61,7 +61,7 @@ public:
             speed_ / GameplayProfile::balance_display_scale, time_, cheese_, outcome};
     }
 private:
-    static float sign(float value) noexcept { return value > 0 ? 1.0f : value < 0 ? -1.0f : 0.0f; }
+    static float sign(float value) noexcept { return value < 0 ? -1.0f : 1.0f; }
     std::uint32_t next() noexcept {
         random_ ^= random_ << 13; random_ ^= random_ >> 17; random_ ^= random_ << 5;
         return random_;
