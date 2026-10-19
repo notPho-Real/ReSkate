@@ -63,5 +63,132 @@ class InputTelemetryContract(unittest.TestCase):
         self.assertEqual(PROBE.parse_score_presence(text)["samples"][0]["rows"], 5)
 
 
+class CaptureCorrelationContract(unittest.TestCase):
+    @staticmethod
+    def fixture():
+        base = dict.fromkeys(PROBE.CAPTURE_CORRELATION_NUMBERS, 0)
+        base.update(schema=1, capture=1, required_sources=31, ms=100, native_ms=100,
+                    owner=1, owner_generation=1, contact_generation=1, action_generation=1, physics_step=1)
+        base.update(native_valid=True, events_known=True, complete=False, overflow=False)
+        rows = [base.copy()]
+        for source in range(1, 6):
+            row = dict(base, kind=1, source=source, ordinal=source, source_sequence=1,
+                       ms=100+source, native_ms=100+source, physics_step=1+source,
+                       first_event=source, last_event=source, first_ms=100+source, last_ms=100+source)
+            if source == 2:
+                row['recognized_ms'] = row['ms']
+            rows.append(row)
+        rows.append(dict(base, kind=2, ordinal=6, ms=106, native_ms=106, physics_step=7,
+                         expected=5, drained=5, first_ordinal=1, last_ordinal=5, complete=True))
+        return rows
+
+    @staticmethod
+    def wire(rows):
+        return "\n".join('Command: ARCADE INPUT CAPTURE: ' + ' '.join(
+            f'{key}={row[key]}' for key in PROBE.CAPTURE_CORRELATION_NUMBERS) + ' ' + ' '.join(
+            f'{key}={str(row[key]).lower()}' for key in PROBE.CAPTURE_CORRELATION_FLAGS) + '.' for row in rows)
+
+    def parse(self, rows):
+        return PROBE.parse_capture_correlation(self.wire(rows))
+
+    def assert_incomplete(self, rows, error=None):
+        result = self.parse(rows)
+        self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
+        self.assertTrue(result['evidence_gap'])
+        if error:
+            self.assertIn(error, result['captures'][0]['errors'])
+        self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
+        self.assertEqual(result['causal_acceptance'], 'UNVERIFIED')
+
+    def test_complete_and_cross_source_drain_order(self):
+        rows = self.fixture()
+        for ordered in (rows, [rows[0], *reversed(rows[1:-1]), rows[-1]]):
+            result = self.parse(ordered)
+            self.assertEqual(result['capture_completeness'], 'COMPLETE')
+            self.assertFalse(result['evidence_gap'])
+            self.assertEqual(result['native_acceptance'], 'UNVERIFIED')
+            self.assertEqual([r['ordinal'] for r in result['captures'][0]['events']], list(range(1, 6)))
+
+    def test_loss_and_truncation(self):
+        rows = self.fixture()
+        self.assert_incomplete(rows[:-1], 'missing_end')
+        self.assert_incomplete(rows[:2]+rows[3:], 'accounting')
+        for changes, error in ((dict(drained=4, dropped=1), 'dropped'),
+                               (dict(drop_end=1), 'dropped'), (dict(complete=False), 'incomplete_end'),
+                               (dict(first_ordinal=2), 'event_bounds'), (dict(expected=(1<<64)-1), 'accounting')):
+            with self.subTest(changes=changes):
+                altered = self.fixture(); altered[-1].update(changes)
+                self.assert_incomplete(altered, error)
+        many = self.fixture()
+        many[1:-1] = [dict(many[1], ordinal=i+1, source_sequence=i+1) for i in range(4097)]
+        result = self.parse(many)
+        self.assertEqual(len(result['captures'][0]['events']), 4096)
+        self.assertGreater(result['truncated'], 0)
+        self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
+
+    def test_missing_malformed_and_untrusted_fields(self):
+        for transform in (lambda t: t.replace('owner=1 ', '', 1),
+                          lambda t: t.replace('owner=1 ', 'owner=1 owner=1 ', 1),
+                          lambda t: t.replace('schema=1', 'schema=18446744073709551616', 1),
+                          lambda t: t.replace('overflow=false.', 'overflow=false. extra=opaque', 1)):
+            result = PROBE.parse_capture_correlation(transform(self.wire(self.fixture())))
+            self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
+            self.assertGreater(result['malformed'], 0)
+            self.assertNotIn('opaque', repr(result))
+        self.assertEqual(PROBE.parse_capture_correlation('unrelated')['capture_completeness'], 'MISSING')
+
+    def test_owner_and_timestamp_provenance(self):
+        cases = ((dict(owner=2), 'owner_changed'), (dict(owner_generation=2), 'owner_changed'),
+                 (dict(native_ms=103), 'native_provenance'), (dict(ms=252), 'native_provenance'),
+                 (dict(native_valid=False), 'unavailable_provenance'),
+                 (dict(first_ms=104), 'event_provenance'), (dict(recognized_ms=99), 'recognition_provenance'),
+                 (dict(events_known=False), 'event_provenance'), (dict(overflow=True), 'unavailable_provenance'))
+        for changes, error in cases:
+            with self.subTest(changes=changes):
+                rows = self.fixture(); rows[1].update(changes)
+                self.assert_incomplete(rows, error)
+        rows = self.fixture(); rows[3]['ms'] += 1
+        self.assert_incomplete(rows, 'native_restamped')
+        rows = self.fixture(); rows[1].update(ms=250, native_ms=100)
+        rows[-1].update(ms=260, native_ms=260)
+        self.assertEqual(self.parse(rows)['capture_completeness'], 'COMPLETE')
+        rows[1]['ms'] = 251
+        self.assert_incomplete(rows, 'native_provenance')
+        # A delayed worker cannot restamp the producer's original proof.
+        rows = self.fixture(); rows[2].update(ms=150, recognized_ms=102)
+        rows[-1].update(ms=160)
+        self.assertEqual(self.parse(rows)['capture_completeness'], 'COMPLETE')
+        self.assertEqual(self.parse(rows)['captures'][0]['events'][1]['recognized_ms'], 102)
+
+    def test_counter_rollover_reuse_and_scope(self):
+        rows = self.fixture(); rows.insert(-1, dict(rows[1], ordinal=6, source_sequence=1))
+        rows[-1].update(ordinal=7, expected=6, drained=6, last_ordinal=6)
+        self.assert_incomplete(rows, 'counter_rollback')
+        rows[1]['source_sequence'] = (1<<64)-1
+        self.assert_incomplete(rows, 'counter_rollback')
+        rows = self.fixture(); rows[-1].update(native_ms=100, physics_step=1)
+        self.assert_incomplete(rows, 'end_provenance')
+        rows = self.fixture(); rows[0].update(drop_begin=(1<<64)-1, drop_end=(1<<64)-1)
+        rows[-1].update(drop_begin=(1<<64)-1, drop_end=0)
+        self.assert_incomplete(rows, 'drop_counter_rollback')
+        rows = self.fixture(); rows[3]['physics_step'] = 1
+        self.assert_incomplete(rows, 'step_provenance')
+        rows = self.fixture(); rows[3]['physics_step'] = (1<<64)-1
+        self.assert_incomplete(rows, 'step_rollback')
+        self.assert_incomplete(self.fixture()+self.fixture(), 'begin_shape')
+        rolled = [dict(row, capture=(1<<64)-1) for row in self.fixture()] + self.fixture()
+        self.assertEqual(self.parse(rolled)['capture_completeness'], 'INCOMPLETE')
+        self.assert_incomplete(self.fixture()[:3]+self.fixture()[4:], 'missing_source')
+        all_rows = []
+        for cid in range(1, 18):
+            all_rows.extend(dict(row, capture=cid) for row in self.fixture())
+        result = self.parse(all_rows)
+        self.assertEqual(len(result['captures']), 16)
+        self.assertEqual(result['truncated'], 1)
+        self.assertEqual(result['capture_completeness'], 'INCOMPLETE')
+        rows = self.fixture()[:-1]+[dict(row, capture=2) for row in self.fixture()]
+        self.assert_incomplete(rows, 'missing_end')
+
+
 if __name__ == "__main__":
     unittest.main()
