@@ -4,6 +4,11 @@
 #include <cmath>
 
 namespace dingosdk::arcade_mode {
+struct PhysicalManualControl {
+    float amount{};
+    bool held{}, released{};
+    std::uint64_t elapsed_ms{1000};
+};
 struct PhysicalBalanceSample {
     bool valid{}, active{};
     float position{}, velocity{}, elapsed{}, repeat_pressure{};
@@ -35,7 +40,10 @@ public:
         return true;
     }
     PhysicalBalanceSample sample(float dt, float correction) noexcept {
-        if (!std::isfinite(dt) || dt <= 0 || dt > .25f || !std::isfinite(correction)) {
+        return sample(dt, PhysicalManualControl{correction, correction != 0, true, 1000});
+    }
+    PhysicalBalanceSample sample(float dt, const PhysicalManualControl& control) noexcept {
+        if (!std::isfinite(dt) || dt <= 0 || dt > .25f || !std::isfinite(control.amount)) {
             stop(); return {};
         }
         const auto p = profile_.balance(PhysicalBalanceKind::manual);
@@ -46,7 +54,12 @@ public:
         const auto instability = p.instability_base + time_ * p.instability_rate;
         // Position integrates the previous velocity before this frame's input.
         lean_ += (lean_ * p.gravity + speed_) * instability * frames;
-        if (correction != 0) speed_ += p.correction_acceleration * frames * std::clamp(correction, -1.0f, 1.0f);
+        if (control.held && control.released) {
+            // Safe-period direction is tested after integrating this step's
+            // lean. A suppressed held branch does not consume neutral noise.
+            const bool suppressed = control.elapsed_ms < 1000 && control.amount * lean_ > 0;
+            if (!suppressed) speed_ += p.correction_acceleration * frames * std::clamp(control.amount, -1.0f, 1.0f);
+        }
         else if (std::abs(speed_) < p.minimum_speed) {
             const auto bound = static_cast<unsigned>(p.random_speed) | 1u;
             speed_ = static_cast<float>(next() % bound) * sign(speed_);

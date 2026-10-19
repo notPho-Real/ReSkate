@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_model.h"
+#include "arcade_manual_physics.h"
 
 namespace dingosdk::arcade_mode {
 // Left stick: right increases rail lean; up reduces manual lean and down
@@ -23,6 +24,7 @@ class BalanceControl {
 public:
     float poll(std::uint64_t now, BalanceKind kind, float lean, short x, short y,
                bool available, std::uint32_t buttons = 0) noexcept {
+        control_ = {};
         const auto correction = balance_correction(kind, x, y, available, buttons);
         if (kind != BalanceKind::manual || !available) {
             manual_ = released_ = false;
@@ -35,13 +37,16 @@ public:
         last_ = now;
         const auto elapsed = now - began_;
         if (correction == 0 || elapsed > 0) released_ = true;
+        control_ = {correction, correction != 0, released_, elapsed};
         if (!released_) return 0;
         // The first-second outward-control suppression is a step, not a smooth
         // ramp. Inward correction remains effective after the entry instant.
         if (elapsed < 1000 && correction * lean > 0) return 0;
         return correction;
     }
+    PhysicalManualControl manual_input() const noexcept { return control_; }
 private:
+    PhysicalManualControl control_{};
     bool manual_{}, released_{};
     std::uint64_t began_{}, last_{};
 };

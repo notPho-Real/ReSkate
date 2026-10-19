@@ -74,6 +74,31 @@ int main() {
         check(near(signed_drift.sample(1.0f / 60, 0).velocity, (nose ? -15.0f : 15.0f) / 4096),
               "nonzero positive and negative drift retain their existing signs");
     }
+    for (bool nose : {false,true}) for (std::uint64_t elapsed : {1u,999u,1000u}) {
+        ManualPhysics held({},1); held.begin(nose);
+        const float toward=nose?1.0f:-1.0f;
+        const auto prior=held.sample(1.0f/60,toward); // Lean and velocity now have opposite signs.
+        BalanceControl controls;
+        controls.poll(0,BalanceKind::manual,prior.position,0,0,true);
+        controls.poll(elapsed,BalanceKind::manual,prior.position,0,nose?-32768:32767,true);
+        const auto crossed=held.sample(1.0f/60,controls.manual_input());
+        check(crossed.position*toward>0, "physical lean crosses zero during integration before safe-period direction is tested");
+        check(near(crossed.velocity,(elapsed<1000?9.0f:19.0f)*toward/4096),
+              "post-integration outward hold is suppressed before1000ms and acts at the exact boundary");
+        if(elapsed<1000) {
+            const auto noise=held.sample(1.0f/60,0);
+            check(near(noise.velocity,9.19f*toward/4096), "suppressed held correction preserves the neutral RNG footprint");
+        }
+        ManualPhysics neutral({},1);neutral.begin(nose);neutral.sample(1.0f/60,toward);
+        check(near(neutral.sample(1.0f/60,0).velocity,9.19f*toward/4096),
+              "true neutral consumes its random drift update rather than behaving as a suppressed hold");
+    }
+    for(bool nose : {false,true}) {
+        ManualPhysics entry({},1);entry.begin(nose);
+        BalanceControl controls;controls.poll(0,BalanceKind::manual,0,0,nose?-32768:32767,true);
+        check(!controls.manual_input().released && near(entry.sample(1.0f/60,controls.manual_input()).velocity,
+              (nose?-15.0f:15.0f)/4096), "entry-held unreleased input retains the source neutral branch until ignore suppression ends");
+    }
     ManualPhysics a({}, 19), b({}, 19);
     a.begin(false); b.begin(false);
     for (unsigned i = 0; i < 30; ++i) {
@@ -97,7 +122,7 @@ int main() {
             PhysicalBalanceSample physical{true, false};
             if (observed.confirmed) {
                 if (!physics.active() && !physics.closed()) physics.begin(nose);
-                physical = physics.sample(1.0f / 60, correction);
+                physical = physics.sample(1.0f / 60, controls.manual_input());
             } else if (observed.pose == SkatePose::air) physics.stop();
             else physics.reset();
             const bool failed = session.step(observed.pose, 1.0f / 60, correction, false, &physical);

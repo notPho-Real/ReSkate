@@ -211,7 +211,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool manual_pose = balance_kind(pose) == BalanceKind::manual;
     if (manual_pose) {
         if (!physical_manual.active() && !physical_manual.closed()) physical_manual.begin(pose == SkatePose::nose_manual);
-        physical = physical_manual.sample(simulation_step, correction);
+        physical = physical_manual.sample(simulation_step, balance_control.manual_input());
     } else if (pose == SkatePose::riding || pose == SkatePose::bail || pose == SkatePose::unknown) physical_manual.reset();
     else physical_manual.stop(); // Airborne hops retain physical repeat history.
     const bool failed = combo_session.step(pose, dt, correction, native_revert,
