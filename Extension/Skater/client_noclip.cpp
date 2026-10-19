@@ -456,7 +456,9 @@ struct AtomicAirSpinProof {
 };
 struct ArcadeAir {
     std::atomic<std::uint64_t> version{}, sampled{}, release_sequence{}, release_at{}, ready_until{}, epoch{};
-    std::atomic<unsigned> charge{}, ground_controls{};
+    std::atomic<unsigned> charge{}, ground_controls{}, spin_mode{}, spin_facts{};
+    std::atomic<std::uint64_t> spin_epoch{},spin_serial{};
+    std::atomic<std::int64_t> spin_balance{};
     std::atomic<float> yaw_rate{};
     std::atomic<bool> enabled{}, angular_allowed{};
     std::array<std::atomic<std::uintptr_t>,5> manual_owner{};
@@ -486,6 +488,9 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
         a.yaw_rate.load(std::memory_order_relaxed), a.epoch.load(std::memory_order_relaxed)};
     out.angular_proof = a.spin_proof.load();
     out.ground_controls = arcade_mode::GroundControl::decode(a.ground_controls.load(std::memory_order_relaxed));
+    out.spin = {a.spin_mode.load(std::memory_order_relaxed)==1 ? arcade_mode::SpinMode::tap : arcade_mode::SpinMode::held,
+        a.spin_epoch.load(std::memory_order_relaxed),a.spin_serial.load(std::memory_order_relaxed),a.spin_balance.load(std::memory_order_relaxed),
+        arcade_mode::SpinFacts::decode(a.spin_facts.load(std::memory_order_relaxed))};
     if (manual) {
         for (std::size_t i=0;i<manual->owner.size();++i) manual->owner[i]=a.manual_owner[i].load(std::memory_order_relaxed);
         manual->sampled_at=a.manual_sampled.load(std::memory_order_relaxed);
@@ -781,7 +786,7 @@ void set_arcade_push_intent(bool active, bool crouched) noexcept {
 void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
     const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof,
-    const arcade_mode::GroundControl* ground_controls) noexcept {
+    const arcade_mode::GroundControl* ground_controls, const arcade_mode::SpinCommand* spin_command) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -794,6 +799,10 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.yaw_rate.store(yaw_rate, std::memory_order_relaxed);
     a.angular_allowed.store(angular_allowed, std::memory_order_relaxed);
     a.ground_controls.store(active && ground_controls ? ground_controls->encode() : 0,std::memory_order_relaxed);
+    const auto command=active && spin_command ? *spin_command : arcade_mode::SpinCommand{};
+    a.spin_mode.store(static_cast<unsigned>(command.mode),std::memory_order_relaxed);
+    a.spin_epoch.store(command.epoch,std::memory_order_relaxed);a.spin_serial.store(command.serial,std::memory_order_relaxed);
+    a.spin_balance.store(command.balance,std::memory_order_relaxed);a.spin_facts.store(command.facts.encode(),std::memory_order_relaxed);
     auto spin = angular_proof ? arcade_mode::NativeAirSpinProof::from_frame(*angular_proof) : arcade_mode::NativeAirSpinProof{};
     spin.valid = active && spin.valid;
     a.spin_proof.store(spin);

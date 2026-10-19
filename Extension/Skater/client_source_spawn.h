@@ -4,7 +4,7 @@
 #include <string>
 #include "Extension/UI/Overlay/overlay.h"
 
-namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; }
+namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; struct SpinCommand; }
 namespace dingosdk {
 // Binds the native camera functions the debug controls use. Installs no hooks.
 void initialize_client_source_spawn(std::uintptr_t base);
@@ -37,7 +37,8 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
     const arcade_mode::NativeManualContact* manual = nullptr,
     const arcade_mode::NativeInputFrame* angular_proof = nullptr,
-    const arcade_mode::GroundControl* ground_controls = nullptr) noexcept;
+    const arcade_mode::GroundControl* ground_controls = nullptr,
+    const arcade_mode::SpinCommand* spin_command = nullptr) noexcept;
 bool arcade_air_motion_ready(const arcade_mode::NativeInputFrame* current = nullptr) noexcept;
 // Engine-thread-only interactive controls. Presentation callbacks only queue requests.
 overlay::DebugModel on_client_debug_tick(std::uintptr_t base, std::uintptr_t client,

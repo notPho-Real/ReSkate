@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_board.h"
+#include "arcade_spin_control.h"
 #include "arcade_combo_session.h"
 #include "arcade_gameplay_profile.h"
 #include "arcade_native_input_state.h"
@@ -24,8 +25,51 @@ inline SkatePose native_rotation_pose(const NativeInputFrame& frame, SkatePose o
 // Only controller translation is reused; angular motion remains game-owned.
 class AirRotation {
 public:
-    struct Output { bool owns_left{}; std::int16_t x{}, y{}; float yaw_rate{}; };
-    void reset() noexcept { *this = {}; }
+    struct Output { bool owns_left{}; std::int16_t x{}, y{}; float yaw_rate{}; SpinCommand spin{}; };
+    void reset() noexcept {
+        const auto epoch=qualified_.epoch;
+        *this = {};
+        qualified_.epoch=epoch==UINT64_MAX ? UINT64_MAX : epoch+1;
+    }
+    Output poll_qualified(std::uint64_t now,std::uint16_t buttons,bool left,bool right,
+            bool gameplay,SkatePose pose,bool ready,bool conflict,SpinMode mode,SpinFacts facts={}) noexcept {
+        if(!gameplay || (buttons&0x30u) || pose==SkatePose::unknown || pose==SkatePose::bail ||
+            (qualified_clocked_ && now<qualified_at_)){reset();return {};}
+        const bool mode_changed=qualified_.mode!=mode;
+        if(mode_changed){reset();qualified_.mode=mode;}
+        qualified_clocked_=true;qualified_at_=now;qualified_.facts=facts;
+        const auto held=static_cast<std::uint16_t>(buttons&BoardChord::pair);
+        if(!held&&!left&&!right)qualified_armed_=true;
+        if(left!=left_held_){left_held_=left;left_at_=now;}
+        if(right!=right_held_){right_held_=right;right_at_=now;}
+        const bool air=pose==SkatePose::air;
+        const auto triggered=static_cast<std::uint16_t>(held&~qualified_buttons_);
+        const bool entering=air&&!qualified_air_;
+        qualified_buttons_=held;qualified_air_=air;
+        if(!air || !ready || conflict || !qualified_armed_ || facts.no_spin==SpinFact::set)return {false,0,0,0,qualified_};
+        bool tap=false;
+        if(mode==SpinMode::tap && !entering && !mode_changed){
+            int change=0;
+            if((triggered&BoardChord::lb)&&!(held&BoardChord::rb))++change;
+            if((triggered&BoardChord::rb)&&!(held&BoardChord::lb))--change;
+            if(change && qualified_.serial!=UINT64_MAX &&
+                qualified_.balance>INT64_MIN && qualified_.balance<INT64_MAX){
+                ++qualified_.serial;qualified_.balance+=change;tap=true;
+            }
+        }
+        float rate=0;
+        if(mode==SpinMode::held && held!=BoardChord::pair){
+            if(held&BoardChord::lb)rate=-GameplayProfile{}.angular_speed();
+            if(held&BoardChord::rb)rate=GameplayProfile{}.angular_speed();
+        }
+        if((mode==SpinMode::tap || !held) && facts.orientation_disabled!=SpinFact::set){
+            // Right wins when both directional controls are supplied. Each
+            // physical hold uses strict >100ms, with no later ramp interval.
+            if(left && now-left_at_>100)rate=-GameplayProfile{}.angular_speed();
+            if(right)rate=now-right_at_>100 ? GameplayProfile{}.angular_speed() : 0;
+        }
+        return {held!=0||left||right||tap,0,0,rate,qualified_};
+    }
     Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay,
                 SkatePose pose, bool crouched, bool native_nollie, bool conflict = false,
                 bool native_rate_control = false) noexcept {
@@ -81,6 +125,10 @@ public:
         return {true, static_cast<std::int16_t>(x * 32767), static_cast<std::int16_t>(y * 32767)};
     }
 private:
+    SpinCommand qualified_{};
+    bool qualified_clocked_{},qualified_armed_{},qualified_air_{},left_held_{},right_held_{};
+    std::uint16_t qualified_buttons_{};
+    std::uint64_t qualified_at_{},left_at_{},right_at_{};
     bool armed_{}, clocked_{}, blocked_{}, waiting_{}, active_{}, was_air_{}, prewind_{}, nollie_{};
     std::uint64_t previous_time_{}, pressed_at_{}, began_{}, context_at_{};
 };

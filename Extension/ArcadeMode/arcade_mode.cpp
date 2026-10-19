@@ -58,6 +58,7 @@ namespace {
 std::atomic<bool> ready{};
 std::atomic<bool> mode_enabled{};
 std::atomic<bool> auto_kick{true};
+std::atomic<SpinMode> selected_spin_mode{SpinMode::held};
 bool preference_loaded{};
 std::uintptr_t score_probe_base{};
 // Only touched by the client thread, after initialization has been published.
@@ -936,6 +937,11 @@ void set_auto_kick(bool value, bool persist) noexcept {
     set_arcade_push_intent(false);
     if (persist) profile_runtime::set_local_preference("ArcadeAutoKick",value);
 }
+SpinMode spin_mode() noexcept { return selected_spin_mode.load(std::memory_order_acquire); }
+void set_spin_mode(SpinMode mode, bool persist) noexcept {
+    selected_spin_mode.store(mode,std::memory_order_release);
+    if (persist) profile_runtime::set_local_preference("ArcadeTapSpin",mode==SpinMode::tap);
+}
 
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
     const auto restore = [&]() noexcept {
@@ -1087,6 +1093,7 @@ void on_client_tick() noexcept {
             stepped_at && clock_now >= stepped_at && clock_now-stepped_at <= 150;
         if (!preference_loaded && profile_runtime::local_profile_store_ready()) {
             set_auto_kick(profile_runtime::local_preference("ArcadeAutoKick").value_or(true),false);
+            set_spin_mode(profile_runtime::local_preference("ArcadeTapSpin").value_or(false) ? SpinMode::tap : SpinMode::held,false);
             set_enabled(profile_runtime::local_preference("ArcadeMode").value_or(false), false);
             preference_loaded = true;
         }
@@ -1458,13 +1465,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
-        // Unqualified AIR has no selected-rate adapter. Do not substitute the
-        // legacy delayed .97-stick recipe for a proven physical angular rate.
-        auto rotation = rotations[user].poll(now, physical_buttons,rotation_enabled,rotation_pose, crouched, result.right_y > 0, reference || action.owned || result.phase == 3,
-            native_rate_ready);
-        // Keep current held-state tracking while rate admission is unavailable,
-        // but emit neither its legacy fallback pad nor an unqualified rate.
-        if (rotation_pose == SkatePose::air && !native_rate_ready) rotation = {};
+        // Ordinary native AIR alone admits this writer. Unknown orientation,
+        // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
+        // equivalence is claimed for this selected ordinary-air policy.
+        auto rotation = rotations[user].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
+            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode());
         if (user == 0) {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
@@ -1480,7 +1485,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 contact.owner_generation,contact.contact_generation,contact.action_generation};
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
-                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls);
+                angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin);
         }
         // BoardChord has already consumed a valid pair and emitted native Y.
         // Single shoulders must not leak to native catch/grab bindings.

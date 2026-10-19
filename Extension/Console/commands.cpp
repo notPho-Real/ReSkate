@@ -45,6 +45,13 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::auto_kick_enabled() ? "Automatic kicking ON" : "Automatic kicking OFF");
     };
     registry.add(std::move(auto_kick));
+    auto tap_spin = action("arcadetapspin", "Read or change tap shoulder spin; OFF selects held spin (saved)", Group::gameplay,
+        {argument("on|off", Type::boolean, true)});
+    tap_spin.run = [](const Model&, const Values& values, const Output& out) {
+        if (!values.empty()) arcade_mode::set_spin_mode(std::get<bool>(values[0]) ? arcade_mode::SpinMode::tap : arcade_mode::SpinMode::held);
+        out(arcade_mode::spin_mode()==arcade_mode::SpinMode::tap ? "Tap spin ON" : "Held spin ON");
+    };
+    registry.add(std::move(tap_spin));
     auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..31)",Group::gameplay,
         {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true)});
     capture.run=[](const Model&,const Values& values,const Output& out){

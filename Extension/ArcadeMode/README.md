@@ -12,6 +12,15 @@ passed ON → OFF → ON in one process on source 3634e30: A produced an observe
 native air/landing sequence in both ON trials and stayed native while OFF. See
 [the current checkpoint](../../contrib/arcade-mode/STATE.md).
 
+Held shoulder spin is the default. `arcadetapspin on` saves tap mode; `off`
+restores held mode. Tap mode accumulates signed half turns and advances them on
+actual qualified physics steps, retaining the full last step on overshoot.
+Directional spin requires a physical hold longer than100ms. The live ordinary-air
+path uses the existing body/target writer and original owner/flight proof; legacy
+stick/prewind recipes are outside that path. NoSpin, orientation-control and
+transfer flags remain explicitly unknown without native producers. Their full
+contextual behavior, native handedness and player acceptance remain unverified.
+
 ## Controls under development
 
 The A/X adapter uses the game's authored gestures. A hold/release has recorded

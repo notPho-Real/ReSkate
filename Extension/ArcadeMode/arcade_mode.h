@@ -3,6 +3,7 @@
 #include "arcade_surface_geometry.h"
 #include "arcade_traffic_surface_provider.h"
 #include "arcade_input_types.h"
+#include "arcade_spin_control.h"
 
 namespace dingosdk::arcade_mode {
 struct NativeManualContact;
@@ -28,6 +29,8 @@ bool enabled() noexcept;
 // Saved ordinary-ground preference; the default retains automatic kicking.
 bool auto_kick_enabled() noexcept;
 void set_auto_kick(bool value, bool persist = true) noexcept;
+SpinMode spin_mode() noexcept;
+void set_spin_mode(SpinMode mode, bool persist = true) noexcept;
 // Game update thread, via the normal menu/console command dispatcher.
 void set_enabled(bool value, bool persist = true) noexcept;
 // Unsaved development A/B selection; changing it requires Arcade Mode OFF.

@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_gameplay_profile.h"
 #include "arcade_movement.h"
+#include "arcade_spin_control.h"
 #include "arcade_native_input_state.h"
 #include <array>
 #include <cmath>
@@ -72,6 +73,7 @@ struct AirMotionIntent {
     std::uint64_t generation{};
     NativeAirSpinProof angular_proof{};
     GroundControl ground_controls{};
+    SpinCommand spin{};
 };
 struct AirMotionFrame {
     std::uint64_t now{}, owner{};
@@ -87,6 +89,8 @@ struct AirMotionOutput {
     float velocity_y{}, spin_y{}, yaw{};
     bool horizontal{};
     float delta_x{}, delta_z{};
+    SpinCommand spin{};
+    bool tap_step{};
 };
 // The host still chooses takeoff, air, collision, landing and bail. Ordinary
 // ground entry is required before this controller can own an air episode.
@@ -100,14 +104,16 @@ public:
     }
     static bool angular_target_current(const AirMotionOutput& output, const AirMotionIntent& intent,
             const NativeAirSpinProof& output_proof, const NativeAirSpinProof& current, std::uint64_t now) noexcept {
-        return output.angular && intent.enabled && intent.angular_allowed && output.spin_y == intent.yaw_rate &&
+        return output.angular && intent.enabled && intent.angular_allowed && intent.spin.facts.no_spin!=SpinFact::set &&
+            output.spin.mode==intent.spin.mode && output.spin.epoch==intent.spin.epoch && output.spin.serial==intent.spin.serial &&
+            output.spin.balance==intent.spin.balance && (output.tap_step || output.spin_y == intent.yaw_rate) &&
             now >= intent.sampled_at && now-intent.sampled_at <= 150 &&
             intent.sampled_at >= intent.angular_proof.sampled_at &&
             output_proof.matches(current,now) && intent.angular_proof.matches(current,now);
     }
     explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
     void reset() noexcept {
-        air_limits_.reset();
+        air_limits_.reset();tap_spin_={};
         owner_ = seen_release_ = pending_at_ = 0;
         pending_ = grounded_ = ordinary_ = vertical_ = spun_ = limits_active_ = air_seen_ = spin_blocked_ = false; yaw_ = 0;
     }
@@ -143,6 +149,7 @@ public:
             // A stale held rate cannot restart the completed spin episode.
             if (air_seen_ && intent.yaw_rate != 0) spin_blocked_ = true;
             air_seen_ = false;
+            tap_spin_.baseline(intent.spin);
             grounded_ = true; ordinary_ = frame.ordinary_ground; limits_active_ = ordinary_;
             if (ordinary_) air_limits_.observe_ordinary(std::hypot(frame.velocity_x,frame.velocity_z));
             else air_limits_.reset();
@@ -178,13 +185,16 @@ public:
         // A genuinely fresh current-flight publication of the SAME held input
         // replaces the old flight ticket. Retimestamping an old ticket cannot.
         if (frame.native_required && native_admitted) spin_blocked_ = false;
-        const float yaw_rate = native_admitted && !spin_blocked_ ? intent.yaw_rate : 0;
-        const bool angular = native_admitted && intent.angular_allowed && (yaw_rate != 0 || spun_);
-        if (native_admitted && intent.angular_allowed) {
+        const bool spin_admitted = native_admitted && !spin_blocked_ && intent.angular_allowed && intent.spin.facts.no_spin!=SpinFact::set;
+        if (!spin_admitted) tap_spin_.baseline(intent.spin);
+        const float yaw_rate = spin_admitted ? tap_spin_.step(intent.spin,intent.yaw_rate,frame.dt,profile_.angular_speed()) : 0;
+        const bool angular = spin_admitted && (yaw_rate != 0 || spun_);
+        if (spin_admitted) {
             yaw_ = std::remainder(yaw_ + static_cast<double>(yaw_rate) * frame.dt, 6.2831853071795864769);
             spun_ = yaw_rate != 0;
         } else spun_ = false;
         AirMotionOutput output{true, vertical_, angular, vy_, yaw_rate, static_cast<float>(yaw_)};
+        output.spin=intent.spin;output.tap_step=tap_spin_.tap_step();
         // Default ordinary flight carries the same hard/soft limits as ground,
         // without rolling drag. A native trajectory takeover also withdraws
         // this ordinary-flight authority; transfer overrides remain native-owned.
@@ -241,6 +251,7 @@ public:
 private:
     GameplayProfile profile_;
     GroundResistance air_limits_;
+    TapSpin tap_spin_;
     std::uint64_t owner_{}, seen_release_{}, pending_at_{}, last_{}, generation_{};
     unsigned charge_{};
     float ground_vy_{}, vy_{};
