@@ -2,34 +2,47 @@
 #include "arcade_balance_input.h"
 #include "arcade_balance_layout.h"
 #include "arcade_balance_hud_lease.h"
+#if !defined(DINGOSDK_BALANCE_HUD_TEST_CLOCK)
+#include <Windows.h>
+#endif
 #include <imgui.h>
 #include <mutex>
-#include <chrono>
 
 namespace dingosdk::arcade_mode {
+#if defined(DINGOSDK_BALANCE_HUD_TEST_CLOCK)
+std::uint64_t balance_hud_test_now() noexcept;
+#endif
 namespace {
+std::uint64_t hud_now() noexcept {
+#if defined(DINGOSDK_BALANCE_HUD_TEST_CLOCK)
+    return balance_hud_test_now();
+#else
+    return GetTickCount64();
+#endif
+}
 std::mutex hud_mutex;
 BalanceMeter meter;
 unsigned danger_level{};
-std::chrono::steady_clock::time_point updated;
+BalanceHudSource observed;
 }
-void publish_balance_hud(const State& state, unsigned danger, std::uint64_t source_age_ms) noexcept {
+void publish_balance_hud(const State& state, unsigned danger, BalanceHudSource source) noexcept {
     std::lock_guard lock(hud_mutex);
-    meter = source_age_ms <= BalanceHudLease::lifetime_ms ? balance_meter(state) : BalanceMeter{};
+    const bool finite = std::isfinite(state.balance) && std::isfinite(state.balance_velocity);
+    const bool kind = state.balance_kind == BalanceKind::manual || state.balance_kind == BalanceKind::grind;
+    meter = finite && kind && BalanceHudLease::fresh(source, hud_now()) ? balance_meter(state) : BalanceMeter{};
     danger_level = danger;
-    updated = std::chrono::steady_clock::now() - std::chrono::milliseconds(
-        static_cast<std::int64_t>(std::min(source_age_ms,BalanceHudLease::lifetime_ms + 1)));
+    observed = source;
 }
 bool balance_hud_pending() noexcept {
     std::lock_guard lock(hud_mutex);
-    return meter.visible && BalanceHudLease::fresh(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - updated));
+    return meter.visible && BalanceHudLease::fresh(observed, hud_now());
 }
 void draw_balance_hud() noexcept {
     BalanceMeter view;
     unsigned danger{};
     {
         std::lock_guard lock(hud_mutex);
-        if (!BalanceHudLease::fresh(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - updated))) return;
+        if (!BalanceHudLease::fresh(observed, hud_now())) return;
         view = meter;
         danger = danger_level;
     }

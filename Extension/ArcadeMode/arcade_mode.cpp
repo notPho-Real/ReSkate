@@ -329,10 +329,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         previous_pose = pose;
     }
     const auto& display = combo_session.balance_display_state();
-    const auto hud_now = GetTickCount64();
     publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
-        2 : combo_session.model().danger(), native_frame.valid && hud_now >= native_frame.sampled_at ?
-            hud_now-native_frame.sampled_at : UINT64_MAX);
+        2 : combo_session.model().danger(), BalanceHudSource{native_frame.sampled_at, native_frame.valid});
 }
 // Only this background sink formats the live input/client snapshots.
 void write_client_telemetry(const ClientTelemetry& row) noexcept {
@@ -832,7 +830,7 @@ void set_enabled(bool value, bool persist) noexcept {
     previous_pose = SkatePose::unknown;
     had_combo_owner = false;
     request_capture = {};
-    publish_balance_hud({}, 0);
+    publish_balance_hud({}, 0, {});
     if (persist) {
         preference_loaded = true;
         profile_runtime::set_local_preference("ArcadeMode", value);
@@ -1007,7 +1005,7 @@ void on_client_tick() noexcept {
             action_eligible_until.store(0, std::memory_order_release);
             combo_session.invalidate();
             combo_tick_at = 0;
-            publish_balance_hud({}, 0);
+            publish_balance_hud({}, 0, {});
         }
         const auto failure_status = balance_bail_status();
         if (failure_status.serial != previous_balance_bail.serial || failure_status.result != previous_balance_bail.result) {
