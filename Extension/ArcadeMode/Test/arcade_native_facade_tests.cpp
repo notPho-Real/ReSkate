@@ -8,15 +8,24 @@ unsigned checks{};
 void check(bool value,const char* why) { ++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);} }
 struct NativeFacade {
     ArcadeInput input{true,InputPolicy::strict()};
-    std::uint64_t owner{1}; unsigned source{1};bool focus{true};
+    std::uint64_t owner{1}, step{}; unsigned source{1};bool focus{true};
     NativeFacade(){input.enable(true);}
     NativeGesture::Output poll(std::uint64_t now,short y=0,unsigned user=0) {
-        input.publish_authority(now,owner,source,focus);
+        // Explicit fresh producer fixtures isolate facade query behavior; the
+        // NativeInputState suite separately verifies physical cadence and gaps.
+        NativeInputFrame frame{};frame.valid=true;frame.owner_generation=owner;
+        frame.contact_generation=frame.action_generation=1;frame.physics_step=++step;frame.sampled_at=now;
+        frame.state=100;frame.mode=1;frame.contacts=0xc000;frame.flip_known=true;
+        input.publish_native_context(frame);input.publish_authority(now,owner,source,focus);
         return input.poll(user,now,0,0,y,321,-456,true,false,false,0,false,false,false,now/17,false,{},false,true,SkatePose::riding);
     }
 };
 }
 int main(){
+    ArcadeInput unproven(true);unproven.enable(true);unproven.publish_authority(900,1,1,true);
+    const auto no_frame=unproven.poll(0,900,0x4000,0,0,321,-456,true,true);
+    check(no_frame.buttons==0x4000&&no_frame.right_x==321&&no_frame.right_y==-456&&!unproven.busy(0),
+          "native-bound facade cannot fall back to legacy input when no native physics frame is available");
     NativeFacade fresh;
     check(!fresh.input.admitted(0,1000),"production bound facade requires independently published authority");
     check(fresh.poll(1000).right_x==0&&fresh.input.admitted(0,1000),"validated local source enables the production session");
@@ -57,6 +66,11 @@ int main(){
     const auto published=rail_input.native_context(3534);
     check(published.valid&&published.rail_family&&published.physics_step==3&&published.contact_generation&&published.action_generation,
           "facade publishes correlated native generations and rail-family exclusion evidence");
+    auto tampered=published;++tampered.action_generation;
+    rail_input.publish_native_context(tampered);
+    const auto torn=rail_input.poll(0,3535,0x4000,0,0,321,-456,true,true);
+    check(torn.buttons==0x4000&&torn.right_x==321&&torn.right_y==-456,
+          "same native physics step cannot be retimestamped or given a different action generation by publication");
     rail_input.publish_authority(3700,published.owner_generation,1,true);
     const auto stale=rail_input.poll(0,3700,0,0,0,321,-456,true,true);
     check(stale.right_x==321&&stale.right_y==-456&&!rail_input.busy(0),"fresh client authority cannot renew an expired native context");
@@ -74,8 +88,12 @@ int main(){
     ArcadeInput jumping(true,InputPolicy::strict());jumping.enable(true);
     const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
         std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}}};
+    std::uint64_t jump_step{};
     auto jump_poll=[&](std::uint64_t now,std::uint16_t buttons) {
-        jumping.publish_authority(now,7,1,true);
+        NativeInputFrame frame{};frame.valid=true;frame.owner_generation=7;
+        frame.contact_generation=frame.action_generation=1;frame.physics_step=++jump_step;frame.sampled_at=now;
+        frame.state=100;frame.mode=1;frame.contacts=0xc000;frame.flip_known=true;
+        jumping.publish_native_context(frame);jumping.publish_authority(now,7,1,true);
         return jumping.poll(0,now,buttons,0,0,0,0,true,true,false,0,false,false,true,
             now/17,false,prepared,false,true,SkatePose::riding);
     };

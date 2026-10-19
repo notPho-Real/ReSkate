@@ -694,7 +694,8 @@ bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if (!lock.owns_lock()) return false;
     const auto now = GetTickCount64();
-    const auto frame = arcade_input.native_context(now);
+    const auto pose = manual_observed.load(std::memory_order_relaxed);
+    const auto frame = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
     return mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) && frame.valid &&
         manual_balance_admitted.load(std::memory_order_relaxed) && proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
 }
@@ -1163,7 +1164,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             const auto release = native_charges[user].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid);
             const bool angular_allowed = !reference && !action.owned && !result.authored_playback && result.phase != 3;
-            const auto contact = arcade_input.native_context(now);
+            const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
                 (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
                 !result.authored_playback && !action.owned && !reference;

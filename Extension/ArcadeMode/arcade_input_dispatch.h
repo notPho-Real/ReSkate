@@ -31,6 +31,8 @@ struct InputRequest {
     bool direction_inherited{}, named_binding{};
     std::uint64_t surface_generation{}, first_input_at{}, last_input_at{};
     unsigned balance_origin{};
+    InputGenerations generations{};
+    std::uint8_t generation_mask{};
 };
 struct InputEnvironment {
     InputContext context{};
@@ -52,6 +54,7 @@ struct InputEnvironment {
     InputBalanceControls balance_controls{};
     bool board_allowed{};
     InputBoardBinding board_binding{};
+    InputNativeContext native_context{};
 };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
 // Adapter callbacks request existing methods only. They cannot establish native
@@ -77,7 +80,7 @@ public:
     }
     template<class Report>
     void dispatch(std::uint64_t now, std::uint64_t session, InputContext context,
-                  InputAdapter adapter, Report report) noexcept {
+                  InputAdapter adapter, Report report, InputNativeContext native = {}) noexcept {
         bool started{};
         // Ordinary requests retain table/insertion order. The independent
         // manual slot is replaceable, rather than a second ordinary FIFO entry.
@@ -85,7 +88,7 @@ public:
             auto& slot = slots_[1 + front_];
             if (slot.action == InputAction::none) { pop(); continue; }
             const auto request = slot;
-            const auto gate = eligibility(request, now, session, context);
+            const auto gate = eligibility(request, now, session, context, native);
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
             pop(); // Removal precedes any adapter/reentrant boundary.
@@ -109,7 +112,7 @@ public:
         const auto slot_dispatch = [&](std::size_t index, std::uint64_t& slot_epoch) noexcept {
             if (slots_[index].action == InputAction::none) return;
             const auto request = slots_[index];
-            auto result = eligibility(request, now, session, context);
+            auto result = eligibility(request, now, session, context, native);
             if (result == InputDisposition::waiting && started) return;
             slots_[index] = {};
             const auto epoch = slot_epoch;
@@ -137,7 +140,12 @@ private:
     static bool rail(InputAction action) noexcept { return action == InputAction::rail_select; }
     static bool manual(InputAction action) noexcept { return action == InputAction::manual || action == InputAction::nose_manual; }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
-                                        std::uint64_t session, InputContext context) noexcept {
+                                        std::uint64_t session, InputContext context, InputNativeContext native) noexcept {
+        if (request.generation_mask && (!native.required || !native.fresh(now) ||
+            request.generations.owner != native.generations.owner ||
+            ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
+            ((request.generation_mask & 4u) && request.generations.action != native.generations.action)))
+            return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
             !(request.action == InputAction::rail_select &&
@@ -170,6 +178,7 @@ public:
         previous_context_ = InputContext::unknown; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
+        diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
         active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = 0; waiting_direction_ = false; clocked_ = false; manual_unknown_ = stick_resume_ = false;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
@@ -204,6 +213,24 @@ public:
     }
     void poll(std::uint64_t now, PhysicalInputSample physical, InputEnvironment environment,
               InputAdapter adapter = {}) noexcept {
+        const auto native = environment.native_context;
+        native_required_ = native_required_ || native.required;
+        if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
+            reset(); return;
+        }
+        if (native.required) {
+            if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
+            else {
+                if (native.generations.action != native_.generations.action) {
+                    waiting_direction_ = false;
+                }
+                if (native.generations.contact != native_.generations.contact) lip_clocked_ = false;
+            }
+            native_ = native;
+            if (!environment.balance_controls.correlated(native)) environment.balance_controls.admitted = false;
+            if (!native.correlates_action(environment.rail.generations)) environment.rail.fresh = environment.rail.ready = false;
+            if (!native.correlates_action(environment.surface.generations)) environment.surface.fresh = false;
+        }
         if (clocked_ && environment.policy != policy_) reset();
         policy_ = environment.policy; diagnostic_.policy = policy_;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
@@ -315,11 +342,13 @@ public:
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::flip) {
                 active_flip_ = true; active_flip_count_ = event.request.presses; flip_started_ = now;
                 flip_direction_ = event.request.direction; flip_source_ = event.request.direction_source; flip_nollie_ = event.request.nollie;
+                flip_generations_ = event.request.generations;
                 diagnostic_.flip_table_at = now;
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
                 active_grab_ = event.request.named_binding; active_grab_count_ = event.request.presses; grab_started_ = now;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
+                grab_generations_ = event.request.generations;
             }
             if (event.disposition == InputDisposition::started && (event.request.action == InputAction::manual ||
                 event.request.action == InputAction::nose_manual || event.request.action == InputAction::flip || event.request.action == InputAction::grab))
@@ -327,23 +356,35 @@ public:
             if (diagnostic_.dispatched < diagnostic_.dispatch.size())
                 diagnostic_.dispatch[diagnostic_.dispatched++] = event;
             else ++diagnostic_.dispatch_dropped;
-        });
+        }, native);
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
 private:
-    static constexpr std::uint32_t manual_owner = 2;
-    static constexpr std::uint32_t branch_owner = 1u << 4;
-    static constexpr std::uint32_t rail_owner = 1u << 3;
+    static constexpr std::uint32_t manual_owner = InputConsumption::manual;
+    static constexpr std::uint32_t branch_owner = InputConsumption::extra;
+    static constexpr std::uint32_t rail_owner = InputConsumption::extra_grind;
+    static constexpr std::uint8_t generation_dependencies(InputAction action, InputContext context) noexcept {
+        // Manual preparation and an admitted jump release intentionally span
+        // contact/action transitions. Native generations cannot prove completion.
+        switch (action) {
+        case InputAction::manual: case InputAction::nose_manual:
+        case InputAction::crouch: case InputAction::ollie_release: return 1;
+        case InputAction::rail_select:
+            return context == InputContext::air || context == InputContext::ground ? 1 : 7;
+        case InputAction::flip: case InputAction::grab: case InputAction::rail_request: return 5;
+        default: return 7;
+        }
+    }
     void consume(const InputEvent& event) noexcept {
         InputMatch match{}; match.count = 1; match.events[0] = event.sequence;
-        events_.history().consume(match, 1);
+        events_.history().consume(match, InputConsumption::regular);
     }
     void enqueue(InputAction action, std::uint64_t now, std::uint64_t duration,
                  InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr) noexcept {
         const auto limit = std::numeric_limits<std::uint64_t>::max();
         const auto deadline = now > limit - duration ? limit : now + duration;
-        const InputRequest request{action, environment.context, now, deadline, session_,
+        InputRequest request{action, environment.context, now, deadline, session_,
             InputHistory::direction_token(inherited) ? inherited.code : now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0},
             presses, environment.nollie, action == InputAction::manual || action == InputAction::nose_manual || action == InputAction::rail_select, variant, now > limit - delay ? limit : now + delay,
             ((action == InputAction::manual || action == InputAction::nose_manual) && environment.context == InputContext::ground) ||
@@ -358,6 +399,10 @@ private:
             action == InputAction::crouch || action == InputAction::ollie_release ? crouch_at_ : now,
             action == InputAction::ollie_release ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
             footprint ? footprint->first_at : now, footprint ? footprint->last_at : now, environment.balance_branch};
+        if (environment.native_context.required) {
+            request.generations = environment.native_context.generations;
+            request.generation_mask = generation_dependencies(action,environment.context);
+        }
         ++diagnostic_.recognized;
         if (!pending_.push(request)) ++diagnostic_.queue_full;
     }
@@ -375,7 +420,7 @@ private:
             const std::array token{InputToken{InputSource::buttons,bit,InputEdge::press}};
             match = events_.history().match({token,10},now);
         }
-        if (match && events_.history().consume(match,1))
+        if (match && events_.history().consume(match,InputConsumption::regular))
             enqueue(InputAction::board_toggle,now,1,environment,1,0,0,0,{},&match);
     }
     void recognize_grab(std::uint64_t now, InputEnvironment environment) noexcept {
@@ -404,7 +449,8 @@ private:
             if (presses > 1) pending_.cancel(InputAction::grab);
         }
         const bool extra = presses > 1 && !environment.deferred_grabs;
-        if (!events_.history().consume(match, extra ? branch_owner : 1, extra ? ~manual_owner : ~std::uint32_t{0})) return;
+        if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, extra ? ~manual_owner : ~std::uint32_t{0})) return;
+        if (extra && environment.native_context.required) environment.native_context.generations = grab_generations_;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
             extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match);
@@ -422,10 +468,11 @@ private:
             const InputToken direction{direction_source_, direction_, InputEdge::press};
             match = events_.history().air_action(face, direction, events_.held(direction), 500, now);
         }
-        if (!match || !events_.history().consume(match, presses > 1 ? branch_owner : 1,
+        if (!match || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
             presses > 1 ? ~manual_owner : ~std::uint32_t{0})) return false;
         auto selected = environment;
         if (presses > 1) selected.nollie = flip_nollie_;
+        if (presses > 1 && selected.native_context.required) selected.native_context.generations = flip_generations_;
         enqueue(InputAction::flip, now, InputTiming::readiness_ms, selected, presses, 0, 0, 0,
             presses > 1 ? InputToken{flip_source_,flip_direction_,InputEdge::press} : InputToken{}, &match);
         direction_ = 0; return true;
@@ -442,7 +489,7 @@ private:
                     const InputToken direction{source,code,InputEdge::press};
                     const std::array tokens{reverse ? jump : direction, reverse ? direction : jump};
                     const auto match = events_.history().match({tokens,450},now);
-                    if (match && events_.history().consume(match,1)) {
+                    if (match && events_.history().consume(match,InputConsumption::regular)) {
                         enqueue(InputAction::wall_command,now,1,environment,1,1); return;
                     }
                 }
@@ -528,13 +575,13 @@ private:
         for (auto direction : order) for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
             const std::array tokens{InputToken{source, direction, InputEdge::press}};
             const auto match = events_.history().match({tokens,500,~rail_owner},now);
-            if (match && events_.history().consume(match,1,~rail_owner)) {
+            if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
                 enqueue(InputAction::lip_select,now,0,environment,1,static_cast<std::uint8_t>(direction),0,0,{},&match); lip_had_input_ = true;
             }
         }
         const std::array token{InputToken{InputSource::buttons,15,InputEdge::press}};
         const auto match = events_.history().match({token,1000,~rail_owner},now);
-        if (match && events_.history().consume(match,1,~rail_owner)) {
+        if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
             enqueue(InputAction::lip_select,now,0,environment,1,0,0,0,{},&match); lip_had_input_ = true;
         }
     }
@@ -745,6 +792,9 @@ private:
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
     }
     InputPolicy policy_{InputPolicy::production()};
+    InputNativeContext native_{};
+    InputGenerations flip_generations_{}, grab_generations_{};
+    bool native_required_{};
     InputBalanceControls balance_controls_{};
     InputEvents events_{};
     InputRequestQueue pending_{};

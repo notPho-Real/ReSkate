@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_native_probe.h"
 #include "Engine/Game/Build/fingerprint.h"
 
 namespace dingosdk::game::build::v20260929::no_bail {
@@ -111,7 +112,7 @@ inline constexpr std::uint32_t wipeout_physics_state = 300;
 // Offboard (walking), and the selector's test of the animation's mount request: context
 // +13d4 bit 7 (bit 8 is the dismount request). While a S.K.A.T.E. player waits for their
 // turn on foot (throwdown_relay.h), the request is dropped before the selector reads it.
-inline constexpr std::uint32_t offboard_physics_state = 504;
+inline constexpr std::uint32_t offboard_physics_state = arcade_native_probe::offboard_state;
 inline constexpr LONG mount_request_mask = 0x80;
 inline constexpr Fingerprint mount_request_test_contract{0x4746a94, {
     0x48,0x8b,0x53,0x08,0xf6,0x82,0xd4,0x13,0x00,0x00,0x80,0x0f,0x84,0x6f,0xf4,0xff,

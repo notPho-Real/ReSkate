@@ -42,7 +42,8 @@ int main(){
         if(fault==2){b.observer.invalidate();} // Menu/gap/reset episode.
         if(fault==3){b.flip.id=2;} // Native action selection changed without contact change.
         b.poll(2017);b.poll(2034,0,0,25000);
-        check(b.contains({InputSource::direction,8,InputEdge::press}),"old owner/action/reset-generation controls cannot suppress new physical events");
+        check(b.contains({InputSource::direction,8,InputEdge::press})==(fault!=3),
+              "owner/contact/reset retire controls while action-only change preserves physical correction sampling");
     }
     for(bool nose:{false,true}){
         Bridge b;b.sample.state=100;b.sample.words[1]=nose?0x8000:0x4000;b.observe(2500);
@@ -58,6 +59,16 @@ int main(){
         b.input.invalidate_authority();b.poll(2551);b.poll(2568,0,0,-25000);
         check(b.contains({InputSource::direction,2,InputEdge::press}),"authority loss clears old typed admission even before owner addresses change");
     }
+    Bridge lease;lease.sample.state=100;lease.sample.words[1]=0x4000;lease.observe(4000);
+    lease.input.publish_balance_controls(InputBalanceControls::vertical(),lease.frame);lease.poll(4000);lease.poll(4017);
+    check(lease.input.balance_admission(4017,InputBalanceKind::manual).sampled_at==4000,
+          "polling newer native frames cannot retimestamp an older component admission");
+    for(std::uint64_t now=4034;now<4153;now+=17)lease.poll(now);
+    lease.poll(4150);
+    check(lease.input.balance_admission(4150,InputBalanceKind::manual).valid,"original component admission lease includes its150ms endpoint");
+    lease.poll(4151);
+    check(lease.input.native_context(4151).valid&&!lease.input.balance_admission(4151,InputBalanceKind::manual).valid,
+          "fresh native physics cannot renew an expired independent balance admission");
     Bridge negative;negative.observe(3000);auto controls=InputBalanceControls::vertical(InputBalanceKind::lip);controls.admitted=false;
     negative.input.publish_balance_controls(controls,negative.frame);negative.poll(3000);negative.poll(3017,0,0,25000);
     check(negative.contains(controls.first),"unadmitted typed metadata never excludes a physical control");

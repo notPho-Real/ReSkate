@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_input_session.h"
 #include "arcade_native_input_state.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include <array>
 #include <cstdint>
 
@@ -31,16 +32,27 @@ public:
         return changed;
     }
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
-    void publish_native_context(NativeInputFrame frame) noexcept { native_ = frame; native_required_ = true; }
+    void publish_native_context(NativeInputFrame frame) noexcept { native_ = frame; }
     NativeInputFrame native_context(std::uint64_t now) const noexcept {
-        return native_.valid && native_.owner_generation == owner_ && now >= native_.sampled_at &&
+        return enabled_ && focused_ && now >= authority_at_ && now-authority_at_ <= 150 &&
+            native_.valid && native_.owner_generation == owner_ && now >= native_.sampled_at &&
             now-native_.sampled_at <= 150 ? native_ : NativeInputFrame{};
     }
     // Controls are admitted by the native mechanic owner, not inferred from
     // a rail enum or from the control being held. Bind them to its exact episode.
     void publish_balance_controls(InputBalanceControls controls, NativeInputFrame proof) noexcept {
         balance_controls_ = controls.admitted && proof.valid ? controls : InputBalanceControls{};
+        if (balance_controls_.admitted)
+            balance_controls_.generations = {proof.owner_generation,proof.contact_generation,proof.action_generation};
         balance_frame_ = proof;
+    }
+    NativeInputFrame balance_admission(std::uint64_t now, InputBalanceKind kind) const noexcept {
+        const auto native = native_context(now);
+        return native.valid && balance_controls_.admitted && balance_controls_.kind == kind &&
+            now >= balance_frame_.sampled_at && now-balance_frame_.sampled_at <= 150 &&
+            balance_frame_.owner_generation == native.owner_generation &&
+            balance_frame_.contact_generation == native.contact_generation &&
+            balance_frame_.action_generation == native.action_generation ? balance_frame_ : NativeInputFrame{};
     }
     const InputHistory* history(unsigned user) const noexcept {
         return user < sessions_.size() ? &sessions_[user].history() : nullptr;
@@ -77,7 +89,7 @@ public:
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
-            cancel_commands(); return {buttons,rx,ry};
+            cancel_commands(); game_input = false;
         }
         // Older callers can supply held-trigger admission without analog values.
         if (triggers_held && !lt && !rt) lt = 31;
@@ -87,8 +99,35 @@ public:
         admission.manual_balance_admitted = manual_balance_admitted;
         admission.input_policy = policy_;
         const auto native = native_context(now);
-        if (native_bound_ && native_required_ && !native.valid) { cancel_commands(); return {buttons,rx,ry}; }
+        if (native_bound_) admission.native_context = InputNativeContext::from_frame(native);
+        if (native_bound_ && !native.valid) admission.gameplay = false;
         if (native_bound_ && native.valid) {
+            admission.offboard = native.state == game::build::v20260929::arcade_native_probe::offboard_state;
+            const bool manual_phase = manual_balance_admitted &&
+                (balance_admission(now,InputBalanceKind::manual).valid || balance_admission(now,InputBalanceKind::nose).valid);
+            // Caller poses can lag native landing/takeoff. Reconcile only the
+            // verified states; contact alone never establishes balance identity.
+            if (!admission.offboard && !native.rail_family) {
+                if (native.state == 200 || native.state == 201) {
+                    admission.pose = SkatePose::air;
+                    admission.may_start = admission.may_push = admission.may_toggle_board = false;
+                } else if (native.state == 100 || native.state == 103) {
+                    admission.pose = native.state == 100 && manual_phase ?
+                        (balance_controls_.kind == InputBalanceKind::nose ? SkatePose::nose_manual : SkatePose::manual) : SkatePose::riding;
+                    admission.may_push = admission.may_push && native.state == 100 && native.mode == 1 && native.contacts == 0xc000u;
+                    admission.manual_safe = admission.manual_safe && native.state == 100 && native.mode == 1;
+                    admission.manual_prepare = false;
+                } else if (native.state == 101 && native.mode <= 1) {
+                    admission.pose = SkatePose::riding;
+                    admission.may_start = admission.may_push = admission.manual_safe = admission.may_toggle_board = false;
+                    admission.manual_prepare = admission.manual_prepare && native.mode == 1;
+                } else if (native.state == 701) {
+                    admission.pose = SkatePose::grind_exit_transition;
+                    admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = admission.may_toggle_board = false;
+                } else {
+                    admission.pose = SkatePose::unknown; admission.gameplay = false;
+                }
+            }
             // The native400 family covers physical rail contact independently
             // of the current Manual/HUD observer. Named rail phases and Lip
             // remain unavailable until their own verified signals exist.
@@ -98,17 +137,21 @@ public:
                 admission.manual_balance_admitted = false;
             }
             admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;
-            if (balance_controls_.admitted && balance_frame_.owner_generation == native.owner_generation &&
-                balance_frame_.contact_generation == native.contact_generation &&
-                balance_frame_.action_generation == native.action_generation) {
+            if (balance_controls_.admitted && now >= balance_frame_.sampled_at && now-balance_frame_.sampled_at <= 150 &&
+                balance_frame_.owner_generation == native.owner_generation && balance_frame_.contact_generation == native.contact_generation) {
                 admission.balance_controls = balance_controls_;
-                admission.observed_lip = balance_controls_.kind == InputBalanceKind::lip;
+                // Phase/identity admission needs all three generations; physical
+                // correction exclusions retain their independent owner/contact binding.
+                if (balance_frame_.action_generation == native.action_generation) {
+                    admission.balance_generations = balance_controls_.generations;
+                    admission.observed_lip = balance_controls_.kind == InputBalanceKind::lip;
+                }
             }
         }
         return sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
     }
 private:
-    bool enabled_{}, native_bound_{}, focused_{}, native_required_{};
+    bool enabled_{}, native_bound_{}, focused_{};
     InputPolicy policy_;
     Physical physical_{};
     NativeInputFrame native_{}, balance_frame_{};

@@ -26,6 +26,8 @@ struct InputAdmission {
     bool named_grab_bindings{};
     InputBalanceControls balance_controls{};
     InputBoardBinding board_binding{};
+    InputNativeContext native_context{};
+    InputGenerations balance_generations{};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -49,6 +51,25 @@ public:
     NativeGesture::Output poll(std::uint64_t now, PhysicalInputSample physical,
                               std::int16_t rx, std::int16_t ry, InputAdmission admission) noexcept {
         NativeGesture::Output output{physical.buttons, rx, ry};
+        const auto native = admission.native_context;
+        native_required_ = native_required_ || native.required;
+        if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
+            reset(); return output;
+        }
+        if (native.required) {
+            if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
+            native_ = native;
+            if (!admission.balance_controls.correlated(native))
+                admission.balance_controls.admitted = false;
+            if (!native.correlates_action(admission.balance_generations)) admission.manual_balance_admitted = false;
+            if (!native.correlates_action(admission.rail.generations)) admission.rail.fresh = admission.rail.ready = false;
+            if (!native.correlates_action(admission.surface.generations)) admission.surface.fresh = false;
+            if (native.rail_family && !admission.offboard) {
+                admission.pose = SkatePose::grind;
+                admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
+                admission.manual_balance_admitted = false;
+            }
+        }
         if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_)) reset();
         offboard_ = admission.offboard; board_binding_ = admission.board_binding;
         policy_ = admission.input_policy;
@@ -98,7 +119,7 @@ public:
             admission.pose == SkatePose::riding || admission.pose == SkatePose::air || manual_.busy() || awaiting_admission,
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
-            admission.may_toggle_board && !board_active_, admission.board_binding};
+            admission.may_toggle_board && !board_active_, admission.board_binding, native};
         input_.poll(now, physical, environment, {this, &receive});
         if (reset_manual) input_.reset_manual_continuity();
         // A released A ends native setup even when another request superseded
@@ -307,6 +328,8 @@ private:
     InputBoardBinding board_binding_{};
     ActionExperiment mode_{ActionExperiment::off};
     InputPolicy policy_{InputPolicy::production()};
+    InputNativeContext native_{};
+    bool native_required_{};
     InputAdmission admission_{};
     PhysicalInputSample physical_{};
     NativeGesture::Output* current_{};
