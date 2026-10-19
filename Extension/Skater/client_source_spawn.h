@@ -4,7 +4,7 @@
 #include <string>
 #include "Extension/UI/Overlay/overlay.h"
 
-namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; struct SpinCommand; }
+namespace dingosdk::arcade_mode { struct NativeManualContact; struct NativeInputFrame; struct GroundControl; struct SpinCommand; struct LaunchDescriptor; }
 namespace dingosdk {
 // Binds the native camera functions the debug controls use. Installs no hooks.
 void initialize_client_source_spawn(std::uintptr_t base);
@@ -33,12 +33,15 @@ void set_arcade_push_intent(bool active, bool crouched = false) noexcept;
 // Serialized Arcade input producer. An accepted crouch/release supplies the
 // monotonic event identity; physical A without that admission cannot launch.
 // Native physics still selects takeoff/contact/bail. Leases expire after150ms.
+// A nonzero release requires its captured descriptor; null never selects a
+// charged ordinary fallback. Descriptor transport grants no actor/phase proof.
 void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uint64_t release_at,
     unsigned charge_ms, float yaw_rate, bool angular_allowed,
     const arcade_mode::NativeManualContact* manual = nullptr,
     const arcade_mode::NativeInputFrame* angular_proof = nullptr,
     const arcade_mode::GroundControl* ground_controls = nullptr,
-    const arcade_mode::SpinCommand* spin_command = nullptr) noexcept;
+    const arcade_mode::SpinCommand* spin_command = nullptr,
+    const arcade_mode::LaunchDescriptor* launch = nullptr) noexcept;
 bool arcade_air_motion_ready(const arcade_mode::NativeInputFrame* current = nullptr) noexcept;
 // Engine-thread-only interactive controls. Presentation callbacks only queue requests.
 overlay::DebugModel on_client_debug_tick(std::uintptr_t base, std::uintptr_t client,

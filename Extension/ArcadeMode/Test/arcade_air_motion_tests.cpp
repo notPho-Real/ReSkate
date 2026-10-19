@@ -12,7 +12,7 @@ void check(bool value, const char* why) {
 bool near(float a, float b) { return std::abs(a - b) < .0001f; }
 struct Fixture {
     AirMotion controller;
-    AirMotionIntent intent{true, true, 1000, 0, 0, 0, 0, 1};
+    AirMotionIntent intent{true, true, 1000, 0, 0, 0, 0, 1, {}, {}, {}, LaunchDescriptor::ordinary()};
     AirMotionFrame frame{1000, 1, 100, 1.0f / 60, 5, 2, 0, true};
     AirMotionOutput sample(std::uint64_t now, unsigned state) {
         intent.sampled_at = frame.now = now; frame.state = state;

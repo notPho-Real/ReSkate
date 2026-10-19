@@ -2,6 +2,7 @@
 #include "arcade_manual_input.h"
 #include "arcade_action_dispatch.h"
 #include "arcade_input_dispatch.h"
+#include "arcade_launch_descriptor.h"
 namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
@@ -22,6 +23,8 @@ struct ActionInputOutput {
 struct InputJumpEdge {
     bool released{}, setup_admitted{}, nollie{}, from_rail{};
     std::uint64_t pressed_at{}, released_at{};
+    LaunchDescriptor launch{};
+    bool setup_started{}; // Existing setup accepted; not native occurrence or animation proof.
     unsigned charge_ms() const noexcept {
         const auto elapsed = released_at >= pressed_at ? released_at - pressed_at : 0;
         return elapsed > 200 ? 200u : static_cast<unsigned>(elapsed);
