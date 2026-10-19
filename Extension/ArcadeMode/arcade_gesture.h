@@ -67,19 +67,23 @@ public:
     // held levels, a rail enum, or a missing named/Lip capability.
     RailAdapterResult request_native_rail(RailAdapterMethod method, std::uint64_t now,
             std::uint64_t deadline, bool channels_compatible) noexcept {
-        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now);
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now) &&
+            (method == RailAdapterMethod::dark_catch || !observed_lip_context(now));
         const auto result = native_rail_.request(method,now,deadline,enabled_,permitted,!channels_compatible);
         if (result == RailAdapterResult::started) native_rail_method_ = method;
         return result;
     }
     RailAdapterPad sample_native_rail(std::uint64_t now, bool held, bool channels_compatible) noexcept {
-        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now);
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now) &&
+            (native_rail_method_ == RailAdapterMethod::dark_catch || !observed_lip_context(now));
         return native_rail_.sample(now,held,enabled_,permitted,!channels_compatible);
     }
     RailAdapterPad sample_native_rail(const InputRailOutput& handoff, std::uint64_t now,
             bool channels_compatible) noexcept {
-        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now) && channels_compatible;
-        return native_rail_.sample(handoff,now,enabled_,permitted);
+        const bool permitted = native_bound_ && native_context(now).valid && admitted(0,now) && channels_compatible && !observed_lip_context(now);
+        const auto pad = native_rail_.sample(handoff,now,enabled_,permitted);
+        if (pad.owns_right_stick) native_rail_method_ = RailAdapterMethod::align;
+        return pad;
     }
     RailAdapterPhase native_rail_phase(std::uint64_t now) const noexcept {
         return native_context(now).valid ? native_rail_.phase() : RailAdapterPhase::unavailable;
@@ -158,6 +162,9 @@ public:
         if (native_bound_) admission.native_context = InputNativeContext::from_frame(native);
         if (native_bound_ && !native.valid) admission.gameplay = false;
         if (native_bound_ && native.valid) {
+            // Positive observed context is only a veto on generic rail input;
+            // it does not supply a Lip actor, stage, balance or exit permission.
+            admission.observed_lip = observed_lip_context(now);
             admission.offboard = native.state == game::build::v20260929::arcade_native_probe::offboard_state;
             const bool manual_phase = manual_balance_admitted &&
                 (balance_admission(now,InputBalanceKind::manual).valid || balance_admission(now,InputBalanceKind::nose).valid);
@@ -192,8 +199,8 @@ public:
                 }
             }
             // The native400 family covers physical rail contact independently
-            // of the current Manual/HUD observer. Named rail phases and Lip
-            // remain unavailable until their own verified signals exist.
+            // of the current Manual/HUD observer. Named rail/Lip actor phases
+            // remain unavailable; an observed Lip flag only vetoes generic input.
             if (native.rail_family) {
                 admission.pose = SkatePose::grind;
                 admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
@@ -206,7 +213,7 @@ public:
                 // correction exclusions retain their independent owner/contact binding.
                 if (balance_frame_.action_generation == native.action_generation) {
                     admission.balance_generations = balance_controls_.generations;
-                    admission.observed_lip = balance_controls_.kind == InputBalanceKind::lip;
+                    admission.observed_lip = admission.observed_lip || balance_controls_.kind == InputBalanceKind::lip;
                 }
             }
         }
@@ -218,6 +225,10 @@ public:
         return output;
     }
 private:
+    bool observed_lip_context(std::uint64_t now) const noexcept {
+        const auto observation = native_lip_observation(now);
+        return observation.valid && (observation.fields & 2u) && observation.lip;
+    }
     bool balance_controls_current(std::uint64_t now,const NativeInputFrame& native) const noexcept {
         // A generation is an invalidation counter, not sufficient owner proof.
         // Retain the component's original lease and physical observation order.

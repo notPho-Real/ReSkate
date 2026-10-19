@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_rail_adapter_probe.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include <cstring>
 #include <cstdlib>
 #include <iostream>
@@ -49,8 +50,127 @@ struct Memory {
         return read_rail_adapter_lip(*this,[&]{return owner;},bindings,now,supported);
     }
 };
+// Existing bounded field reader -> actual physics producer -> production facade
+// -> existing semantic rail consumer. No synthetic Lip actor or stage exists.
+struct LipPipeline {
+    Memory memory;
+    NativeInputState producer;
+    ArcadeInput input{true};
+    NativeInputFrame frame{};
+    NativeRequestSample sample{};
+    NativeGesture::Output out{};
+    RailAdapterPad pad{};
+    PlaybackPacket packets;
+    std::uint32_t packet{};
+    LipPipeline(){input.enable(true);sample.valid=true;sample.state=401;sample.crouch_mode=1;}
+    void observe(std::uint64_t now,bool refresh=true,unsigned wrong_owner=0){
+        const auto& owner=memory.owner;
+        frame=producer.observe(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},sample,{true,-1});
+        input.publish_native_context(frame);
+        if(refresh){
+            memory.owner.sampled_at=now;memory.put(owner.context+0x1414,sample.state);
+            auto lip=memory.sample(now);
+            if(wrong_owner==1)lip.owner.base+=8;
+            if(wrong_owner==2)lip.owner.entity+=8;
+            if(wrong_owner==3)lip.owner.core+=8;
+            if(wrong_owner==4)lip.owner.context+=8;
+            if(wrong_owner==5)lip.owner.rig+=8;
+            input.publish_native_lip(lip,frame);
+        }
+        input.publish_authority(now,frame.owner_generation,1,true);
+    }
+    void poll(std::uint64_t now,std::uint16_t buttons){
+        out=input.poll(0,now,buttons,0,25000,111,-222,true,false,false,0,false,false,false,now/17,
+            false,{},false,false,SkatePose::grind);
+        pad=input.sample_native_rail(out.rail,now,true);
+        if(pad.owns_right_stick){out.right_x=pad.right_x;out.right_y=pad.right_y;}
+        packet=packets.sample(7,7^synthetic_packet_mask(out.phase,out.buttons!=buttons||out.right_x!=111||out.right_y!=-222),pad.owns_right_stick);
+    }
+    void step(std::uint64_t now,std::uint16_t buttons,bool refresh=true,unsigned wrong_owner=0){observe(now,refresh,wrong_owner);poll(now,buttons);}
+    void lip(bool active){memory.put(memory.page+0xa0,static_cast<std::uint8_t>(active));}
+};
+void observed_lip_context_chain(){
+    for(unsigned cadence:{17u,34u}){
+        LipPipeline p;p.lip(true);p.step(1000,0);p.step(1000+cadence,0x8000);
+        check(p.input.native_lip_observation(1000+cadence).lip,"actual reader publishes the performed-Lip flag, not merely FoundLip");
+        check(!p.pad.owns_right_stick && p.out.rail.request.action==InputAction::none && p.out.unsupported,
+            "observed native Lip must not issue a generic rail right-stick ticket");
+        check(!p.input.balance_admission(1000+cadence,InputBalanceKind::lip).valid &&
+            p.input.native_rail_phase(1000+cadence)==RailAdapterPhase::rail_contact,
+            "context veto grants neither Lip balance admission nor a new native phase");
+    }
+    for(unsigned cadence:{17u,34u}){
+        LipPipeline p;p.step(1000,0);p.step(1000+cadence,0x8000);
+        check(p.pad.owns_right_stick && p.pad.right_y==20000,"generic pressure starts from an actually issued rail ticket");
+        const auto packet=p.packet;
+        p.lip(true);p.step(1000+2*cadence,0x8000);
+        check(!p.pad.owns_right_stick && p.out.right_y==0 && !p.out.command_busy,"positive Lip revokes only the generic command owner");
+        check(p.packet!=packet,"revoked ownership is visible despite unchanged physical packet");
+        p.lip(false);p.step(1000+3*cadence,0x8000);
+        check(!p.pad.owns_right_stick,"held Y cannot revive a ticket after Lip revocation");
+        p.step(1000+4*cadence,0);p.step(1000+5*cadence,0x8000);
+        check(p.pad.owns_right_stick,"fresh Y rearms generic rail after an independently observed non-Lip sample");
+    }
+    {
+        LipPipeline p;p.step(1000,0);p.step(1017,0x8000);p.lip(true);p.step(1034,0x8000);
+        check(!p.pad.owns_right_stick,"expiry negative first retires an issued ticket under positive Lip");
+        p.step(1134,0x8000,false);p.step(1185,0x8000,false);
+        check(!p.input.native_lip_observation(1185).valid&&!p.pad.owns_right_stick,
+            "expiry of the veto cannot revive the retired held Y ticket");
+        p.step(1202,0,false);p.step(1219,0x8000,false);
+        check(p.pad.owns_right_stick,"expired optional proof retains generic fallback for a genuinely fresh Y press");
+    }
+    for(unsigned mask=0;mask<32;++mask)for(bool active:{false,true}){
+        LipPipeline p;p.lip(active);
+        for(unsigned i=0;i<5;++i)if(!(mask&(1u<<i)))p.memory.bindings.objects[i]=0;
+        p.step(1000,0);p.step(1017,0x8000);
+        const bool veto=active&&(mask&2u);
+        check(p.pad.owns_right_stick!=veto,"only a valid positive IsLipTricking field vetoes generic rail; missing optional fields retain fallback");
+        check(!p.input.balance_admission(1017,InputBalanceKind::lip).valid,"partial flags never admit a balance component");
+    }
+    for(unsigned wrong=1;wrong<=5;++wrong){
+        LipPipeline p;p.lip(true);p.step(1000,0,true,wrong);p.step(1017,0x8000,true,wrong);
+        check(!p.input.native_lip_observation(1017).valid&&p.pad.owns_right_stick,"any wrong full-owner link rejects the Lip veto while current generic rail stays available");
+    }
+    for(unsigned age:{150u,151u}){
+        LipPipeline p;p.lip(true);p.step(1000,0);p.step(1100,0,false);p.step(1000+age,0x8000,false);
+        check(p.pad.owns_right_stick==(age>150),"fresh native physics cannot renew the original150ms Lip observation lease");
+    }
+    for(unsigned changed=0;changed<3;++changed){
+        LipPipeline p;p.lip(true);p.step(1000,0);
+        if(changed==0)p.sample.state=402;
+        if(changed==1)p.sample.words[0]=0x20;
+        if(changed==2)p.memory.owner.entity+=8;
+        p.step(1017,0,false);p.step(1034,0x8000,false);
+        check(!p.input.native_lip_observation(1034).valid && p.pad.owns_right_stick,"contact/action/owner generation replacement cannot reuse the former Lip proof");
+    }
+    {
+        LipPipeline p;p.step(1000,0);p.step(1017,0x8000);check(p.pad.owns_right_stick,"OFF negative begins with actual generic ownership");
+        p.lip(true);p.observe(1034);p.input.enable(false);p.poll(1034,0x8000);
+        check(!p.pad.owns_right_stick&&!p.input.native_lip_observation(1034).valid&&p.out.right_x==111&&p.out.right_y==-222,
+            "Arcade OFF restores physical RS and cannot expose or act on a cached Lip proof");
+    }
+    for(auto method:{RailAdapterMethod::align,RailAdapterMethod::nose_pressure,RailAdapterMethod::tail_pressure}){
+        LipPipeline p;p.step(1000,0);
+        check(p.input.request_native_rail(method,1000,1200,true)==RailAdapterResult::started,"raw generic API positive control starts with native rail admission");
+        check(p.input.sample_native_rail(1000,true,true).owns_right_stick,"raw generic API actually owns RS before the Lip observation");
+        p.lip(true);p.observe(1017);
+        check(!p.input.sample_native_rail(1017,true,true).owns_right_stick,"raw held sampler cannot bypass the correlated Lip veto");
+        check(p.input.request_native_rail(method,1017,1200,true)==RailAdapterResult::unsafe,"new raw generic request cannot bypass positive Lip context");
+        check(p.input.request_native_rail(RailAdapterMethod::lip,1017,1200,true)==RailAdapterResult::unsupported,"Lip observation never upgrades an unsupported native method");
+    }
+    // The separate native AIR dark-catch button method owns no right stick.
+    {
+        LipPipeline p;p.sample.state=200;p.lip(true);p.observe(1000);
+        check(p.input.request_native_rail(RailAdapterMethod::dark_catch,1000,1200,true)==RailAdapterResult::started,
+            "Lip RS veto does not revoke an unrelated native AIR button-only method");
+        const auto pad=p.input.sample_native_rail(1000,true,true);
+        check(!pad.owns_right_stick&&pad.button_mask==0x0200,"button-only method retains its existing native phase guard");
+    }
+}
 }
 int main() {
+    observed_lip_context_chain();
     Memory memory;auto out=memory.sample();
     check(out.valid && out.fields==31 && out.found && !out.lip && !out.handplant,"candidate flag is not performed Lip");
     check(out.direction==std::array<float,3>{1,2,3} && out.nearest==out.direction,"independent finite physical geometry copied");

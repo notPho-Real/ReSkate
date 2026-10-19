@@ -16,7 +16,7 @@ struct InputAdmission {
     std::uint64_t tick{};
     std::span<const PreparedGesture> catalog{};
     unsigned observed_balance_branch{};
-    bool observed_lip{}; // Reserved for independently verified native contact admission.
+    bool observed_lip{}; // Correlated native context veto; never actor/balance/exit admission.
     bool manual_balance_admitted{}; // Independent identity plus active nonfailed balance.
     InputPolicy input_policy{InputPolicy::production()};
     bool branch_ready{true};
@@ -101,7 +101,9 @@ public:
         if (admission.external_owner || auxiliary_.busy()) { authored_.cancel(); holding_ = false; }
         const bool rail_released = rail_ && !(physical.buttons & 0x8000u);
         if (rail_released) rail_request_.physical_released_at = now;
-        if (!(physical.buttons & 0x8000u)) rail_ = false;
+        // A performed-Lip observation retires the generic ticket. It does not
+        // fabricate a physical Y release or reset the held-event baseline.
+        if (!(physical.buttons & 0x8000u) || admission.observed_lip) rail_ = false;
         const bool triggers = physical.lt > 30 || physical.rt > 30;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
@@ -252,6 +254,7 @@ private:
                 request.context == InputContext::air, request.recognized_at)
                 ? InputDisposition::started : InputDisposition::cancelled;
         case InputAction::rail_request:
+            if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
             if (!(physical_.buttons & 0x8000u)) return InputDisposition::cancelled;
             rail_direction_ = direction(request.direction);
             if (rail_direction_ != TrickDirection::none && rail_direction_ != TrickDirection::up && rail_direction_ != TrickDirection::down) {
