@@ -44,7 +44,6 @@ struct InputEnvironment {
     unsigned balance_branch{};
     bool manual_safe{true}, manual_prepare{}, manual_active{};
     bool auxiliary_enabled{true};
-    bool flip_available{true};
     bool ollie_allowed{true};
     bool manual_context_known{true};
     bool deferred_grabs{};
@@ -538,12 +537,12 @@ private:
         const InputToken jump{InputSource::buttons,12,InputEdge::press};
         if (surface.can_plant) {
             for (auto code : {std::int16_t{2},std::int16_t{1},std::int16_t{3}})
-                for (auto source : {InputSource::direction,InputSource::stick,InputSource::pad}) for (bool reverse : {false,true}) {
-                    const InputToken direction{source,code,InputEdge::press};
+                for (bool reverse : {false,true}) {
+                    const InputToken direction{InputSource::direction,code,InputEdge::press};
                     const std::array tokens{reverse ? jump : direction, reverse ? direction : jump};
                     const auto match = events_.history().match({tokens,450},now);
                     if (match && events_.history().consume(match,InputConsumption::regular)) {
-                        enqueue(InputAction::wall_command,now,1,environment,1,1); return;
+                        enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match); return;
                     }
                 }
         }
@@ -569,12 +568,12 @@ private:
             constexpr std::array<std::int16_t, 8> front{9, 3, 1, 7, 8, 6, 4, 2};
             constexpr std::array<std::int16_t, 8> back{9, 3, 1, 7, 8, 6, 2, 4};
             const auto& directions = rail.frontside ? front : back;
-            for (auto direction : directions) for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                const auto match = events_.history().triple({source, direction, InputEdge::press}, y, y, 1000, 0, now, ~manual_owner);
+            for (auto direction : directions) {
+                const auto match = events_.history().triple({InputSource::direction, direction, InputEdge::press}, y, y, 1000, 0, now, ~manual_owner);
                 if (match && events_.history().consume(match, branch_owner, ~manual_owner)) {
                     const auto index = direction == 9 ? 10u : direction == 3 ? 11u : direction == 1 ? 12u : direction == 7 ? 13u :
                         direction == 8 ? 14u : direction == 6 ? 15u : direction == 4 ? 16u : 17u;
-                    enqueue(InputAction::rail_change, now, 0, environment, 1, static_cast<std::uint8_t>(index)); return;
+                    enqueue(InputAction::rail_change, now, 0, environment, 1, static_cast<std::uint8_t>(index),0,0,{},&match); return;
                 }
             }
         }
@@ -591,7 +590,7 @@ private:
             const std::array tokens{InputToken{InputSource::buttons, pair.first, InputEdge::press}, InputToken{InputSource::buttons, pair.second, InputEdge::press}};
             const auto match = events_.history().match({tokens, window, ~manual_owner}, now);
             if (!match || !events_.history().consume(match, branch_owner, ~manual_owner)) return false;
-            enqueue(action, now, 0, environment, 1, pair.target); return true;
+            enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };
         if (rail.phase == InputRailPhase::established) {
             for (auto pair : rail.frontside ? front : back) if (query(pair, 300, InputAction::rail_change)) return;
@@ -603,13 +602,12 @@ private:
     }
     void recognize_rail_selection(std::uint64_t now, InputEnvironment environment) noexcept {
         if (environment.context == InputContext::ground || environment.context == InputContext::air) {
-            for (auto direction : {std::int16_t{8}, std::int16_t{2}})
-                for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                    const InputToken token{source, direction, InputEdge::press};
-                    const auto match = events_.history().triple(token, token, {InputSource::buttons, 15, InputEdge::press}, 400, 2, now, ~manual_owner);
-                    if (match && events_.history().consume(match, rail_owner, ~manual_owner))
-                        enqueue(InputAction::rail_select, now, 1000, environment, 1, direction == 8 ? 20 : 21);
-                }
+            for (auto direction : {std::int16_t{8}, std::int16_t{2}}) {
+                const InputToken token{InputSource::direction, direction, InputEdge::press};
+                const auto match = events_.history().triple(token, token, {InputSource::buttons, 15, InputEdge::press}, 400, 2, now, ~manual_owner);
+                if (match && events_.history().consume(match, rail_owner, ~manual_owner))
+                    enqueue(InputAction::rail_select, now, 1000, environment, 1, direction == 8 ? 20 : 21,0,0,{},&match);
+            }
         }
         if (environment.context != InputContext::lip || !environment.rail.fresh || environment.rail.phase != InputRailPhase::lip_selection) {
             lip_clocked_ = false; return;
@@ -625,8 +623,8 @@ private:
             return;
         }
         constexpr std::array<std::int16_t,8> order{7,9,1,3,4,6,2,8};
-        for (auto direction : order) for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-            const std::array tokens{InputToken{source, direction, InputEdge::press}};
+        for (auto direction : order) {
+            const std::array tokens{InputToken{InputSource::direction, direction, InputEdge::press}};
             const auto match = events_.history().match({tokens,500,~rail_owner},now);
             if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
                 enqueue(InputAction::lip_select,now,0,environment,1,static_cast<std::uint8_t>(direction),0,0,{},&match); lip_had_input_ = true;
@@ -756,13 +754,9 @@ private:
                 return events_.history().match({tokens, rule.window, ~manual_owner}, now);
             }
             if (rule.kind == 2) {
-                for (auto source : {InputSource::direction, InputSource::stick, InputSource::pad}) {
-                    const auto match = events_.history().triple({source, rule.first, InputEdge::press},
-                        {source, rule.second, InputEdge::press}, {InputSource::buttons, 14, InputEdge::press},
-                        rule.window, 2, now, ~manual_owner);
-                    if (match) return match;
-                }
-                return InputMatch{};
+                return events_.history().triple({InputSource::direction, rule.first, InputEdge::press},
+                    {InputSource::direction, rule.second, InputEdge::press}, {InputSource::buttons, 14, InputEdge::press},
+                    rule.window, 2, now, ~manual_owner);
             }
             const std::array tokens{InputToken{InputSource::buttons, rule.first, InputEdge::press},
                 InputToken{InputSource::buttons, rule.second, InputEdge::press}};

@@ -115,7 +115,7 @@ public:
         InputEnvironment environment{context, true, admission.external_owner, admission.nollie, admission.observed_balance_branch ? admission.observed_balance_branch : admission.pose == SkatePose::nose_manual ? 13u : 0u,
             admission.manual_safe && !admission.external_owner && !triggers,
             admission.manual_prepare && !admission.external_owner && !triggers, manual_.busy() || reset_manual,
-            action_enabled && admission.action_fresh, !authored_.busy() && !auxiliary_.busy(), admission.may_start && !admission.offboard,
+            action_enabled && admission.action_fresh, admission.may_start && !admission.offboard,
             admission.pose == SkatePose::riding || admission.pose == SkatePose::air || manual_.busy() || awaiting_admission,
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
