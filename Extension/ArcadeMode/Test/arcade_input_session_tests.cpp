@@ -339,8 +339,69 @@ void airborne_setup_eligibility() {
         "a fresh grounded physical press can start the existing native setup");
 }
 
+void queued_grab_identity() {
+    // F07/F10/I10: immutable recognized identity is distinct from live readiness.
+    for (unsigned step : {17u,34u}) for (bool recognized_nollie : {false,true}) {
+        Harness h; h.admission.pose=SkatePose::air;
+        const auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
+            h.admission.native_context={true,true,{1,1,1},now+1,now,false,true,1,0};
+            return h.poll(now,physical);
+        };
+        poll(0,{});
+        check(poll(step,{0x4000,-25000,0}).authored_playback,"queued Grab fixture has an existing Flip owner");
+        h.admission.nollie=recognized_nollie;
+        poll(2*step,{0x2000,-25000,0});
+        check(h.session.pending_grab().action==InputAction::grab && h.session.pending_grab().nollie==recognized_nollie,
+            "queued Grab preserves its recognized launch family");
+        h.admission.nollie=!recognized_nollie;
+        unsigned terminal{};
+        for (unsigned now=3*step;now<1200;now+=step) {
+            const auto out=poll(now,{0x2000,-25000,0});
+            check(!out.action.owned,"a later readiness change cannot substitute basic Grab for the recognized unsupported identity");
+            const auto& diagnostic=h.session.diagnostic();
+            for(std::size_t i=0;i<diagnostic.dispatched;++i) if(diagnostic.dispatch[i].request.action==InputAction::grab) {
+                const auto& event=diagnostic.dispatch[i];
+                check(event.request.nollie==recognized_nollie && event.request.recognized_at==2*step &&
+                    event.disposition==InputDisposition::unsupported,"queued Grab ends explicitly unsupported without identity or timestamp renewal");
+                ++terminal;
+            }
+        }
+        check(terminal==1 && h.session.pending_grab().action==InputAction::none,"held Grab cannot replay the unsupported queued request");
+    }
+}
+
+void manual_exit_jump_ownership() {
+    // D09/B01/B03/I13/I15: exercise the existing facade across actor handoff,
+    // rather than infer a native hop from a separate release-metadata fixture.
+    for(unsigned step:{17u,34u})for(bool nose:{false,true})for(bool pad:{false,true}) {
+        Harness h;
+        const auto physical=[&](std::uint16_t face,int sign) {
+            return PhysicalInputSample{static_cast<std::uint16_t>(face | (pad?(sign>0?1u:sign<0?2u:0u):0u)),0,
+                static_cast<std::int16_t>(pad?0:sign*25000)};
+        };
+        const int first=nose?-1:1;
+        h.poll(0);h.poll(step,physical(0,first));h.poll(2*step);
+        const auto entered=h.poll(3*step,physical(0,-first));
+        check(entered.manual.owns && entered.right_y==(nose?20000:-20000),"human reversal enters the selected Manual/Nose owner");
+        h.admission.pose=nose?SkatePose::nose_manual:SkatePose::manual;
+        h.admission.nollie=nose;
+        check(h.poll(4*step,physical(0,-first)).manual.owns,"independently admitted balance retains its owner");
+        const auto setup=h.poll(5*step,physical(0x1000,-first));
+        check(!setup.manual.owns && setup.authored_playback && setup.requested_id==(nose?16:1),"fresh A transfers input ownership from balance to the captured setup family");
+        h.admission.nollie=!nose;
+        const auto release=h.poll(6*step,physical(0,-first));
+        check(release.jump.released && release.jump.setup_admitted && release.jump.nollie==nose &&
+            release.jump.pressed_at==5*step && release.jump.released_at==6*step,"balance exit keeps physical release and original setup identity");
+        h.admission.pose=SkatePose::air;
+        for(unsigned now=7*step;now<30*step;now+=step) {
+            const auto held=h.poll(now,physical(0,-first));
+            check(!held.jump.released && !held.manual.owns,"held exit direction cannot recreate balance or replay the jump release");
+        }
+    }
+}
+
 }
 int main() {
-    airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
+    manual_exit_jump_ownership(); queued_grab_identity(); airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
     std::cout << checks << " production input session checks passed\n";
 }

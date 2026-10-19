@@ -319,7 +319,7 @@ private:
                 // minimum initialization/out stage before a released tap can run.
                 out.result = DispatchResult::unavailable; return InputDisposition::waiting;
             }
-            out.result = classic && (out.trick != ArcadeTrick::basic_bs_grab || admission.nollie) ? DispatchResult::unavailable :
+            out.result = classic && (out.trick != ArcadeTrick::basic_bs_grab || request.nollie || admission.nollie) ? DispatchResult::unavailable :
                 admission.action_mode == ActionExperiment::grabs || classic ? auxiliary_.request_grab(out.trick, now_, context, out.trick == ArcadeTrick::basic_bs_grab) : DispatchResult::disabled;
             if (out.result == DispatchResult::started && out.trick == ArcadeTrick::basic_bs_grab) grab_hold_button_ = request.control;
             if (out.result == DispatchResult::started) {
