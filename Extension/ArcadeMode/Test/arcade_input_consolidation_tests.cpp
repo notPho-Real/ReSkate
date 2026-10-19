@@ -25,8 +25,17 @@ void physical_footprints() {
   if(family==4){input.poll(10,{0,0,25000},environment,receiver.adapter());input.poll(20,{},environment,receiver.adapter());input.poll(30,{0,0,25000},environment,receiver.adapter());input.poll(40,{0x8000,0,25000},environment,receiver.adapter());input.poll(50,{},environment,receiver.adapter());}
   const auto expected=family==0?InputAction::wall_command:family==3?InputAction::lip_change:family==4?InputAction::rail_select:InputAction::rail_change;
   const std::uint64_t last=family==0?20:family==1 || family==4?40:30;
-  check(receiver.last.action==expected && receiver.last.first_input_at==10 && receiver.last.last_input_at==last && receiver.last.recognized_at==last,
+  const auto request=family==4?input.pending_rail():receiver.last;
+  check(request.action==expected && request.first_input_at==10 && request.last_input_at==last && request.recognized_at==last,
    "live context consumers retain physical match endpoints separately from recognition and adapter readiness");
+  if(family==4){
+   check(receiver.last.action!=InputAction::rail_select&&!request.geometry_known&&!request.rail_generation,"approach intent has no named adapter admission or inferred contact geometry");
+   const auto calls=receiver.calls;
+   environment.context=InputContext::rail;environment.rail={InputRailPhase::early,1,0,0,0,0,true,true,true};
+   input.poll(60,{},environment,receiver.adapter());
+   check(receiver.calls==calls+1&&receiver.last.action==InputAction::rail_select&&receiver.last.first_input_at==10&&receiver.last.last_input_at==40&&receiver.last.recognized_at==40&&
+    receiver.last.geometry_known&&receiver.last.rail_generation==1,"actual qualified contact binds the original semantic match without renewing its time");
+  }
   for(const auto& event:input.history().events())check(event.token.source!=InputSource::stick && event.token.source!=InputSource::pad,
    "general production direction history is canonical; device metadata is not a second command history");
  }
@@ -50,7 +59,7 @@ void expired_context_patterns() {
   if(family==2){input.poll(10,{0x8000},environment,adapter);input.poll(20,{},environment,adapter);input.poll(311,{0x4000},environment,adapter);}
   if(family==3){input.poll(10,{0x2000},environment,adapter);input.poll(20,{},environment,adapter);input.poll(311,{0x2000},environment,adapter);}
   if(family==4){input.poll(10,{0,0,25000},environment,adapter);input.poll(20,{},environment,adapter);input.poll(30,{0,0,25000},environment,adapter);input.poll(411,{0x8000,0,25000},environment,adapter);}
-  check(target.calls==0,"canonical-only context scans cannot revive a prefix after its source query window");
+  check(target.calls==0&&(family!=4||input.pending_rail().action==InputAction::none),"canonical-only context scans cannot revive a prefix after its source query window");
  }
 }
 void release_grammar() {

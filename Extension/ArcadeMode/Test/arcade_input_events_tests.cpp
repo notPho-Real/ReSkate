@@ -221,10 +221,12 @@ void queue_action_cancellation_tests() {
         InputRequestQueue queue;
         const auto unrelated = action == InputAction::manual ? InputAction::nose_manual : InputAction::flip;
         Cancelling sink{&queue, same_action ? action : unrelated, replace};
-        queue.push({action, InputContext::air, 10, 100, 1});
+        InputRequest request{action, InputContext::air, 10, 100, 1};
+        if (action == InputAction::rail_select) { request.geometry_known = true; request.rail_generation = 1; }
+        queue.push(request);
         unsigned cancelled{};
-        queue.dispatch(20, 1, InputContext::air, {&sink, Cancelling::receive},
-            [&](InputDispatchEvent event) { cancelled += event.disposition == InputDisposition::cancelled; });
+        queue.dispatch(20, 1, action == InputAction::rail_select ? InputContext::rail : InputContext::air, {&sink, Cancelling::receive},
+            [&](InputDispatchEvent event) { cancelled += event.disposition == InputDisposition::cancelled; }, {}, true);
         unsigned original{}, replacement{};
         for (const auto& request : queue.slots()) if (request.action == action) {
             original += request.recognized_at == 10;

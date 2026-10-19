@@ -110,9 +110,21 @@ public:
         for (std::size_t i = 1; i <= capacity; ++i) slots_[i] = {};
         front_ = size_ = 0; ++epoch_;
     }
+    void bind_rail_selection(std::uint64_t now, const InputRailState& rail) noexcept {
+        auto& request = slots_[capacity + 1];
+        if (request.action != InputAction::rail_select || !rail.fresh || !rail.generation) return;
+        if (request.rail_generation && request.rail_generation != rail.generation) {
+            cancel(InputAction::rail_select); return;
+        }
+        if (!rail.ready || !rail.geometry_known || request.geometry_known || now > request.deadline) return;
+        // The caller supplies actual qualified rail contact. Bind existing
+        // intent once; never infer geometry, renew time or manufacture an epoch.
+        request.geometry = rail.geometry_index(); request.geometry_known = true;
+        request.rail_generation = rail.generation;
+    }
     template<class Report>
     void dispatch(std::uint64_t now, std::uint64_t session, InputContext context,
-                  InputAdapter adapter, Report report, InputNativeContext native = {}) noexcept {
+                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false) noexcept {
         bool started{};
         // Ordinary requests retain table/insertion order. The independent
         // manual slot is replaceable, rather than a second ordinary FIFO entry.
@@ -146,6 +158,8 @@ public:
             const auto request = slots_[index];
             auto result = eligibility(request, now, session, context, native);
             if (result == InputDisposition::waiting && started) return;
+            if (index == capacity + 1 && result == InputDisposition::waiting &&
+                (context != InputContext::rail || !rail_ready || !request.geometry_known || !request.rail_generation)) return;
             slots_[index] = {};
             const auto epoch = slot_epoch;
             const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
@@ -192,10 +206,11 @@ private:
             return InputDisposition::cancelled;
         if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
             return InputDisposition::cancelled;
+        if (rail(request.action) && context == InputContext::lip) return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
             !(request.action == InputAction::rail_select &&
-              (context == InputContext::ground || context == InputContext::air || context == InputContext::rail || context == InputContext::lip))))
+              (context == InputContext::ground || context == InputContext::air || context == InputContext::rail))))
             return InputDisposition::cancelled;
         if (!request.unbounded && (request.inclusive_deadline ? now > request.deadline : now >= request.deadline)) return InputDisposition::expired;
         return InputDisposition::waiting;
@@ -234,7 +249,7 @@ public:
         for(auto& event:diagnostic_.dispatch)event.request.recognition.reset();
     }
     void reset() noexcept {
-        events_.reset(); balance_controls_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
+        events_.reset(); balance_controls_ = {}; previous_rail_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
         previous_context_ = InputContext::unknown; previous_balance_branch_ = 0; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
@@ -315,6 +330,21 @@ public:
             pending_.cancel(InputAction::jump_variant); jump_binding_ = environment.jump_binding;
             jump_generation_ = environment.jump_generation;
         }
+        if (previous_context_ == InputContext::rail || previous_context_ == InputContext::lip) {
+            const bool changed = previous_context_ != environment.context ||
+                previous_rail_.fresh != environment.rail.fresh || previous_rail_.generation != environment.rail.generation ||
+                previous_rail_.phase != environment.rail.phase || previous_rail_.frontside != environment.rail.frontside ||
+                previous_rail_.lip_table != environment.rail.lip_table || previous_rail_.excluded_variant != environment.rail.excluded_variant;
+            if (changed) {
+                cancel_reported(InputAction::rail_change); cancel_reported(InputAction::lip_change);
+                if (previous_rail_.phase == InputRailPhase::lip_selection) cancel_reported(InputAction::lip_select);
+            }
+            const auto bound_rail = pending_rail().rail_generation;
+            if (previous_context_ == InputContext::rail && (environment.context != InputContext::rail ||
+                (bound_rail && (!environment.rail.fresh || bound_rail != environment.rail.generation))))
+                cancel_reported(InputAction::rail_select);
+        }
+        previous_rail_ = environment.rail;
         if (previous_context_ == InputContext::balance && environment.context != InputContext::balance)
             events_.history().restore(branch_owner, now, 100);
         if (previous_context_ == InputContext::balance && (environment.context != InputContext::balance ||
@@ -425,6 +455,7 @@ public:
         recognize_manual(now, physical, environment);
         recognize_rail_selection(now, environment);
         recognize_board(now, environment);
+        if (environment.context == InputContext::rail) pending_.bind_rail_selection(now,environment.rail);
         pending_.dispatch(now, session_, environment.context, adapter, [&](InputDispatchEvent event) {
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::jump_variant)
                 pending_.clear_ordinary();
@@ -447,14 +478,24 @@ public:
             if (event.disposition == InputDisposition::started && (event.request.action == InputAction::manual ||
                 event.request.action == InputAction::nose_manual || event.request.action == InputAction::flip || event.request.action == InputAction::grab))
                 pending_.cancel(InputAction::rail_select);
-            if (diagnostic_.dispatched < diagnostic_.dispatch.size())
-                diagnostic_.dispatch[diagnostic_.dispatched++] = event;
-            else ++diagnostic_.dispatch_dropped;
-        }, native);
+            record_dispatch(event);
+        }, native, environment.context == InputContext::rail && environment.rail.fresh && environment.rail.ready &&
+            environment.rail.geometry_known && environment.rail.generation);
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
 private:
+    void record_dispatch(InputDispatchEvent event) noexcept {
+        if (diagnostic_.dispatched < diagnostic_.dispatch.size()) diagnostic_.dispatch[diagnostic_.dispatched++] = event;
+        else ++diagnostic_.dispatch_dropped;
+    }
+    void cancel_reported(InputAction action) noexcept {
+        // Recording diagnostics invokes no external adapter. The existing
+        // cancellation token also invalidates an absent in-flight reservation.
+        for (const auto& request : pending_.slots()) if (request.action == action)
+            record_dispatch({request,InputDisposition::cancelled});
+        pending_.cancel(action);
+    }
     static constexpr std::uint32_t manual_owner = InputConsumption::manual;
     static constexpr std::uint32_t ordinary_reject = ~manual_owner;
     static constexpr std::uint32_t branch_owner = InputConsumption::extra;
@@ -509,6 +550,9 @@ private:
             request.control = 0x8000;
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
+        }
+        if (action == InputAction::rail_select && (environment.context == InputContext::ground || environment.context == InputContext::air)) {
+            request.geometry_known = false; request.rail_generation = 0;
         }
         if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
         request.form = form;
@@ -795,14 +839,14 @@ private:
         constexpr std::array<std::int16_t,8> order{7,9,1,3,4,6,2,8};
         for (auto direction : order) {
             const std::array tokens{InputToken{InputSource::direction, direction, InputEdge::press}};
-            const auto match = events_.history().match({tokens,500,~rail_owner},now);
-            if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
+            const auto match = events_.history().match({tokens,500,~(rail_owner | manual_owner)},now);
+            if (match && events_.history().consume(match,InputConsumption::regular,~(rail_owner | manual_owner))) {
                 enqueue(InputAction::lip_select,now,0,environment,1,static_cast<std::uint8_t>(direction),0,0,{},&match); lip_had_input_ = true;
             }
         }
         const std::array token{InputToken{InputSource::buttons,15,InputEdge::press}};
-        const auto match = events_.history().match({token,1000,~rail_owner},now);
-        if (match && events_.history().consume(match,InputConsumption::regular,~rail_owner)) {
+        const auto match = events_.history().match({token,1000,~(rail_owner | manual_owner)},now);
+        if (match && events_.history().consume(match,InputConsumption::regular,~(rail_owner | manual_owner))) {
             enqueue(InputAction::lip_select,now,0,environment,1,0,0,0,{},&match); lip_had_input_ = true;
         }
     }
@@ -1005,6 +1049,7 @@ private:
     InputGenerations flip_generations_{}, grab_generations_{};
     bool native_required_{};
     InputBalanceControls balance_controls_{};
+    InputRailState previous_rail_{};
     InputEvents events_{};
     InputRequestQueue pending_{};
     Diagnostic diagnostic_{};
