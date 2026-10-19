@@ -48,6 +48,11 @@ struct InputMatch {
     std::uint64_t first_at{}, last_at{};
     std::size_t count{};
     std::uint64_t held_reuse{};
+    bool operator==(const InputMatch&) const = default;
+    static InputMatch single(const InputEvent& event) noexcept {
+        InputMatch result{}; result.events[0] = event.sequence; result.count = 1;
+        result.first_at = result.last_at = event.at; return result;
+    }
     explicit operator bool() const noexcept { return count != 0; }
 };
 // Allocation-free event journal. Timestamps and sequence identities survive ring
