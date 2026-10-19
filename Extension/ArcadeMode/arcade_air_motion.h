@@ -212,9 +212,9 @@ public:
         const float current = spins[0][0]*axis[0] + spins[0][1]*axis[1] + spins[0][2]*axis[2];
         const float ds = output.angular ? output.spin_y-current : 0;
         for (std::size_t i = 0; i < N; ++i) {
-            for (unsigned axis = 0; axis < 3; ++axis) {
-                const float v = velocities[i][axis] + (axis == 1 ? dy : axis == 0 ? dx : dz);
-                const float s = spins[i][axis] + ds * up[axis] / length;
+            for (unsigned component = 0; component < 3; ++component) {
+                const float v = velocities[i][component] + (component == 1 ? dy : component == 0 ? dx : dz);
+                const float s = spins[i][component] + ds * up[component] / length;
                 if (!std::isfinite(v) || !std::isfinite(s) || std::abs(v) >= 1000 || std::abs(s) >= 1000) return false;
             }
         }

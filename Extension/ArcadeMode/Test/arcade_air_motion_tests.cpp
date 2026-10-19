@@ -97,8 +97,8 @@ int main() {
     AirRotation shoulder;
     shoulder.poll(1000, 0, true, SkatePose::air, false, false, false, true);
     shoulder.poll(1017, BoardChord::rb, true, SkatePose::air, false, false, false, true);
-    const auto rate = shoulder.poll(1140, BoardChord::rb, true, SkatePose::air, false, false, false, true);
-    check(rate.owns_left && rate.x == 0 && rate.y == 0 && rate.yaw_rate == 7.75f,
+    const auto held_rate = shoulder.poll(1140, BoardChord::rb, true, SkatePose::air, false, false, false, true);
+    check(held_rate.owns_left && held_rate.x == 0 && held_rate.y == 0 && held_rate.yaw_rate == 7.75f,
           "native rate control replaces its competing LS spin recipe while retaining chord arbitration");
     for (unsigned rate : {30u, 60u}) {
         Fixture cadence; cadence.frame.dt = 1.0f / static_cast<float>(rate); cadence.sample(1000, 100);

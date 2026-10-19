@@ -14,9 +14,9 @@ struct NativeManualContact {
     std::uint32_t contacts{};
     bool admitted{};
     std::uint64_t owner_generation{}, contact_generation{}, action_generation{};
-    bool generation_matches(std::uint64_t owner, std::uint64_t contact, std::uint64_t action) const noexcept {
+    bool generation_matches(std::uint64_t current_owner, std::uint64_t contact, std::uint64_t action) const noexcept {
         return admitted && owner_generation && contact_generation && action_generation &&
-            owner_generation == owner && contact_generation == contact && action_generation == action;
+            owner_generation == current_owner && contact_generation == contact && action_generation == action;
     }
     bool matches(std::uint64_t now, const std::array<std::uintptr_t,5>& current,
                  unsigned state, unsigned mode, unsigned observed_contacts) const noexcept {

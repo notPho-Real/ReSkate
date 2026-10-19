@@ -11,6 +11,7 @@
 #include "Extension/Objects/ParkEditor/park_editor_runtime.h"
 #include "Extension/Objects/ParkEditor/park_editor_surface.h"
 #include <cmath>
+#include <cstddef>
 #include "Extension/World/local_population_controls.h"
 #include "Extension/World/local_park_rotation.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -123,9 +124,16 @@ struct SurfaceClientGate {std::uintptr_t client{},base{},context{};std::uint64_t
 SurfaceClientGate surface_client_gate; // Existing client callback, protected by native_mutex.
 struct SurfaceSelf {
  std::uintptr_t collection{},component{};std::uint64_t entity{};
+ // Keep the existing query offset and SIMD alignment without implicit padding.
+ std::uint64_t query_padding{};
  alignas(16) std::array<std::uint64_t,3> query{};
- bool operator==(const SurfaceSelf&) const=default;
+ std::uint64_t tail_padding{};
+ bool operator==(const SurfaceSelf& other) const {
+  return collection==other.collection&&component==other.component&&entity==other.entity&&query==other.query;
+ }
 };
+static_assert(alignof(SurfaceSelf)==16&&sizeof(SurfaceSelf)==64);
+static_assert(offsetof(SurfaceSelf,query)==32);
 bool read_surface_self(std::uintptr_t context,const NoBailSkater& owner,SurfaceSelf& result) {
  auto& r=placements_runtime();SurfaceSelf next;
  std::uintptr_t actual{},type{},component{};std::uint8_t count{},attached{};
