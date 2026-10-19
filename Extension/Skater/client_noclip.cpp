@@ -611,6 +611,16 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             a.ground_resistance.reset(); a.ready_until.store(0,std::memory_order_release);
             release_turn(!manual.admitted,true); commit_motion(false,angular_release); return;
         }
+        // OFF may have deferred withdrawal while the input mutex was busy.
+        // A new command generation must retire that original physical receipt
+        // before normal motion can consume or replace it. Cleanup retains its
+        // original owner/contact/action/body checks and write deadline.
+        if (a.generation != intent.generation && (a.turn_write.pending() || a.air_write.pending())) {
+            if (!cleanup.inspected) {
+                a.output={}; a.ground_output={}; a.ready_until.store(0,std::memory_order_release); return;
+            }
+            release_turn(!manual.admitted,true);
+        }
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame)});

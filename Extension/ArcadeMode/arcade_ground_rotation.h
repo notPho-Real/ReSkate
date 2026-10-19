@@ -129,6 +129,7 @@ public:
     using Parts = std::array<std::uintptr_t,32>;
     using Spins = std::array<std::array<float,3>,32>;
     void clear() noexcept { pending_=false; }
+    bool pending() const noexcept { return pending_; }
     void record(const NativeInputFrame& frame,const Parts& parts,const Spins& spins,const std::array<float,3>& up,
                 const MotionCleanupProof& cleanup = {}) noexcept {
         frame_=frame; cleanup_={};
