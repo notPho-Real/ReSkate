@@ -206,12 +206,13 @@ void manual_readiness_contracts() {
     air.admission.tick = 5; air.session.poll(766, {}, 0, 0, air.admission);
     auto out = air.session.poll(767, {}, 0, 0, air.admission);
     check(out.manual.owns && out.manual.request_at == 68, "air readiness at699ms retains original recognition timestamp");
-    check(!air.session.poll(768, {}, 0, 0, air.admission).manual.owns,
-        "deferred native air actuation expires at the original700ms boundary without renewal");
+    check(air.session.poll(768, {}, 0, 0, air.admission).manual.owns &&
+          !air.session.poll(769, {}, 0, 0, air.admission).manual.owns,
+        "deferred native air actuation includes700ms and expires afterward without renewal");
     Harness expired; setup(expired, true);
-    expired.session.poll(768, {}, 0, 0, expired.admission);
+    expired.session.poll(769, {}, 0, 0, expired.admission);
     check(expired.session.diagnostic().dispatched == 1 && expired.session.diagnostic().dispatch[0].disposition == InputDisposition::expired,
-        "native half-open air deadline is explicit even while execution is busy");
+        "native inclusive air deadline expires explicitly even while execution is busy");
     expired.admission.tick = 5; expired.session.poll(785, {}, 0, 0, expired.admission);
     check(!expired.session.poll(802, {}, 0, 0, expired.admission).manual.owns,
         "expired readiness cannot execute after the owner becomes available");

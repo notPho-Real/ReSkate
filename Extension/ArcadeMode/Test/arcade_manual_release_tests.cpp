@@ -43,5 +43,13 @@ int main() {
               !input.poll(3068,{0,0,-25000},0,0,admission).manual.owns,
               "closed production eligibility prevents immediate direction-pair reacquisition between native updates");
     }
+    for (int direction : {-1,1}) for (std::uint64_t age : {699u,700u,701u}) {
+        ManualActuation actuation;
+        const bool admitted=actuation.request(1000+age,direction,true,true,true,1000);
+        check(admitted==(age<=700), "airborne native admission preserves the inclusive recognized-slot lifetime");
+        ManualActuation waiting; waiting.request(1000,direction,true,true,true,1000);
+        check(waiting.sample(1000+age,true,true,SkatePose::air,false,0).owns_stick==(age<=700),
+              "held airborne preparation and initial admission use the same exact deadline");
+    }
     std::cout<<checks<<" manual release checks passed\n";
 }

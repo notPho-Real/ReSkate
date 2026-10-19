@@ -41,7 +41,7 @@ public:
     bool request(std::uint64_t now, int direction, bool airborne, bool safe,
                  bool prepared_air, std::uint64_t recognized_at) noexcept {
         if (!safe || requested_ || (direction != -1 && direction != 1)) return false;
-        if (prepared_air && (now < recognized_at || now - recognized_at >= air_request_ms)) return false;
+        if (prepared_air && (now < recognized_at || now - recognized_at > air_request_ms)) return false;
         hard_reset_ = false; requested_ = direction;
         // Airborne waiting never renews preparation lifetime. A first admitted
         // ground execution begins the separate existing landing-settling clock.
@@ -64,7 +64,7 @@ public:
             // Recognition, airborne request lifetime and native landing settling
             // have separate deadlines. Rebounds cannot renew any of them.
             if (air_prepared_ && !landed_ && !confirmed_) {
-                if (now - requested_at_ >= air_request_ms) { cancel(); return {}; }
+                if (now - requested_at_ > air_request_ms) { cancel(); return {}; }
                 if (observed != SkatePose::air) { landed_ = true; requested_at_ = now; }
             }
             const auto wanted = requested_ < 0 ? SkatePose::manual : SkatePose::nose_manual;

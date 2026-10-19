@@ -205,8 +205,9 @@ int run_arcade_manual_tests() {
         poll(manual, 10, 12500, SkatePose::air);
         poll(manual, 360, -12500, SkatePose::air);
         check(poll(manual, 1059, 0, SkatePose::air).owns_stick &&
-              !poll(manual, 1060, 0, SkatePose::air).owns_stick,
-              "air request expires700ms after recognition without a refreshed deadline");
+              poll(manual, 1060, 0, SkatePose::air).owns_stick &&
+              !poll(manual, 1061, 0, SkatePose::air).owns_stick,
+              "air request remains valid at700ms and expires afterward without a refreshed deadline");
         check(!poll(manual, 1080).owns_stick,
               "an expired airborne request cannot replay on landing");
     }
