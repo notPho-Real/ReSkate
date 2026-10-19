@@ -139,6 +139,8 @@ void prepare_authored_catalog() noexcept {
     }
 }
 ComboSession combo_session(native_combo_tuning());
+ManualPhysics physical_manual;
+std::atomic<bool> reset_physical_manual{true};
 ManualObservation manual_identity;
 std::uint64_t manual_identity_epoch{1};
 std::uint64_t combo_tick_at{};
@@ -152,20 +154,26 @@ BalanceControl balance_control;
 void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, const ControllerInput& input,
                   bool watch_valid, std::uint64_t wipeouts, std::uint64_t now,
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
-                  bool native_push_contact) noexcept {
+                  bool native_push_contact, float simulation_step) noexcept {
+    if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
+        physical_manual.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
+    }
     const auto score = score_activity();
-    const bool valid = native.valid && input.available && watch_valid;
+    const bool valid = native.valid && input.available && watch_valid &&
+        std::isfinite(simulation_step) && simulation_step >= .001f && simulation_step <= .1f;
     const bool owner_changed = valid && had_combo_owner && owner != combo_owner;
     if (valid && (!had_combo_owner || owner_changed) && manual_identity_epoch)
         manual_identity_epoch = manual_identity_epoch == UINT64_MAX ? 0 : manual_identity_epoch + 1;
     const bool observation_gap = combo_tick_at &&
         (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
     if (!valid || owner_changed) {
+        physical_manual.reset();
         cancel_balance_bail();
         combo_session.invalidate();
         combo_tick_at = 0;
     }
     const bool bail = valid && had_combo_owner && !owner_changed && wipeouts != observed_wipeouts;
+    if (bail || observation_gap) physical_manual.reset();
     had_combo_owner = valid;
     combo_owner = valid ? owner : NoBailSkater{};
     observed_wipeouts = wipeouts;
@@ -194,7 +202,15 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool native_revert = observed_native_revert({valid && !owner_changed,
         score.valid && now >= score.sampled_at && now - score.sampled_at <= 150,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u}, label, now);
-    const bool failed = combo_session.step(pose, dt, correction, native_revert);
+    PhysicalBalanceSample physical{true, false};
+    const bool manual_pose = balance_kind(pose) == BalanceKind::manual;
+    if (manual_pose) {
+        if (!physical_manual.active() && !physical_manual.closed()) physical_manual.begin(pose == SkatePose::nose_manual);
+        physical = physical_manual.sample(simulation_step, correction);
+    } else if (pose == SkatePose::riding || pose == SkatePose::bail || pose == SkatePose::unknown) physical_manual.reset();
+    else physical_manual.stop(); // Airborne hops retain physical repeat history.
+    const bool failed = combo_session.step(pose, dt, correction, native_revert,
+        manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
     const auto termination = combo_session.model().balance_exit();
     if (termination != BalanceExit::none)
         input_telemetry.client(BalanceTerminationEvidence{now, static_cast<unsigned>(pose),
@@ -243,6 +259,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         next_balance_sample = now + 250;
         input_telemetry.client(BalanceSampleEvidence{now, static_cast<unsigned>(balance.balance_kind),
             balance.balance, balance.balance_velocity, correction, combo_session.model().difficulty(), input.left_x, input.left_y});
+        if (manual_pose && physical.valid)
+            input_telemetry.client(ManualPhysicsEvidence{now, simulation_step, physical.elapsed,
+                physical.repeat_pressure, physical.position, physical.velocity, 10});
     }
     if (pose != previous_pose || failed || was_active != balance.combo_active) {
         input_telemetry.client(ComboEventEvidence{now, static_cast<unsigned>(pose), balance.combo_active, failed,
@@ -288,6 +307,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE TERMINATION: ms={} pose={} outcome={} native_exit_verified=false.",
                 r.ms, r.pose, r.outcome);
+        else if constexpr (std::is_same_v<T, ManualPhysicsEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE MANUAL PHYSICS: ms={} dt={} elapsed={} pressure={} x={} v={} profile={}.",
+                r.ms, r.step, r.elapsed, r.repeat_pressure, r.position, r.velocity, r.profile);
         else if constexpr (std::is_same_v<T, ScoreEdgeEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE SCORE EDGE: seq={} observed={} sampled={} labels={} uncertainty={}.",
@@ -682,6 +705,7 @@ void set_enabled(bool value, bool persist) noexcept {
         air_flip_ready_until.store(0, std::memory_order_release);
         manual_observed.store(SkatePose::unknown, std::memory_order_relaxed);
         manual_balance_admitted.store(false, std::memory_order_relaxed);
+        reset_physical_manual.store(true, std::memory_order_release);
         previous_pad = {};
         previous_source_pad = {};
     }
@@ -822,10 +846,11 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         board_eligible_until.store(gameplay && watch.valid && board_safe ? now + 150 : 0,
             std::memory_order_release);
-        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label, push_valid);
+        if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label, push_valid, step);
         else {
             cancel_balance_bail();
             manual_identity.reset(manual_label);
+            physical_manual.reset();
             had_combo_owner = false;
             combo_owner = {};
             {

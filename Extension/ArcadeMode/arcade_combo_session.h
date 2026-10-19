@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_model.h"
 #include "arcade_score_settlement.h"
+#include "arcade_manual_physics.h"
 
 namespace dingosdk::arcade_mode {
 // Semantic observations supplied by a verified native observer, never buttons.
@@ -48,8 +49,10 @@ public:
         manual_putdown_ = false;
         exit_elapsed_ = 0;
     }
-    bool step(SkatePose pose, float dt, float correction, bool observed_revert = false) noexcept {
+    bool step(SkatePose pose, float dt, float correction, bool observed_revert = false,
+              const PhysicalBalanceSample* physical = nullptr) noexcept {
         if (pose == SkatePose::unknown ||
+            (physical && !physical->valid) ||
             !std::isfinite(dt) || dt < 0 || dt > 0.25f) {
             invalidate();
             return false;
@@ -82,7 +85,7 @@ public:
         // Rail balance retains its existing two-sided failure behavior.
         const auto endpoints = previous_ == SkatePose::manual ? BalanceEndpoints::positive_bail :
             previous_ == SkatePose::nose_manual ? BalanceEndpoints::negative_bail : BalanceEndpoints::bail_both;
-        const bool failure = model_.tick(dt, correction, 1, endpoints);
+        bool failure = model_.tick(dt, correction, 1, endpoints, physical == nullptr);
         if (model_.balance_exit() == BalanceExit::putdown) manual_putdown_ = true;
         if (failure) failed_section_ = true;
         if (kind == BalanceKind::none) failed_section_ = manual_putdown_ = false;
@@ -99,6 +102,11 @@ public:
                     balance_kind(previous_) != BalanceKind::none)
                     model_.landing();
             }
+        }
+        if (physical && kind == BalanceKind::manual && !failed_section_ && !manual_putdown_) {
+            failure |= model_.apply_physical_balance(physical->position, physical->velocity, physical->exit);
+            if (failure) failed_section_ = true;
+            if (physical->exit == BalanceExit::putdown) manual_putdown_ = true;
         }
         if (observed_revert) model_.revert();
         scoring_.poll(model_);

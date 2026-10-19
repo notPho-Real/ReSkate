@@ -141,10 +141,21 @@ public:
         state_.balance = 0.0f;
         state_.balance_velocity = 0.0f;
     }
+    bool apply_physical_balance(float position, float velocity, BalanceExit outcome) noexcept {
+        if (state_.balance_kind != BalanceKind::manual || !std::isfinite(position) || !std::isfinite(velocity)) return false;
+        state_.balance = std::clamp(position, -1.0f, 1.0f); state_.balance_velocity = velocity;
+        if (outcome == BalanceExit::putdown) {
+            end_balance(); landing(); balance_exit_ = outcome; return false;
+        }
+        if (outcome == BalanceExit::bail) {
+            const auto failed = state_; bail(); failed_balance_ = failed; balance_exit_ = outcome; return true;
+        }
+        return false;
+    }
     // Returns true on balance failure. Expired landing/revert grace banks into
     // take_banked_points(), independently of active-combo reset/bail.
     bool tick(float dt, float correction = 0.0f, float drift_sign = 1.0f,
-              BalanceEndpoints endpoints = BalanceEndpoints::bail_both) noexcept {
+              BalanceEndpoints endpoints = BalanceEndpoints::bail_both, bool integrate_manual = true) noexcept {
         balance_exit_ = BalanceExit::none;
         dt = bounded(dt, 0.0f, 1.0f);
         if (!state_.combo_active || dt == 0.0f) return false;
@@ -169,6 +180,7 @@ public:
             if (state_.balance_kind == BalanceKind::none) continue;
             auto& fatigue = state_.balance_kind == BalanceKind::grind ? state_.grind_fatigue : state_.manual_fatigue;
             fatigue = std::min(1.0f, fatigue + tuning_.mode_fatigue_per_second * h);
+            if (!integrate_manual && state_.balance_kind == BalanceKind::manual) continue;
             const float d = difficulty();
             const float phase = static_cast<float>(seed_ % 4096u) * 0.001f;
             const float wave = 0.65f + 0.25f * std::sin(state_.combo_age_s * 0.9f + phase)

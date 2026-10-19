@@ -1,17 +1,21 @@
 #pragma once
+#include "arcade_gameplay_profile.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 
 namespace dingosdk::arcade_mode {
-// Nominal mid-stat ground kick response, in SI units. This supplies a bounded
+// Selected ground kick response, in SI units. This supplies a bounded
 // acceleration budget through the existing Trainer body writer. Native
 // steering, vertical velocity and collisions remain authoritative.
 class GroundDrive {
 public:
-    static constexpr float standing_speed = 11.30f, standing_acceleration = 16.88f;
-    static constexpr float crouched_speed = 15.33f, crouched_acceleration = 28.66f;
-    void reset() noexcept { *this = {}; }
+    static constexpr float standing_speed = GameplayProfile{}.kick_speed(false);
+    static constexpr float standing_acceleration = GameplayProfile{}.kick_acceleration(false);
+    static constexpr float crouched_speed = GameplayProfile{}.kick_speed(true);
+    static constexpr float crouched_acceleration = GameplayProfile{}.kick_acceleration(true);
+    explicit GroundDrive(GameplayProfile profile = {}) noexcept : profile_(profile) {}
+    void reset() noexcept { const auto selected = profile_; *this = GroundDrive(selected); }
     float step(float dt, const std::array<float, 3>& position,
                const std::array<float, 3>& velocity, bool crouched, bool may_start = false) noexcept {
         if (!std::isfinite(dt) || dt < .005f || dt > .04f) { reset(); return 0; }
@@ -43,8 +47,8 @@ public:
             if (travel_time_ >= .1f) {
                 position_ = position; travel_time_ = expected_travel_ = 0;
             }
-            const float acceleration = crouched ? crouched_acceleration : standing_acceleration;
-            const float limit = crouched ? crouched_speed : standing_speed;
+            const float acceleration = profile_.kick_acceleration(crouched);
+            const float limit = profile_.kick_speed(crouched);
             // Count acceleration already supplied by native pushing. Compensate
             // only bounded ground steering drag, never a collision-sized loss.
             const bool flat = std::abs(velocity[1]) < .3f && std::abs(position[1] - position_[1]) < .025f;
@@ -56,12 +60,13 @@ public:
             // The guarded caller permits this only on native two-wheel ground.
             // Ground acceleration need not wait for the native kick animation.
             if (may_start && speed < .5f)
-                change = (crouched ? crouched_acceleration : standing_acceleration) * dt;
+                change = profile_.kick_acceleration(crouched) * dt;
         }
         previous_speed_ = speed + change; velocity_ = velocity;
         return change;
     }
 private:
+    GameplayProfile profile_{};
     bool primed_{}, blocked_{};
     float previous_speed_{}, travel_time_{}, expected_travel_{};
     std::array<float, 3> position_{}, velocity_{};

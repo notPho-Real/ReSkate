@@ -46,6 +46,11 @@ struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipS
 struct RevertLinkEvidence { std::uint64_t ms{}, sequence{}, labels{}; bool accepted{}; unsigned remaining_ms{}; };
 struct BalanceFailureEvidence { std::uint64_t ms{}; unsigned kind{}; std::uint64_t request{}; };
 struct BalanceTerminationEvidence { std::uint64_t ms{}; unsigned pose{}, outcome{}; };
+struct ManualPhysicsEvidence {
+    std::uint64_t ms{};
+    float step{}, elapsed{}, repeat_pressure{}, position{}, velocity{};
+    unsigned profile{};
+};
 struct BalanceSampleEvidence { std::uint64_t ms{}; unsigned kind{}; float x{}, v{}, input{}, difficulty{}; short raw_x{}, raw_y{}; };
 struct ComboEventEvidence { std::uint64_t ms{}; unsigned pose{}; bool active{}, failed{}; float fatigue{}, grind{}, manual{}; };
 struct BalanceBailEvidence { std::uint64_t ms{}, request{}; unsigned result{}; };
@@ -118,7 +123,7 @@ inline bool foot_motion_valid(const FootMotionEvidence& r) noexcept {
 }
 struct ScoreNodeEvidence { ScoreProbePath path{}; unsigned kind{}, size{}; };
 struct ScoreValueEvidence { std::uint64_t ms{}; ScoreProbePath path{}; std::uint32_t value{}; bool label{}, limit{}; };
-using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence, BalanceTerminationEvidence,
+using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFailureEvidence, BalanceTerminationEvidence, ManualPhysicsEvidence,
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
@@ -126,6 +131,12 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
+    if (const auto* manual = std::get_if<ManualPhysicsEvidence>(&row))
+        return std::isfinite(manual->step) && manual->step > 0 && manual->step <= .1f &&
+            std::isfinite(manual->elapsed) && manual->elapsed >= 0 &&
+            std::isfinite(manual->repeat_pressure) && manual->repeat_pressure >= 0 &&
+            std::isfinite(manual->position) && std::abs(manual->position) <= 1 && std::isfinite(manual->velocity) &&
+            (manual->profile == 5 || manual->profile == 10);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
