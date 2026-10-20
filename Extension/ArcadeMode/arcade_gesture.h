@@ -213,6 +213,11 @@ public:
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
         }
+        // A retired/unissued native method must not leave a perpetual input
+        // owner after its original readiness deadline. Active held methods
+        // retain their existing lifetime, independently of that deadline.
+        const auto expired_rail = native_bound_ && !native_rail_.active() ?
+            sessions_[user].expire_inactive_rail(now) : InputRequest{};
         // Older callers can supply held-trigger admission without analog values.
         if (triggers_held && !lt && !rt) lt = 31;
         InputAdmission admission{game_input, may_start, may_push, may_toggle_board, authored,
@@ -280,7 +285,11 @@ public:
                 }
             }
         }
-        const auto output = sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
+        auto output = sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
+        // Preserve one terminal receipt with its original identity/time. This
+        // is cancellation, not a fabricated physical release or native issue.
+        if (admission.gameplay && !admission.offboard && !admission.observed_lip &&
+            output.rail.request.action == InputAction::none) output.rail.request = expired_rail;
         if (output.requested_id) ordinary_jump_playback_[user] =
             (output.requested_id == 1 || output.requested_id == 16) && !admission.offboard &&
             admission.pose != SkatePose::grind && admission.pose != SkatePose::grind_exit_transition;

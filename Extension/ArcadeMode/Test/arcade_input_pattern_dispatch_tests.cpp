@@ -224,5 +224,82 @@ void recognition_observation_lineage() {
  }
 }
 
+void contextual_predicates() {
+ for (bool grab : {false,true}) for (auto age : {299u,300u,301u}) for (bool released : {false,true}) {
+  UnifiedInput input; Capture sink; sink.result=InputDisposition::unsupported;
+  InputEnvironment env{InputContext::air,true}; env.auxiliary_enabled=false;
+  const auto kind=grab?InputAirTableKind::grab_extra:InputAirTableKind::pressure;
+  const auto poll=[&](std::uint64_t now,PhysicalInputSample physical,bool install) {
+   env.native_context={true,true,{1,1,1},now+1,now,false,true,1,1};
+   InputAirTable table{kind,1,1000,env.native_context,install};
+   env.air_tables=grab?InputAirTables{table,{}}:InputAirTables{{},table};
+   input.poll(now,physical,env,sink.adapter());
+  };
+  poll(0,{},false);
+  const auto face=static_cast<std::uint16_t>(grab?0x2000:0x4000);
+  poll(1,{face},false);
+  if(released)poll(2,{},false);
+  env.auxiliary_enabled=true;sink.calls=0;
+  poll(age+1,grab?PhysicalInputSample{static_cast<std::uint16_t>(released?0:face)}:
+   direction(6,static_cast<std::uint16_t>(released?0:face)),true);
+  const bool selected=sink.calls && sink.last.form==InputForm::contextual;
+  check(selected==(age==299),"context-selected press age is strictly younger than300ms, including released buffered faces");
+  if(selected) {
+   const auto& row=sink.last.selection;
+   check(row.trick==(grab?ArcadeTrick::compact_grab:ArcadeTrick::pressure_turn_flip) &&
+    row.family==(grab?TrickFamily::grab:TrickFamily::flip) && row.query_ms==300 &&
+    row.flags==(grab?contextual_extra:(contextual_board_rotation|contextual_followup_flip)) &&
+    sink.last.air.trick==ArcadeTrick::none && sink.last.physical_pressed_at==1 &&
+    sink.last.table_generation==1 && sink.last.table_expires_at==1000,
+    "context descriptor retains exact identity, flags, physical origin and original table lifetime without an ordinary alias");
+   check(input.diagnostic().dispatched==1 && input.diagnostic().dispatch[0].disposition==InputDisposition::unsupported,
+    "missing contextual actor is explicitly unsupported, never native started");
+   const auto calls=sink.calls;
+   poll(age+2,grab?PhysicalInputSample{static_cast<std::uint16_t>(released?0:face)}:
+    direction(6,static_cast<std::uint16_t>(released?0:face)),true);
+   check(sink.calls==calls,"repeated polling of a consumed face cannot repeat the contextual command");
+  } else if(!grab) {
+   check(sink.calls==1 && sink.last.form==InputForm::ordinary,
+    "expired pressure query permits the independently eligible ordinary500ms fallback");
+  }
+ }
+ // The held-direction branch reuses its old direction; the released branch
+ // requires both fresh presses and rejects an unrelated intervening press.
+ for(bool held:{false,true})for(bool intervening:{false,true})for(auto age:{299u,300u,301u}) {
+  UnifiedInput input;Capture sink;sink.result=InputDisposition::unsupported;
+  InputEnvironment env{InputContext::air,true};
+  const auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
+   env.native_context={true,true,{1,1,1},now+1,now,false,true,1,1};
+   env.air_tables.pressure={InputAirTableKind::pressure,1,2000,env.native_context,true};
+   input.poll(now,physical,env,sink.adapter());
+  };
+  poll(0,{});poll(1,direction(6));
+  if(!held)poll(2,{});
+  if(intervening)poll(3,held?direction(6,0x200):PhysicalInputSample{0x200});
+  poll(age+1,held?direction(6,0x4000):PhysicalInputSample{0x4000});
+  const bool selected=sink.calls && sink.last.form==InputForm::contextual;
+  check(selected==(held || (!intervening && age==299)),
+   "pressure held-direction branch times the face, while released-direction branch times both presses and the intervening-press barrier");
+ }
+ for(auto cadence:{17u,34u})for(bool pad:{false,true}) {
+  UnifiedInput input;Capture sink;sink.result=InputDisposition::unsupported;
+  InputEnvironment env{InputContext::air,true};
+  const auto poll=[&](std::uint64_t now,PhysicalInputSample physical) {
+   env.native_context={true,true,{1,1,1},now+1,now,false,true,1,1};
+   env.air_tables.extra={InputAirTableKind::grab_extra,1,2000,env.native_context,true};
+   env.air_tables.pressure={InputAirTableKind::pressure,1,2000,env.native_context,true};
+   input.poll(now,physical,env,sink.adapter());
+  };
+  poll(0,{});poll(cadence,pad?PhysicalInputSample{8}:direction(6));
+  poll(2*cadence,pad?PhysicalInputSample{0x6008}:direction(6,0x6000));
+  const auto& d=input.diagnostic();
+  check(d.recognition_count==0 && d.dispatched==2 &&
+   d.dispatch[0].request.selection.trick==ArcadeTrick::compact_grab &&
+   d.dispatch[1].request.selection.trick==ArcadeTrick::pressure_turn_flip,
+   "qualified extra precedes pressure, pressure precedes ordinary, with simultaneous faces at30/60Hz on either direction device");
+  check(sink.calls==2,"each contextual footprint consumes once, preventing simultaneous ordinary fallback");
+ }
 }
-int main(){recognition_observation_lineage();active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}
+
+}
+int main(){contextual_predicates();recognition_observation_lineage();active_session();manual_prefix_reuse();session_manual_prefix();other_category_prefixes();prefix_boundaries();sampled_prefixes();ground_prefixes();simultaneous_final_pair();extra_priority_and_waiting();std::cout<<checks<<" pattern dispatcher checks passed\n";}

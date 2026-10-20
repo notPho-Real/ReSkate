@@ -1,0 +1,181 @@
+// Controlled clocks/probes/presenters and nonactuating sinks. Production
+// functions and call transactions are inserted by generate.py, never copied here.
+
+#include "Extension/ArcadeMode/arcade_manual_step.h"
+#include "Extension/ArcadeMode/arcade_manual_labels.h"
+#include "Extension/ArcadeMode/arcade_air_motion.h"
+@@ACQUISITION_INCLUDE@@
+#include "Extension/ArcadeMode/arcade_manual_balance_entry.h"
+#include "Extension/ArcadeMode/arcade_manual_release.h"
+#include "Extension/ArcadeMode/arcade_native_events.h"
+#include "Extension/ArcadeMode/arcade_native_readiness.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
+#include "Extension/Skater/no_bail.h"
+#include <mutex>
+#include <memory>
+#include <iostream>
+#include <cstdlib>
+using namespace dingosdk;using namespace dingosdk::arcade_mode;
+bool watch=true;std::uint64_t clock_ms=1000;std::uint64_t GetTickCount64(){return clock_ms;}
+bool auto_kick_enabled(){return true;}
+std::mutex ollie_mutex;bool active=true;bool enabled(){return active;}
+NativeInputState native_input_state,motion_cleanup_state;ArcadeInput arcade_input(true);
+NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
+struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{};};
+struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,true,clock_ms};}
+struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations;std::array<NativeCharge,4>native_charges;
+std::array<Reset,4> neutral_delivery;Reset playback_packets;
+std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
+NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
+struct Telemetry{template<class T>void client(const T&){}}input_telemetry;
+struct Correlation{void lost(){}}input_capture_correlation;
+std::uint64_t capture_admission_sequence{},capture_termination_sequence{};
+
+void capture_event(CaptureCorrelationSource,std::uint64_t,std::uint64_t,const NativeInputFrame&){}
+namespace dingosdk {void cancel_balance_bail()noexcept{}std::uint64_t request_balance_bail(const NoBailSkater&)noexcept{return 1;}}
+void set_arcade_push_intent(bool){}void set_arcade_air_intent(bool,std::uint64_t,std::uint64_t,unsigned,float,bool){}
+std::mutex hud_mutex;BalanceMeter meter;unsigned danger_level{};BalanceHudSource observed;std::uint64_t hud_now()noexcept{return clock_ms;}
+@@HUD_PUBLISH@@
+@@HUD_PENDING@@
+@@STATE@@@@UPDATE@@
+NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
+void observe(float seconds,unsigned contacts,unsigned state=100){
+ raw.valid=true;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
+ const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{true,-1};const bool wipeout=false;
+ std::lock_guard lock(ollie_mutex);
+@@OBSERVER@@latest=frame;arcade_input.publish_authority(now,frame.owner_generation,1,true);
+}
+
+unsigned checks{};void check(bool b,const char* why){++checks;if(!b){std::cerr<<why<<'\n';std::exit(1);}}
+bool same(const PhysicalBalanceSample& a,const PhysicalBalanceSample& b){return a.valid==b.valid&&a.active==b.active&&a.exit==b.exit&&std::abs(a.position-b.position)<=1e-6f&&std::abs(a.velocity-b.velocity)<=1e-6f&&std::abs(a.elapsed-b.elapsed)<=1e-6f&&std::abs(a.repeat_pressure-b.repeat_pressure)<=1e-6f;}
+auto snapshot(){auto copy=physical_manual;return copy.sample(.001f,PhysicalManualControl{});}
+void client(float seconds,const ScoreLabelOccurrence& label){
+ update_combo(raw,owner,ControllerInput{},watch,0,clock_ms,{},label,false,seconds);
+ const auto live=[&](auto& deadline){const auto at=deadline.load();return at>=clock_ms&&at-clock_ms<=150;};
+ native_readiness.publish(latest,{active&&watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
+  live(manual_eligible_until),live(manual_prepare_until),live(manual_release_until),live(action_eligible_until),0});
+}
+ManualHistory presenters;ManualHistoryLabels labels;
+std::vector<ManualHistoryRow> rows;
+ScoreLabelOccurrence history(){const auto diagnostic=presenters.observe(rows,{clock_ms,10,20,30,true,true});labels.observe(diagnostic,clock_ms);return labels.take(clock_ms);}
+const std::optional<std::vector<PreparedGesture>> prepared{std::vector<PreparedGesture>{
+ {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},
+ {16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}}};
+NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0){
+ const unsigned user=0;const auto now=clock_ms;const auto tick=now/17;NativeGesture::Output result{};
+ const auto buttons=physical_buttons;short left_x=0,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;
+ const bool authored=true;
+ arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
+ const auto admission=native_readiness.sample(now,arcade_input.native_context(now));
+ const bool game_input=active&&watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;
+ const auto release_deadline=manual_release_until.load();const bool releasing_manual=game_input&&admission.releasing&&release_deadline>=now&&release_deadline-now<=150;
+ if(releasing_manual)arcade_input.cancel_manuals();
+ const auto manual_deadline=manual_eligible_until.load();const bool manual_safe=game_input&&admission.manual&&manual_deadline>=now&&manual_deadline-now<=150;
+ const auto prepare_deadline=manual_prepare_until.load();const bool manual_prepare=game_input&&admission.prepare&&prepare_deadline>=now&&prepare_deadline-now<=150;
+ const auto action_experiment=ActionExperiment::classic;const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;
+@@POLL@@
+@@DELIVERY@@
+ const bool reference=false;const unsigned char physical_right_trigger=0;
+@@HOP@@
+ if(releasing_manual&&!result.authored_playback&&!action.owned)result.right_x=result.right_y=0;
+ return result;
+}
+template<class T,class... Args>void reconstruct(T& object,Args&&... args){
+ std::destroy_at(&object);std::construct_at(&object,std::forward<Args>(args)...);
+}
+void reset_case(){
+ active=true;watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
+ physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
+ combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
+ had_combo_owner=false;combo_tick_at=0;clock_ms=1000;presenters={};labels={};rows.clear();manual_balance_admitted=false;
+}
+void tick(unsigned dt,unsigned state,unsigned contacts){clock_ms+=dt;observe(dt/1000.f,contacts,state);client(dt/1000.f,history());}
+void prepare_air(bool nose,unsigned dt){
+ reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();
+ tick(dt,100,0xc000);const auto setup=remap(0x1000);check(setup.jump.setup_started&&setup.requested_id==1,"actual facade accepts ordinary Ollie setup on qualified ordinary ground");
+ for(unsigned i=0;i<3;++i){tick(dt,103,0xc000);remap(0x1000);}
+ tick(dt,103,0xc000);const auto release=remap();check(release.jump.released&&release.jump.setup_admitted,"actual facade carries one physical release after accepted ordinary setup");
+ bool ended{};for(unsigned i=0;i<100;++i){tick(dt,200,0);const auto output=remap();if(!output.authored_playback){ended=true;break;}}
+ check(ended,"existing authored playback finishes before independent Manual preparation");
+ tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);const auto request=remap(nose?1u:2u);
+ check(request.manual.owns&&request.manual.request==(nose?1:-1),"actual airborne directional pair requests bounded Manual/Nose hold through existing facade");
+ check(!manual_balance_admitted.load()&&!balance_hud_pending(),"airborne input delivery alone cannot admit balance or HUD");
+}
+std::uint64_t qualified(bool nose,unsigned dt,unsigned duration){
+ const auto wanted=nose?0x8000u:0x4000u;
+ prepare_air(nose,dt);rows.push_back({40,50,nose?2u:1u});tick(dt,100,wanted);const auto delivered=remap();
+ check(delivered.manual.owns&&delivered.manual.confirmed&&manual_balance_admitted.load(),"matching contact/history admits the original delivered preparation");
+ const auto original=delivered.manual.request_at;
+ while(clock_ms-original<duration){const auto state=snapshot();tick(dt,100,wanted);remap(0,state.velocity>0?25000:-25000);check(manual_balance_admitted.load()&&balance_hud_pending(),"qualified corrected balance continues independently of original request lifetime");}
+ return original;
+}
+int main(){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned duration:{300u,1100u,1400u})for(bool seen_unknown:{false,true})for(unsigned duplicates:{0u,3u}){
+  const auto wanted=nose?0x8000u:0x4000u;const auto original=qualified(nose,dt,duration);
+  clock_ms+=dt;observe(dt/1000.f,0);
+  if(seen_unknown){client(dt/1000.f,history());remap();}
+  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"unknown original interval retires balance/HUD without inventing recovery identity");
+  remap();
+  for(unsigned i=0;i<duplicates;++i){++clock_ms;client(dt/1000.f,history());remap();}
+  if(!manual_release.pending()&&clock_ms>=original+1200){tick(dt,100,wanted);remap();}
+  while(!manual_release.pending()&&clock_ms<original+1200+2*dt){
+   if(clock_ms<original+1200)check(!manual_release.pending(),"lost admission cannot shorten or renew original unadmitted cleanup lease");
+   tick(dt,100,wanted);remap();
+  }
+  const auto neutral=remap();
+  if(!(manual_release.pending()&&!neutral.manual.owns&&neutral.right_y==0))std::cerr<<"case nose="<<nose<<" dt="<<dt<<" duration="<<duration<<" seen="<<seen_unknown<<" duplicates="<<duplicates<<" age="<<clock_ms-original<<" owns="<<neutral.manual.owns<<" y="<<neutral.right_y<<" pending="<<manual_release.pending()<<"\n";
+  check(manual_release.pending()&&!neutral.manual.owns&&neutral.right_y==0,"still-acquired same-owner contact retains original bounded cleanup after model interval loss");
+  check(clock_ms>=original+1200,"bounded cleanup uses original ground request timestamp rather than a new recovery timestamp");
+  for(unsigned i=0;i<3;++i){tick(dt,100,wanted);const auto output=remap();check(manual_release.pending()&&!output.manual.owns&&output.right_y==0&&!balance_hud_pending(),"continuing pending putdown stays neutral without balance/HUD or refreshed actuation");}
+  tick(dt,100,0xc000);remap();check(!manual_release.pending()&&!balance_hud_pending(),"actual two-wheel completion retires original cleanup owner");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{300u,200u,401u,701u}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
+  tick(dt,boundary,0);remap();check(!manual_balance_admitted.load()&&(boundary==401?balance_hud_pending()&&!meter.vertical:!balance_hud_pending()),"supported bail/air/rail/exit ends Manual ownership while preserving legitimate distinct rail display");
+  tick(dt,100,wanted);const auto recovered=remap();
+  check(!manual_release.pending()&&!recovered.manual.owns,"old Manual cleanup cannot survive positive native exit into unrelated recovery contact");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned loss=0;loss<4;++loss){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
+  if(loss==0){++owner.rig;clock_ms+=dt;observe(dt/1000.f,wanted);}
+  if(loss==1)clock_ms+=151;
+  if(loss==2)watch=false;
+  if(loss==3){active=false;arcade_input.enable(false);reset_physical_manual=true;}
+  client(dt/1000.f,history());const auto out=remap();
+  check(!manual_release.pending()&&!manual_balance_admitted.load()&&!balance_hud_pending()&&!out.manual.owns,"owner/stale/paused/OFF loss cannot preserve cleanup or admitted balance beyond source guards");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(bool prepared_return:{false,true}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,800);const auto before=snapshot().elapsed;
+  const auto setup=remap(0x1000);check(setup.jump.setup_started&&setup.requested_id==(nose?16u:1u)&&manual_hop.active(),"actual admitted balance-hop request binds passive continuity once");
+  tick(dt,103,0xc000);remap(0x1000);check(!balance_hud_pending()&&!manual_balance_admitted.load()&&manual_hop.active(),"actual native crouch retires balance/HUD while preserving admitted hop history only");
+  tick(dt,103,0xc000);const auto release=remap();check(release.jump.released&&release.jump.setup_admitted&&release.jump.nollie==nose,"physical hop release keeps original admitted Manual/Nose family");
+  tick(dt,200,0);remap();check(!manual_hop.active()&&!balance_hud_pending()&&!manual_balance_admitted.load(),"actual AIR observation ends passive hop token and old balance owner");
+  bool finished{};for(unsigned i=0;i<100;++i){tick(dt,200,0);if(!remap().authored_playback){finished=true;break;}}check(finished,"accepted hop playback finishes without inventing native out clock");
+  if(prepared_return){tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);check(remap(nose?1u:2u).manual.owns,"a fresh airborne pair owns the separately bounded return preparation");}
+  else{
+   tick(dt,100,0xc000);remap();check(!physical_manual.active()&&!balance_hud_pending(),"ordinary observed landing without return preparation resets old physical section");
+   tick(dt,100,0xc000);remap(nose?2u:1u);tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"new ordinary-ground gesture requires fresh input before later balance admission");
+  }
+  rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"new matching history/contact admits later balance without stale old input or identity");
+  check(prepared_return?snapshot().elapsed>before:snapshot().elapsed<before,"known hop preserves retained history, while actual ordinary landing resets it");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{300u,401u,504u,701u}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,300);
+  clock_ms+=dt;observe(dt/1000.f,0,boundary);
+  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());const auto out=remap();
+  check(!out.manual.owns&&!manual_release.pending(),"hard native exit seen between client callbacks must retire old command and cleanup before original lease expires");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{100u,200u,300u,401u,504u,701u}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
+  clock_ms+=dt;observe(dt/1000.f,0);clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());remap();tick(dt,100,wanted);remap();
+  check(manual_release.pending(),"original cleanup is pending before skipped-client completion test");
+  clock_ms+=dt;observe(dt/1000.f,boundary==100?0xc000u:0u,boundary);
+  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());const auto out=remap();
+  check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
+ }
+ std::cout<<checks<<" exact production exit/cleanup lifecycle checks passed\n";
+}

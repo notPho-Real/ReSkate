@@ -16,7 +16,9 @@ public:
         if (!eligible || !current.valid) { reset(); return; }
         const bool manual = pose == SkatePose::manual || pose == SkatePose::nose_manual;
         const bool nose = pose == SkatePose::nose_manual;
-        if (balance_admitted && origin.valid && manual && held_a && output.authored_playback &&
+        if (!active_ && balance_admitted && origin.valid && manual && held_a && output.authored_playback &&
+            output.jump.setup_started && !output.jump.released && !output.jump.from_rail &&
+            output.jump.nollie == nose && output.jump.pressed_at <= now &&
             output.requested_id == (nose ? 16 : 1) && current.state == 100 && current.mode == 1 &&
             current.owner.valid() && current.owner_generation && current.contact_generation && current.action_generation &&
             current.physics_step && origin.owner == current.owner && origin.state == 100 && origin.mode == 1 &&
@@ -24,7 +26,10 @@ public:
             origin.action_generation == current.action_generation && now >= current.sampled_at && now-current.sampled_at <= 150 &&
             now >= origin.sampled_at && now-origin.sampled_at <= 150) {
             owner_ = current.owner; generation_ = current.owner_generation;
-            began_ = now; nose_ = nose; active_ = true; released_ = false;
+            // Use the existing accepted setup edge's physical press, never the
+            // admission/poll clock. Continuing authored delivery cannot rearm
+            // this token before its matching physical release.
+            began_ = output.jump.pressed_at; nose_ = nose; active_ = true; released_ = false;
         }
         if (!active_) return;
         if (owner_ != current.owner || generation_ != current.owner_generation) { reset(); return; }

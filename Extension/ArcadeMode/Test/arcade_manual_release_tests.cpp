@@ -95,5 +95,19 @@ int main() {
                   "unadmitted settling expires at1200ms without renewal");
         }
     }
+    for(unsigned state:{100u,200u,201u,300u,401u,504u,701u})for(unsigned fault=0;fault<7;++fault) {
+        ManualRelease r;r.step(2000,1,true,SkatePose::manual,true,10);
+        NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};f.owner_generation=1;
+        f.physics_step=11;f.sampled_at=2017;f.state=state;f.mode=1;f.contacts=0xc000;f.rail_family=state==401;
+        if(fault==1)f.sampled_at=1999;
+        if(fault==2)f.owner_generation=2;
+        if(fault==3)f.valid=false;
+        if(fault==4){f.state=101;f.rail_family=false;}
+        if(fault==5)f.physics_step=10;
+        r.retire_observed(fault==6?2200:2034,f);
+        check(r.pending()==(fault!=0),"buffered completion requires original later native step, current owner, positive contact and fresh timestamp");
+        if(fault==0){r.step(2034,1,true,SkatePose::manual,true,12);r.retire_observed(2034,f);
+            check(r.pending(),"old completion cannot erase a new same-owner release");}
+    }
     std::cout<<checks<<" manual release checks passed\n";
 }

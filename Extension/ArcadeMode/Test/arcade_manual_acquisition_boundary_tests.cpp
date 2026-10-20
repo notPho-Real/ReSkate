@@ -25,10 +25,10 @@ struct Pipeline {
 };
 }
 int main(){
- for(bool nose:{false,true})for(unsigned boundary:{401u,402u,403u,404u,499u,701u})for(bool observed:{false,true}){
+ for(bool nose:{false,true})for(unsigned boundary:{300u,504u,401u,402u,403u,404u,499u,701u})for(bool observed:{false,true}){
   Pipeline p(nose);p.acquire();p.command.owns=false;
   if(observed){
-   check(!p.step(2190,boundary),"known rail/exit transition cannot issue Manual putdown");
+   check(!p.step(2190,boundary),"known bail/rail/exit transition cannot issue Manual putdown");
    check(!p.step(2207,701),"rail exit cannot retain or rearm withdrawn acquisition");
   }else{
    // Exercise remap observe independently of a client cleanup sample.
@@ -41,9 +41,9 @@ int main(){
   check(!p.step(3440),"new request remains below original1199ms boundary");
   check(p.step(3441),"new request expires at its own original1200ms boundary");
  }
- for(bool nose:{false,true})for(unsigned boundary:{401u,402u,403u,404u,499u,701u}){
+ for(bool nose:{false,true})for(unsigned boundary:{300u,504u,401u,402u,403u,404u,499u,701u}){
   Pipeline p(nose);p.acquire();check(p.step(2200),"setup has an actually pending old putdown");p.command.owns=false;
-  check(!p.step(2217,boundary),"positive rail/exit evidence also withdraws an already pending release owner");
+  check(!p.step(2217,boundary),"positive bail/rail/exit evidence also withdraws an already pending release owner");
   check(!p.step(2234),"completed old release cannot affect unrelated later contact");
  }
  for(bool nose:{false,true}){
@@ -63,6 +63,16 @@ int main(){
    check(!f.step(2190,fault==2?200u:fault==3?300u:100u,false,fault!=3,fault==4),"owner/reset/action-hop/bail/push boundary cancels stale cleanup");
    check(!f.step(2224),"cancelled token cannot later put down unrelated contact");
   }
+ }
+ for(bool nose:{false,true})for(unsigned boundary:{300u,401u,504u,701u}) {
+  Pipeline p(nose);p.acquire();
+  NativeRequestSample s{};s.valid=true;s.state=boundary;s.crouch_mode=1;
+  auto f=p.producer.observe(2190,p.owner,s,{true,-1});
+  check(p.acquisition.observe_native(2190,f),"original native hard boundary revokes command without client or remap sample");
+  p.command.owns=false;check(!p.step(2224),"buffered native exit cannot leave old cleanup in later recovery");
+  p.command.owns=true;p.command.request_at=2241;p.step(2241);p.step(2258);
+  for(std::uint64_t now=2300;now<3400;now+=100)check(!p.step(now),"fresh post-exit request retains its own lease");
+  check(p.step(3441),"fresh post-exit request expires at its original deadline");
  }
  std::cout<<checks<<" native acquisition boundary lifecycle checks passed\n";
 }

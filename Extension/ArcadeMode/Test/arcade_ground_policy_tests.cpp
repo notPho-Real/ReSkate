@@ -110,7 +110,7 @@ int main(){
    f.step(now);admission.tick=now;admission.native_context={true,true,{f.native.owner_generation,f.native.contact_generation,f.native.action_generation},f.native.physics_step,f.native.sampled_at,false};
    return session.poll(now,{buttons},0,0,admission);
   };
-  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,row.second);
+  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,static_cast<std::uint16_t>(row.second));
   check(result.ground_turn.serial&&!result.unsupported,"actual Session dispatch starts recognized ground command");
   const auto command=result.ground_turn;GroundYaw controller;float accumulated=0;unsigned elapsed=0;
   for(;;){
@@ -161,7 +161,7 @@ int main(){
   Frame f;InputSession session;InputAdmission admission{};admission.gameplay=admission.authored=admission.may_start=true;admission.pose=SkatePose::riding;
   auto poll=[&](unsigned now,std::uint16_t buttons){f.step(now);admission.tick=now;admission.native_context={true,true,{f.native.owner_generation,f.native.contact_generation,f.native.action_generation},f.native.physics_step,f.native.sampled_at,false};return session.poll(now,{buttons},0,0,admission);};
   NativeGesture::Output result{};
-  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,row.second);
+  for(auto row:{std::pair{1000u,0u},std::pair{1017u,2u},std::pair{1034u,0u},std::pair{1051u,2u},std::pair{1068u,0u},std::pair{1085u,0x200u}})result=poll(row.first,static_cast<std::uint16_t>(row.second));
   const auto serial=result.ground_turn.serial;check(serial!=0,"Session cancellation fixture begins recognized command");
   if(fault==0)admission.gameplay=false;
   if(fault==1)admission.pose=SkatePose::air;
@@ -176,7 +176,7 @@ int main(){
   if(result.ground_turn.serial)std::cerr<<"Session fault="<<fault<<"\n";
   check(!result.ground_turn.serial,"actual Session withdraws turn for gameplay/AIR/Manual/rail/Lip/external/offboard/owner/bail/jump loss");
   session.reset();admission={};admission.gameplay=admission.authored=admission.may_start=true;admission.pose=SkatePose::riding;
-  for(auto row:{std::pair{1200u,0u},std::pair{1217u,2u},std::pair{1234u,0u},std::pair{1251u,2u},std::pair{1268u,0u},std::pair{1285u,0x200u}})result=poll(row.first,row.second);
+  for(auto row:{std::pair{1200u,0u},std::pair{1217u,2u},std::pair{1234u,0u},std::pair{1251u,2u},std::pair{1268u,0u},std::pair{1285u,0x200u}})result=poll(row.first,static_cast<std::uint16_t>(row.second));
   check(result.ground_turn.serial>serial,"new physical recognition after Session reset has a new command identity");
  }
 

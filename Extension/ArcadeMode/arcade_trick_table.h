@@ -19,8 +19,31 @@ enum class ArcadeTrick : std::uint8_t {
     noseslide_or_tailslide, crooked_or_overcrook, smith_or_feeble,
     nosebluntslide, bluntslide, nosegrind_to_pivot, grind_5_0_overturn,
     hurricane, salad, hang_ten_nosegrind, crail_slide, double_blunt_slide, darkslide,
-    basic_bs_grab
+    basic_bs_grab, compact_grab, pressure_turn_flip
 };
+// Context-selected semantics; these identities do not name native methods.
+enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
+enum class ContextualPredicate : std::uint8_t { press, air_direction };
+enum ContextualTrickFlags : std::uint8_t { contextual_extra = 1, contextual_board_rotation = 2, contextual_followup_flip = 4 };
+struct ContextualTrickRow {
+    InputAirTableKind table{};
+    ArcadeTrick trick{};
+    TrickFamily family{};
+    ContextualPredicate predicate{};
+    std::uint16_t query_ms{};
+    std::int16_t face{}, direction{};
+    std::uint8_t flags{};
+    bool operator==(const ContextualTrickRow&) const = default;
+};
+inline constexpr std::array contextual_trick_table{
+    ContextualTrickRow{InputAirTableKind::grab_extra,ArcadeTrick::compact_grab,TrickFamily::grab,
+        ContextualPredicate::press,300,13,0,contextual_extra},
+    ContextualTrickRow{InputAirTableKind::pressure,ArcadeTrick::pressure_turn_flip,TrickFamily::flip,
+        ContextualPredicate::air_direction,300,14,6,contextual_board_rotation|contextual_followup_flip}};
+constexpr const ContextualTrickRow* contextual_trick(InputAirTableKind table) noexcept {
+    for (const auto& row : contextual_trick_table) if (row.table == table) return &row;
+    return nullptr;
+}
 struct TrickTableRow {
     TrickFamily family;
     TrickDirection direction;
@@ -93,6 +116,8 @@ constexpr std::string_view trick_name(ArcadeTrick trick) noexcept {
     for (const auto& row : literal_trick_table)
         if (row.trick == trick) return row.name;
     switch (trick) {
+    case ArcadeTrick::compact_grab: return "Compact Grab";
+    case ArcadeTrick::pressure_turn_flip: return "Pressure Turn Flip";
     case ArcadeTrick::grind_50_50: return "50-50";
     case ArcadeTrick::boardslide_or_lipslide: return "Boardslide / Lipslide";
     case ArcadeTrick::nosebluntslide: return "Nosebluntslide";

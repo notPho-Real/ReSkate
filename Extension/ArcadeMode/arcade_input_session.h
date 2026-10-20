@@ -43,6 +43,17 @@ public:
         ground_turn_ = {}; // Keep the serial watermark across resets.
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
+    // The facade calls this only while the existing rail adapter is inactive.
+    // First-issue expiry retires input intent; it cannot time out an active
+    // native method or turn a held physical control into another press.
+    InputRequest expire_inactive_rail(std::uint64_t now) noexcept {
+        if (!export_rail_ || !rail_ || rail_request_.action != InputAction::rail_request ||
+            rail_request_.unbounded || now < rail_request_.recognized_at ||
+            (rail_request_.inclusive_deadline ? now <= rail_request_.deadline : now < rail_request_.deadline)) return {};
+        const auto expired = rail_request_;
+        rail_ = false; rail_request_ = {};
+        return expired;
+    }
     void set_schedule(AuthoredPlaybackSchedule schedule) noexcept {
         if (authored_.schedule() == schedule) return;
         reset(); authored_.set_schedule(schedule);
@@ -102,6 +113,10 @@ public:
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
         if (admission.external_owner || auxiliary_.busy()) { authored_.cancel(); holding_ = false; }
+        // Shared intent was withdrawn by the competing owner. Do not retain a
+        // held rail ticket that can resume output or block later fresh actions.
+        // The journal still observes the physical baseline through this gap.
+        if (admission.external_owner) { rail_ = false; rail_request_ = {}; }
         const bool rail_released = rail_ && !(physical.buttons & 0x8000u);
         if (rail_released) rail_request_.physical_released_at = now;
         // A performed-Lip observation retires the generic ticket. It does not
@@ -138,10 +153,13 @@ public:
             (admission.action_mode == ActionExperiment::classic || admission.action_mode == ActionExperiment::revert_frontside ||
              admission.action_mode == ActionExperiment::revert_backside);
         const bool manual_conflict = authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers;
+        // Ground auxiliary input is RT; its table uses the same experiment
+        // permission as physical RT masking, without enabling a hidden actor.
         InputEnvironment environment{context, true, admission.external_owner, admission.nollie, admission.observed_balance_branch ? admission.observed_balance_branch : admission.pose == SkatePose::nose_manual ? 13u : 0u,
             admission.manual_safe && !admission.external_owner && !triggers,
             admission.manual_prepare && !admission.external_owner && !triggers, manual_.busy() || reset_manual,
-            action_enabled && admission.action_fresh, admission.may_start && !admission.offboard,
+            action_enabled && admission.action_fresh && (context != InputContext::ground || output.action.consume_rt),
+            admission.may_start && !admission.offboard,
             admission.pose == SkatePose::riding || admission.pose == SkatePose::air || manual_.busy() || awaiting_admission,
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
@@ -324,8 +342,10 @@ private:
             const auto& native=admission.native_context;
             if (!native.required || !native.fresh(now_) || native.airborne || native.rail_family ||
                 now_ < request.recognized_at || now_-request.recognized_at > 150 ||
-                !native.correlates_action(request.generations) || ground_turn_serial_ == UINT64_MAX)
+                !native.correlates_action(request.generations) || ground_turn_serial_ == UINT64_MAX) {
+                out.unsupported = true;
                 return InputDisposition::unsupported;
+            }
             if (ground_turn_.serial && now_ >= ground_turn_.requested_at && now_-ground_turn_.requested_at < 300)
                 return InputDisposition::cancelled;
             ground_turn_={++ground_turn_serial_,request.recognized_at,native.generations,native.physics_step,native.sampled_at};

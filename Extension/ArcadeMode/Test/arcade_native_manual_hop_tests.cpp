@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_manual_hop.h"
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
@@ -118,6 +119,35 @@ int main(int argc,char** argv){
         poll(4000,0);const auto output=poll(4017,0x1000);
         if(admitted)check(output.unsupported&&!output.authored_playback&&!output.requested_id,"missing exact balance-hop catalog entry never substitutes the other jump family");
         else check(output.requested_id==(modifier?16:1),"unadmitted wheel pose cannot choose a Nose/Manual hop identity");
+    }
+    if(argc==1)for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
+        ArcadeInput input(true,InputPolicy::production());input.enable(true);NativeInputState observer;ManualHopContinuity hop;
+        NativeRequestSample native{};native.valid=true;native.state=100;native.crouch_mode=1;native.words[1]=nose?0x8000:0x4000;
+        const NativeInputOwner owner{1,2,3,4,5};const auto pose=nose?SkatePose::nose_manual:SkatePose::manual;
+        const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},
+            PreparedGesture{16,true,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}};
+        auto poll=[&](std::uint64_t now,bool held){
+            const auto frame=observer.observe(now,owner,native,{true,-1});input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
+            const bool balancing=native.state==100;
+            input.publish_balance_controls(balancing?InputBalanceControls::vertical(nose?InputBalanceKind::nose:InputBalanceKind::manual):InputBalanceControls{},frame);
+            const auto observed=balancing?pose:SkatePose::riding;
+            const auto out=input.poll(0,now,held?0x1000:0,0,0,0,0,true,true,false,0,false,false,true,now/17,false,prepared,
+                false,true,observed,false,false,false,false,true,false,0,0,ActionExperiment::classic,true,true,balancing);
+            const auto origin=input.balance_admission(now,nose?InputBalanceKind::nose:InputBalanceKind::manual);
+            hop.command(now,input.native_context(now),origin,observed,balancing,out,held,true);
+            return out;
+        };
+        poll(1000,false);const auto setup=poll(1000+dt,true);
+        check(setup.jump.setup_started&&hop.active(),"actual facade setup edge seeds the original passive balance-hop token");
+        for(unsigned i=2;i<=4;++i){const auto held=poll(1000+i*dt,true);check(held.authored_playback&&hop.active(),"actual held facade output cannot renew original hop press");}
+        native.state=103;native.crouch_mode=0;native.words[1]=0xc000;
+        const auto release=poll(1000+5*dt,false);
+        check(release.jump.pressed_at==1000+dt&&release.jump.released&&hop.active(),"actual facade release remains matched after multiple same-contact input deliveries");
+        check(hop.preserve(input.native_context(1000+5*dt),SkatePose::riding,true),"production history join survives accepted repeated-held setup then native crouch release");
+        native.state=200;poll(1000+6*dt,false);
+        check(!hop.preserve(input.native_context(1000+6*dt),SkatePose::air,true)&&!hop.active(),"verified takeoff ends passive setup rather than replaying it");
     }
     std::cout<<checks<<" composed native manual hop checks passed\n";
 }

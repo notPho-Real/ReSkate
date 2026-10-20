@@ -15,7 +15,7 @@ enum class InputDisposition : std::uint8_t { waiting, started, unsupported, canc
 // The caller selects one installed release table only after establishing its
 // exact native actor. Disabled preserves the ordinary jump path.
 enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
-enum class InputForm : std::uint8_t { ordinary, repeated_direction };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
 // generations below are eligibility lineage, not this original observation.
@@ -31,6 +31,29 @@ inline bool input_diagnostic_increment(std::uint64_t& value) noexcept {
     if (value == std::numeric_limits<std::uint64_t>::max()) return false;
     ++value; return true;
 }
+// Caller-qualified installed table observations, not requested tricks, labels
+// or inferred animation clocks. No current native provider is implied here.
+struct InputAirTable {
+    // grab_extra denotes the one qualified parent-installed grab table.
+    // pressure denotes the independently observed pressure stance table.
+    InputAirTableKind kind{};
+    std::uint64_t generation{}, expires_at{};
+    InputNativeContext observation{};
+    bool installed{};
+    bool current(std::uint64_t now, const InputNativeContext& native) const noexcept {
+        return installed && contextual_trick(kind) && generation && now < expires_at &&
+            observation.required && observation.fresh(now) && native.required && native.fresh(now) &&
+            observation.airborne && native.airborne && observation.airborne_episode &&
+            observation.air_episode() == native.air_episode() && observation.generations == native.generations &&
+            observation.physics_step <= native.physics_step && observation.sampled_at <= native.sampled_at;
+    }
+};
+struct InputAirTables {
+    InputAirTable extra{}, pressure{};
+    const InputAirTable& get(InputAirTableKind kind) const noexcept {
+        return kind == InputAirTableKind::grab_extra ? extra : pressure;
+    }
+};
 struct InputRequest {
     InputAction action{};
     InputContext context{};
@@ -62,6 +85,8 @@ struct InputRequest {
     std::shared_ptr<const InputRecognitionIdentity> recognition{};
     std::uint64_t jump_generation{};
     AirSelection air{};
+    ContextualTrickRow selection{};
+    std::uint64_t table_generation{}, table_expires_at{};
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -86,6 +111,7 @@ struct InputEnvironment {
     InputNativeContext native_context{};
     InputJumpBinding jump_binding{};
     std::uint64_t jump_generation{};
+    InputAirTables air_tables{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -102,8 +128,9 @@ public:
         if (manual(request.action)) { slots_[0] = request; ++manual_epoch_; return true; }
         if (rail(request.action)) { slots_[capacity + 1] = request; ++rail_epoch_; return true; }
         if (size_ + reserved_ >= capacity) return false;
-        slots_[1 + (front_ + size_) % capacity] = request;
-        ++size_; return true;
+        if (request.selection.table == InputAirTableKind::grab_extra) insert(request, extra_prefix());
+        else { slots_[1 + (front_ + size_) % capacity] = request; ++size_; }
+        return true;
     }
     void clear() noexcept { slots_ = {}; front_ = size_ = 0; ++epoch_; ++manual_epoch_; ++rail_epoch_; }
     void clear_ordinary() noexcept {
@@ -124,31 +151,32 @@ public:
     }
     template<class Report>
     void dispatch(std::uint64_t now, std::uint64_t session, InputContext context,
-                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false) noexcept {
+                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}) noexcept {
         bool started{};
-        // Ordinary requests retain table/insertion order. The independent
-        // manual slot is replaceable, rather than a second ordinary FIFO entry.
+        // Installed extras precede the ordinary FIFO; each retains insertion
+        // order. Manual keeps its independent replaceable slot.
         for (std::size_t visited = 0; visited < capacity && size_; ++visited) {
             auto& slot = slots_[1 + front_];
             if (slot.action == InputAction::none) { pop(); continue; }
             const auto request = slot;
-            const auto gate = eligibility(request, now, session, context, native);
+            const auto gate = eligibility(request, now, session, context, native, tables);
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
             pop(); // Removal precedes any adapter/reentrant boundary.
             const auto epoch = epoch_;
             const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
+            const auto table_cancellation = table_cancellations_[static_cast<std::size_t>(request.selection.table)];
             ++reserved_;
             const auto result = adapter.request ? adapter.request(adapter.state, request) : InputDisposition::unsupported;
             --reserved_;
             if (result == InputDisposition::waiting) {
-                if (epoch != epoch_ || cancellation != cancellations_[static_cast<std::size_t>(request.action)]) {
+                if (epoch != epoch_ || cancellation != cancellations_[static_cast<std::size_t>(request.action)] ||
+                    table_cancellation != table_cancellations_[static_cast<std::size_t>(request.selection.table)]) {
                     report(InputDispatchEvent{request, InputDisposition::cancelled}); continue;
                 }
                 // The callback's insertions reserve this slot and cannot make
                 // restoring the unchanged waiting request overflow the FIFO.
-                front_ = (front_ + capacity - 1) % capacity;
-                slots_[1 + front_] = request; ++size_; break;
+                insert(request, request.selection.table == InputAirTableKind::grab_extra ? 0 : extra_prefix()); break;
             }
             report(InputDispatchEvent{request, result});
             started = result == InputDisposition::started;
@@ -156,17 +184,20 @@ public:
         const auto slot_dispatch = [&](std::size_t index, std::uint64_t& slot_epoch) noexcept {
             if (slots_[index].action == InputAction::none) return;
             const auto request = slots_[index];
-            auto result = eligibility(request, now, session, context, native);
+            auto result = eligibility(request, now, session, context, native, tables);
             if (result == InputDisposition::waiting && started) return;
             if (index == capacity + 1 && result == InputDisposition::waiting &&
                 (context != InputContext::rail || !rail_ready || !request.geometry_known || !request.rail_generation)) return;
             slots_[index] = {};
             const auto epoch = slot_epoch;
             const auto cancellation = cancellations_[static_cast<std::size_t>(request.action)];
+            const auto table_index = contextual_trick(request.selection.table) ? static_cast<std::size_t>(request.selection.table) : 0;
+            const auto table_cancellation = table_cancellations_[table_index];
             if (result == InputDisposition::waiting)
                 result = adapter.request ? adapter.request(adapter.state, request) : InputDisposition::unsupported;
             if (result == InputDisposition::waiting) {
                 if (epoch == slot_epoch && cancellation == cancellations_[static_cast<std::size_t>(request.action)] &&
+                    table_cancellation == table_cancellations_[table_index] &&
                     slots_[index].action == InputAction::none) slots_[index] = request;
                 else report(InputDispatchEvent{request, InputDisposition::cancelled});
             } else { report(InputDispatchEvent{request, result}); started = started || result == InputDisposition::started; }
@@ -180,6 +211,31 @@ public:
         // that reservation too, without cancelling unrelated waiting actions.
         ++cancellations_[static_cast<std::size_t>(action)];
         for (auto& slot : slots_) if (slot.action == action) slot = {};
+        compact();
+    }
+    void cancel_table(InputAirTableKind kind) noexcept {
+        const auto index = static_cast<std::size_t>(kind);
+        if (!index || index >= table_cancellations_.size()) return;
+        ++table_cancellations_[index];
+        for (auto& request : slots_) if (request.selection.table == kind) request = {};
+        compact();
+    }
+    std::span<const InputRequest> slots() const noexcept { return slots_; }
+private:
+    std::size_t extra_prefix() const noexcept {
+        std::size_t prefix{};
+        while (prefix < size_ && slots_[1 + (front_ + prefix) % capacity].selection.table == InputAirTableKind::grab_extra) ++prefix;
+        return prefix;
+    }
+    void insert(const InputRequest& request, std::size_t index) noexcept {
+        if (!index) { front_ = (front_ + capacity - 1) % capacity; slots_[1 + front_] = request; }
+        else {
+            for (auto i = size_; i > index; --i) slots_[1 + (front_ + i) % capacity] = slots_[1 + (front_ + i - 1) % capacity];
+            slots_[1 + (front_ + index) % capacity] = request;
+        }
+        ++size_;
+    }
+    void compact() noexcept {
         // Reclaim cancelled entries even behind a waiting head. Stable in-place
         // compaction preserves FIFO order and the in-flight reserved slot.
         std::size_t kept{};
@@ -193,12 +249,19 @@ public:
         for (std::size_t i = kept; i < size_; ++i) slots_[1 + (front_ + i) % capacity] = {};
         size_ = kept;
     }
-    std::span<const InputRequest> slots() const noexcept { return slots_; }
-private:
     static bool rail(InputAction action) noexcept { return action == InputAction::rail_select; }
     static bool manual(InputAction action) noexcept { return action == InputAction::manual || action == InputAction::nose_manual; }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
-                                        std::uint64_t session, InputContext context, InputNativeContext native) noexcept {
+                                        std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables) noexcept {
+        if (request.selection.table != InputAirTableKind::none) {
+            const auto* row = contextual_trick(request.selection.table);
+            const auto& table = tables.get(request.selection.table);
+            if (!row || request.form != InputForm::contextual || request.selection != *row ||
+                request.action != (row->family == TrickFamily::grab ? InputAction::grab : InputAction::flip) ||
+                table.kind != request.selection.table ||
+                !table.current(now,native) || table.generation!=request.table_generation ||
+                table.expires_at!=request.table_expires_at) return InputDisposition::cancelled;
+        }
         if (request.generation_mask && (!native.required || !native.fresh(now) ||
             request.generations.owner != native.generations.owner ||
             ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
@@ -220,6 +283,7 @@ private:
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
     std::array<std::uint64_t, static_cast<std::size_t>(InputAction::jump_variant) + 1> cancellations_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAirTableKind::count)> table_cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
 // all admission and safety contracts. No native memory or score dependencies.
@@ -249,11 +313,15 @@ public:
         for(auto& event:diagnostic_.dispatch)event.request.recognition.reset();
     }
     void reset() noexcept {
+        air_tables_ = {}; table_seals_ = {}; table_retired_ = {};
         events_.reset(); balance_controls_ = {}; previous_rail_ = {}; pending_.clear(); ++session_; crouched_ = false; crouch_sequence_ = 0;
         previous_context_ = InputContext::unknown; previous_balance_branch_ = 0; jump_binding_ = InputJumpBinding::disabled; jump_generation_ = 0; direction_ = 0; direction_at_ = 0;
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
+        // Current-poll attempts cannot survive a session/authority reset.
+        // Keep cumulative recognition identity and loss counters monotonic.
+        diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
         active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = 0; clocked_ = false; manual_unknown_ = false;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
@@ -344,6 +412,7 @@ public:
                 (bound_rail && (!environment.rail.fresh || bound_rail != environment.rail.generation))))
                 cancel_reported(InputAction::rail_select);
         }
+        update_air_tables(now,environment);
         previous_rail_ = environment.rail;
         if (previous_context_ == InputContext::balance && environment.context != InputContext::balance)
             events_.history().restore(branch_owner, now, 100);
@@ -447,7 +516,8 @@ public:
         // physical recording order. Recognition alone never removes another
         // ordinary match; observed context transitions still cancel it.
         if (environment.context == InputContext::air) {
-            recognize_flip(now, environment);
+            if (environment.auxiliary_enabled) recognize_contextual(now,environment,InputAirTableKind::grab_extra);
+            if (!recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment);
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
         }
@@ -480,7 +550,7 @@ public:
                 pending_.cancel(InputAction::rail_select);
             record_dispatch(event);
         }, native, environment.context == InputContext::rail && environment.rail.fresh && environment.rail.ready &&
-            environment.rail.geometry_known && environment.rail.generation);
+            environment.rail.geometry_known && environment.rail.generation, air_tables_);
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
@@ -520,7 +590,8 @@ private:
                  InputEnvironment environment, unsigned presses = 1, std::uint8_t variant = 0, std::uint64_t delay = 0, std::uint8_t modifier = 0, InputToken inherited = {}, const InputMatch* footprint = nullptr,
                  InputForm form = InputForm::ordinary, std::int16_t defined_direction = 0,
                  InputFootprintKind footprint_kind = InputFootprintKind::unknown,
-                 const InputGenerations* lineage = nullptr) noexcept {
+                 const InputGenerations* lineage = nullptr,
+                 const ContextualTrickRow* contextual = nullptr) noexcept {
         const auto limit = std::numeric_limits<std::uint64_t>::max();
         const auto deadline = now > limit - duration ? limit : now + duration;
         InputRequest request{action, environment.context, now, deadline, session_,
@@ -584,6 +655,15 @@ private:
                         }
                 }
             }
+        }
+        if (contextual) {
+            request.form = InputForm::contextual;
+            request.unbounded = true; // Original installed-table lifetime is the cancellation clock.
+            request.air = {}; // Contextual semantics never alias an ordinary native row.
+            request.selection = *contextual;
+            const auto& table = air_tables_.get(contextual->table);
+            request.table_generation = table.generation;
+            request.table_expires_at = table.expires_at;
         }
         const bool sequence_overflow=!input_diagnostic_increment(diagnostic_.recognized);
         diagnostic_.recognition_overflow=diagnostic_.recognition_overflow||sequence_overflow;
@@ -668,6 +748,55 @@ private:
         const auto match = directional_prefix(InputAction::ground_turn,environment.context,now,selected);
         if (match && events_.history().consume(match,InputConsumption::regular,ordinary_reject))
             enqueue(InputAction::ground_turn,now,0,environment,1,1,0,0,{},&match);
+    }
+    void update_air_tables(std::uint64_t now, InputEnvironment& environment) noexcept {
+        const auto qualify = [&](InputAirTable table, InputAirTableKind kind) noexcept {
+            const auto index = static_cast<std::size_t>(kind);
+            auto& seal = table_seals_[index];
+            auto& retired = table_retired_[index];
+            bool valid = environment.context == InputContext::air && table.kind == kind &&
+                table.current(now,environment.native_context) &&
+                (kind != InputAirTableKind::pressure || !environment.nollie);
+            if (valid && seal.installed) {
+                if (table.generation < seal.generation) valid = false;
+                else if (table.generation == seal.generation)
+                    valid = !retired && table.expires_at == seal.expires_at &&
+                        table.observation.generations == seal.observation.generations &&
+                        table.observation.air_episode() == seal.observation.air_episode();
+            }
+            const auto& prior = air_tables_.get(kind);
+            if (prior.installed && (!valid || prior.generation != table.generation)) {
+                for (const auto& request : pending_.slots()) if (request.selection.table == kind)
+                    record_dispatch({request,InputDisposition::cancelled});
+                pending_.cancel_table(kind);
+            }
+            if (!valid) { if (seal.installed) retired = true; return InputAirTable{}; }
+            if (!seal.installed || table.generation > seal.generation) { seal = table; retired = false; }
+            return table;
+        };
+        air_tables_ = {qualify(environment.air_tables.extra,InputAirTableKind::grab_extra),
+                       qualify(environment.air_tables.pressure,InputAirTableKind::pressure)};
+        environment.air_tables = air_tables_;
+    }
+    bool recognize_contextual(std::uint64_t now, InputEnvironment environment, InputAirTableKind kind) noexcept {
+        const auto& table = air_tables_.get(kind);
+        if (!table.installed) return false;
+        const auto& row = *contextual_trick(kind);
+        const InputToken face{InputSource::buttons,row.face,InputEdge::press};
+        InputMatch match{};
+        if (row.predicate == ContextualPredicate::press) {
+            const std::array tokens{face};
+            match = events_.history().match({tokens,row.query_ms,ordinary_reject},now);
+        } else {
+            const InputToken direction{InputSource::direction,row.direction,InputEdge::press};
+            match = events_.history().air_action(face,direction,events_.held_direction() == row.direction,
+                row.query_ms,now,ordinary_reject);
+        }
+        if (!match || !air_face_eligible(match,row.face) ||
+            !events_.history().consume(match,row.flags & contextual_extra ? branch_owner : InputConsumption::regular,ordinary_reject)) return false;
+        enqueue(row.family == TrickFamily::grab ? InputAction::grab : InputAction::flip,now,0,environment,
+            1,0,0,0,{},&match,InputForm::contextual,row.direction,InputFootprintKind::unknown,nullptr,&row);
+        return true;
     }
     bool air_face_eligible(const InputMatch& match, std::int16_t code) const noexcept {
         for (const auto& event : events_.history().events())
@@ -1045,6 +1174,9 @@ private:
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
     }
     InputPolicy policy_{InputPolicy::production()};
+    InputAirTables air_tables_{};
+    std::array<InputAirTable,static_cast<std::size_t>(InputAirTableKind::count)> table_seals_{};
+    std::array<bool,static_cast<std::size_t>(InputAirTableKind::count)> table_retired_{};
     InputNativeContext native_{};
     InputGenerations flip_generations_{}, grab_generations_{};
     bool native_required_{};
