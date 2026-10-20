@@ -495,8 +495,8 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.valid, r.state, r.changes, r.wipeouts);
         else if constexpr (std::is_same_v<T, ControllerRouteEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={}.",
-                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason));
+                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={}.",
+                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding);
         else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
@@ -920,16 +920,18 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     return begun;
 }
 
+// Controller route binding_context publication begin.
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
                                    const NativeRequestSample& sample, MotionCleanupProof* cleanup) noexcept {
     if (cleanup) *cleanup={};
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if (!lock.owns_lock()) return {};
     if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
-    if (!mode_enabled.load(std::memory_order_acquire) || !arcade_input.admitted(0,now)) return {};
+    if (!mode_enabled.load(std::memory_order_acquire) || !controller_route.physical(now).valid || !arcade_input.admitted(0,now)) return {};
     const auto frame = native_input_state.correlate(now,owner,sample);
     return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
 }
+// Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     return lock.owns_lock() && mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) ?
@@ -1076,6 +1078,36 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
     return true;
 }
 
+// Controller route binding_api publication begin.
+// Serialized with routing, facade ownership and transport packet retirement.
+static void withdraw_controller_authority() noexcept {
+    arcade_input.invalidate_authority();
+    arcade_input.observe_physical(0,{});
+    for(auto& rotation:rotations)rotation.reset();
+    for(auto& charge:native_charges)charge.cancel();
+    neutral_delivery={};retire_playback_packets();
+    set_arcade_push_intent(false);set_arcade_air_intent(false,0,0,0,0,false);
+    gameplay_valid_until.store(0,std::memory_order_release);
+    reset_physical_manual.store(true,std::memory_order_release);
+}
+bool set_controller_source(unsigned slot,unsigned duration_ms) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    if(!enabled() || !ready.load(std::memory_order_acquire) ||
+        !controller_route.arm(slot,GetTickCount64(),duration_ms))return false;
+    withdraw_controller_authority();return true;
+}
+void clear_controller_source() noexcept {
+    std::lock_guard lock(ollie_mutex);
+    controller_route.clear();withdraw_controller_authority();
+}
+void disconnect_xinput_source(unsigned slot) noexcept {
+    if(slot>=4 || !ready.load(std::memory_order_acquire))return;
+    std::lock_guard lock(ollie_mutex);
+    if(controller_route.disconnected(slot))withdraw_controller_authority();
+}
+
+// Controller route binding_api publication end.
+
 void set_enabled(bool value, bool persist) noexcept {
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
@@ -1188,14 +1220,21 @@ void on_client_tick() noexcept {
             std::lock_guard lock(ollie_mutex);
             const auto route_now = GetTickCount64();
             const bool route_enabled=enabled();
-            controller_changed = controller_route.select(route_now,input.device,route_enabled && input.available);
+            // The independent original-physics observer is also available before
+            // any input source is admitted. A policy request cannot mint proof.
+            NativeInputFrame binding_proof{};
+            if(controller_route.explicit_selection() && route_enabled && input.available){
+                NoBailSkater binding_owner{};
+                const auto binding_sample=native_request_sample(binding_owner);
+                binding_proof=motion_cleanup_state.correlate(route_now,input_owner(binding_owner),binding_sample);
+            }
+            controller_changed = controller_route.select(route_now,input.device,route_enabled && input.available,binding_proof);
             const auto route_row=controller_route.observation(route_now,route_enabled,input.available);
             if(controller_route_reporting.due(route_row))input_telemetry.client(route_row);
             if (controller_changed) {
                 // Preserve the existing source-change cancellation contract even
                 // though the facade always receives logical local-player slot0.
-                arcade_input.invalidate_authority();
-                arcade_input.observe_physical(0,{});
+                withdraw_controller_authority();
             }
             controller_generation = controller_route.generation();
             const auto pad = controller_route.physical(route_now);
@@ -1256,7 +1295,7 @@ void on_client_tick() noexcept {
                 static_cast<unsigned>(score_edge.uncertainty)});
         }
         NoBailSkater native_owner{};
-        const auto native = input.available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
+        const auto native = focus_available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
         NativeInputFrame client_frame{};
         {
             std::lock_guard lock(ollie_mutex);
@@ -1417,10 +1456,12 @@ void on_client_tick() noexcept {
 }
 
 void observe_xinput_source(unsigned user, unsigned short buttons,
-                           unsigned char left_trigger, unsigned char right_trigger) noexcept {
+                           unsigned char left_trigger, unsigned char right_trigger,
+                           short left_x, short left_y, short right_x, short right_y) noexcept {
     if (user >= previous_source_pad.size() || !ready.load(std::memory_order_acquire) ||
         !mode_enabled.load(std::memory_order_acquire)) return;
     std::lock_guard lock(ollie_mutex);
+    controller_route.observe_unfiltered(user,{true,GetTickCount64(),buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
     auto& old = previous_source_pad[user];
     if (old.buttons == buttons && old.lt == left_trigger && old.rt == right_trigger) return;
     const PadEvidence row{++pad_sequence, GetTickCount64(), user, buttons,
@@ -1448,8 +1489,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         std::lock_guard lock(ollie_mutex);
         // A client publication while acquiring the lock must not look future-dated.
         now = GetTickCount64();
-        const ArcadeInput::Physical physical{true,now,physical_buttons,action_physical.left_x,action_physical.left_y,
+        const ArcadeInput::Physical physical{game_input,now,physical_buttons,action_physical.left_x,action_physical.left_y,
             physical_right_x,physical_right_y,physical_left_trigger,physical_right_trigger};
+        if(!game_input && controller_route.captured(user))
+            withdraw_controller_authority();
         controller_route.observe(user,physical);
         // Rejected sources retain native pad data and cannot advance or drive
         // the shared actor. Only their own prior synthetic packet may retire.

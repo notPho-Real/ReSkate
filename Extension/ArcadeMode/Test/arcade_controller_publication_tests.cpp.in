@@ -5,7 +5,11 @@
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
+#include <mutex>
 using namespace dingosdk::arcade_mode;
+static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
+    route.observe_unfiltered(slot,pad);route.observe(slot,pad);
+}
 namespace {
 ArcadeInput arcade_input(true);
 NativeControllerRoute route;
@@ -41,7 +45,7 @@ void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkateP
 @controller_route_air@
 }
 void establish(unsigned user,std::uint64_t now,unsigned source=0){
-    route.observe(user,{true,now,0,0,0,0,0,0,0});
+    observe(route,user,{true,now,0,0,0,0,0,0,0});
     route.select(now,source?source:1u<<user,true);
     NativeInputFrame frame{};frame.valid=true;frame.owner={1,2,3,4,5};frame.owner_generation=1;
     frame.contact_generation=frame.action_generation=1;frame.physics_step=++physics_step;frame.sampled_at=now;
@@ -59,7 +63,7 @@ void mode_reset(){
 }
 std::uint32_t transport(unsigned user,std::uint64_t now,std::uint32_t physical_packet,bool reference=true){
     if(user>=4)return 0;
-    controller_route.observe(user,{true,now,0,0,0,321,-456,0,0});
+    observe(controller_route,user,{true,now,0,0,0,321,-456,0,0});
 @controller_route_packet_reject@
     const std::uint32_t normal_mask{};
     ActionInputOutput action{};AirRotation::Output rotation{};
@@ -69,7 +73,7 @@ std::uint32_t transport(unsigned user,std::uint64_t now,std::uint32_t physical_p
     return physical_packet ^ output_packet;
 }
 void establish(unsigned user,std::uint64_t now){
-    controller_route.observe(user,{true,now,0,0,0,321,-456,0,0});
+    observe(controller_route,user,{true,now,0,0,0,321,-456,0,0});
     controller_route.select(now,1u<<user,true);
 }
 void run(){
@@ -118,6 +122,75 @@ void run(){
     std::cout<<checks<<" exact production packet retirement checks passed\n";
 }
 }
+namespace binding_api {
+std::mutex ollie_mutex;
+ArcadeInput arcade_input{true};
+NativeControllerRoute controller_route;
+std::array<PlaybackPacket,4> playback_packets;
+std::array<NativeCharge,4> native_charges;
+std::array<AirRotation,4> rotations;
+std::array<NeutralStickDelivery,4> neutral_delivery;
+std::atomic<bool> ready{true},reset_physical_manual{};
+std::atomic<std::uint64_t> gameplay_valid_until{};
+bool mode=true,push{},air{};
+std::atomic<bool> mode_enabled{true};
+NativeInputState native_input_state,motion_cleanup_state;
+std::uint64_t clock_ms=1000;
+bool enabled(){return mode;}
+std::uint64_t GetTickCount64(){return clock_ms;}
+void set_arcade_push_intent(bool value){push=value;}
+void set_arcade_air_intent(bool value,unsigned,unsigned,unsigned,unsigned,bool){air=value;}
+@controller_route_packet_retire@
+@controller_route_binding_api@
+@controller_route_binding_context@
+void run(){
+    unsigned checks{};
+    for(unsigned slot=0;slot<4;++slot){
+        mode=true;ready=true;controller_route.reset();arcade_input.enable(true);clock_ms=1000;
+        require(set_controller_source(slot,1000),"actual command API arms selected source");++checks;
+        NativeInputFrame frame{};frame.valid=true;frame.owner={1,2,3,4,5};frame.owner_generation=1;
+        frame.contact_generation=frame.action_generation=1;frame.physics_step=1;frame.sampled_at=1000;frame.state=100;
+        observe(controller_route,slot,{true,1000,0,0,0,0,0,0,0});controller_route.select(1000,15,true,frame);
+        arcade_input.publish_native_context(frame);arcade_input.publish_authority(1000,1,1,true);
+        require(controller_route.accepts(slot,1000)&&arcade_input.admitted(0,1000),"explicit multi-connected route retains independent facade authority proof");++checks;
+        playback_packets={};playback_packets[slot].sample(20,20,true);playback_packets[slot].sample(20,20,true);
+        push=air=true;gameplay_valid_until=1150;reset_physical_manual=false;
+        disconnect_xinput_source((slot+1)%4);
+        require(arcade_input.admitted(0,1000)&&push&&air,"other source loss cannot withdraw selected actor");++checks;
+        disconnect_xinput_source(slot);
+        require(!controller_route.accepts(slot,1000)&&!arcade_input.admitted(0,1000)&&!push&&!air&&!gameplay_valid_until&&reset_physical_manual,
+            "actual disconnect callback revokes shared facade and native intentions immediately");++checks;
+        require(playback_packets[slot].sample(22,22,false)==23,"actual revocation retires last synthetic packet without erasing collision debt");++checks;
+        require(playback_packets[slot].sample(22,22,false)==22,"retirement is consumed exactly once");++checks;
+        require(playback_packets[(slot+1)%4].sample(22,22,false)==22,"unowned controller retains native packet identity");++checks;
+        observe(controller_route,slot,{true,1001,0,0,0,0,0,0,0});controller_route.select(1001,15,true,frame);
+        require(!controller_route.accepts(slot,1001),"actual disconnect never elects a fallback or reconnect");++checks;
+        require(set_controller_source(slot,1000),"explicit deliberate rearm remains possible");++checks;
+        clear_controller_source();observe(controller_route,slot,{true,1001,0,0,0,0,0,0,0});controller_route.select(1001,1u<<slot,true,frame);
+        require(!controller_route.accepts(slot,1001),"fixture teardown clear blocks even a remaining sole controller");++checks;
+        mode=false;require(!set_controller_source(slot,1000),"OFF cannot arm explicit command authority");++checks;
+        controller_route.reset();arcade_input.enable(false);arcade_input.enable(true);
+        observe(controller_route,(slot+1)%4,{true,1002,0,0,0,0,0,0,0});controller_route.select(1002,1u<<((slot+1)%4),true);
+        require(controller_route.accepts((slot+1)%4,1002),"OFF/ON plus fresh physical sample restores ordinary player handoff");++checks;
+    }
+    mode=true;mode_enabled=true;controller_route.reset();native_input_state={};motion_cleanup_state={};
+    arcade_input.enable(false);arcade_input.enable(true);clock_ms=1000;
+    NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[1]=0xc000;
+    const NativeInputOwner owner{1,2,3,4,5};
+    const auto frame=native_input_state.observe(1000,owner,sample,{});
+    const auto proof=motion_cleanup_state.observe(1000,owner,sample,{});
+    set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+    controller_route.select(1000,3,true,proof);arcade_input.publish_native_context(frame);arcade_input.publish_authority(1000,frame.owner_generation,1,true);
+    MotionCleanupProof cleanup{};
+    require(native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"actual physics consumer accepts selected route and independent native owner");++checks;
+    controller_route.clear();
+    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
+    mode_enabled=false;
+    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
+    std::cout<<checks<<" exact production binding API checks passed\n";
+}
+}
+
 void run_controller_publication_tests(){
     unsigned checks{};
     for(unsigned user=0;user<4;++user){
@@ -173,5 +246,6 @@ void run_controller_publication_tests(){
         require(sink.air==1&&sink.angular&&sink.yaw==2,"physical source uses logical actor's ordinary jump rotation permission");++checks;
     }
     packet_restoration::run();
+    binding_api::run();
     std::cout<<checks<<" exact production native publication checks passed\n";
 }

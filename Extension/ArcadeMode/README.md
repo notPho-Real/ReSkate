@@ -12,6 +12,34 @@ passed ON → OFF → ON in one process on source 3634e30: A produced an observe
 native air/landing sequence in both ON trials and stayed native while OFF. See
 [the current checkpoint](../../contrib/arcade-mode/STATE.md).
 
+With multiple XInput controllers, automatic translation remains blocked. An
+explicit, unsaved source policy is available with Arcade ON:
+`arcadecontroller <0..3> <1000..300000ms>`. This names one physical XInput slot
+for the mod's single logical player; it does not discover the engine's selected
+user. Close console/input capture and neutralize the selected pad within five
+seconds. Admission requires new neutral pre-filter and post-filter samples and a fresh original-physics
+owner proof. The finite lease starts when requested and cannot renew through
+activity. Existing digital thresholds define neutral, including the right stick.
+
+Other slots retain native pad data and cannot feed the mod's event history or
+advance its actor. Observed disconnect, selected-source disappearance, focus or
+capture loss after admission, stale proof, owner replacement or regressing
+physics/contact/action generations revoke the binding without fallback. Normal
+native state/contact/action progression and unrelated hotplug retain it. A fresh
+explicit request can rearm; `arcadecontroller clear` instead blocks translation.
+`arcademode off` clears policy and packet ownership; a later ON requires fresh
+samples and keeps the ordinary sole-source default. End a controller fixture
+with OFF before detaching its pad, then reacquire the player's source afresh.
+
+XInput slots are transport addresses, not persistent device identities. A device
+replacement entirely between observations without a failed read, missing bitmap
+bit or freshness gap is not distinguishable by the established API. Explicit
+selection neither reassigns the engine's native user nor suppresses its handling
+of other physical pads. Native selected-user mapping, actual controller delivery
+and player acceptance require independent qualification. Existing fixture plans
+cannot issue arbitrary console commands; this adds no runner permission or
+fixture selection/teardown operation.
+
 Held shoulder spin is the default. `arcadetapspin on` saves tap mode; `off`
 restores held mode. Tap mode accumulates signed half turns and advances them on
 actual qualified physics steps, retaining the full last step on overshoot.

@@ -38,6 +38,17 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+    auto controller=action("arcadecontroller","Unsaved source binding: slot0..3 and lease1000..300000ms; clear revokes (OFF restores automatic)",Group::gameplay,
+        {argument("slot|clear",Type::text,false),argument("milliseconds",Type::unsigned_integer,true)});
+    controller.run=[](const Model&,const Values& values,const Output& out){
+        const auto& name=std::get<std::string>(values[0]);
+        if(name=="clear" && values.size()==1){arcade_mode::clear_controller_source();out("Controller binding cleared; sources blocked until OFF or a new explicit binding.");return;}
+        if(name.size()!=1 || name[0]<'0' || name[0]>'3' || values.size()!=2){out("Use arcadecontroller <0..3> <1000..300000ms>, or arcadecontroller clear.");return;}
+        const auto duration=std::get<std::uint64_t>(values[1]);
+        if(duration>300000 || !arcade_mode::set_controller_source(static_cast<unsigned>(name[0]-'0'),static_cast<unsigned>(duration))){out("Binding rejected: require Arcade ON, ready input and lease1000..300000ms.");return;}
+        out("Binding requested; close input capture within5s and neutralize the selected pad. Admission requires fresh native owner proof; loss revokes without fallback.");
+    };
+    registry.add(std::move(controller));
     auto auto_kick = action("arcadeautokick", "Read or change automatic ground kicking (saved)", Group::gameplay,
         {argument("on|off", Type::boolean, true)});
     auto_kick.run = [](const Model&, const Values& values, const Output& out) {

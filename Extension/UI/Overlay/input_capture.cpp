@@ -450,13 +450,16 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,output->Gamepad.sThumbRX,output->Gamepad.sThumbRY);
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
         output->dwPacketNumber ^= phase;
+    } else if(outer && result==ERROR_DEVICE_NOT_CONNECTED) {
+        arcade_mode::disconnect_xinput_source(user);
     }
     return result;
 }
@@ -765,13 +768,16 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger,
+            output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,output->Gamepad.sThumbRX,output->Gamepad.sThumbRY);
         filter_pad(outer, user, output);
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
         output->dwPacketNumber ^= phase;
+    } else if(outer && result==ERROR_DEVICE_NOT_CONNECTED) {
+        arcade_mode::disconnect_xinput_source(user);
     }
     return result;
 }

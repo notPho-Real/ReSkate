@@ -1,3 +1,21 @@
+## Explicit controller source policy — local software candidate, 2026-10-20
+
+Multiple connected XInput pads can use an explicit finite slot binding instead
+of changing the automatic sole-source rule. The route reuses the existing game
+poll cache, shared input facade, original-physics owner observer and per-source
+packet retirement. Arming does not admit input: a neutral uncaptured sample and
+independent fresh native proof are required. Both the pre-filter physical sample
+and the normal remap sample must be neutral; a controller filter cannot conceal
+held input for admission. Revocation has no automatic source
+fallback. OFF discards explicit policy and requires fresh physical-player input.
+See the [source policy contract](../../Extension/ArcadeMode/README.md).
+
+This is offline software evidence only. No engine selected-user getter or
+persistent device identity has been established. No full build, CI, deployment
+or hardware operation is part of this change. Fixture runner permissions and
+controller operations are unchanged; later integration requires a separately
+reviewed explicit selection and OFF-before-detach transaction.
+
 ## Controller packet retirement visibility — local follow-on, 2026-10-20
 
 Independent review reproduced a counter collision after route revocation:
