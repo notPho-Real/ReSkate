@@ -1,5 +1,7 @@
 #include "Extension/ArcadeMode/arcade_input_events.h"
+#include <algorithm>
 #include <cstdlib>
+#include <vector>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -140,8 +142,66 @@ void event_ordinals_and_recovery() {
     check(history.events()[0].owners==~std::uint32_t{0} && history.events()[1].owners==0,"older-than invalidation includes its boundary and both edge kinds");
 }
 
+
+// An independent small-trace model uses physical IDs and a press projection;
+// it never calls a production query to decide the expected match.
+std::vector<std::uint64_t> air_query_model(const std::array<InputEvent,5>& journal,
+        bool held,std::uint64_t now,std::uint32_t reject){
+    if(held){
+        std::vector<std::uint64_t> selected;
+        for(auto i=journal.size();i>0;){const auto& event=journal[--i];
+            if(event.token==x && now-event.at<500 && !(event.owners&reject)){selected.push_back(event.sequence);break;}}
+        if(selected.empty())return {};
+        for(auto i=journal.size();i>0;){const auto& event=journal[--i];
+            if(event.token==left){selected.push_back(event.sequence);break;}}
+        return selected;
+    }
+    std::vector<std::uint64_t> selected;bool face{},direction{};
+    for(auto i=journal.size();i>0;){const auto& event=journal[--i];
+        if(now-event.at>=500)break;
+        if((event.owners&reject) || event.token.edge!=InputEdge::press)continue;
+        if(event.token!=x && event.token!=left){if(face || direction)return {};continue;}
+        selected.push_back(event.sequence);face=face || event.token==x;direction=direction || event.token==left;
+        if(face && direction){std::reverse(selected.begin(),selected.end());return selected;}
+    }
+    return {};
+}
+void exhaustive_air_footprints(){
+    const std::array alphabet{left,release(left),x,release(x),y,release(y),right};
+    constexpr unsigned combinations=7*7*7*7*7;
+    for(unsigned trace=0;trace<combinations;++trace)for(bool ownership:{false,true})
+    for(auto reject:{~std::uint32_t{0},~InputConsumption::manual})for(bool held:{false,true})
+    for(std::uint64_t now:{499u,500u,501u}){
+        InputHistory history;std::array<InputEvent,5> journal{};auto encoded=trace;
+        constexpr std::array categories{InputConsumption::regular,InputConsumption::manual,InputConsumption::extra_grind,InputConsumption::extra};
+        for(std::size_t i=0;i<journal.size();++i){
+            const auto token=alphabet[encoded%alphabet.size()];encoded/=static_cast<unsigned>(alphabet.size());
+            history.record(token,i*100);journal[i]=history.events().back();
+            if(ownership && (trace+i)%3==0){
+                const auto category=categories[(trace+i)%categories.size()];
+                check(history.consume(InputMatch::single(history.events().back()),category),"fixture pre-owns an exact event ID");
+                journal[i].owners=category;
+            }
+        }
+        auto expected=air_query_model(journal,held,now,reject);
+        const auto actual=history.air_action(x,left,held,500,now,reject);
+        check(actual.count==expected.size(),"air predicate agrees with independent press projection across short traces and category masks");
+        if(actual){
+            std::vector<std::uint64_t> ids(actual.events.begin(),actual.events.begin()+static_cast<std::ptrdiff_t>(actual.count));
+            std::sort(ids.begin(),ids.end());std::sort(expected.begin(),expected.end());
+            check(ids==expected,"air predicate selects exactly the independently specified physical footprint");
+            check(history.consume(actual,InputConsumption::regular,reject),"successful air query commits atomically with explicit held reuse");
+        }
+        for(std::size_t i=0;i<journal.size();++i){
+            const bool selected=std::find(expected.begin(),expected.end(),journal[i].sequence)!=expected.end();
+            check(history.events()[i].owners==(journal[i].owners|(selected?InputConsumption::regular:0u)),
+                "failed predicates leave all categories intact; successful predicates change only selected physical IDs");
+        }
+    }
+}
+
 }
 int main() {
-    air_queries(); release_queries(); extra_queries(); held_clocks(); event_ordinals_and_recovery();
+    exhaustive_air_footprints(); air_queries(); release_queries(); extra_queries(); held_clocks(); event_ordinals_and_recovery();
     std::cout << checks << " source input contract checks passed\n";
 }

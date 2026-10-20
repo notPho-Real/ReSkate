@@ -311,4 +311,23 @@ const char* camera_probe_unavailable_reason(std::uintptr_t context) noexcept {
 bool camera_probe_phase_observed(std::uintptr_t context) noexcept {
     return camera_probe_unavailable_reason(context) == nullptr;
 }
+bool camera_phase_observation_current(const CameraPhaseObservation& observation) noexcept {
+    CameraError error;
+    auto& state = camera_state();
+    const auto matches = [&]() noexcept {
+        return observation.sample && observation.client && observation.thread == GetCurrentThreadId() &&
+            camera_post_phase_idle(state) && camera_thread.frames[0].client == observation.client &&
+            state.observation_generation.load() == observation.generation && state.calls.load() == observation.calls &&
+            camera_local_sample.id == observation.sample && camera_local_sample.generation == observation.generation;
+    };
+    return matches() && !camera_probe_unavailable_reason(observation.context) && matches();
+}
+CameraPhaseObservation camera_phase_observation(std::uintptr_t context) noexcept {
+    CameraError error;
+    if (camera_probe_unavailable_reason(context)) return {};
+    const auto& sample = camera_local_sample;
+    const CameraPhaseObservation result{context, camera_thread.frames[0].client, sample.id, sample.generation,
+        camera_state().calls.load(), static_cast<std::uint32_t>(GetCurrentThreadId())};
+    return camera_phase_observation_current(result) ? result : CameraPhaseObservation{};
+}
 }

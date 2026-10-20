@@ -124,6 +124,38 @@ void recovery() {
     observe(camera);
     check(ready(camera), "An isolated returned update recovers after a failed update");
 }
+void publication_observation() {
+    Camera camera;
+    NativeTls tls(camera);
+    observe(camera);
+    camera_tick_enter(0x10000); camera_tick_native_return();
+    const auto proof = camera_phase_observation(camera.context.address());
+    check(proof.sample && camera_phase_observation_current(proof), "The current outer post phase yields a publication observation");
+    auto changed = proof; changed.client += 8;
+    check(!camera_phase_observation_current(changed), "Another client cannot borrow publication readiness");
+    changed = proof; changed.context += 8;
+    check(!camera_phase_observation_current(changed), "Another context cannot borrow publication readiness");
+    changed = proof; ++changed.sample;
+    check(!camera_phase_observation_current(changed), "Another sample cannot borrow publication readiness");
+    changed = proof; ++changed.generation;
+    check(!camera_phase_observation_current(changed), "Another generation cannot borrow publication readiness");
+    changed = proof; ++changed.calls;
+    check(!camera_phase_observation_current(changed), "Another callback sequence cannot borrow publication readiness");
+    changed = proof; ++changed.thread;
+    check(!camera_phase_observation_current(changed), "Another thread cannot borrow publication readiness");
+    camera_tick_enter(0x10000); camera_tick_native_return();
+    check(!camera_phase_observation_current(proof), "Nested post scopes cannot publish with outer readiness");
+    camera_tick_leave();
+    camera.helper.put(0x60, camera.input.address());
+    check(!camera_phase_observation_current(proof), "Live owner scratch state invalidates publication readiness");
+    camera.helper.put(0x60, std::uintptr_t{});
+    check(camera_phase_observation_current(proof), "An unchanged idle owner can still complete its publication");
+    observe(camera); // Same-thread callback can be throttled without changing the sample or generation.
+    check(!camera_phase_observation_current(proof), "Completed reentry invalidates the earlier publication observation");
+    camera_tick_leave();
+    check(!camera_phase_observation_current(proof), "Publication requires an active post scope");
+    check(!camera_phase_observation_current({}), "Missing publication observations are rejected");
+}
 void replacement_cameras() {
     // Many identities, as after repeated respawns/editor transitions/joins.
     // Keep allocations alive to avoid reuse.
@@ -145,7 +177,7 @@ int main() {
         check(VirtualAlloc(reinterpret_cast<void*>(image + (addr::engine::tls_index & ~std::uintptr_t{0xfff})), 4096, MEM_COMMIT, PAGE_READWRITE) != nullptr,
             "Commit fixture TLS index page");
         camera_state().base = image; camera_state().active = true;
-        native_entry_variants(); recovery(); replacement_cameras();
+        native_entry_variants(); recovery(); publication_observation(); replacement_cameras();
         VirtualFree(reinterpret_cast<void*>(image), 0, MEM_RELEASE);
         std::cout << "Camera observation recovery checks passed.\n";
         return 0;

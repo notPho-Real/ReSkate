@@ -14,4 +14,13 @@ void camera_tick_leave() noexcept;
 bool camera_probe_phase_observed(std::uintptr_t context) noexcept;
 // Null means ready. A new isolated local callback can recover after overlap.
 const char* camera_probe_unavailable_reason(std::uintptr_t context) noexcept;
+// Correlates a checked post phase with the original sample, callback sequence, client and thread.
+// Revalidate around native operations; this is not an exclusion/lifetime lock.
+struct CameraPhaseObservation {
+    std::uintptr_t context{}, client{};
+    std::uint64_t sample{}, generation{}, calls{};
+    std::uint32_t thread{};
+};
+CameraPhaseObservation camera_phase_observation(std::uintptr_t context) noexcept;
+bool camera_phase_observation_current(const CameraPhaseObservation& observation) noexcept;
 }

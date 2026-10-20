@@ -3,6 +3,7 @@
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/UI/game_view.h"
 #include "free_flight.h"
+#include "camera_observer.h"
 #include <intrin.h>
 
 namespace dingosdk::client_source::detail {
@@ -153,14 +154,30 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
             source_require(!transform, "The spectate camera was replaced by the game.");
             return true;
         }
+        // Reentry invalidates completion; retain the lease for qualified cleanup.
+        // These observations do not serialize the native callback.
+        const auto identity = camera.identity;
+        const auto observation = camera_phase_observation(identity.context);
+        const auto revalidate = [&]() {
+            const auto current = source_camera_snapshot(trial, client);
+            source_require(current.identity == identity && observation.client == client &&
+                observation.context == current.identity.context && camera_phase_observation_current(observation),
+                "Waiting for the current camera ownership and update phase.");
+            return current;
+        };
+        camera = revalidate();
         if (!transform) {
-            if (lease.saved_fov > 0) (void)first_person_write_fov(lease.identity.camera, lease.saved_fov);
+            const bool fov_restored = lease.saved_fov <= 0 ||
+                first_person_write_fov(lease.identity.camera, lease.saved_fov);
+            camera = revalidate();
             if (camera.mode == 1 && camera.active == lease.identity.camera) {
                 trial.camera_mode(lease.identity.controller, 0);
-                camera = source_camera_snapshot(trial, client);
+                camera = revalidate();
                 source_require(camera.mode == 0 && camera.active != lease.identity.camera,
                                "Waiting for the original camera to return.");
             }
+            // Return the original view even when its saved FOV needs a retry.
+            source_require(fov_restored, "Waiting for the original camera field of view to return.");
             lease = {}; detail = "Original camera restored."; return true;
         }
         source_require(ready && valid_flight_transform(*transform), "Spectate target is unavailable on this map.");
@@ -172,16 +189,28 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
             lease.identity = camera.identity; lease.owner = requester; lease.owned = lease.uncertain = true;
             lease.saved_fov = reader.value<float>(camera.identity.camera, camera_fov_offset);
             if (!std::isfinite(lease.saved_fov) || lease.saved_fov <= 1 || lease.saved_fov >= 175) lease.saved_fov = 0;
+            camera = revalidate();
+            source_require(camera.mode == 0 && camera.view_enabled && !camera.input_active,
+                           "Existing camera ownership changed before activation.");
             trial.camera_mode(camera.identity.controller, 1);
-            camera = source_camera_snapshot(trial, client);
+            camera = revalidate();
             source_require(camera.identity == lease.identity && camera.mode == 1 &&
                            camera.active == lease.identity.camera, "Native spectate camera activation could not be verified.");
             lease.uncertain = false;
         }
+        camera = revalidate();
         source_require(camera.mode == 1 && camera.active == lease.identity.camera,
                        "Another native camera has taken control of the view.");
         trial.camera_transform(lease.identity.camera, transform);
-        if (fov > 1 && fov < 175) (void)first_person_write_fov(lease.identity.camera, fov);
+        camera = revalidate();
+        source_require(camera.mode == 1 && camera.active == lease.identity.camera,
+                       "Native camera ownership changed during publication.");
+        if (fov > 1 && fov < 175) {
+            (void)first_person_write_fov(lease.identity.camera, fov);
+            camera = revalidate();
+            source_require(camera.mode == 1 && camera.active == lease.identity.camera,
+                           "Native camera ownership changed during field-of-view publication.");
+        }
         detail = "Spectating party member."; return true;
     } catch (const SourceGuard& issue) { detail = issue.message; }
       catch (...) { detail = "Native spectate camera is unavailable."; }

@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <vector>
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -589,19 +590,20 @@ void production_session_boundary_matrix() {
 
 struct ConformanceFacade {
     NativeInputState producer; NativeInputOwner owner{1,2,3,4,5}; ArcadeInput input{true};
-    std::vector<PreparedGesture> prepared{catalog()}; unsigned cadence{17};const char* trace{"bound-facade"};
+    std::vector<PreparedGesture> prepared{catalog()}; unsigned cadence{17};const char* trace{"bound-facade"};bool flip_ready{true};
+    std::uint32_t air_contacts{};NativeFlipSelection selection{true,-1};
     ConformanceFacade(){input.enable(true);input.set_recognition_capture(0,true);}
     NativeGesture::Output poll(std::uint64_t now,unsigned state,PhysicalInputSample physical={},bool publish=true) {
         if(publish) {
             NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=1;
-            sample.words[1]=state==100?0xc000u:0u;
-            const auto frame=producer.observe(now,owner,sample,{true,-1});
+            sample.words[1]=state==100?0xc000u:air_contacts;
+            const auto frame=producer.observe(now,owner,sample,selection);
             input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         }
         const auto pose=state==200?SkatePose::air:state==401?SkatePose::grind:SkatePose::riding;
         const auto out=input.poll(0,now,physical.buttons,physical.x,physical.y,0,0,true,true,false,0,
             physical.lt>30||physical.rt>30,false,true,now/cadence,false,prepared,false,false,pose,
-            false,false,false,false,true,false,physical.lt,physical.rt,ActionExperiment::classic,true,true,false);
+            false,false,false,false,flip_ready,false,physical.lt,physical.rt,ActionExperiment::classic,true,true,false);
         if(conformance_record)conformance_record(trace,now,out,*input.input_diagnostic(0),*input.history(0));
         return out;
     }
@@ -741,9 +743,98 @@ void auxiliary_release_handoff_contract() {
     h.poll(310);check(h.poll(320,{0,0,0,0,255}).action.owned,"release and fresh press after completion starts one new recipe");
 }
 
+void native_pending_and_active_flights(){
+    for(auto cadence:{17u,34u})for(bool grab:{false,true})for(bool transition:{false,true})
+    for(bool release:{false,true})for(std::uint64_t delay:{201u,701u,2001u}){
+        auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;h.flip_ready=false;
+        h.trace=transition?"pending-state-transition":"pending-continuity";
+        const auto face=static_cast<std::uint16_t>(grab?0x2000u:0x4000u);
+        const auto held=static_cast<std::uint16_t>(face|(grab?0x1000u:0u));
+        h.poll(1000,200);
+        const auto recognized_at=1000+cadence;
+        const auto initial=h.poll(recognized_at,200,{held,-25000});
+        const auto* diagnostic=h.input.input_diagnostic(0);
+        const auto action=grab?InputAction::grab:InputAction::flip;
+        const InputRequest* request{};
+        for(std::size_t i=0;i<diagnostic->recognition_count;++i)
+            if(diagnostic->recognition[i].request.action==action)request=&diagnostic->recognition[i].request;
+        check(request && request->unbounded && request->generation_mask==5 && request->recognized_at==recognized_at,
+            "actual native-bound ordinary air requests are unbounded and retain owner/action correlation");
+        const auto original=*request;
+        check(!initial.authored_playback && !initial.action.owned,"recognized waiting work owns no active native channels");
+        bool cancelled{};
+        for(auto now=recognized_at+cadence;now<recognized_at+delay;now+=cadence){
+            const auto buttons=release?static_cast<std::uint16_t>(grab?0x1000u:0u):held;
+            const auto waiting=h.poll(now,transition?201u:200u,{buttons,-25000});
+            check(!waiting.authored_playback && !waiting.action.owned,"waiting work cannot turn age or a held input into native readiness");
+            const auto* current=h.input.input_diagnostic(0);
+            for(std::size_t i=0;i<current->dispatched;++i)if(current->dispatch[i].request.action==action){
+                const auto& event=current->dispatch[i];
+                check(transition && !cancelled && event.disposition==InputDisposition::cancelled &&
+                    event.request.recognized_at==original.recognized_at && event.request.generations==original.generations,
+                    "same-flight state transition reports original pending identity cancelled by changed action generation");
+                cancelled=true;
+            }
+        }
+        h.flip_ready=true;
+        const auto ready=h.poll(recognized_at+delay,transition?201u:200u,{release?std::uint16_t{0}:face,-25000});
+        const bool starts=!transition && !(grab && release);
+        check((grab?ready.action.owned:ready.authored_playback)==starts,
+            "delayed readiness has no invented200ms expiry; a retired generation or unsupported released grab cannot start");
+        const auto* current=h.input.input_diagnostic(0);
+        if(starts)check(current->dispatched==1 && current->dispatch[0].disposition==InputDisposition::started &&
+            current->dispatch[0].request.recognized_at==original.recognized_at &&
+            current->dispatch[0].request.physical_pressed_at==original.physical_pressed_at,
+            "fresh readiness dispatches the immutable original request beyond query and preparation windows");
+        if(grab && release && !transition)check(ready.action.requested && ready.action.result==DispatchResult::unavailable,
+            "released waiting grab retains semantic intent but explicitly lacks native minimum-init/out execution");
+        check(cancelled==transition,"200to201 changes pending action authority even while the physical flight remains continuous");
+        if(transition){
+            check(!h.poll(recognized_at+delay+cadence,201,{release?std::uint16_t{0}:face,-25000}).command_busy,
+                "generation-cancelled held face cannot resurrect its old pending command");
+            h.poll(recognized_at+delay+2*cadence,201);
+            const auto fresh=h.poll(recognized_at+delay+3*cadence,201,{face,-25000});
+            check(grab?fresh.action.owned:fresh.authored_playback,"genuine release and repress rearms within the current verified air state");
+        }
+    }
+    for(auto cadence:{17u,34u})for(bool selection_change:{false,true}){
+        auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;h.flip_ready=false;h.trace="pending-native-authority";
+        h.poll(1000,200);h.poll(1000+cadence,200,{0x4000,-25000});
+        const auto before=h.input.native_context(1000+cadence);
+        if(selection_change)h.selection.id=2;else h.air_contacts=0x4000;
+        h.poll(1000+2*cadence,200,{0x4000,-25000});
+        const auto after=h.input.native_context(1000+2*cadence);
+        const auto* diagnostic=h.input.input_diagnostic(0);
+        check(before.airborne_episode==after.airborne_episode && before.air_departure==after.air_departure &&
+            (before.action_generation!=after.action_generation)==selection_change &&
+            (before.contact_generation!=after.contact_generation)==!selection_change,
+            "native producer distinguishes selection authority from same-flight wheel contact changes");
+        check(selection_change?diagnostic->dispatched==1 && diagnostic->dispatch[0].disposition==InputDisposition::cancelled:
+            diagnostic->dispatched==0,"pending requests bind action authority without treating every wheel change as action cancellation");
+        h.flip_ready=true;
+        if(selection_change)h.selection.id=-1;
+        const auto ready=h.poll(1000+3*cadence,200,{0x4000,-25000});
+        check(ready.authored_playback==!selection_change,"fresh readiness preserves wheel-only pending work but cannot revive retired selection authority");
+    }
+    for(auto cadence:{17u,34u})for(bool grab:{false,true}){
+        auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;h.poll(1000,200);
+        const auto face=static_cast<std::uint16_t>(grab?0x2000u:0x4000u);
+        const auto started=h.poll(1000+cadence,200,{face,-25000});
+        check(grab?started.action.owned:started.authored_playback,"active-flight control starts a supported existing adapter");
+        const auto before=h.input.native_context(1000+cadence);
+        const auto continued=h.poll(1000+2*cadence,201,{face,-25000});
+        const auto after=h.input.native_context(1000+2*cadence);
+        check(before.airborne_episode==after.airborne_episode && before.air_departure==after.air_departure &&
+            before.action_generation!=after.action_generation && (grab?continued.action.owned:continued.authored_playback),
+            "active channels follow continuous flight identity across200to201 independently of pending action-generation cancellation");
+        const auto departed=h.poll(1000+3*cadence,100,{face,-25000});
+        check(!departed.authored_playback && !departed.action.owned,"actual native departure retires the old active flight channels");
+    }
+}
+
 }
 int main() {
-    auxiliary_mode_contract(); auxiliary_release_handoff_contract();
+    native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();
     manual_exit_jump_ownership(); queued_grab_identity(); airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();
     std::cout << checks << " production input session checks passed\n";
