@@ -26,6 +26,8 @@ struct NativeInputFrame {
     // Original first observed physical AIR step, never animation time.
     std::uint64_t airborne_started_at{};
     bool airborne_started_known{};
+    // Software continuity for observed mode changes, independent of wheel contacts.
+    std::uint64_t mode_generation{};
     // Generations invalidate correlation; they are not action occurrences.
     // Rail family does not establish a named grind, slide, Lip, early/established
     // phase or geometry. Grab initialization/ForceInit remains unknown.
@@ -50,6 +52,7 @@ public:
             now < frame_.sampled_at || now-frame_.sampled_at > 150;
         const auto contacts = sample.words[1] & 0xc000u;
         const auto stance_and_push = sample.words[0] & 0x60u;
+        if ((boundary || sample.crouch_mode != frame_.mode) && !increment(mode_generation_)) return {};
         if (boundary) {
             if (!increment(owner_generation_) || !increment(contact_generation_) || !increment(action_generation_)) return {};
         } else {
@@ -70,7 +73,7 @@ public:
         namespace rail = game::build::v20260929::grind_exit;
         frame_ = {true, sample.state >= rail::grind_states_first && sample.state < rail::grind_states_end,
             flip.valid, owner, owner_generation_, contact_generation_, action_generation_, step_, now,
-            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_,airborne_started_at_,airborne};
+            sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_,airborne_started_at_,airborne,mode_generation_};
         continuity_ = true;
         return frame_;
     }
@@ -88,6 +91,7 @@ private:
     }
     NativeInputFrame frame_{};
     std::uint64_t owner_generation_{}, contact_generation_{}, action_generation_{}, step_{}, airborne_episode_{}, air_departure_{},airborne_started_at_{};
+    std::uint64_t mode_generation_{};
     bool continuity_{}, exhausted_{};
 };
 }

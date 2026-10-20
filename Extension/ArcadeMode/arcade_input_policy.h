@@ -17,6 +17,16 @@ struct InputAirEpisode {
     std::uint64_t number{}, departure{};
     bool operator==(const InputAirEpisode&) const = default;
 };
+// Existing read-only native selection observation. It is not an installed
+// input-table epoch, animation clock or permission to start an actor.
+struct InputFlipObservation {
+    bool valid{};
+    std::int32_t id{-1};
+    std::uintptr_t object{};
+    std::uint32_t state{}, mode{}, stance{};
+    std::uint64_t step{}, mode_generation{};
+    bool operator==(const InputFlipObservation&) const = default;
+};
 // Correlation from an independently sampled native producer, never a trick
 // occurrence or animation clock. Polling cannot renew the producer's lease.
 struct InputNativeContext {
@@ -28,11 +38,24 @@ struct InputNativeContext {
     // animation completion. A departure need not be a landing.
     bool airborne{};
     std::uint64_t airborne_episode{}, air_departure{};
+    InputFlipObservation flip{};
     InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
         return valid && generations.owner && generations.contact && generations.action && physics_step &&
             now >= sampled_at && now - sampled_at <= InputTiming::native_sample_lease_ms;
+    }
+    // Only the existing201/mode2 jump1-to-idle observation is correlated here.
+    // This proves neither actor completion nor current readiness.
+    bool jump_selection_retired(InputGenerations origin, InputAirEpisode episode,
+                                const InputFlipObservation& before) const noexcept {
+        return valid && airborne && airborne_episode && air_episode() == episode &&
+            generations.owner == origin.owner && generations.action > origin.action &&
+            generations.action - origin.action == 1 && before.valid && flip.valid &&
+            before.id == 1 && flip.id == -1 && before.object && before.object == flip.object &&
+            before.state == 201 && before.state == flip.state && before.mode == 2 &&
+            before.mode == flip.mode && before.stance == flip.stance && before.step && flip.step > before.step &&
+            before.mode_generation && before.mode_generation == flip.mode_generation;
     }
     bool correlates(InputGenerations publication) const noexcept {
         return !required || (valid && generations.owner && generations.contact &&
@@ -58,6 +81,12 @@ struct InputNativeContext {
         if constexpr (requires { frame.airborne; frame.airborne_episode; frame.air_departure; }) {
             context.airborne = frame.airborne; context.airborne_episode = frame.airborne_episode;
             context.air_departure = frame.air_departure;
+        }
+        if constexpr (requires { frame.flip_known; frame.flip_id; frame.selection_object;
+                                 frame.state; frame.mode; frame.stance_and_push; }) {
+            context.flip = {frame.flip_known,frame.flip_id,frame.selection_object,
+                frame.state,frame.mode,frame.stance_and_push,frame.physics_step};
+            if constexpr (requires { frame.mode_generation; }) context.flip.mode_generation = frame.mode_generation;
         }
         return context;
     }

@@ -1,3 +1,4 @@
+#include "arcade_input_jump_idle_tests.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include <cstdlib>
@@ -834,6 +835,7 @@ void native_pending_and_active_flights(){
 
 }
 int main() {
+    jump_idle_tests::run();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();
     manual_exit_jump_ownership(); queued_grab_identity(); airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();

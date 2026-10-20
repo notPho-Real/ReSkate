@@ -87,6 +87,7 @@ struct InputRequest {
     AirSelection air{};
     ContextualTrickRow selection{};
     std::uint64_t table_generation{}, table_expires_at{};
+    InputFlipObservation waiting_flip{};
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -251,6 +252,13 @@ private:
     }
     static bool rail(InputAction action) noexcept { return action == InputAction::rail_select; }
     static bool manual(InputAction action) noexcept { return action == InputAction::manual || action == InputAction::nose_manual; }
+    static bool jump_selection_retired(const InputRequest& request, const InputNativeContext& native) noexcept {
+        // Fixed ordinary input waits for the existing jump selection to become
+        // idle; all other selection/context transitions keep their cancellation.
+        return request.action == InputAction::flip && request.form == InputForm::ordinary && request.presses == 1 &&
+            request.selection.table == InputAirTableKind::none &&
+            native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip);
+    }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
                                         std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables) noexcept {
         if (request.selection.table != InputAirTableKind::none) {
@@ -265,7 +273,8 @@ private:
         if (request.generation_mask && (!native.required || !native.fresh(now) ||
             request.generations.owner != native.generations.owner ||
             ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
-            ((request.generation_mask & 4u) && request.generations.action != native.generations.action)))
+            ((request.generation_mask & 4u) && request.generations.action != native.generations.action &&
+             !jump_selection_retired(request,native))))
             return InputDisposition::cancelled;
         if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
             return InputDisposition::cancelled;
@@ -322,12 +331,12 @@ public:
         // Current-poll attempts cannot survive a session/authority reset.
         // Keep cumulative recognition identity and loss counters monotonic.
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
-        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = 0; clocked_ = false; manual_unknown_ = false;
+        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = 0; clocked_ = false; manual_unknown_ = false;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     bool pending_stick() const noexcept {
         if (previous_context_ == InputContext::air) for (const auto& event : events_.history().events())
-            if (event.sequence > air_face_after_ && event.token == InputToken{InputSource::buttons,14,InputEdge::press} &&
+            if (event.sequence > air_flip_after_ && event.token == InputToken{InputSource::buttons,14,InputEdge::press} &&
                 !(event.owners & ordinary_reject) && event.at <= last_ && last_ - event.at < 500) return true;
         for (const auto& request : pending_.slots()) if (request.action == InputAction::flip) return true;
         return false;
@@ -374,6 +383,14 @@ public:
                 if (native.air_episode() != native_.air_episode()) cancel_air_episode();
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
+                    if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip))
+                        air_flip_after_ = last_event_;
+                }
+                if (native.flip.mode_generation != native_.flip.mode_generation) {
+                    // A physics-observed mode excursion ends pending Flip intent,
+                    // even when its endpoints match between input polls. Wheel
+                    // contact changes and admitted native playback are separate.
+                    pending_.cancel(InputAction::flip); air_flip_after_ = last_event_;
                 }
                 if (native.generations.contact != native_.generations.contact) lip_clocked_ = false;
             }
@@ -432,7 +449,7 @@ public:
             pending_.clear_ordinary(); direction_ = 0;
         }
         if (previous_context_ != InputContext::air && environment.context == InputContext::air)
-            air_face_after_ = last_event_; // Preserve a ground direction preload, never a ground face press.
+            air_face_after_ = air_flip_after_ = last_event_; // Preserve a ground direction preload, never a ground face press.
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
@@ -616,6 +633,7 @@ private:
             request.generation_mask = generation_dependencies(action,environment.context);
             if (action == InputAction::flip || action == InputAction::grab)
                 request.air_episode = environment.native_context.air_episode();
+            if (action == InputAction::flip) request.waiting_flip = environment.native_context.flip;
         }
         if (action == InputAction::rail_request || action == InputAction::lip_request) {
             request.control = 0x8000;
@@ -798,9 +816,10 @@ private:
             1,0,0,0,{},&match,InputForm::contextual,row.direction,InputFootprintKind::unknown,nullptr,&row);
         return true;
     }
-    bool air_face_eligible(const InputMatch& match, std::int16_t code) const noexcept {
+    bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false) const noexcept {
+        const auto after = ordinary_flip ? air_flip_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
-            if (event.sequence > air_face_after_ && event.token == InputToken{InputSource::buttons,code,InputEdge::press})
+            if (event.sequence > after && event.token == InputToken{InputSource::buttons,code,InputEdge::press})
                 for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;
         return false;
     }
@@ -863,7 +882,7 @@ private:
             const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
             match = binding.match; defined_direction = binding.direction;
         }
-        if (!match || !air_face_eligible(match,14) || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
+        if (!match || !air_face_eligible(match,14,true) || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
             ordinary_reject)) return false;
         auto selected = environment;
         if (presses > 1) selected.nollie = flip_nollie_;
@@ -1188,7 +1207,7 @@ private:
     std::uint64_t crouch_sequence_{};
     bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
-    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{};
+    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_started_{};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
