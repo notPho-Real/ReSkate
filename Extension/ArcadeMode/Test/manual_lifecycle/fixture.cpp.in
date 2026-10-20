@@ -10,6 +10,8 @@
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_controller_route.h"
+#include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
 #include "Extension/Skater/no_bail.h"
@@ -37,7 +39,9 @@ NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.enti
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
 struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,true,clock_ms};}
 struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations;std::array<NativeCharge,4>native_charges;
-std::array<Reset,4> neutral_delivery;Reset playback_packets;
+std::array<Reset,4> neutral_delivery;
+std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_route;
+@@PACKET_RETIRE@@
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
 struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
@@ -120,6 +124,7 @@ template<class T,class... Args>void reconstruct(T& object,Args&&... args){
  std::destroy_at(&object);std::construct_at(&object,std::forward<Args>(args)...);
 }
 void reset_case(){
+ controller_route.reset();playback_packets={};
  active=true;watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
  combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
@@ -338,6 +343,25 @@ void hud_lifecycle(){
  hud_hz=0;ImGui::DestroyContext();
 }
 #endif
+void controller_packet_dependencies(){
+ reset_case();
+ controller_route.observe(1,{true,clock_ms,0,0,0,0,0,0,0});controller_route.select(clock_ms,2,true);
+ const auto generation=controller_route.generation();
+ check(controller_route.accepts(1,clock_ms),"real controller adapter is selected before exact mode reset");
+ check(playback_packets[1].sample(20,20,true)==21&&playback_packets[1].sample(20,20,true)==22,
+       "real physical-source packet class establishes owned output before mode reset");
+ check(playback_packets[2].sample(30,30,true)==31&&playback_packets[2].sample(30,30,true)==32,
+       "separate historical source retains its own packet identity");
+ set_enabled(false,false);
+ check(!controller_route.accepts(1,clock_ms)&&controller_route.generation()!=generation,
+       "exact production mode reset revokes the real selected controller generation");
+ check(playback_packets[1].sample(22,22,false)==23&&playback_packets[1].sample(22,22,false)==22,
+       "extracted real packet retirement preserves one visible cancellation after OFF");
+ check(playback_packets[0].sample(22,22,false)==22,"mode reset does not invent packet debt for an untouched source");
+ set_enabled(true,false);
+ check(playback_packets[2].sample(500,500,true)==501,
+       "extracted retirement helper starts recovery from the current physical baseline");
+}
 int main(){
  for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned duration:{300u,1100u,1400u})for(bool seen_unknown:{false,true})for(unsigned duplicates:{0u,3u}){
   const auto wanted=nose?0x8000u:0x4000u;const auto original=qualified(nose,dt,duration);
@@ -405,6 +429,7 @@ int main(){
   check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
  }
  camera_lifecycle();
+ controller_packet_dependencies();
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  hud_lifecycle();
 #endif

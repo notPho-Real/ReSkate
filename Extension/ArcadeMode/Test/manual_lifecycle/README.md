@@ -8,7 +8,13 @@ copy. The source-correspondence test regenerates in memory and compares every
 output, including a manifest of the original chunks and generated hashes.
 
 The fixture supplies clocks, full owner/probe snapshots, presenter/history
-observations and outer permissions. Capture/telemetry/impact sinks do not
+observations and outer permissions. Controller/packet dependencies use the real
+`NativeControllerRoute` and per-source `PlaybackPacket` classes. The generator
+also extracts the actual `retire_playback_packets` helper; missing dependencies
+are not replaced by no-op behavior. Seven additional checks exercise mode-route
+generation reset, cancellation visibility, untouched sources and recovery from
+the physical packet baseline. These are offline fixture checks, not native
+controller or hardware acceptance. Capture/telemetry/impact sinks do not
 actuate. Both targets use the complete production mode toggle with the extracted
 camera epoch state. The optional HUD target also extracts the draw function,
 then executes actual ImGui frames and final draw data.

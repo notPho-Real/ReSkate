@@ -1,0 +1,177 @@
+#include "Extension/ArcadeMode/arcade_controller_route.h"
+#include "Extension/ArcadeMode/arcade_playback_packet.h"
+#include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_rotation.h"
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+using namespace dingosdk::arcade_mode;
+namespace {
+ArcadeInput arcade_input(true);
+NativeControllerRoute route;
+std::array<NativeCharge,4> native_charges;
+std::atomic<bool> manual_balance_admitted{};
+std::uint64_t physics_step{};
+struct Sink {
+    unsigned push{},air{},charge{};
+    bool drive{},angular{},ground_turn{};
+    float yaw{};
+    std::uint64_t release{};
+} sink;
+void require(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
+void set_arcade_push_intent(bool enabled,bool){++sink.push;sink.drive=enabled;}
+// Nonactuating sink observes the original production publication arguments.
+void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned charge,
+        float yaw,bool angular,const NativeManualContact*,const NativeInputFrame*,
+        const GroundControl*,const SpinCommand*,const LaunchDescriptor*,const GroundTurnCommand* turn){
+    ++sink.air;sink.charge=charge;sink.yaw=yaw;sink.angular=angular;sink.ground_turn=turn&&turn->serial==1;sink.release=release;
+}
+void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkatePose pose,
+        bool reference=false,bool occupied=false,bool releasing_manual=false){
+    // Mirrors the earlier production routing boundary; nonowners never reach
+    // the extracted statements. Proof freshness remains owned by the facade.
+    if(!route.accepts(user,now)||!arcade_input.admitted(NativeControllerRoute::session,now))return;
+    const bool drive_safe=true,crouched=false,rotation_enabled=true;
+    const std::uint16_t physical_buttons=0;
+    ActionInputOutput action{};action.owned=occupied;
+    const auto rotation_native=arcade_input.native_context(now);
+    const AirRotation::Output rotation{false,0,0,2.0f,{}};
+    const GroundControl ground_controls{};
+@controller_route_push@
+@controller_route_air@
+}
+void establish(unsigned user,std::uint64_t now,unsigned source=0){
+    route.observe(user,{true,now,0,0,0,0,0,0,0});
+    route.select(now,source?source:1u<<user,true);
+    NativeInputFrame frame{};frame.valid=true;frame.owner={1,2,3,4,5};frame.owner_generation=1;
+    frame.contact_generation=frame.action_generation=1;frame.physics_step=++physics_step;frame.sampled_at=now;
+    frame.state=100;frame.mode=1;frame.contacts=0xc000;frame.flip_known=true;
+    arcade_input.publish_native_context(frame);
+    arcade_input.publish_authority(now,1,route.physical(now).valid?1u:0u,true);
+}
+}
+namespace packet_restoration {
+NativeControllerRoute controller_route;
+std::array<PlaybackPacket,4> playback_packets;
+@controller_route_packet_retire@
+void mode_reset(){
+@controller_route_packet_mode_reset@
+}
+std::uint32_t transport(unsigned user,std::uint64_t now,std::uint32_t physical_packet,bool reference=true){
+    if(user>=4)return 0;
+    controller_route.observe(user,{true,now,0,0,0,321,-456,0,0});
+@controller_route_packet_reject@
+    const std::uint32_t normal_mask{};
+    ActionInputOutput action{};AirRotation::Output rotation{};
+    struct Correction {bool owns_y{};} manual_correction;
+    RailAdapterPad rail_pad{};
+@controller_route_packet_sample@
+    return physical_packet ^ output_packet;
+}
+void establish(unsigned user,std::uint64_t now){
+    controller_route.observe(user,{true,now,0,0,0,321,-456,0,0});
+    controller_route.select(now,1u<<user,true);
+}
+void run(){
+    unsigned checks{};
+    for(unsigned user=0;user<4;++user)for(unsigned boundary=0;boundary<6;++boundary){
+        controller_route.reset();playback_packets={};establish(user,1000);
+        require((20u^transport(user,1000,20))==21,"first owned physical packet publishes21");++checks;
+        require((20u^transport(user,1017,20))==22,"second owned physical packet publishes22");++checks;
+        const auto other=(user+1)%4;
+        if(boundary==0){mode_reset();} // OFF
+        if(boundary==1){controller_route.select(1034,0,false);retire_playback_packets();} // loss
+        if(boundary==2){establish(other,1034);retire_playback_packets();} // reassignment
+        if(boundary==3){} // source lease expired, even with a new physical read
+        if(boundary==4){controller_route.select(1034,(1u<<user)|(1u<<other),true);retire_playback_packets();}
+        if(boundary==5){controller_route.select(1034,1u<<user,false);retire_playback_packets();} // focus
+        const auto now=boundary==3?1200u:1034u;
+        const auto restored=22u^transport(user,now,22);
+        require(restored==23,"OFF/loss/reassignment/stale/ambiguous/focus retirement cannot collide with synthetic22");++checks;
+        require(transport(user,now+1,22)==0,"retirement debt is consumed once, without repeated counter bumps");++checks;
+        for(unsigned untouched=0;untouched<4;++untouched)if(untouched!=user&&untouched!=other){
+            require(transport(untouched,now+1,22)==0,"untouched rejected controllers retain their physical packet");++checks;
+        }
+        // A different untouched controller must not consume this source's debt.
+        controller_route.reset();playback_packets={};establish(user,2000);
+        transport(user,2000,20);transport(user,2017,20);controller_route.reset();retire_playback_packets();
+        require(transport(other,2034,22)==0&&(22u^transport(user,2034,22))==23,"packet cancellation remains tied to its original physical source");++checks;
+        // Recovery before a rejected poll still starts a new physical baseline.
+        controller_route.reset();playback_packets={};establish(user,3000);
+        transport(user,3000,20);transport(user,3017,20);controller_route.reset();retire_playback_packets();
+        retire_playback_packets();establish(user,3034);
+        require((500u^transport(user,3034,500))==501,"recovery starts a new physical packet sequence rather than inheriting stale owned increments");++checks;
+        require((500u^transport(user,3051,500))==502,"recovered active playback advances its own sequence");++checks;
+        // Recovery whose first new sequence would itself collide also differs.
+        controller_route.reset();playback_packets={};establish(user,4000);
+        transport(user,4000,20);transport(user,4017,20);retire_playback_packets();establish(user,4034);
+        require((21u^transport(user,4034,21))==23,"recovery collision is corrected before resuming active sequence");++checks;
+        require((21u^transport(user,4051,21))==24,"recovery correction advances the active sequence consistently");++checks;
+        controller_route.reset();playback_packets={};establish(user,5000);
+        transport(user,5000,20);transport(user,5017,20);mode_reset();
+        require(transport(user,5034,99)==0,"already-distinct native counter is preserved during retirement");++checks;
+        require(transport(user,5051,99)==0,"noncolliding retirement does not create later packet debt");++checks;
+    }
+    PlaybackPacket packet;
+    require(packet.sample(UINT32_MAX,0,true)==0,"owned physical counter wrap is defined");++checks;
+    packet.retire();require(packet.sample(0,0,false)==1&&packet.sample(0,0,false)==0,"wrapped retirement is visible once");++checks;
+    std::cout<<checks<<" exact production packet retirement checks passed\n";
+}
+}
+void run_controller_publication_tests(){
+    unsigned checks{};
+    for(unsigned user=0;user<4;++user){
+        const std::uint64_t base=user*10000u;
+        route.reset();arcade_input.enable(false);arcade_input.enable(true);
+        native_charges={};
+        establish(user,(base+1000));
+        NativeGesture::Output setup{};setup.jump.setup_started=true;setup.jump.pressed_at=(base+1000);
+        setup.jump.launch=LaunchDescriptor::ordinary();
+        sink={};writers(user,(base+1000),setup,SkatePose::riding);
+        require(sink.push==1&&sink.drive&&sink.air==1,"each sole physical slot publishes admitted native push and air intentions");++checks;
+        // Refresh both original physical/source and native admission proofs.
+        establish(user,(base+1120));
+        NativeGesture::Output release{};release.jump.released=release.jump.setup_admitted=true;
+        release.jump.pressed_at=(base+1000);release.jump.released_at=(base+1120);release.jump.launch=LaunchDescriptor::ordinary();
+        release.ground_turn.serial=1;
+        sink={};writers(user,(base+1120),release,SkatePose::riding);
+        require(sink.air==1&&sink.release&&sink.charge==120&&sink.angular&&sink.yaw==2&&sink.ground_turn,
+            "every physical slot publishes real charged-release identity, angular rate and ground-turn command");++checks;
+        // No per-physical charge actor is introduced: source1-3 use actor0 too.
+        for(unsigned other=1;other<4;++other){
+            const auto unbound=native_charges[other].semantic_release((base+1121),false,false,false,0,0,true);
+            require(!unbound.sequence,"nonlocal charge actors never acquire setup ownership");++checks;
+        }
+        sink={};writers(user,(base+1121),{},SkatePose::air);
+        require(sink.air==1&&sink.angular&&sink.yaw==2&&!sink.ground_turn,"air rotation publication is available to every selected physical source");++checks;
+        for(unsigned blocked=0;blocked<3;++blocked){
+            sink={};writers(user,(base+1121),release,SkatePose::riding,blocked==0,blocked==1,blocked==2);
+            require(!sink.ground_turn,"reference playback, competing actor and Manual release retain ground-turn exclusions");++checks;
+        }
+        for(unsigned other=0;other<4;++other)if(other!=user){
+            sink={};writers(other,(base+1121),release,SkatePose::riding);
+            require(!sink.air&&!sink.push,"nonowner cannot publish native intentions");++checks;
+        }
+        sink={};writers(user,(base+1271),release,SkatePose::riding);
+        require(!sink.air&&!sink.push,"expired source/client proof cannot publish native intentions");++checks;
+        establish(user,(base+1300),3);sink={};writers(user,(base+1300),release,SkatePose::riding);
+        require(!sink.air&&!sink.push,"ambiguous connected sources cannot publish native intentions");++checks;
+        route.reset();arcade_input.enable(false);sink={};writers(user,(base+1301),release,SkatePose::riding);
+        require(!sink.air&&!sink.push,"OFF cannot publish native intentions");++checks;
+        arcade_input.enable(true);establish(user,(base+2000));
+        const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}}};
+        auto input_poll=[&](std::uint64_t at,std::uint16_t buttons){
+            return arcade_input.poll(NativeControllerRoute::session,at,buttons,0,0,0,0,true,true,false,0,
+                false,false,true,at/17,false,prepared,false,true,SkatePose::riding);
+        };
+        input_poll((base+2000),0);establish(user,(base+2017));const auto crouch=input_poll((base+2017),0x1000);
+        require(crouch.authored_playback,"actual logical session admits ordinary crouch setup");++checks;
+        establish(user,(base+2200));input_poll((base+2200),0x1000);establish(user,(base+2267));const auto jump=input_poll((base+2267),0);
+        require(jump.authored_playback&&arcade_input.allows_air_rotation(0,true),"actual logical session owns the ordinary jump metadata");++checks;
+        sink={};writers(user,(base+2267),jump,SkatePose::air);
+        require(sink.air==1&&sink.angular&&sink.yaw==2,"physical source uses logical actor's ordinary jump rotation permission");++checks;
+    }
+    packet_restoration::run();
+    std::cout<<checks<<" exact production native publication checks passed\n";
+}

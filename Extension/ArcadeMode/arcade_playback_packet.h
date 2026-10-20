@@ -6,21 +6,33 @@ namespace dingosdk::arcade_mode {
 // when several reads share one simulation tick. No physical packet is mutated.
 class PlaybackPacket {
 public:
+    // Retain one cancellation identity across owner/mode reset. This carries
+    // no input authority; the next actual delivery consumes it exactly once.
+    void retire() noexcept {
+        if (owned_) { retired_last_ = last_; retiring_ = true; owned_ = false; }
+    }
     std::uint32_t sample(std::uint32_t physical, std::uint32_t normal, bool reference) noexcept {
+        auto output = normal;
         if (reference) {
             if (!owned_) last_ = physical;
             owned_ = true;
-            return ++last_;
-        }
-        if (owned_) {
+            output = ++last_;
+        } else if (owned_) {
             owned_ = false;
             // Make cancellation visible even when the physical counter caught up.
-            if (normal == last_) return normal + 1;
+            if (output == last_) ++output;
         }
-        return normal;
+        if (retiring_) {
+            retiring_ = false;
+            if (output == retired_last_) {
+                ++output;
+                if (reference) last_ = output;
+            }
+        }
+        return output;
     }
 private:
-    std::uint32_t last_{};
-    bool owned_{};
+    std::uint32_t last_{}, retired_last_{};
+    bool owned_{}, retiring_{};
 };
 }

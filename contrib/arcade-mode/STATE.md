@@ -1,3 +1,101 @@
+## Controller packet retirement visibility — local follow-on, 2026-10-20
+
+Independent review reproduced a counter collision after route revocation:
+physical20 produced synthetic21 then22; OFF restored native22, hiding the
+restored state behind the previous packet number. Route rejection had skipped
+the existing cancellation mechanism, and authority resets could erase it.
+
+PlaybackPacket now retains a bounded retirement identity across mode/authority
+reset, without retaining input authority. A rejected source consumes only its
+own cancellation state and otherwise returns the native packet unchanged. If
+the restored packet equals the last synthetic packet it advances once; an
+already-distinct native counter needs no adjustment. Repeated untouched packets
+are not repeatedly bumped. Recovery starts from the current physical baseline
+and also avoids a first-delivery collision with the retired sequence.
+
+The existing source-generated routing regression now includes the exact
+production rejected-source branch, mode-route reset, retirement helper and
+active packet sampling statement. It passes314 packet checks across all four
+slots, OFF, source loss/reassignment, stale/ambiguous/focus-loss routes, repeated
+reads, untouched controllers, recovery and unsigned wrap. Five targeted
+rollbacks fail at their intended assertions. Existing72 native-publication,
+367 routing/diagnostic,65 playback and119 action-runtime checks also pass under
+host ASan/UBSan. Pad fields, single logical actor, freshness/admission checks and
+ambiguous-source denial remain unchanged.
+
+No full build, CI, hardware operation or publication has run for this local
+follow-on. These checks establish software packet visibility, not native game
+impact or player acceptance. Sole-controller applicability remains unverified.
+
+## Controller routing diagnostics — local follow-on, 2026-10-20
+
+The existing client telemetry queue now carries an `ARCADE CONTROLLER ROUTE`
+observation at info level. It reports the connected XInput bitmap already read
+by the client, selected physical slot, logical actor, routing generation, mode,
+SDK source availability and explicit routing reason. It performs no additional
+controller read, native memory inspection, input operation or selection.
+
+`bitmap_known=false` means the bitmap is unavailable or the source is unsupported;
+the printed zero is then a placeholder, not evidence of zero connected devices.
+Unsupported source values and device-generation tokens are never emitted.
+Physical slot and logical actor4 mean unavailable. `ready` describes transport
+routing only; native owner, clock, gameplay and action admission remain separate.
+Denials distinguish OFF, unavailable source, zero/multiple/unsupported sources,
+missing/future/stale physical samples, and missing/future/stale selection.
+
+Reporting is bounded to one row per second even during transitions; unchanged
+status refreshes every five seconds. Existing logging levels and telemetry drop
+accounting apply. No logging settings or controller behavior are changed.
+
+Offline checks cover zero/one/multiple/stale sources, sanitized telemetry,
+reporting rate and OFF. The prior source's routing behavior also matches140000
+independent generated comparisons despite added diagnostic reads. No full build,
+CI, hardware operation or publication has run for this local follow-on.
+
+## Controller routing native publication correction — local candidate, 2026-10-20
+
+Independent review found that the initial routing candidate admitted physical
+slots1–3 but left native push and charge/air/turn publication inside physical
+slot-zero guards. The correction routes those publishers, charge/rotation
+actors and ordinary-jump rotation metadata through the existing logical local
+actor. Per-transport packet tracking and diagnostics retain the physical index.
+
+The routing target now also compiles source-generated production publication
+statements into nonactuating sinks. Its72 publication checks cover every physical
+slot, charged release, yaw, ground-turn handoff, jump metadata and exclusions;
+the235 routing checks remain. Four targeted rollbacks fail at the corresponding
+publication assertions. CI build/test selection now includes this exact target
+and test while retaining every previous selection. No CI has been run.
+
+The initial candidate remains immutable. Sole-controller applicability is still
+unverified on hardware; ambiguous connected sets remain unavailable. Source and
+offline publication checks provide no native/player acceptance credit.
+
+## Single physical controller routing — local candidate, 2026-10-20
+
+The native input facade retains one logical local-player session. Its original
+slot-zero transport assumption was introduced in `41d80e06` alongside native
+owner, focus and freshness binding. A native routing adapter now admits a sole
+connected XInput controller on any physical slot to that existing session.
+It consumes the selected controller's original cached packet, never the
+merged overlay buttons or axes. Physical input diagnostics retain the actual
+transport slot. Multiple connected controllers, unsupported sources, stale
+samples and unavailable focus remain unadmitted; activity does not elect an
+owner from an ambiguous connected set.
+
+Source changes invalidate existing command authority and baseline client edges.
+A routing generation is checked again when native authority is published; OFF
+clears the route and physical caches. The existing native owner/contact/action
+proofs, 150ms freshness bounds and physical movement/Manual implementations
+remain in force. Other physical slots cannot advance or cancel the selected
+local-player session. Input recognizer and session sources are unchanged.
+
+Focused offline ASan/UBSan validation covers all four slots, ambiguous controller
+sets, source transitions, native owner/proof loss, freshness, and OFF restoration.
+The new regression is registered as `arcade_controller_route`. This is a local
+source correction awaiting independent review and later exact-candidate native
+validation; no full build, CI, deployment or hardware trial has run for it.
+
 ## Offline score replay admission correction — local candidate, 2026-10-18
 
 The score boundary now compares the complete authority proof as well as the

@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_native_probe.h"
+#include "arcade_controller_route_observation.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_input_state.h"
 #include "arcade_observation.h"
@@ -191,7 +192,7 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
@@ -202,6 +203,7 @@ inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
             std::isfinite(manual->position) && std::abs(manual->position) <= 1 && std::isfinite(manual->velocity) &&
             (manual->profile == 5 || manual->profile == 10);
     if (const auto* capture = std::get_if<CaptureCorrelationEvidence>(&row)) return capture_correlation_valid(*capture);
+    if (const auto* route = std::get_if<ControllerRouteEvidence>(&row)) return controller_route_evidence_valid(*route);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
