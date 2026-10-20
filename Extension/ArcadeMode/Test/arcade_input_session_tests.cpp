@@ -417,7 +417,7 @@ struct ConformanceSession {
             prepared.emplace_back(id,false,GestureContext::ground,
                 std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}});
         }
-        prepared.emplace_back(1,false,GestureContext::ground,
+        prepared.emplace_back(std::uint8_t{1},false,GestureContext::ground,
             std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}});
         admission.gameplay=admission.authored=admission.action_fresh=admission.inspected_stance=true;
         admission.may_start=true;admission.action_mode=ActionExperiment::classic;admission.pose=SkatePose::air;
