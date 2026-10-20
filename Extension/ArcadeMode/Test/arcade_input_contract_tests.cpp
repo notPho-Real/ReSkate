@@ -111,9 +111,9 @@ void held_clocks() {
 }
 
 PhysicalInputSample sample_direction(std::int16_t code) {
-    const auto x=code==4 || code==7 || code==1 ? -25000 : code==6 || code==9 || code==3 ? 25000 : 0;
-    const auto y=code>=7 ? 25000 : code<=3 ? -25000 : 0;
-    return {0,static_cast<std::int16_t>(x),static_cast<std::int16_t>(y)};
+    const auto stick_x=code==4 || code==7 || code==1 ? -25000 : code==6 || code==9 || code==3 ? 25000 : 0;
+    const auto stick_y=code>=7 ? 25000 : code<=3 ? -25000 : 0;
+    return {0,static_cast<std::int16_t>(stick_x),static_cast<std::int16_t>(stick_y)};
 }
 void event_ordinals_and_recovery() {
     constexpr std::array<std::int16_t,8> order{8,2,4,6,7,9,1,3};
