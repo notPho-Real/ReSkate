@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <memory>
 
 namespace {
 unsigned checks{};
@@ -49,7 +50,9 @@ int run_arcade_manual_tests() {
                 0, static_cast<std::int16_t>(pad ? 0 : direction * 24000), gameplay, safe, pose, false);
         };
         for (bool trigger : {false, true}) {
-            ArcadeInput input; input.enable(true);
+            const auto input_storage = std::make_unique<ArcadeInput>();
+            auto& input = *input_storage;
+            input.enable(true);
             auto integrated = [&](unsigned ms, int direction, bool rejected) {
                 return input.poll(0, ms,
                     (pad ? (direction > 0 ? 1u : direction < 0 ? 2u : 0u) : 0u) |
@@ -111,7 +114,9 @@ int run_arcade_manual_tests() {
         }
         // Exercise public integration resets without changing playback/face ownership.
         for (unsigned reset : {0u, 1u, 2u, 3u}) {
-            ArcadeInput input; input.enable(true);
+            const auto input_storage = std::make_unique<ArcadeInput>();
+            auto& input = *input_storage;
+            input.enable(true);
             auto integrated = [&](unsigned user, unsigned ms, int direction, bool gameplay = true,
                                   bool offboard = false) {
                 return input.poll(user, ms,
