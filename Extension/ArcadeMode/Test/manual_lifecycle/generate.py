@@ -55,6 +55,10 @@ def generated(root):
     hud = (root / "Extension/ArcadeMode/arcade_balance_hud.cpp").read_text(encoding="utf-8")
     acquisition = (root / "Extension/ArcadeMode/arcade_manual_acquisition.h").read_text(encoding="utf-8")
     parts = {
+        "CAMERA_STATE": between(mode, "CameraOrbit camera_orbit;", "std::atomic<unsigned> authored_status"),
+        "CAMERA_TICK": function(mode, "void on_camera_tick("),
+        "CAMERA_TOGGLE": between(function(mode, "void set_enabled("), "        mode_enabled.store(value, std::memory_order_release);",
+                                 "        ollie_eligible_until.store"),
         "STATE": between(mode, "ComboSession combo_session(", "void update_combo("),
         "UPDATE": function(mode, "void update_combo("),
         "HUD_PUBLISH": function(hud, "void publish_balance_hud("),
@@ -82,6 +86,9 @@ def generated(root):
     # Expected failure is checked by assertion message, not CTest WILL_FAIL (which
     # could incorrectly treat an unrelated crash/tool error as a regression).
     controls = {
+        "camera_recheck": ("if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) {", "if (false) {"),
+        "camera_publish": (" ||\n            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation", ""),
+        "camera_toggle": ("camera_reset_generation.fetch_add(1, std::memory_order_release);", ""),
         "model_reset": ("if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); }",
                         "if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); manual_acquisition.reset(); }"),
         "producer_revoke": ("if (manual_acquisition.observe_native(now,frame)) arcade_input.cancel_manuals();", ""),
@@ -114,6 +121,9 @@ def generated(root):
 
 
 FAILURES = {
+    "camera_recheck": "changed camera generation cannot continue stale orbit or leave a newly raced lease active",
+    "camera_publish": "mode toggle during camera callback must retire ownership before the callback returns",
+    "camera_toggle": "OFF-to-ON between camera callbacks must retire the old native camera lease before reacquisition",
     "model_reset": "still-acquired same-owner contact retains original bounded cleanup after model interval loss",
     "producer_revoke": "hard native exit seen between client callbacks must retire old command and cleanup before original lease expires",
     "buffered_release": "original observed physical completion between clients must retire old pending release before recovery contact",

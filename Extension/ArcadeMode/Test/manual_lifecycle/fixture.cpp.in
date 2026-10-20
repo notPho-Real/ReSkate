@@ -13,8 +13,10 @@
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
 #include "Extension/Skater/no_bail.h"
+#include "Extension/ArcadeMode/arcade_camera.h"
 #include <mutex>
 #include <memory>
+#include <functional>
 #include <iostream>
 #include <cstdlib>
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
@@ -23,7 +25,7 @@ bool auto_kick_enabled(){return true;}
 std::mutex ollie_mutex;bool active=true;bool enabled(){return active;}
 NativeInputState native_input_state,motion_cleanup_state;ArcadeInput arcade_input(true);
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
-struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{};};
+struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
 struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,true,clock_ms};}
 struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations;std::array<NativeCharge,4>native_charges;
 std::array<Reset,4> neutral_delivery;Reset playback_packets;
@@ -103,6 +105,86 @@ void prepare_air(bool nose,unsigned dt){
  check(request.manual.owns&&request.manual.request==(nose?1:-1),"actual airborne directional pair requests bounded Manual/Nose hold through existing facade");
  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"airborne input delivery alone cannot admit balance or HUD");
 }
+
+// Camera phase/snapshot availability is controlled here. Native camera lease
+// and ownership checks are also exercised by the runtime composition suite.
+namespace dingosdk::multiplayer {
+struct CameraUI { bool available=true,in_menu=false; } camera_ui;
+struct CameraRoot { std::array<float,3> position{}; };
+struct CameraLocal { bool ready=true; struct { CameraRoot root; } pose; };
+CameraUI sample_game_ui_state(std::uintptr_t){return camera_ui;}
+bool party_camera_requested(){return false;}
+CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){return {};}
+std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov){
+ fov=60;return {1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
+}
+}
+std::atomic<bool> mode_enabled{true},prepared_catalog{true};
+@@CAMERA_STATE@@
+ControllerInput camera_input;
+std::vector<char> camera_events;bool camera_adapter_ready=true;
+std::function<void()> camera_read_hook,camera_apply_hook;
+std::array<float,16> last_camera_transform{};
+void DingoSDKOverlayReadControllerInput(ControllerInput* out){
+ if(camera_read_hook){auto hook=std::move(camera_read_hook);camera_read_hook={};hook();}
+ *out=camera_input;
+}
+bool update_arcade_camera(std::uintptr_t,std::uintptr_t,bool,bool phase,
+ const std::array<float,16>* transform,std::string&,float=0)noexcept{
+ if(!phase || !camera_adapter_ready)return false;
+ if(transform&&camera_apply_hook){auto hook=std::move(camera_apply_hook);camera_apply_hook={};hook();}
+ camera_events.push_back(transform?'A':'R');
+ if(transform)last_camera_transform=*transform;
+ return true;
+}
+@@CAMERA_TICK@@
+void camera_toggle(bool value){
+ std::lock_guard lock(ollie_mutex);active=value;
+@@CAMERA_TOGGLE@@
+}
+void camera_lifecycle(){
+ for(unsigned dt:{17u,34u})for(unsigned pose:{100u,200u,401u,300u,504u})for(unsigned deferred=0;deferred<3;++deferred){
+  camera_adapter_ready=true;camera_toggle(false);on_camera_tick(1,6,true,true);
+  camera_events.clear();camera_input={};camera_toggle(true);on_camera_tick(1,6,true,true);
+  check(camera_events==std::vector<char>{'A'},"camera phase acquires once before the OFF lifecycle boundary");
+  const auto fresh=last_camera_transform;
+  clock_ms+=dt;observe(dt/1000.f,pose==100?0xc000u:0u,pose);
+  camera_input.right_x=25000;on_camera_tick(1,6,true,true);camera_input.right_x=0;
+  check(last_camera_transform!=fresh,"pre-toggle camera orbit has retained state to retire");
+  const auto before=camera_events.size();camera_toggle(false);camera_toggle(true);
+  if(deferred){
+   camera_adapter_ready=deferred!=1;
+   on_camera_tick(1,6,true,deferred!=2);
+   check(camera_events.size()==before&&camera_lease_requested,
+    "unavailable native adapter or wrong camera phase retains cleanup and blocks reacquisition");
+   check(camera_observed_generation!=camera_reset_generation.load(),
+    "deferred camera retirement never acknowledges the toggle before cleanup succeeds");
+  }
+  camera_adapter_ready=true;on_camera_tick(1,6,true,true);
+  check(camera_events.size()==before+2&&camera_events[before]=='R'&&camera_events[before+1]=='A',
+   "OFF-to-ON between camera callbacks must retire the old native camera lease before reacquisition");
+  check(last_camera_transform==fresh,"re-enabled camera starts from fresh orbit state instead of inheriting old aim");
+  const auto retired=camera_events.size();clock_ms+=dt;on_camera_tick(1,6,true,true);
+  check(camera_events.size()==retired+1&&camera_events.back()=='A',"acknowledged toggle cannot replay camera restoration on later phases");
+  camera_toggle(false);on_camera_tick(1,6,true,true);
+  check(!camera_lease_requested&&camera_events.back()=='R',"ordinary OFF relinquishes camera ownership without an ON request");
+ }
+ for(bool during_apply:{false,true}){
+  camera_toggle(false);on_camera_tick(1,6,true,true);camera_toggle(true);on_camera_tick(1,6,true,true);
+  const auto before=camera_events.size();
+  auto toggle=[](){camera_toggle(false);camera_toggle(true);};
+  if(during_apply)camera_apply_hook=toggle;else camera_read_hook=toggle;
+  on_camera_tick(1,6,true,true);
+  check(!camera_lease_requested&&camera_events.back()=='R',
+   "mode toggle during camera callback must retire ownership before the callback returns");
+  check(camera_events.size()==before+(during_apply?2u:1u),
+   "changed camera generation cannot continue stale orbit or leave a newly raced lease active");
+  const auto retired=camera_events.size();on_camera_tick(1,6,true,true);
+  check(camera_events.size()==retired+1&&camera_events.back()=='A',
+   "a later stable camera callback may acquire after the original raced lease retired");
+ }
+
+}
 std::uint64_t qualified(bool nose,unsigned dt,unsigned duration){
  const auto wanted=nose?0x8000u:0x4000u;
  prepare_air(nose,dt);rows.push_back({40,50,nose?2u:1u});tick(dt,100,wanted);const auto delivered=remap();
@@ -177,5 +259,6 @@ int main(){
   clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());const auto out=remap();
   check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
  }
+ camera_lifecycle();
  std::cout<<checks<<" exact production exit/cleanup lifecycle checks passed\n";
 }

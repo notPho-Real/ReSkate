@@ -201,6 +201,10 @@ AuthoredTickClock authored_clock;
 CameraOrbit camera_orbit;
 std::uint64_t camera_at{};
 bool camera_lease_requested{};
+// Toggles can happen between native camera phases. The camera thread must
+// retire its prior lease even if it never sampled the intervening OFF state.
+std::atomic<std::uint64_t> camera_reset_generation{};
+std::uint64_t camera_observed_generation{}; // Camera thread only.
 std::atomic<unsigned> authored_status{};
 std::atomic<unsigned> authored_stage{}, authored_field{}, authored_error{}, authored_rejected{};
 std::size_t authored_reported{};
@@ -997,6 +1001,12 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
             }
         } catch (...) {}
     };
+    const auto generation = camera_reset_generation.load(std::memory_order_acquire);
+    if (camera_observed_generation != generation) {
+        restore();
+        if (camera_lease_requested) return; // Keep retirement pending until the native adapter succeeds.
+        camera_observed_generation = generation;
+    }
     try {
         const auto ui = multiplayer::sample_game_ui_state(base);
         if (!enabled() || !prepared_catalog.load(std::memory_order_acquire) || !ready_for_camera ||
@@ -1018,10 +1028,14 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         const auto transform = camera_orbit.update(follow, target,
             static_cast<float>(input.right_x) / 32767, static_cast<float>(input.right_y) / 32767, dt);
         if (!transform) { restore(); return; }
+        if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) {
+            restore(); return;
+        }
         std::string detail;
         // Activation can succeed before a subsequent verification fails: always retain restoration intent.
         camera_lease_requested = true;
-        if (!update_arcade_camera(base, client, true, phase, &*transform, detail, fov)) restore();
+        if (!update_arcade_camera(base, client, true, phase, &*transform, detail, fov) ||
+            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) restore();
     } catch (...) { restore(); }
 }
 
@@ -1066,6 +1080,7 @@ void set_enabled(bool value, bool persist) noexcept {
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
         mode_enabled.store(value, std::memory_order_release);
+        camera_reset_generation.fetch_add(1, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);
         push_eligible_until.store(0, std::memory_order_release);

@@ -12,13 +12,18 @@ observations and outer permissions. Capture/telemetry/impact sinks do not
 actuate. It does not execute the renderer, native scripts or native solver, and
 cannot establish native initialization/out timing or player acceptance.
 
-The 7,936 assertions preserve the original schedules: Manual/Nose, 17/34 ms
+The original 7,936 assertions preserve the original schedules: Manual/Nose, 17/34 ms
 physics steps, duplicate/skipped client callbacks, original request deadlines,
 contact loss/recovery, native exits, pending physical release, owner/stale/
-pause/OFF loss, and qualified hop return versus ordinary landing. Large fixture
+pause/OFF loss, and qualified hop return versus ordinary landing.
+Camera toggle cases additionally require the old lease to retire before an
+OFF-to-ON reacquisition, retain retirement on unavailable adapter/phase, and
+reset old orbit state, and reject toggles during camera input read or native
+transform publication. The native camera adapter is controlled in this portable
+fixture; guarded native lease consumers are exercised separately. Large fixture
 objects live in static storage and are reconstructed in place between cases.
 
-The composition target is distinct from the older `dingosdk_arcade_manual_lifecycle_tests` / `arcade_manual_lifecycle` suite. It also builds four separate rollback controls. Each removes one
+The composition target is distinct from the older `dingosdk_arcade_manual_lifecycle_tests` / `arcade_manual_lifecycle` suite. It also builds seven separate rollback controls. Each removes one
 correction from the same generated source. The Python test runner requires exit
 code 1 and the specific regression assertion; crashes, unrelated failures and
 unexpected passes fail the control. The bail control gives the mutated class a
@@ -27,7 +32,7 @@ distinct test-only name so other production headers retain their normal types.
 With `DINGOSDK_BUILD_ARCADE_MODE_TESTS=ON` and Python3 available, build
 `dingosdk_arcade_manual_lifecycle_composition_tests` and select
 `^arcade_manual_lifecycle_composition` in CTest. Missing Python produces an explicit warning.
-The existing development workflow includes this target and all six tests.
+The existing development workflow includes this target and all nine tests.
 
 A focused configuration avoids runtime dependencies:
 
