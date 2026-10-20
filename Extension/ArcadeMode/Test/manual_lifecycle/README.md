@@ -18,23 +18,23 @@ contact loss/recovery, native exits, pending physical release, owner/stale/
 pause/OFF loss, and qualified hop return versus ordinary landing. Large fixture
 objects live in static storage and are reconstructed in place between cases.
 
-The main target also builds four separate rollback controls. Each removes one
+The composition target is distinct from the older `dingosdk_arcade_manual_lifecycle_tests` / `arcade_manual_lifecycle` suite. It also builds four separate rollback controls. Each removes one
 correction from the same generated source. The Python test runner requires exit
 code 1 and the specific regression assertion; crashes, unrelated failures and
 unexpected passes fail the control. The bail control gives the mutated class a
 distinct test-only name so other production headers retain their normal types.
 
 With `DINGOSDK_BUILD_ARCADE_MODE_TESTS=ON` and Python3 available, build
-`dingosdk_arcade_manual_lifecycle_tests` and select
-`^arcade_manual_lifecycle` in CTest. Missing Python produces an explicit warning.
+`dingosdk_arcade_manual_lifecycle_composition_tests` and select
+`^arcade_manual_lifecycle_composition` in CTest. Missing Python produces an explicit warning.
 The existing development workflow includes this target and all six tests.
 
 A focused configuration avoids runtime dependencies:
 
 ```sh
 cmake -S Extension/ArcadeMode/Test/manual_lifecycle -B build/manual-lifecycle
-cmake --build build/manual-lifecycle --target dingosdk_arcade_manual_lifecycle_tests
-ctest --test-dir build/manual-lifecycle -R '^arcade_manual_lifecycle' --output-on-failure
+cmake --build build/manual-lifecycle --target dingosdk_arcade_manual_lifecycle_composition_tests
+ctest --test-dir build/manual-lifecycle -R '^arcade_manual_lifecycle_composition' --output-on-failure
 ```
 
 Generation and correspondence checking can also run directly with Python3:
