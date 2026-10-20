@@ -15,6 +15,7 @@ foreach(variant IN LISTS lifecycle_variants)
     list(APPEND lifecycle_sources "${lifecycle_output}/${variant}.cpp")
 endforeach()
 set(lifecycle_outputs ${lifecycle_sources}
+    "${lifecycle_output}/hud_source.cpp" "${lifecycle_output}/hud_axis.cpp" "${lifecycle_output}/hud_clear.cpp"
     "${lifecycle_output}/acquisition_without_bail.h" "${lifecycle_output}/correspondence.json")
 add_custom_command(
     OUTPUT ${lifecycle_outputs}
@@ -43,6 +44,42 @@ foreach(variant IN LISTS lifecycle_variants)
         set_tests_properties(arcade_manual_lifecycle_composition_rollback_${variant} PROPERTIES TIMEOUT 75)
     endif()
 endforeach()
+# The portable composition target uses only ImGui core; no window, renderer
+# backend, runtime dependency download or platform SDK is needed.
+if(TARGET dingosdk_imgui)
+    set(lifecycle_imgui dingosdk_imgui)
+else()
+    add_library(dingosdk_arcade_hud_test_imgui STATIC
+        "${lifecycle_root}/External/imgui/imgui.cpp"
+        "${lifecycle_root}/External/imgui/imgui_draw.cpp"
+        "${lifecycle_root}/External/imgui/imgui_tables.cpp"
+        "${lifecycle_root}/External/imgui/imgui_widgets.cpp")
+    target_include_directories(dingosdk_arcade_hud_test_imgui PUBLIC "${lifecycle_root}/External/imgui")
+    target_compile_features(dingosdk_arcade_hud_test_imgui PRIVATE cxx_std_20)
+    set(lifecycle_imgui dingosdk_arcade_hud_test_imgui)
+endif()
+foreach(variant current hud_source hud_axis hud_clear)
+    if(variant STREQUAL current)
+        set(target dingosdk_arcade_manual_lifecycle_composition_hud_tests)
+    else()
+        set(target dingosdk_arcade_manual_lifecycle_composition_${variant}_control)
+    endif()
+    add_executable(${target} "${lifecycle_output}/${variant}.cpp")
+    add_dependencies(${target} dingosdk_arcade_manual_lifecycle_composition_generate)
+    target_include_directories(${target} PRIVATE "${lifecycle_root}")
+    target_compile_features(${target} PRIVATE cxx_std_20)
+    target_compile_definitions(${target} PRIVATE DINGOSDK_MANUAL_LIFECYCLE_HUD)
+    target_link_libraries(${target} PRIVATE ${lifecycle_imgui})
+    add_dependencies(dingosdk_arcade_manual_lifecycle_composition_tests ${target})
+    if(NOT variant STREQUAL current)
+        add_test(NAME arcade_manual_lifecycle_composition_rollback_${variant}
+            COMMAND "${Python3_EXECUTABLE}" "${lifecycle_generator}"
+                --expect-failure ${variant} --binary $<TARGET_FILE:${target}>)
+        set_tests_properties(arcade_manual_lifecycle_composition_rollback_${variant} PROPERTIES TIMEOUT 75)
+    endif()
+endforeach()
+add_test(NAME arcade_manual_lifecycle_composition_hud COMMAND dingosdk_arcade_manual_lifecycle_composition_hud_tests)
+set_tests_properties(arcade_manual_lifecycle_composition_hud PROPERTIES TIMEOUT 60)
 add_test(NAME arcade_manual_lifecycle_composition COMMAND dingosdk_arcade_manual_lifecycle_composition_tests)
 add_test(NAME arcade_manual_lifecycle_composition_source
     COMMAND "${Python3_EXECUTABLE}" "${lifecycle_generator}" --root "${lifecycle_root}" --output "${lifecycle_output}" --check)

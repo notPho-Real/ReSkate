@@ -1,3 +1,4 @@
+#include "Extension/ArcadeMode/arcade_combo_session.h"
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
@@ -34,11 +35,157 @@ State active() {
     state.balance = .25f;
     return state;
 }
+void drawn(bool expected, const char* label) {
+    ImGui::NewFrame();
+    draw_balance_hud();
+    ImGui::Render();
+    require((ImGui::GetDrawData()->TotalVtxCount > 0) == expected, label);
+}
 void displayed(bool expected, const char* label) {
     require(balance_hud_pending() == expected, label);
-    const auto before = ImGui::GetBackgroundDrawList()->VtxBuffer.Size;
+    drawn(expected, label);
+}
+// Inspect the actual final cursor primitive, including its warning color. A
+// new ImGui frame for every observation also detects stale submitted geometry.
+void rendered_cursor(BalanceKind kind, float balance, unsigned danger) {
+    require(balance_hud_pending(), "fresh admitted balance schedules an overlay frame");
+    ImGui::NewFrame();
     draw_balance_hud();
-    require((ImGui::GetBackgroundDrawList()->VtxBuffer.Size > before) == expected, label);
+    const auto& vertices = ImGui::GetBackgroundDrawList()->VtxBuffer;
+    require(vertices.Size > 0, "fresh admitted balance submits geometry this frame");
+    const ImU32 color = danger >= 2 ? IM_COL32(255, 65, 65, 255) :
+        danger == 1 ? IM_COL32(255, 190, 65, 255) : IM_COL32(90, 225, 230, 255);
+    const ImU32 rgb_mask = ~IM_COL32_A_MASK;
+    float left = std::numeric_limits<float>::max(), top = left;
+    float right = std::numeric_limits<float>::lowest(), bottom = right;
+    unsigned cursor_vertices{};
+    for (int i = vertices.Size - 1; i >= 0 && (vertices[i].col & rgb_mask) == (color & rgb_mask); --i) {
+        if (!(vertices[i].col & IM_COL32_A_MASK)) continue;
+        ++cursor_vertices;
+        left = std::min(left, vertices[i].pos.x); right = std::max(right, vertices[i].pos.x);
+        top = std::min(top, vertices[i].pos.y); bottom = std::max(bottom, vertices[i].pos.y);
+    }
+    require(cursor_vertices >= 3, "current danger selects the actual cursor color");
+    const auto screen = ImGui::GetIO().DisplaySize;
+    const float clamped = std::clamp(balance, -1.0f, 1.0f);
+    const float x = kind == BalanceKind::manual ? screen.x * .80f : screen.x * (.5f + .15f * clamped);
+    const float y = kind == BalanceKind::manual ? screen.y * (.5f - .15f * clamped) : screen.y * .78f;
+    require(std::abs((left + right) / 2 - x) < .75f && std::abs((top + bottom) / 2 - y) < .75f,
+            "rendered cursor uses the current kind and signed snapshot position");
+    require(std::all_of(vertices.begin(), vertices.end(), [](const ImDrawVert& vertex) {
+        return std::isfinite(vertex.pos.x) && std::isfinite(vertex.pos.y);
+    }), "rendered geometry stays finite");
+    ImGui::Render();
+    require(ImGui::GetDrawData()->TotalVtxCount > 0, "balance geometry reaches final ImGui draw data");
+}
+State snapshot(BalanceKind kind, float balance) {
+    auto state = active();
+    state.balance_kind = kind;
+    state.balance = balance;
+    return state;
+}
+void lifecycle_frames(unsigned hz) {
+    ImGui::GetIO().DeltaTime = 1.0f / hz;
+    const std::uint64_t base = 30000 + hz * 1000;
+    const auto publish = [&](unsigned frame, const State& state, unsigned danger = 0, bool valid = true) {
+        const auto now = base + std::uint64_t{frame} * 1000 / hz;
+        clock_ms.store(now);
+        publish_balance_hud(state, danger, {now, valid});
+    };
+    unsigned frame{};
+    // These are synthetic authoritative display snapshots, not native admission
+    // evidence. An Ollie/active combo alone must never invent a balance meter.
+    auto air = snapshot(BalanceKind::none, 0);
+    for (; frame < hz; ++frame) {
+        publish(frame, air);
+        displayed(false, "air/combo activity without balance remains hidden");
+    }
+    for (; frame < 2 * hz; ++frame) {
+        publish(frame, snapshot(BalanceKind::manual, .25f));
+        rendered_cursor(BalanceKind::manual, .25f, 0);
+    }
+    // Nose Manual shares the vertical meter; its signed position still changes.
+    for (; frame < 3 * hz; ++frame) {
+        publish(frame, snapshot(BalanceKind::manual, -.5f), 1);
+        rendered_cursor(BalanceKind::manual, -.5f, 1);
+    }
+    publish(frame++, air);
+    displayed(false, "observed manual takeoff removes the meter immediately");
+    publish(frame++, snapshot(BalanceKind::grind, -.75f), 2);
+    rendered_cursor(BalanceKind::grind, -.75f, 2);
+    publish(frame++, snapshot(BalanceKind::manual, .5f));
+    rendered_cursor(BalanceKind::manual, .5f, 0);
+    publish(frame++, snapshot(BalanceKind::grind, .4f), 1);
+    rendered_cursor(BalanceKind::grind, .4f, 1);
+    publish(frame++, snapshot(BalanceKind::manual, -.25f), 0, false);
+    displayed(false, "invalid source clears a previously visible grind");
+    publish(frame++, snapshot(BalanceKind::manual, -.25f));
+    rendered_cursor(BalanceKind::manual, -.25f, 0);
+    auto invalid = snapshot(BalanceKind::manual, std::numeric_limits<float>::quiet_NaN());
+    publish(frame++, invalid);
+    displayed(false, "invalid position clears a previously visible manual");
+    publish(frame++, snapshot(BalanceKind::grind, .25f));
+    rendered_cursor(BalanceKind::grind, .25f, 0);
+    invalid = snapshot(BalanceKind::grind, .25f);
+    invalid.balance_velocity = std::numeric_limits<float>::infinity();
+    publish(frame++, invalid);
+    displayed(false, "invalid velocity clears a previously visible grind");
+    publish(frame++, snapshot(BalanceKind::manual, -.25f));
+    rendered_cursor(BalanceKind::manual, -.25f, 0);
+    auto inactive = snapshot(BalanceKind::manual, -.25f);
+    inactive.combo_active = false;
+    publish(frame++, inactive);
+    displayed(false, "bail or completed combo clears the prior manual");
+    publish(frame++, snapshot(BalanceKind::manual, .25f), 2);
+    rendered_cursor(BalanceKind::manual, .25f, 2);
+    publish_balance_hud({}, 0, {});
+    displayed(false, "disable/context exit/reset clear publication hides on the same render frame");
+    for (unsigned clear = 0; clear < 3; ++clear) {
+        clock_ms.store(base + std::uint64_t{frame++} * 1000 / hz);
+        displayed(false, "clear cannot leave prior-frame geometry behind");
+    }
+    // An authoritative continuing section must stay visible. A renderer-only
+    // timeout would conceal an upstream native lifecycle failure.
+    const auto sustained_end = frame + 10 * hz;
+    for (; frame < sustained_end; ++frame) {
+        publish(frame, snapshot(BalanceKind::manual, .25f));
+        rendered_cursor(BalanceKind::manual, .25f, 0);
+    }
+    const auto source = clock_ms.load();
+    for (unsigned age : {0u, 149u, 150u, 151u, 200u}) {
+        clock_ms.store(source + age);
+        publish_balance_hud(snapshot(BalanceKind::manual, .25f), 0, {source, true});
+        displayed(age <= 150, "source stall expires despite repeated presentation updates");
+    }
+    frame += hz; // Keep later snapshots beyond the deliberate source stall.
+    publish(frame++, snapshot(BalanceKind::manual, .25f));
+    require(balance_hud_pending(), "fresh snapshot passes the overlay scheduling gate");
+    clock_ms.store(clock_ms.load() + 151);
+    drawn(false, "evidence expiring between scheduling and draw cannot submit a stale meter");
+    frame += hz;
+    // Use the existing session's failed display contract: retain the red edge
+    // only while physical exit/bail is pending, then clear on actual exit.
+    for (const auto pose : {SkatePose::manual, SkatePose::nose_manual}) {
+        ComboSession session;
+        session.step(SkatePose::air, 0, 0);
+        publish(frame++, session.balance_display_state());
+        displayed(false, "observed air session alone cannot activate the renderer");
+        const PhysicalBalanceSample balanced{.valid = true, .active = true, .position = .25f};
+        session.step(pose, 1.0f / hz, 0, false, &balanced);
+        publish(frame++, session.balance_display_state());
+        rendered_cursor(BalanceKind::manual, .25f, 0);
+        const PhysicalBalanceSample failed{.valid = true,
+            .position = pose == SkatePose::manual ? 1.0f : -1.0f, .exit = BalanceExit::bail};
+        require(session.step(pose, 1.0f / hz, 0, false, &failed), "session supplies a failed manual snapshot");
+        publish(frame++, session.balance_display_state(), 2);
+        rendered_cursor(BalanceKind::manual, failed.position, 2);
+        session.step(SkatePose::riding, 1.0f / hz, 0);
+        publish(frame++, session.balance_display_state());
+        displayed(false, "actual native section exit clears the retained failed meter");
+        session.invalidate();
+        publish(frame++, session.balance_display_state());
+        displayed(false, "invalidated session supplies no retained failed display");
+    }
 }
 void delayed_publication(std::uint64_t age, std::uint64_t wait, bool expected) {
     constexpr std::uint64_t sample = 1000;
@@ -67,7 +214,6 @@ int main() {
     unsigned char* pixels{};
     int width{}, height{};
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-    ImGui::NewFrame();
 
     delayed_publication(149, 2, false);
     delayed_publication(150, 1, false);
@@ -146,7 +292,8 @@ int main() {
     require(!BalanceHudLease::fresh(std::chrono::milliseconds(-1)), "existing negative lease rejection");
     require(!BalanceHudLease::fresh(std::chrono::milliseconds(151)), "existing stale lease rejection");
 
-    ImGui::EndFrame();
+    lifecycle_frames(30);
+    lifecycle_frames(60);
     ImGui::DestroyContext();
     std::cout << checks << " HUD publication, pending and actual draw checks passed\n";
 }

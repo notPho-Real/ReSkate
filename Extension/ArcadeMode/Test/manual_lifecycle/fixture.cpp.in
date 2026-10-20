@@ -19,10 +19,19 @@
 #include <functional>
 #include <iostream>
 #include <cstdlib>
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+#include "Extension/ArcadeMode/arcade_balance_layout.h"
+#include <imgui.h>
+#include <limits>
+unsigned hud_hz{}, hud_frame{};
+#endif
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
 bool watch=true;std::uint64_t clock_ms=1000;std::uint64_t GetTickCount64(){return clock_ms;}
 bool auto_kick_enabled(){return true;}
-std::mutex ollie_mutex;bool active=true;bool enabled(){return active;}
+std::mutex ollie_mutex;std::atomic<bool> active{true};bool enabled(){return active.load();}
+std::atomic<bool>& mode_enabled=active;
+std::atomic<bool> prepared_catalog{true};
+@@CAMERA_STATE@@
 NativeInputState native_input_state,motion_cleanup_state;ArcadeInput arcade_input(true);
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
@@ -31,8 +40,8 @@ struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::ar
 std::array<Reset,4> neutral_delivery;Reset playback_packets;
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
-struct Telemetry{template<class T>void client(const T&){}}input_telemetry;
-struct Correlation{void lost(){}}input_capture_correlation;
+struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
+struct Correlation{void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}}input_capture_correlation;
 std::uint64_t capture_admission_sequence{},capture_termination_sequence{};
 
 void capture_event(CaptureCorrelationSource,std::uint64_t,std::uint64_t,const NativeInputFrame&){}
@@ -41,10 +50,30 @@ void set_arcade_push_intent(bool){}void set_arcade_air_intent(bool,std::uint64_t
 std::mutex hud_mutex;BalanceMeter meter;unsigned danger_level{};BalanceHudSource observed;std::uint64_t hud_now()noexcept{return clock_ms;}
 @@HUD_PUBLISH@@
 @@HUD_PENDING@@
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+@@HUD_DRAW@@
+#endif
 @@STATE@@@@UPDATE@@
+// Outer services do not actuate in this fixture. The complete mode toggle below
+// is current production source, including its actual session/HUD invalidation.
+std::atomic<bool> reset_push_contact_policy{};
+std::atomic<std::uint64_t> ollie_eligible_until{},gameplay_valid_until{},push_eligible_until{},movement_eligible_until{},
+    board_eligible_until{},offboard_valid_until{},air_flip_ready_until{};
+ControllerInput previous_pad,previous_source_pad;bool preference_loaded{};unsigned request_capture{};
+void invalidate_surface_geometry(){}void invalidate_traffic_surface(){}void invalidate_grind_observer(){}
+void prepare_authored_catalog(){}void reset_score_label_occurrences(){}void capture_row(){}
+namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){}}
+namespace dingosdk::logging{
+enum class Level{info};enum class Channel{skater};
+template<class... Args>void log(Level,Channel,const char*,Args&&...){}
+}
+@@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
-void observe(float seconds,unsigned contacts,unsigned state=100){
- raw.valid=true;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
+void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true){
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ if(hud_hz)seconds=1.f/hud_hz;
+#endif
+ raw.valid=valid;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
  const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{true,-1};const bool wipeout=false;
  std::lock_guard lock(ollie_mutex);
 @@OBSERVER@@latest=frame;arcade_input.publish_authority(now,frame.owner_generation,1,true);
@@ -54,6 +83,9 @@ unsigned checks{};void check(bool b,const char* why){++checks;if(!b){std::cerr<<
 bool same(const PhysicalBalanceSample& a,const PhysicalBalanceSample& b){return a.valid==b.valid&&a.active==b.active&&a.exit==b.exit&&std::abs(a.position-b.position)<=1e-6f&&std::abs(a.velocity-b.velocity)<=1e-6f&&std::abs(a.elapsed-b.elapsed)<=1e-6f&&std::abs(a.repeat_pressure-b.repeat_pressure)<=1e-6f;}
 auto snapshot(){auto copy=physical_manual;return copy.sample(.001f,PhysicalManualControl{});}
 void client(float seconds,const ScoreLabelOccurrence& label){
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ if(hud_hz)seconds=1.f/hud_hz;
+#endif
  update_combo(raw,owner,ControllerInput{},watch,0,clock_ms,{},label,false,seconds);
  const auto live=[&](auto& deadline){const auto at=deadline.load();return at>=clock_ms&&at-clock_ms<=150;};
  native_readiness.publish(latest,{active&&watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
@@ -92,8 +124,17 @@ void reset_case(){
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
  combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
  had_combo_owner=false;combo_tick_at=0;clock_ms=1000;presenters={};labels={};rows.clear();manual_balance_admitted=false;
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ hud_frame=0;publish_balance_hud({},0,{});
+#endif
 }
-void tick(unsigned dt,unsigned state,unsigned contacts){clock_ms+=dt;observe(dt/1000.f,contacts,state);client(dt/1000.f,history());}
+void tick(unsigned dt,unsigned state,unsigned contacts,bool valid=true){
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ if(hud_hz)clock_ms=1000+std::uint64_t{++hud_frame}*1000/hud_hz;else
+#endif
+ clock_ms+=dt;
+ observe(dt/1000.f,contacts,state,valid);client(dt/1000.f,history());
+}
 void prepare_air(bool nose,unsigned dt){
  reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();
  tick(dt,100,0xc000);const auto setup=remap(0x1000);check(setup.jump.setup_started&&setup.requested_id==1,"actual facade accepts ordinary Ollie setup on qualified ordinary ground");
@@ -119,8 +160,6 @@ std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov){
  fov=60;return {1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
 }
 }
-std::atomic<bool> mode_enabled{true},prepared_catalog{true};
-@@CAMERA_STATE@@
 ControllerInput camera_input;
 std::vector<char> camera_events;bool camera_adapter_ready=true;
 std::function<void()> camera_read_hook,camera_apply_hook;
@@ -139,8 +178,7 @@ bool update_arcade_camera(std::uintptr_t,std::uintptr_t,bool,bool phase,
 }
 @@CAMERA_TICK@@
 void camera_toggle(bool value){
- std::lock_guard lock(ollie_mutex);active=value;
-@@CAMERA_TOGGLE@@
+ set_enabled(value,false);
 }
 void camera_lifecycle(){
  for(unsigned dt:{17u,34u})for(unsigned pose:{100u,200u,401u,300u,504u})for(unsigned deferred=0;deferred<3;++deferred){
@@ -193,6 +231,113 @@ std::uint64_t qualified(bool nose,unsigned dt,unsigned duration){
  while(clock_ms-original<duration){const auto state=snapshot();tick(dt,100,wanted);remap(0,state.velocity>0?25000:-25000);check(manual_balance_admitted.load()&&balance_hud_pending(),"qualified corrected balance continues independently of original request lifetime");}
  return original;
 }
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+void rendered(bool expected,const char* why,BalanceKind kind=BalanceKind::manual){
+ check(balance_hud_pending()==expected,why);
+ ImGui::NewFrame();draw_balance_hud();
+ const auto& vertices=ImGui::GetBackgroundDrawList()->VtxBuffer;
+ if(expected){
+  const auto& display=combo_session.balance_display_state();
+  check(display.balance_kind==kind,"native lifecycle selects the expected displayed balance family");
+  const auto color=danger_level>=2?IM_COL32(255,65,65,255):danger_level==1?IM_COL32(255,190,65,255):IM_COL32(90,225,230,255);
+  float left=std::numeric_limits<float>::max(),top=left,right=std::numeric_limits<float>::lowest(),bottom=right;
+  unsigned cursor{};const ImU32 rgb=~IM_COL32_A_MASK;
+  for(int i=vertices.Size-1;i>=0&&(vertices[i].col&rgb)==(color&rgb);--i){
+   if(!(vertices[i].col&IM_COL32_A_MASK))continue;
+   ++cursor;left=std::min(left,vertices[i].pos.x);right=std::max(right,vertices[i].pos.x);
+   top=std::min(top,vertices[i].pos.y);bottom=std::max(bottom,vertices[i].pos.y);
+  }
+  check(cursor>=3,"actual renderer uses the current admitted danger color");
+  const auto screen=ImGui::GetIO().DisplaySize;const float balance=std::clamp(display.balance,-1.f,1.f);
+  const float x=kind==BalanceKind::manual?screen.x*.8f:screen.x*(.5f+.15f*balance);
+  const float y=kind==BalanceKind::manual?screen.y*(.5f-.15f*balance):screen.y*.78f;
+  check(std::abs((left+right)/2-x)<.75f&&std::abs((top+bottom)/2-y)<.75f,
+        "admitted physical position reaches the rendered cursor on the correct axis");
+ }
+ check(std::all_of(vertices.begin(),vertices.end(),[](const ImDrawVert& v){return std::isfinite(v.pos.x)&&std::isfinite(v.pos.y);}),
+       "native lifecycle never submits nonfinite HUD geometry");
+ ImGui::Render();check((ImGui::GetDrawData()->TotalVtxCount>0)==expected,why);
+}
+void original_hud_source(){
+ check(observed.valid&&observed.sampled_at_ms==latest.sampled_at,
+       "client publication retains the original native HUD timestamp");
+}
+void hud_lifecycle(){
+ ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
+ io.DisplaySize=ImVec2(1280,800);unsigned char* pixels{};int width{},height{};
+ io.Fonts->GetTexDataAsRGBA32(&pixels,&width,&height);
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u}){
+  hud_hz=hz;io.DeltaTime=1.f/hz;const unsigned dt=hz==30?34:17;
+  const auto wanted=nose?0x8000u:0x4000u;
+  prepare_air(nose,dt);rendered(false,"delivered airborne preparation alone renders no fabricated bar");
+  tick(dt,100,wanted);remap();
+  check(!manual_balance_admitted.load(),"contact without a matching airborne history edge remains unadmitted");
+  rendered(false,"unadmitted physical contact renders no bar");
+  rows.push_back({40,50,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_balance_admitted.load(),"independent matching contact/history admits the prepared physical section");
+  original_hud_source();rendered(true,"new admitted Manual or Nose renders on its first client frame");
+  for(unsigned frame=0;frame<hz;++frame){
+   const auto state=snapshot();tick(dt,100,wanted);remap(0,state.velocity>0?25000:-25000);
+   original_hud_source();rendered(true,"fresh original physics intervals sustain the admitted rendered balance");
+  }
+  // Repeated client callbacks consume the unchanged physics proof. Their own
+  // clock cannot renew the producer timestamp or create new dynamics intervals.
+  const auto source=latest.sampled_at;clock_ms=source+1;client(1.f/hz,history());
+  original_hud_source();rendered(true,"duplicate client callback preserves admitted display and original evidence");
+  clock_ms=source+150;client(1.f/hz,history());original_hud_source();
+  rendered(true,"actual producer-to-render lease includes its original150ms endpoint");
+  check(balance_hud_pending(),"current overlay scheduling observes the last fresh source frame");
+  clock_ms=source+151;rendered(false,"source expiry between scheduling and actual draw submits no old geometry");
+  client(1.f/hz,history());rendered(false,"client republication cannot revive expired native evidence");
+
+  for(unsigned loss=0;loss<3;++loss){
+   qualified(nose,dt,300);rendered(true,"negative control begins with an actually admitted rendered section");
+   tick(dt,100,loss==2?wanted:0,loss!=2);remap();
+   if(loss==1){tick(dt,100,wanted);remap();}
+   rendered(false,"missing, discontinuous or invalid native contact clears the rendered section");
+  }
+  qualified(nose,dt,300);++owner.rig;tick(dt,100,wanted);remap();
+  rendered(false,"changed native owner cannot transplant a rendered balance");
+
+  qualified(nose,dt,300);const auto hop=remap(0x1000);
+  check(hop.jump.setup_started,"admitted Manual hop starts through the existing input facade");
+  tick(dt,103,0xc000);remap(0x1000);rendered(false,"observed hop crouch removes the old rendered balance");
+  tick(dt,103,0xc000);remap();tick(dt,200,0);remap();
+  rendered(false,"verified Manual-to-AIR transition renders no old balance");
+  bool ended{};for(unsigned i=0;i<100;++i){tick(dt,200,0);if(!remap().authored_playback){ended=true;break;}}
+  check(ended,"existing hop playback finishes before new return preparation");
+  tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);remap(nose?1u:2u);
+  rendered(false,"new airborne return request alone still renders no balance");
+  rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_balance_admitted.load(),"fresh return history/contact admits its own physical section");
+  original_hud_source();rendered(true,"qualified Manual return renders from fresh native evidence");
+  tick(dt,200,0);remap();tick(dt,100,0xc000);remap();
+  rendered(false,"ordinary observed landing does not restore the old Manual bar");
+
+  qualified(nose,dt,300);set_enabled(false,false);
+  check(!active&&!observed.valid,"actual OFF callback clears the HUD publication source immediately");
+  rendered(false,"actual OFF callback removes submitted balance before another client callback");
+  set_enabled(true,false);rendered(false,"actual re-enable cannot replay the old admitted display");
+  for(unsigned i=0;i<3;++i){tick(dt,100,wanted);remap(nose?1u:2u);rendered(false,"held controls after re-enable cannot fabricate fresh balance ownership");}
+  tick(dt,100,0xc000);remap();tick(dt,100,0xc000);remap(nose?2u:1u);
+  tick(dt,100,0xc000);remap(nose?1u:2u);rows.push_back({80,50,nose?2u:1u});
+  tick(dt,100,wanted);remap();check(manual_balance_admitted.load(),"fresh release and gesture can establish new post-enable balance");
+  original_hud_source();rendered(true,"post-enable qualified section has a new rendered source");
+
+  qualified(nose,dt,300);bool failed{};
+  for(unsigned i=0;i<20*hz;++i){tick(dt,100,wanted);remap();if(combo_session.failed_section()){failed=true;break;}}
+  check(failed,"unchanged physical balance dynamics supplies an actual endpoint failure in the fixture");
+  check(!manual_balance_admitted.load()&&danger_level==2,"failed physical section withdraws admission and publishes the existing danger display");
+  rendered(true,"failed section keeps its existing red edge while native bail is pending");
+  tick(dt,300,0);remap();rendered(false,"positive native bail clears the retained failed display");
+
+  qualified(nose,dt,300);tick(dt,401,0);remap();
+  rendered(true,"distinct observed rail family selects its horizontal display",BalanceKind::grind);
+  tick(dt,200,0);remap();rendered(false,"native rail-to-air exit clears the horizontal display");
+ }
+ hud_hz=0;ImGui::DestroyContext();
+}
+#endif
 int main(){
  for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned duration:{300u,1100u,1400u})for(bool seen_unknown:{false,true})for(unsigned duplicates:{0u,3u}){
   const auto wanted=nose?0x8000u:0x4000u;const auto original=qualified(nose,dt,duration);
@@ -260,5 +405,8 @@ int main(){
   check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
  }
  camera_lifecycle();
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ hud_lifecycle();
+#endif
  std::cout<<checks<<" exact production exit/cleanup lifecycle checks passed\n";
 }

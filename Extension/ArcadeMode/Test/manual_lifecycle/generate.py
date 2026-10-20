@@ -2,7 +2,8 @@
 
 Only clocks, probe/presenter observations, outer permissions and nonactuating
 sinks are controlled. This is software composition evidence, not native action
-initialization/out timing, renderer execution or player acceptance.
+initialization/out timing or player acceptance. The optional HUD target also
+executes the current renderer against the resulting admitted display state.
 """
 import argparse
 import hashlib
@@ -57,12 +58,12 @@ def generated(root):
     parts = {
         "CAMERA_STATE": between(mode, "CameraOrbit camera_orbit;", "std::atomic<unsigned> authored_status"),
         "CAMERA_TICK": function(mode, "void on_camera_tick("),
-        "CAMERA_TOGGLE": between(function(mode, "void set_enabled("), "        mode_enabled.store(value, std::memory_order_release);",
-                                 "        ollie_eligible_until.store"),
         "STATE": between(mode, "ComboSession combo_session(", "void update_combo("),
         "UPDATE": function(mode, "void update_combo("),
         "HUD_PUBLISH": function(hud, "void publish_balance_hud("),
         "HUD_PENDING": function(hud, "bool balance_hud_pending("),
+        "HUD_DRAW": function(hud, "void draw_balance_hud("),
+        "SET_ENABLED": function(mode, "void set_enabled("),
         "OBSERVER": between(mode, "            const auto frame = native_input_state.observe(",
                             "            if(frame.valid)capture_event"),
         "POLL": between(mode, "        result = arcade_input.poll(", "        const auto capture_proof="),
@@ -96,6 +97,14 @@ def generated(root):
     }
     for name, (old, new) in controls.items():
         outputs[name + ".cpp"] = replace_once(source, old, new)
+    outputs["hud_source.cpp"] = replace_once(source,
+        "BalanceHudSource{native_frame.sampled_at, native_frame.valid}",
+        "BalanceHudSource{now, native_frame.valid}")
+    outputs["hud_axis.cpp"] = replace_once(source,
+        "point(view.vertical ? view.cursor_y : view.cursor_x, 0)",
+        "point(view.cursor_x, 0)")
+    outputs["hud_clear.cpp"] = replace_once(source,
+        "    publish_balance_hud({}, 0, {});", "    // HUD clear removed by this control.")
     outputs["bail.cpp"] = replace_once(source,
         '#include "Extension/ArcadeMode/arcade_manual_acquisition.h"',
         '#include "Extension/ArcadeMode/arcade_manual_acquisition.h"\n#include "acquisition_without_bail.h"')
@@ -128,6 +137,9 @@ FAILURES = {
     "producer_revoke": "hard native exit seen between client callbacks must retire old command and cleanup before original lease expires",
     "buffered_release": "original observed physical completion between clients must retire old pending release before recovery contact",
     "bail": "old Manual cleanup cannot survive positive native exit into unrelated recovery contact",
+    "hud_source": "client publication retains the original native HUD timestamp",
+    "hud_axis": "admitted physical position reaches the rendered cursor on the correct axis",
+    "hud_clear": "actual OFF callback clears the HUD publication source immediately",
 }
 
 
