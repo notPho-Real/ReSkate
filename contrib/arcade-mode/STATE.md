@@ -1,3 +1,26 @@
+## Joined finite controller observations — local follow-on, 2026-10-20
+
+The existing finite input capture now has an observational schema3. Its default
+mask96 joins native admission and same-call raw/returned full controller payloads,
+including neutral polls and Arcade OFF. Original native and readiness proof
+clocks/steps/generations, capture-local owners, actual masks, route/binding facts,
+original physics dt and the cached step reader remain separate observations.
+No device mapping or restoration success is manufactured. See the
+[capture contract](../../Extension/ArcadeMode/README.md).
+
+The existing queue, sink/drain and footer retain loss/boundary accounting.
+Outstanding calls and late completions are bounded and cannot silently cross
+capture IDs. Original controller binding and gameplay rules are unchanged.
+Host ASan/UBSan checks pass:320 source-generated controller capture checks,
+1,536 existing telemetry checks,870 routing checks,314 packet retirement,
+72 native publication,51 binding API/context and8,169 Manual lifecycle checks.
+Seven focused rollback controls fail at their intended assertions. Existing
+native/controller writer and guarded-reader bodies retain their original bytes;
+readiness/packet classes add only const diagnostic getters.
+
+This follow-on has no full build, CI, deployment, hardware or publication result;
+Windows compilation, native delivery and player acceptance remain unverified.
+
 ## Explicit controller source policy — local software candidate, 2026-10-20
 
 Multiple connected XInput pads can use an explicit finite slot binding instead

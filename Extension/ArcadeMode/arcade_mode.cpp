@@ -119,7 +119,17 @@ InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
 std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
 std::uint64_t capture_attempt_cursor{},capture_omission_cursor{},capture_sample_cursor{};
-bool capture_row(const CaptureCorrelationEvidence& row) noexcept {return input_telemetry.client(row);}
+std::atomic<bool> controller_capture_live{};
+NativeInputFrame capture_native_frame{};
+std::array<std::uint32_t,8> capture_native_words{};
+float capture_physics_dt{},capture_cached_dt{};
+std::uint64_t capture_cached_at{},capture_native_admission_sequence{};
+bool capture_focus{},capture_gameplay{},capture_source_available{},capture_cached_valid{},capture_bitmap_readable{};
+unsigned capture_bitmap_as_read{};std::uint64_t capture_source_at{};
+bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
+    if(row.kind==CaptureCorrelationKind::end&&row.schema==3)controller_capture_live.store(false,std::memory_order_release);
+    return input_telemetry.client(row);
+}
 void capture_event(CaptureCorrelationSource source,std::uint64_t sequence,std::uint64_t now,const NativeInputFrame& proof,bool known=true) noexcept {
     if(!input_capture_correlation.active())return;
     if(!input_capture_correlation.captures(source)){
@@ -608,6 +618,12 @@ bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept {
             r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow);
             return logging::write_command_evidence(legacy);
         }
+        if(r.schema==3){
+            const auto& d=r.controller;
+            const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={} poll_started={} raw_ms={} returned_ms={} remap_ms={} route_generation={} binding_deadline={} binding_armed={} cached_at={} slot={} selected_slot={} bitmap={} binding_state={} readiness={} ownership={} phase={} poll_result={} route_reason={} binding_native_ms={} binding_physics_step={} binding_owner={} binding_owner_generation={} binding_contact_generation={} binding_action_generation={} binding_observed={} source_ms={} bitmap_as_read={} bitmap_readable={} ownership_known={} raw_valid={} returned_valid={} context_known={} enabled={} focus={} gameplay={} clock_valid={} bitmap_known={} source_available={} capture_blocked={} native_observed={} native_state={} native_mode={} native_contacts={} native_flip={} native_flip_known={} physics_dt={} cached_dt={} cached_dt_valid={} readiness_native_ms={} readiness_physics_step={} readiness_owner={} readiness_owner_generation={} readiness_contact_generation={} readiness_action_generation={} readiness_observed={} current_native_ms={} current_physics_step={} current_owner_generation={} current_observed={} raw_buttons={} raw_lx={} raw_ly={} raw_rx={} raw_ry={} raw_lt={} raw_rt={} raw_packet={} returned_buttons={} returned_lx={} returned_ly={} returned_rx={} returned_ry={} returned_lt={} returned_rt={} returned_packet={} native_word0={} native_word1={} native_word2={} native_word3={} native_word4={} native_word5={} native_word6={} native_word7={}.",
+                r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.recognition_id,r.recognition_session,r.action,r.context,r.footprint_kind,r.member_index,r.member_count,r.member_event,r.held_reuse,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow,r.queue_admitted,d.poll_started,d.raw_ms,d.returned_ms,d.remap_ms,d.route_generation,d.binding_deadline,d.binding_armed,d.cached_at,d.slot,d.selected_slot,d.bitmap,d.binding_state,d.readiness,d.ownership,d.phase,d.poll_result,d.route_reason,d.binding_native_ms,d.binding_physics_step,d.binding_owner,d.binding_owner_generation,d.binding_contact_generation,d.binding_action_generation,d.binding_observed,d.source_ms,d.bitmap_as_read,d.bitmap_readable,d.ownership_known,d.raw_valid,d.returned_valid,d.context_known,d.enabled,d.focus,d.gameplay,d.clock_valid,d.bitmap_known,d.source_available,d.capture_blocked,d.native_observed,d.native_state,d.native_mode,d.native_contacts,d.native_flip,d.native_flip_known,d.physics_dt,d.cached_dt,d.cached_dt_valid,d.readiness_native_ms,d.readiness_physics_step,d.readiness_owner,d.readiness_owner_generation,d.readiness_contact_generation,d.readiness_action_generation,d.readiness_observed,d.current_native_ms,d.current_physics_step,d.current_owner_generation,d.current_observed,d.raw.buttons,d.raw.lx,d.raw.ly,d.raw.rx,d.raw.ry,d.raw.lt,d.raw.rt,d.raw.packet,d.returned.buttons,d.returned.lx,d.returned.ly,d.returned.rx,d.returned.ry,d.returned.lt,d.returned.rt,d.returned.packet,d.native_words[0],d.native_words[1],d.native_words[2],d.native_words[3],d.native_words[4],d.native_words[5],d.native_words[6],d.native_words[7]);
+            return logging::write_command_evidence(text);
+        }
         const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={}.",
             r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.recognition_id,r.recognition_session,r.action,r.context,r.footprint_kind,r.member_index,r.member_count,r.member_event,r.held_reuse,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow,r.queue_admitted);
         return logging::write_command_evidence(text);
@@ -731,6 +747,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.context + selected_state, sample.state) ||
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
+        capture_native_frame.valid=false;
         native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
@@ -748,6 +765,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
+        capture_native_frame.valid=false;
         native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
@@ -763,6 +781,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         if (clock_valid) {
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
+            capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
             arcade_input.publish_native_context(frame);
             if (manual_acquisition.observe_native(now,frame)) arcade_input.cancel_manuals();
             if (enabled()) physical_manual_steps.observe(frame,seconds,arcade_input.digital_state(now));
@@ -773,8 +792,9 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             if (frame.valid) input_owner_epoch.store(frame.owner_generation,std::memory_order_release);
             else arcade_input.invalidate_authority();
         } else {
+            capture_native_frame.valid=false;
             native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
-        input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
+            input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
     }
@@ -899,17 +919,77 @@ bool native_board_toggle_safe(const NativeRequestSample& sample) noexcept {
 }
 }
 
+// Controller capture context publication begin.
+ControllerPollCapture controller_capture_context(std::uint64_t now,unsigned slot) noexcept {
+    ControllerPollCapture out;out.proof=capture_native_frame;auto& d=out.details;
+    d.remap_ms=now;d.slot=slot;d.route_generation=controller_route.generation();
+    d.binding_state=controller_route.binding_state();d.binding_deadline=controller_route.binding_deadline();d.binding_armed=controller_route.binding_armed();
+    out.binding_proof=controller_route.binding_observation();const auto& binding=out.binding_proof;
+    d.binding_native_ms=binding.sampled_at;d.binding_physics_step=binding.physics_step;d.binding_owner_generation=binding.owner_generation;
+    d.binding_contact_generation=binding.contact_generation;d.binding_action_generation=binding.action_generation;d.binding_observed=binding.valid;
+    d.selected_slot=controller_route.selected_slot();
+    const auto route=controller_route.observation(now,enabled(),capture_source_available);
+    d.route_reason=static_cast<unsigned>(route.reason);d.bitmap=route.bitmap;d.bitmap_known=route.bitmap_known;d.source_available=route.source_available;
+    d.bitmap_as_read=capture_bitmap_as_read;d.bitmap_readable=capture_bitmap_readable;d.source_ms=capture_source_at;
+    d.context_known=true;d.enabled=enabled();d.focus=capture_focus;d.gameplay=capture_gameplay;
+    d.clock_valid=input_clock_valid.load(std::memory_order_acquire);
+    d.cached_dt=capture_cached_dt;d.cached_at=capture_cached_at;d.physics_dt=capture_physics_dt;
+    d.native_words=capture_native_words;d.native_state=out.proof.state;d.native_mode=out.proof.mode;d.native_contacts=out.proof.contacts;
+    d.native_flip=out.proof.flip_id;d.native_flip_known=out.proof.flip_known;d.native_observed=out.proof.valid;
+    const auto current=arcade_input.native_context(now);
+    out.readiness_proof=native_readiness.observed_proof();const auto& p=out.readiness_proof;
+    d.readiness_native_ms=p.sampled_at;d.readiness_physics_step=p.physics_step;d.readiness_owner_generation=p.owner_generation;
+    d.readiness_contact_generation=p.contact_generation;d.readiness_action_generation=p.action_generation;d.readiness_observed=p.valid;
+    d.current_native_ms=current.sampled_at;d.current_physics_step=current.physics_step;d.current_owner_generation=current.owner_generation;d.current_observed=current.valid;
+    d.cached_dt_valid=capture_cached_valid;
+    const auto a=native_readiness.sample(now,current);
+    const bool flags[]{a.gameplay,a.start,a.push,a.board,a.drive,a.manual,a.prepare,a.releasing,a.action,a.mirror_x,a.offboard,a.flip_ready,a.matched};
+    for(unsigned i=0;i<13;++i)if(flags[i])d.readiness|=1u<<i;
+    return out;
+}
+// Controller capture context publication end.
+// Controller capture polls publication begin.
+bool begin_controller_poll(unsigned slot,ControllerPollCapture& capture) noexcept {
+    if(slot>=4||!controller_capture_live.load(std::memory_order_acquire))return false;
+    std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();
+    input_capture_correlation.maintain(now,capture_native_frame,input_telemetry.client_dropped(),capture_row);
+    const auto poll=input_capture_correlation.reserve_poll();if(!poll)return false;
+    capture.capture_id=input_capture_correlation.capture_id();capture.poll=poll;
+    capture.details.poll_started=now;capture.details.slot=slot;return true;
+}
+void complete_controller_poll(ControllerPollCapture& capture) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    if(capture.capture_id!=input_capture_correlation.capture_id())return;
+    input_capture_correlation.maintain(capture.details.returned_ms,capture.proof,input_telemetry.client_dropped(),capture_row);
+    if(!input_capture_correlation.release_poll(capture.capture_id,capture.poll))return;
+    CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::pad_poll;row.ms=capture.details.returned_ms;
+    row.controller=capture.details;row.events_known=true;
+    row.source_sequence=capture.poll;
+    input_capture_correlation.observation(row,capture.proof,input_telemetry.client_dropped(),capture_row,capture.readiness_proof,capture.binding_proof);
+}
+
+// Controller capture polls publication end.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
 bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept {
-    std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=arcade_input.native_context(now);
+    std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=(!duration_ms?input_capture_correlation.observational():(required_sources&96)!=0)?capture_native_frame:arcade_input.native_context(now);
     if(!duration_ms){
         if(!input_capture_correlation.active())return false;
         input_capture_correlation.end(now,frame,input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(0,false);return true;
     }
-    if(!enabled()||!input_telemetry.available())return false;
+    if((!enabled()&&!(required_sources&96))||!input_telemetry.available())return false;
+    // Publish the diagnostic gate while holding the producer mutex, before
+    // emitting begin. A hook seeing it waits for this transaction; a hook that
+    // saw false began outside the capture boundary. No begin-to-gate blind gap.
+    // Controller capture activation publication begin.
+    const bool activating=!input_capture_correlation.active()&&(required_sources&96);
+    if(activating)controller_capture_live.store(true,std::memory_order_release);
     const bool begun=input_capture_correlation.begin(now,duration_ms,required_sources,frame,input_telemetry.client_dropped(),capture_row);
+    if(!begun&&activating)controller_capture_live.store(false,std::memory_order_release);
+    // Controller capture activation publication end.
     if(begun){
+        controller_capture_live.store(input_capture_correlation.observational(),std::memory_order_release);
+        capture_native_admission_sequence=0;
         arcade_input.set_recognition_capture(0,(required_sources&2u)!=0);
         if(const auto* diagnostic=arcade_input.input_diagnostic(0)){
             capture_attempt_cursor=diagnostic->recognized;capture_omission_cursor=diagnostic->recognition_dropped;capture_sample_cursor=diagnostic->samples;
@@ -1116,10 +1196,13 @@ void set_enabled(bool value, bool persist) noexcept {
     if (value) prepare_authored_catalog();
     {
         std::lock_guard lock(ollie_mutex);
+        // Controller capture off publication begin.
         if(!value){
-            input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
+            if(!input_capture_correlation.observational())
+                input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
             arcade_input.set_recognition_capture(0,false);
         }
+        // Controller capture off publication end.
         native_input_state.invalidate(); physical_manual_steps.reset(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
         // Controller route packet_mode_reset publication begin.
         controller_route.reset();
@@ -1196,6 +1279,7 @@ void on_client_tick() noexcept {
         const auto clock_now = GetTickCount64();
         {
             std::lock_guard lock(ollie_mutex);
+            capture_cached_dt=step;capture_cached_at=clock_now;capture_cached_valid=valid_clock;
             input_capture_correlation.maintain(clock_now,arcade_input.native_context(clock_now),input_telemetry.client_dropped(),capture_row);
         }
         const bool observed_clock = valid_clock && input_clock_valid.load(std::memory_order_acquire) &&
@@ -1219,6 +1303,8 @@ void on_client_tick() noexcept {
         {
             std::lock_guard lock(ollie_mutex);
             const auto route_now = GetTickCount64();
+            capture_focus=focus_available;capture_source_available=input.available;
+            capture_source_at=route_now;capture_bitmap_readable=input.device<16;capture_bitmap_as_read=capture_bitmap_readable?input.device:0;
             const bool route_enabled=enabled();
             // The independent original-physics observer is also available before
             // any input source is admitted. A policy request cannot mint proof.
@@ -1411,6 +1497,15 @@ void on_client_tick() noexcept {
                  live(board_eligible_until), live(movement_eligible_until), live(manual_eligible_until),
                  live(manual_prepare_until), live(manual_release_until), live(action_eligible_until), speed});
             else if (!gameplay || !focus_available || !watch.valid) native_readiness.reset();
+            capture_gameplay=gameplay;
+            if(input_capture_correlation.captures(CaptureCorrelationSource::native_admission)){
+                auto observation=controller_capture_context(publication_at,controller_route.selected_slot());
+                CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::native_admission;row.ms=publication_at;row.events_known=true;row.controller=observation.details;
+                if(capture_correlation_add(capture_native_admission_sequence)){
+                    row.source_sequence=capture_native_admission_sequence;
+                    input_capture_correlation.observation(row,observation.proof,input_telemetry.client_dropped(),capture_row,observation.readiness_proof,observation.binding_proof);
+                }else {input_capture_correlation.omitted(1);input_capture_correlation.lost();}
+            }
             // A concurrent same-owner selection change defers new permissions;
             // it must not erase an actor's own continuously verified AIR flight.
         }
@@ -1438,6 +1533,7 @@ void on_client_tick() noexcept {
         input_clock_valid.store(false, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
+            capture_native_frame.valid=false;
             native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
@@ -1473,7 +1569,7 @@ void observe_xinput_source(unsigned user, unsigned short buttons,
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                       short& right_y, bool game_input, short& left_x, short& left_y,
                       unsigned char& left_trigger, unsigned char& right_trigger,
-                      std::uint32_t physical_packet) noexcept {
+                      std::uint32_t physical_packet, ControllerPollCapture* capture) noexcept {
     if (user >= 4 || !ready.load(std::memory_order_acquire)) return 0;
     const auto physical_buttons = buttons;
     const auto physical_right_x = right_x, physical_right_y = right_y;
@@ -1489,6 +1585,24 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         std::lock_guard lock(ollie_mutex);
         // A client publication while acquiring the lock must not look future-dated.
         now = GetTickCount64();
+        // Controller capture remap_trace publication begin.
+        if(capture){
+            const auto original=capture->details;const auto capture_id=capture->capture_id,poll=capture->poll;
+            *capture=controller_capture_context(now,user);capture->capture_id=capture_id;capture->poll=poll;
+            capture->details.raw_valid=original.raw_valid;capture->details.poll_result=original.poll_result;capture->details.raw=original.raw;capture->details.poll_started=original.poll_started;capture->details.raw_ms=original.raw_ms;capture->details.capture_blocked=original.capture_blocked;
+        }
+        unsigned capture_ownership{};
+        bool capture_game_input{};
+        const auto finish_capture=[&]()noexcept{
+            if(!capture)return;
+            capture->details.ownership_known=true;capture->details.gameplay=capture_game_input;capture->details.phase=result.phase;
+            capture->details.ownership=capture_ownership | (playback_packets[user].owned()?1u:0u) | (playback_packets[user].retiring()?2u:0u) |
+                (controller_route.accepts(user,now)&&arcade_input.admitted(0,now)?4u:0u) |
+                (controller_route.accepts(user,now)&&arcade_input.busy(0)?8u:0u);
+        };
+        struct CaptureFinish {const decltype(finish_capture)& call;~CaptureFinish(){call();}} capture_finish{finish_capture};
+        // Controller capture remap_trace publication end.
+
         const ArcadeInput::Physical physical{game_input,now,physical_buttons,action_physical.left_x,action_physical.left_y,
             physical_right_x,physical_right_y,physical_left_trigger,physical_right_trigger};
         if(!game_input && controller_route.captured(user))
@@ -1520,6 +1634,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool flip_ready = admission.flip_ready;
         if (!game_input) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(NativeControllerRoute::session,now);
+        capture_game_input=game_input;
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
         const bool releasing_manual = game_input && admission.releasing && !offboard && release_deadline >= now && release_deadline - now <= 150;
         if (releasing_manual) arcade_input.cancel_manuals();
@@ -1661,6 +1776,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.right_x != physical_right_x || result.right_y != physical_right_y) ^
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
+        capture_ownership=(result.authored_playback?16u:0u) | (action.owned||action.consume_rt||action.consume_buttons?32u:0u) |
+            (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick?256u:0u) | (normal_mask?512u:0u);
         // Controller route packet_sample publication begin.
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
             reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick);

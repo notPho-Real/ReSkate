@@ -346,7 +346,7 @@ void capture_producer_drain(){
     }
     {
         CaptureCorrelationProducer producer;std::vector<CaptureCorrelationEvidence> rows;auto sink=[&](const auto& row){rows.push_back(row);return true;};auto f=capture_frame();
-        check(!producer.begin(1000,0,31,f,0,sink)&&!producer.begin(1000,5001,31,f,0,sink)&&!producer.begin(1000,10,32,f,0,sink),"duration/scope are explicitly bounded");
+        check(!producer.begin(1000,0,31,f,0,sink)&&!producer.begin(1000,5001,31,f,0,sink)&&!producer.begin(1000,10,128,f,0,sink),"duration/scope are explicitly bounded");
         check(producer.begin(1000,100,4,f,0,sink),"native-only scope uses the existing channel");
         CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::native;row.source_sequence=10;row.ms=1000;row.events_known=true;producer.event(row,f,0,sink);
         producer.maintain(1101,capture_frame(1101,11),0,sink);check(!producer.active()&&rows.back().ms==1101&&rows.back().native_ms==1101,"finite expiry uses actual callback time and its actual proof");
@@ -355,6 +355,7 @@ void capture_producer_drain(){
     }
 }
 }
+void run_controller_capture_tests();
 int main() {
     saturation_and_recovery();
     transition_and_startup();
@@ -364,5 +365,6 @@ int main() {
     capture_producer_drain();
     recognition_v2_rows();
     concurrent_producers();
+    run_controller_capture_tests();
     std::cout << checks << " input telemetry checks passed\n";
 }

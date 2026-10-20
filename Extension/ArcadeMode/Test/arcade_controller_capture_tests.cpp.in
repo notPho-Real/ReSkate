@@ -1,0 +1,247 @@
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include "Extension/ArcadeMode/arcade_native_readiness.h"
+#include "Extension/ArcadeMode/arcade_controller_route.h"
+#include "Extension/ArcadeMode/arcade_playback_packet.h"
+#include <mutex>
+#include <iostream>
+#include <cstdlib>
+#include <vector>
+using namespace dingosdk::arcade_mode;
+namespace {
+unsigned checks{};
+void check(bool condition,const char* message){++checks;if(!condition){std::cerr<<message<<'\n';std::exit(1);}}
+std::uint64_t clock_ms=1000;
+std::uint64_t GetTickCount64(){return clock_ms;}
+}
+namespace dingosdk::arcade_mode {
+std::mutex ollie_mutex;
+ArcadeInput arcade_input{true};
+NativeControllerRoute controller_route;
+NativeInputReadiness native_readiness;
+NativeInputFrame capture_native_frame;
+std::array<std::uint32_t,8> capture_native_words{};
+float capture_physics_dt=.016f,capture_cached_dt=.016f;
+std::uint64_t capture_cached_at=1000;
+bool capture_focus=true,capture_gameplay=true,capture_source_available=true,capture_cached_valid=true,capture_bitmap_readable=true;
+unsigned capture_bitmap_as_read=2;std::uint64_t capture_source_at=1000;
+std::atomic<bool> input_clock_valid{true},controller_capture_live{};
+CaptureCorrelationProducer input_capture_correlation;
+InputTelemetry telemetry;
+InputTelemetryLink input_telemetry;
+std::array<PlaybackPacket,4> playback_packets;
+bool mode=true;
+bool enabled(){return mode;}
+bool capture_row(const CaptureCorrelationEvidence& row){
+    if(row.kind==CaptureCorrelationKind::begin&&row.schema==3)check(controller_capture_live.load(),"activation gate precedes the emitted begin boundary");
+    if(row.kind==CaptureCorrelationKind::end&&row.schema==3)controller_capture_live=false;
+    return input_telemetry.client(row);
+}
+@controller_capture_context@
+@controller_capture_polls@
+bool activate(unsigned required_sources,unsigned duration_ms){
+    std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=capture_native_frame;
+@controller_capture_activation@
+    return begun;
+}
+void off_capture(){const bool value=false;
+@controller_capture_off@
+    mode=false;controller_route.reset();arcade_input.enable(false);native_readiness.reset();
+    for(auto& p:playback_packets)p.retire();
+}
+void observe_xinput_source(unsigned,unsigned short,unsigned char,unsigned char,short,short,short,short){}
+void disconnect_xinput_source(unsigned slot){controller_route.disconnected(slot);}
+// Controlled nonactuating gameplay boundary. The actual diagnostic scope and
+// packet cancellation branch below are extracted unchanged from remap_xinput.
+unsigned remap_xinput(unsigned user,unsigned short& buttons,short& right_x,short& right_y,bool game_input,
+                     short& left_x,short& left_y,unsigned char&,unsigned char&,std::uint32_t physical_packet,ControllerPollCapture* capture){
+    std::lock_guard lock(ollie_mutex);auto now=GetTickCount64();NativeGesture::Output result{};
+    result.buttons=buttons;result.right_x=right_x;result.right_y=right_y;
+@controller_capture_remap_trace@
+@controller_route_packet_reject@
+    capture_game_input=mode&&game_input;
+    if(capture_game_input){buttons^=0x2000;right_x=1234;left_y=2345;result.buttons=buttons;result.right_x=right_x;result.phase=3;capture_ownership=16;}
+    (void)left_x;
+    return physical_packet^playback_packets[user].sample(physical_packet,physical_packet,capture_game_input);
+}
+}
+namespace hook {
+using DWORD=std::uint32_t;
+#define WINAPI
+constexpr DWORD ERROR_SUCCESS=0,ERROR_DEVICE_NOT_CONNECTED=1167;
+struct Gamepad {unsigned short wButtons{};unsigned char bLeftTrigger{},bRightTrigger{};short sThumbLX{},sThumbLY{},sThumbRX{},sThumbRY{};};
+struct XINPUT_STATE {DWORD dwPacketNumber{};Gamepad Gamepad{};};
+unsigned overlay_input_access{};
+bool blocked{},filter_enabled{};unsigned reads{};DWORD read_result{};XINPUT_STATE raw{};
+constexpr int prompt_xinput=0;
+void note_prompt_read(int){}
+bool block_polled_input(){return blocked;}
+struct OverlayInputAccess {OverlayInputAccess(){++overlay_input_access;}~OverlayInputAccess(){--overlay_input_access;}};
+struct Hooks {std::array<int,1>xinput_front{},xinput_extended{},xinput_state{};};
+Hooks& input_hooks(){static Hooks h;return h;}
+DWORD native_poll(DWORD,XINPUT_STATE* out){++reads;clock_ms+=2;if(out&&read_result==ERROR_SUCCESS)*out=raw;return read_result;}
+template<class T>T original(int){return native_poll;}
+void filter_pad(bool outer,DWORD,XINPUT_STATE* out){if(outer&&filter_enabled){out->Gamepad.wButtons|=0x4000;out->Gamepad.sThumbLY=-4321;}++clock_ms;}
+namespace arcade_mode=dingosdk::arcade_mode;
+@controller_capture_front@
+@controller_capture_xinput@
+#undef WINAPI
+}
+namespace {
+NativeInputFrame frame(std::uint64_t at=1000,std::uint64_t step=1){
+    NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};f.owner_generation=7;f.contact_generation=11;f.action_generation=13;
+    f.physics_step=step;f.sampled_at=at;f.state=100;f.mode=1;f.contacts=0xc000;f.flip_known=true;return f;
+}
+std::vector<CaptureCorrelationEvidence> drain(){
+    std::vector<CaptureCorrelationEvidence> out;std::array<ClientTelemetry,64> rows{};
+    const auto count=telemetry.client.take(rows);
+    for(std::size_t i=0;i<count;++i)if(const auto* p=std::get_if<CaptureCorrelationEvidence>(&rows[i]))out.push_back(*p);
+    return out;
+}
+void reset(){
+    (void)drain();clock_ms=1000;mode=true;input_capture_correlation={};controller_capture_live=false;
+    arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_readiness.reset();playback_packets={};
+    capture_native_frame=frame();capture_focus=capture_gameplay=capture_source_available=capture_cached_valid=true;input_clock_valid=true;
+    capture_bitmap_as_read=2;capture_bitmap_readable=true;capture_source_at=1000;capture_cached_at=1000;capture_physics_dt=capture_cached_dt=.016f;capture_native_words={1,0xc000,3,4,5,6,7,8};
+    arcade_input.publish_native_context(capture_native_frame);arcade_input.publish_authority(1000,7,1,true);
+    native_readiness.publish(capture_native_frame,{true,true,true,true,true,true,true,true,true,3});
+    controller_route.observe(1,{true,1000,0,0,0,0,0,0,0});controller_route.select(1000,2,true);
+    hook::blocked=hook::filter_enabled=false;hook::read_result=0;hook::reads=hook::overlay_input_access=0;hook::raw={20,{}};
+}
+void begin(unsigned scope=64,unsigned duration=1000){
+    check(activate(scope,duration),"finite diagnostic capture begins");
+}
+void hooks_and_off(){
+    for(unsigned kind=0;kind<3;++kind){
+        reset();begin();hook::XINPUT_STATE out{};
+        const auto status=kind==0?hook::captured_front<0>(1,&out):kind==1?hook::captured_xinput<0>(1,&out):hook::captured_xinput<0,true>(1,&out);
+        check(status==0&&hook::reads==1,"actual outer hook retains original status and poll count");
+        auto rows=drain();check(rows.size()==2&&rows[0].kind==CaptureCorrelationKind::begin,"neutral poll creates a finite row even without a button edge");
+        const auto& r=rows.back();const auto& d=r.controller;
+        check(capture_correlation_valid(r)&&r.schema==3&&r.source==CaptureCorrelationSource::pad_poll,"same-poll payload uses existing capture channel and schema validation");
+        check(r.native_ms==1000&&r.physics_step==1&&r.owner==1&&r.owner_generation==7,"native time/step/generation remain original, not read time");
+        check(d.raw==ControllerCapturePad{0,0,0,0,0,0,0,20}&&d.returned.buttons==out.Gamepad.wButtons&&d.returned.ly==out.Gamepad.sThumbLY&&d.returned.packet==out.dwPacketNumber,"actual raw and returned full pad payloads join same call");
+        check(d.slot==1&&d.selected_slot==1&&d.bitmap==2&&d.route_generation==controller_route.generation(),"route facts join the actual physical slot");
+        check(d.raw_ms==1002&&d.remap_ms==1003&&d.returned_ms==1003&&d.poll_started==1000,"original hook clocks survive queue transport");
+        check(d.readiness==8191-2048-1024&&d.readiness_owner==1&&d.readiness_physics_step==1&&d.readiness_native_ms==1000,"actual readiness mask and original permission proof join capture owner");
+        check(d.ownership_known&&(d.ownership&1)&&d.enabled&&d.gameplay,"same-poll synthetic ownership is observed, not inferred from returned difference");
+        off_capture();check(input_capture_correlation.active()&&!mode,"actual OFF capture gate preserves finite observations while gameplay is disabled");
+        hook::raw.dwPacketNumber=out.dwPacketNumber;
+        hook::captured_front<0>(1,&out);auto off=drain();check(off.size()==1&&!off.back().controller.enabled&&off.back().controller.ownership_known&&!off.back().controller.ownership,"OFF row observes released authority and packet ownership");
+        check(off.back().controller.raw.packet!=off.back().controller.returned.packet,"retirement collision remains visible, never labeled restored");
+        hook::captured_front<0>(1,&out);auto equal=drain();check(equal.size()==1&&equal[0].controller.raw==equal[0].controller.returned,"later OFF row records actual full pad and packet equality");
+        input_capture_correlation.end(clock_ms,{},telemetry.client.dropped(),capture_row);auto end=drain();check(end.size()==1&&end[0].expected==3,"footer accounts every ON and OFF neutral poll");
+    }
+}
+void observation_negatives(){
+    reset();begin(96);auto obs=controller_capture_context(1000,1);CaptureCorrelationEvidence r{};r.source=CaptureCorrelationSource::native_admission;r.source_sequence=1;r.ms=1000;r.events_known=true;r.controller=obs.details;
+    input_capture_correlation.observation(r,obs.proof,telemetry.client.dropped(),capture_row,obs.readiness_proof);
+    auto rows=drain();check(rows.back().native_valid&&rows.back().controller.physics_dt==.016f,"joined native admission retains original physics dt");
+    clock_ms=1151;capture_native_frame=frame();obs=controller_capture_context(clock_ms,1);r.ms=clock_ms;r.source_sequence=2;r.controller=obs.details;
+    input_capture_correlation.observation(r,obs.proof,telemetry.client.dropped(),capture_row,obs.readiness_proof);rows=drain();
+    check(rows.size()==1,"stale native context remains observable without a false validity claim");
+    check(!rows.back().native_valid&&rows.back().native_ms==1000&&rows.back().controller.readiness==0&&input_capture_correlation.active(),"stale contexts are emitted without renewing native time or ending observational capture");
+    capture_native_frame=frame(1200);r.ms=1152;r.source_sequence=3;r.controller=controller_capture_context(1152,1).details;
+    input_capture_correlation.observation(r,capture_native_frame,telemetry.client.dropped(),capture_row);rows=drain();check(!rows.back().native_valid&&rows.back().native_ms==1200,"future original native time stays invalid");
+    auto other=frame(1153,2);other.owner.rig=9;r.ms=1153;r.source_sequence=4;r.controller=controller_capture_context(1153,1).details;
+    input_capture_correlation.observation(r,other,telemetry.client.dropped(),capture_row);rows=drain();check(rows.back().owner==2&&input_capture_correlation.active(),"replacement native owner receives a distinct capture-local token without electing an input source");
+    for(unsigned i=0;i<17;++i){auto f=frame(1154+i,3+i);f.owner.rig=100+i;r.ms=1154+i;r.source_sequence=5+i;r.controller=controller_capture_context(r.ms,1).details;input_capture_correlation.observation(r,f,telemetry.client.dropped(),capture_row);}
+    rows=drain();check(rows.back().overflow&&!rows.back().native_valid&&!rows.back().owner,"bounded owner-token exhaustion cannot claim native validity");
+}
+void readiness_provenance(){
+    reset();auto permission=frame();permission.state=200;permission.airborne=true;
+    auto current=permission;current.physics_step=2;current.sampled_at=1017;
+    capture_native_frame=current;arcade_input.publish_native_context(current);
+    native_readiness.publish(permission,{true,true,true,true,true,true,true,true,true,3});
+    clock_ms=1017;begin(32);auto observation=controller_capture_context(clock_ms,1);
+    CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::native_admission;row.source_sequence=1;row.ms=clock_ms;row.events_known=true;row.controller=observation.details;
+    input_capture_correlation.observation(row,observation.proof,telemetry.client.dropped(),capture_row,observation.readiness_proof);
+    auto rows=drain();const auto& r=rows.back();
+    check(r.native_valid&&r.native_ms==1017&&r.physics_step==2&&r.controller.readiness_native_ms==1000&&r.controller.readiness_physics_step==1,"current native sample and older stored readiness proof keep their own original clocks and steps");
+    check((r.controller.readiness&2048)&&r.controller.native_flip_known&&r.controller.native_flip==-1,"actual AIR flip readiness is joined without a requested ready flag");
+    check(r.controller.cached_at==1000&&r.controller.cached_dt==.016f&&r.controller.physics_dt==.016f,"cached reader clock and original physics dt are not relabeled at delivery time");
+    current.owner.rig=9;capture_native_frame=current;arcade_input.publish_native_context(current);clock_ms=1018;observation=controller_capture_context(clock_ms,1);
+    row.source_sequence=2;row.ms=clock_ms;row.controller=observation.details;
+    input_capture_correlation.observation(row,observation.proof,telemetry.client.dropped(),capture_row,observation.readiness_proof);rows=drain();
+    check(rows.back().owner==2&&rows.back().controller.readiness_owner==1&&!rows.back().controller.readiness,"same-generation different native owner cannot inherit readiness or capture-local identity");
+    clock_ms=1167;capture_native_frame=current;observation=controller_capture_context(clock_ms,1);row.source_sequence=3;row.ms=clock_ms;row.controller=observation.details;
+    input_capture_correlation.observation(row,observation.proof,telemetry.client.dropped(),capture_row,observation.readiness_proof);rows=drain();check(rows.back().native_valid,"original native freshness includes exact150ms boundary");
+    clock_ms=1168;observation=controller_capture_context(clock_ms,1);row.source_sequence=4;row.ms=clock_ms;row.controller=observation.details;
+    input_capture_correlation.observation(row,observation.proof,telemetry.client.dropped(),capture_row,observation.readiness_proof);rows=drain();check(!rows.back().native_valid&&rows.back().native_ms==1017,"151ms delivery cannot renew original native freshness");
+}
+void binding_context(){
+    reset();controller_route.arm(1,1000,1000);
+    const ArcadeInput::Physical pad{true,1000,0,0,0,0,0,0,0};controller_route.observe_unfiltered(1,pad);controller_route.observe(1,pad);
+    controller_route.select(1000,3,true,capture_native_frame);capture_bitmap_as_read=3;capture_bitmap_readable=true;
+    begin(32);auto observation=controller_capture_context(1000,1);CaptureCorrelationEvidence row{};row.source=CaptureCorrelationSource::native_admission;row.source_sequence=1;row.ms=1000;row.events_known=true;row.controller=observation.details;
+    input_capture_correlation.observation(row,observation.proof,telemetry.client.dropped(),capture_row,observation.readiness_proof,observation.binding_proof);
+    auto rows=drain();const auto& d=rows.back().controller;
+    check(d.binding_state==2&&d.binding_deadline==2000&&d.binding_armed==1000&&d.binding_owner==1&&d.binding_observed,"actual explicit binding state, finite deadline and capture-local proof owner are joined");
+    check(d.binding_owner_generation==7&&d.binding_contact_generation==11&&d.binding_action_generation==13&&d.binding_physics_step==1&&d.binding_native_ms==1000,"binding observer retains its actual generation/time/step domain");
+    capture_source_available=false;controller_route.select(1001,3,false);observation=controller_capture_context(1001,1);
+    check(observation.details.bitmap_as_read==3&&observation.details.bitmap_readable&&!observation.details.bitmap_known&&!observation.details.source_available,"bitmap as read is retained separately from unavailable source qualification");
+    auto bad=rows.back();bad.controller.bitmap_as_read=256;check(!capture_correlation_valid(bad),"unsupported source identifiers cannot leak into the bitmap observation");
+}
+void tickets_and_loss(){
+    reset();begin();ControllerPollCapture pending{};check(begin_controller_poll(1,pending),"finite capture reserves same-call ticket");
+    input_capture_correlation.end(1001,capture_native_frame,telemetry.client.dropped(),capture_row);auto rows=drain();check(rows.back().expected==1&&!rows.back().complete&&!rows.back().events_known,"in-flight call at stop is explicitly counted as missing evidence");
+    const auto old=pending.capture_id;clock_ms=1002;begin();check(input_capture_correlation.capture_id()!=old,"capture IDs do not alias across restart");
+    pending.details.returned_ms=1003;complete_controller_poll(pending);rows=drain();check(rows.size()==1,"late completion cannot join another capture");
+    for(unsigned i=0;i<64;++i)check(input_capture_correlation.reserve_poll()!=0,"bounded pending-ticket capacity is usable");
+    check(!input_capture_correlation.reserve_poll(),"pending overflow fails closed");input_capture_correlation.end(1004,capture_native_frame,telemetry.client.dropped(),capture_row);rows=drain();check(rows.back().expected==65&&rows.back().overflow&&!rows.back().complete,"overflow and outstanding calls survive footer accounting");
+    reset();begin();ControllerPollCapture p{};check(begin_controller_poll(1,p),"expiry control starts an actual poll");p.details.raw_ms=1000;p.details.returned_ms=2001;complete_controller_poll(p);rows=drain();check(!input_capture_correlation.active()&&!rows.back().complete&&rows.back().expected==1,"late return cannot extend finite duration or hide pending debt");
+    reset();begin();const auto id=input_capture_correlation.capture_id();const auto first=input_capture_correlation.reserve_poll(),second=input_capture_correlation.reserve_poll();
+    CaptureCorrelationEvidence event;event.source=CaptureCorrelationSource::pad_poll;event.ms=1000;event.events_known=true;
+    event.controller=controller_capture_context(1000,1).details;event.controller.poll_started=event.controller.raw_ms=event.controller.returned_ms=1000;
+    check(input_capture_correlation.release_poll(id,second),"later pending call has its own ticket");event.source_sequence=second;input_capture_correlation.observation(event,capture_native_frame,telemetry.client.dropped(),capture_row);
+    check(input_capture_correlation.release_poll(id,first),"earlier pending call remains independently correlated");event.source_sequence=first;input_capture_correlation.observation(event,capture_native_frame,telemetry.client.dropped(),capture_row);rows=drain();
+    check(rows.back().overflow,"out-of-order call completion cannot silently claim ordered capture completeness");
+    check(!input_capture_correlation.release_poll(id,first),"duplicate completion cannot consume another call's reservation");
+    reset();begin();clock_ms=999;input_capture_correlation.maintain(clock_ms,{},telemetry.client.dropped(),capture_row);rows=drain();check(!input_capture_correlation.active()&&!rows.back().complete,"clock rollback terminates capture incompletely");
+}
+void footer_and_validation(){
+    for(unsigned loss=0;loss<5;++loss){
+        reset();begin(96);if(loss==4)capture_native_frame.valid=false;
+        auto context=controller_capture_context(1000,1);CaptureCorrelationEvidence row{};
+        row.source=CaptureCorrelationSource::native_admission;row.source_sequence=1;row.ms=1000;row.events_known=true;row.controller=context.details;
+        input_capture_correlation.observation(row,context.proof,telemetry.client.dropped(),capture_row,context.readiness_proof);
+        off_capture();hook::XINPUT_STATE out{};hook::captured_front<0>(1,&out);
+        if(loss==2)telemetry.client.lose();
+        input_capture_correlation.end(clock_ms,{},telemetry.client.dropped(),capture_row);
+        auto rows=drain();check(rows.size()==4,"capture boundary and both diagnostic sources remain on one bounded channel");
+        CaptureCorrelationDrain sink;
+        for(std::size_t i=0;i<rows.size()-1;++i)sink.written(rows[i],!((loss==1&&i==1)||(loss==3&&i==0)));
+        auto footer=sink.footer(rows.back(),telemetry.client.dropped());
+        check(capture_correlation_valid(footer),"actual drain finalizes a valid schema3 footer");
+        check(capture_correlation_complete(footer)==(loss==0||loss==4),"sink rejection, missing begin and queue loss prevent completeness; invalid context alone does not fabricate evidence loss");
+        if(loss==4)check(!rows[1].native_valid&&!rows[2].native_valid&&!footer.native_valid,"complete observational transport never upgrades invalid native context");
+        auto bad=rows[2];bad.controller.raw_ms=bad.controller.returned_ms+1;
+        check(!capture_correlation_valid(bad),"same-poll clock correlation rejects raw time after actual return");
+        bad=rows[2];bad.controller.remap_ms=bad.controller.raw_ms-1;
+        check(!capture_correlation_valid(bad),"same-poll remap must follow original observation");
+        bad=rows[2];bad.controller.readiness_owner=17;
+        check(!capture_correlation_valid(bad),"readiness owner tokens cannot expose unbounded identifiers");
+    }
+    reset();check(!activate(96,0)&&!controller_capture_live,"failed activation cannot leave a live capture gate");
+    begin();const auto capture=input_capture_correlation.capture_id();check(!activate(96,1000)&&controller_capture_live&&input_capture_correlation.capture_id()==capture,"a rejected overlapping request preserves the original capture gate and identity");
+    reset();mode=false;capture_native_frame={};begin(96);auto rows=drain();
+    check(!rows[0].native_valid&&!rows[0].owner&&input_capture_correlation.active(),"finite observational begin can describe OFF and missing native owner without admitting input");
+}
+void unchanged_and_invalid(){
+    for(unsigned kind=0;kind<3;++kind)for(bool capture_enabled:{false,true})for(bool blocked:{false,true})for(bool filter:{false,true}){
+        reset();if(capture_enabled)begin();hook::blocked=blocked;hook::filter_enabled=filter;hook::raw={22,{0x1000,12,34,111,222,333,444}};hook::XINPUT_STATE out{};
+        if(kind==0)hook::captured_front<0>(0,&out);else if(kind==1)hook::captured_xinput<0>(0,&out);else hook::captured_xinput<0,true>(0,&out); // Wrong source: native remapper rejects it.
+        check(out.Gamepad.wButtons==(blocked?0:static_cast<unsigned short>(filter?0x5000:0x1000))&&out.Gamepad.sThumbLY==(blocked?0:filter?-4321:222),"diagnostics do not change capture/filter/native payload behavior");
+        check(out.dwPacketNumber==(blocked?(22u^0x80000000u):22u),"inactive/active diagnostics preserve the actual returned native packet");
+        auto rows=drain();check(rows.size()==(capture_enabled?2u:0u),"no diagnostic rows are emitted outside explicit finite capture");
+        if(capture_enabled)check(rows.back().controller.raw.buttons==0x1000&&rows.back().controller.raw.ly==222,"pre-filter original values remain distinct from filtered returned values");
+    }
+    reset();begin();hook::read_result=hook::ERROR_DEVICE_NOT_CONNECTED;hook::XINPUT_STATE out{};
+    check(hook::captured_front<0>(1,&out)==hook::ERROR_DEVICE_NOT_CONNECTED,"failed native read status is untouched");auto rows=drain();
+    check(rows.back().controller.poll_result==1167&&!rows.back().controller.raw_valid&&!rows.back().controller.returned_valid&&!rows.back().controller.ownership_known,"failed reads record unavailable payload and ownership, never invented neutral restoration");
+    reset();begin();hook::overlay_input_access=1;hook::captured_front<0>(1,&out);rows=drain();check(rows.size()==1,"nested reads cannot duplicate an outer capture ticket");hook::overlay_input_access=0;
+}
+}
+void run_controller_capture_tests(){
+    input_telemetry.publish(telemetry);hooks_and_off();observation_negatives();readiness_provenance();binding_context();tickets_and_loss();footer_and_validation();unchanged_and_invalid();
+    std::cout<<checks<<" production controller capture checks passed\n";
+}

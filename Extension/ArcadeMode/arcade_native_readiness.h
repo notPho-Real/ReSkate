@@ -16,6 +16,7 @@ struct NativeInputAdmission : NativeInputPermissions {
 // or selection merely because its time lease is still live.
 class NativeInputReadiness {
 public:
+    NativeInputFrame observed_proof()const noexcept{return proof_;}
     void reset() noexcept { proof_ = {}; permissions_ = {}; }
     void publish(NativeInputFrame proof, NativeInputPermissions permissions) noexcept {
         proof_ = proof; permissions_ = proof.valid ? permissions : NativeInputPermissions{};

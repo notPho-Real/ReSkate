@@ -40,6 +40,54 @@ and player acceptance require independent qualification. Existing fixture plans
 cannot issue arbitrary console commands; this adds no runner permission or
 fixture selection/teardown operation.
 
+`arcadeinputcapture <1..5000> [source-mask]` defaults to mask96, the
+joined native-admission (32) and outer-poll (64) sources. It uses the existing
+64-slot client channel and sink drain. Schema3 remains observational across OFF,
+missing native context and owner changes until its finite deadline or explicit
+`arcadeinputcapture 0`. Explicit masks1..31 retain legacy schema2 lifetime and
+recognition behavior; mask127 also includes those semantic sources. Capture
+never grants input, changes a route or declares a device mapping verified.
+
+Schema3 records original native sample time, step, generations, request words,
+state/contact/flip observations and original physics dt. The independently
+stored readiness proof retains its own time/step/generations and capture-local
+owner token; current facade time/step and actual sampled permission mask remain
+separate. Binding proof generations belong to the existing cleanup observer,
+so compare owner tokens and original clocks without assuming its generation
+counter equals the input observer's counter. Cached step-reader time, value and
+validity are separate from original physics dt. Focus/source availability retain
+their existing client meaning and `source_ms`; they are not a new window-focus
+or selected-user API. Bitmap-as-read is retained separately from qualification;
+unsupported SDK source values are suppressed rather than exposed as identifiers.
+
+Each successful or failed outer XInput call has one bounded capture-local poll
+ticket. Its stack-local original full pad/packet and actual returned full
+pad/packet share that ticket, including neutral polls. Original start/raw/remap/
+return times stay separate. Failed reads have explicit payload validity and
+unknown ownership; zero fields never prove a neutral device. Capture/filters,
+packet retirement and remapping run in their existing order. Only the actual
+return payload can establish equality; no restoration boolean is produced.
+
+Readiness bits0..12 are gameplay, start, push, board, drive, manual, prepare,
+releasing, action, mirror, offboard, flip-ready and matched. Ownership bits0..9
+observe packet ownership, pending packet retirement, admitted selected facade,
+selected command busy, authored playback, action ownership/consumption, rotation,
+Manual correction, rail stick and nonzero normal packet mask. `ownership_known`
+must hold before interpreting these bits; their absence on a failed read is not
+release evidence. Binding states0..3 are automatic, pending, bound and revoked;
+state alone does not establish a live lease. The joined route reason is the
+existing observer result.
+
+All owners on wire are bounded capture-local tokens0..16, never addresses or persistent
+identifiers. Tokens cannot be joined across captures. Schema3 `complete` means
+exact capture transport/boundary accounting, including invalid native contexts;
+it does not mean native admission, device identity, OFF restoration or action
+success. Require actual validity, original freshness, masks, packet/payloads and
+process/capture qualification independently. Missing begin/footer, sink/queue
+loss, counter/token exhaustion, clock rollback or outstanding polls prevent a
+complete boundary. A late completion cannot attach to a later capture. Process
+loss cannot guarantee a footer. No new trusted-runner operation is included.
+
 Held shoulder spin is the default. `arcadetapspin on` saves tap mode; `off`
 restores held mode. Tap mode accumulates signed half turns and advances them on
 actual qualified physics steps, retaining the full last step on overshoot.

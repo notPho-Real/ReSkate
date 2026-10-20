@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "arcade_controller_capture_types.h"
 #include "arcade_surface_geometry.h"
 #include "arcade_traffic_surface_provider.h"
 #include "arcade_input_types.h"
@@ -51,7 +52,7 @@ PlaybackExperiment playback_experiment() noexcept;
 bool set_action_experiment(ActionExperiment value) noexcept;
 ActionExperiment action_experiment() noexcept;
 // Explicit finite diagnostic capture on the existing client channel; zero stops.
-bool set_input_capture(unsigned duration_ms,unsigned required_sources=31) noexcept;
+bool set_input_capture(unsigned duration_ms,unsigned required_sources=96) noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Uses the existing validated native camera lease on the client thread.
@@ -60,10 +61,14 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready, bool
 void observe_xinput_source(unsigned user, unsigned short buttons,
                            unsigned char left_trigger, unsigned char right_trigger,
                            short left_x, short left_y, short right_x, short right_y) noexcept;
+// Finite observational capture only; outer hooks join stack-local raw/returned
+// values from the same successful call, including OFF and neutral polls.
+bool begin_controller_poll(unsigned slot,ControllerPollCapture&) noexcept;
+void complete_controller_poll(ControllerPollCapture&) noexcept;
 // Called only for the game's XInput reads, after normal menu input capture.
 // Returns a packet-number XOR mask so synthetic changes and restoration are seen.
 unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                       short& right_y, bool game_input, short& left_x, short& left_y,
                       unsigned char& left_trigger, unsigned char& right_trigger,
-                      std::uint32_t physical_packet) noexcept;
+                      std::uint32_t physical_packet, ControllerPollCapture* capture = nullptr) noexcept;
 }

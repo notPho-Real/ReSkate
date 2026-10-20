@@ -431,15 +431,24 @@ void filter_pad(bool outer, DWORD user, XINPUT_STATE* output) noexcept {
 // without going on to XInput): the capture then never sees the game's reads, and a menu that
 // holds the game's input does not hold its controller. That hook's own function is hooked
 // then, so the capture is in front of it again.
+// Controller capture front publication begin.
 template<std::size_t I>
 DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
     const bool capture = block_polled_input();
     const bool outer = overlay_input_access == 0;
     note_prompt_read(prompt_xinput);
+    arcade_mode::ControllerPollCapture poll_capture{};
+    const bool capture_poll=outer&&arcade_mode::begin_controller_poll(user,poll_capture);
     DWORD result;
     { // It may go on to XInput's own entry point, which is hooked as well.
         OverlayInputAccess access;
         result = original<DWORD(WINAPI*)(DWORD, XINPUT_STATE*)>(input_hooks().xinput_front[I])(user, output);
+    }
+    if(capture_poll){
+        poll_capture.details.raw_ms=GetTickCount64();poll_capture.details.capture_blocked=capture;
+        poll_capture.details.poll_result=result;poll_capture.details.raw_valid=result==ERROR_SUCCESS&&output;
+        if(poll_capture.details.raw_valid){const auto& g=output->Gamepad;
+            poll_capture.details.raw={g.wButtons,g.sThumbLX,g.sThumbLY,g.sThumbRX,g.sThumbRY,g.bLeftTrigger,g.bRightTrigger,output->dwPacketNumber};}
     }
     if (result == ERROR_SUCCESS && output && capture) {
         output->Gamepad = {};
@@ -447,7 +456,7 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         if (!overlay_input_access) output->dwPacketNumber ^= arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber,capture_poll?&poll_capture:nullptr);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger,
@@ -456,13 +465,20 @@ DWORD WINAPI captured_front(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber,capture_poll?&poll_capture:nullptr);
         output->dwPacketNumber ^= phase;
     } else if(outer && result==ERROR_DEVICE_NOT_CONNECTED) {
         arcade_mode::disconnect_xinput_source(user);
     }
+    if(capture_poll){
+        poll_capture.details.returned_valid=result==ERROR_SUCCESS&&output;
+        if(poll_capture.details.returned_valid){const auto& g=output->Gamepad;
+            poll_capture.details.returned={g.wButtons,g.sThumbLX,g.sThumbLY,g.sThumbRX,g.sThumbRY,g.bLeftTrigger,g.bRightTrigger,output->dwPacketNumber};}
+        poll_capture.details.returned_ms=GetTickCount64();arcade_mode::complete_controller_poll(poll_capture);
+    }
     return result;
 }
+// Controller capture front publication end.
 void keep_xinput_capture_first() {
     auto& h = input_hooks();
     static const HMODULE self = module_of(&keep_xinput_capture_first);
@@ -746,16 +762,25 @@ BOOL WINAPI captured_cursor_position(LPPOINT output) {
     if (result && output && !overlay_input_access) { last = *output; sampled = true; }
     return result;
 }
+// Controller capture xinput publication begin.
 template<std::size_t I, bool Extended = false>
 DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
     const auto& hook = Extended ? input_hooks().xinput_extended[I] : input_hooks().xinput_state[I];
     const bool capture = block_polled_input();
     const bool outer = overlay_input_access == 0;
     note_prompt_read(prompt_xinput);
+    arcade_mode::ControllerPollCapture poll_capture{};
+    const bool capture_poll=outer&&arcade_mode::begin_controller_poll(user,poll_capture);
     DWORD result;
     { // XInput exports can forward through another hooked XInput export.
         OverlayInputAccess access;
         result = original<DWORD(WINAPI*)(DWORD, XINPUT_STATE*)>(hook)(user, output);
+    }
+    if(capture_poll){
+        poll_capture.details.raw_ms=GetTickCount64();poll_capture.details.capture_blocked=capture;
+        poll_capture.details.poll_result=result;poll_capture.details.raw_valid=result==ERROR_SUCCESS&&output;
+        if(poll_capture.details.raw_valid){const auto& g=output->Gamepad;
+            poll_capture.details.raw={g.wButtons,g.sThumbLX,g.sThumbLY,g.sThumbRX,g.sThumbRY,g.bLeftTrigger,g.bRightTrigger,output->dwPacketNumber};}
     }
     if (result == ERROR_SUCCESS && output && capture) {
         output->Gamepad = {};
@@ -765,7 +790,7 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         if (!overlay_input_access) output->dwPacketNumber ^= arcade_mode::remap_xinput(user,
             output->Gamepad.wButtons, output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, false,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber,capture_poll?&poll_capture:nullptr);
     } else if (result == ERROR_SUCCESS && output && outer) {
         arcade_mode::observe_xinput_source(user, output->Gamepad.wButtons,
             output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger,
@@ -774,13 +799,20 @@ DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
         const auto phase = arcade_mode::remap_xinput(user, output->Gamepad.wButtons,
             output->Gamepad.sThumbRX, output->Gamepad.sThumbRY, true,
             output->Gamepad.sThumbLX, output->Gamepad.sThumbLY,
-            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber);
+            output->Gamepad.bLeftTrigger, output->Gamepad.bRightTrigger, output->dwPacketNumber,capture_poll?&poll_capture:nullptr);
         output->dwPacketNumber ^= phase;
     } else if(outer && result==ERROR_DEVICE_NOT_CONNECTED) {
         arcade_mode::disconnect_xinput_source(user);
     }
+    if(capture_poll){
+        poll_capture.details.returned_valid=result==ERROR_SUCCESS&&output;
+        if(poll_capture.details.returned_valid){const auto& g=output->Gamepad;
+            poll_capture.details.returned={g.wButtons,g.sThumbLX,g.sThumbLY,g.sThumbRX,g.sThumbRY,g.bLeftTrigger,g.bRightTrigger,output->dwPacketNumber};}
+        poll_capture.details.returned_ms=GetTickCount64();arcade_mode::complete_controller_poll(poll_capture);
+    }
     return result;
 }
+// Controller capture xinput publication end.
 template<std::size_t I>
 DWORD WINAPI captured_keystroke(DWORD user, DWORD reserved, PXINPUT_KEYSTROKE output) {
     const auto result = original<DWORD(WINAPI*)(DWORD, DWORD, PXINPUT_KEYSTROKE)>(

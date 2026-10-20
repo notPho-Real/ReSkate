@@ -45,7 +45,8 @@ std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_r
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
 struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
-struct Correlation{void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}}input_capture_correlation;
+NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
+struct Correlation{bool observational()const{return false;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}}input_capture_correlation;
 std::uint64_t capture_admission_sequence{},capture_termination_sequence{};
 
 void capture_event(CaptureCorrelationSource,std::uint64_t,std::uint64_t,const NativeInputFrame&){}

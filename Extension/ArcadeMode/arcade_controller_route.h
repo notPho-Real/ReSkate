@@ -111,6 +111,11 @@ public:
         r.explicit_binding=explicit_;
         return r;
     }
+    NativeInputFrame binding_observation()const noexcept{return proof_;}
+    unsigned binding_state() const noexcept {return !explicit_?0u:revoked_?3u:bound_?2u:1u;}
+    std::uint64_t binding_deadline()const noexcept{return explicit_?deadline_:0;}
+    std::uint64_t binding_armed()const noexcept{return explicit_?armed_at_:0;}
+    unsigned selected_slot()const noexcept{return selected_;}
     std::uint64_t generation() const noexcept { return generation_; }
     void reset() noexcept { explicit_=revoked_=bound_=false;requested_=unavailable;proof_={}; pads_ = raw_pads_ = {}; selected_ = unavailable; connected_ = 0; selected_at_ = 0; ++generation_; }
 private:

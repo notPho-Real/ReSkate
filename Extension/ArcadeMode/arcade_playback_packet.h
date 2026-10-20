@@ -8,6 +8,8 @@ class PlaybackPacket {
 public:
     // Retain one cancellation identity across owner/mode reset. This carries
     // no input authority; the next actual delivery consumes it exactly once.
+    bool owned()const noexcept{return owned_;}
+    bool retiring()const noexcept{return retiring_;}
     void retire() noexcept {
         if (owned_) { retired_last_ = last_; retiring_ = true; owned_ = false; }
     }
