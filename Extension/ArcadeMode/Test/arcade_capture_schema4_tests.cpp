@@ -3,6 +3,26 @@
 #include <iostream>
 #include <string>
 
+namespace dingosdk::arcade_mode {
+namespace {
+// Match runtime namespace bindings when instantiating the queue: MSVC checks
+// dependent member bodies against these declarations at instantiation time.
+unsigned emitted{71}, previous{73};
+}
+bool telemetry_runtime_scope_accounting() {
+    InputTelemetryQueue<unsigned,4> scoped_queue;
+    std::array<unsigned,4> scoped_rows{};
+    if(!scoped_queue.push(1))return false;
+    scoped_queue.start_accounting();
+    if(!scoped_queue.push(2)||scoped_queue.take(scoped_rows)!=2)return false;
+    const auto scoped_counts=scoped_queue.counters();
+    scoped_queue.stop_accounting();
+    return scoped_rows[0]==1&&scoped_rows[1]==2&&
+        scoped_counts.emitted==1&&scoped_counts.drained==1&&
+        !scoped_counts.overflow&&emitted==71&&previous==73;
+}
+}
+
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -136,5 +156,7 @@ int main() {
           inherited.counters().drained==1&&!inherited.counters().overflow,
           "capture interval accounts only its own successful row");
     inherited.stop_accounting();
+    check(telemetry_runtime_scope_accounting(),
+          "runtime namespace bindings preserve preexisting and current queue accounting");
     std::cout<<checks<<" schema4 transport checks passed\n";
 }

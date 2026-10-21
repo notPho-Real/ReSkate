@@ -363,8 +363,8 @@ public:
         }
         if (n) {
             if(accounting_.load(std::memory_order_acquire)){
-                const auto previous=preexisting_.load(std::memory_order_acquire);
-                const auto old=std::min<std::uint64_t>(previous,n);
+                const auto capture_preexisting_rows=preexisting_.load(std::memory_order_acquire);
+                const auto old=std::min<std::uint64_t>(capture_preexisting_rows,n);
                 if(old)preexisting_.fetch_sub(old,std::memory_order_acq_rel);
                 drained_.fetch_add(n-old,std::memory_order_relaxed);
             }
@@ -380,15 +380,15 @@ public:
     struct Counters { std::uint64_t attempted{}, emitted{}, drained{}, dropped{}, backlog{}, peak{}; bool overflow{}; };
     Counters counters() const noexcept {
         const auto attempted=attempted_.load(std::memory_order_acquire);
-        const auto emitted=published_.load(std::memory_order_acquire);
+        const auto queue_emitted=published_.load(std::memory_order_acquire);
         const auto drained=drained_.load(std::memory_order_acquire);
         const auto all_dropped=this->dropped();
         const auto baseline=dropped_baseline_.load(std::memory_order_acquire);
         const auto dropped=all_dropped>=baseline?all_dropped-baseline:UINT64_MAX;
         const auto read=read_published_.load(std::memory_order_acquire);
         const auto reserved=write_.load(std::memory_order_acquire);
-        return {attempted,emitted,drained,dropped,reserved>=read?reserved-read:UINT64_MAX,peak_backlog_.load(std::memory_order_acquire),
-            attempted<emitted||attempted-emitted<dropped||drained>emitted||reserved<read||
+        return {attempted,queue_emitted,drained,dropped,reserved>=read?reserved-read:UINT64_MAX,peak_backlog_.load(std::memory_order_acquire),
+            attempted<queue_emitted||attempted-queue_emitted<dropped||drained>queue_emitted||reserved<read||
                 all_dropped<baseline||drop_overflow_.load(std::memory_order_acquire)};
     }
     std::uint64_t dropped() const noexcept { return drop_overflow_.load(std::memory_order_acquire)?UINT64_MAX:dropped_.load(std::memory_order_relaxed); }
