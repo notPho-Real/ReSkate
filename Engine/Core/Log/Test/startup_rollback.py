@@ -1,5 +1,6 @@
 """Generate/check the one startup partial-record rollback; no live IO."""
 import argparse
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -16,7 +17,8 @@ if args.binary:
     result = subprocess.run([str(args.binary.resolve()), str(args.fixture.resolve())],
                             capture_output=True, text=True, timeout=60)
     expected = 'startup rotation must reject a partial active record before moving or evicting evidence'
-    if result.returncode != 1 or expected not in result.stderr.splitlines():
+    diagnostic = re.escape(expected) + r' \(check [1-9][0-9]*, line [1-9][0-9]*\)'
+    if result.returncode != 1 or not any(re.fullmatch(diagnostic, line) for line in result.stderr.splitlines()):
         print(result.stdout + result.stderr, file=sys.stderr)
         raise SystemExit('Startup rollback did not fail at its intended assertion')
     print('Startup partial-record rollback failed at the intended assertion')
