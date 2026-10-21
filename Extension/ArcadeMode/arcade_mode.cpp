@@ -1587,8 +1587,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         now = GetTickCount64();
         // Controller capture remap_trace publication begin.
         if(capture){
-            const auto original=capture->details;const auto capture_id=capture->capture_id,poll=capture->poll;
-            *capture=controller_capture_context(now,user);capture->capture_id=capture_id;capture->poll=poll;
+            const auto original=capture->details;const auto saved_capture_id=capture->capture_id,poll=capture->poll;
+            *capture=controller_capture_context(now,user);capture->capture_id=saved_capture_id;capture->poll=poll;
             capture->details.raw_valid=original.raw_valid;capture->details.poll_result=original.poll_result;capture->details.raw=original.raw;capture->details.poll_started=original.poll_started;capture->details.raw_ms=original.raw_ms;capture->details.capture_blocked=original.capture_blocked;
         }
         unsigned capture_ownership{};
