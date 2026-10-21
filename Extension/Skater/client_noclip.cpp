@@ -12,6 +12,7 @@
 #include "Extension/ArcadeMode/arcade_movement.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/ArcadeMode/arcade_push.h"
+#include "Extension/ArcadeMode/arcade_ground_motion_step.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
@@ -295,6 +296,7 @@ struct PushSpeed {
     int pushing{}, since_push{hold_steps};
     bool carried{}; // a held push is being carried past the game's last step
     arcade_mode::GroundDrive arcade_drive;
+    arcade_mode::GroundMotionStep arcade_drive_steps;
     arcade_mode::NativePushContact arcade_push_contacts;
     NoBailSkater arcade_owner{};
     std::uint64_t drive_epoch{};
@@ -370,12 +372,19 @@ void trainer_push_speed(std::uintptr_t core) noexcept {
         if (arcade) {
             if (!arcade_safe) { p.arcade_drive.reset(); p.arcade_push_contacts.reset(); return; }
             arcade_mode::AirMotionIntent controls{};
-            if (!read_arcade_air(controls) || !controls.enabled || now < controls.sampled_at || now-controls.sampled_at > 150 ||
-                !controls.angular_proof.same_owner_observation(drive_frame,now) ||
-                !controls.ground_controls.can_kick(std::hypot(std::hypot(velocities[0][0],velocities[0][2]),velocities[0][1]),arcade_crouched)) {
+            const bool controls_current = read_arcade_air(controls) && controls.enabled &&
+                now >= controls.sampled_at && now-controls.sampled_at <= 150 &&
+                controls.angular_proof.same_owner_observation(drive_frame,now) && controls.ground_controls.known;
+            const auto drive_step = p.arcade_drive_steps.consume(drive_frame,now,controls_current);
+            if (!drive_step) {
+                if (drive_step.status == arcade_mode::GroundStepStatus::unavailable) p.arcade_drive.reset();
+                return;
+            }
+            if (drive_step.baseline) p.arcade_drive.reset();
+            if (!controls.ground_controls.can_kick(std::hypot(std::hypot(velocities[0][0],velocities[0][2]),velocities[0][1]),arcade_crouched)) {
                 p.arcade_drive.reset(); return;
             }
-            const float change = p.arcade_drive.step(bodies.seconds, bodies.root, velocities[0],
+            const float change = p.arcade_drive.step(drive_step.seconds, bodies.root, velocities[0],
                 arcade_crouched, arcade_start);
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
             if (!(change > .0001f)) return;
@@ -480,6 +489,7 @@ struct ArcadeAir {
     // SourceState::busy protects the remaining physics/motion-thread state.
     arcade_mode::AirMotion controller;
     arcade_mode::GroundResistance ground_resistance;
+    arcade_mode::GroundMotionStep ground_steps;
     arcade_mode::GroundYaw ground_yaw;
     arcade_mode::GroundTurnAngularLease turn_write, air_write;
     arcade_mode::GroundYawOutput ground_output{};
@@ -639,16 +649,19 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             std::abs(reader.value<float>(bodies.context, 0x1880)) > .05f);
         const bool balancing = manual.matches(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},physics,mode,contacts) &&
             arcade_mode::native_manual_contact_current(manual);
-        if ((physics == 100 || physics == 103) && ordinary && (contacts == 0xc000u || balancing) &&
-            mode <= 2 && std::abs(velocities[0][1]) < .3f) {
+        const bool controls_current = intent.angular_proof.same_owner_observation(native_frame,now) && intent.ground_controls.known;
+        const bool ground_eligible = controls_current && (physics == 100 || physics == 103) && ordinary &&
+            (contacts == 0xc000u || balancing) && mode <= 2 && std::abs(velocities[0][1]) < .3f;
+        const auto ground_step = a.ground_steps.consume(native_frame,now,ground_eligible);
+        if (ground_step) {
+            if (ground_step.baseline) a.ground_resistance.reset();
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
             const auto& controls = intent.ground_controls;
-            const bool controls_current = intent.angular_proof.same_owner_observation(native_frame,now);
             const float total_speed = std::hypot(speed,velocities[0][1]);
             const float facing_dot = velocities[0][0]*bodies.forward[0] + velocities[0][1]*bodies.forward[1] + velocities[0][2]*bodies.forward[2];
             const bool selected_brake = controls_current && controls.known ? controls.trying_to_brake(total_speed,facing_dot) : braking;
             const arcade_mode::GroundFriction friction{!controls_current || !controls.known || controls.auto_kick,false};
-            const float change = a.ground_resistance.step(bodies.seconds, speed,
+            const float change = a.ground_resistance.step(ground_step.seconds, speed,
                 physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
@@ -659,7 +672,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
                 }
                 resistance_change=change;
             }
-        } else a.ground_resistance.reset();
+        } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
         // Neutral is a withdrawal of our previous ground rate, not permission

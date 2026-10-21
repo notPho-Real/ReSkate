@@ -257,7 +257,8 @@ private:
         // idle; all other selection/context transitions keep their cancellation.
         return request.action == InputAction::flip && request.form == InputForm::ordinary && request.presses == 1 &&
             request.selection.table == InputAirTableKind::none &&
-            native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip);
+            (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
+             native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip));
     }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
                                         std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables) noexcept {
@@ -383,7 +384,8 @@ public:
                 if (native.air_episode() != native_.air_episode()) cancel_air_episode();
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
-                    if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip))
+                    if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
+                        !native.ordinary_flip_wait_continues(native_.generations,native_.air_episode(),native_.flip))
                         air_flip_after_ = last_event_;
                 }
                 if (native.flip.mode_generation != native_.flip.mode_generation) {

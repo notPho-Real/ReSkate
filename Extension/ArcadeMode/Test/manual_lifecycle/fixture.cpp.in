@@ -16,6 +16,7 @@
 #include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
 #include "Extension/Skater/no_bail.h"
 #include "Extension/ArcadeMode/arcade_camera.h"
+#include "Extension/ArcadeMode/arcade_camera_input.h"
 #include <mutex>
 #include <memory>
 #include <functional>
@@ -155,13 +156,17 @@ void prepare_air(bool nose,unsigned dt){
 
 // Camera phase/snapshot availability is controlled here. Native camera lease
 // and ownership checks are also exercised by the runtime composition suite.
+bool camera_publish_input=true,camera_override_input=false;
+unsigned camera_selected_slot{};
+ArcadeInput::Physical camera_selected_pad{};
+std::function<void()> camera_capture_hook;
 namespace dingosdk::multiplayer {
 struct CameraUI { bool available=true,in_menu=false; } camera_ui;
 struct CameraRoot { std::array<float,3> position{}; };
-struct CameraLocal { bool ready=true; struct { CameraRoot root; } pose; };
+struct CameraLocal { bool ready=true; std::uintptr_t entity=2; struct { CameraRoot root; } pose; };
 CameraUI sample_game_ui_state(std::uintptr_t){return camera_ui;}
 bool party_camera_requested(){return false;}
-CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){return {};}
+CameraLocal capture_local(std::uintptr_t,std::uintptr_t,bool){if(camera_capture_hook){auto hook=std::move(camera_capture_hook);camera_capture_hook={};hook();}return {};}
 std::array<float,16> follow_camera(std::uint64_t,const CameraRoot&,float& fov){
  fov=60;return {1,0,0,0,0,1,0,0,0,0,1,0,0,2,5,1};
 }
@@ -173,6 +178,16 @@ std::array<float,16> last_camera_transform{};
 void DingoSDKOverlayReadControllerInput(ControllerInput* out){
  if(camera_read_hook){auto hook=std::move(camera_read_hook);camera_read_hook={};hook();}
  *out=camera_input;
+ // Controlled physical/native producers for the camera's real route consumer.
+ // Overlay availability stays a separate focus seam, never its axis provider.
+ if(!camera_publish_input)return;
+ static NativeInputState camera_producer;
+ NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[0]=0x20;sample.words[1]=0xc000;
+ const auto frame=camera_producer.observe(clock_ms,{1,2,3,4,5},sample,{true,-1,16});
+ arcade_input.publish_native_context(frame);arcade_input.publish_authority(clock_ms,frame.owner_generation,1,true);
+ const auto physical=camera_override_input?camera_selected_pad:ArcadeInput::Physical{true,clock_ms,camera_input.buttons,0,0,camera_input.right_x,camera_input.right_y,0,0};
+ controller_route.observe(camera_selected_slot,physical);
+ controller_route.select(clock_ms,1u<<camera_selected_slot,true,frame);
 }
 bool update_arcade_camera(std::uintptr_t,std::uintptr_t,bool,bool phase,
  const std::array<float,16>* transform,std::string&,float=0)noexcept{
@@ -185,6 +200,40 @@ bool update_arcade_camera(std::uintptr_t,std::uintptr_t,bool,bool phase,
 @@CAMERA_TICK@@
 void camera_toggle(bool value){
  set_enabled(value,false);
+}
+void camera_routing_lifecycle(){
+ camera_publish_input=true;camera_override_input=true;camera_selected_slot=0;
+ camera_toggle(false);on_camera_tick(1,6,true,true);camera_toggle(true);
+ camera_selected_pad={true,clock_ms,0,0,0,0,0,0,0};camera_input={};
+ on_camera_tick(1,6,true,true);const auto baseline=last_camera_transform;
+ clock_ms+=17;camera_selected_pad.at=clock_ms;camera_input.right_x=32767;
+ on_camera_tick(1,6,true,true);
+ check(last_camera_transform==baseline,"unselected merged overlay axes cannot rotate the local camera");
+ clock_ms+=17;camera_selected_pad.at=clock_ms;camera_selected_pad.rx=25000;camera_input.right_x=0;
+ on_camera_tick(1,6,true,true);
+ check(last_camera_transform!=baseline,"selected physical axis controls the camera independently of merged overlay axes");
+ clock_ms+=17;camera_selected_slot=1;camera_selected_pad.at=clock_ms;camera_selected_pad.rx=0;
+ on_camera_tick(1,6,true,true);
+ check(last_camera_transform==baseline,"source reassignment retires the old orbit before a fresh source acquires");
+ camera_publish_input=false;arcade_input.invalidate_authority();controller_route.clear();
+ on_camera_tick(1,6,true,true);
+ check(!camera_lease_requested&&camera_events.back()=='R',"withdrawn gameplay authority retires camera ownership");
+ controller_route.reset();camera_publish_input=true;camera_selected_pad.at=clock_ms;
+ on_camera_tick(1,6,true,true);
+ check(camera_lease_requested,"fresh selected source and native owner can reacquire");
+ camera_publish_input=false;clock_ms+=151;on_camera_tick(1,6,true,true);
+ check(!camera_lease_requested,"camera reading cannot renew stale source or native evidence");
+ camera_publish_input=true;camera_selected_pad.at=clock_ms;on_camera_tick(1,6,true,true);
+ const auto before_capture=camera_events.size();
+ camera_capture_hook=[](){controller_route.clear();arcade_input.invalidate_authority();};
+ on_camera_tick(1,6,true,true);
+ check(!camera_lease_requested&&camera_events.back()=='R'&&camera_events.size()==before_capture+1,"source withdrawal during pose capture prevents transform publication");
+ controller_route.reset();camera_selected_pad.at=clock_ms;on_camera_tick(1,6,true,true);
+ camera_apply_hook=[](){controller_route.clear();arcade_input.invalidate_authority();};
+ on_camera_tick(1,6,true,true);
+ check(!camera_lease_requested&&camera_events.back()=='R',"source withdrawal during native publication retires the new lease");
+ camera_toggle(false);on_camera_tick(1,6,true,true);controller_route.reset();
+ camera_publish_input=true;camera_override_input=false;camera_selected_slot=0;camera_input={};
 }
 void camera_lifecycle(){
  for(unsigned dt:{17u,34u})for(unsigned pose:{100u,200u,401u,300u,504u})for(unsigned deferred=0;deferred<3;++deferred){
@@ -430,6 +479,7 @@ int main(){
   check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
  }
  camera_lifecycle();
+ camera_routing_lifecycle();
  controller_packet_dependencies();
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  hud_lifecycle();

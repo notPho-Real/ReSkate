@@ -23,6 +23,7 @@
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
+#include "arcade_camera_input.h"
 #include "arcade_balance_input.h"
 #include "arcade_balance_hud.h"
 #include "arcade_grind_runtime.h"
@@ -218,6 +219,7 @@ std::atomic<bool> reset_push_contact_policy{true};
 std::atomic<bool> input_clock_valid{};
 AuthoredTickClock authored_clock;
 CameraOrbit camera_orbit;
+CameraInputSnapshot camera_source;
 std::uint64_t camera_at{};
 bool camera_lease_requested{};
 // Toggles can happen between native camera phases. The camera thread must
@@ -779,7 +781,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     {
         std::lock_guard lock(ollie_mutex);
         if (clock_valid) {
-            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout);
+            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
             arcade_input.publish_native_context(frame);
@@ -1088,7 +1090,7 @@ void set_spin_mode(SpinMode mode, bool persist) noexcept {
 
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
     const auto restore = [&]() noexcept {
-        camera_orbit.reset(); camera_at = 0;
+        camera_orbit.reset(); camera_at = 0; camera_source = {};
         try {
             if (camera_lease_requested) {
                 std::string detail;
@@ -1108,11 +1110,25 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
             !ui.available || ui.in_menu || multiplayer::party_camera_requested()) {
             restore(); return;
         }
-        ControllerInput input{};
-        DingoSDKOverlayReadControllerInput(&input);
-        if (!input.available || (input.buttons & 0x0010u)) { restore(); return; }
+        // The overlay read supplies current focus/menu availability only. Its
+        // axes and buttons merge devices and cannot control this local camera.
+        ControllerInput focus{};
+        DingoSDKOverlayReadControllerInput(&focus);
+        if (!focus.available) { restore(); return; }
+        const auto read_input = []() noexcept {
+            const auto sampled_at = GetTickCount64();
+            std::unique_lock lock(ollie_mutex,std::try_to_lock);
+            return lock.owns_lock() ? camera_input_snapshot(controller_route,arcade_input,sampled_at,enabled()) : CameraInputSnapshot{};
+        };
+        const auto input = read_input();
+        if (!input.valid || (input.buttons & 0x0010u)) { restore(); return; }
+        if (!camera_source.same_binding(input)) {
+            restore();
+            if (camera_lease_requested) return;
+            camera_source = input;
+        }
         const auto local = multiplayer::capture_local(base, client, false);
-        if (!local.ready) { restore(); return; }
+        if (!local.ready || local.entity != input.owner.entity) { restore(); return; }
         float fov{};
         const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov);
         auto target = local.pose.root.position;
@@ -1123,14 +1139,16 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         const auto transform = camera_orbit.update(follow, target,
             static_cast<float>(input.right_x) / 32767, static_cast<float>(input.right_y) / 32767, dt);
         if (!transform) { restore(); return; }
-        if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) {
+        if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||
+            !input.same_binding(read_input())) {
             restore(); return;
         }
         std::string detail;
         // Activation can succeed before a subsequent verification fails: always retain restoration intent.
         camera_lease_requested = true;
         if (!update_arcade_camera(base, client, true, phase, &*transform, detail, fov) ||
-            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) restore();
+            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||
+            !input.same_binding(read_input())) restore();
     } catch (...) { restore(); }
 }
 

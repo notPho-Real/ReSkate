@@ -88,8 +88,8 @@ def generated(root):
     # Expected failure is checked by assertion message, not CTest WILL_FAIL (which
     # could incorrectly treat an unrelated crash/tool error as a regression).
     controls = {
-        "camera_recheck": ("if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation) {", "if (false) {"),
-        "camera_publish": (" ||\n            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation", ""),
+        "camera_recheck": ("if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())) {", "if (false) {"),
+        "camera_publish": (" ||\n            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())", ""),
         "camera_toggle": ("camera_reset_generation.fetch_add(1, std::memory_order_release);", ""),
         "model_reset": ("if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); }",
                         "if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); manual_acquisition.reset(); }"),
@@ -133,7 +133,7 @@ def generated(root):
 FAILURES = {
     "camera_recheck": "changed camera generation cannot continue stale orbit or leave a newly raced lease active",
     "camera_publish": "mode toggle during camera callback must retire ownership before the callback returns",
-    "camera_toggle": "OFF-to-ON between camera callbacks must retire the old native camera lease before reacquisition",
+    "camera_toggle": "deferred camera retirement never acknowledges the toggle before cleanup succeeds",
     "model_reset": "still-acquired same-owner contact retains original bounded cleanup after model interval loss",
     "producer_revoke": "hard native exit seen between client callbacks must retire old command and cleanup before original lease expires",
     "buffered_release": "original observed physical completion between clients must retire old pending release before recovery contact",

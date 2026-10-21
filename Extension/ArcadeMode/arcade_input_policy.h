@@ -24,7 +24,7 @@ struct InputFlipObservation {
     std::int32_t id{-1};
     std::uintptr_t object{};
     std::uint32_t state{}, mode{}, stance{};
-    std::uint64_t step{}, mode_generation{};
+    std::uint64_t step{}, mode_generation{}, wait_generation{};
     bool operator==(const InputFlipObservation&) const = default;
 };
 // Correlation from an independently sampled native producer, never a trick
@@ -57,6 +57,23 @@ struct InputNativeContext {
             before.mode == flip.mode && before.stance == flip.stance && before.step && flip.step > before.step &&
             before.mode_generation && before.mode_generation == flip.mode_generation;
     }
+    // Preserve an ordinary queued request through the existing forward AIR
+    // phase and jump-selection retirement. The physics producer observes all
+    // intervening states; matching endpoints alone cannot qualify this path.
+    // This is intent continuity only. Current native readiness still gates output.
+    bool ordinary_flip_wait_continues(InputGenerations origin, InputAirEpisode episode,
+                                      const InputFlipObservation& before) const noexcept {
+        return valid && airborne && airborne_episode && air_episode() == episode &&
+            generations.owner == origin.owner && generations.action > origin.action &&
+            before.valid && flip.valid && before.object && before.object == flip.object &&
+            (before.id == 1 || before.id == -1) && (flip.id == before.id || (before.id == 1 && flip.id == -1)) &&
+            (before.state == 200 || before.state == 201) &&
+            (flip.state == before.state || (before.state == 200 && flip.state == 201)) &&
+            before.mode == 2 && flip.mode == 2 && before.stance == flip.stance &&
+            before.step && flip.step > before.step && before.mode_generation &&
+            before.mode_generation == flip.mode_generation && before.wait_generation &&
+            before.wait_generation == flip.wait_generation;
+    }
     bool correlates(InputGenerations publication) const noexcept {
         return !required || (valid && generations.owner && generations.contact &&
             publication.owner == generations.owner && publication.contact == generations.contact);
@@ -87,6 +104,7 @@ struct InputNativeContext {
             context.flip = {frame.flip_known,frame.flip_id,frame.selection_object,
                 frame.state,frame.mode,frame.stance_and_push,frame.physics_step};
             if constexpr (requires { frame.mode_generation; }) context.flip.mode_generation = frame.mode_generation;
+            if constexpr (requires { frame.flip_wait_generation; }) context.flip.wait_generation = frame.flip_wait_generation;
         }
         return context;
     }

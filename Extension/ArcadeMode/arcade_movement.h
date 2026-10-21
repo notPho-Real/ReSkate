@@ -123,16 +123,19 @@ public:
         float change{};
         if (primed_) {
             const float dx = position[0] - position_[0], dz = position[2] - position_[2];
-            travel_time_ += dt; expected_travel_ += speed * dt;
+            travel_time_ += dt; expected_travel_ += std::max(speed, previous_speed_) * dt;
             const float travel = std::hypot(dx, dz);
             const bool teleported = travel > std::max(1.0f, expected_travel_ * 4);
             const bool stalled = travel_time_ >= .1f && travel < expected_travel_ * .2f;
             const bool impact = speed < previous_speed_ - 18 * dt;
+            // The preceding delivered budget produced neither displacement
+            // nor velocity. Do not keep restarting it against a native stop.
+            const bool stopped = previous_speed_ > 0 && speed == 0 && travel == 0;
             // Resting bodies retain tiny signed velocity noise. It is not a
             // travel direction against which a fresh forward start can reverse.
             const bool reversed = speed >= .5f && std::hypot(velocity_[0], velocity_[2]) >= .5f &&
                 velocity[0] * velocity_[0] + velocity[2] * velocity_[2] < 0;
-            if (teleported || stalled || impact || reversed) {
+            if (teleported || stalled || impact || stopped || reversed) {
                 reset(); blocked_ = true; position_ = position; return 0;
             }
             if (travel_time_ >= .1f) {
@@ -140,15 +143,15 @@ public:
             }
             const float acceleration = profile_.kick_acceleration(crouched);
             const float limit = profile_.kick_speed(crouched);
-            // Count acceleration already supplied by native pushing. Compensate
-            // only bounded ground steering drag, never a collision-sized loss.
-            const bool flat = std::abs(velocity[1]) < .3f && std::abs(position[1] - position_[1]) < .025f;
+            // Credit observed native gain, but do not refund a speed loss as
+            // presumed steering drag. Without its cause, that loss may belong
+            // to native traction, braking or contact response. Assistance adds
+            // only the remaining acceleration budget to the current motion.
             const float budget = acceleration * dt - std::max(0.0f, speed - previous_speed_);
             // Kick eligibility is inclusive at the threshold; a full step can
             // cross it. Excess speed is coasted, never reduced to kick speed.
             if (previous_speed_ <= limit) {
-                const float goal = flat ? previous_speed_ + acceleration * dt : speed + std::max(0.0f, budget);
-                change = std::clamp(goal - speed, 0.0f, (acceleration + 18) * dt);
+                change = std::max(0.0f, budget);
             }
         } else {
             primed_ = true; position_ = position;

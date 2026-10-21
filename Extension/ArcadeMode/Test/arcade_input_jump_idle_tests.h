@@ -62,11 +62,11 @@ void receipt_sequence() {
 void sampled_orderings() {
     for(unsigned hz:{30u,60u})for(bool pad:{false,true})
     for(unsigned press:{966u,983u,1000u,1017u,1034u,1051u,1100u,1150u})for(int offset:{-34,0,34}) {
-        auto h=std::make_unique<Fixture>();std::uint64_t sampled_press{},first_settled_air{};
+        auto h=std::make_unique<Fixture>();std::uint64_t sampled_press{},first_verified_air{};
         for(unsigned i=0;i<=48;++i) {
             const auto now=std::uint64_t{800}+std::uint64_t{i}*1000/hz;if(now>1600)break;
             const auto state=now<1000?100u:now<1017?200u:now<1500?201u:100u;
-            if(state==201 && !first_settled_air)first_settled_air=now;
+            if((state==200 || state==201) && !first_verified_air)first_verified_air=now;
             const bool held=now>=press && now<press+72;
             if(held && !sampled_press)sampled_press=now;
             const auto direction_at=static_cast<unsigned>(static_cast<int>(press)+offset);
@@ -75,11 +75,11 @@ void sampled_orderings() {
                 static_cast<std::int16_t>(!pad && direction?-25000:0)};
             h->poll(now,state,now<960 || now>=1160?-1:1,physical,state==100?1u:2u);
         }
-        // Preserve the existing state-progression/context guard; this correction
-        // qualifies only the unchanged physical state and jump-selection retirement.
-        const bool eligible=sampled_press>=first_settled_air;
-        if(h->starts!=(eligible?1u:0u))std::cerr<<"ordering hz="<<hz<<" pad="<<pad<<" press="<<press<<" offset="<<offset<<" sampled="<<sampled_press<<" air="<<first_settled_air<<" starts="<<h->starts<<" recognized="<<h->recognized<<" cancelled="<<h->cancelled<<'\n';
-        check(h->starts==(eligible?1u:0u),"sampled face before/with/after direction preserves early-air input and rejects pre-air or changed-state borrowing");
+        // Verified AIR includes the initial native phase. The physics producer
+        // qualifies only its forward progression, not a reversed or missed flight.
+        const bool eligible=sampled_press>=first_verified_air;
+        if(h->starts!=(eligible?1u:0u))std::cerr<<"ordering hz="<<hz<<" pad="<<pad<<" press="<<press<<" offset="<<offset<<" sampled="<<sampled_press<<" air="<<first_verified_air<<" starts="<<h->starts<<" recognized="<<h->recognized<<" cancelled="<<h->cancelled<<'\n';
+        check(h->starts==(eligible?1u:0u),"sampled face before/with/after direction preserves verified early-air input and rejects ground borrowing");
         check(eligible?h->nonneutral!=0:h->nonneutral==0,"only the qualified queued flip produces actual adapter stick output");
     }
 }
@@ -194,5 +194,55 @@ void mode_proof_and_active_playback() {
             "mode/state acknowledgement cannot withdraw already-admitted same-flight native playback");
     }
 }
-int run(){mode_proof_and_active_playback();intervening_mode_and_contact();receipt_sequence();sampled_orderings();negative_transitions();negative_origins();other_faces_keep_boundary();std::cout<<checks<<" jump-idle input checks passed\n";return 0;}
+void forward_wait() {
+ for(unsigned hz:{30u,60u})for(bool pad:{false,true})for(bool idle_at_transition:{false,true}) {
+  auto h=std::make_unique<Fixture>();
+  const auto dt=std::uint64_t{1000}/hz;
+  h->poll(1000,200,1);
+  const PhysicalInputSample press{static_cast<std::uint16_t>(0x4000u|(pad?4u:0u)),static_cast<std::int16_t>(pad?0:-25000)};
+  const auto requested=h->poll(1000+dt,200,1,press);
+  check(h->recognized==1 && !requested.authored_playback && requested.command_busy,"early ordinary flip waits without output in initial native air phase");
+  const auto original=h->input.input_diagnostic(0)->recognition[0].request;
+  auto out=h->poll(1000+2*dt,201,idle_at_transition?-1:1);
+  if(!idle_at_transition){check(!out.authored_playback && !h->cancelled,"forward air phase alone preserves waiting intent but cannot assert readiness");out=h->poll(1000+3*dt,201,-1);}
+  check(out.requested_id==2 && out.authored_playback && h->starts==1 && !h->cancelled,"same-flight forward phase and observed idle deliver the original request exactly once");
+  const auto* d=h->input.input_diagnostic(0);
+  check(d->dispatch[0].request==original,"native phase readiness preserves original immutable request and timing");
+  h->poll(1000+4*dt,201,-1,press);h->poll(1000+5*dt,201,-1,press);
+  check(h->starts==1,"held input is never reissued by a native phase transition");
+ }
+}
+void missed_excursions() {
+ for(unsigned fault=0;fault<11;++fault) {
+  auto h=std::make_unique<Fixture>();h->poll(1000,200,1);h->poll(1020,200,1,{0x4004});
+  NativeRequestSample s{};s.valid=true;s.state=201;s.crouch_mode=2;
+  if(fault==0){s.state=100;s.words[1]=0xc000u;}
+  if(fault==1)s.crouch_mode=0;
+  if(fault==2)s.words[0]=0x20;
+  const auto id=fault==3?2:1;const auto object=std::uintptr_t{fault==4?24u:16u};
+  if(fault<5)h->producer.observe(1030,h->owner,s,{true,id,object});
+  if(fault==5){s.state=201;h->producer.observe(1030,h->owner,s,{true,1,16});s.state=200;h->producer.observe(1040,h->owner,s,{true,1,16});}
+  if(fault==6){h->producer.observe(1030,h->owner,s,{false,-1,0});}
+  if(fault==7)h->producer.invalidate();
+  if(fault==8)++h->owner.rig;
+  if(fault==9)h->input.enable(false);
+  const auto now=fault==10?1200u:1060u;
+  h->poll(now,201,-1,{0x4004});
+  check(!h->starts,"missed departure/mode/stance/action/object/reverse/unknown/gap/owner/OFF cancels early-air request");
+ }
+}
+void readiness_and_context() {
+ auto h=std::make_unique<Fixture>();h->poll(1000,200,1);h->poll(1020,200,1,{0x4004});
+ auto out=h->poll(1040,201,-1,{},2,0,16,true,true,false);
+ check(!out.authored_playback && !h->starts && out.command_busy,"continuity proof never substitutes for native readiness");
+ out=h->poll(1060,201,-1);
+ check(out.requested_id==2 && h->starts==1,"independently admitted readiness releases retained request");
+ NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample s{};s.valid=true;s.state=200;s.crouch_mode=2;
+ auto a=producer.observe(100,owner,s,{true,1,16});s.state=201;auto b=producer.observe(120,owner,s,{true,1,16});
+ auto context=InputNativeContext::from_frame(b);auto before=InputNativeContext::from_frame(a);
+ check(context.ordinary_flip_wait_continues(before.generations,before.air_episode(),before.flip),"actual producer supplies phase continuity");
+ before.flip.wait_generation=0;
+ check(!context.ordinary_flip_wait_continues(before.generations,before.air_episode(),before.flip),"older provider without continuity capability fails closed for phase extension");
+}
+int run(){forward_wait();missed_excursions();readiness_and_context();mode_proof_and_active_playback();intervening_mode_and_contact();receipt_sequence();sampled_orderings();negative_transitions();negative_origins();other_faces_keep_boundary();std::cout<<checks<<" jump-idle input checks passed\n";return 0;}
 }

@@ -16,8 +16,15 @@ public:
         if (!std::isfinite(right_x) || !std::isfinite(right_y) || !std::isfinite(seconds) || seconds < 0) return {};
         const auto axis = [](float v) { return std::abs(v) <= .2f ? 0.0f : std::copysign((std::min(std::abs(v), 1.0f) - .2f) / .8f, v); };
         const float dt = std::min(seconds, .05f);
-        yaw_ = std::remainder(yaw_ - axis(right_x) * dt * 2.8f, 6.283185307f);
-        pitch_ = std::clamp(pitch_ - axis(right_y) * dt * 1.8f, -.6f, 1.0f);
+        // Lookaround is a bounded angle target, not a rate that accumulates
+        // indefinitely. Neutral returns toward the follow frame. Normalize
+        // the per-sample response to the existing 60 Hz control baseline.
+        const float blend = -std::expm1(std::log(15.0f / 16.0f) * dt * 60.0f);
+        const float horizontal = axis(right_x), vertical = axis(right_y);
+        const float yaw_target = -horizontal * 3.0f;
+        const float pitch_target = -vertical * (vertical > 0 ? 1.4f : .56f);
+        yaw_ += (yaw_target - yaw_) * blend;
+        pitch_ += (pitch_target - pitch_) * blend;
         const float dx = follow[12] - target[0], dy = follow[13] - target[1], dz = follow[14] - target[2];
         const float radius = std::sqrt(dx * dx + dy * dy + dz * dz);
         if (!std::isfinite(radius) || radius < .5f || radius > 15) return {};
