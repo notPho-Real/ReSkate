@@ -38,7 +38,7 @@ inline ScoreDecision native_score_capture_status(const native_score_detail::Even
         return ScoreDecision::stale;
     if (!event.serial || !native_score_detail::score_valid(event.payload.score) ||
         event.route == Route::none || static_cast<unsigned>(event.route) > static_cast<unsigned>(Route::sequence_end) ||
-        (event.route == Route::line_start && (event.payload.score || event.payload.reason || event.payload.success)) ||
+        (event.route == Route::line_start && ((event.payload.score != 0.0) || event.payload.reason || event.payload.success)) ||
         ((event.route == Route::line_end || event.route == Route::stats_line_end) &&
             (event.payload.reason > 8 || event.payload.success)) ||
         (event.route == Route::sequence_end && event.payload.reason))

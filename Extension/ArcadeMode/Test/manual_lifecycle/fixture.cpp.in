@@ -35,7 +35,7 @@ std::mutex ollie_mutex;std::atomic<bool> active{true};bool enabled(){return acti
 std::atomic<bool>& mode_enabled=active;
 std::atomic<bool> prepared_catalog{true};
 @@CAMERA_STATE@@
-NativeInputState native_input_state,motion_cleanup_state;ArcadeInput arcade_input(true);
+NativeInputState native_input_state,motion_cleanup_state;@@INPUT_STATE@@
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
 struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,true,clock_ms};}
@@ -75,12 +75,13 @@ template<class... Args>void log(Level,Channel,const char*,Args&&...){}
 }
 @@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
-void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true){
+bool corrupt_manual_delivery{};
+void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
  raw.valid=valid;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=contacts;
- const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{true,-1};const bool wipeout=false;
+ const auto now=clock_ms;const auto sample=raw;const NativeFlipSelection flip{idle_known,-1};const bool wipeout=false;
  std::lock_guard lock(ollie_mutex);
 @@OBSERVER@@latest=frame;arcade_input.publish_authority(now,frame.owner_generation,1,true);
 }
@@ -103,9 +104,9 @@ ScoreLabelOccurrence history(){const auto diagnostic=presenters.observe(rows,{cl
 const std::optional<std::vector<PreparedGesture>> prepared{std::vector<PreparedGesture>{
  {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},
  {16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}}};
-NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0){
+NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0){
  const unsigned user=0;const auto now=clock_ms;const auto tick=now/17;NativeGesture::Output result{};
- const auto buttons=physical_buttons;short left_x=0,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;
+ const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;
  const bool authored=true;
  arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
  const auto admission=native_readiness.sample(now,arcade_input.native_context(now));
@@ -116,6 +117,7 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0)
  const auto prepare_deadline=manual_prepare_until.load();const bool manual_prepare=game_input&&admission.prepare&&prepare_deadline>=now&&prepare_deadline-now<=150;
  const auto action_experiment=ActionExperiment::classic;const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;
 @@POLL@@
+ if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@
  const bool reference=false;const unsigned char physical_right_trigger=0;
 @@HOP@@
@@ -126,7 +128,7 @@ template<class T,class... Args>void reconstruct(T& object,Args&&... args){
  std::destroy_at(&object);std::construct_at(&object,std::forward<Args>(args)...);
 }
 void reset_case(){
- controller_route.reset();playback_packets={};
+ controller_route.reset();playback_packets={};corrupt_manual_delivery=false;
  active=true;watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
  combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
@@ -326,8 +328,8 @@ void hud_lifecycle(){
   const auto wanted=nose?0x8000u:0x4000u;
   prepare_air(nose,dt);rendered(false,"delivered airborne preparation alone renders no fabricated bar");
   tick(dt,100,wanted);remap();
-  check(!manual_balance_admitted.load(),"contact without a matching airborne history edge remains unadmitted");
-  rendered(false,"unadmitted physical contact renders no bar");
+  check(manual_balance_admitted.load(),"attributed airborne delivery and fresh matching landing contact admit before a name");
+  rendered(true,"attributed first landing contact renders the admitted balance before history presentation");
   rows.push_back({40,50,nose?2u:1u});tick(dt,100,wanted);remap();
   check(manual_balance_admitted.load(),"independent matching contact/history admits the prepared physical section");
   original_hud_source();rendered(true,"new admitted Manual or Nose renders on its first client frame");
@@ -412,7 +414,129 @@ void controller_packet_dependencies(){
  check(playback_packets[2].sample(500,500,true)==501,
        "extracted retirement helper starts recovery from the current physical baseline");
 }
+void air_admission_lifecycle(){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
+  prepare_air(nose,dt);const auto origin=remap().manual.recognized_at;
+  tick(dt,100,0xc000u);const auto ground=remap().manual;
+  check(ground.from_air&&ground.recognized_at==origin&&ground.request_at==clock_ms,
+        "first grounded delivery retains air recognition while beginning a distinct acquisition clock");
+  while(clock_ms<ground.request_at+800){tick(dt,100,0xc000u);remap();}
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(clock_ms>origin+700&&manual_balance_admitted.load()&&!manual_release.pending(),
+        "observed two-wheel delivery transfers to the existing ground acquisition path without a renewed air deadline");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
+  prepare_air(nose,dt);corrupt_manual_delivery=true;tick(dt,200,0);
+  const auto dropped=remap();check(dropped.manual.owns&&dropped.right_y==0,
+      "delivery corruption control preserves the semantic request while withholding its actual native pad");
+  corrupt_manual_delivery=false;tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),
+      "semantic ownership without actual partialRS delivery cannot admit first landing balance");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(bool qualified:{false,true}){
+  prepare_air(nose,dt);const auto wanted=nose?0x8000u:0x4000u;
+  const auto original=remap().manual;
+  check(original.from_air&&original.recognized_at&&original.recognized_at==original.request_at,
+        "actual airborne delivery exports its immutable recognized request separately from landing acquisition time");
+  if(!qualified){clock_ms+=dt;observe(dt/1000.f,0,200,true,false);client(dt/1000.f,history());remap();}
+  tick(dt,100,wanted);const auto landed=clock_ms;remap();
+  check(manual_balance_admitted.load()==qualified&&balance_hud_pending()==qualified,
+        "only an attributed unchanged airborne request admits balance at its first matching native landing");
+  const auto first=snapshot();
+  for(unsigned age=0;age<1300;age+=dt){
+   if(age>=300&&rows.empty())rows.push_back({40,50,nose?2u:1u});
+   const auto previous=snapshot();tick(dt,100,wanted);const auto out=remap(0,previous.velocity>0?25000:-25000);
+   if(qualified)check(manual_balance_admitted.load()&&!manual_release.pending()&&out.manual.owns&&snapshot().elapsed>previous.elapsed,
+       "source-qualified airborne balance continues beyond acquisition cleanup and late history never restarts dynamics");
+   if(!qualified&&age<300)check(!manual_balance_admitted.load()&&!balance_hud_pending(),
+       "unknown native selection still requires independent matching history despite delivered stick and physical contact");
+  }
+  check(qualified?first.elapsed>0:!first.active,
+        "initial balance is tied to the qualified original landing interval and never backdated from later presentation");
+  check(clock_ms>landed+1200&&manual_balance_admitted.load(),
+        "a later independent history edge can still admit the unchanged fallback without changing its native contract");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
+  prepare_air(nose,dt);clock_ms+=dt;observe(dt/1000.f,0,200,true,false);client(dt/1000.f,history());remap();
+  const auto wanted=nose?0x8000u:0x4000u;tick(dt,100,wanted);remap();const auto landed=clock_ms;
+  while(clock_ms<landed+1200+dt){tick(dt,100,wanted);remap();}
+  check(!manual_balance_admitted.load()&&!balance_hud_pending()&&manual_release.pending(),
+        "absent attributable air delivery and absent history retain the original bounded unadmitted cleanup");
+ }
+}
+std::uint64_t start_analog_air(unsigned dt){
+ reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();
+ tick(dt,100,0xc000);const auto press=remap(0x1000);check(press.jump.setup_started,"analog trial begins with admitted physical A setup");
+ for(unsigned i=0;i<3;++i){tick(dt,103,0xc000);remap(0x1000);}
+ tick(dt,103,0xc000);const auto release=remap();check(release.jump.released&&release.jump.setup_admitted,"one A release precedes the analog airborne gesture");
+ tick(dt,200,0);remap();arcade_input.set_recognition_capture(0,true);
+ const auto policy=arcade_input.input_diagnostic(0)->policy;
+ check(policy.normalization==InputNormalization::analog&&policy.manual_sample_allowance==0&&!policy.inclusive_manual&&policy.reject_opposing,
+       "actual production input constructor and remap call site retain strict Manual fidelity and physical safety policy");
+ return clock_ms;
+}
+void analog_air_boundaries(){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned gap:{399u,400u})for(unsigned age:{699u,700u,701u}){
+  start_analog_air(dt);const short first=nose?-13057:12800,second=nose?12800:-13057;
+  tick(dt,200,0);remap(0,first);const auto first_at=clock_ms;
+  while(clock_ms<first_at+gap){const auto step=static_cast<unsigned>(std::min<std::uint64_t>(dt,first_at+gap-clock_ms));tick(step,200,0);remap(0,first);}
+  const auto recognized=clock_ms;const auto out=remap(0,second);
+  check(out.manual.owns==(gap<400),"actual analog399ms pairing starts the existing adapter while400ms equality is rejected");
+  while(clock_ms+dt<recognized+age){tick(dt,200,0);remap();}
+  tick(static_cast<unsigned>(recognized+age-clock_ms),100,nose?0x8000u:0x4000u);const auto landed=remap();
+  check(manual_balance_admitted.load()==(gap<400&&age<=700)&&balance_hud_pending()==(gap<400&&age<=700),
+        "actual analog AIR recognition700ms landing is eligible and701ms cannot revive expired intent");
+  if(gap<400&&age<=700)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
+        "landing acquisition time never replaces the original analog recognition deadline");
+ }
+}
+void analog_air_lifecycle(){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned phase=0;phase<dt;++phase)
+ for(unsigned shape=0;shape<5;++shape)for(bool release_final:{false,true}){
+  const auto air_at=start_analog_air(dt);const auto first_at=air_at+dt+phase,second_at=air_at+140+phase;
+  const short first=nose?-13057:12800,second=nose?12800:-13057,below=nose?-13056:12799;
+  std::uint64_t recognized{},first_edge{},last_edge{},delivered{};unsigned recognized_count{};
+  while(clock_ms<air_at+450){
+   const auto next=clock_ms+dt;short y=below,x=0;
+   if(next>=first_at&&next<second_at){
+    y=shape==4?below:first;
+    if(shape==1&&next>=first_at+dt)y=0;
+    if(shape==2&&next>=first_at+dt){x=nose?-12800:13057;if(next>=second_at-dt)x=y=0;}
+    if(shape==3)x=nose?-12800:13057;
+   }else if(next>=second_at){y=release_final&&next>=second_at+2*dt?0:second;if(shape==3&&y)x=nose?13057:-12800;}
+   tick(dt,200,0);const auto out=remap(0,y,x);
+   const auto* diagnostic=arcade_input.input_diagnostic(0);
+   for(std::size_t i=0;i<diagnostic->recognition_count;++i){const auto& request=diagnostic->recognition[i].request;
+    if(request.action!=InputAction::manual&&request.action!=InputAction::nose_manual)continue;
+    ++recognized_count;recognized=request.recognized_at;first_edge=request.first_input_at;last_edge=request.last_input_at;
+    check(request.context==InputContext::air&&request.action==(nose?InputAction::nose_manual:InputAction::manual)&&
+          recognized==clock_ms&&recognized-first_edge<400&&last_edge==recognized,
+          "analog cardinal edges keep their observed strict400ms pair clock and typed once-only recognition");
+   }
+   if(out.manual.owns){if(!delivered)delivered=clock_ms;check(out.manual.from_air&&out.manual.recognized_at==recognized&&
+       out.right_x==0&&out.right_y==(nose?20000:-20000),"actual prelanding RS delivery retains the immutable analog recognition and family");}
+   check(!manual_balance_admitted.load()&&!balance_hud_pending(),"analog airborne request and pad output alone cannot fabricate grounded balance");
+  }
+  const bool valid=shape<3;
+  check(recognized_count==(valid?1u:0u)&&bool(delivered)==valid,
+        "raw native analog trajectories recognize once; pure diagonals and insufficient first throw cannot substitute cardinal edges");
+  if(valid){
+   unsigned consumed{};for(const auto& event:arcade_input.history(0)->events())if(event.token.source==InputSource::direction&&
+       event.token.edge==InputEdge::press&&(event.at==first_edge||event.at==last_edge)){
+       check(event.owners==InputConsumption::manual,"only the matched analog presses commit the Manual consumption category");++consumed;}
+   check(consumed==2,"one analog pair consumes its two actual logical press edges");
+  }
+  tick(dt,100,nose?0x8000u:0x4000u);const auto landed=remap(0,release_final?0:second);
+  check(manual_balance_admitted.load()==valid&&balance_hud_pending()==valid,
+        "same-owner matching landing starts actual model/HUD only after a qualified analog AIR receipt");
+  if(valid)check(landed.manual.owns&&landed.manual.confirmed&&rows.empty()&&snapshot().elapsed>0,
+       "held-final and released-final analog gestures both enter without a second face press or synthetic history label");
+ }
+}
 int main(){
+ analog_air_boundaries();
+ analog_air_lifecycle();
+ air_admission_lifecycle();
  for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned duration:{300u,1100u,1400u})for(bool seen_unknown:{false,true})for(unsigned duplicates:{0u,3u}){
   const auto wanted=nose?0x8000u:0x4000u;const auto original=qualified(nose,dt,duration);
   clock_ms+=dt;observe(dt/1000.f,0);

@@ -1701,7 +1701,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool manual_delivery = game_input && !offboard && !result.authored_playback && !action.owned &&
             !(physical_buttons & (classic_a | 0x0030u));
         manual_acquisition.observe(now,manual_delivery_frame,result.manual,manual_delivery);
-        ground_manual_balance.observe(now,manual_delivery_frame,result.manual,manual_delivery);
+        const bool manual_pad_delivery = manual_delivery && !releasing_manual && !result.rail.held &&
+            result.right_x == 0 && (result.manual.request == -1 || result.manual.request == 1) &&
+            result.right_y == result.manual.request * 20000;
+        ground_manual_balance.observe(now,manual_delivery_frame,result.manual,manual_pad_delivery);
         result.buttons &= ~action.consume_buttons;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
@@ -1733,7 +1736,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool crouched = pose == SkatePose::riding && (physical_buttons & classic_a) &&
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto physical_state=arcade_input.digital_state(now);
-        const auto ground_controls=GroundControl::from_state(auto_kick_enabled(),physical_state);
+        auto ground_controls=GroundControl::from_state(auto_kick_enabled(),physical_state);
+        // Manual vertical reservation publication begin.
+        // Final native RS ownership withdraws ordinary scalar control without
+        // claiming native entry, contact validity or a balance force.
+        ground_controls.manual_vertical_reserved = rotation_enabled && manual_delivery &&
+            !result.authored_playback && !action.owned && !reference && !manual_hop.active() &&
+            !result.rail.held && !rail_pad.owns_right_stick && !rail_pad.button_mask &&
+            ((result.manual.owns && (result.manual.request == -1 || result.manual.request == 1) &&
+              result.right_x == 0 && result.right_y == result.manual.request * 20000) ||
+             (releasing_manual && result.right_x == 0 && result.right_y == 0));
+        // Manual vertical reservation publication end.
         const bool square_push = rotation_enabled && admission.drive && ground_controls.known && ground_controls.square && pose == SkatePose::riding &&
             !manual_hop.active() && physical_left_trigger <= 30 && physical_right_trigger <= 30 &&
             !result.suppress_reverse && (!result.command_busy || crouched) && !action.owned && !reference;

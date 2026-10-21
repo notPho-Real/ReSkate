@@ -1,0 +1,66 @@
+#include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_input_types.h"
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+using namespace dingosdk::arcade_mode;
+namespace arcade_mode = dingosdk::arcade_mode;
+namespace {
+unsigned checks{};
+constexpr std::uint16_t classic_a=0x1000;
+void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';std::exit(1);}}
+GroundControl publish(unsigned kind,unsigned conflict){
+    NativeGesture::Output result{};
+    struct {bool owned{};} action;
+    struct {bool owns_right_stick{};unsigned button_mask{};} rail_pad;
+    struct {bool held{};bool active()const{return held;}} manual_hop;
+    bool game_input=true,offboard=false,rotation_enabled=true,reference=false,releasing_manual=kind==2;
+    std::uint16_t physical_buttons{};
+    result.manual.owns=kind<2;result.manual.request=(kind==0||kind==3)?-1:kind==1?1:0;
+    result.right_x=0;result.right_y=static_cast<std::int16_t>(result.manual.request*20000);
+    if(conflict==1)game_input=false;
+    if(conflict==2)offboard=true;
+    if(conflict==3)rotation_enabled=false;
+    if(conflict==4)result.authored_playback=true;
+    if(conflict==5)action.owned=true;
+    if(conflict==6)reference=true;
+    if(conflict==7)manual_hop.held=true;
+    if(conflict==8)result.rail.held=true;
+    if(conflict==9)rail_pad.owns_right_stick=true;
+    if(conflict==10)rail_pad.button_mask=1;
+    if(conflict==11)result.right_x=1;
+    if(conflict==12)result.right_y=123;
+    if(conflict==13)physical_buttons=0x1000;
+    if(conflict==14)physical_buttons=0x10;
+    if(conflict==15)physical_buttons=0x20;
+@@DELIVERY@@
+    auto ground_controls=GroundControl::physical(true,2,0,0);
+@@RESERVE@@
+    return ground_controls;
+}
+GroundControl transport(const GroundControl* ground_controls,bool active){
+    struct {std::atomic<unsigned> ground_controls{};} a;
+    struct {GroundControl ground_controls{};} candidate;
+@@STORE@@
+@@LOAD@@
+    return candidate.ground_controls;
+}
+}
+int main(){
+    for(unsigned kind=0;kind<4;++kind)for(unsigned conflict=0;conflict<16;++conflict){
+        const auto published=publish(kind,conflict);
+        check(published.manual_vertical_reserved==(kind<3&&conflict==0),
+            "only final actual Manual hold or owned neutral release reserves the vertical channel");
+        check(published.known&&published.down&&!published.left&&!published.right,
+            "reservation leaves physical Down and steering facts intact");
+        const auto sampled=transport(&published,true);
+        check(sampled.encode()==published.encode(),"actual store and load retain every payload flag including reservation");
+        check(!transport(&published,false).manual_vertical_reserved&&!transport(nullptr,true).manual_vertical_reserved,
+            "OFF or missing publication clears reservation through the existing carrier");
+    }
+    for(unsigned bits=0;bits<512;++bits){
+        const auto controls=GroundControl::decode(bits);
+        check(transport(&controls,true).encode()==controls.encode(),"all payload combinations survive existing atomic transport statements");
+    }
+    std::cout<<checks<<" Manual channel publication and transport checks passed\n";
+}

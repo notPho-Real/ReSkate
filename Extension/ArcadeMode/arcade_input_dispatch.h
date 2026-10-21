@@ -352,11 +352,11 @@ public:
     void cancel_auxiliary() noexcept {
         pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
     }
-    void cancel_air_episode() noexcept {
+    void cancel_air_episode(bool preserve_history = false) noexcept {
         pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
         active_flip_ = active_grab_ = false; direction_ = 0;
         // Keep physical held state and independently queued Manual/rail intent.
-        events_.discard_intent();
+        if (!preserve_history) events_.discard_intent();
     }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
@@ -381,7 +381,8 @@ public:
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
-                if (native.air_episode() != native_.air_episode()) cancel_air_episode();
+                if (native.air_episode() != native_.air_episode())
+                    cancel_air_episode(native.ordinary_air_transition(native_,now));
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
                     if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
@@ -1158,7 +1159,9 @@ private:
             diagnostic_.stick_at = diagnostic_.pad_at = 0; return;
         }
         if (environment.manual_active) { cancel_manual(); return; }
-        if ((environment.context != InputContext::ground && environment.context != InputContext::air) || (!environment.manual_safe && !environment.manual_prepare) ||
+        if ((environment.context != InputContext::ground && environment.context != InputContext::air) || (!environment.manual_safe && !environment.manual_prepare &&
+             !(environment.context == InputContext::ground && environment.native_context.manual_ground_wait(now))) ||
+            physical.lt > 30 || physical.rt > 30 ||
             (physical.buttons & 0xf030u) || (physical.buttons & 0x0300u) == 0x0300u) {
             cancel_manual(); diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; return;

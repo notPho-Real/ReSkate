@@ -186,7 +186,8 @@ public:
             diagnostic.stick_first, diagnostic.pad_first, manual_.requested(), diagnostic.stick_at,
             diagnostic.pad_at, manual_.requested_at(),
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
-            admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed};
+            admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed,
+            manual_.recognized_at(), manual_.from_air()};
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
         if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {
@@ -294,7 +295,9 @@ private:
                 (physical_.buttons & 0xf030u) || (physical_.buttons & 0x0300u) == 0x0300u) return InputDisposition::cancelled;
             if (request.context == InputContext::air && now_ - request.recognized_at > InputTiming::air_request_ms)
                 return InputDisposition::expired; // Queue and native adapter share the inclusive preparation deadline.
-            if (!admission.manual_safe) return admission.manual_prepare ? InputDisposition::waiting : InputDisposition::cancelled;
+            if (!admission.manual_safe) return admission.manual_prepare ||
+                (admission.pose == SkatePose::riding && admission.native_context.manual_ground_wait(now_)) ?
+                InputDisposition::waiting : InputDisposition::cancelled;
             if (authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             return manual_.request(now_, request.action == InputAction::manual ? -1 : 1, airborne, admission.manual_safe,
                 request.context == InputContext::air, request.recognized_at)

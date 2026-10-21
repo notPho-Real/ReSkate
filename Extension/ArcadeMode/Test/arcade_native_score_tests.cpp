@@ -22,6 +22,26 @@ void check(bool ok, const char* description) {
     ++checks;
     if (!ok) { std::cerr << "FAIL: " << description << '\n'; std::exit(1); }
 }
+void line_start_numeric_truth_tests() {
+    using dingosdk::arcade_mode::ScoreDecision;
+    using dingosdk::arcade_mode::native_score_capture_status;
+    for(const double score : {0.0,-0.0,1.0,-1.0,.25,-.25,
+            std::numeric_limits<double>::denorm_min(),
+            std::numeric_limits<double>::infinity(),-std::numeric_limits<double>::infinity(),
+            std::numeric_limits<double>::quiet_NaN()}) {
+        check(static_cast<bool>(score)==(score!=0.0),
+            "explicit numeric truth preserves signed zero finite and nonfinite boolean semantics");
+        Event event{};event.serial=1;event.epoch=7;event.sampled_at=1000;
+        event.route=Route::line_start;event.payload.score=score;
+        check(native_score_capture_status(event,7,1000,true)==
+            (score==0.0?ScoreDecision::ambiguous:ScoreDecision::invalid),
+            "line-start rejects nonzero and invalid scores without inventing score authority");
+        event.route=Route::line_end;
+        check(native_score_capture_status(event,7,1000,true)==
+            (score_valid(score)?ScoreDecision::ambiguous:ScoreDecision::invalid),
+            "other route validity remains independent from the line-start zero constraint");
+    }
+}
 void capture_scope_tests() {
     struct Scope { std::uintptr_t vm{}; const Scope* parent{}; };
     std::atomic<std::uint64_t> rejected{};
@@ -164,7 +184,7 @@ void binder_diagnostic_tests() {
     configure(graphs[3]);
     check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::relationship_matches,
           "exact sequence mapping matches its own known Value location");
-    for (const auto index : {0, 2}) {
+    for (const std::size_t index : {std::size_t{0}, std::size_t{2}}) {
         configure(graphs[index]); fixture.put(serialized + 0x58, std::uintptr_t{});
         check(inspect_score_binder(fixture, serialized, active).outcome == BinderOutcome::unverified,
               "start and stats do not invent a parameter list or Value mapping");
@@ -519,6 +539,7 @@ void diagnostic_tests() {
 }
 }
 int main(int argc, char** argv) {
+    line_start_numeric_truth_tests();
     capture_scope_tests();
     binder_diagnostic_tests();
     schema_snapshot_tests();

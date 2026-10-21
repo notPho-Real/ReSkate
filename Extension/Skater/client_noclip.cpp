@@ -650,7 +650,10 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         const bool balancing = manual.matches(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},physics,mode,contacts) &&
             arcade_mode::native_manual_contact_current(manual);
         const bool controls_current = intent.angular_proof.same_owner_observation(native_frame,now) && intent.ground_controls.known;
-        const bool ground_eligible = controls_current && (physics == 100 || physics == 103) && ordinary &&
+        // A real Manual RS holder reserves vertical input before balance proof
+        // catches up. Reservation only withdraws ordinary scalar assistance.
+        const bool ground_eligible = controls_current && (balancing || !intent.ground_controls.manual_vertical_reserved) &&
+            (physics == 100 || physics == 103) && ordinary &&
             (contacts == 0xc000u || balancing) && mode <= 2 && std::abs(velocities[0][1]) < .3f;
         const auto ground_step = a.ground_steps.consume(native_frame,now,ground_eligible);
         if (ground_step) {

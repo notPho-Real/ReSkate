@@ -59,6 +59,7 @@ def generated(root):
         "CAMERA_STATE": between(mode, "CameraOrbit camera_orbit;", "std::atomic<unsigned> authored_status"),
         "CAMERA_TICK": function(mode, "void on_camera_tick("),
         "STATE": between(mode, "ComboSession combo_session(", "void update_combo("),
+        "INPUT_STATE": mode[unique(mode, "ArcadeInput arcade_input("):mode.index(";", unique(mode, "ArcadeInput arcade_input("))+1],
         "UPDATE": function(mode, "void update_combo("),
         "PACKET_RETIRE": function(mode, "void retire_playback_packets("),
         "HUD_PUBLISH": function(hud, "void publish_balance_hud("),

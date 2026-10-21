@@ -45,6 +45,38 @@ struct InputNativeContext {
         return valid && generations.owner && generations.contact && generations.action && physics_step &&
             now >= sampled_at && now - sampled_at <= InputTiming::native_sample_lease_ms;
     }
+    // Known ground input may wait for the existing native actuator to become
+    // ready. This is recognition/queue eligibility, never execution permission.
+    // Transitional ground does not authorize a stick, pose or balance state.
+    bool manual_ground_wait(std::uint64_t now) const noexcept {
+        return required && fresh(now) && !airborne && !rail_family &&
+            (flip.state == 100 || flip.state == 101) && flip.mode == 1;
+    }
+    // Preserve observed input history across one ordinary takeoff/landing.
+    // This qualifies recognition continuity only, never native actuation.
+    bool ordinary_air_transition(const InputNativeContext& before, std::uint64_t now) const noexcept {
+        const auto ordinary = [](const InputNativeContext& value) noexcept {
+            return !value.rail_family && !(value.flip.stance & 0x40u) &&
+                (value.airborne ? ((value.flip.state == 200 || value.flip.state == 201) &&
+                                    (value.flip.mode == 1 || value.flip.mode == 2))
+                                 : ((value.flip.state == 100 || value.flip.state == 101) && value.flip.mode == 1));
+        };
+        if (!required || !before.required || !fresh(now) || !before.fresh(now) ||
+            !ordinary(*this) || !ordinary(before) || airborne == before.airborne ||
+            generations.owner != before.generations.owner || physics_step <= before.physics_step ||
+            generations.action <= before.generations.action || generations.action-before.generations.action != 1 ||
+            generations.contact <= before.generations.contact || generations.contact-before.generations.contact != 1 ||
+            flip.stance != before.flip.stance || flip.valid != before.flip.valid ||
+            flip.id != before.flip.id || flip.object != before.flip.object ||
+            !flip.mode_generation || !before.flip.mode_generation) return false;
+        const auto mode_step = flip.mode != before.flip.mode ? 1u : 0u;
+        if (flip.mode_generation < before.flip.mode_generation ||
+            flip.mode_generation-before.flip.mode_generation != mode_step) return false;
+        if (airborne) return airborne_episode > before.airborne_episode &&
+            airborne_episode-before.airborne_episode == 1 && air_departure == before.air_departure;
+        return airborne_episode == before.airborne_episode && air_departure > before.air_departure &&
+            air_departure-before.air_departure == 1;
+    }
     // Only the existing201/mode2 jump1-to-idle observation is correlated here.
     // This proves neither actor completion nor current readiness.
     bool jump_selection_retired(InputGenerations origin, InputAirEpisode episode,
@@ -121,10 +153,10 @@ struct InputBoardBinding {
 };
 struct InputPolicy {
     InputNormalization normalization{InputNormalization::analog};
-    std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
-    bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{false};
+    std::uint64_t manual_sample_allowance{};
+    bool inclusive_manual{}, reject_opposing{true}, bounded_handoff{false};
     bool operator==(const InputPolicy&) const = default;
-    // Preserve the admitted physical Manual baseline and its explicit allowance.
+    // Fidelity timing uses the observed event clock without sampling allowance.
     static constexpr InputPolicy production() noexcept { return {}; }
     static constexpr InputPolicy compatibility() noexcept {
         return {InputNormalization::compatibility,InputTiming::ground_sample_slack_ms,true,true,false};

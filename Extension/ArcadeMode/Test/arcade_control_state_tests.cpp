@@ -20,6 +20,24 @@ void normalization() {
         check(events.history().events().size() == (active ? 1u : 0u), "asymmetric axis quantization entry is exact");
         if (active) check(events.history().events()[0].token.source == InputSource::direction, "one canonical physical direction spends one ring entry");
     }
+    for(int raw=-32768;raw<=32767;++raw){
+        const auto state=InputEvents::normalize({0,static_cast<std::int16_t>(raw),static_cast<std::int16_t>(raw)},100);
+        const int horizontal_byte=(raw+32767)/256,vertical_byte=(-raw+32767)/256;
+        const int x=horizontal_byte<78?-1:horizontal_byte>178?1:0;
+        const int y=vertical_byte<78?1:vertical_byte>178?-1:0;
+        check(state.direction==InputEvents::encode(x,y),
+            "every signed native axis value preserves independent byte thresholds after positive-up Y conversion");
+    }
+    for(bool nose:{false,true}){
+        InputEvents events;events.sample(0,{});
+        const std::int16_t threshold=nose?-13057:12800,neutral=nose?-13056:12799;
+        events.sample(10,{0,0,neutral});check(events.history().events().empty(),"below-threshold travel is neutral and creates no cardinal event");
+        events.sample(20,{0,0,threshold});const auto once=events.history().events().size();
+        events.sample(30,{0,0,threshold});check(events.history().events().size()==once,"held sector has no repeated press or invented dwell");
+        events.sample(40,{0,0,neutral});events.sample(50,{0,0,threshold});
+        check(events.history().events().size()==3&&events.history().events()[0].at==20&&events.history().events()[1].at==40&&events.history().events()[2].at==50,
+              "actual threshold crossings retain observed timestamps without recognition hysteresis or fabricated hardware time");
+    }
     for (unsigned mask = 1; mask < 16; ++mask) {
         InputEvents events; events.sample(0, {}, false, false, InputPolicy::strict());
         events.sample(10, {static_cast<std::uint16_t>(mask), -25000, 25000}, false, false, InputPolicy::strict());
@@ -51,6 +69,7 @@ void sampled_windows() {
         }
     for (unsigned gap : {219u,220u,221u,274u,275u,276u}) {
         UnifiedInput input; Sink sink; InputEnvironment env{InputContext::ground,true};
+        env.policy=InputPolicy::compatibility();
         input.poll(0,{},env,sink.adapter()); input.poll(10,{0,0,25000},env,sink.adapter()); input.poll(10+gap,{0,0,-25000},env,sink.adapter());
         check((sink.calls != 0) == (gap <= 275), "compatibility allowance remains an explicit independent policy");
     }
@@ -317,8 +336,8 @@ void composed_manual_deadline() {
 }
 
 void policy_and_mode_boundaries() {
-    check(InputPolicy::production()==InputPolicy{} && InputPolicy::production().manual_sample_allowance==55,
-        "production explicitly preserves the approved Manual sampling allowance");
+    check(InputPolicy::production()==InputPolicy{} && InputPolicy::production().manual_sample_allowance==0 && !InputPolicy::production().inclusive_manual && InputPolicy::production().reject_opposing,
+        "production uses exact strict timing while retaining opposing-direction safety");
     struct Waiting {
         unsigned calls{};
         static InputDisposition receive(void* state,const InputRequest&) noexcept {++static_cast<Waiting*>(state)->calls;return InputDisposition::waiting;}

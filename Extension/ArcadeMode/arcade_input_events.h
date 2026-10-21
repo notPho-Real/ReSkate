@@ -427,7 +427,10 @@ public:
         if(!available)return state;
         const bool reference=policy.normalization==InputNormalization::analog;
         const auto axis=[&](std::int16_t value){return reference?(value>=13057?1:value<=-12800?-1:0):(value>13000?1:value<-13000?-1:0);};
-        const auto x=axis(input.x),y=axis(input.y);
+        const auto x=axis(input.x);
+        // The native pad carrier uses positive-up Y. Preserve the byte-domain
+        // threshold asymmetry after converting that vertical sign convention.
+        const auto y=reference?(input.y>=12800?1:input.y<=-13057?-1:0):axis(input.y);
         state.stick_buttons=static_cast<std::uint16_t>((y>0?1u:y<0?2u:0u)|(x<0?4u:x>0?8u:0u));
         state.pad_buttons=static_cast<std::uint16_t>(input.buttons&15u);
         const auto directions=state.pad_buttons?state.pad_buttons:state.stick_buttons;

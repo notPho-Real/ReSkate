@@ -24,6 +24,8 @@ struct ManualInputDiagnostic {
         std::uint64_t stick_at{}, pad_at{}, request_at{};
         unsigned rejected{};
         bool safe{}, preparation{}, owns{}, confirmed{};
+        std::uint64_t recognized_at{};
+        bool from_air{};
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the
@@ -38,6 +40,8 @@ public:
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
     int requested() const noexcept { return requested_; }
+    std::uint64_t recognized_at() const noexcept { return requested_ ? recognized_at_ : 0; }
+    bool from_air() const noexcept { return requested_ && air_prepared_; }
     std::uint64_t requested_at() const noexcept { return requested_ ? requested_at_ : 0; }
     bool request(std::uint64_t now, int direction, bool airborne, bool safe,
                  bool prepared_air, std::uint64_t recognized_at) noexcept {
@@ -47,6 +51,7 @@ public:
         // Airborne waiting never renews preparation lifetime. A first admitted
         // ground execution begins the separate existing landing-settling clock.
         requested_at_ = prepared_air && airborne ? recognized_at : now;
+        recognized_at_ = recognized_at;
         air_prepared_ = prepared_air; landed_ = !airborne;
         confirmed_ = wrong_contact_ = false;
         return true;
@@ -118,6 +123,6 @@ public:
 private:
     bool hard_reset_{}, clocked_{}, confirmed_{}, air_prepared_{}, landed_{}, wrong_contact_{};
     int requested_{};
-    std::uint64_t last_{}, requested_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
+    std::uint64_t last_{}, requested_at_{}, recognized_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };
 }

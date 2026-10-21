@@ -591,7 +591,7 @@ void production_session_boundary_matrix() {
 
 struct ConformanceFacade {
     NativeInputState producer; NativeInputOwner owner{1,2,3,4,5}; ArcadeInput input{true};
-    std::vector<PreparedGesture> prepared{catalog()}; unsigned cadence{17};const char* trace{"bound-facade"};bool flip_ready{true};
+    std::vector<PreparedGesture> prepared{catalog()}; unsigned cadence{17};const char* trace{"bound-facade"};bool flip_ready{true}, manual_ready{};
     std::uint32_t air_contacts{};NativeFlipSelection selection{true,-1};
     ConformanceFacade(){input.enable(true);input.set_recognition_capture(0,true);}
     NativeGesture::Output poll(std::uint64_t now,unsigned state,PhysicalInputSample physical={},bool publish=true) {
@@ -603,12 +603,165 @@ struct ConformanceFacade {
         }
         const auto pose=state==200?SkatePose::air:state==401?SkatePose::grind:SkatePose::riding;
         const auto out=input.poll(0,now,physical.buttons,physical.x,physical.y,0,0,true,true,false,0,
-            physical.lt>30||physical.rt>30,false,true,now/cadence,false,prepared,false,false,pose,
+            physical.lt>30||physical.rt>30,false,true,now/cadence,false,prepared,false,manual_ready,pose,
             false,false,false,false,flip_ready,false,physical.lt,physical.rt,ActionExperiment::classic,true,true,false);
         if(conformance_record)conformance_record(trace,now,out,*input.input_diagnostic(0),*input.history(0));
         return out;
     }
 };
+void grounded_manual_readiness_wait() {
+    InputNativeContext context{true,true,{1,1,1},1,1000};
+    context.flip.state = 101; context.flip.mode = 1;
+    check(context.manual_ground_wait(1150) && !context.manual_ground_wait(1151),
+        "ground recognition uses the original producer lease without renewing it");
+    for (unsigned invalid = 0; invalid < 7; ++invalid) {
+        auto rejected = context;
+        if (invalid == 0) rejected.required = false;
+        if (invalid == 1) rejected.valid = false;
+        if (invalid == 2) rejected.flip.mode = 0;
+        if (invalid == 3) rejected.flip.state = 103;
+        if (invalid == 4) rejected.airborne = true;
+        if (invalid == 5) rejected.rail_family = true;
+        if (invalid == 6) rejected.generations.owner = 0;
+        check(!rejected.manual_ground_wait(1000),
+            "ground queue waiting requires a fresh positive owner and exact supported ground mode");
+    }
+    for (auto cadence : {17u, 34u}) for (bool pad : {false, true})
+    for (bool nose : {false, true}) for (bool second_ready : {false, true}) {
+        auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
+        h.manual_ready = true; h.cadence = cadence;
+        const auto first = conformance_direction(static_cast<std::int16_t>(nose ? 2 : 8), pad);
+        const auto second = conformance_direction(static_cast<std::int16_t>(nose ? 8 : 2), pad);
+        h.poll(1000, 100);
+        const auto before = h.poll(1000 + cadence, 101, first);
+        check(!before.manual.owns && !before.right_y,
+            "known transitional ground records direction without actuating the native stick");
+        h.poll(1000 + 2 * cadence, 101);
+        const auto recognized_at = 1000 + 6 * cadence;
+        const auto recognized = h.poll(recognized_at, second_ready ? 100u : 101u, second);
+        const auto* diagnostic = h.input.input_diagnostic(0);
+        check(diagnostic->recognition_count == 1 &&
+            diagnostic->recognition[0].request.action == (nose ? InputAction::nose_manual : InputAction::manual) &&
+            diagnostic->recognition[0].request.recognized_at == recognized_at,
+            "the actual native-bound facade retains the first edge through grounded readiness delay");
+        check(recognized.manual.owns == second_ready,
+            "recognition alone cannot grant native output while transitional ground remains unready");
+        if (!second_ready) {
+            // Ground queue has no invented pair-window expiry after recognition.
+            for (auto t = recognized_at + cadence; t < recognized_at + 500; t += cadence) h.poll(t,101);
+            const auto waiting = h.poll(recognized_at + 500, 101);
+            check(!waiting.manual.owns && !waiting.right_y,
+                "ground pending intent waits beyond the pair window without native output");
+            const auto delivered = h.poll(recognized_at + 500 + cadence, 100);
+            check(delivered.manual.owns && delivered.right_y == (nose ? 20000 : -20000) &&
+                delivered.manual.request_at == recognized_at + 500 + cadence,
+                "fresh readiness starts the existing typed actuator and its delivery clock once");
+        } else check(recognized.right_y == (nose ? 20000 : -20000),
+            "first-edge readiness recovery retains existing manual and nose native polarity");
+    }
+    for (unsigned boundary = 0; boundary < 7; ++boundary) {
+        auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
+        h.manual_ready = true;
+        h.poll(1000,100); h.poll(1017,101,{0,0,25000}); h.poll(1034,101);
+        if (boundary == 0) h.input.enable(false);
+        if (boundary == 1) ++h.owner.core;
+        const auto stopped = h.poll(boundary == 2 ? 1200 : 1051,
+            boundary == 3 ? 999u : boundary == 4 ? 401u : 101u,
+            boundary == 5 ? PhysicalInputSample{0x2000} :
+            boundary == 6 ? PhysicalInputSample{0,0,0,255,0} : PhysicalInputSample{}, boundary != 2);
+        check(!stopped.manual.owns,"readiness waiting never overrides a lifecycle or physical conflict boundary");
+        if (boundary == 0) h.input.enable(true);
+        const auto second = h.poll(boundary == 2 ? 1217u : 1068u,100,{0,0,-25000});
+        check(!second.manual.owns,"cancelled transitional input cannot reappear when native readiness returns");
+    }
+    for (unsigned boundary = 0; boundary < 8; ++boundary) {
+        auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
+        h.manual_ready = true;
+        h.poll(1000,100); h.poll(1017,101,{0,0,25000}); h.poll(1034,101);
+        h.poll(1051,101,{0,0,-25000});
+        check(h.input.input_diagnostic(0)->recognition_count == 1,
+            "cancellation negative begins with an actually recognized waiting ground request");
+        if (boundary == 0) h.input.enable(false);
+        if (boundary == 1) ++h.owner.core;
+        const auto now = boundary == 2 ? 1202u : 1068u;
+        const auto state = boundary == 3 ? 999u : boundary == 4 ? 200u : boundary == 5 ? 401u : 101u;
+        h.poll(now,state,boundary == 6 ? PhysicalInputSample{0x2000} :
+            boundary == 7 ? PhysicalInputSample{0,0,0,255,0} : PhysicalInputSample{},boundary != 2);
+        if (boundary == 0) h.input.enable(true);
+        const auto recovered = h.poll(now + 17,100,{0,0,-25000});
+        check(!recovered.manual.owns,
+            "owner loss stale producer OFF unknown departure rail and physical conflicts retire pending intent");
+    }
+    for (auto age : {219u,220u,275u,276u}) {
+        auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
+        h.manual_ready = true;
+        h.poll(1000,100); h.poll(1017,101,{0,0,25000}); h.poll(1034,101);
+        for (auto t = 1051u; t < 1017+age; t += 17) h.poll(t,101);
+        const auto out = h.poll(1017+age,100,{0,0,-25000});
+        check(out.manual.owns == (age < 220),
+            "ground readiness waiting preserves the strict220ms event boundary without a sampling extension");
+    }
+}
+void manual_transition_continuity_negatives() {
+    ConformanceFacade h;
+    h.poll(1000,100); h.poll(1017,100,{0,0,12800});
+    const auto before=InputNativeContext::from_frame(h.input.native_context(1017));
+    h.poll(1034,200,{0,0,12800});
+    const auto after=InputNativeContext::from_frame(h.input.native_context(1034));
+    check(after.ordinary_air_transition(before,1034),"one fresh same-owner ordinary takeoff preserves physical journal continuity");
+    for(unsigned boundary=0;boundary<14;++boundary){
+        auto rejected=after;
+        if(boundary==0)rejected.required=false;
+        if(boundary==1)rejected.valid=false;
+        if(boundary==2)++rejected.generations.owner;
+        if(boundary==3)++rejected.generations.action;
+        if(boundary==4)++rejected.generations.contact;
+        if(boundary==5)++rejected.airborne_episode;
+        if(boundary==6)++rejected.air_departure;
+        if(boundary==7)++rejected.flip.mode_generation;
+        if(boundary==8)rejected.flip.state=999;
+        if(boundary==9)rejected.rail_family=true;
+        if(boundary==10)rejected.flip.stance|=0x40u;
+        if(boundary==11)++rejected.flip.object;
+        if(boundary==12)rejected.flip.id=2;
+        if(boundary==13)rejected.physics_step=before.physics_step;
+        check(!rejected.ordinary_air_transition(before,1034),
+            "unknown owner state selector mode or hidden episode excursions cannot retain a first edge");
+    }
+    check(!after.ordinary_air_transition(before,1168),"transition continuity cannot renew the older native frame lease");
+    for(unsigned boundary=0;boundary<4;++boundary){
+        ConformanceFacade n;n.manual_ready=true;n.poll(1000,100);n.poll(1017,100,{0,0,12800});
+        if(boundary==0)++n.owner.core;
+        if(boundary==1)n.poll(1034,999,{0,0,12800});
+        if(boundary==2)n.poll(1034,401,{0,0,12800});
+        if(boundary==3){n.poll(1034,200,{0,0,12800});n.poll(1051,100,{0,0,12800});}
+        const auto out=n.poll(boundary==3?1068u:1051u,200,{0,0,-13057});
+        // Observed ordinary landing/takeoff cycles retain real physical history;
+        // unknown, owner and rail excursions do not.
+        check(out.manual.owns==(boundary==3),"only positively observed ordinary transitions preserve an unfinished physical pair");
+    }
+    for(auto face:{std::uint16_t{0x2000},std::uint16_t{0x4000}}){
+        ConformanceFacade n;n.poll(1000,100);n.poll(1017,100,{face,-25000});n.poll(1034,100,{0,-25000});
+        n.poll(1051,200,{0,-25000});const auto out=n.poll(1068,200,{face,-25000});
+        const auto* d=n.input.input_diagnostic(0);
+        check(d->recognition_count==1 && d->recognition[0].request.presses==1,
+            "retained ground face cannot seed a repeated air action across takeoff");
+        check(out.authored_playback||out.action.owned,"new air face remains independently eligible after ground-face retirement");
+    }
+}
+void manual_context_window_contracts(){
+ for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(bool ending_air:{false,true})for(unsigned age:{219u,220u,300u,399u,400u}){
+  auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.manual_ready=true;h.cadence=cadence;
+  const short first=nose?-13057:12800,second=nose?12800:-13057;
+  h.poll(1000,ending_air?100u:200u);h.poll(1017,ending_air?100u:200u,{0,0,first});
+  for(auto now=1017+cadence;now<1017+age;now+=cadence)h.poll(now,200,{0,0,first});
+  const auto out=h.poll(1017+age,ending_air?200u:100u,{0,0,second});
+  const bool expected=age<(ending_air?400u:220u);
+  check(out.manual.owns==expected,"actual query context selects strict ground220 or air400 without rewriting a preexisting analog edge");
+  if(expected)check(out.manual.from_air==ending_air&&out.manual.recognized_at==1017+age,
+       "cross-context recognition records its actual query context and immutable recognition time");
+ }
+}
 void production_facade_matrix() {
     for(auto cadence:{17u,34u})for(unsigned actor=0;actor<5;++actor)for(unsigned boundary=0;boundary<5;++boundary) {
         ConformanceFacade h;h.cadence=cadence;h.trace="bound-owner-lifecycle";
@@ -836,6 +989,7 @@ void native_pending_and_active_flights(){
 }
 int main() {
     jump_idle_tests::run();
+    grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();
     manual_exit_jump_ownership(); queued_grab_identity(); airborne_setup_eligibility(); repeated_air_safety(); jump_release_metadata(); native_adapters(); one_journal_and_boundaries(); unsupported_branches(); unsupported_contexts(); balance_transition_contracts(); manual_readiness_contracts();

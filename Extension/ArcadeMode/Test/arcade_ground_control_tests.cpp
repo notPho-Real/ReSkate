@@ -10,6 +10,21 @@ void check(bool condition,const char* why){++checks;if(!condition){std::cerr<<wh
 bool near(float a,float b){return std::abs(a-b)<.00002f;}
 }
 int main(){
+    check(!GroundControl{}.manual_vertical_reserved && !GroundControl::decode(0).manual_vertical_reserved,
+        "unavailable control payload does not reserve an ordinary channel");
+    for(unsigned bits=0;bits<512;++bits){
+        const auto original=GroundControl::decode(bits);
+        auto reserved=original;reserved.manual_vertical_reserved=true;
+        auto free=original;free.manual_vertical_reserved=false;
+        check((reserved.encode()^free.encode())==(1u<<8),"reservation uses only its dedicated unused payload bit");
+        check(GroundControl::decode(reserved.encode()).manual_vertical_reserved &&
+            !GroundControl::decode(free.encode()).manual_vertical_reserved,"reservation survives coherent ground control transport");
+        check(reserved.known==free.known && reserved.down==free.down && reserved.left==free.left &&
+            reserved.right==free.right && reserved.velocity_lock==free.velocity_lock &&
+            reserved.can_kick(1,false)==free.can_kick(1,false) &&
+            reserved.trying_to_brake(1,1)==free.trying_to_brake(1,1),
+            "reservation preserves physical steering brake and kick facts without granting admission");
+    }
     const GameplayProfile profile;
     for(bool automatic:{false,true})for(bool square:{false,true})for(bool down:{false,true})
     for(bool turn:{false,true})for(float speed:{1.2699f,1.27f,1.2701f,10.f})for(float dot:{-1.f,0.f,1.f}){

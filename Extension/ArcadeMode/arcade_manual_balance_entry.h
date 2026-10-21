@@ -2,18 +2,22 @@
 #include "arcade_manual_acquisition.h"
 
 namespace dingosdk::arcade_mode {
-// The basic ground gesture already has a native actuator. Start its physical
-// balance on a NEW matching wheel contact after actual delivery, independently
+// The basic gesture already has a native actuator. Start its physical
+// balance on a NEW matching wheel contact after attributable delivery, independently
 // of delayed name/history presentation. This does not identify an animation,
 // advanced variant, native balance component or a monetary scoring action.
 class GroundManualBalance {
 public:
-    void reset() noexcept { pending_ = confirmed_ = clocked_ = false; }
+    void reset() noexcept { retire_air(); pending_ = confirmed_ = clocked_ = air_origin_ = false; }
     void observe(std::uint64_t now, const NativeInputFrame& frame,
                  const ManualInputDiagnostic& command, bool eligible) noexcept {
         // Once acquired, physical contact owns continuation and terminal display.
         // Withdrawing the pad at a hop/endpoint must not invent physical exit.
         if (confirmed_) return;
+        if (frame.airborne) {
+            observe_air(now,frame,command,eligible);
+            return;
+        }
         if (!eligible || !fresh(now,frame) || !command.owns || !command.safe ||
             (command.request != -1 && command.request != 1) || command.request_at > now ||
             frame.state != 100 || frame.mode != 1 || (frame.stance_and_push & 0x40u)) {
@@ -23,22 +27,31 @@ public:
             command.request_at == spent_at_ && command.request == spent_direction_) {
             pending_ = false; return;
         }
-        if (pending_ && same_owner(frame) && command.request_at == began_ && command.request == direction_) {
+        if (pending_ && !air_origin_ && same_owner(frame) && command.request_at == began_ && command.request == direction_) {
             delivered_at_ = now; return;
         }
         pending_ = false;
         // Existing one-wheel contact, including a kick, is never a new entry.
-        // An air preparation needs observed two-wheel ground delivery first;
-        // direct airborne-to-one-wheel entries retain their history route.
+        // Unattributed air preparations retain their independent history route.
         if (frame.contacts != 0xc000u) return;
         owner_ = frame.owner; generation_ = frame.owner_generation;
         step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
         began_ = command.request_at; first_delivery_at_ = delivered_at_ = now;
         direction_ = command.request; pending_ = true; clocked_ = false;
+        air_origin_ = false;
     }
     ManualObservationResult sample(std::uint64_t now, const NativeInputFrame& frame,
                                    bool valid, bool may_begin) noexcept {
         if (!pending_ && !confirmed_) return {};
+        if (pending_ && air_origin_) {
+            const bool live = valid && fresh(now,frame) && same_owner(frame) &&
+                now >= began_ && now-began_ <= ManualActuation::air_request_ms &&
+                now >= delivered_at_ && now-delivered_at_ <= 150;
+            if (!live || (frame.airborne ? !same_air(frame) : !matching_landing(frame))) {
+                retire_air(); reset(); return {};
+            }
+            if (frame.airborne) return {}; // Delivery is never a performed balance.
+        }
         if (!valid || !fresh(now,frame) || !same_owner(frame) ||
             frame.state != 100 || frame.mode != 1 || (frame.stance_and_push & 0x40u) ||
             (clocked_ && (now < last_at_ || now-last_at_ > 150 || frame.physics_step < last_step_))) {
@@ -69,6 +82,56 @@ public:
         return {wanted,true,true};
     }
 private:
+    bool same_air(const NativeInputFrame& frame) const noexcept {
+        return frame.airborne && frame.contacts == 0 && frame.state == air_frame_.state &&
+            frame.mode == air_frame_.mode && frame.airborne_episode == air_frame_.airborne_episode &&
+            frame.air_departure == air_frame_.air_departure && frame.action_generation == air_frame_.action_generation &&
+            frame.contact_generation == air_frame_.contact_generation && frame.mode_generation == air_frame_.mode_generation && same_selection(frame) &&
+            frame.physics_step >= air_frame_.physics_step && frame.sampled_at >= air_frame_.sampled_at;
+    }
+    bool same_selection(const NativeInputFrame& frame) const noexcept {
+        return frame.flip_known && frame.flip_id == -1 && frame.selection_object == air_frame_.selection_object &&
+            frame.stance_and_push == air_frame_.stance_and_push;
+    }
+    bool matching_landing(const NativeInputFrame& frame) const noexcept {
+        return !frame.airborne && frame.state == 100 && frame.mode == 1 &&
+            frame.airborne_episode == air_frame_.airborne_episode &&
+            air_frame_.air_departure != UINT64_MAX && frame.air_departure == air_frame_.air_departure+1 &&
+            air_frame_.action_generation != UINT64_MAX && frame.action_generation == air_frame_.action_generation+1 &&
+            air_frame_.contact_generation != UINT64_MAX && frame.contact_generation == air_frame_.contact_generation+1 &&
+            frame.mode_generation >= air_frame_.mode_generation &&
+            frame.mode_generation-air_frame_.mode_generation == (air_frame_.mode == 1 ? 0u : 1u) &&
+            frame.physics_step > air_frame_.physics_step &&
+            same_selection(frame) && (frame.contacts == 0xc000u || frame.contacts == (direction_ < 0 ? 0x4000u : 0x8000u));
+    }
+    void retire_air() noexcept {
+        if (!pending_ || !air_origin_) return;
+        spent_ = true; spent_owner_ = owner_; spent_generation_ = generation_;
+        spent_at_ = began_; spent_direction_ = direction_;
+    }
+    void observe_air(std::uint64_t now, const NativeInputFrame& frame,
+                     const ManualInputDiagnostic& command, bool eligible) noexcept {
+        if (!eligible || !fresh(now,frame) || !command.owns || !command.safe || !command.from_air ||
+            !command.recognized_at || command.request_at != command.recognized_at ||
+            (command.request != -1 && command.request != 1) || now < command.recognized_at ||
+            now-command.recognized_at > ManualActuation::air_request_ms ||
+            (frame.state != 200 && frame.state != 201) || (frame.mode != 1 && frame.mode != 2) ||
+            !frame.airborne_episode || !frame.mode_generation || frame.contacts || (frame.stance_and_push & 0x40u) ||
+            !frame.flip_known || frame.flip_id != -1) {
+            retire_air(); pending_ = air_origin_ = false; return;
+        }
+        if (spent_ && frame.owner == spent_owner_ && frame.owner_generation == spent_generation_ &&
+            command.recognized_at == spent_at_ && command.request == spent_direction_) return;
+        if (pending_ && air_origin_ && same_owner(frame) && began_ == command.recognized_at && direction_ == command.request) {
+            if (!same_air(frame)) { retire_air(); pending_ = air_origin_ = false; return; }
+            delivered_at_ = now; return; // Only delivery freshness renews, never intent lifetime.
+        }
+        owner_ = frame.owner; generation_ = frame.owner_generation;
+        step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
+        began_ = command.recognized_at; first_delivery_at_ = delivered_at_ = now;
+        direction_ = command.request; air_frame_ = frame;
+        pending_ = air_origin_ = true; clocked_ = false;
+    }
     static bool fresh(std::uint64_t now, const NativeInputFrame& frame) noexcept {
         return frame.valid && frame.owner.valid() && frame.owner_generation && frame.contact_generation &&
             frame.action_generation && frame.physics_step && frame.sampled_at <= now && now-frame.sampled_at <= 150;
@@ -77,10 +140,11 @@ private:
         return frame.owner == owner_ && frame.owner_generation == generation_;
     }
     NativeInputOwner owner_{}, spent_owner_{};
+    NativeInputFrame air_frame_{};
     std::uint64_t generation_{}, began_{}, first_delivery_at_{}, delivered_at_{}, step_{}, contact_generation_{};
     std::uint64_t contact_at_{}, last_at_{}, last_step_{}, spent_generation_{}, spent_at_{};
     int direction_{}, spent_direction_{};
-    bool pending_{}, confirmed_{}, clocked_{}, spent_{};
+    bool pending_{}, confirmed_{}, clocked_{}, spent_{}, air_origin_{};
 };
 inline ManualObservationResult manual_balance_observation(const ManualObservationResult& ground,
                                                          const ManualObservationResult& history) noexcept {

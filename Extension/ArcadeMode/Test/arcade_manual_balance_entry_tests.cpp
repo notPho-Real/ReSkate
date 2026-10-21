@@ -156,5 +156,83 @@ void guards(){
         check(!balance.sample(1085,n.step(1085,wanted),true,false).confirmed,"closed lifecycle cannot admit a new command");
     }
 }
+void air_guards(){
+ for(bool nose:{false,true}){
+  const auto wanted=nose?0x8000u:0x4000u;
+  for(unsigned state:{200u,201u})for(unsigned mode:{1u,2u}){
+   NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};GroundManualBalance balance;
+   NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=mode;
+   auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+   balance.observe(1000,producer.observe(1000,owner,sample,{true,-1}),delivered,true);
+   sample.state=100;sample.crouch_mode=1;sample.words[1]=wanted;
+   const auto landing=producer.observe(1017,owner,sample,{true,-1});
+   check(balance.sample(1017,landing,true,true).admitted,
+         "both positively observed air states and modes allow only their expected direct ground transition");
+   check(balance.sample(1018,landing,true,true).confirmed&&!balance.sample(1018,landing,true,true).admitted,
+         "a repeated client view of the same qualified landing cannot initialize balance twice");
+  }
+  for(unsigned fault=0;fault<29;++fault){
+   Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+   auto initial=n.step(1000,0,200);
+   if(fault==0)delivered.from_air=false;
+   if(fault==1)delivered.recognized_at=0;
+   if(fault==2)delivered.request_at=999;
+   if(fault==3)delivered.owns=false;
+   if(fault==4)initial.flip_known=false;
+   if(fault==5)initial.flip_id=1;
+   if(fault==6)initial.contacts=wanted;
+   balance.observe(1000,initial,delivered,true);
+   if(fault==7){delivered.owns=false;balance.observe(1010,initial,delivered,true);}
+   auto landing=n.step(1017,wanted);
+   if(fault==8)++landing.owner.rig;
+   if(fault==9)++landing.owner_generation;
+   if(fault==10)landing.contact_generation=initial.contact_generation;
+   if(fault==11)landing.physics_step=initial.physics_step;
+   if(fault==12)landing.sampled_at=1018;
+   if(fault==13)landing.stance_and_push=0x40u;
+   if(fault==14)landing.contacts=nose?0x4000u:0x8000u;
+   if(fault==15)landing.flip_id=1;
+   if(fault==16)++landing.selection_object;
+   if(fault==17)++landing.action_generation;
+   if(fault==18)++landing.air_departure;
+   if(fault==19)++landing.airborne_episode;
+   if(fault==20)landing.state=103;
+   if(fault==21)landing.mode=2;
+   if(fault==22)landing.valid=false;
+   if(fault==25)++landing.mode_generation;
+   if(fault==26)++landing.contact_generation;
+   if(fault==27)landing.stance_and_push^=0x20u;
+   if(fault==28)landing.flip_known=false;
+   check(!balance.sample(1017,landing,fault!=23,fault!=24).confirmed,
+         "air receipt cannot admit missing typed delivery changed owner phase selection contact or current eligibility");
+  }
+  for(unsigned age:{699u,700u,701u}){
+   Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+   balance.observe(1000,n.step(1000,0,200),delivered,true);
+   for(std::uint64_t at=1100;at<1000+age;at+=100){const auto frame=n.step(at,0,200);balance.sample(at,frame,true,true);balance.observe(at,frame,delivered,true);}
+   check(balance.sample(1000+age,n.step(1000+age,wanted),true,true).admitted==(age<=700),
+         "repeated real air delivery retains the original inclusive700ms request lifetime");
+  }
+  for(unsigned age:{150u,151u}){
+   Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+   balance.observe(1000,n.step(1000,0,200),delivered,true);n.step(1100,0,200);
+   check(balance.sample(1000+age,n.step(1000+age,wanted),true,true).admitted==(age<=150),
+         "fresh native landing cannot renew stale actual air delivery");
+  }
+  for(unsigned excursion:{201u,300u,401u,100u}){
+   Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+   balance.observe(1000,n.step(1000,0,200),delivered,true);
+   n.step(1010,0,excursion);n.step(1020,0,200);
+   check(!balance.sample(1030,n.step(1030,wanted),true,true).confirmed,
+         "physics-observed excursions between client polls cannot masquerade as the original direct landing");
+  }
+  Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
+  const auto initial=n.step(1000,0,200);balance.observe(1000,initial,delivered,true);balance.reset();
+  balance.observe(1010,n.step(1010,0,200),delivered,true);
+  check(!balance.sample(1020,n.step(1020,wanted),true,true).confirmed,
+        "reset retires the same air request instead of manufacturing another acquisition");
+ }
 }
-int main(){composed();guards();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
+
+}
+int main(){composed();guards();air_guards();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
