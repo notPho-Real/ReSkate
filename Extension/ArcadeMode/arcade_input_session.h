@@ -187,7 +187,7 @@ public:
             diagnostic.pad_at, manual_.requested_at(),
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
             admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed,
-            manual_.recognized_at(), manual_.from_air()};
+            manual_.recognized_at(), manual_.from_air(),manual_.recognition_id()};
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
         if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {
@@ -300,7 +300,8 @@ private:
                 InputDisposition::waiting : InputDisposition::cancelled;
             if (authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             return manual_.request(now_, request.action == InputAction::manual ? -1 : 1, airborne, admission.manual_safe,
-                request.context == InputContext::air, request.recognized_at)
+                request.context == InputContext::air, request.recognized_at,
+                request.recognition ? request.recognition->sequence : 0)
                 ? InputDisposition::started : InputDisposition::cancelled;
         case InputAction::rail_request:
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }

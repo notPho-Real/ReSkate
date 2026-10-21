@@ -100,8 +100,8 @@ def generated(root):
     for name, (old, new) in controls.items():
         outputs[name + ".cpp"] = replace_once(source, old, new)
     outputs["hud_source.cpp"] = replace_once(source,
-        "BalanceHudSource{native_frame.sampled_at, native_frame.valid}",
-        "BalanceHudSource{now, native_frame.valid}")
+        "BalanceHudSource hud_source{native_frame.sampled_at,native_frame.valid}",
+        "BalanceHudSource hud_source{now,native_frame.valid}")
     outputs["hud_axis.cpp"] = replace_once(source,
         "point(view.vertical ? view.cursor_y : view.cursor_x, 0)",
         "point(view.cursor_x, 0)")

@@ -7,4 +7,6 @@ namespace dingosdk::arcade_mode {
 void publish_balance_hud(const State& state, unsigned danger, BalanceHudSource source) noexcept;
 bool balance_hud_pending() noexcept;
 void draw_balance_hud() noexcept;
+using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;
+void set_balance_hud_render_ack(BalanceHudRenderAck callback) noexcept;
 }

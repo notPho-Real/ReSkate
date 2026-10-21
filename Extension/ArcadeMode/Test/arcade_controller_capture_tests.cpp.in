@@ -26,6 +26,15 @@ bool capture_focus=true,capture_gameplay=true,capture_source_available=true,capt
 unsigned capture_bitmap_as_read=2;std::uint64_t capture_source_at=1000;
 std::atomic<bool> input_clock_valid{true},controller_capture_live{};
 CaptureCorrelationProducer input_capture_correlation;
+struct CaptureManualJoinFixture {
+    std::uint64_t request{},recognized_ms{},owner_generation{},episode{},session{};
+    std::int8_t family{};bool from_air{},last_owns{},last_reserved{},last_neutral{},exit_seen{};
+    unsigned exit_reason{};NativeInputOwner owner{};
+    std::uint8_t last_writer{255};std::int16_t last_rx{},last_ry{};
+}capture_manual_join;
+std::atomic<bool> capture_transport_pending{};
+std::uint64_t capture_model_sequence{},capture_termination_sequence{};
+void capture_event(CaptureCorrelationSource,std::uint64_t,std::uint64_t,const NativeInputFrame&){}
 InputTelemetry telemetry;
 InputTelemetryLink input_telemetry;
 std::array<PlaybackPacket,4> playback_packets;
@@ -40,6 +49,7 @@ bool capture_row(const CaptureCorrelationEvidence& row){
 @controller_capture_polls@
 bool activate(unsigned required_sources,unsigned duration_ms){
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=capture_native_frame;
+    const bool semantic=false;
 @controller_capture_activation@
     return begun;
 }

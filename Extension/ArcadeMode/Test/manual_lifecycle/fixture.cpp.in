@@ -29,6 +29,7 @@
 unsigned hud_hz{}, hud_frame{};
 #endif
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
+using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;
 bool watch=true;std::uint64_t clock_ms=1000;std::uint64_t GetTickCount64(){return clock_ms;}
 bool auto_kick_enabled(){return true;}
 std::mutex ollie_mutex;std::atomic<bool> active{true};bool enabled(){return active.load();}
@@ -47,13 +48,20 @@ std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manua
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
 struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
 NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
-struct Correlation{bool observational()const{return false;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}}input_capture_correlation;
-std::uint64_t capture_admission_sequence{},capture_termination_sequence{};
+struct Correlation{bool schema4_enabled{};bool observational()const{return false;}bool schema4()const{return schema4_enabled;}std::uint64_t capture_id()const{return 7;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}template<class Sink>void event(CaptureCorrelationEvidence,const NativeInputFrame&,std::uint64_t,Sink){}}input_capture_correlation;
+struct CaptureManualJoinFixture{std::uint64_t request{},owner_generation{},publication{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{};unsigned route{},exit_reason{};NativeInputOwner owner{};}capture_manual_join;
+std::uint64_t capture_admission_sequence{},capture_termination_sequence{},capture_hud_publication_sequence{};
+void capture_semantic(CaptureCorrelationEvidence&,unsigned,unsigned,std::uint64_t,const NativeInputFrame&)noexcept{}
+void capture_row();
 
 void capture_event(CaptureCorrelationSource,std::uint64_t,std::uint64_t,const NativeInputFrame&){}
 namespace dingosdk {void cancel_balance_bail()noexcept{}std::uint64_t request_balance_bail(const NoBailSkater&)noexcept{return 1;}}
 void set_arcade_push_intent(bool){}void set_arcade_air_intent(bool,std::uint64_t,std::uint64_t,unsigned,float,bool){}
-std::mutex hud_mutex;BalanceMeter meter;unsigned danger_level{};BalanceHudSource observed;std::uint64_t hud_now()noexcept{return clock_ms;}
+std::mutex hud_mutex;BalanceMeter meter;unsigned danger_level{};BalanceHudSource observed;std::atomic<BalanceHudRenderAck> render_ack{};std::uint64_t hud_now()noexcept{return clock_ms;}
+std::uint64_t diagnostic_draws{};BalanceHudSource diagnostic_draw_source{};
+void diagnostic_draw_receipt(BalanceHudSource source,std::uint64_t,std::uint64_t)noexcept{
+ ++diagnostic_draws;diagnostic_draw_source=source;capture_manual_join.render_seen=true;
+}
 @@HUD_PUBLISH@@
 @@HUD_PENDING@@
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
@@ -97,6 +105,9 @@ void client(float seconds,const ScoreLabelOccurrence& label){
  const auto live=[&](auto& deadline){const auto at=deadline.load();return at>=clock_ms&&at-clock_ms<=150;};
  native_readiness.publish(latest,{active&&watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
   live(manual_eligible_until),live(manual_prepare_until),live(manual_release_until),live(action_eligible_until),0});
+}
+void diagnostic_client(float seconds){
+ update_combo(raw,owner,ControllerInput{},watch,0,clock_ms,{}, {},false,seconds);
 }
 ManualHistory presenters;ManualHistoryLabels labels;
 std::vector<ManualHistoryRow> rows;
@@ -323,6 +334,26 @@ void hud_lifecycle(){
  ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
  io.DisplaySize=ImVec2(1280,800);unsigned char* pixels{};int width{},height{};
  io.Fonts->GetTexDataAsRGBA32(&pixels,&width,&height);
+ qualified(false,17,300);
+ input_capture_correlation.schema4_enabled=true;
+ capture_manual_join.request=99;capture_manual_join.model_seen=true;
+ capture_manual_join.owner=latest.owner;capture_manual_join.owner_generation=latest.owner_generation;
+ render_ack.store(diagnostic_draw_receipt,std::memory_order_release);
+ diagnostic_client(.017f);
+ const auto first_publication=observed.publication;
+ check(first_publication&&capture_manual_join.publication_seen&&diagnostic_draws==0,
+       "first actual model publication is tagged without claiming an ImGui draw");
+ ++clock_ms;diagnostic_client(.017f);
+ check(observed.capture==7&&observed.request==99&&observed.publication==first_publication&&
+       diagnostic_draws==0,"client republication before render retains the first request/publication identity");
+ rendered(true,"delayed first draw submits actual Manual geometry");
+ check(diagnostic_draws==1&&diagnostic_draw_source.publication==first_publication&&
+       diagnostic_draw_source.request==99,"delayed first draw acknowledges the original publication");
+ ++clock_ms;diagnostic_client(.017f);
+ check(!observed.capture&&balance_hud_pending()&&diagnostic_draws==1,
+       "client publication after first acknowledged draw does not replay the diagnostic identity");
+ render_ack.store(nullptr,std::memory_order_release);
+ input_capture_correlation.schema4_enabled=false;capture_manual_join={};
  for(bool nose:{false,true})for(unsigned hz:{30u,60u}){
   hud_hz=hz;io.DeltaTime=1.f/hz;const unsigned dt=hz==30?34:17;
   const auto wanted=nose?0x8000u:0x4000u;

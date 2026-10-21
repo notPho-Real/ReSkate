@@ -396,6 +396,62 @@ int main() {
                 std::cerr << "failed transaction: status=" << e.status << '\n';
             require(!e.transaction && !e.failed, "Transaction failed to finish");
         };
+        // Mod loads can be accepted without starting a native transaction.
+        // Keep that completed no-op distinct from a changed layout, including
+        // changed layouts whose old objects are already absent from native.
+        {
+            const auto old_root = e.data_root;
+            const auto old_mods = e.park_mods;
+            const auto old_project = e.project;
+            const auto old_layout = r.document.maps[r.map];
+            const auto old_undo = e.undo, old_redo = e.redo;
+            struct TemporaryPark {
+                std::filesystem::path path;
+                ~TemporaryPark() { std::error_code error; std::filesystem::remove_all(path, error); }
+            } directory{std::filesystem::temp_directory_path() /
+                ("editor-load-test-" + std::to_string(GetCurrentProcessId()) + "-" +
+                 std::to_string(GetTickCount64()))};
+            const std::string folder = "load-fixture";
+            const profile::ObjectLayout populated{{7, "own_bk_ramp", {1, 2, 3}, {0, 0, 0, 1}}};
+            std::filesystem::create_directories(directory.path / mods::mods_folder / folder);
+            e.data_root = directory.path;
+            e.park_mods = {{folder, {"Load fixture", "", "", ""}, true, {r.map}}};
+            for (const auto operation : {"mod-open", "mod-load"}) {
+                for (const bool nonempty : {false, true}) {
+                    const auto layout = nonempty ? populated : profile::ObjectLayout{};
+                    r.document.maps[r.map] = layout;
+                    e.undo = {{layout, layout}};
+                    e.redo = {{layout, layout}};
+                    e.project = "existing-project";
+                    editor::save_mod_park(directory.path / mods::mods_folder, folder, {r.map, layout});
+                    const auto revision_before = e.revision;
+                    const auto creates_before = fixture::creates, deletes_before = fixture::deletes,
+                               saves_before = fixture::saves;
+                    const auto status = edit_local_park(operation, r.map, e.generation, e.revision, folder, {});
+                    require(status == "No changes." && e.status == status && !e.transaction,
+                            "Identical mod load must retain completed no-change status");
+                    require(e.revision == revision_before + 1 && same_layout(r.document.maps[r.map], layout) &&
+                                e.undo.size() == 1 && e.redo.size() == 1 && fixture::creates == creates_before &&
+                                fixture::deletes == deletes_before && fixture::saves == saves_before,
+                            "Identical mod load changed history, document or native work");
+                    require(e.project == (std::string_view(operation) == "mod-open" ? folder : "existing-project"),
+                            "No-op load changed project-binding semantics");
+                    // Both create work and saved-only removal still start a transaction.
+                    const auto changed = nonempty ? profile::ObjectLayout{} : populated;
+                    editor::save_mod_park(directory.path / mods::mods_folder, folder, {r.map, changed});
+                    const auto loading = edit_local_park(operation, r.map, e.generation, e.revision, folder, {});
+                    require(loading == "Loading Load fixture..." && e.transaction &&
+                                same_layout(e.transaction->change.before, layout) &&
+                                same_layout(e.transaction->change.after, changed) && e.transaction->history == 0 &&
+                                same_layout(r.document.maps[r.map], layout) && e.undo.size() == 1 && e.redo.size() == 1,
+                            "Changed mod load lost its transaction, loading status or uncommitted history");
+                    e.transaction.reset(); // Fixture cancels before any native work is dispatched.
+                }
+            }
+            r.document.maps[r.map] = old_layout;
+            e.undo = old_undo; e.redo = old_redo;
+            e.data_root = old_root; e.park_mods = old_mods; e.project = old_project;
+        }
         profile::PlacedObject ramp{0, "own_bk_ramp", {1, 2, 3}, {0, 0, 0, 1}};
         require(!run("place", ramp).starts_with("error"), "Place request rejected");
         update_park_editor();

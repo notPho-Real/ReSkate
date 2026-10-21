@@ -44,6 +44,14 @@ void write(Level level, Channel channel, std::wstring_view message) noexcept;
 // Existing synchronous command/file sinks; false means file delivery was not
 // confirmed. Bounded evidence accounting must count this result, not enqueue.
 bool write_command_evidence(std::string_view message) noexcept;
+// Synchronized ACTIVE-file observation. A matching file id and prefix hash at
+// the footer account for ordinary writers too; archives are never admitted.
+struct ActiveLogReceipt {
+    std::uint64_t file_id{},bytes{},records{},prefix_hash{};
+    std::uint32_t volume{};
+    bool valid{};
+};
+ActiveLogReceipt active_log_receipt(std::uint64_t prefix_bytes=UINT64_MAX) noexcept;
 // Small explicit process/session records, retained separately from verbose logs.
 // Observed module-file hashes are not hashes of loaded memory or admission proof.
 bool write_session_record(std::string_view message) noexcept;

@@ -32,5 +32,10 @@ struct ControllerCaptureDetails {
 };
 // Stack-only join carrier. The owner tuple is converted to a capture-local
 // token by the existing producer; it is never a telemetry payload.
-struct ControllerPollCapture {std::uint64_t capture_id{},poll{};NativeInputFrame proof{},readiness_proof{},binding_proof{};ControllerCaptureDetails details{};};
+struct ControllerPollCapture {
+    std::uint64_t capture_id{},poll{},manual_request{},manual_recognized_ms{};
+    NativeInputFrame proof{},readiness_proof{},binding_proof{};ControllerCaptureDetails details{};
+    std::int8_t manual_family{};std::uint8_t final_writer{};
+    bool manual_owns{},manual_reserved{},owned_neutral{};
+};
 }

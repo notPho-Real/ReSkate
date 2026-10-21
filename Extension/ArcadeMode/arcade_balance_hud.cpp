@@ -6,6 +6,7 @@
 #include <Windows.h>
 #endif
 #include <imgui.h>
+#include <atomic>
 #include <mutex>
 
 namespace dingosdk::arcade_mode {
@@ -24,6 +25,10 @@ std::mutex hud_mutex;
 BalanceMeter meter;
 unsigned danger_level{};
 BalanceHudSource observed;
+std::atomic<BalanceHudRenderAck> render_ack{};
+}
+void set_balance_hud_render_ack(BalanceHudRenderAck callback) noexcept {
+    render_ack.store(callback,std::memory_order_release);
 }
 void publish_balance_hud(const State& state, unsigned danger, BalanceHudSource source) noexcept {
     std::lock_guard lock(hud_mutex);
@@ -40,11 +45,13 @@ bool balance_hud_pending() noexcept {
 void draw_balance_hud() noexcept {
     BalanceMeter view;
     unsigned danger{};
+    BalanceHudSource source;
     {
         std::lock_guard lock(hud_mutex);
         if (!BalanceHudLease::fresh(observed, hud_now())) return;
         view = meter;
         danger = danger_level;
+        source = observed;
     }
     if (!view.visible) return;
     const auto screen = ImGui::GetIO().DisplaySize;
@@ -89,5 +96,8 @@ void draw_balance_hud() noexcept {
     draw->AddCircleFilled(cursor, layout.cursor_radius + 4 * scale, IM_COL32(0, 0, 0, 255));
     draw->AddCircleFilled(cursor, layout.cursor_radius + 2 * scale, IM_COL32(255, 255, 255, 255));
     draw->AddCircleFilled(cursor, layout.cursor_radius, color);
+    if(source.capture&&source.request)
+        if(const auto callback=render_ack.load(std::memory_order_acquire))
+            callback(source,static_cast<std::uint64_t>(ImGui::GetFrameCount()),hud_now());
 }
 }

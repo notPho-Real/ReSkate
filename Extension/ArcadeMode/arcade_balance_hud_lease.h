@@ -8,6 +8,9 @@ namespace dingosdk::arcade_mode {
 struct BalanceHudSource {
     std::uint64_t sampled_at_ms{};
     bool valid{};
+    // Diagnostic-only identity copied with the immutable publication. Zero
+    // leaves ordinary HUD behavior unchanged and conveys no native proof.
+    std::uint64_t capture{},request{},owner_generation{},physics_step{},publication{};
 };
 struct BalanceHudLease {
     static constexpr std::uint64_t lifetime_ms = 150;

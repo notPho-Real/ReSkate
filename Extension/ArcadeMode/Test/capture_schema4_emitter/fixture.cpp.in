@@ -1,0 +1,172 @@
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+#include <mutex>
+#include <string>
+#include <vector>
+
+namespace dingosdk::logging {
+std::string last_capture;
+bool write_command_evidence(const std::string& row) noexcept {last_capture=row;return true;}
+}
+namespace dingosdk::arcade_mode {
+@@PRODUCTION_WRITER@@
+namespace {
+std::vector<CaptureCorrelationEvidence> captured_recognition;
+std::vector<std::string> encoded_recognition;
+CaptureCorrelationProducer input_capture_correlation;
+struct CaptureManualJoinFixture {
+    std::uint64_t request{},session{},recognized_ms{},episode{},departure{},owner_generation{};
+    std::int8_t family{};bool from_air{},render_seen{};
+    std::uint64_t publication{};
+    NativeInputOwner owner{};
+} capture_manual_join;
+std::uint64_t capture_sample_cursor{},capture_attempt_cursor{},capture_omission_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_model_sequence{};
+NativeInputFrame capture_native_frame{};
+std::mutex ollie_mutex;
+std::atomic<bool> capture_render_ack_lost{};
+struct CaptureTelemetryFixture {std::uint64_t client_dropped()const noexcept{return 0;}} input_telemetry;
+bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
+    if(!write_capture_correlation(row))return false;
+    captured_recognition.push_back(row);
+    encoded_recognition.push_back(dingosdk::logging::last_capture);
+    return true;
+}
+}
+@@PRODUCTION_SEMANTIC@@
+@@PRODUCTION_RECOGNITION@@
+@@PRODUCTION_RENDER_ACK@@
+}
+namespace {
+unsigned checks{};
+void check(bool value,const char* reason){
+    ++checks;if(!value){std::cerr<<reason<<'\n';std::exit(1);}
+}
+}
+int main(){
+    using namespace dingosdk::arcade_mode;
+    CaptureCorrelationEvidence begin;
+    begin.schema=4;begin.capture=1;begin.required_sources=127;
+    begin.kind=CaptureCorrelationKind::begin;begin.events_known=true;
+    begin.controller.physics_dt=0.016666667f;
+    begin.controller.cached_dt=0.033333335f;
+    check(write_capture_correlation(begin),"real schema4 writer accepts typed begin");
+    const auto encoded=dingosdk::logging::last_capture;
+    check(encoded.starts_with("ARCADE INPUT CAPTURE: schema=4 capture=1")&&
+          encoded.ends_with("m_render_ms=0.")&&
+          encoded.find("native_valid=0")!=std::string::npos&&
+          encoded.find("native_valid=false")==std::string::npos,
+          "real emitter uses numeric booleans and exact framing");
+    check(encoded.find("physics_dt=+1.666666754e-02 cached_dt=+3.333333507e-02")!=std::string::npos,
+          "real emitter preserves full finite float32 values with fixed scientific precision");
+    check(encoded.find("physics_dt=+1.666666754e-02.016") == std::string::npos,
+          "decimal float suffix is never retained after substitution");
+    CaptureCorrelationEvidence recognized=begin;
+    recognized.kind=CaptureCorrelationKind::event;
+    recognized.source=CaptureCorrelationSource::recognition;
+    recognized.ordinal=1;recognized.source_sequence=1;
+    recognized.ms=1001;recognized.recognized_ms=1001;
+    recognized.recognition_id=17;recognized.recognition_session=19;
+    recognized.action=1;recognized.context=1;recognized.footprint_kind=1;
+    recognized.member_count=2;recognized.first_event=21;recognized.last_event=22;
+    recognized.first_ms=950;recognized.last_ms=1000;
+    recognized.semantic.m_kind=1;recognized.semantic.m_clock=1;recognized.semantic.m_known=15;
+    recognized.semantic.m_request=17;recognized.semantic.m_session=19;
+    recognized.semantic.m_source_ms=1001;recognized.semantic.m_source_seq=1;
+    recognized.semantic.m_family=-1;recognized.semantic.m_query=1;
+    check(write_capture_correlation(recognized)&&dingosdk::logging::last_capture.find("m_family=-1")!=std::string::npos,
+          "actual recognition summary emits signed Manual family and original footprint");
+    const auto recognition_row=dingosdk::logging::last_capture;
+    auto delivered=begin;
+    delivered.kind=CaptureCorrelationKind::event;
+    delivered.source=CaptureCorrelationSource::pad_poll;
+    delivered.ordinal=2;delivered.source_sequence=31;delivered.ms=1031;
+    delivered.controller.slot=0;delivered.controller.selected_slot=0;
+    delivered.controller.returned_ms=1031;
+    delivered.semantic.m_kind=2;delivered.semantic.m_clock=1;delivered.semantic.m_known=31;
+    delivered.semantic.m_poll=31;delivered.semantic.m_source_seq=31;
+    delivered.semantic.m_request=17;delivered.semantic.m_session=19;
+    delivered.semantic.m_family=-1;delivered.semantic.m_writer=1;
+    delivered.semantic.m_owns=true;delivered.semantic.m_reserved=true;
+    delivered.semantic.m_ry=-20000;
+    check(write_capture_correlation(delivered)&&
+          dingosdk::logging::last_capture.find("m_poll=31")!=std::string::npos&&
+          dingosdk::logging::last_capture.find("m_ry=-20000")!=std::string::npos,
+          "same-poll final RS record retains delivery and independent ownership");
+    const auto delivered_row=dingosdk::logging::last_capture;
+    NativeInputFrame frame;frame.valid=true;frame.owner={1,2,3,4,5};
+    frame.owner_generation=frame.contact_generation=frame.action_generation=frame.physics_step=1;
+    frame.sampled_at=1100;
+    check(input_capture_correlation.begin(1000,1000,255,frame,0,capture_row),
+          "actual producer opens one bounded semantic capture");
+    auto identity=std::make_shared<InputRecognitionIdentity>();
+    identity->sequence=1;identity->footprint_kind=InputFootprintKind::events;
+    identity->footprint.count=2;identity->footprint.events[0]=41;identity->footprint.events[1]=42;
+    identity->footprint.first_at=1080;identity->footprint.last_at=1090;
+    identity->observation.required=identity->observation.valid=true;
+    identity->observation.generations={1,1,1};identity->observation.physics_step=1;
+    identity->observation.sampled_at=1100;identity->observation.airborne=true;
+    identity->observation.airborne_episode=6;identity->observation.air_departure=7;
+    identity->observation_known=true;
+    UnifiedInput::Diagnostic diagnostic;diagnostic.samples=1;diagnostic.recognized=1;
+    diagnostic.recognition_count=1;
+    auto& request=diagnostic.recognition[0].request;
+    request.action=InputAction::manual;request.context=InputContext::air;
+    request.recognized_at=1100;request.session=9;request.recognition=identity;
+    diagnostic.recognition[0].queued=true;
+    capture_recognitions(diagnostic,1100,frame);
+    check(captured_recognition.size()==4,"production recognition emits begin, summary and two ordered members");
+    for(unsigned index=0;index<3;++index){
+        const auto& row=captured_recognition[index+1];
+        check(capture_correlation_valid(row)&&row.semantic.m_kind==1&&
+              row.semantic.m_request==1&&row.semantic.m_session==9&&
+              row.semantic.m_source_seq==row.source_sequence&&row.source_sequence==index+1&&
+              row.member_index==index&&row.member_count==2&&
+              row.semantic.m_deadline==1800&&row.semantic.m_family==-1,
+              "summary and each original member retain immutable Manual identity and unique source sequence");
+        if(index)check(row.member_event==40+index,"ordered member row retains its original event ID");
+    }
+    check(encoded_recognition[2].find("m_kind=1")!=std::string::npos&&
+          encoded_recognition[3].find("m_kind=1")!=std::string::npos,
+          "actual writer encodes semantic identity on both member rows");
+    capture_native_frame=frame;capture_model_sequence=1;capture_manual_join.publication=13;
+    capture_admission_sequence=2; // Earlier model and publication rows use this source's first two IDs.
+    BalanceHudSource source{1100,true};source.capture=input_capture_correlation.capture_id();
+    source.request=1;source.owner_generation=1;source.publication=13;
+    capture_native_frame.owner_generation=2;
+    capture_render_ack(source,17,1120);
+    check(captured_recognition.size()==4,"wrong current owner generation cannot acknowledge an old draw");
+    capture_native_frame=frame;
+    capture_render_ack(source,17,1120);
+    check(captured_recognition.size()==5&&captured_recognition.back().semantic.m_kind==8&&
+          captured_recognition.back().semantic.m_clock==5&&
+          captured_recognition.back().semantic.m_source_ms==1120&&
+          captured_recognition.back().native_ms==1100&&
+          (captured_recognition.back().semantic.m_known&(128u|2048u))==(128u|2048u)&&
+          captured_recognition.back().semantic.m_render_ms==1120&&
+          captured_recognition.back().semantic.m_render_frame==17&&
+          captured_recognition.back().semantic.m_pub_ack==13,
+          "actual render receipt separates render clock from prior native sample and carries publication authority");
+    capture_render_ack(source,18,1121);
+    check(captured_recognition.size()==5,"first actual render receipt is emitted only once");
+    CaptureCorrelationDrain drain;
+    for(const auto& row:captured_recognition)drain.written(row,true);
+    input_capture_correlation.end(1150,frame,0,capture_row);
+    const auto footer=drain.footer(captured_recognition.back(),0,{},1150);
+    check(footer.semantic.m_attempted==4&&footer.semantic.m_emitted==4&&
+          footer.semantic.m_drained==4&&footer.drained==4,
+          "three transported recognition rows assemble one transition plus one actual render receipt");
+    delivered.semantic.m_poll=30;
+    check(!write_capture_correlation(delivered),"wrong poll lineage is rejected before the sink");
+    auto wrong=begin;wrong.semantic.m_native_proof=1;
+    check(!write_capture_correlation(wrong),"real emitter rejects invented native proof");
+    auto old=begin;old.schema=3;
+    check(write_capture_correlation(old)&&dingosdk::logging::last_capture.find("m_version=")==std::string::npos,
+          "prior schema writer remains separate");
+    std::cout<<checks<<" exact production capture-writer checks passed\n";
+    std::cout<<encoded<<'\n'<<recognition_row<<'\n'<<delivered_row<<'\n';
+    for(std::size_t i=1;i<5;++i)std::cout<<encoded_recognition[i]<<'\n';
+}

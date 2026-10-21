@@ -118,18 +118,138 @@ std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
+struct CaptureManualJoin {
+    std::uint64_t request{},session{},recognized_ms{},episode{},departure{},owner_generation{};
+    std::int8_t family{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{},native_seen{},native_exit_seen{};
+    std::uint64_t last_contact_generation{},last_action_generation{};
+    std::uint64_t publication{};
+    std::uint8_t route{};
+    std::uint8_t exit_reason{};
+    std::int16_t last_rx{},last_ry{};std::uint8_t last_writer{255};
+    bool last_owns{},last_reserved{},last_neutral{};
+    NativeInputOwner owner{}; // Private full tuple; never serialized.
+};
+CaptureManualJoin capture_manual_join{}; // Same input mutex; never authorizes gameplay.
+std::uint64_t capture_hud_publication_sequence{};
+std::uint64_t capture_model_sequence{};
+std::atomic<bool> capture_render_ack_lost{};
+std::atomic<bool> capture_transport_pending{};
+std::atomic<std::uint64_t> capture_abandoned_id{},capture_abandoned_client_barrier{};
 std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
 std::uint64_t capture_attempt_cursor{},capture_omission_cursor{},capture_sample_cursor{};
 std::atomic<bool> controller_capture_live{};
+bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept;
 NativeInputFrame capture_native_frame{};
 std::array<std::uint32_t,8> capture_native_words{};
 float capture_physics_dt{},capture_cached_dt{};
 std::uint64_t capture_cached_at{},capture_native_admission_sequence{};
 bool capture_focus{},capture_gameplay{},capture_source_available{},capture_cached_valid{},capture_bitmap_readable{};
 unsigned capture_bitmap_as_read{};std::uint64_t capture_source_at{};
+CaptureBudgetReceipt capture_budget_receipt(std::uint64_t prefix=UINT64_MAX) noexcept {
+    CaptureBudgetReceipt result;
+    const auto queue=input_telemetry.counters();
+    result.attempted=queue.attempted;result.emitted=queue.emitted;
+    result.drained=queue.drained;result.dropped=queue.dropped;result.backlog=queue.backlog;
+    result.peak=queue.peak;
+    result.queue_valid=!queue.invalid;
+    const auto file=logging::active_log_receipt(prefix);
+    result.file_id=file.file_id;result.volume=file.volume;result.file_bytes=file.bytes;
+    result.file_records=file.records;result.prefix_hash=file.prefix_hash;result.file_valid=file.valid;
+    return result;
+}
+void capture_semantic(CaptureCorrelationEvidence& row,unsigned kind,unsigned clock,
+                      std::uint64_t original_ms,const NativeInputFrame& frame) noexcept {
+    if(!input_capture_correlation.schema4()||!capture_manual_join.request)return;
+    const auto& join=capture_manual_join;
+    auto& m=row.semantic;
+    m.m_kind=static_cast<std::uint8_t>(kind);m.m_clock=static_cast<std::uint8_t>(clock);
+    m.m_source_ms=original_ms;m.m_source_seq=row.source_sequence;
+    m.m_request=join.request;m.m_session=join.session;m.m_episode=join.episode;
+    m.m_departure=join.departure;m.m_family=join.family;m.m_from_air=join.from_air;
+    m.m_query=join.from_air?2u:1u;m.m_known=static_cast<std::uint16_t>(1u|4u);
+    m.m_model=capture_model_sequence;
+    if(frame.valid&&frame.owner==join.owner&&frame.owner_generation==join.owner_generation&&
+       frame.sampled_at<=row.ms&&row.ms-frame.sampled_at<=InputTiming::native_sample_lease_ms)
+        m.m_known|=32u;
+}
 bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
-    if(row.kind==CaptureCorrelationKind::end&&row.schema==3)controller_capture_live.store(false,std::memory_order_release);
+    if(row.kind==CaptureCorrelationKind::end&&(row.schema==3||row.schema==4))
+        controller_capture_live.store(false,std::memory_order_release);
+    if(row.kind==CaptureCorrelationKind::end&&row.schema==4){
+        auto copy=row;
+        if(capture_render_ack_lost.exchange(false,std::memory_order_acq_rel)){
+            copy.overflow=true;copy.complete=false;
+        }
+        capture_manual_join={};
+        const bool queued=input_telemetry.client(copy);
+        if(!queued){
+            // No worker footer will retire this capture. Keep re-arming closed
+            // until the worker has consumed every earlier published client row.
+            capture_abandoned_client_barrier.store(input_telemetry.client_retirement_barrier(),std::memory_order_release);
+            capture_abandoned_id.store(row.capture,std::memory_order_release);
+        }
+        return queued;
+    }
+    if(row.schema==4&&row.kind==CaptureCorrelationKind::begin){
+        auto copy=row;copy.budget=capture_budget_receipt();
+        copy.semantic.q_initial=static_cast<std::uint8_t>(std::min<std::uint64_t>(copy.budget.backlog,8));
+        copy.semantic.log_epoch=copy.budget.file_id;copy.semantic.log_part=0;
+        copy.semantic.log_record=copy.budget.file_records;
+        copy.semantic.log_bytes=copy.budget.file_bytes;
+        copy.semantic.log_total=copy.budget.file_bytes;
+        copy.semantic.log_delivery=copy.budget.file_valid;
+        if(!copy.budget.file_valid||!copy.budget.queue_valid||copy.budget.backlog>8||
+           copy.budget.file_bytes>524288){copy.overflow=true;input_capture_correlation.lost();}
+        return input_telemetry.client(copy);
+    }
     return input_telemetry.client(row);
+}
+void retire_abandoned_capture(CaptureCorrelationDrain& drain,InputTelemetry& telemetry) noexcept {
+    const auto id=capture_abandoned_id.load(std::memory_order_acquire);
+    if(!id||!capture_queue_barrier_reached(telemetry.client,
+            capture_abandoned_client_barrier.load(std::memory_order_acquire)))return;
+    drain.abandon(id);
+    telemetry.end_capture_accounting();
+    capture_abandoned_id.store(0,std::memory_order_release);
+    capture_transport_pending.store(false,std::memory_order_release);
+}
+void consume_capture_row(CaptureCorrelationDrain& drain,InputTelemetry& telemetry,
+                         const CaptureCorrelationEvidence& capture,std::uint64_t now) noexcept {
+    const auto start=capture.schema==4&&capture.kind==CaptureCorrelationKind::end?
+        drain.start(capture.capture):CaptureBudgetReceipt{};
+    const auto finish=capture.schema==4&&capture.kind==CaptureCorrelationKind::end?
+        capture_budget_receipt(start.file_bytes):CaptureBudgetReceipt{};
+    const auto row=capture.kind==CaptureCorrelationKind::end?
+        drain.footer(capture,telemetry.client.dropped(),finish,now):capture;
+    const bool accepted=write_capture_correlation(row);
+    if(row.kind!=CaptureCorrelationKind::end)drain.written(row,accepted);
+    else if(row.schema==4){
+        telemetry.end_capture_accounting();
+        capture_transport_pending.store(false,std::memory_order_release);
+    }
+    if(!accepted)telemetry.client.lose();
+}
+void capture_render_ack(BalanceHudSource source,std::uint64_t frame,std::uint64_t render_ms) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if(!lock.owns_lock()){
+        if(source.capture)capture_render_ack_lost.store(true,std::memory_order_release);
+        return;
+    }
+    if(!input_capture_correlation.schema4()||source.capture!=input_capture_correlation.capture_id()||
+       source.request!=capture_manual_join.request||source.publication!=capture_manual_join.publication||
+       source.owner_generation!=capture_manual_join.owner_generation||
+       capture_native_frame.owner!=capture_manual_join.owner||
+       capture_native_frame.owner_generation!=capture_manual_join.owner_generation||
+       capture_manual_join.render_seen)return;
+    auto& join=capture_manual_join;
+    if(!capture_correlation_add(capture_admission_sequence)){input_capture_correlation.lost();return;}
+    CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::manual_admission;
+    row.source_sequence=capture_admission_sequence;row.ms=render_ms;row.events_known=true;
+    capture_semantic(row,8,5,render_ms,capture_native_frame);
+    row.semantic.m_pub_ack=source.publication;row.semantic.m_render_ack=source.publication;
+    row.semantic.m_render_frame=frame;row.semantic.m_render_ms=render_ms;row.semantic.m_known|=128u|2048u;
+    input_capture_correlation.event(row,capture_native_frame,input_telemetry.client_dropped(),capture_row);
+    join.render_seen=true;
 }
 void capture_event(CaptureCorrelationSource source,std::uint64_t sequence,std::uint64_t now,const NativeInputFrame& proof,bool known=true) noexcept {
     if(!input_capture_correlation.active())return;
@@ -137,6 +257,27 @@ void capture_event(CaptureCorrelationSource source,std::uint64_t sequence,std::u
         input_capture_correlation.maintain(now,proof,input_telemetry.client_dropped(),capture_row);return;
     }
     CaptureCorrelationEvidence row;row.source=source;row.source_sequence=sequence;row.ms=now;row.events_known=known;
+    if(input_capture_correlation.schema4()&&capture_manual_join.request &&
+       ((proof.owner==capture_manual_join.owner&&proof.owner_generation==capture_manual_join.owner_generation)||
+        source==CaptureCorrelationSource::manual_termination||capture_manual_join.exit_seen)){
+        auto& join=capture_manual_join;
+        if(source==CaptureCorrelationSource::native && now>=join.recognized_ms){
+            if(join.exit_seen&&!join.native_exit_seen){capture_semantic(row,7,2,proof.sampled_at,proof);row.semantic.m_completion=0;join.native_exit_seen=true;}
+            else if(!join.exit_seen && (!join.native_seen || proof.contact_generation!=join.last_contact_generation ||
+                proof.action_generation!=join.last_action_generation)){
+                capture_semantic(row,3,2,proof.sampled_at,proof);row.semantic.m_native_proof=0;
+                join.native_seen=true;join.last_contact_generation=proof.contact_generation;
+                join.last_action_generation=proof.action_generation;
+            }
+        }else if(source==CaptureCorrelationSource::manual_admission&&!join.model_seen){
+            if(!capture_correlation_add(capture_model_sequence))input_capture_correlation.lost();
+            capture_semantic(row,4,3,now,proof);
+            row.semantic.m_route=join.route;row.semantic.m_known|=64u;join.model_seen=true;
+        }else if(source==CaptureCorrelationSource::manual_termination&&!join.exit_seen){
+            capture_semantic(row,6,3,now,proof);row.semantic.m_exit=join.exit_reason;
+            row.semantic.m_known|=256u;join.exit_seen=true;
+        }
+    }
     input_capture_correlation.event(row,proof,input_telemetry.client_dropped(),capture_row);
 }
 
@@ -183,6 +324,26 @@ void capture_recognitions(const UnifiedInput::Diagnostic& diagnostic,std::uint64
         const auto emit=[&](CaptureCorrelationEvidence event){
             if(!capture_correlation_add(capture_recognition_sequence)){input_capture_correlation.omitted(1);input_capture_correlation.lost();return;}
             event.source_sequence=capture_recognition_sequence;
+            if(input_capture_correlation.schema4() &&
+                (request.action==InputAction::manual||request.action==InputAction::nose_manual)){
+                auto& m=event.semantic;m.m_kind=1;m.m_clock=1;m.m_known=15;
+                m.m_source_ms=request.recognized_at;m.m_source_seq=event.source_sequence;
+                m.m_request=identity->sequence;m.m_session=request.session;
+                m.m_from_air=request.context==InputContext::air;m.m_query=m.m_from_air?2u:1u;
+                m.m_age=delivery_now>=request.recognized_at?delivery_now-request.recognized_at:0;
+                if(m.m_from_air&&request.recognized_at<=UINT64_MAX-700)m.m_deadline=request.recognized_at+700;
+                else if(m.m_from_air)input_capture_correlation.lost();
+                m.m_family=request.action==InputAction::manual?-1:1;
+                m.m_episode=identity->observation.airborne_episode;
+                m.m_departure=identity->observation.air_departure;
+                if(!event.member_index){
+                    capture_manual_join={identity->sequence,request.session,request.recognized_at,
+                        m.m_episode,m.m_departure,identity->observation.generations.owner,m.m_family,m.m_from_air};
+                    if(authority.owner_generation==capture_manual_join.owner_generation&&authority.owner.valid())
+                        capture_manual_join.owner=authority.owner;
+                    else input_capture_correlation.lost();
+                }
+            }
             input_capture_correlation.recognition(event,identity->observation,identity->observation_known,delivery_now,authority,input_telemetry.client_dropped(),capture_row);
         };
         emit(row);
@@ -335,7 +496,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
              (native.words[0] & 0x40u) != 0), (native.words[0] & 0x40u) != 0});
     ManualObservationResult manual_observation{};
     const auto physical_contact = manual_acquisition_pose(native_frame,bail);
-    bool acquisition_putdown{}, acquiring_history{};
+    bool acquisition_putdown{}, acquiring_history{},ground_confirmed{};
     {
         std::lock_guard lock(ollie_mutex);
         const auto ground = ground_manual_balance.sample(now,native_frame,
@@ -344,6 +505,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // Original history and owned physical contact retain distinct admission
         // evidence; an absent/delayed name cannot suppress acquired balance.
         manual_observation = manual_balance_observation(ground,history_observation);
+        ground_confirmed=ground.confirmed;
         if (ground.confirmed) manual_identity.reset(manual_label); // One physical section cannot also queue a delayed history admission.
         acquisition_putdown = manual_acquisition.step(now,native_frame,physical_contact,manual_observation.confirmed,
             valid && !owner_changed && !observation_gap && !bail, (native.words[0] & 0x40u) != 0);
@@ -441,11 +603,24 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         arcade_input.publish_manual_correction(physical.applied_correction,native_frame,
             balance_admitted && physical.valid && physical.active);
         if(balance_admitted){
+            if(input_capture_correlation.schema4()&&capture_manual_join.request&&!capture_manual_join.model_seen)
+                capture_manual_join.route=ground_confirmed?(capture_manual_join.from_air?3u:2u):
+                    history_observation.confirmed?1u:0u;
             if(capture_correlation_add(capture_admission_sequence))capture_event(CaptureCorrelationSource::manual_admission,capture_admission_sequence,now,native_frame);
             else input_capture_correlation.lost();
         }
         if(termination!=BalanceExit::none){
+            if(input_capture_correlation.schema4())capture_manual_join.exit_reason=
+                termination==BalanceExit::putdown?5u:6u;
             if(capture_correlation_add(capture_termination_sequence))capture_event(CaptureCorrelationSource::manual_termination,capture_termination_sequence,now,native_frame);
+            else input_capture_correlation.lost();
+        }else if(input_capture_correlation.schema4()&&capture_manual_join.request&&
+                 !capture_manual_join.exit_seen&&
+                 (owner_changed||observation_gap||bail||!valid||release.started)){
+            capture_manual_join.exit_reason=owner_changed?3u:observation_gap?4u:bail?7u:
+                release.started?1u:10u;
+            if(capture_correlation_add(capture_termination_sequence))
+                capture_event(CaptureCorrelationSource::manual_termination,capture_termination_sequence,now,native_frame);
             else input_capture_correlation.lost();
         }
 
@@ -492,8 +667,48 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         previous_pose = pose;
     }
     const auto& display = combo_session.balance_display_state();
+    BalanceHudSource hud_source{native_frame.sampled_at,native_frame.valid};
+    if(display.balance_kind==BalanceKind::manual){
+        std::lock_guard lock(ollie_mutex);
+        if(input_capture_correlation.schema4()&&capture_manual_join.request&&capture_manual_join.model_seen&&
+           !capture_manual_join.render_seen&&native_frame.valid&&
+           native_frame.owner==capture_manual_join.owner&&
+           native_frame.owner_generation==capture_manual_join.owner_generation){
+            auto& join=capture_manual_join;
+            if(!join.publication){
+                if(capture_correlation_add(capture_hud_publication_sequence))
+                    join.publication=capture_hud_publication_sequence;
+                else input_capture_correlation.lost();
+            }
+            if(join.publication){
+                // Keep the first publication's identity until its first actual draw.
+                // Later native samples refresh only the ordinary HUD source lease.
+                hud_source.capture=input_capture_correlation.capture_id();
+                hud_source.request=join.request;
+                hud_source.owner_generation=native_frame.owner_generation;
+                hud_source.physics_step=native_frame.physics_step;
+                hud_source.publication=join.publication;
+            }
+        }
+    }
     publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
-        2 : combo_session.model().danger(), BalanceHudSource{native_frame.sampled_at, native_frame.valid});
+        2 : combo_session.model().danger(), hud_source);
+    if(hud_source.publication&&balance_hud_pending()){
+        const auto published_ms=GetTickCount64();
+        std::lock_guard lock(ollie_mutex);
+        if(input_capture_correlation.schema4()&&hud_source.capture==input_capture_correlation.capture_id()&&
+           hud_source.request==capture_manual_join.request&&!capture_manual_join.publication_seen){
+            if(capture_correlation_add(capture_admission_sequence)){
+                CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::manual_admission;
+                row.source_sequence=capture_admission_sequence;row.ms=published_ms;row.events_known=true;
+                capture_semantic(row,5,4,published_ms,native_frame);
+                row.semantic.m_pub_ack=hud_source.publication;
+                row.semantic.m_known|=128u;
+                input_capture_correlation.event(row,native_frame,input_telemetry.client_dropped(),capture_row);
+                capture_manual_join.publication_seen=true;
+            }else input_capture_correlation.lost();
+        }
+    }
 }
 bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept;
 // Only this background sink formats the live input/client snapshots.
@@ -620,10 +835,35 @@ bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept {
             r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow);
             return logging::write_command_evidence(legacy);
         }
-        if(r.schema==3){
+        if(r.schema==3||r.schema==4){
             const auto& d=r.controller;
-            const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={} poll_started={} raw_ms={} returned_ms={} remap_ms={} route_generation={} binding_deadline={} binding_armed={} cached_at={} slot={} selected_slot={} bitmap={} binding_state={} readiness={} ownership={} phase={} poll_result={} route_reason={} binding_native_ms={} binding_physics_step={} binding_owner={} binding_owner_generation={} binding_contact_generation={} binding_action_generation={} binding_observed={} source_ms={} bitmap_as_read={} bitmap_readable={} ownership_known={} raw_valid={} returned_valid={} context_known={} enabled={} focus={} gameplay={} clock_valid={} bitmap_known={} source_available={} capture_blocked={} native_observed={} native_state={} native_mode={} native_contacts={} native_flip={} native_flip_known={} physics_dt={} cached_dt={} cached_dt_valid={} readiness_native_ms={} readiness_physics_step={} readiness_owner={} readiness_owner_generation={} readiness_contact_generation={} readiness_action_generation={} readiness_observed={} current_native_ms={} current_physics_step={} current_owner_generation={} current_observed={} raw_buttons={} raw_lx={} raw_ly={} raw_rx={} raw_ry={} raw_lt={} raw_rt={} raw_packet={} returned_buttons={} returned_lx={} returned_ly={} returned_rx={} returned_ry={} returned_lt={} returned_rt={} returned_packet={} native_word0={} native_word1={} native_word2={} native_word3={} native_word4={} native_word5={} native_word6={} native_word7={}.",
+            auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={} poll_started={} raw_ms={} returned_ms={} remap_ms={} route_generation={} binding_deadline={} binding_armed={} cached_at={} slot={} selected_slot={} bitmap={} binding_state={} readiness={} ownership={} phase={} poll_result={} route_reason={} binding_native_ms={} binding_physics_step={} binding_owner={} binding_owner_generation={} binding_contact_generation={} binding_action_generation={} binding_observed={} source_ms={} bitmap_as_read={} bitmap_readable={} ownership_known={} raw_valid={} returned_valid={} context_known={} enabled={} focus={} gameplay={} clock_valid={} bitmap_known={} source_available={} capture_blocked={} native_observed={} native_state={} native_mode={} native_contacts={} native_flip={} native_flip_known={} physics_dt={} cached_dt={} cached_dt_valid={} readiness_native_ms={} readiness_physics_step={} readiness_owner={} readiness_owner_generation={} readiness_contact_generation={} readiness_action_generation={} readiness_observed={} current_native_ms={} current_physics_step={} current_owner_generation={} current_observed={} raw_buttons={} raw_lx={} raw_ly={} raw_rx={} raw_ry={} raw_lt={} raw_rt={} raw_packet={} returned_buttons={} returned_lx={} returned_ly={} returned_rx={} returned_ry={} returned_lt={} returned_rt={} returned_packet={} native_word0={} native_word1={} native_word2={} native_word3={} native_word4={} native_word5={} native_word6={} native_word7={}.",
                 r.schema,r.capture,static_cast<unsigned>(r.kind),static_cast<unsigned>(r.source),r.required_sources,r.ordinal,r.source_sequence,r.ms,r.native_ms,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.physics_step,r.first_event,r.last_event,r.first_ms,r.last_ms,r.recognized_ms,r.recognition_id,r.recognition_session,r.action,r.context,r.footprint_kind,r.member_index,r.member_count,r.member_event,r.held_reuse,r.expected,r.drained,r.dropped,r.drop_begin,r.drop_end,r.first_ordinal,r.last_ordinal,r.native_valid,r.events_known,r.complete,r.overflow,r.queue_admitted,d.poll_started,d.raw_ms,d.returned_ms,d.remap_ms,d.route_generation,d.binding_deadline,d.binding_armed,d.cached_at,d.slot,d.selected_slot,d.bitmap,d.binding_state,d.readiness,d.ownership,d.phase,d.poll_result,d.route_reason,d.binding_native_ms,d.binding_physics_step,d.binding_owner,d.binding_owner_generation,d.binding_contact_generation,d.binding_action_generation,d.binding_observed,d.source_ms,d.bitmap_as_read,d.bitmap_readable,d.ownership_known,d.raw_valid,d.returned_valid,d.context_known,d.enabled,d.focus,d.gameplay,d.clock_valid,d.bitmap_known,d.source_available,d.capture_blocked,d.native_observed,d.native_state,d.native_mode,d.native_contacts,d.native_flip,d.native_flip_known,d.physics_dt,d.cached_dt,d.cached_dt_valid,d.readiness_native_ms,d.readiness_physics_step,d.readiness_owner,d.readiness_owner_generation,d.readiness_contact_generation,d.readiness_action_generation,d.readiness_observed,d.current_native_ms,d.current_physics_step,d.current_owner_generation,d.current_observed,d.raw.buttons,d.raw.lx,d.raw.ly,d.raw.rx,d.raw.ry,d.raw.lt,d.raw.rt,d.raw.packet,d.returned.buttons,d.returned.lx,d.returned.ly,d.returned.rx,d.returned.ry,d.returned.lt,d.returned.rt,d.returned.packet,d.native_words[0],d.native_words[1],d.native_words[2],d.native_words[3],d.native_words[4],d.native_words[5],d.native_words[6],d.native_words[7]);
+            if(r.schema==4){
+                const auto replace_field=[&](std::string_view key,std::string_view value){
+                    const auto at=text.find(key);
+                    if(at==std::string::npos)return false;
+                    const auto begin=at+key.size();
+                    // A decimal point belongs to the float token; only the
+                    // following space or the terminal row period ends it.
+                    const auto end=text.find(' ',begin);
+                    if(end==std::string::npos)return false;
+                    text.replace(begin,end-begin,value);
+                    return true;
+                };
+                // Schema four's booleans and finite float32 fields have a
+                // fixed numeric grammar. Historical schema-three bytes stay intact.
+                for(std::size_t at=0;(at=text.find("=true",at))!=std::string::npos;)
+                    text.replace(at,5,"=1");
+                for(std::size_t at=0;(at=text.find("=false",at))!=std::string::npos;)
+                    text.replace(at,6,"=0");
+                if(!std::isfinite(d.physics_dt)||!std::isfinite(d.cached_dt)||
+                   !replace_field("physics_dt=",std::format("{:+.9e}",d.physics_dt))||
+                   !replace_field("cached_dt=",std::format("{:+.9e}",d.cached_dt)))return false;
+                text.pop_back();
+                text+=capture_schema4_suffix(r.semantic);
+                if(text.size()>6144)return false;
+            }
             return logging::write_command_evidence(text);
         }
         const auto text=std::format("ARCADE INPUT CAPTURE: schema={} capture={} kind={} source={} required_sources={} ordinal={} source_sequence={} ms={} native_ms={} owner={} owner_generation={} contact_generation={} action_generation={} physics_step={} first_event={} last_event={} first_ms={} last_ms={} recognized_ms={} recognition_id={} recognition_session={} action={} context={} footprint_kind={} member_index={} member_count={} member_event={} held_reuse={} expected={} drained={} dropped={} drop_begin={} drop_end={} first_ordinal={} last_ordinal={} native_valid={} events_known={} complete={} overflow={} queue_admitted={}.",
@@ -708,10 +948,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
         write_input_gap(false, telemetry.client.take_dropped());
         for (std::size_t i = 0; i < client_count; ++i) {
             if(const auto* capture=std::get_if<CaptureCorrelationEvidence>(&client_rows[i])){
-                const auto row=capture->kind==CaptureCorrelationKind::end ? capture_drain.footer(*capture,telemetry.client.dropped()):*capture;
-                const bool accepted=write_capture_correlation(row);
-                if(row.kind!=CaptureCorrelationKind::end)capture_drain.written(row,accepted);
-                if(!accepted)telemetry.client.lose();
+                consume_capture_row(capture_drain,telemetry,*capture,GetTickCount64());
                 continue;
             }
             // A queued old heartbeat must not masquerade as newly fresh riding.
@@ -720,6 +957,9 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
                 write_input_gap(false, telemetry.client.take_dropped());
             } else write_client_telemetry(client_rows[i]);
         }
+        if(pad_rows_count||sample_count||client_count)
+            capture_drain.cycle(GetTickCount64(),telemetry.counters().backlog);
+        retire_abandoned_capture(capture_drain,telemetry);
         Sleep(25);
     }
 }
@@ -733,6 +973,7 @@ bool start_input_telemetry() noexcept {
         auto* live = state.release();
         CloseHandle(worker);
         input_telemetry.publish(*live);
+        set_balance_hud_render_ack(capture_render_ack);
         return true;
     } catch (...) { return false; }
 }
@@ -967,6 +1208,33 @@ void complete_controller_poll(ControllerPollCapture& capture) noexcept {
     CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::pad_poll;row.ms=capture.details.returned_ms;
     row.controller=capture.details;row.events_known=true;
     row.source_sequence=capture.poll;
+    if(input_capture_correlation.schema4() && capture_manual_join.request){
+        auto& join=capture_manual_join;
+        const auto same_owner=capture.proof.owner==join.owner&&
+            capture.proof.owner_generation==join.owner_generation;
+        const auto same_request=same_owner && ((capture.manual_request==join.request &&
+            capture.manual_recognized_ms==join.recognized_ms && capture.manual_family==join.family) ||
+            (capture.owned_neutral && join.last_owns));
+        auto& m=row.semantic;
+        const auto changed=join.last_writer!=capture.final_writer ||
+            join.last_rx!=capture.details.returned.rx || join.last_ry!=capture.details.returned.ry ||
+            join.last_owns!=capture.manual_owns || join.last_reserved!=capture.manual_reserved ||
+            join.last_neutral!=capture.owned_neutral;
+        if(changed){
+            m.m_kind=2;m.m_clock=1;m.m_known=static_cast<std::uint16_t>(same_request?31u:16u);
+            m.m_source_ms=row.ms;m.m_source_seq=row.source_sequence;m.m_poll=capture.poll;
+            m.m_episode=join.episode;m.m_request=same_request?join.request:0;
+            m.m_model=capture_model_sequence;
+            m.m_session=same_request?join.session:0;m.m_from_air=same_request&&join.from_air;
+            m.m_query=same_request?(join.from_air?2u:1u):0u;
+            m.m_family=same_request?join.family:0;
+            m.m_writer=capture.final_writer;m.m_owns=same_request&&capture.manual_owns;
+            m.m_reserved=capture.manual_reserved;m.m_neutral=capture.owned_neutral;
+            m.m_rx=capture.details.returned.rx;m.m_ry=capture.details.returned.ry;
+            join.last_writer=capture.final_writer;join.last_rx=m.m_rx;join.last_ry=m.m_ry;
+            join.last_owns=capture.manual_owns;join.last_reserved=m.m_reserved;join.last_neutral=m.m_neutral;
+        }
+    }
     input_capture_correlation.observation(row,capture.proof,input_telemetry.client_dropped(),capture_row,capture.readiness_proof,capture.binding_proof);
 }
 
@@ -976,10 +1244,18 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=(!duration_ms?input_capture_correlation.observational():(required_sources&96)!=0)?capture_native_frame:arcade_input.native_context(now);
     if(!duration_ms){
         if(!input_capture_correlation.active())return false;
+        if(input_capture_correlation.schema4()&&capture_render_ack_lost.exchange(false,std::memory_order_acq_rel))
+            input_capture_correlation.lost();
         input_capture_correlation.end(now,frame,input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(0,false);return true;
     }
     if((!enabled()&&!(required_sources&96))||!input_telemetry.available())return false;
+    if(duration_ms&&capture_transport_pending.load(std::memory_order_acquire))return false;
+    const bool semantic=required_sources==255;
+    if(semantic){
+        capture_transport_pending.store(true,std::memory_order_release);
+        input_telemetry.begin_capture_accounting();
+    }
     // Publish the diagnostic gate while holding the producer mutex, before
     // emitting begin. A hook seeing it waits for this transaction; a hook that
     // saw false began outside the capture boundary. No begin-to-gate blind gap.
@@ -987,9 +1263,13 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     const bool activating=!input_capture_correlation.active()&&(required_sources&96);
     if(activating)controller_capture_live.store(true,std::memory_order_release);
     const bool begun=input_capture_correlation.begin(now,duration_ms,required_sources,frame,input_telemetry.client_dropped(),capture_row);
+    if(!begun&&semantic){input_telemetry.end_capture_accounting();capture_transport_pending.store(false,std::memory_order_release);}
     if(!begun&&activating)controller_capture_live.store(false,std::memory_order_release);
     // Controller capture activation publication end.
     if(begun){
+        capture_manual_join={};
+        capture_model_sequence=0;
+        capture_render_ack_lost.store(false,std::memory_order_release);
         controller_capture_live.store(input_capture_correlation.observational(),std::memory_order_release);
         capture_native_admission_sequence=0;
         arcade_input.set_recognition_capture(0,(required_sources&2u)!=0);
@@ -1216,6 +1496,13 @@ void set_enabled(bool value, bool persist) noexcept {
         std::lock_guard lock(ollie_mutex);
         // Controller capture off publication begin.
         if(!value){
+            if(input_capture_correlation.schema4()&&capture_manual_join.request&&!capture_manual_join.exit_seen){
+                capture_manual_join.exit_reason=2;
+                if(capture_correlation_add(capture_termination_sequence))
+                    capture_event(CaptureCorrelationSource::manual_termination,capture_termination_sequence,
+                        GetTickCount64(),capture_native_frame);
+                else input_capture_correlation.lost();
+            }
             if(!input_capture_correlation.observational())
                 input_capture_correlation.end(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row,true);
             arcade_input.set_recognition_capture(0,false);
@@ -1811,6 +2098,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         capture_ownership=(result.authored_playback?16u:0u) | (action.owned||action.consume_rt||action.consume_buttons?32u:0u) |
             (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick?256u:0u) | (normal_mask?512u:0u);
+        if(capture&&input_capture_correlation.schema4()){
+            capture->manual_request=result.manual.recognition_id;
+            capture->manual_recognized_ms=result.manual.recognized_at;
+            capture->manual_family=static_cast<std::int8_t>(result.manual.request);
+            capture->manual_owns=ground_controls.manual_vertical_reserved && result.manual.owns &&
+                result.right_x==0 && result.right_y==result.manual.request*20000;
+            capture->manual_reserved=ground_controls.manual_vertical_reserved;
+            capture->owned_neutral=ground_controls.manual_vertical_reserved && releasing_manual &&
+                result.right_x==0 && result.right_y==0;
+            capture->final_writer=capture->manual_owns?1u:capture->owned_neutral?2u:
+                result.authored_playback?3u:action.owned?4u:rail_pad.owns_right_stick?5u:
+                result.right_x==physical_right_x && result.right_y==physical_right_y?0u:6u;
+        }
         // Controller route packet_sample publication begin.
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
             reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick);

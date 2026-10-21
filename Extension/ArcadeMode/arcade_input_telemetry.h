@@ -8,7 +8,10 @@
 #include "arcade_manual_history.h"
 #include "arcade_manual_input.h"
 #include "arcade_fixture_trajectory.h"
+#include "arcade_capture_schema4.h"
+#include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <compare>
 #include <cmath>
 #include <span>
@@ -71,6 +74,12 @@ struct InputEdgeEvidence { char button{}; std::uint64_t count{}; Observation sam
 // anonymous capture-local token for the full owner tuple, never an address.
 enum class CaptureCorrelationKind : std::uint8_t { begin, event, end };
 enum class CaptureCorrelationSource : std::uint8_t { boundary, input, recognition, native, manual_admission, manual_termination, native_admission, pad_poll };
+struct CaptureBudgetReceipt {
+    std::uint64_t attempted{},emitted{},drained{},dropped{},backlog{},peak{};
+    std::uint64_t file_id{},file_bytes{},file_records{},prefix_hash{};
+    std::uint32_t volume{};
+    bool queue_valid{},file_valid{};
+};
 struct CaptureCorrelationEvidence {
     std::uint64_t capture{}, ordinal{}, source_sequence{}, ms{}, native_ms{}, owner{};
     std::uint64_t owner_generation{}, contact_generation{}, action_generation{}, physics_step{};
@@ -80,6 +89,8 @@ struct CaptureCorrelationEvidence {
     std::uint64_t recognition_id{}, recognition_session{}, action{}, context{}, footprint_kind{};
     std::uint64_t member_index{}, member_count{}, member_event{}, held_reuse{};
     ControllerCaptureDetails controller{};
+    CaptureSchema4 semantic{};
+    CaptureBudgetReceipt budget{}; // Queue-only carrier, excluded from the wire.
     unsigned schema{1}, required_sources{31};
     CaptureCorrelationKind kind{};
     CaptureCorrelationSource source{};
@@ -95,9 +106,20 @@ inline bool capture_correlation_delta(std::uint64_t before,std::uint64_t after,s
     delta=0; if (after<before) return false; delta=after-before; return true;
 }
 inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexcept {
-    if ((r.schema!=1&&r.schema!=2&&r.schema!=3) || !r.capture || !r.required_sources || r.required_sources>(r.schema==3?127u:31u) || r.owner>UINT32_MAX ||
-        r.kind>CaptureCorrelationKind::end || static_cast<unsigned>(r.source)>(r.schema==3?7u:5u)) return false;
-    if(r.schema==3){
+    if ((r.schema!=1&&r.schema!=2&&r.schema!=3&&r.schema!=4) || !r.capture || !r.required_sources || r.required_sources>(r.schema>=3?127u:31u) || r.owner>UINT32_MAX ||
+        r.kind>CaptureCorrelationKind::end || static_cast<unsigned>(r.source)>(r.schema>=3?7u:5u)) return false;
+    if(r.schema==4){
+        const auto& m=r.semantic;
+        if(!m.valid() || (r.kind!=CaptureCorrelationKind::event && m.m_kind) ||
+           (m.m_kind==0&&m.m_poll!=0) ||
+           (m.m_kind==1&&r.source!=CaptureCorrelationSource::recognition) ||
+           (m.m_kind==2&&(r.source!=CaptureCorrelationSource::pad_poll||!m.m_poll||
+               m.m_poll!=r.source_sequence)) ||
+           ((m.m_kind==3||m.m_kind==7)&&r.source!=CaptureCorrelationSource::native) ||
+           ((m.m_kind==4||m.m_kind==5||m.m_kind==8)&&r.source!=CaptureCorrelationSource::manual_admission) ||
+           (m.m_kind==6&&r.source!=CaptureCorrelationSource::manual_termination))return false;
+    }
+    if(r.schema==3||r.schema==4){
         const auto& d=r.controller;
         if(r.owner>16)return false;
         if(d.slot>4||d.selected_slot>4||d.bitmap>15||d.bitmap_as_read>15||(!d.bitmap_readable&&d.bitmap_as_read)||d.binding_state>3||(!d.bitmap_known&&d.bitmap)||
@@ -137,8 +159,8 @@ inline bool capture_correlation_valid(const CaptureCorrelationEvidence& r) noexc
         (r.drained && r.first_ordinal && r.first_ordinal<=r.last_ordinal && r.last_ordinal<=r.expected));
 }
 inline bool capture_correlation_complete(const CaptureCorrelationEvidence& r) noexcept {
-    return capture_correlation_valid(r) && r.kind==CaptureCorrelationKind::end && r.complete &&
-        (r.schema==3 || r.native_valid) && r.events_known && !r.overflow && r.expected && r.drained==r.expected && !r.dropped &&
+    return r.schema!=4 && capture_correlation_valid(r) && r.kind==CaptureCorrelationKind::end && r.complete &&
+        (r.schema>=3 || r.native_valid) && r.events_known && !r.overflow && r.expected && r.drained==r.expected && !r.dropped &&
         r.drop_begin==r.drop_end && r.first_ordinal==1 && r.last_ordinal==r.expected;
 }
 // Probe paths contain at most four schema hashes/array indexes, never native
@@ -229,33 +251,105 @@ inline bool client_telemetry_fresh(const ClientTelemetry& row, std::uint64_t now
 
 // Same bounded reservation/publication scheme as GrindQueue. A stalled sink
 // cannot hold a producer lock. A reserved but unpublished slot is never read.
-template<class Row, std::size_t N> class InputTelemetryQueue {
+class CaptureArrivalMeter {
+    std::atomic<bool> enabled_{},violation_{};
+    std::atomic_flag busy_=ATOMIC_FLAG_INIT;
+    std::uint64_t last_ms_{},credit_{16000};
+    static std::uint64_t clock_ms() noexcept {
+        const auto ms=std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        return ms<0?0:static_cast<std::uint64_t>(ms);
+    }
+public:
+    void begin() noexcept {
+        if(busy_.test_and_set(std::memory_order_acquire)){
+            violation_.store(true,std::memory_order_release);return;
+        }
+        violation_.store(false,std::memory_order_release);
+        last_ms_=clock_ms();credit_=16000;
+        enabled_.store(true,std::memory_order_release);
+        busy_.clear(std::memory_order_release);
+    }
+    void end() noexcept {enabled_.store(false,std::memory_order_release);}
+    bool violation() const noexcept{return violation_.load(std::memory_order_acquire);}
+    void arrival() noexcept {
+        if(!enabled_.load(std::memory_order_acquire))return;
+        // Contention itself is an unaccounted arrival: fail closed without
+        // adding a producer wait to the input or native physics path.
+        if(busy_.test_and_set(std::memory_order_acquire)){
+            violation_.store(true,std::memory_order_release);return;
+        }
+        const auto now=clock_ms();
+        if(now<last_ms_)violation_.store(true,std::memory_order_release);
+        else {
+            const auto elapsed=now-last_ms_;
+            credit_=elapsed>=80?16000:std::min<std::uint64_t>(16000,credit_+elapsed*200);
+            last_ms_=now;
+            if(credit_<1000)violation_.store(true,std::memory_order_release);
+            else credit_-=1000;
+        }
+        busy_.clear(std::memory_order_release);
+    }
+};
+struct CaptureQueueNoPause { void operator()() const noexcept {} };
+template<class Row, std::size_t N, class BeforePublish=CaptureQueueNoPause> class InputTelemetryQueue {
     static_assert(N >= 2 && std::is_trivially_copyable_v<Row>);
     static_assert(std::atomic<std::uint64_t>::is_always_lock_free);
     struct Slot { std::atomic<std::uint64_t> turn{}; Row row{}; };
     std::array<Slot, N> rows_{};
-    std::atomic<std::uint64_t> write_{}, dropped_{};
+    std::atomic<std::uint64_t> write_{}, published_{}, dropped_{}, attempted_{}, drained_{}, read_published_{}, peak_backlog_{},
+        dropped_baseline_{},preexisting_{};
     std::atomic<bool> drop_overflow_{};
+    std::atomic<bool> accounting_{};
+    CaptureArrivalMeter* arrival_meter_{};
     std::uint64_t read_{}; // Single background consumer, including drop reports.
     std::uint64_t reported_{};
 public:
     InputTelemetryQueue() noexcept {
         for (std::size_t i = 0; i < N; ++i) rows_[i].turn.store(i, std::memory_order_relaxed);
     }
+    void attach(CaptureArrivalMeter& meter) noexcept {arrival_meter_=&meter;}
+    void start_accounting() noexcept {
+        attempted_.store(0,std::memory_order_relaxed);
+        published_.store(0,std::memory_order_relaxed);
+        drained_.store(0,std::memory_order_relaxed);
+        const auto at=write_.load(std::memory_order_acquire);
+        const auto read=read_published_.load(std::memory_order_acquire);
+        peak_backlog_.store(at>=read?at-read:UINT64_MAX,std::memory_order_release);
+        preexisting_.store(at>=read?at-read:UINT64_MAX,std::memory_order_release);
+        dropped_baseline_.store(dropped_.load(std::memory_order_acquire),std::memory_order_release);
+        accounting_.store(true,std::memory_order_release);
+    }
+    void stop_accounting() noexcept {accounting_.store(false,std::memory_order_release);}
     bool push(const Row& row) noexcept {
+        if(arrival_meter_)arrival_meter_->arrival();
+        const bool accounting=accounting_.load(std::memory_order_acquire);
+        if(accounting)attempted_.fetch_add(1, std::memory_order_relaxed);
         auto at = write_.load(std::memory_order_relaxed);
         for (unsigned attempt = 0; attempt < 64; ++attempt) {
+            if(at==UINT64_MAX){drop_overflow_.store(true,std::memory_order_release);break;}
             auto& slot = rows_[at % N];
             const auto turn = slot.turn.load(std::memory_order_acquire);
             if (turn < at) break;
             if (turn == at && write_.compare_exchange_weak(at, at + 1, std::memory_order_relaxed)) {
+                const auto read=read_published_.load(std::memory_order_acquire);
+                if(at+1<read)drop_overflow_.store(true,std::memory_order_release);
+                else if(accounting){
+                    const auto backlog=at+1-read;
+                    auto peak=peak_backlog_.load(std::memory_order_relaxed);
+                    while(backlog>peak&&!peak_backlog_.compare_exchange_weak(peak,backlog,std::memory_order_release,std::memory_order_relaxed)){}
+                }
+                // Test-only policy can pause a reservation here. The default
+                // is empty and adds no work to the production queue.
+                if constexpr(!std::is_same_v<BeforePublish,CaptureQueueNoPause>)BeforePublish{}();
                 slot.row = row;
                 slot.turn.store(at + 1, std::memory_order_release);
+                if(accounting)published_.fetch_add(1, std::memory_order_release);
                 return true;
             }
             at = write_.load(std::memory_order_relaxed);
         }
-        lose();
+        lose(true);
         return false;
     }
     std::size_t take(std::span<Row> out) noexcept {
@@ -267,10 +361,39 @@ public:
             slot.turn.store(read_ + N, std::memory_order_release);
             ++read_;
         }
+        if (n) {
+            if(accounting_.load(std::memory_order_acquire)){
+                const auto previous=preexisting_.load(std::memory_order_acquire);
+                const auto old=std::min<std::uint64_t>(previous,n);
+                if(old)preexisting_.fetch_sub(old,std::memory_order_acq_rel);
+                drained_.fetch_add(n-old,std::memory_order_relaxed);
+            }
+            read_published_.store(read_, std::memory_order_release);
+        }
         return n;
     }
-    void lose() noexcept { if(dropped_.fetch_add(1,std::memory_order_relaxed)==UINT64_MAX)drop_overflow_.store(true,std::memory_order_release); }
+    void lose(bool counted=false) noexcept {
+        if(!counted&&arrival_meter_)arrival_meter_->arrival();
+        if(!counted&&accounting_.load(std::memory_order_acquire))attempted_.fetch_add(1,std::memory_order_relaxed);
+        if(dropped_.fetch_add(1,std::memory_order_relaxed)==UINT64_MAX)drop_overflow_.store(true,std::memory_order_release);
+    }
+    struct Counters { std::uint64_t attempted{}, emitted{}, drained{}, dropped{}, backlog{}, peak{}; bool overflow{}; };
+    Counters counters() const noexcept {
+        const auto attempted=attempted_.load(std::memory_order_acquire);
+        const auto emitted=published_.load(std::memory_order_acquire);
+        const auto drained=drained_.load(std::memory_order_acquire);
+        const auto all_dropped=this->dropped();
+        const auto baseline=dropped_baseline_.load(std::memory_order_acquire);
+        const auto dropped=all_dropped>=baseline?all_dropped-baseline:UINT64_MAX;
+        const auto read=read_published_.load(std::memory_order_acquire);
+        const auto reserved=write_.load(std::memory_order_acquire);
+        return {attempted,emitted,drained,dropped,reserved>=read?reserved-read:UINT64_MAX,peak_backlog_.load(std::memory_order_acquire),
+            attempted<emitted||attempted-emitted<dropped||drained>emitted||reserved<read||
+                all_dropped<baseline||drop_overflow_.load(std::memory_order_acquire)};
+    }
     std::uint64_t dropped() const noexcept { return drop_overflow_.load(std::memory_order_acquire)?UINT64_MAX:dropped_.load(std::memory_order_relaxed); }
+    std::uint64_t retirement_barrier() const noexcept {return write_.load(std::memory_order_acquire);}
+    std::uint64_t consumed_through() const noexcept {return read_published_.load(std::memory_order_acquire);}
     std::uint64_t take_dropped() noexcept {
         const auto total = dropped();
         const auto delta = total - reported_;
@@ -278,6 +401,11 @@ public:
         return delta;
     }
 };
+template<class Row,std::size_t N,class BeforePublish>
+bool capture_queue_barrier_reached(const InputTelemetryQueue<Row,N,BeforePublish>& queue,
+                                   std::uint64_t barrier) noexcept {
+    return queue.consumed_through()>=barrier;
+}
 
 template<std::size_t N> class ComboTelemetry {
     std::atomic_flag producer_ = ATOMIC_FLAG_INIT;
@@ -297,18 +425,46 @@ public:
     }
 };
 struct InputTelemetry {
+    CaptureArrivalMeter arrival;
     InputTelemetryQueue<PadTelemetry, 64> pad;
     ComboTelemetry<64> combo;
     InputTelemetryQueue<ClientTelemetry, 64> client;
+    InputTelemetry() noexcept {
+        pad.attach(arrival);combo.queue.attach(arrival);client.attach(arrival);
+    }
+    void begin_capture_accounting() noexcept {
+        pad.start_accounting();combo.queue.start_accounting();client.start_accounting();arrival.begin();
+    }
+    void end_capture_accounting() noexcept {
+        arrival.end();pad.stop_accounting();combo.queue.stop_accounting();client.stop_accounting();
+    }
+    struct Counters {std::uint64_t attempted{},emitted{},drained{},dropped{},backlog{},peak{};bool invalid{};};
+    Counters counters() const noexcept {
+        Counters out{};
+        const auto add=[&](const auto& q){
+            const auto row=q.counters();
+            out.invalid=out.invalid||row.overflow;
+            const auto sum=[&](std::uint64_t& target,std::uint64_t value){
+                if(value>UINT64_MAX-target){out.invalid=true;target=UINT64_MAX;}
+                else target+=value;
+            };
+            sum(out.attempted,row.attempted);sum(out.emitted,row.emitted);
+            sum(out.drained,row.drained);sum(out.dropped,row.dropped);sum(out.backlog,row.backlog);sum(out.peak,row.peak);
+        };
+        add(pad);add(combo.queue);add(client);
+        out.invalid=out.invalid||arrival.violation()||out.attempted<out.emitted||out.drained>out.emitted||
+            out.dropped>out.attempted||out.backlog>192||out.peak>192;
+        return out;
+    }
 };
 // Serialized by the existing input mutex. Actual producer snapshots only;
 // the full owner tuple stays private and becomes capture-local token1 on wire.
 class CaptureCorrelationProducer {
     NativeInputFrame proof_{};
-    std::uint64_t next_{},id_{},started_{},until_{},expected_{},drops_{};
+    std::uint64_t next_{},id_{},started_{},until_{},expected_{},drops_{},semantic_attempted_{},semantic_queue_lost_{};
     std::array<std::uint64_t,8> sequences_{};
     std::array<NativeInputOwner,16> owners_{};
-    bool observational_{};
+    bool observational_{},schema4_{};
     std::array<std::uint64_t,64> polls_{};std::uint64_t next_poll_{};
     unsigned scope_{};bool active_{},known_{true},overflow_{};
     static bool fresh(const NativeInputFrame& f,std::uint64_t now) noexcept {
@@ -324,7 +480,7 @@ class CaptureCorrelationProducer {
         overflow_=true;return 0;
     }
     CaptureCorrelationEvidence snapshot(std::uint64_t now,const NativeInputFrame& f) noexcept {
-        CaptureCorrelationEvidence r;r.schema=observational_?3:2;r.capture=id_;r.required_sources=scope_;r.ms=now;r.native_ms=f.sampled_at;r.owner=observational_?owner_token(f):1;
+        CaptureCorrelationEvidence r;r.schema=schema4_?4:observational_?3:2;r.capture=id_;r.required_sources=scope_;r.ms=now;r.native_ms=f.sampled_at;r.owner=observational_?owner_token(f):1;
         r.owner_generation=f.owner_generation;r.contact_generation=f.contact_generation;r.action_generation=f.action_generation;r.physics_step=f.physics_step;
         r.native_valid=fresh(f,now)&&r.owner;return r;
     }
@@ -334,6 +490,7 @@ class CaptureCorrelationProducer {
 public:
     bool active()const noexcept{return active_;}
     bool observational()const noexcept{return observational_;}
+    bool schema4()const noexcept{return active_&&schema4_;}
     std::uint64_t capture_id()const noexcept{return active_?id_:0;}
     std::uint64_t reserve_poll()noexcept{
         if(!captures(CaptureCorrelationSource::pad_poll))return 0;
@@ -358,8 +515,8 @@ public:
     }
     void lost()noexcept{overflow_=true;}
     template<class Sink> bool begin(std::uint64_t now,std::uint64_t duration,unsigned scope,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
-        if(active_||!duration||duration>5000||!scope||scope>127||(!(scope&96)&&!fresh(f,now))||next_==UINT64_MAX||duration>UINT64_MAX-now)return false;
-        observational_=(scope&96)!=0;owners_={};polls_={};next_poll_=0;id_=++next_;started_=now;until_=now+duration;scope_=scope;proof_=f;expected_=0;drops_=drops;sequences_={};known_=true;overflow_=drops==UINT64_MAX;active_=true;
+        if(active_||!duration||duration>(scope==255?1000u:5000u)||!scope||(scope>127&&scope!=255)||(!(scope&96)&&!fresh(f,now))||next_==UINT64_MAX||duration>UINT64_MAX-now)return false;
+        schema4_=scope==255;observational_=(scope&96)!=0;owners_={};polls_={};next_poll_=0;id_=++next_;started_=now;until_=now+duration;scope_=schema4_?127u:scope;proof_=f;expected_=0;drops_=drops;semantic_attempted_=semantic_queue_lost_=0;sequences_={};known_=true;overflow_=drops==UINT64_MAX;active_=true;
         auto r=snapshot(now,f);r.kind=CaptureCorrelationKind::begin;r.events_known=true;r.drop_begin=r.drop_end=drops;r.overflow=overflow_;
         // Lost begin remains an incomplete capture, never silently restarted.
         sink(r);return true;
@@ -371,6 +528,7 @@ public:
         for(auto poll:polls_)if(poll){omitted(1);}
         r.expected=expected_;r.ordinal=expected_;if(!capture_correlation_add(r.ordinal))overflow_=true;
         r.dropped=expected_;r.events_known=known_;r.drop_begin=drops_;r.drop_end=drops;r.overflow=overflow_||drops<drops_||drops==UINT64_MAX;
+        if(schema4_){r.semantic.m_attempted=semantic_attempted_;r.semantic.m_emitted=semantic_attempted_-semantic_queue_lost_;}
         r.complete=!forced&&(observational_||r.native_valid)&&known_&&!r.overflow;active_=false;sink(r);
     }
     template<class Sink> void maintain(std::uint64_t now,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
@@ -383,10 +541,15 @@ private:
         if(!source||source>7||!(scope_&(1u<<(source-1))))return;
         if(row.source_sequence<=sequences_[source])overflow_=true;
         sequences_[source]=row.source_sequence;
-        row.schema=observational_?3:2;row.capture=id_;row.required_sources=scope_;if(!observational_)row.owner=1;row.kind=CaptureCorrelationKind::event;
+        row.schema=schema4_?4:observational_?3:2;row.capture=id_;row.required_sources=scope_;if(!observational_)row.owner=1;row.kind=CaptureCorrelationKind::event;
         known_=known_&&row.events_known&&(observational_||row.native_valid);
         if(!capture_correlation_add(expected_))overflow_=true;row.ordinal=expected_;row.overflow=overflow_;
-        sink(row);
+        if(schema4_&&row.semantic.m_kind){
+            // These are transport row counters. The reader assembles the
+            // summary and its ordered members into one recognition transition.
+            if(!capture_correlation_add(semantic_attempted_))overflow_=true;
+            if(!sink(row)){if(!capture_correlation_add(semantic_queue_lost_))overflow_=true;overflow_=true;}
+        }else sink(row);
     }
 public:
     template<class Sink> void event(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
@@ -423,7 +586,9 @@ public:
 // A footer is finalized after all earlier queue rows have been drained.
 class CaptureCorrelationDrain {
     struct Capture {
-        std::uint64_t id{},written{},first{},last{};unsigned sources{};bool began{},known{true},overflow{};
+        std::uint64_t id{},written{},semantic_written{},first{},last{},started{},last_cycle{},worst_gap{},peak{};
+        unsigned sources{},coverage{};bool began{},known{true},overflow{};
+        CaptureBudgetReceipt start{};
     };
     std::array<Capture,16> captures_{};
     Capture* find(std::uint64_t id) noexcept {
@@ -434,17 +599,70 @@ class CaptureCorrelationDrain {
 public:
     void written(const CaptureCorrelationEvidence& row,bool accepted) noexcept {
         auto* c=find(row.capture);if(!c)return;
-        if(row.kind==CaptureCorrelationKind::begin){if(c->began)c->overflow=true;c->began=accepted;return;}
+        if(row.kind==CaptureCorrelationKind::begin){
+            if(c->began)c->overflow=true;c->began=accepted;c->start=row.budget;
+            c->peak=row.budget.backlog;c->started=c->last_cycle=row.ms;return;
+        }
         if(row.kind!=CaptureCorrelationKind::event||!accepted)return;
+        if(!c->began)c->overflow=true;
         if(!capture_correlation_add(c->written))c->overflow=true;
         if(!c->first)c->first=row.ordinal;c->last=row.ordinal;
         c->sources|=1u<<(static_cast<unsigned>(row.source)-1);
-        c->known=c->known&&row.events_known&&(row.schema==3||row.native_valid);c->overflow=c->overflow||row.overflow;
+        if(row.schema==4&&row.semantic.m_kind>=1&&row.semantic.m_kind<=8){
+            c->coverage|=1u<<(row.semantic.m_kind-1);
+            if(!capture_correlation_add(c->semantic_written))c->overflow=true;
+        }
+        c->known=c->known&&row.events_known&&(row.schema>=3||row.native_valid);c->overflow=c->overflow||row.overflow;
     }
-    CaptureCorrelationEvidence footer(CaptureCorrelationEvidence row,std::uint64_t drops) noexcept {
+    void cycle(std::uint64_t now,std::uint64_t backlog) noexcept {
+        for(auto& c:captures_)if(c.id&&c.began){
+            if(now<c.last_cycle)c.overflow=true;
+            else c.worst_gap=std::max(c.worst_gap,now-c.last_cycle);
+            c.last_cycle=now;c.peak=std::max(c.peak,backlog);
+        }
+    }
+    CaptureBudgetReceipt start(std::uint64_t id) const noexcept {
+        for(const auto& c:captures_)if(c.id==id)return c.start;
+        return {};
+    }
+    void abandon(std::uint64_t id) noexcept {
+        for(auto& c:captures_)if(c.id==id){c={};return;}
+    }
+    CaptureCorrelationEvidence footer(CaptureCorrelationEvidence row,std::uint64_t drops,
+            CaptureBudgetReceipt finish={},std::uint64_t now=0) noexcept {
         auto* c=find(row.capture);row.drop_end=drops;
         if(!c){row.complete=false;row.overflow=true;row.drained=0;row.dropped=row.expected;return row;}
         row.drained=c->written;row.first_ordinal=c->first;row.last_ordinal=c->last;
+        if(row.schema==4){
+            auto& m=row.semantic;const auto& start=c->start;
+            m.m_coverage=static_cast<std::uint16_t>(c->coverage);
+            m.m_drained=c->semantic_written;
+            m.m_dropped=m.m_attempted>=m.m_drained?m.m_attempted-m.m_drained:UINT64_MAX;
+            const bool order=finish.attempted>=start.attempted&&finish.emitted>=start.emitted&&
+                finish.drained>=start.drained&&finish.dropped>=start.dropped&&
+                finish.file_bytes>=start.file_bytes&&finish.file_records>=start.file_records;
+            if(order){
+                m.q_attempted=finish.attempted-start.attempted;
+                m.q_emitted=finish.emitted-start.emitted;
+                m.q_drained=finish.drained-start.drained;
+                m.q_dropped=finish.dropped-start.dropped;
+            }
+            m.q_initial=static_cast<std::uint8_t>(std::min<std::uint64_t>(start.backlog,8));
+            const auto proven_peak=std::max({c->peak,finish.backlog,finish.peak});
+            m.q_peak=static_cast<std::uint8_t>(std::min<std::uint64_t>(proven_peak,64));
+            m.q_stall_ms=now>=c->last_cycle?std::max(c->worst_gap,now-c->last_cycle):UINT64_MAX;
+            const auto duration=now>=c->started?now-c->started:UINT64_MAX;
+            m.q_budget_ok=order&&duration<=1000&&start.queue_valid&&finish.queue_valid&&start.backlog<=8&&
+                proven_peak<=52&&m.q_stall_ms<=100&&
+                m.q_attempted<=16+200*((duration+999)/1000);
+            m.log_epoch=finish.file_id;m.log_part=0;m.log_record=finish.file_records;
+            m.log_bytes=order?finish.file_bytes-start.file_bytes:0;m.log_total=finish.file_bytes;
+            m.log_delivery=order&&start.file_valid&&finish.file_valid&&start.file_id==finish.file_id&&
+                start.volume==finish.volume&&start.prefix_hash==finish.prefix_hash&&
+                start.file_bytes<=524288&&m.log_bytes<=1247264;
+            m.m_known|=static_cast<std::uint16_t>((m.q_budget_ok?512u:0u)|(m.log_delivery?1024u:0u));
+            if(!m.q_budget_ok||!m.log_delivery||m.m_dropped||m.m_coverage!=255)c->overflow=true;
+        }
         row.overflow=row.overflow||c->overflow||row.drained>row.expected||drops==UINT64_MAX||drops<row.drop_begin;
         row.dropped=row.expected>=row.drained?row.expected-row.drained:0;
         row.complete=row.complete&&c->began&&c->known&&!row.overflow&&
@@ -460,8 +678,22 @@ class InputTelemetryLink {
 public:
     void publish(InputTelemetry& target) noexcept { target_.store(&target, std::memory_order_release); }
     bool available() const noexcept { return target_.load(std::memory_order_acquire)!=nullptr; }
+    InputTelemetry::Counters counters() const noexcept {
+        const auto* target=target_.load(std::memory_order_acquire);
+        return target?target->counters():InputTelemetry::Counters{0,0,0,0,0,0,true};
+    }
     std::uint64_t client_dropped() const noexcept {
         const auto* target=target_.load(std::memory_order_acquire);return target?target->client.dropped():UINT64_MAX;
+    }
+    std::uint64_t client_retirement_barrier() const noexcept {
+        const auto* target=target_.load(std::memory_order_acquire);
+        return target?target->client.retirement_barrier():UINT64_MAX;
+    }
+    void begin_capture_accounting() noexcept {
+        if(auto* target=target_.load(std::memory_order_acquire))target->begin_capture_accounting();
+    }
+    void end_capture_accounting() noexcept {
+        if(auto* target=target_.load(std::memory_order_acquire))target->end_capture_accounting();
     }
     bool pad(const PadTelemetry& row) noexcept {
         if (auto* target = target_.load(std::memory_order_acquire)) return target->pad.push(row);

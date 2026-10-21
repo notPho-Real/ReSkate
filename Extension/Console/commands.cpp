@@ -63,12 +63,13 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::spin_mode()==arcade_mode::SpinMode::tap ? "Tap spin ON" : "Held spin ON");
     };
     registry.add(std::move(tap_spin));
-    auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..127)",Group::gameplay,
+    auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..127 or bounded semantic255)",Group::gameplay,
         {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true)});
     capture.run=[](const Model&,const Values& values,const Output& out){
         const auto duration=std::get<std::uint64_t>(values[0]);const auto scope=values.size()>1?std::get<std::uint64_t>(values[1]):96;
-        if(duration>5000||!scope||scope>127||!arcade_mode::set_input_capture(static_cast<unsigned>(duration),static_cast<unsigned>(scope)))
-            out("Capture unavailable: require active telemetry, duration1..5000 and source mask1..127; legacy sources1..31 also require Arcade ON and a fresh native owner; duration0 stops an active capture.");
+        if(duration>5000||!scope||(scope>127&&scope!=255)||(scope==255&&duration>1000)||!arcade_mode::set_input_capture(static_cast<unsigned>(duration),static_cast<unsigned>(scope)))
+            out("Capture unavailable: require active telemetry, duration1..5000 and source mask1..127, or semantic255 for at most1000ms; legacy sources1..31 also require Arcade ON and a fresh native owner; duration0 stops an active capture.");
+        else if(duration&&scope==255)out("Input capture capability=manual_capture_schema4_v2 required_semantics=255 active_only=true; completeness and native acceptance remain unverified.");
         else out(duration?"Input correlation capture started; completeness and native acceptance remain unverified.":"Input correlation capture stopped.");
     };
     registry.add(std::move(capture));

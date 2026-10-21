@@ -26,6 +26,7 @@ struct ManualInputDiagnostic {
         bool safe{}, preparation{}, owns{}, confirmed{};
         std::uint64_t recognized_at{};
         bool from_air{};
+        std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the
@@ -36,22 +37,23 @@ public:
     static constexpr auto ground_pair_ms = InputTiming::ground_pair_ms, ground_sample_slack_ms = InputTiming::ground_sample_slack_ms;
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
-    void cancel() noexcept { confirmed_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = false; requested_ = 0; hard_reset_ = true; }
+    void cancel() noexcept { confirmed_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
     int requested() const noexcept { return requested_; }
     std::uint64_t recognized_at() const noexcept { return requested_ ? recognized_at_ : 0; }
+    std::uint64_t recognition_id() const noexcept { return requested_ ? recognition_id_ : 0; }
     bool from_air() const noexcept { return requested_ && air_prepared_; }
     std::uint64_t requested_at() const noexcept { return requested_ ? requested_at_ : 0; }
     bool request(std::uint64_t now, int direction, bool airborne, bool safe,
-                 bool prepared_air, std::uint64_t recognized_at) noexcept {
+                 bool prepared_air, std::uint64_t recognized_at,std::uint64_t recognition_id=0) noexcept {
         if (!safe || requested_ || (direction != -1 && direction != 1)) return false;
         if (prepared_air && (now < recognized_at || now - recognized_at > air_request_ms)) return false;
         hard_reset_ = false; requested_ = direction;
         // Airborne waiting never renews preparation lifetime. A first admitted
         // ground execution begins the separate existing landing-settling clock.
         requested_at_ = prepared_air && airborne ? recognized_at : now;
-        recognized_at_ = recognized_at;
+        recognized_at_ = recognized_at;recognition_id_=recognition_id;
         air_prepared_ = prepared_air; landed_ = !airborne;
         confirmed_ = wrong_contact_ = false;
         return true;
@@ -123,6 +125,6 @@ public:
 private:
     bool hard_reset_{}, clocked_{}, confirmed_{}, air_prepared_{}, landed_{}, wrong_contact_{};
     int requested_{};
-    std::uint64_t last_{}, requested_at_{}, recognized_at_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
+    std::uint64_t last_{}, requested_at_{}, recognized_at_{}, recognition_id_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };
 }

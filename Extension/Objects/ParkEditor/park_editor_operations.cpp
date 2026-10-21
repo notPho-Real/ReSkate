@@ -128,7 +128,7 @@ std::string edit_local_park(std::string_view operation, std::string_view map, st
         } else if (operation != "mod-open" && operation != "mod-load" && operation != "new")
             throw std::runtime_error("Unknown park editor operation.");
         begin(std::move(target), 0);
-        if (operation == "mod-open" || operation == "mod-load")
+        if ((operation == "mod-open" || operation == "mod-load") && e.transaction)
             e.status = "Loading " + title_of(argument) + "...";
         return e.status;
     } catch (const std::exception &error) {

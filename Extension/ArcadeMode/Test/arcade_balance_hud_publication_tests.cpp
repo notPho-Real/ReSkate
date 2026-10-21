@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_combo_session.h"
+#include "Extension/ArcadeMode/arcade_balance_hud_lease.h"
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
@@ -12,6 +13,9 @@
 namespace {
 std::atomic<std::uint64_t> clock_ms{};
 unsigned checks{};
+unsigned render_receipts{};
+dingosdk::arcade_mode::BalanceHudSource last_render_source{};
+std::uint64_t last_render_frame{},last_render_ms{};
 }
 namespace dingosdk::arcade_mode {
 std::uint64_t balance_hud_test_now() noexcept { return clock_ms.load(std::memory_order_acquire); }
@@ -21,6 +25,9 @@ std::uint64_t balance_hud_test_now() noexcept { return clock_ms.load(std::memory
 
 namespace {
 using namespace dingosdk::arcade_mode;
+void render_receipt(BalanceHudSource source,std::uint64_t frame,std::uint64_t ms) noexcept {
+    ++render_receipts;last_render_source=source;last_render_frame=frame;last_render_ms=ms;
+}
 void require(bool condition, const char* label) {
     ++checks;
     if (!condition) {
@@ -294,6 +301,24 @@ int main() {
 
     lifecycle_frames(30);
     lifecycle_frames(60);
+    set_balance_hud_render_ack(render_receipt);
+    clock_ms.store(160000);
+    BalanceHudSource source{160000,true};
+    source.capture=7;source.request=9;source.owner_generation=11;source.publication=13;
+    publish_balance_hud(active(),0,source);
+    require(render_receipts==0,"store acknowledgement does not claim an actual render");
+    drawn(true,"fresh tagged Manual submits its actual geometry");
+    require(render_receipts==1&&last_render_source.capture==7&&last_render_source.request==9&&
+            last_render_source.publication==13&&last_render_frame>0&&last_render_ms==160000,
+            "render callback receives the exact tagged draw and original render clock");
+    clock_ms.store(160151);
+    drawn(false,"expired tagged publication cannot submit geometry");
+    require(render_receipts==1,"expired source never receives a render acknowledgement");
+    clock_ms.store(160152);
+    publish_balance_hud(active(),0,{160152,true});
+    drawn(true,"untagged gameplay HUD remains visible");
+    require(render_receipts==1,"ordinary HUD cannot fabricate a capture receipt");
+    set_balance_hud_render_ack(nullptr);
     ImGui::DestroyContext();
     std::cout << checks << " HUD publication, pending and actual draw checks passed\n";
 }

@@ -1,0 +1,121 @@
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include <array>
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+#include <thread>
+#include <variant>
+
+struct PausedPublication {
+    static inline std::atomic<bool> entered{},resume{};
+    void operator()() const noexcept {
+        entered.store(true,std::memory_order_release);
+        while(!resume.load(std::memory_order_acquire))std::this_thread::yield();
+    }
+};
+
+namespace dingosdk::arcade_mode {
+namespace {
+InputTelemetry capture_telemetry;
+InputTelemetryLink input_telemetry;
+CaptureCorrelationProducer input_capture_correlation;
+std::atomic<bool> controller_capture_live{},capture_render_ack_lost{},capture_transport_pending{};
+std::atomic<std::uint64_t> capture_abandoned_id{},capture_abandoned_client_barrier{};
+struct Join {std::uint64_t request{};} capture_manual_join;
+unsigned written_begin{},written_end{};
+CaptureCorrelationEvidence last_footer{};
+CaptureBudgetReceipt capture_budget_receipt(std::uint64_t = UINT64_MAX) noexcept {
+    CaptureBudgetReceipt r;r.file_valid=r.queue_valid=true;
+    r.file_id=1;r.volume=1;r.prefix_hash=1;r.file_bytes=1024;r.file_records=10;
+    return r;
+}
+bool write_capture_correlation(const CaptureCorrelationEvidence& row) noexcept {
+    if(row.kind==CaptureCorrelationKind::begin)++written_begin;
+    if(row.kind==CaptureCorrelationKind::end){++written_end;last_footer=row;}
+    return capture_correlation_valid(row);
+}
+@@PRODUCTION_CAPTURE_ROW@@
+@@PRODUCTION_RETIRE@@
+@@PRODUCTION_CONSUME@@
+unsigned checks{};
+void check(bool condition,const char* message){
+    ++checks;if(!condition){std::cerr<<message<<'\n';std::exit(1);}
+}
+NativeInputFrame frame(std::uint64_t ms) {
+    NativeInputFrame f;f.valid=true;f.owner={1,2,3,4,5};
+    f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;
+    f.sampled_at=ms;return f;
+}
+void drain_cycle(CaptureCorrelationDrain& drain,std::uint64_t now) {
+    std::array<ClientTelemetry,16> rows{};
+    const auto count=capture_telemetry.client.take(rows);
+    for(std::size_t i=0;i<count;++i)
+        if(const auto* capture=std::get_if<CaptureCorrelationEvidence>(&rows[i]))
+            consume_capture_row(drain,capture_telemetry,*capture,now);
+    retire_abandoned_capture(drain,capture_telemetry);
+}
+bool start(std::uint64_t now,unsigned scope=255) {
+    capture_transport_pending.store(scope==255);
+    if(scope==255)capture_telemetry.begin_capture_accounting();
+    controller_capture_live.store(true);
+    return input_capture_correlation.begin(now,1000,scope,frame(now),capture_telemetry.client.dropped(),capture_row);
+}
+}
+}
+int main() {
+    using namespace dingosdk::arcade_mode;
+    InputTelemetryQueue<unsigned,4,PausedPublication> paused_queue;
+    paused_queue.start_accounting();
+    bool published{};
+    std::thread producer([&]{published=paused_queue.push(7);});
+    while(!PausedPublication::entered.load(std::memory_order_acquire))std::this_thread::yield();
+    const auto reserved=paused_queue.retirement_barrier();
+    check(reserved==1&&paused_queue.consumed_through()==0&&
+          paused_queue.counters().emitted==paused_queue.counters().drained&&
+          !capture_queue_barrier_reached(paused_queue,reserved),
+          "paused earlier reservation fools emitted/drained equality but not the ordered barrier");
+    PausedPublication::resume.store(true,std::memory_order_release);
+    producer.join();
+    std::array<unsigned,4> paused_rows{};
+    check(published&&paused_queue.take(paused_rows)==1&&paused_rows[0]==7&&
+          capture_queue_barrier_reached(paused_queue,reserved),
+          "only actual publication and ordered consumption cross the retirement barrier");
+    paused_queue.stop_accounting();
+    input_telemetry.publish(capture_telemetry);
+    CaptureCorrelationDrain drain;
+    check(start(1000),"normal semantic capture begins");
+    check(controller_capture_live.load(),"controller gate is live only during capture");
+    input_capture_correlation.end(1010,frame(1010),capture_telemetry.client.dropped(),capture_row);
+    check(!controller_capture_live.load()&&capture_transport_pending.load()&&
+          capture_abandoned_id.load()==0,"normal end closes controller gate before worker footer");
+    drain_cycle(drain,1020);
+    check(written_begin==1&&written_end==1&&!capture_transport_pending.load(),
+          "normal worker footer releases transport after writing");
+    check(start(1100),"normal footer permits a new capture");
+    for(unsigned i=0;i<63;++i)
+        check(capture_telemetry.client.push(ClientTelemetry{Observation{}}),"fill client queue before footer");
+    check(capture_telemetry.client.counters().backlog==64,"footer sees a physically full client queue");
+    input_capture_correlation.end(1110,frame(1110),capture_telemetry.client.dropped(),capture_row);
+    check(!controller_capture_live.load()&&capture_transport_pending.load()&&
+          capture_abandoned_id.load()==2&&
+          capture_abandoned_client_barrier.load()==capture_telemetry.client.retirement_barrier()&&written_end==1,
+          "lost footer closes controller hook but blocks rearm and never fakes a written footer");
+    for(unsigned i=0;i<3;++i){
+        drain_cycle(drain,1120+i);
+        check(capture_transport_pending.load(),"partial drain cannot reopen capture");
+    }
+    drain_cycle(drain,1124);
+    check(!capture_transport_pending.load()&&capture_abandoned_id.load()==0&&written_end==1,
+          "full preceding-row drain retires lost-footer accounting without inventing a footer");
+    check(start(1200),"worker retirement permits a clean third capture");
+    input_capture_correlation.end(1210,frame(1210),capture_telemetry.client.dropped(),capture_row);
+    drain_cycle(drain,1220);
+    check(written_begin==3&&written_end==2&&!capture_transport_pending.load(),
+          "capture rearm writes only the third real footer");
+    check(start(1300,96),"legacy observational capture begins");
+    input_capture_correlation.end(1310,frame(1310),capture_telemetry.client.dropped(),capture_row);
+    check(!controller_capture_live.load()&&capture_abandoned_id.load()==0,
+          "legacy end keeps its controller gate teardown");
+    drain_cycle(drain,1320);
+    std::cout<<checks<<" exact production capture-teardown checks passed\n";
+}

@@ -258,6 +258,43 @@ bool write_command_evidence(std::string_view message) noexcept {
         return s.file_output.load();
     }catch(...){return false;}
 }
+ActiveLogReceipt active_log_receipt(std::uint64_t prefix_bytes) noexcept {
+    detail::PreserveError preserve;
+    ActiveLogReceipt receipt;
+    try {
+        auto& s=state();std::lock_guard lock(s.mutex);
+        if(!s.initialized||!s.file_output.load())return receipt;
+        FileLock file_lock;
+        const auto path=s.options.directory/L"ReSkate.log";
+        const HANDLE file=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,
+            nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        if(file==INVALID_HANDLE_VALUE)return receipt;
+        struct Close {HANDLE handle;~Close(){CloseHandle(handle);}} close{file};
+        BY_HANDLE_FILE_INFORMATION info{};LARGE_INTEGER size{};
+        if(!GetFileInformationByHandle(file,&info)||!GetFileSizeEx(file,&size)||size.QuadPart<0||
+           static_cast<std::uint64_t>(size.QuadPart)>detail::log_segment_bytes||
+           (prefix_bytes!=UINT64_MAX&&prefix_bytes>static_cast<std::uint64_t>(size.QuadPart)))return receipt;
+        receipt.file_id=(static_cast<std::uint64_t>(info.nFileIndexHigh)<<32)|info.nFileIndexLow;
+        receipt.volume=info.dwVolumeSerialNumber;
+        receipt.bytes=static_cast<std::uint64_t>(size.QuadPart);
+        const auto limit=prefix_bytes==UINT64_MAX?receipt.bytes:prefix_bytes;
+        receipt.prefix_hash=14695981039346656037ull;
+        std::array<char,4096> data{};std::uint64_t read_total{};char final{};
+        while(read_total<receipt.bytes){
+            DWORD n{};const auto need=static_cast<DWORD>(std::min<std::uint64_t>(data.size(),receipt.bytes-read_total));
+            if(!ReadFile(file,data.data(),need,&n,nullptr)||n!=need)return {};
+            for(DWORD i=0;i<n;++i){
+                const auto at=read_total+i;
+                if(at<limit){receipt.prefix_hash^=static_cast<unsigned char>(data[i]);receipt.prefix_hash*=1099511628211ull;}
+                if(data[i]=='\n')++receipt.records;
+                final=data[i];
+            }
+            read_total+=n;
+        }
+        receipt.valid=!receipt.bytes||final=='\n';
+    }catch(...){return {};}
+    return receipt;
+}
 void write(Level level, Context context, Channel channel, std::string_view message) noexcept {
     detail::PreserveError preserve;
     try {
