@@ -3,6 +3,7 @@
 #include "bootstrap.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Log/logging.h"
+#include "Engine/Core/Platform/launcher_support.h"
 #include "Engine/Core/Profiling/profiler.h"
 #include "Extension/Settings/engine_tweaks.h"
 #include "Extension/Settings/replay_guard.h"
@@ -91,6 +92,24 @@ extern "C" __declspec(dllexport) BOOL WINAPI DingoSDKDebugInitialize() {
         r.base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
         const auto logging_options = dingosdk::logging::options_from_environment();
         const bool files_ready = dingosdk::logging::initialize(logging_options);
+        // Identify the module selected by the loader, independently of log level.
+        // This hashes its backing file, not relocated in-memory image bytes.
+        try {
+            HMODULE module{};
+            std::array<wchar_t, 32768> path{};
+            if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    reinterpret_cast<LPCWSTR>(&DingoSDKDebugInitialize), &module))
+                throw std::runtime_error("Runtime module identity unavailable");
+            const auto length = GetModuleFileNameW(module, path.data(), static_cast<DWORD>(path.size()));
+            if (!length || length >= path.size()) throw std::runtime_error("Runtime module path unavailable");
+            if (!dingosdk::logging::write_session_record(std::format(
+                    "role=runtime phase=module_observed module_file_sha256={} loaded_memory_sha256=UNVERIFIED",
+                    dingosdk::launcher::sha256_file(std::filesystem::path(path.data())))))
+                throw std::runtime_error("Runtime identity record unavailable");
+        } catch (...) {
+            dingosdk::logging::write(dingosdk::logging::Level::warning, dingosdk::logging::Channel::runtime,
+                "Runtime module identity was not retained; loaded identity remains unverified.");
+        }
         dingosdk::logging::startup_banner();
         if (!files_ready) dingosdk::logging::write(dingosdk::logging::Level::warning,
             dingosdk::logging::Channel::runtime, "File logging is unavailable; console and debugger output remain active.");
@@ -498,6 +517,9 @@ extern "C" __declspec(dllexport) BOOL WINAPI DingoSDKDebugInitialize() {
         if (!r.native_loading_logging) dingosdk::logging::write(dingosdk::logging::Level::warning,
             dingosdk::logging::Channel::ui, "Native ReSkate menu disabled: shutdown cleanup hook is unavailable.");
         r.initialized = true;
+        if (!dingosdk::logging::write_session_record("role=runtime phase=initialized image_validation=passed"))
+            dingosdk::logging::write(dingosdk::logging::Level::warning, dingosdk::logging::Channel::runtime,
+                "Runtime initialization session record unavailable.");
         if (global_offline_requested)
             record("{\"event\":\"launcher_readiness\",\"ready\":true}");
         record("{\"event\":\"debug_initialized\",\"overlay\":true,\"native_load\":\"guarded_local_only\"}");

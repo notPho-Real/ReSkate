@@ -6,6 +6,7 @@
 
 namespace dingosdk::logging {
 enum class Level { trace, debug, info, success, warning, error, critical, off };
+inline constexpr Level default_level = Level::warning;
 // Native execution context is independent of the feature/channel. For example,
 // both client and server can report Player or Level messages.
 enum class Context { sdk, client, server, ui, engine, filesystem, material, audio, count };

@@ -12,14 +12,14 @@
 namespace dingosdk::logging {
 struct Options {
     std::filesystem::path directory;
-    Level level{Level::info};
+    Level level{default_level};
     bool external_console{};
-    // The launcher resets the file before starting the child; the runtime appends.
+    // The launcher rotates the file before starting the child; the runtime appends.
     bool truncate_file{};
 };
 struct Status {
     std::filesystem::path directory;
-    Level level{Level::info};
+    Level level{default_level};
     bool initialized{}, file_output{}, external_console{};
 };
 // Initialize outside DllMain and before native hooks. File failures are nonfatal;
@@ -44,6 +44,9 @@ void write(Level level, Channel channel, std::wstring_view message) noexcept;
 // Existing synchronous command/file sinks; false means file delivery was not
 // confirmed. Bounded evidence accounting must count this result, not enqueue.
 bool write_command_evidence(std::string_view message) noexcept;
+// Small explicit process/session records, retained separately from verbose logs.
+// Observed module-file hashes are not hashes of loaded memory or admission proof.
+bool write_session_record(std::string_view message) noexcept;
 void vprintf(Level level, Channel channel, const char* format, va_list args) noexcept;
 void printf(Level level, Channel channel, const char* format, ...) noexcept;
 template<class... Args>

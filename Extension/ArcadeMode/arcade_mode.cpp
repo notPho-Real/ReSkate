@@ -1267,6 +1267,8 @@ bool start(std::uintptr_t image_base) noexcept {
     logging::log(logging::Level::info, logging::Channel::skater,
         "Arcade Mode ready (controller observer and experimental A-to-native-input ollie).");
     ready.store(true, std::memory_order_release);
+    if (!logging::write_session_record("role=runtime phase=arcade_ready native_action_acceptance=UNVERIFIED"))
+        logging::write(logging::Level::warning, logging::Channel::runtime, "Arcade session record unavailable.");
     return true;
 }
 

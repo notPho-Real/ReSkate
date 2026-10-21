@@ -185,7 +185,7 @@ struct Settings {
     bool offline{};
     int menu_key{static_cast<int>(launcher::default_menu_key)};
     int console_key{static_cast<int>(launcher::default_console_key)};
-    int log_level{2};
+    int log_level{3};
     std::string arguments;
     bool keep_open_after_launch{};
     // Off: never replace ReSkate.dll or the launcher (keeps a test build someone handed out).

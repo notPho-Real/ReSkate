@@ -1,4 +1,5 @@
 #include "logging_internal.h"
+#include "rotating_file.h"
 #include "Engine/Core/Debug/crash_report.h"
 #include "Engine/Core/Debug/trace.h"
 #include "Engine/Core/Console/console_core.h"
@@ -25,36 +26,44 @@ spdlog::level::level_enum native_level(Level level) noexcept {
     default: return spdlog::level::info;
     }
 }
-// FILE_APPEND_DATA chooses EOF for each WriteFile, including writes from the
-// launcher while the runtime is initializing. No independent buffered offsets.
+// Both launcher and runtime take this lock and close the file after each write.
+// Keep lock contention bounded; never wait indefinitely inside a game hook.
+class FileLock {
+public:
+    FileLock() {
+        mutex_ = CreateMutexW(nullptr, FALSE, L"Local\\ReSkateBoundedLogV1");
+        if (!mutex_) throw std::runtime_error("Cannot create log lock");
+        const auto result = WaitForSingleObject(mutex_, 10);
+        if (result != WAIT_OBJECT_0) {
+            if (result == WAIT_ABANDONED) ReleaseMutex(mutex_);
+            CloseHandle(mutex_); mutex_ = nullptr;
+            throw std::runtime_error("Log lock unavailable; evidence delivery unconfirmed");
+        }
+    }
+    ~FileLock() { if (mutex_) { ReleaseMutex(mutex_); CloseHandle(mutex_); } }
+    FileLock(const FileLock&) = delete;
+    FileLock& operator=(const FileLock&) = delete;
+private:
+    HANDLE mutex_{};
+};
 class SharedFile final : public spdlog::sinks::base_sink<std::mutex> {
 public:
-    SharedFile(const std::filesystem::path& path, bool truncate) {
-        constexpr DWORD sharing = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
-        if (truncate) {
-            const auto reset = CreateFileW(path.c_str(), GENERIC_WRITE, sharing, nullptr,
-                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (reset == INVALID_HANDLE_VALUE) spdlog::throw_spdlog_ex("Cannot reset ReSkate.log", GetLastError());
-            CloseHandle(reset);
-        }
-        file_ = CreateFileW(path.c_str(), FILE_APPEND_DATA, sharing, nullptr,
-            OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (file_ == INVALID_HANDLE_VALUE) spdlog::throw_spdlog_ex("Cannot open ReSkate.log", GetLastError());
+    SharedFile(const std::filesystem::path& path, bool truncate)
+        : file_(path, detail::log_segment_bytes, 2) {
+        FileLock lock;
+        file_.start_session(truncate); // Preserve the last session instead of truncating it.
     }
-    ~SharedFile() override { if (file_ != INVALID_HANDLE_VALUE) CloseHandle(file_); }
 private:
     void sink_it_(const spdlog::details::log_msg& message) override {
         spdlog::memory_buf_t formatted;
         formatter_->format(message, formatted);
-        DWORD written{};
-        if (!WriteFile(file_, formatted.data(), static_cast<DWORD>(formatted.size()), &written, nullptr))
-            spdlog::throw_spdlog_ex("Cannot write ReSkate.log", GetLastError());
-        if (written != formatted.size()) spdlog::throw_spdlog_ex("Incomplete write to ReSkate.log");
+        FileLock lock;
+        file_.append(std::string_view(formatted.data(), formatted.size()));
     }
     // WriteFile already handed each message to Windows. Avoid durable disk
     // flushes in game hooks; crashes perform a final best-effort flush directly.
     void flush_() override {}
-    HANDLE file_{INVALID_HANDLE_VALUE};
+    detail::RotatingFile file_;
 };
 class WindowConsole final : public spdlog::sinks::base_sink<std::mutex> {
 public:
@@ -116,7 +125,7 @@ struct RepeatedMessage {
 };
 struct State {
     std::mutex mutex;
-    std::atomic<Level> level{Level::info};
+    std::atomic<Level> level{default_level};
     std::atomic<bool> file_output{};
     bool initialized{}, console{};
     Options options;
@@ -198,6 +207,31 @@ bool initialize(const Options& options) noexcept {
         return s.file_output.load();
     } catch (...) {
         OutputDebugStringA("ReSkate logging initialization failed; debugger output remains available.\n");
+        return false;
+    }
+}
+bool write_session_record(std::string_view message) noexcept {
+    detail::PreserveError preserve;
+    try {
+        if (message.empty() || message.size() > 4096 || message.find_first_of("\r\n") != std::string_view::npos)
+            return false;
+        auto& s = state();
+        std::lock_guard lock(s.mutex);
+        if (!s.initialized) return false;
+        FILETIME creation{}, exit_time{}, kernel_time{}, user_time{}, observed{};
+        if (!GetProcessTimes(GetCurrentProcess(), &creation, &exit_time, &kernel_time, &user_time)) return false;
+        GetSystemTimeAsFileTime(&observed);
+        const auto ticks = [](FILETIME value) {
+            return (static_cast<std::uint64_t>(value.dwHighDateTime) << 32) | value.dwLowDateTime;
+        };
+        const auto record = std::format("SESSION schema=1 pid={} process_created_100ns={} observed_100ns={} {}\n",
+            GetCurrentProcessId(), ticks(creation), ticks(observed), message);
+        FileLock file_lock;
+        detail::RotatingFile file(s.options.directory / L"ReSkate.session.log", detail::session_segment_bytes, 1);
+        file.append(record);
+        return true;
+    } catch (...) {
+        OutputDebugStringA("ReSkate session record delivery failed; identity remains unverified.\n");
         return false;
     }
 }

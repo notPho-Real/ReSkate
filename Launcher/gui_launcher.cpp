@@ -56,7 +56,7 @@ Settings load_settings(const fs::path& path) {
             settings.menu_key = static_cast<int>(launcher::default_menu_key);
             settings.console_key = static_cast<int>(launcher::default_console_key);
         }
-        const auto level = json.value("log_level", std::string("info"));
+        const auto level = json.value("log_level", std::string("warning"));
         for (std::size_t index = 0; index < log_levels.size(); ++index)
             if (level == log_levels[index]) settings.log_level = static_cast<int>(index);
         settings.arguments = json.value("arguments", std::string());

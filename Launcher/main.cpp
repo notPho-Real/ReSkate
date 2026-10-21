@@ -112,7 +112,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
     int result = 0;
     fs::path logs;
     try {
-        std::string log_level = "info";
+        std::string log_level = "warning";
         if (headless) log_level = dingosdk::launcher::parse_launch_options(
             [&] { auto copy = arguments; take_flag(copy, L"--no-update"); take_flag(copy, L"--reskate-updated"); return copy; }()).log_level;
         dingosdk::launcher_gui::apply_crash_report_setting();

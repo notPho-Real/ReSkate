@@ -26,6 +26,28 @@ if(WIN32)
 endif()
 
 option(DINGOSDK_BUILD_TESTS "Build logging regression tests" OFF)
+if(DINGOSDK_BUILD_TESTS)
+    enable_testing()
+    add_executable(dingosdk_rotating_log_tests Engine/Core/Log/Test/rotating_file_tests.cpp)
+    target_include_directories(dingosdk_rotating_log_tests PRIVATE "${PROJECT_SOURCE_DIR}")
+    add_test(NAME rotating_log COMMAND dingosdk_rotating_log_tests "${CMAKE_CURRENT_BINARY_DIR}/rotating-log-fixture")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(rotating_rollback_header "${CMAKE_CURRENT_BINARY_DIR}/rotating-log-rollback/Engine/Core/Log/rotating_file.h")
+    set(rotating_rollback_script "${PROJECT_SOURCE_DIR}/Engine/Core/Log/Test/startup_rollback.py")
+    add_custom_command(OUTPUT "${rotating_rollback_header}"
+        COMMAND "${Python3_EXECUTABLE}" "${rotating_rollback_script}"
+            --header "${PROJECT_SOURCE_DIR}/Engine/Core/Log/rotating_file.h" --output "${rotating_rollback_header}"
+        DEPENDS "${rotating_rollback_script}" "${PROJECT_SOURCE_DIR}/Engine/Core/Log/rotating_file.h"
+        VERBATIM)
+    add_executable(dingosdk_rotating_log_startup_rollback Engine/Core/Log/Test/rotating_file_tests.cpp "${rotating_rollback_header}")
+    target_include_directories(dingosdk_rotating_log_startup_rollback PRIVATE
+        "${CMAKE_CURRENT_BINARY_DIR}/rotating-log-rollback" "${PROJECT_SOURCE_DIR}")
+    add_dependencies(dingosdk_rotating_log_tests dingosdk_rotating_log_startup_rollback)
+    add_test(NAME rotating_log_startup_rollback COMMAND "${Python3_EXECUTABLE}" "${rotating_rollback_script}"
+        --binary $<TARGET_FILE:dingosdk_rotating_log_startup_rollback>
+        --fixture "${CMAKE_CURRENT_BINARY_DIR}/rotating-log-startup-rollback-fixture")
+    set_tests_properties(rotating_log_startup_rollback PROPERTIES TIMEOUT 75)
+endif()
 option(DINGOSDK_BUILD_PARK_EDITOR_TESTS "Build park editor regression tests" OFF)
 option(DINGOSDK_BUILD_TRAINER_TESTS "Build the trainer's tools and regression tests" OFF)
 if(DINGOSDK_BUILD_PARK_EDITOR_TESTS)

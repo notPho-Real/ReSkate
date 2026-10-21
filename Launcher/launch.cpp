@@ -460,7 +460,7 @@ Session open_session(const std::string& log_level) {
     logging::Options logging_options;
     logging_options.directory = session.paths.logs;
     logging_options.truncate_file = true;
-    logging_options.level = logging::parse_level(log_level).value_or(logging::Level::info);
+    logging_options.level = logging::parse_level(log_level).value_or(logging::Level::warning);
     if (!logging::initialize(logging_options)) logging::write(logging::Level::warning,
         logging::Channel::launcher, "File logging is unavailable; debugger output remains active.");
     logging::write(logging::Level::info, logging::Channel::launcher, L"ReSkate launcher starting");
@@ -656,6 +656,9 @@ DWORD start_game(const Session& session, const launcher::LaunchOptions& options,
     launcher::validate_steam_api_file(paths.steam_api);
     logging::write(logging::Level::info, logging::Channel::launcher, L"Launcher SHA-256: " + widen(launcher::sha256_file(self)));
     logging::write(logging::Level::info, logging::Channel::launcher, L"Runtime SHA-256: " + widen(launcher::sha256_file(paths.dll)));
+    if (!logging::write_session_record(std::format("role=launcher phase=validated_files runtime_file_sha256={} launcher_file_sha256={}",
+            launcher::sha256_file(paths.dll), launcher::sha256_file(self))))
+        logging::write(logging::Level::warning, logging::Channel::launcher, "Session file identity was not retained.");
     const auto dll_info = launcher::inspect_pe_file(paths.dll);
     if (!dll_info.pe64 || dll_info.machine != IMAGE_FILE_MACHINE_AMD64 ||
         !(dll_info.characteristics & IMAGE_FILE_DLL) ||

@@ -31,9 +31,16 @@ LONG WINAPI unhandled(EXCEPTION_POINTERS* exception) {
             hex("access_type", exception->ExceptionRecord->ExceptionInformation[0]);
             hex("access_address", exception->ExceptionRecord->ExceptionInformation[1]);
         }
-        const auto file = CreateFileW(report_path.data(), FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        // Separate bounded failure evidence; never race the rotating normal log.
+        // Exclusive writer access makes size check + append one crash operation.
+        const auto file = CreateFileW(report_path.data(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (file != INVALID_HANDLE_VALUE) {
-            DWORD written{}; WriteFile(file, text, static_cast<DWORD>(used), &written, nullptr);
+            LARGE_INTEGER size{}, end{};
+            if (GetFileSizeEx(file, &size) && size.QuadPart >= 0 &&
+                    static_cast<unsigned long long>(size.QuadPart) + used <= 16 * 1024 &&
+                    SetFilePointerEx(file, end, nullptr, FILE_END)) {
+                DWORD written{}; WriteFile(file, text, static_cast<DWORD>(used), &written, nullptr);
+            } else OutputDebugStringA("ReSkate fatal log retention full or unavailable; crash reporter remains active.\n");
             FlushFileBuffers(file); CloseHandle(file);
         }
     }
@@ -44,7 +51,7 @@ LONG WINAPI unhandled(EXCEPTION_POINTERS* exception) {
 void install_crash_report(const std::filesystem::path& directory) noexcept {
     try {
         if (installed) return;
-        const auto path = (directory / L"ReSkate.log").wstring();
+        const auto path = (directory / L"ReSkate.fatal.log").wstring();
         if (path.size() >= report_path.size()) return;
         std::copy(path.begin(), path.end(), report_path.begin()); report_path[path.size()] = 0;
         reporting = 0;

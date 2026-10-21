@@ -51,7 +51,7 @@ struct LaunchOptions {
     // --console-key); passed to the game as RESKATE_MENU_KEY / RESKATE_CONSOLE_KEY.
     unsigned menu_key{0x2D};     // VK_INSERT
     unsigned console_key{0xC0};  // VK_OEM_3, the key left of 1
-    std::string log_level{"info"};
+    std::string log_level{"warning"};
     // -map <name>: the map the game loads once it is up, named as the console's "load" names
     // one (a map's name, short name or asset path, or the start of one). Empty: none.
     std::wstring map;
