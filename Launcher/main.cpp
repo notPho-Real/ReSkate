@@ -104,6 +104,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
         LocalFree(argv);
         return result;
     }
+    if (argc > 1 && std::wstring_view(argv[1]) == L"--observe-process") {
+        const auto result = app::observe_process(argc, argv);
+        LocalFree(argv);
+        return result;
+    }
     const std::vector<std::wstring> original(argv + 1, argv + argc);
     LocalFree(argv);
     auto arguments = original;

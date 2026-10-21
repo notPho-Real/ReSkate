@@ -5,6 +5,8 @@
 #include "Engine/Vfs/content_cache_install.h"
 #include "Engine/Vfs/world_layer_scan.h"
 #include "launch.h"
+#include "child_identity.h"
+#include <charconv>
 #include "text_encoding.h"
 #include "Engine/Game/Build/addresses.h"
 #include "Engine/Game/Build/20260929/runtime.h"
@@ -332,7 +334,7 @@ bool remote_matches(HANDLE process, std::uintptr_t address,
         actual.size(), &count) && count == actual.size() && actual == expected;
 }
 
-std::uintptr_t validate_child_image(HANDLE process, const fs::path& game) {
+std::uintptr_t validate_child_image(HANDLE process, const fs::path& game, bool check_code = true) {
     std::vector<wchar_t> path(32768);
     DWORD length = static_cast<DWORD>(path.size());
     if (!QueryFullProcessImageNameW(process, 0, path.data(), &length))
@@ -351,6 +353,9 @@ std::uintptr_t validate_child_image(HANDLE process, const fs::path& game) {
         nt.OptionalHeader.SizeOfImage != dingosdk::launcher::expected_game_image_size)
         throw std::runtime_error("Created process has the wrong loaded image identity");
 
+    // Post-initialization observers retain path and PE identity; installed hooks
+    // legitimately change code fingerprints. This is not loaded-memory hashing.
+    if (!check_code) return base;
     // The same code fingerprints ReSkate.dll checks before it initializes.
     namespace image = dingosdk::addr::runtime;
     if (!remote_matches(process, base + image::client_tick, image::client_tick_prefix))
@@ -451,6 +456,82 @@ RemoteModule inject_dll(HANDLE process, const fs::path& dll) {
 } // namespace
 
 namespace dingosdk::launcher_app {
+
+namespace {
+std::uint64_t filetime_ticks(FILETIME value) noexcept {
+    return (static_cast<std::uint64_t>(value.dwHighDateTime) << 32) | value.dwLowDateTime;
+}
+identity::Observation observe_child_handle(HANDLE process, const launcher::SiblingPaths& paths,
+                                           const std::string& expected_hash) {
+    identity::Observation result;
+    result.pid = GetProcessId(process);
+    FILETIME creation{}, exit_time{}, kernel{}, user{}, wall{};
+    if (!GetProcessTimes(process, &creation, &exit_time, &kernel, &user)) win32_failure(L"Query child creation time");
+    result.created = filetime_ticks(creation);
+    (void)validate_child_image(process, paths.game, false);
+    result.image_matches = true;
+    (void)find_remote_module(process, paths.dll);
+    result.module_matches = launcher::sha256_file(paths.dll) == expected_hash;
+    GetSystemTimeAsFileTime(&wall);
+    result.observed = filetime_ticks(wall);
+    result.tick = GetTickCount64();
+    TIME_ZONE_INFORMATION timezone{};
+    const auto zone = GetTimeZoneInformation(&timezone);
+    if (zone == TIME_ZONE_ID_INVALID) win32_failure(L"Query log clock timezone");
+    const LONG bias = timezone.Bias + (zone == TIME_ZONE_ID_DAYLIGHT ? timezone.DaylightBias :
+        zone == TIME_ZONE_ID_STANDARD ? timezone.StandardBias : 0);
+    result.utc_offset_seconds = -bias * 60;
+    result.alive = WaitForSingleObject(process, 0) == WAIT_TIMEOUT;
+    if (!result.alive) throw std::runtime_error("Observed child has exited or cannot be queried");
+    return result;
+}
+}
+
+// This mode never initializes logging, updates files, starts a child or injects.
+// The caller pins this executable and its Wine context; output is bounded JSON.
+int observe_process(int argc, wchar_t** argv) noexcept {
+    try {
+        if (argc != 7) return 2;
+        const auto ascii = [](const wchar_t* text) {
+            std::string output;
+            for (std::size_t i = 0; text[i]; ++i) {
+                if (i >= 64 || static_cast<unsigned long>(text[i]) > 127) throw std::runtime_error("Invalid observation argument");
+                output.push_back(static_cast<char>(text[i]));
+            }
+            return output;
+        };
+        const auto number = [&](const wchar_t* text) {
+            const auto value = ascii(text);
+            std::uint64_t parsed{};
+            const auto result = std::from_chars(value.data(), value.data() + value.size(), parsed);
+            if (value.empty() || result.ec != std::errc{} || result.ptr != value.data() + value.size() || !parsed)
+                throw std::runtime_error("Invalid process identity number");
+            return parsed;
+        };
+        const auto pid_value = number(argv[2]);
+        const auto creation = number(argv[3]);
+        if (pid_value > MAXDWORD) return 2;
+        const auto runtime_hash = ascii(argv[4]);
+        const auto context = ascii(argv[5]);
+        const auto challenge = ascii(argv[6]);
+        if (!identity::hex(runtime_hash, 64) || !identity::hex(context, 64) || !identity::hex(challenge, 32)) return 2;
+        const auto self = canonical_file(module_path(), L"ReSkateLauncher.exe");
+        auto paths = launcher::sibling_paths(self);
+        paths.game = canonical_file(paths.game, L"Skate.exe");
+        paths.dll = canonical_file(paths.dll, L"ReSkate.dll");
+        launcher::validate_game_file(paths.game);
+        Handle target(OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE, FALSE, static_cast<DWORD>(pid_value)));
+        if (!target) return 3;
+        const auto first = observe_child_handle(target.get(), paths, runtime_hash);
+        const auto last = observe_child_handle(target.get(), paths, runtime_hash);
+        identity::validate(first, last, static_cast<std::uint32_t>(pid_value), creation);
+        const auto output = identity::response(first, last, runtime_hash, context, challenge);
+        DWORD written{};
+        const auto stream = GetStdHandle(STD_OUTPUT_HANDLE);
+        return output.size() <= 2048 && WriteFile(stream, output.data(), static_cast<DWORD>(output.size()), &written, nullptr) &&
+            written == output.size() ? 0 : 4;
+    } catch (...) { return 3; }
+}
 
 Session open_session(const std::string& log_level) {
     Session session;
@@ -816,6 +897,23 @@ DWORD start_game(const Session& session, const launcher::LaunchOptions& options,
         L"DingoSDKDebugInitialize", initialize_wait_ms);
     if (!initialized) throw std::runtime_error("DingoSDKDebugInitialize returned FALSE");
     logging::write(logging::Level::info, logging::Channel::launcher, L"ReSkate.dll initialization confirmed");
+
+    // Retain the identity obtained from the authoritative created-child handle.
+    // This is launch-time evidence; a later observer must independently recheck
+    // the same PID AND full creation time, image and liveness.
+    try {
+        const auto runtime_hash = launcher::sha256_file(paths.dll);
+        const auto identity_before = observe_child_handle(child.process(), paths, runtime_hash);
+        const auto identity_after = observe_child_handle(child.process(), paths, runtime_hash);
+        identity::validate(identity_before, identity_after, child.id(), identity_before.created);
+        if (!logging::write_session_record(std::format(
+                "role=launcher phase=child_initialized child_pid={} child_created_100ns={} runtime_file_sha256={}",
+                child.id(), identity_before.created, runtime_hash)))
+            logging::write(logging::Level::warning, logging::Channel::launcher, "Child identity record unavailable.");
+    } catch (...) {
+        logging::write(logging::Level::warning, logging::Channel::launcher,
+            "Child identity observation unavailable; session remains unverified.");
+    }
 
     loader_gate.resume();
     child.release();

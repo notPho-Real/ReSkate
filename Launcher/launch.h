@@ -10,6 +10,9 @@
 
 namespace dingosdk::launcher_app {
 
+// Read-only bounded process observer; handled before launcher session startup.
+int observe_process(int argc, wchar_t** argv) noexcept;
+
 struct Session {
     std::filesystem::path self;
     launcher::SiblingPaths paths;
