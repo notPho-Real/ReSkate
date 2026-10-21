@@ -17,10 +17,10 @@ public:
     std::optional<Ticket> ticket() const noexcept {
         return result_ == NativeBailResult::queued ? std::optional(Ticket{owner_, serial_}) : std::nullopt;
     }
-    std::uint64_t queue(const Owner& owner, std::uint64_t now) noexcept {
+    std::uint64_t queue(const Owner& requested_owner, std::uint64_t now) noexcept {
         if (result_ == NativeBailResult::delivered ||
             (result_ == NativeBailResult::queued && now < until_)) return 0;
-        owner_ = owner;
+        owner_ = requested_owner;
         until_ = now + 300;
         ++serial_;
         result_ = NativeBailResult::queued;

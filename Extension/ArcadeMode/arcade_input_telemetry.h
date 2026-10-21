@@ -308,7 +308,7 @@ public:
     InputTelemetryQueue() noexcept {
         for (std::size_t i = 0; i < N; ++i) rows_[i].turn.store(i, std::memory_order_relaxed);
     }
-    void attach(CaptureArrivalMeter& meter) noexcept {arrival_meter_=&meter;}
+    void attach(CaptureArrivalMeter& capture_arrival_meter) noexcept {arrival_meter_=&capture_arrival_meter;}
     void start_accounting() noexcept {
         attempted_.store(0,std::memory_order_relaxed);
         published_.store(0,std::memory_order_relaxed);
