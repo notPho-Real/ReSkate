@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "local_profile_preference_snapshot.h"
 #include "Engine/Core/Json/json.h"
 #include "Extension/Customization/local_customization.h"
 #include "Engine/Game/World/park_rotation.h"
@@ -158,6 +159,8 @@ public:
     std::vector<std::string> completed_challenge_criteria(std::string_view) const;
     std::optional<bool> bool_option(std::string_view) const;
     std::optional<dingosdk::Json> user_value(std::string_view) const;
+    // Fixed diagnostic lookup; never creates, reloads or changes a profile.
+    PreferenceSnapshot arcade_preference_snapshot() const noexcept;
     void set_user_value(std::string_view, const dingosdk::Json&);
     // Several user values in one transaction; each follows set_user_value's rules.
     void set_user_values(const std::vector<std::pair<std::string, dingosdk::Json>>&);

@@ -359,6 +359,26 @@ std::optional<Json> Store::user_value(std::string_view key) const {
     const auto it = values.find(std::string(key));
     return it == values.end() ? std::nullopt : std::optional<Json>(*it);
 }
+PreferenceSnapshot Store::arcade_preference_snapshot() const noexcept {
+    try {
+        std::unique_lock lock(mutex_, std::try_to_lock);
+        if (!lock.owns_lock()) return {};
+        const auto known = [this](PreferenceState state) {
+            return PreferenceSnapshot{state, true, value_.revision};
+        };
+        // Preserve user_value's Boolean-option precedence over legacy settings.
+        const std::string key = "ReSkate.ArcadeMode";
+        if (const auto it = value_.bool_options.find(key); it != value_.bool_options.end())
+            return known(it->second ? PreferenceState::true_value : PreferenceState::false_value);
+        if (!value_.settings.contains("gameplay")) return known(PreferenceState::absent);
+        const auto& values = value_.settings.at("gameplay");
+        if (!values.is_object()) return known(PreferenceState::invalid);
+        const auto it = values.find(key);
+        if (it == values.end()) return known(PreferenceState::absent);
+        if (!it->is_boolean()) return known(PreferenceState::invalid);
+        return known(it->get<bool>() ? PreferenceState::true_value : PreferenceState::false_value);
+    } catch (...) { return {}; }
+}
 void Store::set_user_value(std::string_view key, const Json& value) {
     if (value.is_boolean()) { set_bool_option(key, value.get<bool>()); return; }
     std::lock_guard lock(mutex_);

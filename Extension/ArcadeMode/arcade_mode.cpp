@@ -28,6 +28,7 @@
 #include "arcade_balance_hud.h"
 #include "arcade_grind_runtime.h"
 #include "Engine/Core/Platform/memory.h"
+#include "Engine/Core/Platform/launcher_support.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
@@ -63,6 +64,15 @@ std::atomic<bool> mode_enabled{};
 std::atomic<bool> auto_kick{true};
 std::atomic<SpinMode> selected_spin_mode{SpinMode::held};
 bool preference_loaded{};
+RuntimeSettingsSnapshot read_runtime_settings_snapshot() noexcept {
+    RuntimeSettingsSnapshot snapshot;
+    snapshot.console_key = launcher::overlay_keys().console;
+    snapshot.ready = ready.load(std::memory_order_acquire);
+    snapshot.enabled = mode_enabled.load(std::memory_order_acquire);
+    snapshot.preference = profile_runtime::local_arcade_preference_snapshot();
+    snapshot.sampled_at = GetTickCount64();
+    return snapshot;
+}
 std::uintptr_t score_probe_base{};
 // Only touched by the client thread, after initialization has been published.
 std::uint32_t previous_buttons{};
@@ -771,6 +781,14 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 "ARCADE AUTHORED STATUS: state={}.", r.authored);
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE AUTHORED DIAGNOSTIC: stage={} field={} error={} rejected={}.", r.stage, r.field, r.error, r.rejected);
+            if (runtime_settings_snapshot_valid(r.settings)) {
+                const auto& settings = r.settings;
+                logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE SETTINGS SNAPSHOT: version=1 seq={} ms={} console_vk={} runtime_ready={} runtime_enabled={} preference_state={} store_identity_known=false store_identity=0 revision_known={} revision={} scope=per_field disk_readback=false.",
+                    r.sequence, settings.sampled_at, settings.console_key, settings.ready, settings.enabled,
+                    profile::preference_state_name(settings.preference.state),
+                    settings.preference.revision_known, settings.preference.revision);
+            }
         } else if constexpr (std::is_same_v<T, NativeCaptureEvidence>) {
             if (r.begin) logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE NATIVE CAPTURE: id={} begin=true.", r.id);
@@ -1779,7 +1797,8 @@ void on_client_tick() noexcept {
                 score_numbers.sampled_at, score_numbers.score, score_numbers.multiplier,
                 score_numbers.score_valid, score_numbers.multiplier_valid, authored_status.load(std::memory_order_acquire),
                 authored_stage.load(std::memory_order_acquire), authored_field.load(std::memory_order_acquire),
-                authored_error.load(std::memory_order_acquire), authored_rejected.load(std::memory_order_acquire)});
+                authored_error.load(std::memory_order_acquire), authored_rejected.load(std::memory_order_acquire),
+                read_runtime_settings_snapshot()});
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.

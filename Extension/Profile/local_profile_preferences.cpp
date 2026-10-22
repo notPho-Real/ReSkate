@@ -151,6 +151,15 @@ std::optional<bool> local_preference(std::string_view key) noexcept {
     return {};
 }
 
+profile::PreferenceSnapshot local_arcade_preference_snapshot() noexcept {
+    try {
+        auto& s = local_runtime();
+        std::unique_lock lock(s.native_mutex, std::try_to_lock);
+        if (!lock.owns_lock() || !s.active.load(std::memory_order_acquire) || !s.store) return {};
+        return s.store->arcade_preference_snapshot();
+    } catch (...) { return {}; }
+}
+
 void set_local_preference(std::string_view key, bool value) noexcept {
     try {
         auto& s = local_runtime();

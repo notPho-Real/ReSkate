@@ -9,6 +9,7 @@
 #include "arcade_manual_input.h"
 #include "arcade_fixture_trajectory.h"
 #include "arcade_capture_schema4.h"
+#include "arcade_settings_snapshot.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -66,6 +67,7 @@ struct HeartbeatEvidence {
     bool speed_valid{}, push_valid{}; float speed{}; unsigned contacts{};
     std::uint64_t sampled{}, score{}, multiplier{}; bool score_valid{}, multiplier_valid{};
     unsigned authored{}, stage{}, field{}, error{}, rejected{};
+    RuntimeSettingsSnapshot settings{};
 };
 struct NativeCaptureEvidence { std::uint64_t id{}; bool begin{}; unsigned samples{}; };
 struct NativeSampleEvidence { std::uint64_t id{}, ms{}; NativeRequestSample sample{}; };

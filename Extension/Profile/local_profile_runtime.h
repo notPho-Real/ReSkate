@@ -5,6 +5,7 @@
 #include <optional>
 #include <string_view>
 #include <vector>
+#include "local_profile_preference_snapshot.h"
 #include "Engine/Game/World/park_rotation.h"
 #include "Engine/Game/World/world_layers.h"
 #include "Engine/Game/World/world_controls.h"
@@ -96,6 +97,7 @@ bool set_local_progression(const std::vector<std::string>& arguments);
 namespace profile_runtime {
 bool local_profile_store_ready() noexcept;
 std::optional<bool> local_preference(std::string_view key) noexcept;
+profile::PreferenceSnapshot local_arcade_preference_snapshot() noexcept;
 void set_local_preference(std::string_view key, bool value) noexcept;
 // The same "ReSkate." store for numbers and text. A key keeps the type it was
 // first saved with. set_local_values saves several at once (one transaction).
