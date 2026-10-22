@@ -376,7 +376,7 @@ void update_model(std::uintptr_t client, TickState& frame) {
     if (console_command) {
         ScheduledWorkScope work{r, true};
         const auto started = std::chrono::steady_clock::now();
-        execute_console_command(console_command->text);
+        execute_console_command(console_command->text, console_command->queued_at);
         const auto executed = std::chrono::steady_clock::now();
         refresh_interactive_model(client, state, game_type);
         const auto published = std::chrono::steady_clock::now();

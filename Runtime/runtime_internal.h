@@ -15,6 +15,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -178,7 +179,7 @@ bool queue_multiplayer_command(const char* action, const char* argument, const c
 bool queue_console_command(void*, const char* command, char* result, std::size_t size);
 
 // Scheduled console commands (console_bridge.cpp).
-void execute_console_command(const std::string& command);
+void execute_console_command(const std::string& command, std::chrono::steady_clock::time_point queued_at);
 
 // Main-menu expression hook (menu_entry_hook.cpp).
 void observe_player_card_expression(std::uintptr_t graph, std::uintptr_t runtime_graph, void** inputs);

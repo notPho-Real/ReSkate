@@ -38,6 +38,11 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::enabled() ? "Arcade Mode ON" : "Arcade Mode OFF");
     };
     registry.add(std::move(arcade));
+    auto runtime_reset = action("arcaderuntimereset", "Reset transient Arcade state without changing runtime mode or saved preferences", Group::gameplay);
+    runtime_reset.run = [](const Model&, const Values&, const Output& out) {
+        out(request_arcade_runtime_reset());
+    };
+    registry.add(std::move(runtime_reset));
     auto controller=action("arcadecontroller","Unsaved source binding: slot0..3 and lease1000..300000ms; clear revokes (OFF restores automatic)",Group::gameplay,
         {argument("slot|clear",Type::text,false),argument("milliseconds",Type::unsigned_integer,true)});
     controller.run=[](const Model&,const Values& values,const Output& out){

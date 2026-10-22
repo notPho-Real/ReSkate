@@ -37,6 +37,10 @@ SpinMode spin_mode() noexcept;
 void set_spin_mode(SpinMode mode, bool persist = true) noexcept;
 // Game update thread, via the normal menu/console command dispatcher.
 void set_enabled(bool value, bool persist = true) noexcept;
+// Game-thread dispatcher only. Reset transient state while retaining the exact
+// current runtime mode; refuses until initial preferences have been applied.
+// No deferred restoration and no preference writes.
+bool reset_runtime_transient() noexcept;
 // Explicit finite software source policy, not an engine selected-user claim.
 // Requires mode ON; admission waits for fresh neutral input and native owner.
 // OFF drops the policy; clear blocks all sources until OFF or a new request.

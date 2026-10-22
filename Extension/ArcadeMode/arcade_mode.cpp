@@ -1574,6 +1574,17 @@ void set_enabled(bool value, bool persist) noexcept {
         "ARCADE MODE: enabled={} synthetic_reset=true.", value);
 }
 
+bool reset_runtime_transient() noexcept {
+    // Only the verified game-thread console adapter may enter this path. Both
+    // this flag and initial preference application belong to that same thread.
+    if (!ready.load(std::memory_order_acquire) || !preference_loaded) return false;
+    const bool original_mode = enabled();
+    // set_enabled already resets routes, packets, commands and native contexts
+    // for either value. Keeping the current value avoids a temporary OFF lease.
+    set_enabled(original_mode, false);
+    return enabled() == original_mode;
+}
+
 bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;

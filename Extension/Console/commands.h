@@ -37,6 +37,7 @@ void request_feature(overlay::OfflineFeatureGroup, bool enabled);
 void request_engine_variable(std::string_view name, bool restore, bool value);
 std::string request_named_setting(std::string_view name, std::string_view value, bool restore);
 std::string request_reset_named_settings();
+std::string request_arcade_runtime_reset();
 void request_level(const std::string &level, const std::string &start, const std::string &sublevel,
                    const std::string &substart);
 } // namespace dingosdk::console

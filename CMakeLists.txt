@@ -418,6 +418,7 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
     if(Python3_Interpreter_FOUND)
         add_test(NAME arcade_settings_snapshot_source COMMAND "${Python3_EXECUTABLE}" -B
             "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/Test/settings_snapshot_source_checks.py")
+        add_subdirectory(Extension/ArcadeMode/Test/runtime_reset)
         add_subdirectory(Extension/ArcadeMode/Test/manual_lifecycle)
         add_subdirectory(Extension/ArcadeMode/Test/capture_schema4_emitter)
         add_subdirectory(Extension/ArcadeMode/Test/manual_reservation_consumer)

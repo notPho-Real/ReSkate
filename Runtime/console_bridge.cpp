@@ -1,5 +1,6 @@
 #include "runtime_internal.h"
 #include "Extension/Console/commands.h"
+#include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/Progression/mission_progression_override.h"
 #include "Extension/Settings/gameplay_settings_override.h"
 #include "Extension/Settings/named_settings.h"
@@ -8,6 +9,33 @@
 
 namespace dingosdk::runtime::detail {
 namespace {
+// This scope exists only for one scheduled console invocation on its engine
+// thread. It cannot be extended or supplied by console text.
+thread_local std::optional<std::chrono::steady_clock::time_point> console_reset_queued_at;
+struct ConsoleResetScope {
+    explicit ConsoleResetScope(std::chrono::steady_clock::time_point queued_at) noexcept {
+        console_reset_queued_at = queued_at;
+    }
+    ~ConsoleResetScope() { console_reset_queued_at.reset(); }
+};
+std::string apply_console_arcade_runtime_reset() {
+    auto& r = runtime();
+    {
+        std::lock_guard lock(r.mutex);
+        if (r.engine_thread.load() != GetCurrentThreadId() || !r.native_tick_ready || r.observer_failed ||
+            r.requests.loading() || !r.requests.executing_console(GetCurrentThreadId()))
+            return "error: Runtime reset requires a healthy scheduled command on the game update thread.";
+    }
+    const auto reset_now = std::chrono::steady_clock::now();
+    if (!console_reset_queued_at || reset_now < *console_reset_queued_at ||
+        reset_now - *console_reset_queued_at > std::chrono::milliseconds(1000))
+        return "error: Runtime reset request expired or has no dispatch receipt.";
+    if (!dingosdk::arcade_mode::reset_runtime_transient())
+        return "error: Runtime reset unavailable until initial preferences are applied.";
+    return dingosdk::arcade_mode::enabled()
+        ? "Runtime reset complete: mode ON unchanged; preferences untouched."
+        : "Runtime reset complete: mode OFF unchanged; preferences untouched.";
+}
 dingosdk::overlay::Model console_model_snapshot() {
     auto& r = runtime();
     // Runs on the game thread before a command: the settings it inspects are current.
@@ -93,7 +121,8 @@ std::string apply_console_named_setting(std::string_view name, std::string_view 
     return result;
 }
 }
-void execute_console_command(const std::string& command) {
+void execute_console_command(const std::string& command, std::chrono::steady_clock::time_point queued_at) {
+    const ConsoleResetScope reset_scope{queued_at};
     try {
         const dingosdk::console::Output output{[](const std::string& line) { console_line(line); }, {}, {}};
         dingosdk::console::game_commands().execute(command, console_model_snapshot(), output);
@@ -118,6 +147,7 @@ void request_engine_variable(std::string_view name, bool restore, bool value) {
 std::string request_named_setting(std::string_view name, std::string_view value, bool restore) {
     return dingosdk::runtime::detail::apply_console_named_setting(name, value, restore, false);
 }
+std::string request_arcade_runtime_reset() { return dingosdk::runtime::detail::apply_console_arcade_runtime_reset(); }
 std::string request_reset_named_settings() { return dingosdk::runtime::detail::apply_console_named_setting({}, {}, true, true); }
 void request_level(const std::string& level, const std::string& start,
     const std::string& sublevel, const std::string& substart) {
