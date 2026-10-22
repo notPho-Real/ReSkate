@@ -584,6 +584,36 @@ public:
         submit(row,sink);
     }
 };
+// One original schema3 footer may survive a failed shared-queue enqueue.
+// The producer is already serialized by the input mutex; the existing worker
+// consumes it only after every earlier queue reservation has been processed.
+// Failed enqueue stays a counted loss and can never become complete evidence.
+class CaptureFooterRecovery {
+    static_assert(std::atomic<unsigned>::is_always_lock_free);
+    CaptureCorrelationEvidence row_{};
+    std::uint64_t barrier_{};
+    std::atomic<unsigned> state_{}; // Empty, writing, ready, worker-owned.
+public:
+    bool pending() const noexcept {return state_.load(std::memory_order_acquire)!=0;}
+    bool defer(const CaptureCorrelationEvidence& row,std::uint64_t barrier) noexcept {
+        if(row.schema!=3||row.kind!=CaptureCorrelationKind::end||!capture_correlation_valid(row)||
+                barrier==UINT64_MAX)return false;
+        unsigned empty=0;
+        if(!state_.compare_exchange_strong(empty,1,std::memory_order_acq_rel))return false;
+        row_=row;row_.complete=false;barrier_=barrier;
+        state_.store(2,std::memory_order_release);return true;
+    }
+    bool take(std::uint64_t consumed,CaptureCorrelationEvidence& row) noexcept {
+        if(state_.load(std::memory_order_acquire)!=2||consumed<barrier_)return false;
+        unsigned ready=2;
+        if(!state_.compare_exchange_strong(ready,3,std::memory_order_acq_rel))return false;
+        row=row_;return true;
+    }
+    void finish() noexcept {
+        unsigned owned=3;
+        (void)state_.compare_exchange_strong(owned,0,std::memory_order_release,std::memory_order_relaxed);
+    }
+};
 // Existing client worker only. Counts successful sink writes, not reservations.
 // A footer is finalized after all earlier queue rows have been drained.
 class CaptureCorrelationDrain {

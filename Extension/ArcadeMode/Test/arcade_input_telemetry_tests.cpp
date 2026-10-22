@@ -354,10 +354,55 @@ void capture_producer_drain(){
         producer.maintain(1300,{},0,sink);check(!producer.active()&&!rows.back().native_valid,"missing/stale native proof cannot renew capture or create synthetic completeness");
     }
 }
+void schema3_footer_recovery() {
+    CaptureFooterRecovery recovery;
+    CaptureCorrelationEvidence end;end.schema=3;end.capture=7;end.required_sources=64;
+    end.kind=CaptureCorrelationKind::end;end.expected=end.dropped=2;end.ordinal=3;end.complete=true;
+    check(capture_correlation_valid(end),"original schema3 footer snapshot is valid");
+    CaptureCorrelationEvidence out;
+    check(!recovery.pending()&&!recovery.take(0,out),"empty recovery neither owns nor invents a footer");
+    check(recovery.defer(end,64)&&recovery.pending(),"one failed end snapshot is retained without a queue retry");
+    end.capture=8;
+    check(!recovery.defer(end,64),"pending original footer cannot be overwritten by another capture");
+    check(!recovery.take(63,out),"retirement requires every earlier reservation including an unpublished slot");
+    check(recovery.take(64,out)&&out.capture==7&&!out.complete&&out.expected==2,
+        "barrier retires the original snapshot and preserves explicit incompleteness");
+    check(recovery.pending()&&!recovery.take(64,end),"claimed footer is consumed once and stays pending through worker write");
+    recovery.finish();
+    check(!recovery.pending()&&!recovery.take(64,end),"worker completion releases one recovery slot without duplicating output");
+    end=out;end.schema=4;
+    check(!recovery.defer(end,64),"schema4 retains its separate existing failure protocol");
+    end=out;end.kind=CaptureCorrelationKind::begin;
+    check(!recovery.defer(end,64),"recovery never invents a missing begin or event");
+    end=out;end.ordinal=0;
+    check(!recovery.defer(end,64),"invalid footer cannot be laundered by recovery");
+    end=out;
+    check(!recovery.defer(end,UINT64_MAX),"missing or exhausted reservation barrier stays unavailable");
+    check(recovery.defer(end,0)&&recovery.take(0,out),"a later valid capture can reuse the empty slot");
+    recovery.finish();
+    CaptureFooterRecovery transferred;
+    std::atomic<bool> transfer_failed{};
+    std::thread producer([&]{
+        for(std::uint64_t id=1;id<=128;++id){
+            while(transferred.pending())std::this_thread::yield();
+            auto next=out;next.capture=id;
+            if(!transferred.defer(next,0))transfer_failed.store(true);
+        }
+    });
+    for(std::uint64_t id=1;id<=128;++id){
+        CaptureCorrelationEvidence received;
+        while(!transferred.take(0,received))std::this_thread::yield();
+        if(received.capture!=id||received.complete||received.expected!=out.expected)transfer_failed.store(true);
+        transferred.finish();
+    }
+    producer.join();
+    check(!transfer_failed.load()&&!transferred.pending(),"release/acquire handoff preserves each detached footer across producer/worker threads");
+}
 }
 void run_controller_capture_tests();
 int main() {
     saturation_and_recovery();
+    schema3_footer_recovery();
     transition_and_startup();
     client_rows();
     score_probe_rows();

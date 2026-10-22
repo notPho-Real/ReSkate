@@ -144,6 +144,7 @@ std::uint64_t capture_hud_publication_sequence{};
 std::uint64_t capture_model_sequence{};
 std::atomic<bool> capture_render_ack_lost{};
 std::atomic<bool> capture_transport_pending{};
+CaptureFooterRecovery capture_footer_recovery;
 std::atomic<std::uint64_t> capture_abandoned_id{},capture_abandoned_client_barrier{};
 std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
 std::uint64_t capture_attempt_cursor{},capture_omission_cursor{},capture_sample_cursor{};
@@ -185,6 +186,16 @@ void capture_semantic(CaptureCorrelationEvidence& row,unsigned kind,unsigned clo
 bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
     if(row.kind==CaptureCorrelationKind::end&&(row.schema==3||row.schema==4))
         controller_capture_live.store(false,std::memory_order_release);
+    if(row.kind==CaptureCorrelationKind::end&&row.schema==3){
+        const bool queued=input_telemetry.client(row);
+        if(!queued){
+            // Retain the actual end snapshot; never wait or retry on a physics
+            // or input thread. A failed recovery stays closed to re-arming.
+            capture_transport_pending.store(true,std::memory_order_release);
+            (void)capture_footer_recovery.defer(row,input_telemetry.client_retirement_barrier());
+        }
+        return queued;
+    }
     if(row.kind==CaptureCorrelationKind::end&&row.schema==4){
         auto copy=row;
         if(capture_render_ack_lost.exchange(false,std::memory_order_acq_rel)){
@@ -239,6 +250,16 @@ void consume_capture_row(CaptureCorrelationDrain& drain,InputTelemetry& telemetr
     }
     if(!accepted)telemetry.client.lose();
 }
+void recover_schema3_footer(CaptureCorrelationDrain& drain,InputTelemetry& telemetry,std::uint64_t now) noexcept {
+    CaptureCorrelationEvidence row;
+    if(!capture_footer_recovery.take(telemetry.client.consumed_through(),row))return;
+    // Called after processing the entire taken batch, not just advancing its
+    // read cursor. The normal writer computes actual drain/loss counts.
+    consume_capture_row(drain,telemetry,row,now);
+    capture_footer_recovery.finish();
+    capture_transport_pending.store(false,std::memory_order_release);
+}
+
 void capture_render_ack(BalanceHudSource source,std::uint64_t frame,std::uint64_t render_ms) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
     if(!lock.owns_lock()){
@@ -977,6 +998,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
         }
         if(pad_rows_count||sample_count||client_count)
             capture_drain.cycle(GetTickCount64(),telemetry.counters().backlog);
+        recover_schema3_footer(capture_drain,telemetry,GetTickCount64());
         retire_abandoned_capture(capture_drain,telemetry);
         Sleep(25);
     }
