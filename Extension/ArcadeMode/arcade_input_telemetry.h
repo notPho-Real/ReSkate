@@ -251,6 +251,14 @@ inline bool client_telemetry_fresh(const ClientTelemetry& row, std::uint64_t now
     return !heartbeat || (now >= heartbeat->ms && now - heartbeat->ms <= 100);
 }
 
+inline constexpr std::size_t input_telemetry_worker_batch_size = 16;
+inline constexpr unsigned input_telemetry_worker_delay_ms(std::size_t pad, std::size_t combo, std::size_t client) noexcept {
+    // A full batch may leave queued evidence. Yield briefly before another
+    // bounded pass through ALL queues; reserve the idle delay for partial work.
+    return pad >= input_telemetry_worker_batch_size || combo >= input_telemetry_worker_batch_size ||
+        client >= input_telemetry_worker_batch_size ? 1u : 25u;
+}
+
 // Same bounded reservation/publication scheme as GrindQueue. A stalled sink
 // cannot hold a producer lock. A reserved but unpublished slot is never read.
 class CaptureArrivalMeter {

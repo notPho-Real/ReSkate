@@ -44,6 +44,69 @@ void saturation_and_recovery() {
         check(queue.take(out) == 1 && out[0].checksum == checksum(4, lap), "publication owns its snapshot, not caller storage");
     }
 }
+void worker_scheduling() {
+    constexpr auto batch = input_telemetry_worker_batch_size;
+    static_assert(batch == 16);
+    check(input_telemetry_worker_delay_ms(0, 0, 0) == 25 &&
+        input_telemetry_worker_delay_ms(15, 15, 15) == 25, "empty and partial passes retain the idle delay");
+    check(input_telemetry_worker_delay_ms(16, 0, 0) == 1 &&
+        input_telemetry_worker_delay_ms(0, 16, 0) == 1 &&
+        input_telemetry_worker_delay_ms(0, 0, 16) == 1,
+        "each saturated queue independently requests a bounded catch-up pass");
+
+    struct Result { std::array<std::uint64_t, 3> attempted{}, delivered{}, dropped{}; unsigned cycles{}; };
+    const auto simulate = [&](bool catch_up, std::uint64_t client_period) {
+        std::array<InputTelemetryQueue<Row, 64>, 3> queues;
+        Result result;
+        std::array<std::uint64_t, 3> next{}, last{};
+        const std::array<std::uint64_t, 3> period{20000, 20000, client_period};
+        constexpr std::uint64_t end = 1200000; // Virtual microseconds, no wall-clock sleeps.
+        std::uint64_t now{};
+        const auto advance = [&](std::uint64_t elapsed) {
+            now += elapsed;
+            for (std::size_t q = 0; q < queues.size(); ++q) {
+                while (next[q] <= now && next[q] < end) {
+                    const auto sequence = ++result.attempted[q];
+                    queues[q].push({q, sequence, checksum(q, sequence)});
+                    next[q] += period[q];
+                }
+            }
+        };
+        advance(0);
+        for (; result.cycles < 500; ++result.cycles) {
+            std::array<std::size_t, 3> count{};
+            for (std::size_t q = 0; q < queues.size(); ++q) {
+                std::array<Row, batch> rows{};
+                count[q] = queues[q].take(rows);
+                for (std::size_t i = 0; i < count[q]; ++i) {
+                    check(rows[i].producer == q && rows[i].ordinal > last[q] &&
+                        rows[i].checksum == checksum(q, rows[i].ordinal), "catch-up preserves FIFO snapshots without cross-queue mixing");
+                    last[q] = rows[i].ordinal;
+                    ++result.delivered[q];
+                    // Synthetic sink costs, not measured Deck timings. Arrivals
+                    // continue while formatting so service pressure is exercised.
+                    advance(q == 2 ? 1000 : 100);
+                }
+            }
+            if (now >= end && count == std::array<std::size_t, 3>{}) break;
+            advance(1000 * (catch_up ? input_telemetry_worker_delay_ms(count[0], count[1], count[2]) : 25));
+        }
+        check(result.cycles < 500, "finite producer workload drains and returns to idle within the bounded model");
+        for (std::size_t q = 0; q < queues.size(); ++q) {
+            result.dropped[q] = queues[q].dropped();
+            check(result.delivered[q] + result.dropped[q] == result.attempted[q],
+                "saturation and recovery account for every attempted row without hiding loss");
+            check(result.delivered[q] > 0, "busy client service never starves either sibling queue");
+        }
+        return result;
+    };
+    const auto old = simulate(false, 2000), paced = simulate(true, 2000), overload = simulate(true, 500);
+    check(old.dropped[2] > 0 && paced.dropped[2] == 0 && paced.delivered[2] == 600,
+        "bounded catch-up sustains the modeled two-slot poll rate where unconditional idle sleeping loses rows");
+    check(paced.dropped[0] == 0 && paced.dropped[1] == 0 && overload.dropped[0] == 0 && overload.dropped[1] == 0,
+        "one bounded batch per queue preserves sibling service even during client overload");
+    check(overload.dropped[2] > 0, "a sink slower than arrivals still reports real loss instead of claiming completeness");
+}
 void transition_and_startup() {
     InputTelemetryLink link;
     PadTelemetry pad{}; pad.pad.sequence = 31; pad.pad.ms = 300; pad.pad.source = true;
@@ -402,6 +465,7 @@ void schema3_footer_recovery() {
 void run_controller_capture_tests();
 int main() {
     saturation_and_recovery();
+    worker_scheduling();
     schema3_footer_recovery();
     transition_and_startup();
     client_rows();

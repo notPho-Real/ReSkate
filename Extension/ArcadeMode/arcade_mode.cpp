@@ -923,7 +923,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
     CaptureCorrelationDrain capture_drain;
     auto& telemetry = *static_cast<InputTelemetry*>(context);
     for (;;) {
-        std::array<PadTelemetry, 16> pad_rows{};
+        std::array<PadTelemetry, input_telemetry_worker_batch_size> pad_rows{};
         const auto pad_rows_count = telemetry.pad.take(pad_rows);
         const auto pad_lost = telemetry.pad.take_dropped();
         write_input_gap(true, pad_lost);
@@ -968,7 +968,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
                     m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed, p.right_y);
             }
         }
-        std::array<ComboSample, 16> samples{};
+        std::array<ComboSample, input_telemetry_worker_batch_size> samples{};
         const auto sample_count = telemetry.combo.queue.take(samples);
         const auto dropped = telemetry.combo.queue.take_dropped();
         write_input_gap(false, dropped);
@@ -982,7 +982,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE FLIP OBSERVATION: ms={} valid={} id={}.", s.ms, s.flip.valid, s.flip.id);
         }
-        std::array<ClientTelemetry, 16> client_rows{};
+        std::array<ClientTelemetry, input_telemetry_worker_batch_size> client_rows{};
         const auto client_count = telemetry.client.take(client_rows);
         write_input_gap(false, telemetry.client.take_dropped());
         for (std::size_t i = 0; i < client_count; ++i) {
@@ -1000,7 +1000,7 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
             capture_drain.cycle(GetTickCount64(),telemetry.counters().backlog);
         recover_schema3_footer(capture_drain,telemetry,GetTickCount64());
         retire_abandoned_capture(capture_drain,telemetry);
-        Sleep(25);
+        Sleep(input_telemetry_worker_delay_ms(pad_rows_count, sample_count, client_count));
     }
 }
 bool start_input_telemetry() noexcept {
