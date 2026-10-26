@@ -542,7 +542,10 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // evidence; an absent/delayed name cannot suppress acquired balance.
         manual_observation = manual_balance_observation(ground,history_observation);
         ground_confirmed=ground.confirmed;
-        if (ground.confirmed) manual_identity.reset(manual_label); // One physical section cannot also queue a delayed history admission.
+        // Keep the independent observer primed until it actually corroborates
+        // acquired contact; resetting it every tick consumes the first history
+        // edge as a new baseline instead of establishing this request.
+        if (ground.confirmed && history_observation.confirmed) manual_identity.reset(manual_label);
         acquisition_putdown = manual_acquisition.step(now,native_frame,physical_contact,manual_observation.confirmed,
             valid && !owner_changed && !observation_gap && !bail, (native.words[0] & 0x40u) != 0);
         acquiring_history = manual_acquisition.preserves_history(now,native_frame);
@@ -622,9 +625,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             neutral_delivery = {}; retire_playback_packets();
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
+        const bool initial_acquisition = physical_contact == SkatePose::riding &&
+            !(native.words[0] & 0x40u) &&
+            arcade_input.initial_ground_acquisition(NativeControllerRoute::session,now);
         if (!valid || owner_changed || bail ||
             manual_closed ||
-            (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual))
+            (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual && !initial_acquisition))
             arcade_input.cancel_manuals();
         if (manual_closed) manual_hop.reset();
         // An admitted endpoint already owns its safe-putdown or bail path.
@@ -635,7 +641,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);
         arcade_input.publish_balance_controls(balance_admitted ? InputBalanceControls::vertical(
             pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual) :
-            InputBalanceControls{}, native_frame);
+            InputBalanceControls{}, native_frame, history_observation.confirmed && history_observation.pose == pose);
         arcade_input.publish_manual_correction(physical.applied_correction,native_frame,
             balance_admitted && physical.valid && physical.active);
         if(balance_admitted){

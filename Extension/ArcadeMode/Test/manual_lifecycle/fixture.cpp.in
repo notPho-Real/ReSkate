@@ -50,7 +50,8 @@ std::atomic<bool> prepared_catalog{true};
 NativeInputState native_input_state,motion_cleanup_state;@@INPUT_STATE@@
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
-struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,true,clock_ms};}
+bool native_score_active=true;
+struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,native_score_active,clock_ms};}
 struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations;std::array<NativeCharge,4>native_charges;
 std::array<Reset,4> neutral_delivery;
 std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_route;
@@ -150,6 +151,7 @@ template<class T,class... Args>void reconstruct(T& object,Args&&... args){
  std::destroy_at(&object);std::construct_at(&object,std::forward<Args>(args)...);
 }
 void reset_case(){
+ native_score_active=true;
  controller_route.reset();playback_packets={};corrupt_manual_delivery=false;
  active=true;watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
@@ -176,6 +178,90 @@ void prepare_air(bool nose,unsigned dt){
  tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);const auto request=remap(nose?1u:2u);
  check(request.manual.owns&&request.manual.request==(nose?1:-1),"actual airborne directional pair requests bounded Manual/Nose hold through existing facade");
  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"airborne input delivery alone cannot admit balance or HUD");
+}
+
+std::uint64_t provisional_ground(bool nose,bool retire_contact=true){
+  reset_case();native_score_active=false;
+  observe(.034f,0xc000);client(.034f,history());remap();
+  tick(34,100,0xc000);remap(0,nose?-32767:32767);
+  for(unsigned i=0;i<7;++i){tick(34,100,0xc000);remap(0,nose?-32767:32767);}
+  tick(34,100,0xc000);const auto start=remap(0,nose?32767:-32767);
+  check(start.manual.owns,"actual production pair starts the original ground acquisition");
+  const auto began=start.manual.request_at;const auto wanted=nose?0x8000u:0x4000u;
+  for(unsigned i=0;i<9;++i){tick(34,100,0xc000);remap();}
+  NativeGesture::Output touched;
+  for(unsigned i=0;i<3;++i){tick(34,100,wanted);touched=remap();}
+  check(touched.manual.owns&&touched.manual.confirmed,"first contact retains the existing physical-match diagnostic during initial acquisition");
+  if(!retire_contact)return began;
+  for(unsigned i=0;i<5;++i){tick(34,100,0xc000);const auto out=remap();
+   check(out.manual.owns&&out.manual.request_at==began,"initial ground acquisition survives transient contact retirement without renewing1200ms");}
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"retired first contact cannot retain balance or HUD during reacquisition");
+  return began;
+}
+void initial_ground_acquisition(){
+ for(bool nose:{true,false}){
+  const auto began=provisional_ground(nose);const auto wanted=nose?0x8000u:0x4000u;
+  while(clock_ms-began<800){tick(34,100,0xc000);const auto out=remap();
+   check(out.manual.owns&&out.manual.request_at==began,"initial ground acquisition survives transient contact retirement without renewing1200ms");}
+  rows.push_back({901,902,nose?2u:1u});tick(34,100,wanted);const auto established=remap();
+  check(established.manual.owns&&established.manual.confirmed&&established.manual.request_at==began,
+        "fresh independent history and matching contact establish the original still-live actor");
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"late independent native entry admits balance once within original acquisition");
+  for(unsigned i=0;i<5;++i){tick(34,100,0xc000);remap();}
+  check(!remap().manual.owns&&!manual_balance_admitted.load()&&!balance_hud_pending(),
+        "an independently established native exit retains immediate retirement after contact grace");
+ }
+ for(bool nose:{true,false}){
+  const auto began=provisional_ground(nose,false);const auto wanted=nose?0x8000u:0x4000u;
+  while(clock_ms-began<1400){const auto state=snapshot();tick(34,100,wanted);
+   const auto out=remap(0,state.velocity>0?25000:-25000);
+   check(out.manual.owns&&out.manual.confirmed&&manual_balance_admitted.load(),
+         "continuously admitted corrected contact retains its existing hold beyond1200 without history");}
+ }
+ for(bool nose:{true,false}){
+  provisional_ground(nose,false);const auto wanted=nose?0x8000u:0x4000u;
+  rows.push_back({905,906,nose?2u:1u});tick(34,100,wanted);remap();
+  for(unsigned i=0;i<5;++i){tick(34,100,0xc000);remap();}
+  check(!remap().manual.owns&&!manual_balance_admitted.load()&&!balance_hud_pending(),
+        "independent history during first contact establishes native exit without being swallowed as a new baseline");
+ }
+ for(bool nose:{true,false}){
+  const auto began=provisional_ground(nose);const auto wanted=nose?0x8000u:0x4000u;
+  for(unsigned i=0;i<3;++i){tick(34,100,wanted);const auto out=remap();
+   check(out.manual.owns&&out.manual.request_at==began&&!manual_balance_admitted.load()&&!balance_hud_pending(),
+         "spent first contact cannot invent a second balance admission without independent history");}
+ }
+ for(bool nose:{true,false}){
+  const auto began=provisional_ground(nose);
+  while(clock_ms-began<1200){tick(34,100,0xc000);remap();}
+  check(!remap().manual.owns,"provisional touch never renews the original1200ms acquisition deadline");
+  rows.push_back({911,912,nose?2u:1u});tick(34,100,nose?0x8000u:0x4000u);
+  check(!remap().manual.owns,"late independent history cannot restart the expired actuator without a fresh physical request");
+ }
+ for(bool nose:{true,false})for(unsigned loss=0;loss<10;++loss){
+  provisional_ground(nose,false);
+  if(loss==0)++owner.rig;
+  if(loss==1)watch=false;
+  if(loss==2){active=false;arcade_input.enable(false);}
+  if(loss==3){clock_ms+=151;client(.034f,history());check(!remap().manual.owns,"stale initial owner cannot retain acquisition");continue;}
+  const auto prior=raw.words[0];if(loss==4)raw.words[0]|=0x40u;
+  const auto contacts=loss==5?(nose?0x4000u:0x8000u):loss==4?0xc000u:(nose?0x8000u:0x4000u);
+  const auto state=loss==6?200u:loss==7?300u:loss==8?401u:100u;
+  tick(34,state,state==100?contacts:0,loss!=9);const auto out=remap();raw.words[0]=prior;
+  check(!out.manual.owns,"positive owner/focus/OFF/push/opposite/air/bail/rail/validity loss retires provisional contact immediately");
+ }
+ for(bool nose:{true,false})for(bool failure:{false,true}){
+  provisional_ground(nose,false);
+  const auto endpoint=GameplayProfile{}.balance(PhysicalBalanceKind::manual).endpoint;
+  const auto snap=snapshot();
+  const bool want_negative=nose?failure:!failure;
+  const auto sign=snap.position<0?-1.f:1.f;
+  ManualBalanceAdjustment adjustment;adjustment.lean_multiplier=want_negative?-sign:sign;
+  adjustment.lean_add_signed=endpoint*2;
+  check(physical_manual.adjust(adjustment),"controlled endpoint seam applies to the actual provisional physical model");
+  tick(34,100,nose?0x8000u:0x4000u);const auto out=remap();
+  check(!out.manual.owns,"native-admitted putdown or failure always overrides initial acquisition preservation");
+ }
 }
 
 // Camera phase/snapshot availability is controlled here. Native camera lease
@@ -696,5 +782,6 @@ int main(){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  hud_lifecycle();
 #endif
+ initial_ground_acquisition();
  std::cout<<checks<<" exact production exit/cleanup lifecycle checks passed\n";
 }

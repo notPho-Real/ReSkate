@@ -37,9 +37,13 @@ public:
     static constexpr auto ground_pair_ms = InputTiming::ground_pair_ms, ground_sample_slack_ms = InputTiming::ground_sample_slack_ms;
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
-    void cancel() noexcept { confirmed_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    void cancel() noexcept { confirmed_ = established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
+    bool initial_ground_acquisition(std::uint64_t now) const noexcept {
+        return requested_ && !air_prepared_ && !established_ && now >= requested_at_ &&
+            now-requested_at_ < acquisition_ms;
+    }
     int requested() const noexcept { return requested_; }
     std::uint64_t recognized_at() const noexcept { return requested_ ? recognized_at_ : 0; }
     std::uint64_t recognition_id() const noexcept { return requested_ ? recognition_id_ : 0; }
@@ -55,12 +59,12 @@ public:
         requested_at_ = prepared_air && airborne ? recognized_at : now;
         recognized_at_ = recognized_at;recognition_id_=recognition_id;
         air_prepared_ = prepared_air; landed_ = !airborne;
-        confirmed_ = wrong_contact_ = false;
+        confirmed_ = established_ = wrong_contact_ = false;
         return true;
     }
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
                   bool conflicting, std::uint16_t buttons, bool balance_admitted = false,
-                  bool trigger_only_conflict = false) noexcept {
+                  bool trigger_only_conflict = false, bool contact_only = false) noexcept {
         // Typed, independently admitted balance owns these configured vertical
         // held controls. Opposed command recognition remains a separate guard;
         // it must not drop the established native RS balance hold.
@@ -108,6 +112,10 @@ public:
             if (observed == wanted) {
                 if (!confirmed_) first_confirmed_at_ = now;
                 confirmed_ = true; confirmed_at_ = now;
+                // Physical confirmation remains available to existing balance
+                // controls. Independent history ends only the initial ground
+                // acquisition exception; model feedback alone cannot do so.
+                if (!contact_only || air_prepared_) established_ = true;
             }
             // Brief observer gaps must not drop a held native manual. A failed
             // request or an observed exit always has a bounded release path.
@@ -115,7 +123,8 @@ public:
             // independently admitted balance can maintain a continuing hold;
             // admitted corrected balances have no arbitrary lifespan limit.
             if (((!confirmed_ || !balance_admitted) && now - requested_at_ >= acquisition_ms) ||
-                (confirmed_ && now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
+                (confirmed_ && !initial_ground_acquisition(now) &&
+                 now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }
             return {true, confirmed_, static_cast<std::int16_t>(requested_ * 20000)};
@@ -123,7 +132,7 @@ public:
         return {};
     }
 private:
-    bool hard_reset_{}, clocked_{}, confirmed_{}, air_prepared_{}, landed_{}, wrong_contact_{};
+    bool hard_reset_{}, clocked_{}, confirmed_{}, established_{}, air_prepared_{}, landed_{}, wrong_contact_{};
     int requested_{};
     std::uint64_t last_{}, requested_at_{}, recognized_at_{}, recognition_id_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };

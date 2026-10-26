@@ -127,11 +127,19 @@ public:
     }
     // Controls are admitted by the native mechanic owner, not inferred from
     // a rail enum or from the control being held. Bind them to its exact episode.
-    void publish_balance_controls(InputBalanceControls controls, NativeInputFrame proof) noexcept {
+    void publish_balance_controls(InputBalanceControls controls, NativeInputFrame proof, bool history_corroborated = false) noexcept {
+        const bool same_section = balance_controls_.admitted && controls.admitted && proof.valid &&
+            balance_frame_.valid && proof.owner == balance_frame_.owner &&
+            proof.owner_generation == balance_frame_.owner_generation &&
+            proof.action_generation == balance_frame_.action_generation &&
+            controls.kind == balance_controls_.kind && proof.physics_step >= balance_frame_.physics_step &&
+            proof.sampled_at >= balance_frame_.sampled_at;
+        const bool corroborated = history_corroborated || (same_section && balance_history_corroborated_);
         balance_controls_ = controls.admitted && proof.valid ? controls : InputBalanceControls{};
         if (balance_controls_.admitted)
             balance_controls_.generations = {proof.owner_generation,proof.contact_generation,proof.action_generation};
         balance_frame_ = proof;
+        balance_history_corroborated_ = balance_controls_.admitted && corroborated;
     }
     NativeInputFrame balance_admission(std::uint64_t now, InputBalanceKind kind) const noexcept {
         const auto native = native_context(now);
@@ -197,6 +205,11 @@ public:
         return !authored_playback || (user < ordinary_jump_playback_.size() && ordinary_jump_playback_[user]);
     }
     void cancel_manuals() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.cancel_manual(); }
+    bool initial_ground_acquisition(unsigned user, std::uint64_t now) const noexcept {
+        const auto native=native_context(now);
+        return user<sessions_.size() && admitted(user,now) && native.valid &&
+            sessions_[user].initial_ground_acquisition(now,InputNativeContext::from_frame(native));
+    }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
@@ -285,6 +298,8 @@ public:
                 }
             }
         }
+        admission.manual_contact_only = native_bound_ && !(balance_history_corroborated_ &&
+            balance_controls_current(now,native) && balance_frame_.action_generation == native.action_generation);
         auto output = sessions_[user].poll(now, {buttons, lx, ly, lt, rt}, rx, ry, admission);
         // Preserve one terminal receipt with its original identity/time. This
         // is cancellation, not a fabricated physical release or native issue.
@@ -322,6 +337,7 @@ private:
     RailAdapter native_rail_{};
     RailAdapterMethod native_rail_method_{};
     InputBalanceControls balance_controls_{};
+    bool balance_history_corroborated_{};
     NativeInputFrame manual_correction_frame_{};
     float manual_correction_{};
     bool manual_correction_known_{};

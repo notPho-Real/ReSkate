@@ -30,6 +30,7 @@ struct InputAdmission {
     InputGenerations balance_generations{};
     bool export_rail_requests{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
+    bool manual_contact_only{}; // Physical admission without matching native history.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -43,6 +44,11 @@ public:
         ground_turn_ = {}; // Keep the serial watermark across resets.
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
+    bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
+        return native_.required && current.required && native_.fresh(now) && current.fresh(now) &&
+            native_.generations.owner == current.generations.owner &&
+            native_.generations.action == current.generations.action && manual_.initial_ground_acquisition(now);
+    }
     // The facade calls this only while the existing rail adapter is inactive.
     // First-issue expiry retires input intent; it cannot time out an active
     // native method or turn a held physical control into another press.
@@ -129,7 +135,7 @@ public:
         const bool manual_trigger_only=triggers && !authored_.busy() && !auxiliary_.busy() && !admission.external_owner;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only);
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -178,7 +184,7 @@ public:
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only);
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;
