@@ -31,7 +31,7 @@ unsigned hud_hz{}, hud_frame{};
 #endif
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
 using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;
-bool watch=true;std::uint64_t clock_ms=1000;std::atomic<std::uint64_t> camera_wait_clock{};
+bool fixture_watch=true;std::uint64_t clock_ms=1000;std::atomic<std::uint64_t> camera_wait_clock{};
 std::uint64_t GetTickCount64(){const auto waiting=camera_wait_clock.load();return waiting?waiting:clock_ms;}
 bool auto_kick_enabled(){return true;}
 // Real mutex with an optional deterministic contention seam. The try-lock
@@ -113,13 +113,13 @@ void client(float seconds,const ScoreLabelOccurrence& label){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
- update_combo(raw,owner,ControllerInput{},watch,0,clock_ms,{},label,false,seconds);
+ update_combo(raw,owner,ControllerInput{},fixture_watch,0,clock_ms,{},label,false,seconds);
  const auto live=[&](auto& deadline){const auto at=deadline.load();return at>=clock_ms&&at-clock_ms<=150;};
- native_readiness.publish(latest,{active&&watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
+ native_readiness.publish(latest,{active&&fixture_watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
   live(manual_eligible_until),live(manual_prepare_until),live(manual_release_until),live(action_eligible_until),0});
 }
 void diagnostic_client(float seconds){
- update_combo(raw,owner,ControllerInput{},watch,0,clock_ms,{}, {},false,seconds);
+ update_combo(raw,owner,ControllerInput{},fixture_watch,0,clock_ms,{}, {},false,seconds);
 }
 ManualHistory presenters;ManualHistoryLabels labels;
 std::vector<ManualHistoryRow> rows;
@@ -133,7 +133,7 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,
  const bool authored=true;
  arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
  const auto admission=native_readiness.sample(now,arcade_input.native_context(now));
- const bool game_input=active&&watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;
+ const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;
  const auto release_deadline=manual_release_until.load();const bool releasing_manual=game_input&&admission.releasing&&release_deadline>=now&&release_deadline-now<=150;
  if(releasing_manual)arcade_input.cancel_manuals();
  const auto manual_deadline=manual_eligible_until.load();const bool manual_safe=game_input&&admission.manual&&manual_deadline>=now&&manual_deadline-now<=150;
@@ -153,7 +153,7 @@ template<class T,class... Args>void reconstruct(T& object,Args&&... args){
 void reset_case(){
  native_score_active=true;
  controller_route.reset();playback_packets={};corrupt_manual_delivery=false;
- active=true;watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
+ active=true;fixture_watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
  combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
  had_combo_owner=false;combo_tick_at=0;clock_ms=1000;presenters={};labels={};rows.clear();manual_balance_admitted=false;
@@ -241,7 +241,7 @@ void initial_ground_acquisition(){
  for(bool nose:{true,false})for(unsigned loss=0;loss<10;++loss){
   provisional_ground(nose,false);
   if(loss==0)++owner.rig;
-  if(loss==1)watch=false;
+  if(loss==1)fixture_watch=false;
   if(loss==2){active=false;arcade_input.enable(false);}
   if(loss==3){clock_ms+=151;client(.034f,history());check(!remap().manual.owns,"stale initial owner cannot retain acquisition");continue;}
   const auto prior=raw.words[0];if(loss==4)raw.words[0]|=0x40u;
@@ -779,7 +779,7 @@ int main(){
   const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
   if(loss==0){++owner.rig;clock_ms+=dt;observe(dt/1000.f,wanted);}
   if(loss==1)clock_ms+=151;
-  if(loss==2)watch=false;
+  if(loss==2)fixture_watch=false;
   if(loss==3){active=false;arcade_input.enable(false);reset_physical_manual=true;}
   client(dt/1000.f,history());const auto out=remap();
   check(!manual_release.pending()&&!manual_balance_admitted.load()&&!balance_hud_pending()&&!out.manual.owns,"owner/stale/paused/OFF loss cannot preserve cleanup or admitted balance beyond source guards");
