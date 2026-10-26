@@ -12,6 +12,11 @@ struct NativeInputFrame;
 struct NativeInputOwner;
 struct NativeRequestSample;
 struct MotionCleanupProof;
+struct GroundWriterEvidence;
+// Optional finite numeric observation only; never grants motion authority.
+GroundWriterEvidence begin_ground_writer_observation(std::uint64_t now,const NativeInputOwner& owner,const NativeInputFrame& consumed,
+    bool intent_enabled,bool down,unsigned requests) noexcept;
+void finish_ground_writer_observation(const GroundWriterEvidence&) noexcept;
 // Nonblocking original physics correlation for the existing motion writer.
 // Optional typed cleanup proof is sampled under the same lock. It never makes
 // the returned input frame valid while mode/authority is disabled.

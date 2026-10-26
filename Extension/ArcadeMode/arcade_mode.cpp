@@ -128,6 +128,7 @@ std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
+GroundWriterBudget ground_writer_budget; // Same mutex; diagnostics only.
 struct CaptureManualJoin {
     std::uint64_t request{},session{},recognized_ms{},episode{},departure{},owner_generation{};
     std::int8_t family{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{},native_seen{},native_exit_seen{};
@@ -149,6 +150,7 @@ std::atomic<std::uint64_t> capture_abandoned_id{},capture_abandoned_client_barri
 std::uint64_t capture_input_cursor{},capture_recognition_sequence{},capture_admission_sequence{},capture_termination_sequence{};
 std::uint64_t capture_attempt_cursor{},capture_omission_cursor{},capture_sample_cursor{};
 std::atomic<bool> controller_capture_live{};
+std::atomic<bool> ground_writer_capture_live{}; // Optional schema3 observer gate only.
 bool write_capture_correlation(const CaptureCorrelationEvidence& r) noexcept;
 NativeInputFrame capture_native_frame{};
 std::array<std::uint32_t,8> capture_native_words{};
@@ -184,8 +186,10 @@ void capture_semantic(CaptureCorrelationEvidence& row,unsigned kind,unsigned clo
         m.m_known|=32u;
 }
 bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
-    if(row.kind==CaptureCorrelationKind::end&&(row.schema==3||row.schema==4))
+    if(row.kind==CaptureCorrelationKind::end&&(row.schema==3||row.schema==4)) {
         controller_capture_live.store(false,std::memory_order_release);
+        ground_writer_capture_live.store(false,std::memory_order_release);
+    }
     if(row.kind==CaptureCorrelationKind::end&&row.schema==3){
         const bool queued=input_telemetry.client(row);
         if(!queued){
@@ -766,6 +770,14 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BOARD MOTION: seq={} ms={} dt={} valid={} state={} mode={} requests={} contacts={} vx={} vy={} vz={} wipeout={}.",
                 r.sequence, r.ms, r.seconds, r.valid, r.state, r.mode, r.requests, r.contacts, r.vx, r.vy, r.vz, r.wipeout);
+        else if constexpr (std::is_same_v<T, GroundWriterEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE GROUND WRITER: capture={} seq={} ms={} native_ms={} step={} owner={} owner_gen={} contact_gen={} action_gen={} dt={} input_ms={} input_gen={} proof_ms={} proof_step={} proof_owner_gen={} proof_valid={} proof_owner_matches={} motion_valid={} controls={} controls_current={} state={} mode={} contacts={} requests={} ordinary={} balancing={} eligible={} step_status={} baseline={} ground_dt={} native_brake={} selected_known={} selected_brake={} before={},{},{} staged={},{},{} requested_resistance={} resistance={} linear={} angular={} stage={} bodies={} completed={} unwinding={} final_engine_verified=false.",
+                r.capture,r.sequence,r.ms,r.native_ms,r.step,r.owner,r.owner_generation,r.contact_generation,r.action_generation,r.seconds,
+                r.input_ms,r.input_generation,r.proof_ms,r.proof_step,r.proof_owner_generation,r.proof_valid,r.proof_owner_matches,r.motion_valid,
+                r.controls,r.controls_current,r.state,r.mode,r.contacts,r.requests,r.ordinary,r.balancing,r.ground_eligible,static_cast<unsigned>(r.step_status),r.baseline,r.ground_seconds,
+                r.native_brake,r.selected_known,r.selected_brake,r.before[0],r.before[1],r.before[2],r.staged[0],r.staged[1],r.staged[2],r.requested_resistance,r.resistance,
+                r.linear,r.angular,static_cast<unsigned>(r.stage),r.bodies,r.completed,r.unwinding);
         else if constexpr (std::is_same_v<T, BalanceSampleEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
@@ -1280,6 +1292,32 @@ void complete_controller_poll(ControllerPollCapture& capture) noexcept {
 
 // Controller capture polls publication end.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
+GroundWriterEvidence begin_ground_writer_observation(std::uint64_t now,const NativeInputOwner& owner,const NativeInputFrame& consumed,
+        bool intent_enabled,bool down,unsigned requests) noexcept {
+    if(!ground_writer_gate(intent_enabled&&enabled(),ground_writer_capture_live.load(std::memory_order_acquire),
+            motion_capture_until.load(std::memory_order_acquire),now,down,requests))return {};
+    try {
+        std::unique_lock lock(ollie_mutex,std::try_to_lock);
+        if(!lock.owns_lock()){input_telemetry.client_lost();return {};}
+        const auto token=input_capture_correlation.ground_writer_owner(now,owner);
+        if(!token)return {};
+        // Use the EXACT consumed frame when available. Otherwise the original
+        // observer is diagnostic context only, explicitly motion_valid=false.
+        const auto& f=consumed.valid?consumed:capture_native_frame;
+        if(!f.valid||f.owner!=owner||now<f.sampled_at||now-f.sampled_at>150){input_telemetry.client_lost();return {};}
+        const auto id=input_capture_correlation.capture_id();
+        const auto sequence=ground_writer_budget.take(id,f.physics_step);
+        if(!sequence){input_telemetry.client_lost();return {};}
+        GroundWriterEvidence row;row.capture=id;row.sequence=sequence;row.ms=now;row.native_ms=f.sampled_at;row.step=f.physics_step;row.motion_valid=consumed.valid;
+        row.owner=token;row.owner_generation=f.owner_generation;row.contact_generation=f.contact_generation;row.action_generation=f.action_generation;row.seconds=f.physics_seconds;
+        return row;
+    } catch(...) { input_telemetry.client_lost();return {}; }
+}
+void finish_ground_writer_observation(const GroundWriterEvidence& row) noexcept {
+    // A late terminal receipt retains its original capture ID. It is separate
+    // from source7 completeness and never upgrades missing writer coverage.
+    input_telemetry.client(row);
+}
 bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept {
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=(!duration_ms?input_capture_correlation.observational():(required_sources&96)!=0)?capture_native_frame:arcade_input.native_context(now);
     if(!duration_ms){
@@ -1307,6 +1345,7 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     if(!begun&&activating)controller_capture_live.store(false,std::memory_order_release);
     // Controller capture activation publication end.
     if(begun){
+        ground_writer_capture_live.store(required_sources!=255&&(required_sources&64),std::memory_order_release);
         capture_manual_join={};
         capture_model_sequence=0;
         capture_render_ack_lost.store(false,std::memory_order_release);

@@ -13,6 +13,7 @@
 #include "Extension/ArcadeMode/arcade_mode.h"
 #include "Extension/ArcadeMode/arcade_push.h"
 #include "Extension/ArcadeMode/arcade_ground_motion_step.h"
+#include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
@@ -589,19 +590,37 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         arcade_mode::MotionCleanupProof cleanup{};
         const auto native_frame = arcade_mode::native_air_context(now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup);
+        // Ground writer observation begin. No new native reads or permissions.
+        arcade_mode::GroundWriterObservation writer_observation{
+            arcade_mode::begin_ground_writer_observation(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},native_frame,
+                intent.enabled,intent.ground_controls.down,requests),arcade_mode::finish_ground_writer_observation};
+        auto& writer_row=writer_observation.row;
+        writer_row.input_ms=intent.sampled_at;writer_row.input_generation=intent.generation;writer_row.controls=intent.ground_controls.encode();
+        writer_row.proof_ms=intent.angular_proof.sampled_at;writer_row.proof_step=intent.angular_proof.physics_step;
+        writer_row.proof_owner_generation=intent.angular_proof.owner_generation;
+        writer_row.proof_valid=intent.angular_proof.valid;writer_row.ordinary=ordinary;
+        writer_row.proof_owner_matches=intent.angular_proof.owner==arcade_mode::NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        writer_row.state=physics;writer_row.mode=mode;writer_row.contacts=contacts;writer_row.requests=requests;
+        writer_row.bodies=static_cast<unsigned>(bodies.parts.size());writer_row.before=writer_row.staged=velocities[0];
+        // Ground writer observation end.
         bool angular_release{};
         float resistance_change{};
         // Stage every owned change first. SourceReader keeps original bytes;
         // no native write may invalidate that snapshot before final validation.
         const auto commit_motion = [&](bool linear,bool angular) {
+            writer_observation.staging(linear,angular,velocities[0],resistance_change); // Ground writer observation.
             if (!linear && !angular) return;
             reader.verify(); NoBailSkater after{};
             source_require(no_bail_skater(after) && after==owner, "Arcade motion ownership changed before writing.");
+            writer_observation.validated(); // Ground writer observation.
+            writer_observation.writing(); // Ground writer observation.
             for (std::size_t i=0;i<bodies.parts.size();++i) {
                 if (linear) body_write(bodies.parts[i]+0x70,velocities[i]);
                 if (angular) body_write(bodies.parts[i]+0x90,spins[i]);
                 body_write(bodies.parts[i]+0x60,flags[i] | (linear?8u:0u) | (angular?0x20u:0u));
+                writer_observation.body_completed(); // Ground writer observation.
             }
+            writer_observation.verified(); // Ground writer observation.
             if (resistance_change<0) push_speed().arcade_drive.account_resistance(resistance_change);
         };
         const auto release_turn = [&](bool permitted,bool off=false) {
@@ -656,6 +675,8 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             (physics == 100 || physics == 103) && ordinary &&
             (contacts == 0xc000u || balancing) && mode <= 2 && std::abs(velocities[0][1]) < .3f;
         const auto ground_step = a.ground_steps.consume(native_frame,now,ground_eligible);
+        writer_row.balancing=balancing; // Ground writer observation.
+        writer_observation.policy(controls_current,ground_eligible,ground_step,braking); // Ground writer observation.
         if (ground_step) {
             if (ground_step.baseline) a.ground_resistance.reset();
             const float speed = std::hypot(velocities[0][0], velocities[0][2]);
@@ -663,9 +684,11 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             const float total_speed = std::hypot(speed,velocities[0][1]);
             const float facing_dot = velocities[0][0]*bodies.forward[0] + velocities[0][1]*bodies.forward[1] + velocities[0][2]*bodies.forward[2];
             const bool selected_brake = controls_current && controls.known ? controls.trying_to_brake(total_speed,facing_dot) : braking;
+            writer_observation.selected(selected_brake); // Ground writer observation.
             const arcade_mode::GroundFriction friction{!controls_current || !controls.known || controls.auto_kick,false};
             const float change = a.ground_resistance.step(ground_step.seconds, speed,
                 physics == 103 && push_speed().arcade_crouched.load(std::memory_order_relaxed), selected_brake, balancing,friction);
+            writer_row.requested_resistance=change; // Ground writer observation.
             if (change < 0 && speed > 0) {
                 const float dx = velocities[0][0] / speed * change, dz = velocities[0][2] / speed * change;
                 for (std::size_t i = 0; i < bodies.parts.size(); ++i) {

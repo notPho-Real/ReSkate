@@ -21,6 +21,7 @@ InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation;
 CaptureFooterRecovery capture_footer_recovery;
 std::atomic<bool> controller_capture_live{},capture_render_ack_lost{},capture_transport_pending{};
+std::atomic<bool> ground_writer_capture_live{};
 std::atomic<std::uint64_t> capture_abandoned_id{},capture_abandoned_client_barrier{};
 struct Join {std::uint64_t request{};} capture_manual_join;
 unsigned written_begin{},written_end{};

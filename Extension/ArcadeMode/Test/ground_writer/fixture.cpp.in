@@ -1,0 +1,140 @@
+#include "Extension/ArcadeMode/arcade_input_telemetry.h"
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <stdexcept>
+#include <thread>
+#include <vector>
+using namespace dingosdk::arcade_mode;
+namespace dingosdk::arcade_mode {
+InputTelemetryLink input_telemetry;
+CaptureCorrelationProducer input_capture_correlation;
+GroundWriterBudget ground_writer_budget;
+NativeInputFrame capture_native_frame;
+std::mutex ollie_mutex;
+std::atomic<bool> mode{true},ground_writer_capture_live{true};
+std::atomic<std::uint64_t> motion_capture_until{1150};
+bool enabled()noexcept{return mode.load();}
+@OBSERVER@
+}
+unsigned checks{};
+void check(bool ok,const char* why){++checks;if(!ok)throw std::runtime_error(why);}
+const NativeInputOwner owner{1,2,3,4,5};
+NativeInputFrame frame(){NativeInputFrame f;f.valid=true;f.owner=owner;f.owner_generation=2;f.contact_generation=3;f.action_generation=4;f.physics_step=5;f.sampled_at=1000;f.physics_seconds=1.f/30;return f;}
+InputTelemetry queue;
+void reset(){
+    ClientTelemetry out[64];while(queue.client.take(out)){}
+    mode=true;ground_writer_capture_live=true;motion_capture_until=1150;capture_native_frame=frame();ground_writer_budget={};input_capture_correlation={};
+    input_telemetry.publish(queue);
+    check(input_capture_correlation.begin(1000,1000,64,capture_native_frame,input_telemetry.client_dropped(),[](auto){}),"finite capture begins");
+}
+GroundWriterEvidence ticket(const NativeInputFrame& f=frame()){
+    auto r=begin_ground_writer_observation(1000,owner,f,true,true,0);
+    r.input_ms=1000;r.input_generation=1;r.proof_ms=1000;r.proof_step=5;r.proof_owner_generation=2;r.proof_owner_matches=r.proof_valid=true;
+    r.controls=11;r.bodies=2;r.before=r.staged={1,0,2};return r;
+}
+GroundWriterEvidence emitted;unsigned emissions{};
+void sink(const GroundWriterEvidence& r)noexcept{emitted=r;++emissions;finish_ground_writer_observation(r);}
+bool owner_ok{},verify_ok{};unsigned write_calls{},fail_copy{},fail_peek{};
+std::map<std::uintptr_t,std::vector<unsigned char>> memory_bytes;
+void source_require(bool yes,const char* text){if(!yes)throw std::runtime_error(text);}
+bool source_range(std::uintptr_t,std::size_t){return true;}
+bool copy_to(std::uintptr_t p,const void* v,std::size_t n){
+    ++write_calls;if(write_calls==fail_copy)return false;
+    auto& bytes=memory_bytes[p];bytes.resize(n);std::memcpy(bytes.data(),v,n);return true;
+}
+namespace memory {template<class T>bool peek(std::uintptr_t p,T& v){
+    if(write_calls==fail_peek)return false;auto it=memory_bytes.find(p);if(it==memory_bytes.end()||it->second.size()!=sizeof(T))return false;
+    std::memcpy(&v,it->second.data(),sizeof(T));return true;
+}}
+@BODY_WRITE@
+using NoBailSkater=NativeInputOwner;
+bool no_bail_skater(NoBailSkater& out){out=owner;return owner_ok;}
+struct Reader{void verify(){source_require(verify_ok,"source changed");}};
+struct Drive{unsigned calls{};void account_resistance(float){++calls;}};
+struct Push{Drive arcade_drive;}push;
+Push& push_speed(){return push;}
+void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_source=true,unsigned copy_error=0,unsigned peek_error=0,bool later_error=false){
+    reset();emissions=0;write_calls=0;owner_ok=valid_owner;verify_ok=valid_source;fail_copy=copy_error;fail_peek=peek_error;push={};memory_bytes.clear();
+    try{
+        GroundWriterObservation writer_observation{ticket(),sink};
+        writer_observation.policy(true,true,{GroundStepStatus::next,false,1.f/30},false);writer_observation.selected(true);
+        Reader reader;struct{std::array<std::uintptr_t,2>parts{1000,2000};}bodies;
+        std::array<std::array<float,3>,2>velocities{{{.5f,0,1},{.7f,0,1.2f}}},spins{};
+        std::array<unsigned,2>flags{1,2};float resistance_change=-.5f;
+@COMMIT@
+        commit_motion(linear,angular);
+        if(later_error)throw std::runtime_error("later observer-independent failure");
+    }catch(const std::runtime_error&){}
+    check(emissions==1,"one terminal observation even on exception");
+    check(ground_writer_valid(emitted),"terminal receipt is valid");
+}
+int main(){
+    reset();auto base=ticket();check(base.capture&&base.owner==1,"existing anonymous token reused");
+    check(ground_writer_valid(base),"initial receipt valid");
+    for(auto which:{0,1,2,3,4}){
+        reset();if(which==0)mode=false;if(which==1)ground_writer_capture_live=false;if(which==2)motion_capture_until=999;
+        auto r=begin_ground_writer_observation(1000,owner,frame(),which!=3,which!=4,0);
+        check(!r.capture,"OFF, no capture, expired logging, disabled intent or no brake emits nothing");
+    }
+    reset();check(begin_ground_writer_observation(1000,owner,frame(),true,false,4).capture,"native brake request may be observed");
+    reset();auto f=frame();f.owner.entity=99;auto drops=input_telemetry.client_dropped();
+    check(!begin_ground_writer_observation(1000,owner,f,true,true,0).capture&&input_telemetry.client_dropped()==drops+1,"changed consumed owner cannot be joined");
+    reset();f=frame();f.physics_step=4;f.sampled_at=990;f.action_generation=9;
+    auto exact=begin_ground_writer_observation(1000,owner,f,true,true,0);
+    check(exact.step==4&&exact.native_ms==990&&exact.action_generation==9&&exact.motion_valid,"exact consumed frame wins over latest original observation");
+    reset();auto revoked=begin_ground_writer_observation(1000,owner,{},true,true,0);
+    check(revoked.capture&&!revoked.motion_valid&&revoked.step==5,"withdrawn motion retains diagnostic original context, never permission");
+    reset();f=frame();f.sampled_at=849;drops=input_telemetry.client_dropped();
+    check(!begin_ground_writer_observation(1000,owner,f,true,true,0).capture&&input_telemetry.client_dropped()==drops+1,"stale frame denied and counted");
+    reset();check(!input_capture_correlation.ground_writer_owner(2001,owner)&&input_capture_correlation.ground_writer_owner(2000,owner),"finite inclusive capture endpoint retained");
+    input_capture_correlation.end(1000,frame(),input_telemetry.client_dropped(),[](auto){});
+    check(!begin_ground_writer_observation(1000,owner,frame(),true,true,0).capture,"closed capture cannot acquire receipt");
+    for(unsigned mask:{32u,255u}){
+        input_capture_correlation={};check(input_capture_correlation.begin(1000,1000,mask,frame(),0,[](auto){}),"other scope starts");
+        check(!input_capture_correlation.ground_writer_owner(1000,owner),"nonpoll and schema4 scopes unchanged");
+    }
+    reset();drops=input_telemetry.client_dropped();
+    for(unsigned i=0;i<16;++i){f=frame();f.physics_step+=i;check(begin_ground_writer_observation(1000,owner,f,true,true,0).sequence==i+1,"finite writer budget");}
+    f.physics_step++;check(!begin_ground_writer_observation(1000,owner,f,true,true,0).capture&&input_telemetry.client_dropped()==drops+1,"budget exhaustion counts missing observation");
+    reset();drops=input_telemetry.client_dropped();ticket();check(!ticket().capture&&input_telemetry.client_dropped()==drops+1,"duplicate step is omitted and counted, not silently complete");
+    reset();drops=input_telemetry.client_dropped();std::unique_lock held(ollie_mutex);std::thread contender([]{check(!ticket().capture,"contended observer never blocks writer");});contender.join();held.unlock();
+    check(input_telemetry.client_dropped()==drops+1,"contention charged to loss");
+    reset();drops=input_telemetry.client_dropped();ground_writer_capture_live=false;
+    std::unique_lock schema4_lock(ollie_mutex);std::thread schema4_contender([]{check(!ticket().capture,"unsupported capture skips before trying the observer lock");});schema4_contender.join();schema4_lock.unlock();
+    check(input_telemetry.client_dropped()==drops,"unsupported capture cannot introduce observer loss");
+    commit_case(true,true);check(emitted.stage==GroundWriterStage::verified&&emitted.completed==2&&!emitted.unwinding&&write_calls==6&&push.arcade_drive.calls==1,"full verified loop retains all original writes/accounting");
+    commit_case(false,false);check(emitted.stage==GroundWriterStage::staged&&!write_calls&&!emitted.completed,"no requested writes is not commit");
+    commit_case(true,false,false);check(emitted.stage==GroundWriterStage::staged&&emitted.unwinding&&!write_calls,"owner rejection never positive commit");
+    commit_case(true,false,true,false);check(emitted.stage==GroundWriterStage::staged&&emitted.unwinding&&!write_calls,"source rejection never positive commit");
+    for(unsigned bad=1;bad<=6;++bad){
+        commit_case(true,true,true,true,bad);check(emitted.stage==GroundWriterStage::writing&&emitted.completed==(bad-1)/3&&emitted.unwinding&&!push.arcade_drive.calls,"partial copy failure never reports complete");
+        commit_case(true,true,true,true,0,bad);check(emitted.stage==GroundWriterStage::writing&&emitted.completed==(bad-1)/3&&emitted.unwinding&&!push.arcade_drive.calls,"failed existing readback never reports complete");
+    }
+    commit_case(true,false,true,true,0,0,true);check(emitted.stage==GroundWriterStage::verified&&emitted.unwinding,"later unwind does not erase completed loop or claim final engine result");
+    {GroundWriterObservation disabled{{},sink};}check(emissions==1,"disabled scope never submits");
+    for(unsigned mutation=0;mutation<8;++mutation){auto r=base;
+        if(mutation==0)r.before[0]=NAN;if(mutation==1)r.native_ms=849;if(mutation==2)r.sequence=17;if(mutation==3)r.completed=3;
+        if(mutation==4)r.stage=GroundWriterStage::verified;if(mutation==5)r.selected_brake=true;if(mutation==6)r.seconds=0;if(mutation==7)r.input_ms=1001;
+        check(!ground_writer_valid(r),"malformed receipt rejected");
+    }
+    reset();base=ticket();drops=input_telemetry.client_dropped();
+    for(unsigned i=0;i<64;++i)check(input_telemetry.client(base),"existing queue capacity unchanged");
+    check(!input_telemetry.client(base)&&input_telemetry.client_dropped()==drops+1,"queue-full observation loss truthful");
+    ClientTelemetry rows[64];check(queue.client.take(rows)==64,"bounded worker can recover all retained receipts");
+    check(std::get<GroundWriterEvidence>(rows[0]).before==base.before,"queue owns immutable scalar copy");
+    base.before[0]=NAN;check(!input_telemetry.client(base)&&input_telemetry.client_dropped()==drops+2,"invalid receipt shares existing rejection accounting");
+    for(bool lose:{false,true}){
+        CaptureCorrelationProducer p;CaptureCorrelationDrain d;std::vector<CaptureCorrelationEvidence> capture_rows;
+        const auto sink=[&](auto r){capture_rows.push_back(r);return true;};const auto start=input_telemetry.client_dropped();
+        check(p.begin(1000,100,4,frame(),start,sink),"loss-accounting control starts");
+        CaptureCorrelationEvidence event;event.source=CaptureCorrelationSource::native;event.source_sequence=5;event.ms=1000;event.events_known=true;
+        p.event(event,frame(),start,sink);if(lose)input_telemetry.client_lost();p.end(1001,frame(),input_telemetry.client_dropped(),sink);
+        d.written(capture_rows[0],true);d.written(capture_rows[1],true);auto end=d.footer(capture_rows[2],input_telemetry.client_dropped());
+        check(end.complete==!lose,"observer loss cannot leave complete capture credit");
+    }
+    static_assert(sizeof(GroundWriterEvidence)<=sizeof(CaptureCorrelationEvidence));
+    std::cout<<"sizes evidence="<<sizeof(GroundWriterEvidence)<<" variant="<<sizeof(ClientTelemetry)<<" queue="<<sizeof(InputTelemetryQueue<ClientTelemetry,64>)<<'\n';
+    std::cout<<checks<<" ground writer checks passed\n";
+}

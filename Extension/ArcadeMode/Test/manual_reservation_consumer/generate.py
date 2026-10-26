@@ -50,7 +50,7 @@ def generate(root,variant='current'):
 
     once('#include "Extension/Skater/no_bail.h"','#include "Extension/Skater/no_bail.h"\n#include "Extension/Skater/native_bail_request.h"')
     if has_ground_step:
-     once('#include "Extension/ArcadeMode/arcade_air_motion.h"','#include "Extension/ArcadeMode/arcade_air_motion.h"\n#include "Extension/ArcadeMode/arcade_ground_motion_step.h"')
+     once('#include "Extension/ArcadeMode/arcade_air_motion.h"','#include "Extension/ArcadeMode/arcade_air_motion.h"\n#include "Extension/ArcadeMode/arcade_ground_motion_step.h"\n#include "Extension/ArcadeMode/arcade_ground_writer_observation.h"')
     once('bool auto_kick_enabled(){return true;}','bool automatic_kick=true;bool auto_kick_enabled(){return automatic_kick;}')
     once('namespace dingosdk {void cancel_balance_bail()noexcept{}std::uint64_t request_balance_bail(const NoBailSkater&)noexcept{return 1;}}',r'''
     // Native service boundary only: record the production request; no impact or solver.
@@ -132,6 +132,8 @@ def generate(root,variant='current'):
      struct Reader{template<class T>T value(std::uintptr_t,std::uintptr_t){return T{};}};
      std::array<std::array<float,3>,2>velocities{{{0,0,5},{1,2,4}}},spins{};std::array<std::uint32_t,2>flags{};
      Reader reader;float resistance_change{};linear_writes=dirty_writes=0;
+     GroundWriterObservation writer_observation{{},+[](const GroundWriterEvidence&)noexcept{}};
+     auto& writer_row=writer_observation.row;
      COMMIT
      RESISTANCE
      commit_motion(resistance_change<0,false);

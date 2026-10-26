@@ -10,6 +10,7 @@
 #include "arcade_fixture_trajectory.h"
 #include "arcade_capture_schema4.h"
 #include "arcade_settings_snapshot.h"
+#include "arcade_ground_writer_observation.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -228,7 +229,7 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
@@ -241,6 +242,7 @@ inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
     if (const auto* capture = std::get_if<CaptureCorrelationEvidence>(&row)) return capture_correlation_valid(*capture);
     if (const auto* route = std::get_if<ControllerRouteEvidence>(&row)) return controller_route_evidence_valid(*route);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
+    if (const auto* writer = std::get_if<GroundWriterEvidence>(&row)) return ground_writer_valid(*writer);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
     if (const auto* foot = std::get_if<FootMotionEvidence>(&row)) return foot_motion_valid(*foot);
@@ -502,6 +504,13 @@ public:
     bool observational()const noexcept{return observational_;}
     bool schema4()const noexcept{return active_&&schema4_;}
     std::uint64_t capture_id()const noexcept{return active_?id_:0;}
+    // Read-only diagnostic join. Never allocates owners, changes capture debt,
+    // or extends the finite interval. Schema4 keeps its existing evidence set.
+    unsigned ground_writer_owner(std::uint64_t now,const NativeInputOwner& owner)const noexcept{
+        if(!active_||!observational_||schema4_||!(scope_&64)||now<started_||now>until_||!owner.valid())return 0;
+        for(unsigned i=0;i<owners_.size();++i)if(owners_[i]==owner)return i+1;
+        return 0;
+    }
     std::uint64_t reserve_poll()noexcept{
         if(!captures(CaptureCorrelationSource::pad_poll))return 0;
         for(auto& slot:polls_)if(!slot){
@@ -724,6 +733,9 @@ public:
     }
     std::uint64_t client_dropped() const noexcept {
         const auto* target=target_.load(std::memory_order_acquire);return target?target->client.dropped():UINT64_MAX;
+    }
+    void client_lost() noexcept {
+        if(auto* target=target_.load(std::memory_order_acquire))target->client.lose();
     }
     std::uint64_t client_retirement_barrier() const noexcept {
         const auto* target=target_.load(std::memory_order_acquire);
