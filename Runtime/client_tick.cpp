@@ -1175,10 +1175,12 @@ void tick(std::uintptr_t client, std::uintptr_t update) {
     const auto tick_start = dingosdk::profiler::now_ns();
     auto& r = runtime();
     dingosdk::poll_level_loading(client);
+    dingosdk::arcade_mode::camera_capture_tick_begin(); // Optional observation; no native authority.
     dingosdk::camera_tick_enter(client);
     struct CameraTickScope {
         ~CameraTickScope() {
             const auto error = GetLastError();
+            dingosdk::arcade_mode::camera_capture_tick_end(); // Post known tick writers, not final presentation.
             dingosdk::camera_tick_leave();
             SetLastError(error);
         }

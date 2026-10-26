@@ -11,6 +11,7 @@
 #include "arcade_capture_schema4.h"
 #include "arcade_settings_snapshot.h"
 #include "arcade_ground_writer_observation.h"
+#include "Extension/Skater/camera_diagnostics.h"
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -229,7 +230,7 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
@@ -243,6 +244,7 @@ inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
     if (const auto* route = std::get_if<ControllerRouteEvidence>(&row)) return controller_route_evidence_valid(*route);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* writer = std::get_if<GroundWriterEvidence>(&row)) return ground_writer_valid(*writer);
+    if (const auto* camera = std::get_if<camera_diagnostics::Evidence>(&row)) return camera_diagnostics::valid(*camera);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
     if (const auto* foot = std::get_if<FootMotionEvidence>(&row)) return foot_motion_valid(*foot);

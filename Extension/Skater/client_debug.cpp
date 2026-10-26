@@ -1,5 +1,6 @@
 #include "client_source_spawn.h"
 #include "client_source_spawn_internal.h"
+#include "camera_diagnostics.h"
 #include "no_bail.h"
 #include "offboard_flight.h"
 #include "Engine/Core/Log/logging.h"
@@ -227,6 +228,7 @@ void debug_flight_tick(SourceTrial& trial, std::uintptr_t client, bool ready, bo
     debug.flight_ready = false; // An exceptional setter must not be retried automatically.
     SetLastError(error);
     trial.camera_transform(camera.identity.camera, &next);
+    camera_diagnostics::writer(camera_diagnostics::Writer::debug,GetTickCount64());
     debug.flight_matrix = next;
     debug.flight_ready = true;
     // Written every tick: the camera may refresh its FOV from its own settings.
@@ -701,6 +703,7 @@ void debug_action(SourceTrial& trial, std::uintptr_t client, bool can_control, b
         debug.flight_ready = false;
         SetLastError(error);
         trial.camera_transform(camera.identity.camera, &pose);
+        camera_diagnostics::writer(camera_diagnostics::Writer::debug,GetTickCount64());
         debug.flight_matrix = pose;
         debug.flight_time = source_flight_now();
         debug.flight_ready = true;
@@ -741,6 +744,7 @@ void debug_action(SourceTrial& trial, std::uintptr_t client, bool can_control, b
             "Freecam activation could not be verified; disable Freecam to restore the view.");
         SetLastError(error);
         trial.camera_transform(camera.identity.camera, &pose);
+        camera_diagnostics::writer(camera_diagnostics::Writer::debug,GetTickCount64());
         debug.flight_matrix = pose;
         debug.flight_time = source_flight_now();
         debug.flight_ready = true;

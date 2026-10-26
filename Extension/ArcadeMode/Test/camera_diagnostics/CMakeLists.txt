@@ -1,0 +1,8 @@
+add_executable(dingosdk_arcade_camera_diagnostics_tests tests.cpp)
+include("${CMAKE_CURRENT_SOURCE_DIR}/../manual_test_warnings.cmake")
+dingosdk_arcade_manual_test_warnings(dingosdk_arcade_camera_diagnostics_tests)
+target_include_directories(dingosdk_arcade_camera_diagnostics_tests PRIVATE "${PROJECT_SOURCE_DIR}")
+target_compile_features(dingosdk_arcade_camera_diagnostics_tests PRIVATE cxx_std_20)
+find_package(Threads REQUIRED)
+target_link_libraries(dingosdk_arcade_camera_diagnostics_tests PRIVATE Threads::Threads)
+add_test(NAME arcade_camera_diagnostics COMMAND dingosdk_arcade_camera_diagnostics_tests)

@@ -1,5 +1,6 @@
 #include "client_source_spawn.h"
 #include "client_source_spawn_internal.h"
+#include "camera_diagnostics.h"
 #include "Extension/Multiplayer/Remote/native_pose_layout.h"
 #include "Extension/Multiplayer/Remote/native_skater.h"
 #include "Engine/Game/Build/20260929/engine.h"
@@ -219,6 +220,7 @@ void first_person_on_render(std::uintptr_t animation_interface) noexcept {
             matrix = arm.spring.sample(matrix, arm.settings, latest.origin);
             source_require(valid_flight_transform(matrix), "First-person spring pose is invalid.");
             arm.transform(arm.camera, &matrix);
+            camera_diagnostics::writer(camera_diagnostics::Writer::first_person,GetTickCount64());
             arm.matrix = matrix;
             if (arm.fov > 0) (void)first_person_write_fov(arm.camera, arm.fov);
         }

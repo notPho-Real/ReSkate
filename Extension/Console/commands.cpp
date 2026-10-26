@@ -78,6 +78,15 @@ void register_console_commands(Commands &registry) {
         else out(duration?"Input correlation capture started; completeness and native acceptance remain unverified.":"Input correlation capture stopped.");
     };
     registry.add(std::move(capture));
+    auto camera_capture=action("arcadecameracapture","Finite observational camera capture; milliseconds1..3000, zero stops; no camera/input changes",Group::gameplay,
+        {argument("milliseconds",Type::unsigned_integer,false)});
+    camera_capture.run=[](const Model&,const Values& values,const Output& out){
+        const auto duration=std::get<std::uint64_t>(values[0]);
+        if(duration>3000||!arcade_mode::set_camera_capture(static_cast<unsigned>(duration)))
+            out("Camera capture unavailable: require telemetry, duration1..3000, no active camera capture; zero stops.");
+        else out(duration?"Camera observation capture started; completeness and final presented view remain unverified.":"Camera observation stop requested; require its end record.");
+    };
+    registry.add(std::move(camera_capture));
     auto playback_mode = argument("delivery|timeline|reference|off", Type::text, true);
     playback_mode.choices = {"delivery", "timeline", "reference", "off"};
     auto playback = action("arcadeplayback", "Unsaved playback A/B diagnostic; change with Arcade Mode OFF",

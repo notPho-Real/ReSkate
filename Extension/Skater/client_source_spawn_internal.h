@@ -218,7 +218,7 @@ SourceState& source_state();
 bool source_writable(std::uintptr_t address, std::size_t size);
 // source_spawn_camera.cpp
 SourceCameraSnapshot source_camera_snapshot(const SourceTrial& trial, std::uintptr_t client);
-std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCameraSnapshot& camera);
+std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCameraSnapshot& camera,unsigned* observed_kind=nullptr);
 // client_debug.cpp
 double source_flight_now();
 std::array<float, 16> debug_skater(std::uintptr_t base, std::uintptr_t client, overlay::DebugModel& model);

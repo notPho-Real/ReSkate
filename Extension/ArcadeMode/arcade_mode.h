@@ -62,6 +62,11 @@ bool set_action_experiment(ActionExperiment value) noexcept;
 ActionExperiment action_experiment() noexcept;
 // Explicit finite diagnostic capture on the existing client channel; zero stops.
 bool set_input_capture(unsigned duration_ms,unsigned required_sources=96) noexcept;
+// Independent, unsaved finite camera observations (1..3000ms; zero stops).
+// No input/physics/camera authority; continues observing OFF restoration.
+bool set_camera_capture(unsigned duration_ms) noexcept;
+void camera_capture_tick_begin() noexcept;
+void camera_capture_tick_end() noexcept;
 // Client thread only; observes the existing overlay controller input path.
 void on_client_tick() noexcept;
 // Uses the existing validated native camera lease on the client thread.

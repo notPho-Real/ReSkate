@@ -37,6 +37,7 @@
 #include "Extension/HallOfMeat/hall_of_meat_skater.h"
 #include "Extension/Trainer/trainer.h"
 #include "Extension/Skater/client_source_spawn.h"
+#include "Extension/Skater/camera_diagnostics_format.h"
 #include "Extension/Multiplayer/Remote/native_skater.h"
 #include "Extension/Multiplayer/Hud/native_party.h"
 #include "Extension/Multiplayer/Hud/follow_camera.h"
@@ -770,6 +771,10 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BOARD MOTION: seq={} ms={} dt={} valid={} state={} mode={} requests={} contacts={} vx={} vy={} vz={} wipeout={}.",
                 r.sequence, r.ms, r.seconds, r.valid, r.state, r.mode, r.requests, r.contacts, r.vx, r.vy, r.vz, r.wipeout);
+        else if constexpr (std::is_same_v<T, camera_diagnostics::Evidence>) {
+            try { logging::write(logging::Level::info, logging::Channel::skater,camera_diagnostics::format(r)); }
+            catch(...) { input_telemetry.client_lost(); }
+        }
         else if constexpr (std::is_same_v<T, GroundWriterEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE GROUND WRITER: capture={} seq={} ms={} native_ms={} step={} owner={} owner_gen={} contact_gen={} action_gen={} dt={} input_ms={} input_gen={} proof_ms={} proof_step={} proof_owner_gen={} proof_valid={} proof_owner_matches={} motion_valid={} controls={} controls_current={} state={} mode={} contacts={} requests={} ordinary={} balancing={} eligible={} step_status={} baseline={} ground_dt={} native_brake={} selected_known={} selected_brake={} before={},{},{} staged={},{},{} requested_resistance={} resistance={} linear={} angular={} stage={} bodies={} completed={} unwinding={} final_engine_verified=false.",
@@ -1447,18 +1452,41 @@ void set_spin_mode(SpinMode mode, bool persist) noexcept {
     if (persist) profile_runtime::set_local_preference("ArcadeTapSpin",mode==SpinMode::tap);
 }
 
+bool camera_capture_sink(const camera_diagnostics::Evidence& row) noexcept { return input_telemetry.client(row); }
+bool set_camera_capture(unsigned duration_ms) noexcept {
+    const auto error=GetLastError();
+    bool result{};
+    try { result=input_telemetry.available()&&camera_diagnostics::capture.arm(GetTickCount64(),duration_ms,
+        input_telemetry.client_dropped(),camera_capture_sink); } catch(...) { input_telemetry.client_lost(); }
+    SetLastError(error);return result;
+}
+void camera_capture_tick_begin() noexcept {
+    const auto error=GetLastError();
+    try { camera_diagnostics::capture.begin(camera_diagnostics::frame,GetTickCount64(),input_telemetry.client_dropped()); }
+    catch(...) { input_telemetry.client_lost(); }
+    SetLastError(error);
+}
+void camera_capture_tick_end() noexcept {
+    const auto error=GetLastError();
+    try { camera_diagnostics::capture.finish(camera_diagnostics::frame,GetTickCount64(),input_telemetry.client_dropped()); }
+    catch(...) { input_telemetry.client_lost(); }
+    SetLastError(error);
+}
 void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_camera, bool phase) noexcept {
+    camera_diagnostics::gate(enabled(),ready_for_camera,phase);
     const auto restore = [&]() noexcept {
+        camera_diagnostics::restore();
         camera_orbit.reset(); camera_at = 0; camera_source = {};
         try {
             if (camera_lease_requested) {
                 std::string detail;
-                if (update_arcade_camera(base, client, false, phase, nullptr, detail)) camera_lease_requested = false;
+                if (update_arcade_camera(base, client, false, phase, nullptr, detail)) { camera_lease_requested = false; camera_diagnostics::restore(true); }
             }
         } catch (...) {}
     };
     const auto generation = camera_reset_generation.load(std::memory_order_acquire);
     if (camera_observed_generation != generation) {
+        camera_diagnostics::reason(camera_diagnostics::Reason::reset);
         restore();
         if (camera_lease_requested) return; // Keep retirement pending until the native adapter succeeds.
         camera_observed_generation = generation;
@@ -1467,29 +1495,36 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         const auto ui = multiplayer::sample_game_ui_state(base);
         if (!enabled() || !prepared_catalog.load(std::memory_order_acquire) || !ready_for_camera ||
             !ui.available || ui.in_menu || multiplayer::party_camera_requested()) {
+            camera_diagnostics::reason(camera_diagnostics::Reason::policy);
             restore(); return;
         }
         // The overlay read supplies current focus/menu availability only. Its
         // axes and buttons merge devices and cannot control this local camera.
         ControllerInput focus{};
         DingoSDKOverlayReadControllerInput(&focus);
-        if (!focus.available) { restore(); return; }
+        if (!focus.available) { camera_diagnostics::reason(camera_diagnostics::Reason::focus); restore(); return; }
         const auto read_input = []() noexcept {
             const auto sampled_at = GetTickCount64();
             std::unique_lock lock(ollie_mutex,std::try_to_lock);
-            return lock.owns_lock() ? camera_input_snapshot(controller_route,arcade_input,sampled_at,enabled()) : CameraInputSnapshot{};
+            const auto result=lock.owns_lock() ? camera_input_snapshot(controller_route,arcade_input,sampled_at,enabled()) : CameraInputSnapshot{};
+            camera_diagnostics::input(lock.owns_lock(),result.valid,{result.owner.base,result.owner.entity,result.owner.core,result.owner.context,result.owner.rig},
+                result.owner_generation,result.route_generation,result.slot,result.right_x,result.right_y);
+            return result;
         };
         const auto input = read_input();
-        if (!input.valid || (input.buttons & 0x0010u)) { restore(); return; }
+        if (!input.valid || (input.buttons & 0x0010u)) { camera_diagnostics::reason(camera_diagnostics::Reason::input); restore(); return; }
         if (!camera_source.same_binding(input)) {
+            camera_diagnostics::reason(camera_diagnostics::Reason::binding);
             restore();
             if (camera_lease_requested) return;
             camera_source = input;
         }
         const auto local = multiplayer::capture_local(base, client, false);
-        if (!local.ready || local.entity != input.owner.entity) { restore(); return; }
+        if (!local.ready || local.entity != input.owner.entity) { camera_diagnostics::reason(camera_diagnostics::Reason::local); restore(); return; }
+        camera_diagnostics::root(local.pose.root.position);
         float fov{};
         const auto follow = multiplayer::follow_camera(UINT64_MAX, local.pose.root, fov);
+        camera_diagnostics::pose(4,0,0,follow,fov);
         auto target = local.pose.root.position;
         target[1] += 1.0f;
         const auto now = GetTickCount64();
@@ -1497,9 +1532,11 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         camera_at = now;
         const auto transform = camera_orbit.update(follow, target,
             static_cast<float>(input.right_x) / 32767, static_cast<float>(input.right_y) / 32767, dt);
-        if (!transform) { restore(); return; }
+        if (!transform) { camera_diagnostics::reason(camera_diagnostics::Reason::transform); restore(); return; }
+        camera_diagnostics::pose(1,0,0,*transform,fov);
         if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||
             !input.same_binding(read_input())) {
+            camera_diagnostics::reason(camera_diagnostics::Reason::before_publish);
             restore(); return;
         }
         std::string detail;
@@ -1507,8 +1544,8 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         camera_lease_requested = true;
         if (!update_arcade_camera(base, client, true, phase, &*transform, detail, fov) ||
             !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||
-            !input.same_binding(read_input())) restore();
-    } catch (...) { restore(); }
+            !input.same_binding(read_input())) { camera_diagnostics::reason(camera_diagnostics::Reason::after_publish); restore(); }
+    } catch (...) { camera_diagnostics::reason(camera_diagnostics::Reason::exception); restore(); }
 }
 
 PlaybackExperiment playback_experiment() noexcept {
@@ -1597,6 +1634,7 @@ void set_enabled(bool value, bool persist) noexcept {
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
         mode_enabled.store(value, std::memory_order_release);
+        camera_diagnostics::capture.mode(value,GetTickCount64());
         camera_reset_generation.fetch_add(1, std::memory_order_release);
         ollie_eligible_until.store(0, std::memory_order_release);
         gameplay_valid_until.store(0, std::memory_order_release);

@@ -423,6 +423,7 @@ if(DINGOSDK_BUILD_ARCADE_MODE_TESTS)
         add_subdirectory(Extension/ArcadeMode/Test/capture_schema4_emitter)
         add_subdirectory(Extension/ArcadeMode/Test/manual_reservation_consumer)
         add_subdirectory(Extension/ArcadeMode/Test/ground_writer)
+        add_subdirectory(Extension/ArcadeMode/Test/camera_diagnostics)
         add_subdirectory(Extension/ArcadeMode/Test/manual_channel_reservation)
         add_test(NAME arcade_input_differential COMMAND "${Python3_EXECUTABLE}"
             "${PROJECT_SOURCE_DIR}/Extension/ArcadeMode/Test/compare_input_replay.py"

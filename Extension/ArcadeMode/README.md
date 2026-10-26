@@ -5,6 +5,11 @@ preference is available at **Pause → Mod Options → Player → Arcade Mode** 
 through `arcademode`, `arcademode on`, and `arcademode off`. It defaults OFF and
 persists through the normal local preference store.
 
+`arcadecameracapture <1..3000>` provides a separate finite camera observation;
+zero requests its end. It changes no camera policy and remains observable across
+OFF. See the [camera evidence contract](Test/camera_diagnostics/README.md) for
+bounded loss accounting, identity/pose provenance and causal limitations.
+
 OFF preserves native controller input. A transition cancels synthetic gestures,
 clears combo/HUD state and requires release before held commands can rearm. Native
 menus, lost focus and stale observations suppress translation. The real Deck

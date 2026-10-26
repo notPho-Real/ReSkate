@@ -4,6 +4,7 @@
 #include "Engine/Game/UI/game_view.h"
 #include "free_flight.h"
 #include "camera_observer.h"
+#include "camera_diagnostics.h"
 #include <intrin.h>
 
 namespace dingosdk::client_source::detail {
@@ -99,7 +100,7 @@ SourceCameraSnapshot source_camera_snapshot(const SourceTrial& trial, std::uintp
     reader.verify();
     return result;
 }
-std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCameraSnapshot& camera) {
+std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCameraSnapshot& camera,unsigned* observed_kind) {
     SourceReader reader;
     const auto vtable = reader.pointer(camera.active);
     source_require(vtable == trial.base + spawn::free_camera_vtable || vtable == trial.base + addr::engine::camera_vtable,
@@ -115,6 +116,7 @@ std::array<float, 16> debug_view_matrix(const SourceTrial& trial, const SourceCa
     }
     source_require(valid_flight_transform(matrix), "Current camera pose is unavailable.");
     reader.verify();
+    if(observed_kind)*observed_kind=vtable==trial.base+addr::engine::camera_vtable?1u:2u;
     return matrix;
 }
 }
@@ -129,6 +131,7 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
     struct Lease { bool owned{}, uncertain{}; SourceCameraIdentity identity; DWORD thread{}; float saved_fov{}; ViewOwner owner{}; };
     static Lease lease;
     SourceLastError error;
+    const auto diagnostic=camera_diagnostics::operation(transform!=nullptr,static_cast<unsigned>(requester),lease.owned,lease.uncertain);
     if (lease.owned && lease.owner != requester) {
         if (transform) detail = "Another camera control owns the current view.";
         return transform == nullptr;
@@ -158,6 +161,7 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
         // These observations do not serialize the native callback.
         const auto identity = camera.identity;
         const auto observation = camera_phase_observation(identity.context);
+        camera_diagnostics::phase(diagnostic,observation.sample,observation.generation,observation.calls);
         const auto revalidate = [&]() {
             const auto current = source_camera_snapshot(trial, client);
             source_require(current.identity == identity && observation.client == client &&
@@ -166,6 +170,25 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
             return current;
         };
         camera = revalidate();
+        const auto diagnostic_identity=[](const SourceCameraIdentity& value) noexcept -> camera_diagnostics::Key {
+            return {value.context,value.manager,value.controller,value.selector,value.node,value.camera,value.view,
+                value.view_manager,value.helpers[0],value.helpers[1],value.priority};
+        };
+        camera_diagnostics::identity(diagnostic,lease.owned?diagnostic_identity(lease.identity):camera_diagnostics::Key{},diagnostic_identity(identity));
+        camera_diagnostics::selection(diagnostic,false,camera.mode,camera.active);
+        camera_diagnostics::stage(diagnostic,1);
+        // Optional guarded read only. Failure cannot escape into the adapter's
+        // control-flow catch, suppress a write, or alter its GetLastError.
+        if(transform&&camera_diagnostics::observing()&&!camera_diagnostics::frame.row.view[0].valid){
+            SourceLastError diagnostic_error;
+            try {
+                unsigned kind{};const auto pose=debug_view_matrix(trial,camera,&kind);
+                SourceReader observer;
+                const auto value=observer.value<float>(camera.active,camera_fov_offset);
+                observer.verify();
+                camera_diagnostics::pose(0,camera.active,kind,pose,value);
+            } catch(...) {}
+        }
         if (!transform) {
             const bool fov_restored = lease.saved_fov <= 0 ||
                 first_person_write_fov(lease.identity.camera, lease.saved_fov);
@@ -173,12 +196,14 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
             if (camera.mode == 1 && camera.active == lease.identity.camera) {
                 trial.camera_mode(lease.identity.controller, 0);
                 camera = revalidate();
+                camera_diagnostics::selection(diagnostic,true,camera.mode,camera.active);
+                camera_diagnostics::stage(diagnostic,2);
                 source_require(camera.mode == 0 && camera.active != lease.identity.camera,
                                "Waiting for the original camera to return.");
             }
             // Return the original view even when its saved FOV needs a retry.
             source_require(fov_restored, "Waiting for the original camera field of view to return.");
-            lease = {}; detail = "Original camera restored."; return true;
+            lease = {}; detail = "Original camera restored."; camera_diagnostics::returned(diagnostic); return true;
         }
         source_require(ready && valid_flight_transform(*transform), "Spectate target is unavailable on this map.");
         source_require(!lease.uncertain, "Spectate camera activation was not verified; exit Spectate to restore it.");
@@ -194,6 +219,8 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
                            "Existing camera ownership changed before activation.");
             trial.camera_mode(camera.identity.controller, 1);
             camera = revalidate();
+            camera_diagnostics::selection(diagnostic,true,camera.mode,camera.active);
+            camera_diagnostics::stage(diagnostic,2);
             source_require(camera.identity == lease.identity && camera.mode == 1 &&
                            camera.active == lease.identity.camera, "Native spectate camera activation could not be verified.");
             lease.uncertain = false;
@@ -202,16 +229,21 @@ bool update_owned_camera(std::uintptr_t base, std::uintptr_t client, bool ready,
         source_require(camera.mode == 1 && camera.active == lease.identity.camera,
                        "Another native camera has taken control of the view.");
         trial.camera_transform(lease.identity.camera, transform);
+        camera_diagnostics::writer(requester==ViewOwner::arcade?camera_diagnostics::Writer::arcade:camera_diagnostics::Writer::party,GetTickCount64());
         camera = revalidate();
+        camera_diagnostics::selection(diagnostic,true,camera.mode,camera.active);
+        camera_diagnostics::stage(diagnostic,3);
         source_require(camera.mode == 1 && camera.active == lease.identity.camera,
                        "Native camera ownership changed during publication.");
         if (fov > 1 && fov < 175) {
             (void)first_person_write_fov(lease.identity.camera, fov);
             camera = revalidate();
+            camera_diagnostics::selection(diagnostic,true,camera.mode,camera.active);
+            camera_diagnostics::stage(diagnostic,4);
             source_require(camera.mode == 1 && camera.active == lease.identity.camera,
                            "Native camera ownership changed during field-of-view publication.");
         }
-        detail = "Spectating party member."; return true;
+        detail = "Spectating party member."; camera_diagnostics::returned(diagnostic); return true;
     } catch (const SourceGuard& issue) { detail = issue.message; }
       catch (...) { detail = "Native spectate camera is unavailable."; }
     return false;
@@ -244,13 +276,15 @@ bool publish_local_camera_view(std::uintptr_t base, std::uintptr_t client) noexc
     try {
         if (state.trial.base != base) return false;
         const auto camera = source_camera_snapshot(state.trial, client);
-        const auto view = debug_view_matrix(state.trial, camera);
+        unsigned diagnostic_kind{};
+        const auto view = debug_view_matrix(state.trial, camera,&diagnostic_kind);
         SourceReader reader;
         // Camera's degree FOV at +ac, initialized by spawn::camera_fov_init.
         const auto fov = reader.value<float>(camera.active, 0xac);
         reader.verify();
         if (!std::isfinite(fov) || fov <= 1 || fov >= 175) return false;
         publish_game_view({view, fov, camera.active});
+        camera_diagnostics::pose(2,camera.active,diagnostic_kind,view,fov);
         return true;
     } catch (...) { return false; }
 }
