@@ -248,7 +248,10 @@ def generate(root,variant='current'):
       }
       // Real source brake contamination at the physics/client handoff. These
       // controlled observed velocities do not model the native Skate solver.
-      enter_ground(nose,hz);remap(0,-20000);physical_step(hz,contact);remap(0,-20000);
+      // Establish this coasting/exit case with a new matching history edge.
+      // First attributable contact alone retains the original bounded request.
+      enter_ground(nose,hz);rows.push_back({91,92,nose?2u:1u});
+      remap(0,-20000);physical_step(hz,contact);remap(0,-20000);
       expect(writer_intent.ground_controls.manual_vertical_reserved,"current production carrier reserves the delivered Manual owner");
       expect(writer_manual.admitted&&writer_manual_hold,"baseline writer snapshot belongs to a real admitted Manual RS owner");
       ScalarWorld before,after,turning;expect(before_scalar(before)==0&&current_scalar(after)==0&&before_scalar(turning)==0,"scalar episodes prime on qualified Manual contact");
@@ -349,6 +352,22 @@ def generate(root,variant='current'):
       remap(0,-20000,15000);
       expect(last_pad.x==15000&&writer_intent.ground_controls.down&&!last_pad.drive,
              "independent horizontal steering and physical Down survive returned-axis reservation");
+     }
+     for(bool nose:{false,true})for(unsigned hz:{30u,60u}){
+      // A historyless first touch and subsequent full-contact riding are still
+      // the same provisional request, not the established exit tested above.
+      enter_ground(nose,hz);const auto began=remap().manual.request_at;
+      const auto loss_at=clock_ms;
+      while(clock_ms-loss_at<200){physical_step(hz,0xc000);remap(0,-20000);}
+      expect(rows.empty()&&!manual_balance_admitted.load()&&writer_manual_hold&&
+             writer_intent.ground_controls.manual_vertical_reserved,
+             "firsttouch loss retains only the original provisional Manual reservation");
+      ScalarWorld before,after;before_scalar(before);current_scalar(after);
+      physical_step(hz,0xc000);const auto request=remap(0,-20000);
+      const auto baseline=before_scalar(before),withdrawn=current_scalar(after);
+      expect(request.manual.owns&&request.manual.request_at==began&&baseline<0&&withdrawn==0&&
+             !linear_writes&&!dirty_writes&&!last_pad.drive,
+             "a provisional original request withdraws ordinary resistance without a second balance admission");
      }
      std::cout<<coupling_checks<<" additional production output-coupling checks passed\n";
      reset_case();
