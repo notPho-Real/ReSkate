@@ -1744,11 +1744,13 @@ void on_client_tick() noexcept {
             // The independent original-physics observer is also available before
             // any input source is admitted. A policy request cannot mint proof.
             NativeInputFrame binding_proof{};
+            // Controller route binding_owner publication begin.
             if(controller_route.explicit_selection() && route_enabled && input.available){
                 NoBailSkater binding_owner{};
                 const auto binding_sample=native_request_sample(binding_owner);
-                binding_proof=motion_cleanup_state.correlate(route_now,input_owner(binding_owner),binding_sample);
+                binding_proof=motion_cleanup_state.binding_owner_proof(route_now,input_owner(binding_owner),binding_sample);
             }
+            // Controller route binding_owner publication end.
             controller_changed = controller_route.select(route_now,input.device,route_enabled && input.available,binding_proof);
             const auto route_row=controller_route.observation(route_now,route_enabled,input.available);
             if(controller_route_reporting.due(route_row))input_telemetry.client(route_row);

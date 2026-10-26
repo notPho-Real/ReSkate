@@ -191,6 +191,96 @@ void run(){
 }
 }
 
+namespace binding_phase {
+NativeControllerRoute controller_route;
+NativeInputState motion_cleanup_state;
+using NoBailSkater=NativeInputOwner;
+NativeInputOwner live_owner;
+NativeRequestSample live_sample;
+struct {bool available{true};} input;
+NativeInputOwner input_owner(const NoBailSkater& owner){return owner;}
+NativeRequestSample native_request_sample(NoBailSkater& owner){owner=live_owner;return live_sample;}
+NativeInputFrame production_proof(std::uint64_t route_now,bool route_enabled=true){
+    NativeInputFrame binding_proof{};
+@controller_route_binding_owner@
+    return binding_proof;
+}
+void setup(unsigned slot){
+    controller_route.reset();motion_cleanup_state={};input.available=true;
+    live_owner={1,2,3,4,5};live_sample={};live_sample.valid=true;
+    live_sample.state=100;live_sample.crouch_mode=1;live_sample.words[1]=0xc000;
+    motion_cleanup_state.observe(1000,live_owner,live_sample,{true,-1,0x300000},false,1.0f/30);
+    require(controller_route.arm(slot,1000,60000),"phase fixture arms existing finite binding");
+    observe(controller_route,slot,{true,1000,0,0,0,0,0,0,0});
+    controller_route.select(1000,15,true,production_proof(1000));
+    require(controller_route.accepts(slot,1000),"original physics owner admits neutral selected slot");
+}
+void run(){
+    unsigned checks{};
+    struct Phase {unsigned state,mode,contacts;int flip;unsigned stance{};};
+    // Actual ordinary jump progression plus native one-wheel transitions. A
+    // client sample can precede the next original physics observation of each.
+    constexpr std::array phases{Phase{100,0,0xc000,1},Phase{103,0,0xc000,1},
+        Phase{200,0,0,1},Phase{201,2,0,1},Phase{201,2,0,-1},
+        Phase{100,1,0xc000,-1},Phase{100,1,0x4000,-1,0x40},
+        Phase{100,1,0x8000,-1,0x60},Phase{100,1,0xc000,-1,0x20},
+        Phase{100,1,0xc000,-1}};
+    for(unsigned slot=0;slot<4;++slot){
+        setup(slot);std::uint64_t physics_at=1000;
+        const auto original=production_proof(1000);
+        for(const auto phase:phases){
+            const auto previous=production_proof(physics_at);
+            live_sample.state=phase.state;live_sample.crouch_mode=phase.mode;
+            live_sample.words[1]=phase.contacts;live_sample.words[0]=phase.stance;
+            const auto client_at=physics_at+8;
+            const bool ahead=previous.state!=phase.state||previous.mode!=phase.mode||previous.contacts!=phase.contacts||
+                previous.stance_and_push!=phase.stance;
+            if(ahead){
+                require(!motion_cleanup_state.correlate(client_at,live_owner,live_sample).valid,
+                    "newer client phase never acquires gameplay authority from the older original frame");++checks;
+            }
+            const auto proof=production_proof(client_at);
+            observe(controller_route,slot,{true,client_at,0,0,0,0,0,0,0});
+            controller_route.select(client_at,15,true,proof);
+            require(controller_route.accepts(slot,client_at)&&controller_route.binding_state()==2,
+                "same-owner client/physics phase gap cannot permanently revoke the bound transport");++checks;
+            require(proof.valid&&proof.owner_generation==original.owner_generation&&
+                proof.sampled_at==physics_at&&proof.physics_step==previous.physics_step&&
+                proof.state==previous.state&&proof.mode==previous.mode&&proof.contacts==previous.contacts&&
+                proof.stance_and_push==previous.stance_and_push,
+                "actual binding publication retains unchanged original owner proof without projecting newer phase or time");++checks;
+            physics_at=client_at+25;
+            const auto observed=motion_cleanup_state.observe(physics_at,live_owner,live_sample,
+                {true,phase.flip,0x300000},false,1.0f/30);
+            require(observed.valid&&observed.owner_generation==original.owner_generation&&
+                motion_cleanup_state.correlate(physics_at,live_owner,live_sample).valid,
+                "only the next actual physics observation restores matching gameplay correlation");++checks;
+            observe(controller_route,slot,{true,physics_at,0,0,0,0,0,0,0});
+            controller_route.select(physics_at,15,true,production_proof(physics_at));
+            require(controller_route.accepts(slot,physics_at),"original observed phase refresh preserves transport owner episode");++checks;
+        }
+        for(unsigned fault=0;fault<10;++fault){
+            setup(slot);std::uint64_t at=1017;
+            if(fault==0)live_sample.valid=false;
+            if(fault==1)live_sample.state=0;
+            if(fault==2)++live_owner.rig;
+            if(fault==3)motion_cleanup_state.invalidate();
+            if(fault==4)at=1151;
+            if(fault==5)at=999;
+            if(fault==6){motion_cleanup_state.invalidate();motion_cleanup_state.observe(at,live_owner,live_sample,{true,-1,0x300000});}
+            if(fault==7)motion_cleanup_state.observe(at,live_owner,live_sample,{true,-1,0x300000},true);
+            if(fault==8)input.available=false;
+            const auto proof=production_proof(at,fault!=9);
+            if(fault!=6&&fault!=7)require(!proof.valid,"invalid native/current owner/age/clock/focus/OFF never borrows a cached owner frame");
+            observe(controller_route,slot,{true,at,0,0,0,0,0,0,0});
+            controller_route.select(at,15,true,proof);
+            require(!controller_route.accepts(slot,at),"actual owner-generation replacement and every original authority exclusion still revoke binding");++checks;
+        }
+    }
+    std::cout<<checks<<" exact production binding phase checks passed\n";
+}
+}
+
 void run_controller_publication_tests(){
     unsigned checks{};
     for(unsigned user=0;user<4;++user){
@@ -247,5 +337,6 @@ void run_controller_publication_tests(){
     }
     packet_restoration::run();
     binding_api::run();
+    binding_phase::run();
     std::cout<<checks<<" exact production native publication checks passed\n";
 }

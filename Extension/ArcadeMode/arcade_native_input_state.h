@@ -106,6 +106,17 @@ public:
             (sample.words[0] & 0x60u) != frame_.stance_and_push) return {};
         return frame_;
     }
+    // Controller transport is bound to an original-physics owner episode. A
+    // client read may already show the next native phase before that callback
+    // observes it; this cannot grant gameplay authority for the newer phase.
+    // Return the unchanged original frame only while its actual owner remains
+    // current and fresh. Gameplay continues to use full correlate() above.
+    NativeInputFrame binding_owner_proof(std::uint64_t now, NativeInputOwner owner,
+            NativeRequestSample sample) const noexcept {
+        if (!frame_.valid || !sample.valid || !sample.state || !owner.valid() || owner != frame_.owner ||
+            now < frame_.sampled_at || now-frame_.sampled_at > 150) return {};
+        return frame_;
+    }
 private:
     bool increment(std::uint64_t& value) noexcept {
         if (exhausted_ || value == UINT64_MAX) { exhausted_ = true; invalidate(); return false; }
