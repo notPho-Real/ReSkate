@@ -15,7 +15,7 @@ enum class InputDisposition : std::uint8_t { waiting, started, unsupported, canc
 // The caller selects one installed release table only after establishing its
 // exact native actor. Disabled preserves the ordinary jump path.
 enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
-enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
 // generations below are eligibility lineage, not this original observation.
@@ -255,7 +255,8 @@ private:
     static bool jump_selection_retired(const InputRequest& request, const InputNativeContext& native) noexcept {
         // Fixed ordinary input waits for the existing jump selection to become
         // idle; all other selection/context transitions keep their cancellation.
-        return request.action == InputAction::flip && request.form == InputForm::ordinary && request.presses == 1 &&
+        return request.action == InputAction::flip &&
+            (request.form == InputForm::ordinary || request.form == InputForm::neutral_release) && request.presses == 1 &&
             request.selection.table == InputAirTableKind::none &&
             (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
              native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip));
@@ -489,6 +490,7 @@ public:
         // Every sample's edges are evaluated once, even if no adapter is ready.
         const auto journal = events_.history().events();
         bool grab_pressed{};
+        std::uint64_t flip_release{};
         for (const auto& event : journal) {
             if (event.sequence <= last_event_) continue;
             if (event.token.source == InputSource::stick || event.token.source == InputSource::pad || event.token.source == InputSource::direction) {
@@ -503,6 +505,7 @@ public:
                 { const auto match = consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;
+            if (code == 14 && event.token.edge == InputEdge::release) flip_release = event.sequence;
             if (code == 12) {
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
                     const auto match=consume(event);crouched_=true;crouch_nollie_=environment.nollie;crouch_at_=event.at;
@@ -537,7 +540,7 @@ public:
         // ordinary match; observed context transitions still cancel it.
         if (environment.context == InputContext::air) {
             if (environment.auxiliary_enabled) recognize_contextual(now,environment,InputAirTableKind::grab_extra);
-            if (!recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment);
+            if (!recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment, flip_release);
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
         }
@@ -656,7 +659,14 @@ private:
         if (action == InputAction::flip || action == InputAction::grab) {
             request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
                 request.direction,presses);
-            if (form == InputForm::repeated_direction) {
+            if (action == InputAction::flip && form == InputForm::neutral_release) {
+                // Basic selection comes from the physical button release, not
+                // an invented Left event or a previously cached direction.
+                request.direction = 0; request.direction_source = InputSource::buttons;
+                request.direction_inherited = false;
+                request.air = {}; request.air.family = TrickFamily::flip;
+                request.air.trick = ArcadeTrick::kickflip; request.air.predicate = AirInputPredicate::face;
+            } else if (form == InputForm::repeated_direction) {
                 request.air.trick = ArcadeTrick::none; request.air.predicate = AirInputPredicate::repeated_direction;
             } else if (action == InputAction::grab && !environment.named_grabs && !environment.deferred_grabs && presses == 1) {
                 request.air = {}; request.air.family = TrickFamily::grab;
@@ -865,7 +875,7 @@ private:
             extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
     }
-    bool recognize_flip(std::uint64_t now, InputEnvironment environment) noexcept {
+    bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
         const InputToken face{InputSource::buttons,14,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
@@ -884,6 +894,17 @@ private:
         if (!match) {
             const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
             match = binding.match; defined_direction = binding.direction;
+        }
+        if (!match && environment.policy.neutral_flip_on_release && release && !events_.held_direction()) {
+            // The release is new in this poll. Intervening input and a consumed
+            // directional face cannot turn an old tap into a default action.
+            match = events_.history().release_after_presses(face,face,1,InputTiming::direction_ms,now,ordinary_reject);
+            if (match && match.events[match.count-1] != release) match = {};
+            if (match) for (const auto& event : events_.history().events())
+                if (event.sequence > match.events[0] && event.sequence < release && event.token.edge == InputEdge::press) {
+                    match = {}; break;
+                }
+            if (match) form = InputForm::neutral_release;
         }
         if (!match || !air_face_eligible(match,14,true) || !events_.history().consume(match, presses > 1 ? branch_owner : InputConsumption::regular,
             ordinary_reject)) return false;

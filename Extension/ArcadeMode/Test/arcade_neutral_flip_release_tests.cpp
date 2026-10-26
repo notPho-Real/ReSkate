@@ -1,0 +1,147 @@
+#include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_native_readiness.h"
+#include <cstdlib>
+#include <iostream>
+#include <memory>
+#include <vector>
+using namespace dingosdk::arcade_mode;
+namespace {
+unsigned checks{};
+void check(bool value,const char* text) { ++checks;if(!value){std::cerr<<"FAIL: "<<text<<'\n';std::exit(1);} }
+struct Route {
+    ArcadeInput input{true}; NativeInputState producer; NativeInputReadiness readiness;
+    NativeInputOwner owner{1,2,3,4,5}; NativeInputFrame frame{};
+    std::vector<PreparedGesture> recipes;
+    unsigned starts{},recognized{};
+    NativeGesture::Output output{};
+    Route() {
+        for(const unsigned id:{1u,2u,3u,4u,5u,6u,8u,9u,36u})
+            recipes.emplace_back(static_cast<std::uint8_t>(id),false,GestureContext::ground,
+                std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
+        input.enable(true);input.set_recognition_capture(0,true);
+    }
+    NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample pad={},std::uint32_t state=201,
+            std::int32_t selection=-1,std::uint32_t mode=2,bool gameplay=true) {
+        NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=mode;
+        sample.words[1]=state==100?0xc000u:0u;
+        frame=producer.observe(now,owner,sample,{true,selection,16});
+        readiness.publish(frame,{true,state==100&&mode==1,false,false,false,false,false,false,true,0});
+        input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
+        const auto admit=readiness.sample(now,frame);
+        output=input.poll(0,now,pad.buttons,pad.x,pad.y,0,0,gameplay,admit.start,false,0,false,false,
+            true,now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
+            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.mirror_x,false);
+        starts+=output.requested_id?1u:0u;
+        const auto* diagnostic=input.input_diagnostic(0);
+        recognized+=static_cast<unsigned>(diagnostic->recognition_count);
+        return output;
+    }
+};
+void neutral_once() {
+    for(unsigned cadence:{17u,34u}) {
+        auto h=std::make_unique<Route>();h->poll(1000);
+        check(!h->poll(1000+cadence,{0x4000}).requested_id,"neutral held X waits for physical release or direction");
+        const auto out=h->poll(1000+2*cadence);
+        check(out.requested_id==2 && out.authored_playback,"production neutral X release reaches the existing basic Kickflip adapter");
+        const auto* d=h->input.input_diagnostic(0);check(d->recognition_count==1,"neutral release recognizes one immutable request");
+        const auto& request=d->recognition[0].request;
+        check(static_cast<unsigned>(request.form)==3 && request.direction==0 && request.direction_source==InputSource::buttons &&
+            request.air.trick==ArcadeTrick::kickflip && request.air.predicate==AirInputPredicate::face,
+            "default Kickflip is explicit button semantics without a fictional direction");
+        check(request.physical_pressed_at==1000+cadence && request.physical_released_at==1000+2*cadence &&
+            request.recognized_at==1000+2*cadence && request.recognition && request.recognition->footprint.count==2,
+            "original physical press and release form the actual recognition footprint");
+        for(unsigned n=3;n<10;++n)h->poll(1000+std::uint64_t{n}*cadence);
+        check(h->starts==1,"neutral release cannot repeat from held state, later polls or its consumed face");
+    }
+}
+void directional_precedence() {
+    struct Choice {std::uint16_t direction;unsigned id;};
+    for(const auto choice:{Choice{4,2},Choice{8,3},Choice{1,36},Choice{2,4},Choice{5,9},Choice{9,6},Choice{6,5},Choice{10,8}})
+    for(bool simultaneous:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000);
+        h->poll(1020,{0x4000});
+        auto out=h->poll(1040,{static_cast<std::uint16_t>(choice.direction|(simultaneous?0u:0x4000u))});
+        check(out.requested_id==choice.id,"direction before or in the release poll selects its existing exact native variant");
+        h->poll(1060);check(h->starts==1,"release following a consumed directional face never adds a default Kickflip");
+    }
+    for(bool released:{false,true}) {
+        auto h=std::make_unique<Route>();h->input.set_input_policy(InputPolicy::compatibility());h->poll(1000);
+        h->poll(1020,{0x4000});if(released)h->poll(1040);
+        for(std::uint64_t now=1100;now<1500;now+=100)h->poll(now,{static_cast<std::uint16_t>(released?0u:0x4000u)});
+        const auto out=h->poll(1519,{8});
+        check(out.requested_id==3,"compatibility retains the old released/held face499ms directional query");
+    }
+}
+void native_wait_and_ollie() {
+    auto h=std::make_unique<Route>();h->poll(1000,{},200,1);
+    h->poll(1020,{0x4000},200,1);auto out=h->poll(1040,{},200,1);
+    check(!out.authored_playback && out.command_busy,"neutral release cannot bypass the independently observed native jump selection");
+    const auto original=h->input.input_diagnostic(0)->recognition[0].request;
+    h->poll(1060,{},201,1);out=h->poll(1080);
+    check(out.requested_id==2 && h->starts==1,"same-flight forward phase and native idle release the original neutral request");
+    check(h->input.input_diagnostic(0)->dispatch[0].request==original,"native readiness never renews or rewrites the original release request");
+
+    auto jump=std::make_unique<Route>();jump->poll(1000,{},100,-1,1);
+    check(jump->poll(1017,{0x1000},100,-1,1).requested_id==1,"ordinary A reaches the existing authored Ollie setup");
+    jump->poll(1051,{0x1000},100,1,0);jump->poll(1085,{},100,1,0);
+    jump->poll(1102,{},200,1);jump->poll(1119,{},201,1);jump->poll(1136,{},201,1);
+    jump->poll(1153,{0x4000},201,1);jump->poll(1170,{},201,1);
+    out=jump->poll(1187);
+    check(out.requested_id==2 && out.authored_playback && jump->starts==2,
+        "actual production A release, native flight and neutral X release hand off to the existing Kickflip actor once");
+}
+void cancellation() {
+    for(unsigned fault=0;fault<7;++fault) {
+        auto h=std::make_unique<Route>();h->poll(1000);h->poll(1020,{0x4000});
+        if(fault==0)++h->owner.rig;
+        if(fault==1){h->input.enable(false);h->input.enable(true);}
+        if(fault==2)h->poll(1040,{0x4000},100,-1,1);
+        if(fault==3)h->poll(1040,{0x4000},201,-1,2,false);
+        if(fault==4)h->poll(1040,{0x4000},300);
+        if(fault==5)h->poll(1040,{0x400cu});
+        if(fault==6)h->poll(1040,{0x6000});
+        const auto out=h->poll(1060);
+        check(!out.requested_id,"owner/OFF/landing/authority/bail/opposing/newer-input boundary prevents stale neutral release");
+    }
+    for(unsigned age:{499u,500u,501u}) {
+        auto h=std::make_unique<Route>();h->poll(1000);h->poll(1020,{0x4000});
+        for(std::uint64_t now=1100;now<1520;now+=100)h->poll(now,{0x4000});
+        const auto out=h->poll(1020+age);
+        check((out.requested_id==2)==(age<500),"neutral release uses the existing strict500ms physical query without a new timeout");
+    }
+    auto ground=std::make_unique<Route>();ground->poll(1000,{},100,-1,1);ground->poll(1020,{0x4000},100,-1,1);
+    check(!ground->poll(1040).requested_id,"ground face press is never borrowed by a later airborne release");
+    auto startup=std::make_unique<Route>();startup->poll(1000,{0x4000});
+    check(!startup->poll(1020).requested_id,"held startup X must release before any fresh command can arm");
+    auto cached=std::make_unique<Route>();cached->poll(1000);cached->poll(1020,{8});cached->poll(1040);
+    for(std::uint64_t now=1100;now<=1600;now+=100)cached->poll(now);
+    cached->poll(1620,{0x4000});const auto out=cached->poll(1640);
+    check(out.requested_id==2 && cached->input.input_diagnostic(0)->recognition[0].request.direction==0,
+        "stale cached Right cannot turn neutral release into a Heelflip or fictional direction");
+}
+void release_order() {
+    for(bool simultaneous:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000,{0x1000});
+        h->poll(1020,{0x5000});
+        if(!simultaneous)h->poll(1040,{0x4000});
+        const auto out=h->poll(1060);
+        check(out.requested_id==2,"an intervening A release cannot make neutral X delivery depend on physical release order");
+    }
+}
+void queued_withdrawal() {
+    for(unsigned fault=0;fault<5;++fault) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},200,1);h->poll(1020,{0x4000},200,1);
+        check(h->poll(1040,{},200,1).command_busy && h->starts==0,
+            "new neutral form waits for native idle before a withdrawal test");
+        if(fault==0)++h->owner.rig;
+        if(fault==1)h->poll(1060,{},100,-1,1);
+        if(fault==2){h->input.enable(false);h->input.enable(true);}
+        if(fault==3)h->poll(1060,{},201,1,0);
+        if(fault==4)h->poll(1060,{},201,3);
+        h->poll(1080);
+        check(h->starts==0,"queued neutral release cannot outlive owner/flight/OFF/mode or another native selection");
+    }
+}
+}
+int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();std::cout<<checks<<" neutral flip release production checks passed\n";}

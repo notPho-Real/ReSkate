@@ -32,6 +32,12 @@ inside a native adapter is an implementation detail, not another player control.
 X and B require independently observed airtime and a fresh press. Ground X
 does not start a jump; ground B retains native braking. Neither command requires
 A to remain held. Landing, bail, menus and Arcade OFF release synthetic ownership.
+In production, a neutral airborne X tap commits the basic Kickflip request on
+release. A direction matched before that release takes precedence; a direction
+arriving after the committed release cannot replace it. Holding X still permits
+the existing face-before-direction match. The separate compatibility policy
+retains released-face matching for500ms; production does not delay the neutral
+default for that window. Native readiness and exact result checks still apply.
 Direction edges can match a later airborne X/B press for500ms, with held
 directions remaining valid. Consumed released directions do not repeat. Extra
 air trick face presses use300ms; normal B remains the verified basic grab.
@@ -72,6 +78,7 @@ exists. A dash means this contract assigns no variant to that combination.
 
 | Direction | X | X,X | X,X,X |
 | --- | --- | --- | --- |
+| Neutral release | Kickflip | — | — |
 | Left | Kickflip | Double Kickflip | Triple Kickflip |
 | Up | Impossible | Double Impossible | Triple Impossible |
 | Right | Heelflip | Double Heelflip | Triple Heelflip |

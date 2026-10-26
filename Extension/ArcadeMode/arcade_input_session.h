@@ -279,9 +279,15 @@ private:
                 out.unsupported = true; return InputDisposition::unsupported;
             }
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
-            if (request.form != InputForm::ordinary) return request_extension(request);
+            if (request.form != InputForm::ordinary && request.form != InputForm::neutral_release) return request_extension(request);
             {
-                const auto selected=select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
+                if (request.form == InputForm::neutral_release &&
+                    (request.direction || request.presses != 1 || request.air.family != TrickFamily::flip ||
+                     request.air.trick != ArcadeTrick::kickflip || request.air.predicate != AirInputPredicate::face)) {
+                    out.unsupported = true; return InputDisposition::unsupported;
+                }
+                const auto selected=request.form == InputForm::neutral_release ? ArcadeTrick::kickflip :
+                    select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
                 if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
                     out.unsupported=true;return InputDisposition::unsupported;
                 }

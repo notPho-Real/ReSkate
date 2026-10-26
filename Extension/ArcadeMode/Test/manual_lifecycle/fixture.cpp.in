@@ -530,8 +530,8 @@ std::uint64_t start_analog_air(unsigned dt){
  tick(dt,103,0xc000);const auto release=remap();check(release.jump.released&&release.jump.setup_admitted,"one A release precedes the analog airborne gesture");
  tick(dt,200,0);remap();arcade_input.set_recognition_capture(0,true);
  const auto policy=arcade_input.input_diagnostic(0)->policy;
- check(policy.normalization==InputNormalization::analog&&policy.manual_sample_allowance==0&&!policy.inclusive_manual&&policy.reject_opposing,
-       "actual production input constructor and remap call site retain strict Manual fidelity and physical safety policy");
+ check(policy.normalization==InputNormalization::analog&&policy.manual_sample_allowance==55&&policy.inclusive_manual&&policy.reject_opposing,
+       "actual production constructor and remap retain ground sampling allowance and physical safety; air remains strict");
  return clock_ms;
 }
 void analog_air_boundaries(){

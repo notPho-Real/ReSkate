@@ -160,31 +160,30 @@ int run_arcade_manual_tests() {
     // assigning their timestamps directly to idealized polls.
     for (const unsigned frame : {17u, 34u}) {
         for (unsigned phase = 0; phase < frame; ++phase) {
-            // Compare the recorded edges with the strict window. Physical onset
-            // between polls has uncertainty; it does not widen that window.
+            // The admitted physical contract includes a bounded sampling allowance.
+            // 300ms and250ms can both quantize to272ms at34ms polling; deliberate
+            // long holds must lie outside that ambiguous boundary.
             for (const unsigned duration : {150u, 220u, 250u, 350u, 800u}) {
                 for (const bool nose : {false, true}) for (const bool pad : {false, true}) {
                     dingosdk::arcade_mode::test::SessionManual manual;
-                    bool requested{}; unsigned first_at{}, second_at{};
+                    bool requested{};
                     const short first = nose ? -24000 : 24000;
                     for (unsigned ms = phase; ms < 220 + duration; ms += frame) {
                         const auto first_end = duration <= 250 ? 180u : 100 + duration;
                         const int direction = ms >= 100 && ms < first_end ? 1 :
                             ms >= 100 + duration && ms < 180 + duration ? -1 : 0;
-                        if(direction==1&&!first_at)first_at=ms;
-                        if(direction==-1&&!second_at)second_at=ms;
                         const auto buttons = static_cast<std::uint16_t>(!pad || !direction ? 0 :
                             direction * first > 0 ? 1 : 2);
                         const auto out = poll(manual, ms, pad ? 0 : static_cast<short>(direction * first),
                             SkatePose::riding, buttons);
                         requested = requested || out.owns_stick;
                     }
-                    const bool expected=first_at&&second_at&&second_at-first_at<220;
+                    const bool expected = duration <= 250;
                     if (requested != expected)
                         std::cerr << "Sampling case: frame=" << frame << " phase=" << phase
                             << " duration=" << duration << " nose=" << nose << " pad=" << pad << '\n';
                     check(requested == expected,
-                        "each30/60Hz phase applies strict220ms to observed edges without changing between-poll onset times");
+                        "physical150-250ms thumb events survive every30/60Hz phase;350/800ms steering holds do not");
                 }
             }
         }
@@ -202,7 +201,7 @@ int run_arcade_manual_tests() {
         check(!requested,"startup-held stick and same-direction Dpad override cannot fabricate a fresh canonical Manual pair");
     }
     for (const auto pose : {SkatePose::riding, SkatePose::air}) {
-        const auto window = pose == SkatePose::air ? 399u : 219u;
+        const auto window = pose == SkatePose::air ? 399u : 275u;
         for (const auto buttons : {true, false}) {
             for (const bool nose : {false, true}) {
                 for (const auto offset : {0u, 1u}) {
@@ -214,7 +213,7 @@ int run_arcade_manual_tests() {
                     const auto out = poll(manual, 10 + window + offset, buttons ? 0 : -first,
                         pose, buttons ? (nose ? 1 : 2) : 0);
                     check(out.owns_stick == (offset == 0),
-                        "strict ground220 and air400 have independent observed-event boundaries");
+                        "ground220 plus55ms allowance and strict air400 have independent boundaries");
                 }
             }
         }
@@ -284,8 +283,8 @@ int run_arcade_manual_tests() {
             "established balance correction is never swallowed as a new first tap");
         manual.cancel(); poll(manual, 1000);
         poll(manual, 1020, -25000);
-        check(poll(manual, 1239, -25000).suppress_reverse && !poll(manual, 1240, -25000).suppress_reverse,
-            "a continued reverse hold passes through at the strict220ms observed ground boundary");
+        check(poll(manual, 1295, -25000).suppress_reverse && !poll(manual, 1296, -25000).suppress_reverse,
+            "a continued reverse hold passes through immediately after the275ms sampled ground window");
         check(!poll(manual, 1600, 25000).owns_stick, "an expired reverse hold cannot become a stale Nose Manual");
         manual.cancel(); poll(manual, 2000, 0, SkatePose::air);
         check(!poll(manual, 2020, -25000, SkatePose::air).suppress_reverse,
@@ -402,7 +401,7 @@ int run_arcade_manual_tests() {
         check(!poll(manual, 711, -25000).owns_stick, "a long hold exceeds the sampled ground direction deadline");
         manual.cancel(); poll(manual, 600);
         poll(manual, 610, 25000);
-        check(!poll(manual, 830, -25000).owns_stick, "direction sequence rejects equality at the strict220ms boundary");
+        check(poll(manual, 830, -25000).owns_stick, "direction sequence accepts the220ms boundary");
         check(!poll(manual, 829).owns_stick, "backwards time cancels manual state");
     }
     {

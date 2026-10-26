@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import subprocess
 
-VARIANTS=('current','rollback-no-reservation','rollback-admitted-only')
+VARIANTS=('current','rollback-no-reservation','rollback-admitted-only','rollback-first-down-mask')
 
 def generate(root,variant='current'):
     if variant not in VARIANTS:raise ValueError('unknown control')
@@ -25,6 +25,8 @@ def generate(root,variant='current'):
     generated=module.generated(TREE)
     source=generated['current.cpp']
     mode=(TREE/'Extension/ArcadeMode/arcade_mode.cpp').read_text()
+    reverse_mask=module.between(mode,'        if (result.suppress_reverse) left_y = 0;',
+                               '        // The inspected guide stance')
     drive=module.between(mode,'        const bool rotation_enabled = mode_enabled.load(std::memory_order_acquire) && game_input && !offboard;',
                          '        const auto rotation_native = arcade_input.native_context(now);')
     correction=module.between(mode,'        const auto configured_balance=arcade_input.configured_balance(now);',
@@ -47,6 +49,9 @@ def generate(root,variant='current'):
         nonlocal source
         assert source.count(old)==1,old
         source=source.replace(old,new,1)
+
+    once('        const auto& action = result.action;',
+         ('' if variant=='rollback-first-down-mask' else reverse_mask)+'        const auto& action = result.action;')
 
     once('#include "Extension/Skater/no_bail.h"','#include "Extension/Skater/no_bail.h"\n#include "Extension/Skater/native_bail_request.h"')
     if has_ground_step:
@@ -318,6 +323,33 @@ def generate(root,variant='current'):
       expect(current_scalar(after)==0&&!linear_writes&&!dirty_writes,
              "a fresh physical observation cannot renew stale input controls");
      }
+     // First Down reserves returned LSY only. The current physical carrier
+     // remains Down for scalar braking and cannot acquire automatic push.
+     for(unsigned hz:{30u,60u})for(unsigned age:{0u,250u,275u,276u}){
+      reset_case();source_step=0;automatic_kick=true;competing_left_owner=false;
+      physical_step(hz,0xc000);remap();
+      physical_step(hz,0xc000);const auto first_at=clock_ms;remap(0,-20000);
+      ScalarWorld scalar;current_scalar(scalar);
+      const auto end=first_at+age;float delta{};
+      while(clock_ms<end){
+       clock_ms=std::min<std::uint64_t>(end,clock_ms+(hz==30?34u:17u));
+       observe(1.f/static_cast<float>(hz),0xc000);client(1.f/static_cast<float>(hz),history());remap(0,-20000);
+       delta=current_scalar(scalar);
+      }
+      const auto controls=writer_intent.ground_controls;
+      expect(last_pad.y==(age<=275?0:-20000),"actual first-Down return mask ends only after275ms");
+      expect(controls.known&&controls.down&&controls.trying_to_brake(5.f,1.f)&&!controls.can_kick(5.f,false),
+             "returned-axis reservation preserves physical Down braking and push veto");
+      expect(!writer_manual_hold&&!controls.manual_vertical_reserved&&!last_pad.drive&&!(last_pad.buttons&0x4000u),
+             "a first Down is not Manual RS ownership and cannot acquire drive or push");
+      if(age){
+       expect(delta<-.3f&&linear_writes==2&&dirty_writes==2,
+              "qualified original-step Down resistance remains eligible during and after the return mask");
+      }
+      remap(0,-20000,15000);
+      expect(last_pad.x==15000&&writer_intent.ground_controls.down&&!last_pad.drive,
+             "independent horizontal steering and physical Down survive returned-axis reservation");
+     }
      std::cout<<coupling_checks<<" additional production output-coupling checks passed\n";
      reset_case();
     }
@@ -354,7 +386,7 @@ def generate(root,variant='current'):
     return source, {'base_chunks':json.loads(generated['correspondence.json']),
      'variant':variant,
      'production_chunks_sha256':{name:hashlib.sha256(value.encode()).hexdigest() for name,value in {
-      'drive_and_reservation_publication':drive,'correction':correction,'manual_publication':manual_publication,
+      'reverse_mask':reverse_mask,'drive_and_reservation_publication':drive,'correction':correction,'manual_publication':manual_publication,
       'native_manual_current':native_current,'resistance_current':resistance_current,
       'resistance_before':resistance,'commit_motion':commit,'carrier_store':store,'carrier_load':load,
       'fixture_carrier_store':fixture_store}.items()},
@@ -373,9 +405,9 @@ def main():
     args=parser.parse_args()
     if args.verify_control:
         if not args.binary:parser.error('--verify-control requires --binary')
-        expected=('production reservation grants no linear write during unresolved Manual hold'
-                  if args.verify_control=='rollback-no-reservation' else
-                  'new acquisition RS ownership must withdraw ordinary Down brake before balance admission')
+        expected={'rollback-no-reservation':'production reservation grants no linear write during unresolved Manual hold',
+                  'rollback-admitted-only':'new acquisition RS ownership must withdraw ordinary Down brake before balance admission',
+                  'rollback-first-down-mask':'actual first-Down return mask ends only after275ms'}[args.verify_control]
         result=subprocess.run([str(args.binary.resolve())],capture_output=True,text=True)
         if result.returncode!=1 or result.stderr.strip()!=expected:
             raise ValueError('rollback did not fail at its intended assertion: '+result.stderr)

@@ -336,8 +336,11 @@ void composed_manual_deadline() {
 }
 
 void policy_and_mode_boundaries() {
-    check(InputPolicy::production()==InputPolicy{} && InputPolicy::production().manual_sample_allowance==0 && !InputPolicy::production().inclusive_manual && InputPolicy::production().reject_opposing,
-        "production uses exact strict timing while retaining opposing-direction safety");
+    check(InputPolicy::production().manual_sample_allowance==55 && InputPolicy::production().inclusive_manual && InputPolicy::production().reject_opposing,
+        "production preserves the ground sampling allowance and opposing-direction safety");
+    check(InputPolicy::production().normalization==InputNormalization::analog &&
+        InputPolicy::strict().manual_sample_allowance==0 && !InputPolicy::strict().inclusive_manual,
+        "ground usability does not replace analog normalization or the separate strict reference policy");
     struct Waiting {
         unsigned calls{};
         static InputDisposition receive(void* state,const InputRequest&) noexcept {++static_cast<Waiting*>(state)->calls;return InputDisposition::waiting;}
