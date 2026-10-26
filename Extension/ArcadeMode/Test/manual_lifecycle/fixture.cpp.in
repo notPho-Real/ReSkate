@@ -308,6 +308,41 @@ bool update_arcade_camera(std::uintptr_t,std::uintptr_t,bool,bool phase,
  return true;
 }
 @@CAMERA_TICK@@
+bool client_authority_phase(NativeRequestSample native,bool permitted=true){
+ const auto now=clock_ms;const auto native_owner=owner;
+ bool gameplay=permitted,focus_available=permitted;
+ struct{bool valid=true;}watch;
+ struct{bool available=true,in_menu=false;}ui;
+ ControllerInput input;const auto controller_generation=controller_route.generation();
+@@CLIENT_AUTHORITY@@
+ (void)client_frame;return deferred_phase;
+}
+void camera_client_phase(){
+ camera_adapter_ready=true;camera_input={};camera_publish_input=false;camera_override_input=false;
+ set_enabled(false,false);on_camera_tick(1,6,true,true);set_enabled(true,false);
+ controller_route.reset();native_input_state={};owner={1,2,3,4,5};clock_ms=1000;
+ NativeRequestSample original{};original.valid=true;original.state=100;original.crouch_mode=1;original.words[1]=0xc000;
+ auto frame=native_input_state.observe(clock_ms,input_owner(owner),original,{true,1,16});
+ arcade_input.publish_native_context(frame);arcade_input.publish_authority(clock_ms,frame.owner_generation,1,true);
+ controller_route.observe(0,{true,clock_ms,0,0,0,0,0,0,0});controller_route.select(clock_ms,1,true,frame);
+ on_camera_tick(1,6,true,true);check(camera_lease_requested,"phase fixture acquires existing camera adapter once");
+ for(unsigned state:{103u,200u,201u,100u}){
+  clock_ms+=8;auto next=original;next.state=state;next.crouch_mode=state==100?1:state==201?2:0;next.words[1]=state<200?0xc000:0;
+  const auto events=camera_events.size();const auto deadline=gameplay_valid_until.load();
+  (void)client_authority_phase(next);
+  on_camera_tick(1,6,true,true);
+  check(camera_lease_requested&&camera_events.size()==events+1&&camera_events.back()=='A',
+        "a fresh client-ahead takeoff phase must not retire the current camera lease");
+  check(gameplay_valid_until.load()==deadline,"deferred client phase cannot renew existing gameplay time");
+  clock_ms+=25;frame=native_input_state.observe(clock_ms,input_owner(owner),next,{true,1,16});
+  arcade_input.publish_native_context(frame);controller_route.observe(0,{true,clock_ms,0,0,0,0,0,0,0});
+  check(!client_authority_phase(next),"only matching original physics restores full client publication");
+  on_camera_tick(1,6,true,true);check(camera_lease_requested,"matching physical phase preserves the same camera owner");
+ }
+ clock_ms+=8;check(!client_authority_phase(original,false),"actual focus withdrawal is never deferred");
+ on_camera_tick(1,6,true,true);check(!camera_lease_requested&&camera_events.back()=='R',"focus withdrawal still restores the native camera immediately");
+ camera_publish_input=true;controller_route.reset();
+}
 void camera_toggle(bool value){
  set_enabled(value,false);
 }
@@ -707,6 +742,10 @@ void analog_air_lifecycle(){
  }
 }
 int main(){
+ camera_client_phase();
+#if defined(DINGOSDK_INPUT_PHASE_ONLY)
+ std::cout<<checks<<" source-composed client phase and camera checks passed\n";return 0;
+#endif
  analog_air_boundaries();
  analog_air_lifecycle();
  air_admission_lifecycle();

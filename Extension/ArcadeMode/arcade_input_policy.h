@@ -77,6 +77,27 @@ struct InputNativeContext {
         return airborne_episode == before.airborne_episode && air_departure > before.air_departure &&
             air_departure-before.air_departure == 1;
     }
+    // Recognition-only continuity of an actually released ordinary Ollie.
+    // Unlike generic ground borrowing this requires the observed native jump
+    // and every sampled transition; it never grants Flip execution readiness.
+    bool released_jump_continues(const InputNativeContext& before, std::uint64_t now) const noexcept {
+        const auto phase=[](unsigned state){return state==100?0:state==103?1:state==200?2:state==201?3:-1;};
+        const bool awaiting_jump=!before.airborne && before.flip.id==-1 &&
+            (flip.id==1 || (!airborne && flip.id==-1));
+        const bool observed_jump=before.flip.id==1 && (flip.id==1 || (airborne && flip.id==-1));
+        if (!required || !before.required || !fresh(now) || !before.fresh(now) || !follows(before) ||
+            generations.owner!=before.generations.owner || !flip.valid || !before.flip.valid ||
+            !flip.object || flip.object!=before.flip.object || flip.stance!=before.flip.stance ||
+            (!awaiting_jump && !observed_jump) ||
+            phase(before.flip.state)<0 || phase(flip.state)<phase(before.flip.state) ||
+            flip.mode>2 || before.flip.mode>2 || !flip.mode_generation || !before.flip.mode_generation) return false;
+        const unsigned action_change=flip.state!=before.flip.state || flip.id!=before.flip.id;
+        const unsigned mode_change=flip.mode!=before.flip.mode;
+        if (generations.action-before.generations.action!=action_change ||
+            flip.mode_generation-before.flip.mode_generation!=mode_change ||
+            generations.contact-before.generations.contact>1 || air_departure!=before.air_departure) return false;
+        return airborne_episode==before.airborne_episode+(airborne&&!before.airborne?1u:0u);
+    }
     // Only the existing201/mode2 jump1-to-idle observation is correlated here.
     // This proves neither actor completion nor current readiness.
     bool jump_selection_retired(InputGenerations origin, InputAirEpisode episode,

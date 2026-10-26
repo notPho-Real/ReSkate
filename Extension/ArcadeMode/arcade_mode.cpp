@@ -1810,25 +1810,16 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         tick_arcade_fixture_geometry(now, gameplay);
-        gameplay_valid_until.store(gameplay ? now + 150 : 0, std::memory_order_release);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
         float grind_speed{};
         const bool grind_speed_valid = native_board_speed(grind_speed);
         grind_observer_tick(score_probe_base, now, request_probe_ready && ui.available && !ui.in_menu && input.available,
             enabled(), grind_speed_valid, grind_speed);
-        const auto score_edge = take_score_label_occurrence(now);
-        const auto manual_label = take_manual_label_evidence(now);
-        if (gameplay && score_edge.valid && score_edge.labels) {
-            // History base-name occurrences are independently observed native
-            // actions. Amounts and FS/BS context remain separate evidence.
-            input_telemetry.client(ScoreEdgeEvidence{
-                score_edge.sequence, score_edge.observed_at, score_edge.sampled_at, score_edge.labels,
-                static_cast<unsigned>(score_edge.uncertainty)});
-        }
         NoBailSkater native_owner{};
         const auto native = focus_available && request_probe_ready ? native_request_sample(native_owner) : NativeRequestSample{};
         NativeInputFrame client_frame{};
+        bool deferred_phase{};
         {
             std::lock_guard lock(ollie_mutex);
             if (!gameplay || !focus_available || !watch.valid || !native.valid) native_input_state.invalidate();
@@ -1837,49 +1828,65 @@ void on_client_tick() noexcept {
             gameplay = gameplay && enabled() && controller_route.generation() == controller_generation &&
                 controller_route.physical(authority_now).valid;
             const auto frame = native_input_state.correlate(authority_now,input_owner(native_owner),native);
+            deferred_phase = native_input_state.defer_client_phase(authority_now,input_owner(native_owner),native,
+                arcade_input.native_context(authority_now), gameplay && focus_available && watch.valid &&
+                arcade_input.admitted(0,authority_now));
             client_frame = frame;
             gameplay = gameplay && frame.valid;
-            gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
-            arcade_input.publish_native_context(frame);
-            // Source1 here names the one logical session, not physical slot0.
-            // The route generation and exclusive physical source were checked above.
-            if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
-                    input.available ? 1u : 0u, gameplay && focus_available && watch.valid && frame.valid)) {
-                for (auto& rotation : rotations) rotation.reset();
-                for (auto& charge : native_charges) charge.cancel();
-                neutral_delivery = {}; retire_playback_packets();
-                set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
-                reset_physical_manual.store(true,std::memory_order_release);
+            if (!deferred_phase) {
+                gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
+                arcade_input.publish_native_context(frame);
+                // Source1 names the logical session, not physical slot0. The
+                // exclusive route generation/source were checked above.
+                if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
+                        input.available ? 1u : 0u, gameplay && focus_available && watch.valid && frame.valid)) {
+                    for (auto& rotation : rotations) rotation.reset();
+                    for (auto& charge : native_charges) charge.cancel();
+                    neutral_delivery = {}; retire_playback_packets();
+                    set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
+                    reset_physical_manual.store(true,std::memory_order_release);
+                }
             }
+        }
+        // A deferred phase cannot consume history that the next correlated
+        // update still needs. The original evidence deadlines remain intact.
+        const auto score_edge = deferred_phase ? ScoreLabelOccurrence{} : take_score_label_occurrence(now);
+        const auto manual_label = deferred_phase ? ScoreLabelOccurrence{} : take_manual_label_evidence(now);
+        if (gameplay && score_edge.valid && score_edge.labels) {
+            input_telemetry.client(ScoreEdgeEvidence{
+                score_edge.sequence, score_edge.observed_at, score_edge.sampled_at, score_edge.labels,
+                static_cast<unsigned>(score_edge.uncertainty)});
         }
         float speed{};
         // Initial push requires ordinary two-wheel contact. Its independently
         // observed native request may continue through its own one-wheel kick.
         // Manual/grind balance and unknown state/speed still prohibit pushing.
         const bool speed_valid = native.valid && native.state == 100 && native.crouch_mode == 1 && native_board_speed(speed);
-        if (reset_push_contact_policy.exchange(false, std::memory_order_acq_rel) || native_owner != push_contact_owner) {
+        if (!deferred_phase && (reset_push_contact_policy.exchange(false, std::memory_order_acq_rel) || native_owner != push_contact_owner)) {
             push_contact_policy.reset(); push_contact_owner = native_owner;
         }
-        const bool push_valid = push_contact_policy.poll(now, gameplay && watch.valid && speed_valid,
+        const bool push_valid = !deferred_phase && push_contact_policy.poll(now, gameplay && watch.valid && speed_valid,
             native.state, native.crouch_mode, native.words[1] & 0xc000u, (native.words[0] & 0x40u) != 0,
             combo_session.model().state().balance_kind != BalanceKind::none);
         if (push_valid) push_speed.store(speed, std::memory_order_relaxed);
-        push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
+        if (!deferred_phase) push_eligible_until.store(push_valid ? now + 150 : 0, std::memory_order_release);
         const auto contacts = native.words[1] & 0xc000u;
         const bool drive_valid = gameplay && watch.valid && native.valid &&
             (native.state == 100 || native.state == 103) && native.crouch_mode <= 2 &&
             combo_session.model().state().balance_kind == BalanceKind::none &&
             (contacts == 0xc000u || (((native.words[0] & 0x40u) || push_valid) &&
                 (contacts == 0x4000u || contacts == 0x8000u)));
-        movement_eligible_until.store(drive_valid ? now + 150 : 0, std::memory_order_release);
+        if (!deferred_phase) movement_eligible_until.store(drive_valid ? now + 150 : 0, std::memory_order_release);
         const bool board_safe = gameplay && watch.valid && native_board_toggle_safe(native);
-        offboard_valid_until.store(gameplay && watch.valid && native.valid &&
-            native.state == game::build::v20260929::no_bail::offboard_physics_state ? now + 150 : 0,
-            std::memory_order_release);
-        board_eligible_until.store(gameplay && watch.valid && board_safe ? now + 150 : 0,
-            std::memory_order_release);
+        if (!deferred_phase) {
+            offboard_valid_until.store(gameplay && watch.valid && native.valid &&
+                native.state == game::build::v20260929::no_bail::offboard_physics_state ? now + 150 : 0,
+                std::memory_order_release);
+            board_eligible_until.store(gameplay && watch.valid && board_safe ? now + 150 : 0,
+                std::memory_order_release);
+        }
         if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label, push_valid, step);
-        else {
+        else if (!deferred_phase) {
             cancel_balance_bail();
             manual_identity.reset(manual_label);
             reset_manual_physics(); manual_release.reset();
@@ -1923,7 +1930,7 @@ void on_client_tick() noexcept {
         }
         // State 100/mode 1 is the verified on-board idle baseline. Expire this
         // permission quickly if client ticks, game focus, or owner reads stop.
-        ollie_eligible_until.store(gameplay && native.valid && native.state == 100 && native.crouch_mode == 1
+        if (!deferred_phase) ollie_eligible_until.store(gameplay && native.valid && native.state == 100 && native.crouch_mode == 1
             ? now + 150 : 0, std::memory_order_release);
         {
             std::lock_guard lock(ollie_mutex);
@@ -1943,7 +1950,7 @@ void on_client_tick() noexcept {
                 {gameplay && focus_available && watch.valid, live(ollie_eligible_until), live(push_eligible_until),
                  live(board_eligible_until), live(movement_eligible_until), live(manual_eligible_until),
                  live(manual_prepare_until), live(manual_release_until), live(action_eligible_until), speed});
-            else if (!gameplay || !focus_available || !watch.valid) native_readiness.reset();
+            else if ((!gameplay && !deferred_phase) || !focus_available || !watch.valid) native_readiness.reset();
             capture_gameplay=gameplay;
             if(input_capture_correlation.captures(CaptureCorrelationSource::native_admission)){
                 auto observation=controller_capture_context(publication_at,controller_route.selected_slot());
@@ -2164,6 +2171,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.authored_playback && (result.right_y > 27850 || result.right_y < -27850);
         const auto physical_state=arcade_input.digital_state(now);
         auto ground_controls=GroundControl::from_state(auto_kick_enabled(),physical_state);
+        ground_controls.native_horizontal = left_x != 0;
         // Manual vertical reservation publication begin.
         // Final native RS ownership withdraws ordinary scalar control without
         // claiming native entry, contact validity or a balance force.

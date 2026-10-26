@@ -595,7 +595,9 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             arcade_mode::begin_ground_writer_observation(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},native_frame,
                 intent.enabled,intent.ground_controls.down,requests),arcade_mode::finish_ground_writer_observation};
         auto& writer_row=writer_observation.row;
-        writer_row.input_ms=intent.sampled_at;writer_row.input_generation=intent.generation;writer_row.controls=intent.ground_controls.encode();
+        // This receipt describes scalar resistance controls, not yaw ownership.
+        // Keep its existing wire bits while the internal carrier also owns LX.
+        writer_row.input_ms=intent.sampled_at;writer_row.input_generation=intent.generation;writer_row.controls=intent.ground_controls.encode()&0x1ffu;
         writer_row.proof_ms=intent.angular_proof.sampled_at;writer_row.proof_step=intent.angular_proof.physics_step;
         writer_row.proof_owner_generation=intent.angular_proof.owner_generation;
         writer_row.proof_valid=intent.angular_proof.valid;writer_row.ordinary=ordinary;

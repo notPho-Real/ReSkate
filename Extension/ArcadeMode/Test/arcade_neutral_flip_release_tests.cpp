@@ -143,5 +143,62 @@ void queued_withdrawal() {
         check(h->starts==0,"queued neutral release cannot outlive owner/flight/OFF/mode or another native selection");
     }
 }
+void prompt_released_ollie_tap() {
+    // The accepted hardware control pressed X404ms after A release. These
+    // missing-function cases press/release before, across and just after AIR.
+    for(unsigned cadence:{17u,34u}) for(unsigned press_step:{0u,1u,3u,5u}) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        h->poll(1000+cadence,{0x1000},100,-1,1);
+        h->poll(1000+2*cadence,{0x1000},100,1,0);
+        const auto release=1000+3*cadence;h->poll(release,{static_cast<std::uint16_t>(press_step==0?0x4000:0)},100,1,0);
+        unsigned flip_starts{};std::uint64_t original_press{},original_release{};
+        for(unsigned n=1;n<=15;++n) {
+            const auto now=release+n*cadence;
+            const auto state=n<4?103u:n==4?200u:201u;
+            const auto mode=n<=4?0u:2u;
+            const bool held=n>=press_step && n<press_step+2;
+            const auto out=h->poll(now,{static_cast<std::uint16_t>(held?0x4000:0)},state,n<8?1:-1,mode);
+            if(out.requested_id==2)++flip_starts;
+            const auto* d=h->input.input_diagnostic(0);
+            for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip) {
+                original_press=d->recognition[i].request.physical_pressed_at;
+                original_release=d->recognition[i].request.physical_released_at;
+            }
+            if(n<8)check(out.requested_id!=2,"prompt tap cannot bypass native jump selection/idle or the existing actor");
+        }
+        check(flip_starts==1,"one ordinary post-Ollie tap survives pre-AIR/initial-mode timing and reaches existing Kickflip once");
+        check(original_press==release+press_step*cadence && original_release==release+(press_step+2)*cadence,
+            "deferred recognition retains the real early physical press/release rather than synthetic later edges");
+    }
+    for(unsigned fault=0;fault<12;++fault) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);h->poll(1017,{0x1000},100,-1,1);
+        h->poll(1051,{0x1000},100,1,0);h->poll(1085,{},100,1,0);
+        h->poll(1102,{0x4000},103,1,0);h->poll(1119,{},103,1,0);
+        if(fault==0)++h->owner.rig;
+        if(fault==1){h->input.enable(false);h->input.enable(true);}
+        if(fault==2)h->poll(1136,{},103,1,0,false);
+        if(fault==3)h->poll(1136,{},300,1,0);
+        if(fault==4)h->poll(1136,{0x8000},103,1,0);
+        if(fault==5)h->poll(1136,{},103,2,0);
+        if(fault==6)h->poll(1136,{},100,1,0); // Reversed native phase.
+        if(fault==7){for(unsigned t=1136;t<1600;t+=34)h->poll(t,{},103,1,0);}
+        if(fault>=9) {
+            NativeRequestSample raw{};raw.valid=true;raw.state=103;raw.crouch_mode=fault==11?1u:0u;
+            h->producer.observe(1125,h->owner,raw,{true,fault==9?3:1,fault==10?24u:16u});
+            raw.crouch_mode=0;h->producer.observe(1130,h->owner,raw,{true,1,16});
+        }
+        const auto now=fault==7?1636u:fault==8?1300u:1153u;
+        h->poll(now,{},200,1,0);h->poll(now+34,{},201,1,2);h->poll(now+68,{},201,-1,2);
+        if(h->starts!=1)std::cerr<<"early fault="<<fault<<" starts="<<h->starts<<'\n';
+        check(h->starts==1,"early intent dies on owner/OFF/authority/bail/intervening input/other action/reversal/deadline/producer gap/hidden action-object-mode excursion");
+    }
+    for(bool observed_jump:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x4000},100,-1,1);h->poll(1051,{},100,-1,1);
+        h->poll(1068,{},103,observed_jump?1:-1,0);h->poll(1102,{},200,observed_jump?1:-1,0);
+        h->poll(1136,{},201,observed_jump?1:-1,2);h->poll(1170,{},201,-1,2);
+        check(h->starts==(observed_jump?2u:1u),"a fast A/X release can await actual native Ollie confirmation but cannot borrow an unrelated fall");
+    }
 }
-int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();std::cout<<checks<<" neutral flip release production checks passed\n";}
+}
+int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

@@ -113,6 +113,7 @@ struct InputEnvironment {
     InputJumpBinding jump_binding{};
     std::uint64_t jump_generation{};
     InputAirTables air_tables{};
+    std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -334,6 +335,7 @@ public:
         // Keep cumulative recognition identity and loss counters monotonic.
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
         active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = 0; clocked_ = false; manual_unknown_ = false;
+        takeoff_release_at_=0;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     bool pending_stick() const noexcept {
@@ -375,6 +377,8 @@ public:
               InputAdapter adapter = {}) noexcept {
         diagnostic_.recognition_count = 0; diagnostic_.recognition_omitted = 0;
         const auto native = environment.native_context;
+        const auto takeoff = environment.takeoff_release_at && now>=environment.takeoff_release_at &&
+            now-environment.takeoff_release_at<InputTiming::direction_ms ? environment.takeoff_release_at : 0;
         native_required_ = native_required_ || native.required;
         if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
             reset(); return;
@@ -383,7 +387,7 @@ public:
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
                 if (native.air_episode() != native_.air_episode())
-                    cancel_air_episode(native.ordinary_air_transition(native_,now));
+                    cancel_air_episode(takeoff || native.ordinary_air_transition(native_,now));
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
                     if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
@@ -405,6 +409,7 @@ public:
         }
         if (clocked_ && environment.policy != policy_) reset();
         policy_ = environment.policy; diagnostic_.policy = policy_;
+        takeoff_release_at_=takeoff;
         diagnostic_.dispatched = 0; diagnostic_.unresolved_definition = diagnostic_.branch_context_unavailable = false;
         if (!environment.gameplay || environment.context == InputContext::unknown ||
             (clocked_ && now < last_)) {
@@ -832,7 +837,8 @@ private:
     bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false) const noexcept {
         const auto after = ordinary_flip ? air_flip_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
-            if (event.sequence > after && event.token == InputToken{InputSource::buttons,code,InputEdge::press})
+            if ((event.sequence > after || (ordinary_flip && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
+                event.token == InputToken{InputSource::buttons,code,InputEdge::press})
                 for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;
         return false;
     }
@@ -876,6 +882,9 @@ private:
             InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
+        // Keep a pre-AIR tap in the physical journal through the native pop's
+        // mode transition; only the ordinary airborne mode can bind its actor.
+        if (takeoff_release_at_ && environment.native_context.flip.mode!=2) return false;
         const InputToken face{InputSource::buttons,14,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
@@ -895,13 +904,14 @@ private:
             const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
             match = binding.match; defined_direction = binding.direction;
         }
-        if (!match && environment.policy.neutral_flip_on_release && release && !events_.held_direction()) {
+        if (!match && environment.policy.neutral_flip_on_release && (release || takeoff_release_at_) && !events_.held_direction()) {
             // The release is new in this poll. Intervening input and a consumed
             // directional face cannot turn an old tap into a default action.
             match = events_.history().release_after_presses(face,face,1,InputTiming::direction_ms,now,ordinary_reject);
-            if (match && match.events[match.count-1] != release) match = {};
+            if (match && (release ? match.events[match.count-1] != release : match.first_at<takeoff_release_at_)) match = {};
+            const auto matched_release=match ? match.events[match.count-1] : 0;
             if (match) for (const auto& event : events_.history().events())
-                if (event.sequence > match.events[0] && event.sequence < release && event.token.edge == InputEdge::press) {
+                if (event.sequence > match.events[0] && (!release || event.sequence < matched_release) && event.token.edge == InputEdge::press) {
                     match = {}; break;
                 }
             if (match) form = InputForm::neutral_release;
@@ -1219,6 +1229,7 @@ private:
             diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
     }
     InputPolicy policy_{InputPolicy::production()};
+    std::uint64_t takeoff_release_at_{};
     InputAirTables air_tables_{};
     std::array<InputAirTable,static_cast<std::size_t>(InputAirTableKind::count)> table_seals_{};
     std::array<bool,static_cast<std::size_t>(InputAirTableKind::count)> table_retired_{};

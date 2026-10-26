@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "Extension/ArcadeMode/arcade_camera_input.h"
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
@@ -7,8 +8,81 @@ namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 NativeRequestSample sample(unsigned state=100,unsigned stance=0,unsigned mode=1){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=mode;s.words[0]=stance;s.words[1]=0xc000;return s;}
+void client_phase_gap() {
+    struct Route { ArcadeInput::Physical pad{true,1000,0,0,0,0,0,0,0};
+        auto physical(std::uint64_t now)const{return now>=pad.at&&now-pad.at<=150?pad:ArcadeInput::Physical{};}
+        unsigned selected_slot()const{return 1u;}unsigned generation()const{return 7u;}} route;
+    const NativeInputOwner owner{1,2,3,4,5};
+    for(unsigned state:{103u,200u,201u}) {
+        NativeInputState physics;ArcadeInput input(true);input.enable(true);NativeInputReadiness readiness;
+        const auto original=physics.observe(1000,owner,sample(),{true,1,16});
+        input.publish_native_context(original);input.publish_authority(1000,original.owner_generation,1,true);
+        readiness.publish(original,{true,true,true,true,true,true,false,false,true,0});
+        const auto before=camera_input_snapshot(route,input,1000,true);
+        auto next=sample(state,0,state==201?2:0);
+        check(!physics.correlate(1010,owner,next).valid,"actual client-ahead native phase has no full correlation");
+        const bool defer=physics.defer_client_phase(1010,owner,next,input.native_context(1010),input.admitted(0,1010));
+        check(defer,"same-owner original proof defers destructive client publication");
+        // Production skips publication, cancellation and permission stores on
+        // this result. Neither the original frame nor its lease is restamped.
+        check(before.same_binding(camera_input_snapshot(route,input,1010,true)),"camera keeps the same source/owner through an uncorrelated phase read");
+        check(input.native_context(1010).sampled_at==1000 && readiness.observed_proof().sampled_at==1000,
+            "deferral retains original timestamps instead of granting the newer phase");
+        check(!physics.defer_client_phase(1151,owner,next,input.native_context(1151),true),"original150ms expiry cannot be deferred");
+        check(!camera_input_snapshot(route,input,1151,true).valid,"camera expiry still restores rather than retaining stale input");
+        for(unsigned fault=0;fault<5;++fault) {
+            auto changed=owner;auto current=next;auto admitted=original;bool permitted=true;
+            if(fault==0)++changed.rig;if(fault==1)current.valid=false;if(fault==2)permitted=false;
+            if(fault==3)++admitted.owner_generation;if(fault==4)admitted.valid=false;
+            check(!physics.defer_client_phase(1010,changed,current,admitted,permitted),"owner/invalid/OFF-focus-source/epoch/absent admission withdraw immediately");
+        }
+        check(!physics.defer_client_phase(999,owner,next,original,true),"clock rollback cannot retain authority");
+        for(unsigned excluded:{101u,300u,400u,504u,701u})
+            check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/revert/bail/rail/offboard exit cannot defer withdrawal");
+    }
+}
+void held_air_manual() {
+    for(unsigned hz:{30u,60u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
+        ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
+        NativeInputOwner owner{1,2,3,4,5};NativeGesture::Output output{};std::uint64_t recognized{};
+        const auto poll=[&](std::uint64_t now,int held,unsigned state=201,unsigned contacts=0,bool allowed=true){
+            auto raw=sample(state,0,state==100?1:2);raw.words[1]=contacts;
+            const auto frame=physics.observe(now,owner,raw,{true,-1,16});
+            readiness.publish(frame,{true,false,false,false,false,true,false,false,true,0});
+            input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,allowed);
+            const bool contact=state==100 && (contacts==0x4000 || contacts==0x8000);
+            if(contact)input.publish_balance_controls(InputBalanceControls::vertical(direction<0?InputBalanceKind::manual:InputBalanceKind::nose),frame);
+            const auto a=readiness.sample(now,frame);
+            const auto pose=state!=100?SkatePose::air:contacts==0x4000?SkatePose::manual:contacts==0x8000?SkatePose::nose_manual:SkatePose::riding;
+            output=input.poll(0,now,pad?(held>0?1u:held<0?2u:0u):0,0,pad?0:static_cast<short>(held*25000),0,0,
+                allowed&&a.gameplay,false,false,0,false,false,false,now/17,false,{},false,a.manual,pose,
+                false,false,false,false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,false,contact);
+        };
+        poll(1000,0);poll(1100,-direction);poll(1250,direction);recognized=output.manual.recognized_at;
+        check(output.manual.owns&&recognized==1250,"actual AIR pair starts the existing Manual/Nose RS actor");
+        check(output.suppress_reverse,"the held AIR entry modifier cannot simultaneously reach native LY while the RS actor owns acquisition");
+        for(unsigned step=1;step<=hz*2;++step) {
+            const auto now=1250+std::uint64_t{step}*1000/hz;
+            int held=direction;bool allowed=true;
+            if(fault==1&&now>=1600)held=0;
+            if(fault==2&&now>=1600&&now<1800)held=0; // Rehold cannot renew.
+            if(fault==3&&step==hz/2)++owner.rig;
+            if(fault==4&&now>=1600&&now<1800)allowed=false;
+            if(fault==5&&now>=1600&&now<1800)continue;
+            poll(now,held,fault==6&&step==hz/2?300:201,0,allowed);
+        }
+        check(output.manual.owns==(fault==0),"only uninterrupted fresh same-owner held direction survives beyond released700ms/ground1200ms");
+        if(fault==0) {
+            check(output.manual.recognized_at==recognized&&output.manual.request_at==recognized,"held input never renews recognition or original request time");
+            poll(3284,direction,100,0xc000);check(output.manual.owns&&output.manual.request_at==3284&&output.suppress_reverse,"first qualified landing retains vertical reservation and starts the separate original1200ms acquisition");
+            poll(3318,direction,100,direction<0?0x4000:0x8000);
+            check(output.manual.owns&&output.manual.confirmed&&!output.suppress_reverse,"confirmed landing contact hands vertical input to existing balance correction without a new pair");
+        }
+    }
+}
 }
 int main(){
+    client_phase_gap();held_air_manual();
     const NativeInputOwner owner{1,2,3,4,5};
     const NativeInputPermissions all{true,true,true,true,true,true,true,true,true,7};
     for(unsigned bit:{0u,0x20u}) {

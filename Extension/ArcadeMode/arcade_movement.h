@@ -36,6 +36,9 @@ struct GroundControl {
     GroundVelocityLock velocity_lock{};
     // Actual Manual RS ownership reserves the vertical channel. Withdrawal only.
     bool manual_vertical_reserved{};
+    // Native LX is delivered independently of digital trick recognition. An
+    // ordinary SDK yaw rate must not overwrite the native steering response.
+    bool native_horizontal{};
     static GroundControl from_state(bool automatic,const InputDigitalState& state) noexcept {
         const auto directions=state.buttons&15u;
         return {state.available && !(state.buttons&0x30u) && (state.pad_buttons&3u)!=3u && (state.pad_buttons&12u)!=12u,
@@ -46,10 +49,10 @@ struct GroundControl {
     }
     static constexpr GroundControl decode(unsigned bits) noexcept {
         return {bool(bits&1u),bool(bits&2u),bool(bits&4u),bool(bits&8u),bool(bits&16u),bool(bits&32u),
-            ((bits>>6)&3u)<=2 ? static_cast<GroundVelocityLock>((bits>>6)&3u) : GroundVelocityLock::unknown, bool(bits&(1u<<8))};
+            ((bits>>6)&3u)<=2 ? static_cast<GroundVelocityLock>((bits>>6)&3u) : GroundVelocityLock::unknown, bool(bits&(1u<<8)), bool(bits&(1u<<9))};
     }
     constexpr unsigned encode() const noexcept {
-        return (known?1u:0u)|(auto_kick?2u:0u)|(square?4u:0u)|(down?8u:0u)|(left?16u:0u)|(right?32u:0u)|(static_cast<unsigned>(velocity_lock)<<6)|(manual_vertical_reserved?(1u<<8):0u);
+        return (known?1u:0u)|(auto_kick?2u:0u)|(square?4u:0u)|(down?8u:0u)|(left?16u:0u)|(right?32u:0u)|(static_cast<unsigned>(velocity_lock)<<6)|(manual_vertical_reserved?(1u<<8):0u)|(native_horizontal?(1u<<9):0u);
     }
     bool trying_to_brake(float speed, float facing_dot, bool pressing_down_brakes = true) const noexcept {
         if (!known || !std::isfinite(speed) || speed < 0 || !std::isfinite(facing_dot)) return false;

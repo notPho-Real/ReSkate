@@ -16,6 +16,19 @@ struct Frame {
 };
 }
 int main(){
+ for(short x:{short(-32767),short(-16000),short(-1),short(1),short(16000),short(32767)}) {
+  Frame f;GroundYaw controller;auto input=f.intent();
+  input.ground_controls=GroundControl::physical(true,0,x,0);
+  input.ground_controls.native_horizontal=x!=0;
+  input.ground_controls=GroundControl::decode(input.ground_controls.encode());
+  check(input.ground_controls.native_horizontal,"delivered native LX ownership survives the existing atomic carrier");
+  for(unsigned contacts:{0xc000u,0x4000u,0xc000u,0x8000u,0xc000u}) {
+   f.raw.words[1]=contacts;f.step(f.native.sampled_at+34);
+   input.sampled_at=f.native.sampled_at;input.angular_proof=NativeAirSpinProof::from_frame(f.native);
+   const auto output=controller.step(input,f.native,f.native.sampled_at,1.f/30,{0,0,4},true,false);
+   check(!output.angular&&!output.velocity_owned,"ordinary native LX has no competing SDK angular/translation writer across push contacts");
+  }
+ }
  for(bool left:{false,true})for(bool right:{false,true})for(bool down:{false,true})
  for(float inches:{9.9f,10.f,10.1f})for(unsigned age:{599u,600u,601u})
  for(auto lock:{GroundVelocityLock::unknown,GroundVelocityLock::unlocked,GroundVelocityLock::locked}){

@@ -117,6 +117,20 @@ public:
             now < frame_.sampled_at || now-frame_.sampled_at > 150) return {};
         return frame_;
     }
+    // A client read can lead the original callback by one native phase. Keep
+    // an already admitted session in that gap, without publishing this newer
+    // phase or renewing any permission/clock. Hard withdrawal still wins.
+    bool defer_client_phase(std::uint64_t now, NativeInputOwner owner,
+            NativeRequestSample sample, const NativeInputFrame& admitted, bool permitted) const noexcept {
+        const auto original = binding_owner_proof(now,owner,sample);
+        const auto ordinary=[](unsigned state,unsigned mode) {
+            return mode<=2 && (state==100 || state==103 || state==200 || state==201);
+        };
+        return permitted && original.valid && admitted.valid && admitted.owner == original.owner &&
+            ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode) &&
+            admitted.owner_generation == original.owner_generation && now >= admitted.sampled_at &&
+            now-admitted.sampled_at <= 150 && !correlate(now,owner,sample).valid;
+    }
 private:
     bool increment(std::uint64_t& value) noexcept {
         if (exhausted_ || value == UINT64_MAX) { exhausted_ = true; invalidate(); return false; }

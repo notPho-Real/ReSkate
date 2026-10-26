@@ -40,8 +40,9 @@ public:
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
-        air_actor_episode_ = grab_actor_episode_ = {}; grab_actor_ = false; rail_request_ = {};
+        air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
+        takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
@@ -114,6 +115,11 @@ public:
         }
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
+        if (takeoff_release_at_) {
+            if (admission.external_owner || now<takeoff_release_at_ || now-takeoff_release_at_>=InputTiming::direction_ms ||
+                !native.released_jump_continues(takeoff_native_,now)) takeoff_release_at_=0;
+            else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
+        }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~(classic_a | classic_x | 15u | 0x8000u));
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
         authored_.finish_neutral_tail();
@@ -135,7 +141,7 @@ public:
         const bool manual_trigger_only=triggers && !authored_.busy() && !auxiliary_.busy() && !admission.external_owner;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -170,6 +176,7 @@ public:
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
+        environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         input_.poll(now, physical, environment, {this, &receive});
         if (reset_manual) input_.reset_manual_continuity();
         // A released A ends native setup even when another request superseded
@@ -178,16 +185,28 @@ public:
             output.jump = {true,true,jump_nollie_,launch_context_ == GestureContext::from_grind,jump_pressed_at_,now,jump_launch_};
             authored_.release(admission.tick); holding_ = false; input_.acknowledge_jump_release();
         }
+        if (output.jump.released && output.jump.setup_admitted && !output.jump.from_rail &&
+            native.required && native.fresh(now) && native.flip.valid && (native.flip.id==1 || native.flip.id==-1) && native.flip.object &&
+            !native.airborne && (native.flip.state==100 || native.flip.state==103)) {
+            takeoff_release_at_=output.jump.released_at; takeoff_native_=native;takeoff_jump_observed_=native.flip.id==1;
+        }
         const auto authored = authored_.sample(admission.tick, now);
         if (authored.owns_stick) {
             output.right_x = authored.x; output.right_y = authored.y; output.phase = 1;
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only);
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;
+        // During AIR preparation/first landing the held final direction is a
+        // command modifier owned by the delivered RS actor. Do not also send
+        // native LY (Down selects the ordinary ground reverse/revert path).
+        // Actual confirmed balance retains its existing correction writer.
+        if (manual.owns_stick && manual_.from_air() && !manual.confirmed &&
+            InputEvents::normalize(physical,now,true,admission.input_policy).direction==(manual_.requested()<0?2:8))
+            output.suppress_reverse=true;
         output.manual = {diagnostic.stick, diagnostic.pad,
             diagnostic.stick_first, diagnostic.pad_first, manual_.requested(), diagnostic.stick_at,
             diagnostic.pad_at, manual_.requested_at(),
@@ -311,9 +330,11 @@ private:
                 (admission.pose == SkatePose::riding && admission.native_context.manual_ground_wait(now_)) ?
                 InputDisposition::waiting : InputDisposition::cancelled;
             if (authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
+            manual_air_episode_ = admission.native_context.air_episode();
             return manual_.request(now_, request.action == InputAction::manual ? -1 : 1, airborne, admission.manual_safe,
                 request.context == InputContext::air, request.recognized_at,
-                request.recognition ? request.recognition->sequence : 0)
+                request.recognition ? request.recognition->sequence : 0,
+                held_air_manual(request.action == InputAction::manual ? -1 : 1))
                 ? InputDisposition::started : InputDisposition::cancelled;
         case InputAction::rail_request:
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
@@ -425,6 +446,17 @@ private:
         }
         current_->unsupported = true; return false;
     }
+    bool held_air_manual(int direction=0) const noexcept {
+        if (!direction) direction=manual_.requested();
+        const auto& native=admission_.native_context;
+        if (!direction || !native.required || !native.fresh(now_) || !manual_air_episode_.number ||
+            native.airborne_episode!=manual_air_episode_.number) return false;
+        const bool same_flight=native.airborne && native.air_episode()==manual_air_episode_;
+        const bool first_landing=!native.airborne && native.flip.state==100 && native.flip.mode==1 &&
+            native.air_departure>manual_air_episode_.departure && native.air_departure-manual_air_episode_.departure==1;
+        const auto physical=InputEvents::normalize(physical_,now_,true,admission_.input_policy);
+        return (same_flight || first_landing) && physical.direction==(direction<0?2:8);
+    }
     UnifiedInput input_{};
     AuthoredPlayback authored_{};
     ManualActuation manual_{};
@@ -439,7 +471,10 @@ private:
     ActionExperiment mode_{ActionExperiment::off};
     InputPolicy policy_{InputPolicy::production()};
     InputNativeContext native_{};
-    InputAirEpisode air_actor_episode_{}, grab_actor_episode_{};
+    InputNativeContext takeoff_native_{};
+    std::uint64_t takeoff_release_at_{};
+    bool takeoff_jump_observed_{};
+    InputAirEpisode air_actor_episode_{}, grab_actor_episode_{}, manual_air_episode_{};
     bool grab_actor_{};
     bool native_required_{};
     InputAdmission admission_{};

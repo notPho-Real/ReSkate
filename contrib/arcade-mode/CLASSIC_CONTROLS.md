@@ -52,8 +52,11 @@ Moderate stick throws and diagonal travel through center retain the first edge.
 A held baseline is not an edge, but subsequent fresh reversals rearm without
 requiring perfect neutral. D-pad
 and left-stick sequences are independent; held forward cannot swallow D-pad
-commands. An airborne request remains eligible for700ms; landing within that
-lifetime starts the separate native actuation/settling window. D-pad Up/Down
+commands. A released airborne request remains eligible for700ms. Keeping the
+final direction held retains its admitted request through the same fresh native
+flight; releasing or losing that input cannot renew it. The first qualified
+landing starts the separate1200ms native acquisition window. The held entry
+direction is reserved until contact, then existing balance controls take over. D-pad Up/Down
 can correct an established manual balance.
 The first grounded left-stick Down is reserved for the pair for up to275ms including that sampling allowance;
 a continued hold then passes through. B braking and horizontal steering stay native.
@@ -87,6 +90,16 @@ exists. A dash means this contract assigns no variant to that combination.
 | Up-Right | Inward Heelflip | 360 Inward Heelflip | — |
 | Down-Left | Varial Kickflip | 360 Flip | — |
 | Down-Right | Varial Heelflip | 360 Heelflip | — |
+
+After releasing an ordinary Ollie, a prompt neutral X tap can wait through
+takeoff for native AIR readiness. This requires the admitted Ollie release and
+its observed native jump; an unrelated ground tap is not carried into a fall.
+The physical tap retains the existing500ms query window. The actor still waits
+for the native jump selection to become ready before issuing Kickflip.
+
+These prompt-tap and held-air changes implement missing intended controls.
+Earlier scripted native positives did not establish reliable physical-controller
+use of either sequence; that acceptance remains separate.
 
 The table describes the intended mapping. Current native Deck acceptance covers
 Kickflip, Heelflip and Pop Shove-It. Hardflip is unresolved: the authored request

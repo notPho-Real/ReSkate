@@ -72,6 +72,14 @@ public:
             turn_output_={true,true,false,delta/dt,0,0,frame,controls,intent.spin.left_pressed_at,intent.spin.right_pressed_at,intent.spin.epoch,delta,*turn};
             turn_active_=elapsed_<.3;active_=true;return turn_output_;
         }
+        // Explicit recognized half-turns above remain owned commands. For
+        // ordinary analog steering native LX already reaches the game; writing
+        // a second digital angular rate only on two-wheel steps causes two
+        // competing steering owners across push/contact changes.
+        if (controls.native_horizontal) {
+            active_=false;
+            return {true,false,false,0,0,0,frame,controls,intent.spin.left_pressed_at,intent.spin.right_pressed_at,intent.spin.epoch};
+        }
         const float speed=std::hypot(std::hypot(velocity[0],velocity[2]),velocity[1]);
         const float rate=selected_rate(controls,speed,now,intent.spin.left_pressed_at,intent.spin.right_pressed_at);
         const bool requested=controls.left||controls.right;

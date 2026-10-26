@@ -12,7 +12,7 @@ bool near(float a,float b){return std::abs(a-b)<.00002f;}
 int main(){
     check(!GroundControl{}.manual_vertical_reserved && !GroundControl::decode(0).manual_vertical_reserved,
         "unavailable control payload does not reserve an ordinary channel");
-    for(unsigned bits=0;bits<512;++bits){
+    for(unsigned bits=0;bits<1024;++bits){
         const auto original=GroundControl::decode(bits);
         auto reserved=original;reserved.manual_vertical_reserved=true;
         auto free=original;free.manual_vertical_reserved=false;
@@ -20,7 +20,7 @@ int main(){
         check(GroundControl::decode(reserved.encode()).manual_vertical_reserved &&
             !GroundControl::decode(free.encode()).manual_vertical_reserved,"reservation survives coherent ground control transport");
         check(reserved.known==free.known && reserved.down==free.down && reserved.left==free.left &&
-            reserved.right==free.right && reserved.velocity_lock==free.velocity_lock &&
+            reserved.right==free.right && reserved.velocity_lock==free.velocity_lock && reserved.native_horizontal==free.native_horizontal &&
             reserved.can_kick(1,false)==free.can_kick(1,false) &&
             reserved.trying_to_brake(1,1)==free.trying_to_brake(1,1),
             "reservation preserves physical steering brake and kick facts without granting admission");
