@@ -31,9 +31,19 @@ unsigned hud_hz{}, hud_frame{};
 #endif
 using namespace dingosdk;using namespace dingosdk::arcade_mode;
 using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_t) noexcept;
-bool watch=true;std::uint64_t clock_ms=1000;std::uint64_t GetTickCount64(){return clock_ms;}
+bool watch=true;std::uint64_t clock_ms=1000;std::atomic<std::uint64_t> camera_wait_clock{};
+std::uint64_t GetTickCount64(){const auto waiting=camera_wait_clock.load();return waiting?waiting:clock_ms;}
 bool auto_kick_enabled(){return true;}
-std::mutex ollie_mutex;std::atomic<bool> active{true};bool enabled(){return active.load();}
+// Real mutex with an optional deterministic contention seam. The try-lock
+// control reports only after its failed attempt; blocking lock reports before
+// waiting, so the producer can publish and release without sleeps or polling.
+struct CameraTestMutex {
+ std::mutex mutex;std::atomic<bool>* attempted{};
+ void lock(){if(attempted)attempted->store(true);mutex.lock();}
+ bool try_lock(){const bool acquired=mutex.try_lock();if(attempted)attempted->store(true);return acquired;}
+ void unlock(){mutex.unlock();}
+} ollie_mutex;
+std::atomic<bool> active{true};bool enabled(){return active.load();}
 std::atomic<bool>& mode_enabled=active;
 std::atomic<bool> prepared_catalog{true};
 @@CAMERA_STATE@@
@@ -295,27 +305,45 @@ void camera_lifecycle(){
 std::vector<camera_diagnostics::Evidence> camera_diagnostic_rows;
 bool camera_diagnostic_sink(const camera_diagnostics::Evidence& row) noexcept {camera_diagnostic_rows.push_back(row);return true;}
 void camera_diagnostic_lock_outcomes(){
- for(unsigned attempt=0;attempt<3;++attempt){
+ for(unsigned attempt=0;attempt<3;++attempt)for(unsigned change=0;change<4;++change){
   camera_publish_input=true;camera_override_input=false;camera_adapter_ready=true;camera_input={};
   camera_toggle(false);on_camera_tick(1,6,true,true);camera_toggle(true);on_camera_tick(1,6,true,true);
   check(camera_lease_requested,"camera diagnostic starts with actual source-composed lease");
   camera_publish_input=false;camera_diagnostic_rows.clear();
-  std::atomic<bool> requested{},held{},release{};
-  std::thread holder([&]{while(!requested.load())std::this_thread::yield();std::lock_guard lock(ollie_mutex);held=true;while(!release.load())std::this_thread::yield();});
-  const auto hold=[&]{requested=true;while(!held.load())std::this_thread::yield();};
+  std::atomic<bool> requested{},held{},attempted{};
+  std::thread holder([&]{
+   while(!requested.load())std::this_thread::yield();
+   std::lock_guard lock(ollie_mutex);held=true;
+   while(!attempted.load())std::this_thread::yield();
+   if(change==1)camera_wait_clock=clock_ms+151;
+   if(change==2){arcade_input.invalidate_authority();controller_route.clear();}
+   if(change==3){mode_enabled=false;camera_reset_generation.fetch_add(1);}
+  });
+  const auto hold=[&]{requested=true;while(!held.load())std::this_thread::yield();ollie_mutex.attempted=&attempted;};
   if(attempt==0)camera_read_hook=hold;else if(attempt==1)camera_capture_hook=hold;else camera_apply_hook=hold;
-  check(camera_diagnostics::capture.arm(clock_ms,100,0,camera_diagnostic_sink),"camera finite diagnostic armed");
+  check(camera_diagnostics::capture.arm(clock_ms,500,0,camera_diagnostic_sink),"camera finite diagnostic armed");
   camera_diagnostics::capture.begin(camera_diagnostics::frame,clock_ms,0);
   on_camera_tick(1,6,true,true);
-  camera_diagnostics::capture.finish(camera_diagnostics::frame,clock_ms+1,0);
-  release=true;holder.join();
-  check(camera_diagnostics::capture.arm(clock_ms+2,0,0,camera_diagnostic_sink),"camera diagnostic stops");
+  camera_diagnostics::capture.finish(camera_diagnostics::frame,GetTickCount64()+1,0);
+  holder.join();ollie_mutex.attempted=nullptr;
+  check(camera_diagnostics::capture.arm(GetTickCount64()+2,0,0,camera_diagnostic_sink),"camera diagnostic stops");
   check(camera_diagnostic_rows.size()==3,"begin observed tick andend");
   const auto& row=camera_diagnostic_rows[1];
-  check(row.input_count==attempt+1&&!row.input[attempt].inspected&&!row.input[attempt].valid,"actual reached trylock miss is uninspected at correct attempt");
-  check(row.restore_requests&&row.restore_successes&&!camera_lease_requested,"diagnostics preserve actual restore path");
+  check(row.input_count>=attempt+1&&row.input[attempt].inspected,"contention must inspect the snapshot after its publisher completes");
+  if(!change){
+   check(row.input_count==3&&row.input[attempt].valid&&!row.restore_requests&&camera_lease_requested,
+    "unchanged fresh source under contention must not restore and reacquire the camera");
+  }else{
+   if(change==1)check(!row.input[attempt].valid,
+    "camera snapshot freshness must include time waiting for its publisher");
+   check(row.restore_requests&&row.restore_successes&&!camera_lease_requested,
+    change==1?"camera snapshot freshness must include time waiting for its publisher":
+    change==2?"real source withdrawal during contention must restore the camera":
+    "OFF during contention must restore the camera before returning");
+  }
+  camera_wait_clock=0;if(change==2)controller_route.reset();if(change==3)camera_toggle(true);
   camera_publish_input=true;on_camera_tick(1,6,true,true);
-  check(camera_lease_requested,"unchanged later tick reacquires after failed snapshot");
+  check(camera_lease_requested,"fresh enabled source can continue or reacquire after contention");
  }
  camera_toggle(false);on_camera_tick(1,6,true,true);controller_route.reset();
 }

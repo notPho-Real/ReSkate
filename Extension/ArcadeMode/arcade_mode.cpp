@@ -1504,8 +1504,11 @@ void on_camera_tick(std::uintptr_t base, std::uintptr_t client, bool ready_for_c
         DingoSDKOverlayReadControllerInput(&focus);
         if (!focus.available) { camera_diagnostics::reason(camera_diagnostics::Reason::focus); restore(); return; }
         const auto read_input = []() noexcept {
+            // Contention is not source withdrawal. Inspect the current snapshot
+            // after its publisher finishes, then check freshness at acquisition.
+            // This scope ends before any local-pose or native-camera operation.
+            std::unique_lock lock(ollie_mutex);
             const auto sampled_at = GetTickCount64();
-            std::unique_lock lock(ollie_mutex,std::try_to_lock);
             const auto result=lock.owns_lock() ? camera_input_snapshot(controller_route,arcade_input,sampled_at,enabled()) : CameraInputSnapshot{};
             camera_diagnostics::input(lock.owns_lock(),result.valid,{result.owner.base,result.owner.entity,result.owner.core,result.owner.context,result.owner.rig},
                 result.owner_generation,result.route_generation,result.slot,result.right_x,result.right_y);

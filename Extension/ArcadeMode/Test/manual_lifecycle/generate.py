@@ -89,6 +89,10 @@ def generated(root):
     # Expected failure is checked by assertion message, not CTest WILL_FAIL (which
     # could incorrectly treat an unrelated crash/tool error as a regression).
     controls = {
+        "camera_contention": ("std::unique_lock lock(ollie_mutex);\n            const auto sampled_at = GetTickCount64();",
+                              "const auto sampled_at = GetTickCount64();\n            std::unique_lock lock(ollie_mutex,std::try_to_lock);"),
+        "camera_snapshot_clock": ("std::unique_lock lock(ollie_mutex);\n            const auto sampled_at = GetTickCount64();",
+                                  "const auto sampled_at = GetTickCount64();\n            std::unique_lock lock(ollie_mutex);"),
         "camera_recheck": ("if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())) {", "if (false) {"),
         "camera_publish": (" ||\n            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())", ""),
         "camera_toggle": ("camera_reset_generation.fetch_add(1, std::memory_order_release);", ""),
@@ -132,6 +136,8 @@ def generated(root):
 
 
 FAILURES = {
+    "camera_contention": "contention must inspect the snapshot after its publisher completes",
+    "camera_snapshot_clock": "camera snapshot freshness must include time waiting for its publisher",
     "camera_recheck": "changed camera generation cannot continue stale orbit or leave a newly raced lease active",
     "camera_publish": "mode toggle during camera callback must retire ownership before the callback returns",
     "camera_toggle": "deferred camera retirement never acknowledges the toggle before cleanup succeeds",
