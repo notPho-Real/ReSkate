@@ -18,6 +18,8 @@ def generate(root):
         'OBSERVER': between(mode, 'GroundWriterEvidence begin_ground_writer_observation(', 'bool set_input_capture('),
         'BODY_WRITE': between(client, 'template<class T> void body_write(', '\n}\nvoid debug_stop_noclip'),
         'COMMIT': between(client, '        const auto commit_motion = ', '        const auto release_turn = '),
+        'ANGULAR_RELEASE': between(client, '        const auto release_turn = ', '        if (!intent.enabled) {'),
+        'ANGULAR_BODY': between(client, '        auto applied=a.ground_output.ready', '\n    } catch (...) { a.controller.reset();'),
     }
     source = (root / 'Extension/ArcadeMode/Test/ground_writer/fixture.cpp.in').read_text()
     for name, text in chunks.items():

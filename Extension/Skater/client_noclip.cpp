@@ -629,13 +629,15 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         };
         const auto release_turn = [&](bool permitted,bool off=false) {
             bool released{};
+            // AIR accepts a tilted native basis. Its exact write receipt, not
+            // the upright-only ground policy, also governs withdrawal.
             if (off) {
                 const bool ground=a.turn_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,ordinary && permitted);
-                const bool air=a.air_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,ordinary && permitted);
+                const bool air=a.air_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,permitted);
                 released=ground || air;
             } else {
                 const bool ground=a.turn_write.release(native_frame,bodies.parts,spins,bodies.up,now,ordinary && permitted);
-                const bool air=a.air_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,ordinary && permitted);
+                const bool air=a.air_write.release_cleanup(cleanup,bodies.parts,spins,bodies.up,now,permitted);
                 released=ground || air;
             }
             if (!released) return;
