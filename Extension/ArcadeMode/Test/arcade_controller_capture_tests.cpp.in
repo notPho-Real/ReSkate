@@ -275,7 +275,7 @@ void compact_selected_polls(){
         emitted[0].controller.raw.packet==21&&emitted[0].controller.returned.packet==121,"same-step X press retains exact raw and returned packet values");
     details.poll_started=details.raw_ms=details.remap_ms=details.returned_ms=1048;details.raw.buttons=0;
     emitted=poll(details,frame());check(emitted.size()==1&&emitted[0].source_sequence==3,"same-step28ms X release is not coalesced");
-    for(const auto& pair:{std::pair<short,short>{-13847,-29696},{28377,16383},{0,0}}){
+    for(const auto& pair:{std::pair<short,short>{short{-13847},short{-29696}},{short{28377},short{16383}},{short{0},short{0}}}){
         details.returned.rx=pair.first;details.returned.ry=pair.second;
         emitted=poll(details,frame());check(emitted.size()==1,"each setup/flick/neutral payload change emits in one physics step");
     }
