@@ -14,6 +14,7 @@
 #include "Extension/Skater/camera_diagnostics.h"
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <chrono>
 #include <compare>
 #include <cmath>
@@ -480,6 +481,18 @@ class CaptureCorrelationProducer {
     std::array<NativeInputOwner,16> owners_{};
     bool observational_{},schema4_{};
     std::array<std::uint64_t,64> polls_{};std::uint64_t next_poll_{};
+    // Exact scope103 is a selected-source change/physics-step trace. Private
+    // hook tickets still settle individually; wire sequences count emitted rows.
+    struct CompactPoll {
+        ControllerCaptureDetails details{};
+        NativeInputOwner owner{},readiness_owner{},binding_owner{};
+        std::uint64_t owner_generation{},contact_generation{},action_generation{},physics_step{},native_ms{};
+        bool native_valid{},seen{};
+    };
+    std::array<CompactPoll,4> compact_polls_{};
+    std::uint64_t compact_completed_{},compact_emitted_{},compact_returned_{};
+    unsigned compact_selected_{4},compact_withdrawal_{};
+    static constexpr unsigned compact_poll_limit=224;
     unsigned scope_{};bool active_{},known_{true},overflow_{};
     static bool fresh(const NativeInputFrame& f,std::uint64_t now) noexcept {
         return f.valid&&f.owner.valid()&&f.owner_generation&&f.contact_generation&&f.action_generation&&f.physics_step&&
@@ -500,6 +513,48 @@ class CaptureCorrelationProducer {
     }
     bool current(std::uint64_t now,const NativeInputFrame& f) const noexcept {
         return fresh(f,now)&&f.owner==proof_.owner&&f.owner_generation==proof_.owner_generation&&now>=started_;
+    }
+    static bool compact_details_equal(ControllerCaptureDetails a,ControllerCaptureDetails b)noexcept{
+        // Timestamp refresh and packet-only churn do not describe a payload or
+        // authority transition. Their exact values remain in each emitted row.
+        const auto normalize=[](ControllerCaptureDetails& d){
+            d.poll_started=d.raw_ms=d.returned_ms=d.remap_ms=d.source_ms=d.cached_at=0;
+            d.readiness_native_ms=d.current_native_ms=0;d.raw.packet=d.returned.packet=0;
+            d.readiness_physics_step=d.current_physics_step=0;
+            d.physics_dt=d.cached_dt=0;
+        };
+        const bool clocks=std::bit_cast<std::uint32_t>(a.physics_dt)==std::bit_cast<std::uint32_t>(b.physics_dt)&&
+            std::bit_cast<std::uint32_t>(a.cached_dt)==std::bit_cast<std::uint32_t>(b.cached_dt);
+        normalize(a);normalize(b);return clocks&&a==b;
+    }
+    bool compact_poll(CaptureCorrelationEvidence& row,const NativeInputFrame& f,
+            const NativeInputFrame& readiness,const NativeInputFrame& binding)noexcept{
+        const auto& d=row.controller;
+        if(d.slot>=4){omitted(1);lost();return false;}
+        const bool ordered=d.poll_started<=d.raw_ms&&d.raw_ms<=d.returned_ms&&d.returned_ms==row.ms&&
+            (!d.context_known||(d.raw_ms<=d.remap_ms&&d.remap_ms<=d.returned_ms));
+        if(!ordered||row.ms<compact_returned_){omitted(1);lost();return false;}
+        compact_returned_=row.ms;
+        if(d.context_known&&d.selected_slot!=compact_selected_){
+            if(compact_selected_<4)compact_withdrawal_|=1u<<compact_selected_;
+            compact_selected_=d.selected_slot;
+        }
+        const auto bit=1u<<d.slot;
+        const bool selected=d.slot==compact_selected_;
+        const bool withdrawal=(compact_withdrawal_&bit)!=0;
+        if(!selected&&!withdrawal)return false;
+        compact_withdrawal_&=~bit;
+        auto& before=compact_polls_[d.slot];const bool valid=fresh(f,row.ms);
+        const bool same=before.seen&&before.owner==f.owner&&before.readiness_owner==readiness.owner&&
+            before.binding_owner==binding.owner&&before.owner_generation==f.owner_generation&&
+            before.contact_generation==f.contact_generation&&before.action_generation==f.action_generation&&
+            before.physics_step==f.physics_step&&before.native_ms==f.sampled_at&&before.native_valid==valid&&
+            compact_details_equal(before.details,d);
+        if(same&&!withdrawal)return false;
+        before={d,f.owner,readiness.owner,binding.owner,f.owner_generation,f.contact_generation,
+            f.action_generation,f.physics_step,f.sampled_at,valid,true};
+        if(compact_emitted_>=compact_poll_limit){omitted(1);lost();return false;}
+        row.source_sequence=++compact_emitted_;return true;
     }
 public:
     bool active()const noexcept{return active_;}
@@ -523,7 +578,14 @@ public:
     }
     bool release_poll(std::uint64_t capture,std::uint64_t poll)noexcept{
         if(!active_||capture!=id_||!poll)return false;
-        for(auto& slot:polls_)if(slot==poll){slot=0;return true;}
+        for(auto& slot:polls_)if(slot==poll){
+            slot=0;
+            if(scope_==103){
+                if(poll<=compact_completed_)lost();
+                compact_completed_=std::max(compact_completed_,poll);
+            }
+            return true;
+        }
         lost();return false;
     }
     bool captures(CaptureCorrelationSource source)const noexcept{
@@ -538,6 +600,7 @@ public:
     template<class Sink> bool begin(std::uint64_t now,std::uint64_t duration,unsigned scope,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
         if(active_||!duration||duration>(scope==255?1000u:5000u)||!scope||(scope>127&&scope!=255)||(!(scope&96)&&!fresh(f,now))||next_==UINT64_MAX||duration>UINT64_MAX-now)return false;
         schema4_=scope==255;observational_=(scope&96)!=0;owners_={};polls_={};next_poll_=0;id_=++next_;started_=now;until_=now+duration;scope_=schema4_?127u:scope;proof_=f;expected_=0;drops_=drops;semantic_attempted_=semantic_queue_lost_=0;sequences_={};known_=true;overflow_=drops==UINT64_MAX;active_=true;
+        compact_polls_={};compact_completed_=compact_emitted_=compact_returned_=0;compact_selected_=4;compact_withdrawal_=0;
         auto r=snapshot(now,f);r.kind=CaptureCorrelationKind::begin;r.events_known=true;r.drop_begin=r.drop_end=drops;r.overflow=overflow_;
         // Lost begin remains an incomplete capture, never silently restarted.
         sink(r);return true;
@@ -570,7 +633,7 @@ private:
             // summary and its ordered members into one recognition transition.
             if(!capture_correlation_add(semantic_attempted_))overflow_=true;
             if(!sink(row)){if(!capture_correlation_add(semantic_queue_lost_))overflow_=true;overflow_=true;}
-        }else sink(row);
+        }else if(!sink(row)&&scope_==103&&row.source==CaptureCorrelationSource::pad_poll){known_=false;lost();}
     }
 public:
     template<class Sink> void event(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink) noexcept {
@@ -582,6 +645,9 @@ public:
     }
     template<class Sink> void observation(CaptureCorrelationEvidence row,const NativeInputFrame& f,std::uint64_t drops,Sink&& sink,const NativeInputFrame& readiness={},const NativeInputFrame& binding={}) noexcept {
         if(!observational_)return;
+        if(scope_==103&&row.source==CaptureCorrelationSource::pad_poll){
+            maintain(row.ms,f,drops,sink);if(!active_||!compact_poll(row,f,readiness,binding))return;
+        }
         row.controller.readiness_owner=owner_token(readiness);row.controller.binding_owner=owner_token(binding);
         event(row,f,drops,sink);
     }

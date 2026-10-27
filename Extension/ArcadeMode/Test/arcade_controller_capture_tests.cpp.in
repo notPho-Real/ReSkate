@@ -250,8 +250,154 @@ void unchanged_and_invalid(){
     check(rows.back().controller.poll_result==1167&&!rows.back().controller.raw_valid&&!rows.back().controller.returned_valid&&!rows.back().controller.ownership_known,"failed reads record unavailable payload and ownership, never invented neutral restoration");
     reset();begin();hook::overlay_input_access=1;hook::captured_front<0>(1,&out);rows=drain();check(rows.size()==1,"nested reads cannot duplicate an outer capture ticket");hook::overlay_input_access=0;
 }
+void compact_selected_polls(){
+    reset();begin(103);auto rows=drain();check(rows.size()==1,"compact capture keeps its original begin");
+    auto details=controller_capture_context(1000,1).details;
+    details.raw_valid=details.returned_valid=details.ownership_known=true;
+    details.poll_started=details.raw_ms=details.remap_ms=details.returned_ms=1000;
+    auto poll=[&](ControllerCaptureDetails d,NativeInputFrame proof){
+        clock_ms=d.returned_ms;ControllerPollCapture capture{};
+        check(begin_controller_poll(d.slot,capture),"each compact candidate reserves a real hook ticket");
+        capture.proof=proof;capture.readiness_proof=proof;capture.details=d;
+        complete_controller_poll(capture);return drain();
+    };
+    auto emitted=poll(details,frame());check(emitted.size()==1&&emitted[0].source_sequence==1,"first selected source emits");
+    for(unsigned i=1;i<20;++i){
+        auto churn=details;churn.raw.packet=i;churn.returned.packet=100+i;
+        churn.poll_started=churn.raw_ms=churn.remap_ms=churn.returned_ms=1000+i;
+        churn.source_ms=churn.cached_at=churn.readiness_native_ms=churn.current_native_ms=1000+i;
+        churn.readiness_physics_step=churn.current_physics_step=i+1;
+        check(poll(churn,frame()).empty(),"packet and publication-clock churn alone emits no compact row");
+    }
+    details.poll_started=details.raw_ms=details.remap_ms=details.returned_ms=1020;
+    details.raw.buttons=0x4000;details.raw.packet=21;details.returned.packet=121;
+    emitted=poll(details,frame());check(emitted.size()==1&&emitted[0].source_sequence==2&&
+        emitted[0].controller.raw.packet==21&&emitted[0].controller.returned.packet==121,"same-step X press retains exact raw and returned packet values");
+    details.poll_started=details.raw_ms=details.remap_ms=details.returned_ms=1048;details.raw.buttons=0;
+    emitted=poll(details,frame());check(emitted.size()==1&&emitted[0].source_sequence==3,"same-step28ms X release is not coalesced");
+    for(const auto& pair:{std::pair<short,short>{-13847,-29696},{28377,16383},{0,0}}){
+        details.returned.rx=pair.first;details.returned.ry=pair.second;
+        emitted=poll(details,frame());check(emitted.size()==1,"each setup/flick/neutral payload change emits in one physics step");
+    }
+    auto next=frame(1048,2);emitted=poll(details,next);
+    check(emitted.size()==1&&emitted[0].physics_step==2,"unchanged payload emits once for a new original physics step");
+    check(poll(details,next).empty(),"same step representative is not emitted twice");
+    // Each component of both pad payloads and the ownership/validity/context
+    // key has a direct same-step control, independent of packet churn.
+    for(unsigned field=0;field<36;++field){
+        auto changed=details;
+        switch(field){
+        case 0:changed.raw.lx=1;break;case 1:changed.raw.ly=1;break;case 2:changed.raw.rx=1;break;case 3:changed.raw.ry=1;break;
+        case 4:changed.raw.lt=1;break;case 5:changed.raw.rt=1;break;case 6:changed.returned.buttons=1;break;
+        case 7:changed.returned.lx=1;break;case 8:changed.returned.ly=1;break;case 9:changed.returned.lt=1;break;case 10:changed.returned.rt=1;break;
+        case 11:changed.ownership=1;break;case 12:changed.phase=1;break;case 13:changed.poll_result=1167;break;
+        case 14:changed.raw_valid=false;break;case 15:changed.returned_valid=false;break;case 16:changed.ownership_known=false;break;
+        case 17:changed.enabled=false;break;case 18:changed.focus=false;break;case 19:changed.gameplay=false;break;
+        case 20:changed.clock_valid=false;break;case 21:changed.bitmap_known=false;changed.bitmap=0;break;
+        case 22:changed.source_available=false;break;case 23:changed.capture_blocked=true;break;
+        case 24:changed.native_observed=false;break;case 25:changed.native_flip_known=false;break;
+        case 26:changed.readiness_observed=false;break;case 27:changed.current_observed=false;break;
+        case 28:changed.cached_dt_valid=false;break;case 29:++changed.readiness;break;case 30:++changed.native_mode;break;
+        case 31:++changed.native_state;break;case 32:++changed.native_contacts;break;case 33:++changed.native_flip;break;
+        case 34:++changed.native_words[0];break;case 35:++changed.route_generation;break;
+        }
+        auto changed_proof=next;if(field==24)changed_proof.valid=false;
+        const auto changed_rows=poll(changed,changed_proof);
+        if(changed_rows.size()!=1)std::cerr<<"compact field="<<field<<'\n';
+        check(changed_rows.size()==1,"meaningful same-step payload or context change emits");
+        check(poll(details,next).size()==1,"restoration of meaningful context emits separately");
+    }
+    auto other=next;other.owner.rig=99;emitted=poll(details,other);
+    check(emitted.size()==1&&emitted[0].owner==2,"replacement owner is a distinct observation, never borrowed authority");
+    auto unknown=other;unknown.valid=false;emitted=poll(details,unknown);
+    check(emitted.size()==1&&!emitted[0].native_valid,"native validity withdrawal emits without a false validity claim");
+    details.slot=0;emitted=poll(details,unknown);check(emitted.empty(),"unselected polling does not consume compact row budget");
+    details.selected_slot=0;emitted=poll(details,unknown);check(emitted.size()==1,"new selected source emits its actual payload");
+    details.slot=1;emitted=poll(details,unknown);check(emitted.size()==1,"previous selected source withdrawal survives selection change");
+    check(poll(details,unknown).empty(),"withdrawn source does not become a second full-poll stream");
+    details.slot=0;details.selected_slot=4;details.enabled=false;details.gameplay=false;details.ownership=0;
+    emitted=poll(details,unknown);check(emitted.size()==1&&!emitted[0].controller.enabled,"OFF and selected-source disappearance retain the previous source withdrawal");
+    input_capture_correlation.end(clock_ms,unknown,telemetry.client.dropped(),capture_row);rows=drain();
+    check(rows.size()==1&&rows[0].complete&&!rows[0].overflow,"suppressed unchanged/unselected tickets create no missing debt");
+}
+void compact_accounting(){
+    {
+        reset();begin(103);ControllerPollCapture c{};check(begin_controller_poll(1,c),"closed compact control reserves a poll");
+        c.proof=frame();c.details=controller_capture_context(1000,1).details;
+        c.details.poll_started=c.details.raw_ms=c.details.returned_ms=1000;complete_controller_poll(c);
+        for(const auto source:{CaptureCorrelationSource::input,CaptureCorrelationSource::recognition,
+                CaptureCorrelationSource::native,CaptureCorrelationSource::native_admission}){
+            CaptureCorrelationEvidence row;row.source=source;row.source_sequence=1;row.ms=1000;row.events_known=true;
+            row.controller=controller_capture_context(1000,1).details;
+            if(source==CaptureCorrelationSource::recognition){row.recognition_id=row.recognition_session=1;
+                row.action=3;row.context=2;row.footprint_kind=2;row.recognized_ms=1000;}
+            input_capture_correlation.observation(row,frame(),telemetry.client.dropped(),capture_row);
+        }
+        auto rows=drain();input_capture_correlation.end(1000,frame(),telemetry.client.dropped(),capture_row);auto end=drain();
+        CaptureCorrelationDrain consumer;for(const auto& row:rows)consumer.written(row,true);
+        check(rows.size()==6&&end.size()==1,"closed103 fixture contains begin and all five required sources");
+        const auto footer=consumer.footer(end[0],telemetry.client.dropped());
+        check(capture_correlation_complete(footer)&&footer.expected==5&&footer.drained==5&&!footer.dropped,
+            "existing formatter/drain completeness accounts compact source7 and unchanged other sources together");
+    }
+    for(unsigned count:{224u,225u}){
+        reset();begin(103);auto begin_row=drain();std::vector<CaptureCorrelationEvidence> rows=begin_row;
+        for(unsigned i=0;i<count;++i){
+            clock_ms=1000+i;ControllerPollCapture c{};check(begin_controller_poll(1,c),"bounded capture reserves all completed polls");
+            c.proof=frame(clock_ms,i+1);c.details=controller_capture_context(clock_ms,1).details;
+            c.details.poll_started=c.details.raw_ms=c.details.remap_ms=c.details.returned_ms=clock_ms;
+            c.details.raw.buttons=static_cast<std::uint16_t>(i&1u);complete_controller_poll(c);
+            auto part=drain();rows.insert(rows.end(),part.begin(),part.end());
+        }
+        input_capture_correlation.end(clock_ms,{},telemetry.client.dropped(),capture_row);auto end=drain();
+        check(rows.size()==225&&end.size()==1,"exact224 compact rows is the hard output bound");
+        for(unsigned i=1;i<rows.size();++i)check(rows[i].ordinal==i&&rows[i].source_sequence==i,"compact row and global ordinal sequences are contiguous without ticket gaps");
+        check(end[0].expected==count&&end[0].complete==(count==224)&&end[0].events_known==(count==224)&&end[0].overflow==(count==225),
+            "225th selected observation is counted once as loss, never silent truncation");
+    }
+    for(unsigned fault=0;fault<8;++fault){
+        reset();begin(103);(void)drain();ControllerPollCapture first{},second{};
+        check(begin_controller_poll(1,first)&&begin_controller_poll(1,second),"two distinct pending tickets reserve");
+        first.proof=second.proof=frame();first.details=second.details=controller_capture_context(1000,1).details;
+        first.details.poll_started=first.details.raw_ms=first.details.returned_ms=1000;second.details=first.details;
+        if(fault==0){complete_controller_poll(second);complete_controller_poll(first);}
+        if(fault==1){complete_controller_poll(first);complete_controller_poll(first);complete_controller_poll(second);}
+        if(fault==2){complete_controller_poll(first);} // Outstanding debt at footer.
+        if(fault==3){first.details.returned_ms=2001;complete_controller_poll(first);}
+        if(fault==4){first.details.returned_ms=999;complete_controller_poll(first);}
+        if(fault==5){for(unsigned i=0;i<64;++i)telemetry.client.push(ClientTelemetry{Observation{}});complete_controller_poll(first);complete_controller_poll(second);}
+        if(fault==6){first.details.raw_ms=1001;complete_controller_poll(first);complete_controller_poll(second);}
+        if(fault==7){first.details.poll_started=first.details.raw_ms=first.details.remap_ms=first.details.returned_ms=1010;
+            second.details.poll_started=second.details.raw_ms=second.details.remap_ms=second.details.returned_ms=1005;
+            complete_controller_poll(first);complete_controller_poll(second);}
+        auto events=drain();input_capture_correlation.end(1000,{},telemetry.client.dropped(),capture_row);auto end=drain();
+        if(end.empty())end=events;
+        check(!end.empty()&&end.back().kind==CaptureCorrelationKind::end&&!end.back().complete,
+            "reversed/duplicate/pending/late/rollback/queue-loss/invalid-clock compact captures cannot claim completeness");
+    }
+    for(unsigned scope:{64u,96u,255u}){
+        reset();begin(scope);(void)drain();hook::XINPUT_STATE output{};
+        for(unsigned i=0;i<3;++i){hook::captured_front<0>(1,&output);const auto r=drain();
+            check(r.size()==1&&r[0].source_sequence==i+1,"full legacy and schema4 scopes retain every poll and ticket sequence");}
+    }
+}
+void compact_hook_invariance(){
+    for(unsigned kind=0;kind<3;++kind)for(unsigned slot:{0u,1u})for(bool blocked:{false,true})for(bool filter:{false,true}){
+        const auto run=[&](bool capture){
+            reset();if(capture)begin(103);hook::blocked=blocked;hook::filter_enabled=filter;
+            hook::raw={22,{0x1000,12,34,111,222,333,444}};hook::XINPUT_STATE out{};
+            const auto result=kind==0?hook::captured_front<0>(slot,&out):kind==1?hook::captured_xinput<0>(slot,&out):hook::captured_xinput<0,true>(slot,&out);
+            check(result==0&&hook::reads==1,"compact observation does not add a native poll or change its status");
+            return out;
+        };
+        const auto before=run(false),after=run(true);const auto& a=before.Gamepad;const auto& b=after.Gamepad;
+        check(before.dwPacketNumber==after.dwPacketNumber&&a.wButtons==b.wButtons&&a.bLeftTrigger==b.bLeftTrigger&&
+            a.bRightTrigger==b.bRightTrigger&&a.sThumbLX==b.sThumbLX&&a.sThumbLY==b.sThumbLY&&a.sThumbRX==b.sThumbRX&&a.sThumbRY==b.sThumbRY,
+            "compact observation leaves every final returned payload and packet component unchanged");
+    }
+}
 }
 void run_controller_capture_tests(){
-    input_telemetry.publish(telemetry);hooks_and_off();observation_negatives();readiness_provenance();binding_context();tickets_and_loss();footer_and_validation();unchanged_and_invalid();
+    input_telemetry.publish(telemetry);hooks_and_off();observation_negatives();readiness_provenance();binding_context();tickets_and_loss();footer_and_validation();unchanged_and_invalid();compact_selected_polls();compact_accounting();compact_hook_invariance();
     std::cout<<checks<<" production controller capture checks passed\n";
 }

@@ -29,6 +29,7 @@ struct ControllerCaptureDetails {
     std::int32_t native_flip{-1};
     bool context_known{},enabled{},focus{},gameplay{},clock_valid{},bitmap_known{},source_available{},capture_blocked{};
     bool native_observed{},native_flip_known{},readiness_observed{},current_observed{},cached_dt_valid{};
+    bool operator==(const ControllerCaptureDetails&) const = default;
 };
 // Stack-only join carrier. The owner tuple is converted to a capture-local
 // token by the existing producer; it is never a telemetry payload.
