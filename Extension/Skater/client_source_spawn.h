@@ -42,7 +42,8 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     const arcade_mode::GroundControl* ground_controls = nullptr,
     const arcade_mode::SpinCommand* spin_command = nullptr,
     const arcade_mode::LaunchDescriptor* launch = nullptr,
-    const arcade_mode::GroundTurnCommand* ground_turn = nullptr) noexcept;
+    const arcade_mode::GroundTurnCommand* ground_turn = nullptr,
+    std::int32_t native_launch_id = 0) noexcept;
 bool arcade_air_motion_ready(const arcade_mode::NativeInputFrame* current = nullptr) noexcept;
 // Engine-thread-only interactive controls. Presentation callbacks only queue requests.
 overlay::DebugModel on_client_debug_tick(std::uintptr_t base, std::uintptr_t client,

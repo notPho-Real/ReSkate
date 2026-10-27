@@ -590,7 +590,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     {
         std::lock_guard lock(ollie_mutex);
         physical = physical_manual_steps.sample(physical_manual,native_frame,pose,now,
-            valid && !owner_changed && !observation_gap && !bail,preserve_hop || acquiring_history);
+            valid && !owner_changed && !observation_gap && !bail,preserve_hop || acquiring_history ||
+            (pose == SkatePose::riding && combo_session.model().state().combo_active && !combo_session.failed_section()));
         physical_seconds=physical_manual_steps.seconds();
         // Losing a dynamics interval retires balance identity, not the original
         // bounded cleanup of still-acquired same-owner contact. Acquisition's
@@ -600,6 +601,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     if (!physical.valid) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
     const bool failed = combo_session.step(pose, dt, correction, native_revert,
         manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
+    // Ending a section stops integration; banking the combo resets its retained
+    // difficulty. Brief grounded links cannot silently start a fresh history.
+    if (!combo_session.model().state().combo_active && !combo_session.failed_section()) {
+        std::lock_guard lock(ollie_mutex);
+        physical_manual.reset();
+    }
 
     const bool release_context = native.state == 100 || native.state == 103 || native.state == 200 ||
         native.state == 201 || native_frame.rail_family;
@@ -710,8 +717,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     const auto& display = combo_session.balance_display_state();
     BalanceHudSource hud_source{native_frame.sampled_at,native_frame.valid};
+    auto hud_endpoints=BalanceEndpoints::bail_both;
+    float hud_limit=1;
     if(display.balance_kind==BalanceKind::manual){
         std::lock_guard lock(ollie_mutex);
+        hud_endpoints=physical_manual.nose() ? BalanceEndpoints::negative_bail : BalanceEndpoints::positive_bail;
+        hud_limit=physical_manual.display_limit();
         if(input_capture_correlation.schema4()&&capture_manual_join.request&&capture_manual_join.model_seen&&
            !capture_manual_join.render_seen&&native_frame.valid&&
            native_frame.owner==capture_manual_join.owner&&
@@ -734,7 +745,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         }
     }
     publish_balance_hud(display, combo_session.failed_section() && display.balance_kind == BalanceKind::manual ?
-        2 : combo_session.model().danger(), hud_source);
+        2 : combo_session.model().danger(), hud_source,hud_endpoints,hud_limit);
     if(hud_source.publication&&balance_hud_pending()){
         const auto published_ms=GetTickCount64();
         std::lock_guard lock(ollie_mutex);
@@ -2207,9 +2218,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Controller route air publication begin.
         {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
-            if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid);
+            if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid,result.jump.nollie);
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
-                result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch);
+                result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
             const bool angular_allowed = !reference && !action.owned &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
@@ -2222,7 +2233,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             const auto& spin_proof = rotation_native;
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
                 angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch,
-                rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr);
+                rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
+                release.sequence ? (release.nollie ? 16 : 1) : 0);
         }
         // Controller route air publication end.
         // BoardChord has already consumed a valid pair and emitted native Y.

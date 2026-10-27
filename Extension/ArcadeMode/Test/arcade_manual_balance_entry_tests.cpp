@@ -233,6 +233,87 @@ void air_guards(){
         "reset retires the same air request instead of manufacturing another acquisition");
  }
 }
-
+void held_air_landing(){
+ for(bool nose:{false,true})for(unsigned cadence:{17u,34u})
+ for(unsigned air_age:{1000u,1199u,1200u,1201u,1400u,5000u})for(bool full_first:{false,true}){
+  Pipeline p(nose,cadence);p.step(0,0,false,200);
+  p.step(0,nose?-25000:25000,false,200);p.step(0,nose?25000:-25000,false,200);
+  const auto recognized=p.output.manual.recognized_at;
+  check(p.output.manual.owns&&p.output.manual.held_air,"AIR pair publishes its live held actor provenance");
+  while(p.now<recognized+air_age){
+   p.step(0,nose?25000:-25000,false,200);
+   check(p.output.manual.owns&&p.output.manual.held_air&&p.output.manual.recognized_at==recognized,
+         "live held AIR modifier retains original recognition beyond released-request lifetime");
+  }
+  p.now=recognized+air_age;
+  const auto landing_at=p.now;
+  if(full_first){
+   p.step(0xc000u,nose?25000:-25000);
+   check(!p.admitted&&!balance_meter(p.combo.balance_display_state()).visible,
+         "qualified two-wheel landing starts acquisition without inventing a balance");
+  }
+  p.step(p.wanted(),nose?25000:-25000);
+  check(p.admitted&&p.output.manual.confirmed&&p.modeled_balance.active&&balance_meter(p.combo.balance_display_state()).visible,
+        "same-flight held AIR landing starts governing physical balance without waiting for its name");
+  check(p.output.manual.recognized_at==recognized&&p.output.manual.request_at==landing_at,
+        "landing settling is separate from the original physical recognition timestamp");
+ }
+ for(bool nose:{false,true})for(unsigned landing_at:{2000u,5000u})for(unsigned fault=0;fault<7;++fault){
+  Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;
+  delivered.recognized_at=1000;delivered.held_air=true;
+  balance.observe(1000,n.step(1000,0,200),delivered,true);
+  for(std::uint64_t at=1100;at<landing_at;at+=100){
+   auto frame=n.step(at,0,200);
+   if(at==landing_at-500&&fault==0)delivered.held_air=false;
+   if(at==landing_at-400&&fault==0)delivered.held_air=true; // A released modifier cannot rearm itself.
+   if(at==landing_at-200&&fault==1)delivered.owns=false;
+   if(at==landing_at-200&&fault==2)balance.reset();
+   if(at==landing_at-200&&fault==3)++n.owner.rig;
+   balance.sample(at,frame,true,true);
+   if(!(fault==4&&at>=landing_at-200))balance.observe(at,frame,delivered,fault!=5);
+  }
+  auto landing=n.step(landing_at,nose?0x8000u:0x4000u);
+  if(fault==6)++landing.airborne_episode;
+  check(!balance.sample(landing_at,landing,true,true).admitted,
+        "extended hold cannot survive release/repress, actor withdrawal, OFF, owner loss, stale delivery, unavailable input or another flight");
+ }
 }
-int main(){composed();guards();air_guards();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
+void held_landing_clock(){
+ for(bool nose:{false,true})for(unsigned client_delay:{0u,100u})for(unsigned age:{1199u,1200u,1201u}){
+  Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;
+  delivered.recognized_at=1000;delivered.held_air=true;
+  balance.observe(1000,n.step(1000,0,200),delivered,true);
+  for(std::uint64_t at=1100;at<4000;at+=100){
+   const auto frame=n.step(at,0,200);balance.sample(at,frame,true,true);balance.observe(at,frame,delivered,true);
+  }
+  const auto landing=n.step(4000);
+  // The actor has begun its separate landing lease; the AIR recognition is unchanged.
+  delivered.request_at=4000+client_delay;delivered.held_air=false;
+  balance.observe(4000+client_delay,landing,delivered,true);
+  check(!balance.sample(4000+client_delay,landing,true,true).confirmed,
+        "a fresh cached two-wheel landing cannot claim a balance");
+  if(client_delay)n.step(4000+client_delay); // Original physics continues behind the cached client view.
+  for(std::uint64_t at=4100+client_delay;at<4000+age;at+=100){
+   const auto frame=n.step(at);balance.sample(at,frame,true,true);balance.observe(at,frame,delivered,true);
+  }
+  const auto acquired=balance.sample(4000+age,n.step(4000+age,nose?0x8000u:0x4000u),true,true).admitted;
+  if(acquired!=(age<1200))std::cerr<<"landing clock nose="<<nose<<" client_delay="<<client_delay<<" age="<<age<<'\n';
+  check(acquired==(age<1200),
+        "only the first qualified native landing starts the1200ms clock; polls and delivery cannot renew it");
+  balance.reset();
+  balance.observe(4001+age,n.step(4001+age),delivered,true);
+  check(!balance.sample(4018+age,n.step(4018+age,nose?0x8000u:0x4000u),true,true).confirmed,
+        "a spent or expired AIR recognition cannot be retimestamped into a new ground acquisition");
+ }
+ for(bool nose:{false,true})for(unsigned age:{150u,151u}){
+  Native n;GroundManualBalance balance;auto delivered=command(nose);delivered.from_air=true;
+  delivered.recognized_at=1000;delivered.held_air=true;
+  for(std::uint64_t at=1000;at<=4000;at+=100){
+   const auto frame=n.step(at,0,200);balance.sample(at,frame,true,true);balance.observe(at,frame,delivered,true);
+  }
+  check(balance.sample(4000+age,n.step(4000+age,nose?0x8000u:0x4000u),true,true).admitted==(age<=150),
+        "long held AIR still requires actual delivery no older than150ms at landing");
+ }
+}
+}
+int main(){composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}

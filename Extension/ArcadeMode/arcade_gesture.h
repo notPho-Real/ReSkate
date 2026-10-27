@@ -198,9 +198,9 @@ public:
         if (native_bound_) invalidate_authority();
     }
     void cancel_commands() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
-    // Command-owner metadata only: an ordinary jump's right-stick tail does
-    // not own the independent air rotation channel. This is not native clip
-    // readiness, completion, or a NoSpin observation.
+    // Ordinary jump and basic-flip recipes own RS, not the independent AIR
+    // rotation channel. This is actor metadata, not native clip readiness,
+    // completion, or a NoSpin observation.
     bool allows_air_rotation(unsigned user, bool authored_playback) const noexcept {
         return !authored_playback || (user < ordinary_jump_playback_.size() && ordinary_jump_playback_[user]);
     }
@@ -305,9 +305,17 @@ public:
         // is cancellation, not a fabricated physical release or native issue.
         if (admission.gameplay && !admission.offboard && !admission.observed_lip &&
             output.rail.request.action == InputAction::none) output.rail.request = expired_rail;
-        if (output.requested_id) ordinary_jump_playback_[user] =
-            (output.requested_id == 1 || output.requested_id == 16) && !admission.offboard &&
-            admission.pose != SkatePose::grind && admission.pose != SkatePose::grind_exit_transition;
+        if (output.requested_id) {
+            const bool basic_flip =
+                output.requested_id == native_flip_id(ArcadeTrick::kickflip,false) ||
+                output.requested_id == native_flip_id(ArcadeTrick::kickflip,true) ||
+                output.requested_id == native_flip_id(ArcadeTrick::heelflip,false) ||
+                output.requested_id == native_flip_id(ArcadeTrick::heelflip,true) ||
+                output.requested_id == native_flip_id(ArcadeTrick::pop_shove_it,false) ||
+                output.requested_id == native_flip_id(ArcadeTrick::pop_shove_it,true);
+            ordinary_jump_playback_[user] = (output.requested_id == 1 || output.requested_id == 16 || basic_flip) &&
+                !admission.offboard && admission.pose != SkatePose::grind && admission.pose != SkatePose::grind_exit_transition;
+        }
         if (!output.authored_playback) ordinary_jump_playback_[user] = false;
         return output;
     }

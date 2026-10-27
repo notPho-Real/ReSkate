@@ -143,6 +143,31 @@ void queued_withdrawal() {
         check(h->starts==0,"queued neutral release cannot outlive owner/flight/OFF/mode or another native selection");
     }
 }
+void prompt_directional_tap() {
+    struct Choice {std::uint16_t pad;unsigned native;};
+    for(const auto choice:{Choice{4,2},Choice{8,3},Choice{2,4}})
+    for(unsigned cadence:{17u,34u}) for(bool before:{false,true}) for(bool release_direction:{false,true}) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        h->poll(1000+cadence,{0x1000},100,-1,1);
+        h->poll(1000+2*cadence,{0x1000},100,1,0);
+        const auto release=1000+3*cadence;h->poll(release,{},100,1,0);
+        unsigned flips{};std::uint64_t pressed{};
+        for(unsigned n=1;n<=15;++n) {
+            const bool direction=n>=(before?1u:3u) && (!release_direction || n<5);
+            const auto buttons=static_cast<std::uint16_t>((n>=2 && n<4?0x4000u:0u)|(direction?choice.pad:0u));
+            const auto out=h->poll(release+n*cadence,{buttons},n<4?103u:n==4?200u:201u,n<8?1:-1,n<=4?0u:2u);
+            if(out.requested_id && out.requested_id!=1) {
+                if(out.requested_id!=choice.native)std::cerr<<"wanted "<<choice.native<<" got "<<out.requested_id<<" before "<<before<<" release "<<release_direction<<'\n';
+                check(out.requested_id==choice.native,"prompt direction before/during X selects the original basic variant");++flips;
+            }
+            const auto* d=h->input.input_diagnostic(0);
+            for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
+                pressed=d->recognition[i].request.physical_pressed_at;
+        }
+        check(flips==1,"prompt directional tap survives native pop transition once");
+        check(pressed==release+2*cadence,"directional prompt flip keeps the original X press time");
+    }
+}
 void prompt_released_ollie_tap() {
     // The accepted hardware control pressed X404ms after A release. These
     // missing-function cases press/release before, across and just after AIR.
@@ -201,4 +226,4 @@ void prompt_released_ollie_tap() {
     }
 }
 }
-int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

@@ -21,14 +21,16 @@ struct Sink {
     bool drive{},angular{},ground_turn{};
     float yaw{};
     std::uint64_t release{};
+    std::int32_t native_launch_id{};
 } sink;
 void require(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
 void set_arcade_push_intent(bool enabled,bool){++sink.push;sink.drive=enabled;}
 // Nonactuating sink observes the original production publication arguments.
 void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned charge,
         float yaw,bool angular,const NativeManualContact*,const NativeInputFrame*,
-        const GroundControl*,const SpinCommand*,const LaunchDescriptor*,const GroundTurnCommand* turn){
+        const GroundControl*,const SpinCommand*,const LaunchDescriptor*,const GroundTurnCommand* turn,std::int32_t native_launch_id){
     ++sink.air;sink.charge=charge;sink.yaw=yaw;sink.angular=angular;sink.ground_turn=turn&&turn->serial==1;sink.release=release;
+    sink.native_launch_id=native_launch_id;
 }
 void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkatePose pose,
         bool reference=false,bool occupied=false,bool releasing_manual=false){
@@ -283,23 +285,26 @@ void run(){
 
 void run_controller_publication_tests(){
     unsigned checks{};
-    for(unsigned user=0;user<4;++user){
-        const std::uint64_t base=user*10000u;
+    for(unsigned user=0;user<4;++user)for(bool nollie:{false,true}){
+        const std::uint64_t base=user*10000u+(nollie?5000u:0u);
         route.reset();arcade_input.enable(false);arcade_input.enable(true);
         native_charges={};
         establish(user,(base+1000));
         NativeGesture::Output setup{};setup.jump.setup_started=true;setup.jump.pressed_at=(base+1000);
         setup.jump.launch=LaunchDescriptor::ordinary();
+        setup.jump.nollie=nollie;
         sink={};writers(user,(base+1000),setup,SkatePose::riding);
         require(sink.push==1&&sink.drive&&sink.air==1,"each sole physical slot publishes admitted native push and air intentions");++checks;
         // Refresh both original physical/source and native admission proofs.
         establish(user,(base+1120));
         NativeGesture::Output release{};release.jump.released=release.jump.setup_admitted=true;
         release.jump.pressed_at=(base+1000);release.jump.released_at=(base+1120);release.jump.launch=LaunchDescriptor::ordinary();
+        release.jump.nollie=nollie;
         release.ground_turn.serial=1;
         sink={};writers(user,(base+1120),release,SkatePose::riding);
         require(sink.air==1&&sink.release&&sink.charge==120&&sink.angular&&sink.yaw==2&&sink.ground_turn,
             "every physical slot publishes real charged-release identity, angular rate and ground-turn command");++checks;
+        require(sink.native_launch_id==(nollie?16:1),"production publication carries only the admitted setup's native launch identity");++checks;
         // No per-physical charge actor is introduced: source1-3 use actor0 too.
         for(unsigned other=1;other<4;++other){
             const auto unbound=native_charges[other].semantic_release((base+1121),false,false,false,0,0,true);

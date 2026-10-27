@@ -30,10 +30,10 @@ void release_transport_writer(){
         1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},PreparedGesture{
         16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}};
     for(unsigned cadence:{17u,34u})for(auto pose:{SkatePose::riding,SkatePose::manual,SkatePose::nose_manual})
-    for(unsigned duration:{0u,1u,17u,34u,50u,100u,150u,199u,200u,201u,500u}){
+    for(bool nollie:{false,true})for(unsigned duration:{0u,1u,17u,34u,50u,100u,150u,199u,200u,201u,500u}){
         InputSession session;NativeCharge charge;AirMotion writer;AtomicLaunchDescriptor channel;
         InputAdmission admission{};admission.gameplay=admission.may_start=admission.authored=admission.manual_safe=true;
-        admission.pose=pose;admission.catalog=catalog;admission.manual_balance_admitted=pose!=SkatePose::riding;
+        admission.pose=pose;admission.catalog=catalog;admission.nollie=nollie;admission.manual_balance_admitted=pose!=SkatePose::riding;
         const auto poll=[&](std::uint64_t now,bool held){
             admission.tick=now/17;
             return session.poll(now,{static_cast<std::uint16_t>(held?0x1000:0)},0,0,admission);
@@ -43,24 +43,28 @@ void release_transport_writer(){
         poll(1000,false);physics(1000,100);
         const auto pressed=1017u,released=pressed+duration;const auto setup=poll(pressed,true);physics(pressed,103);
         check(setup.jump.setup_started&&!setup.jump.released&&!setup.jump.setup_admitted,"actual admitted setup publishes a descriptor without pretending physical release occurred");
-        charge.admit_setup(pressed,setup.jump.pressed_at,setup.jump.launch,setup.jump.setup_started);
+        check(setup.requested_id==(nollie?16:1)&&setup.jump.nollie==nollie,"catalog-admitted launch captures physical setup identity");
+        charge.admit_setup(pressed,setup.jump.pressed_at,setup.jump.launch,setup.jump.setup_started,setup.jump.nollie);
         for(std::uint64_t now=pressed+cadence;now<released;now+=cadence){poll(now,true);physics(now,103);}
         // A later policy change cannot relabel already admitted setup.
-        admission.launch={LaunchFamily::extended,LaunchContext::flat,0};
+        admission.launch={LaunchFamily::extended,LaunchContext::flat,0};admission.nollie=!nollie;
         const auto out=poll(released,false);
         check(out.jump.released&&out.jump.setup_admitted&&out.jump.launch==LaunchDescriptor::ordinary(),"actual ordinary/Manual/Nose setup freezes its descriptor through physical release");
         check(out.jump.pressed_at==pressed&&out.jump.released_at==released,"physical timestamp identity survives polling and modifier changes");
         const auto release=charge.semantic_release(released,out.jump.released,out.jump.setup_admitted,out.jump.from_rail,
-            out.jump.pressed_at,out.jump.released_at,true,out.jump.launch);
+            out.jump.pressed_at,out.jump.released_at,true,out.jump.launch,out.jump.nollie);
         check(release.sequence==1&&release.ms==released&&release.charge_ms==std::min(duration,200u),"semantic charge carries the admitted descriptor with one capped physical release token");
+        check(out.jump.nollie==nollie&&release.nollie==nollie,"release retains original accepted launch despite modifier change");
+        intent.native_launch_id=release.nollie?16:1;
         channel.store(release.launch);intent.launch=channel.load();intent.release_sequence=release.sequence;intent.release_at=release.ms;intent.charge_ms=release.charge_ms;
         physics(released,103);frame.velocity_y=30;const auto output=physics(released+cadence,200);
         const float expected=(350+100*static_cast<float>(std::min(duration,200u))/200)*.0254f;
+        check(output.native_launch_id==(nollie?16:1),"physical writer retains admitted launch identity with its flight");
         check(output.vertical&&near(output.velocity_y,expected),"descriptor read by owned writer selects physical charge without stacking native launch impulse");
         std::array<std::array<float,3>,2> velocities{{{3,30,4},{5,31,6}}},spins{};
         check(AirMotion::apply_bodies(output,velocities,spins)&&near(velocities[0][1],expected)&&near(velocities[1][1],expected+1),"existing body writer preserves articulation while applying captured absolute launch");
         check(near(AirMotion::next_height(0,output,frame.dt),expected*frame.dt-.5f*AirMotion::ordinary_gravity*frame.dt*frame.dt),"same descriptor-driven velocity feeds next-step displacement");
-        const auto duplicate=charge.semantic_release(released+cadence,true,true,false,pressed,released,true,out.jump.launch);
+        const auto duplicate=charge.semantic_release(released+cadence,true,true,false,pressed,released,true,out.jump.launch,out.jump.nollie);
         check(duplicate.sequence==release.sequence&&duplicate.ms==release.ms&&duplicate.launch==release.launch,"duplicate release cannot renew charge, descriptor or sequence");
     }
 }
@@ -94,6 +98,16 @@ void unavailable(){
         NativeCharge charge;
         const auto release=charge.semantic_release(1100,true,fault!=0,fault==1,1000,1100,fault!=2,LaunchDescriptor::ordinary());
         check((release.sequence!=0)==(fault==3),"missing setup, rail origin and lost eligibility cannot create a physical release");
+    }
+    for(bool nollie:{false,true}){
+        NativeCharge bound;bound.admit_setup(1000,1000,LaunchDescriptor::ordinary(),true,nollie);
+        check(!bound.semantic_release(1100,true,true,false,1000,1100,true,LaunchDescriptor::ordinary(),!nollie).sequence,
+            "mismatched release identity cannot borrow another accepted setup");
+        check(!bound.semantic_release(1117,true,true,false,1000,1100,true,LaunchDescriptor::ordinary(),nollie).sequence,
+            "correcting a rejected identity later cannot replay the same physical edge");
+        NativeCharge legacy;legacy.poll(1000,true,true,true,LaunchDescriptor::ordinary(),nollie);
+        check(legacy.poll(1100,false,false,true,LaunchDescriptor::ordinary(),!nollie).nollie==nollie,
+            "legacy accepted setup also freezes identity before release-time modifier changes");
     }
     NativeCharge charge;charge.poll(1000,true,true,true);
     const auto captured=charge.poll(1200,false,false,true,{});

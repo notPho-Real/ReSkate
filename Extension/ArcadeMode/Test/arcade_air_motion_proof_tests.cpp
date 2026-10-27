@@ -7,11 +7,11 @@ using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};void check(bool x,const char*w){++checks;if(!x){std::cerr<<"FAIL: "<<w<<'\n';std::exit(1);}}
 template<class Intent>void proof(Intent& i,const NativeInputFrame& f){if constexpr(requires{i.angular_proof;}){using T=std::remove_cvref_t<decltype(i.angular_proof)>;i.angular_proof=T::from_frame(f);}}
-template<class Frame>void current(Frame& f,const NativeInputFrame& n){if constexpr(requires{f.native_required;f.native;}){using T=std::remove_cvref_t<decltype(f.native)>;f.native_required=true;f.native=T::from_frame(n);}}
+template<class Frame>void current(Frame& f,const NativeInputFrame& n){if constexpr(requires{f.native_required;f.native;}){using T=std::remove_cvref_t<decltype(f.native)>;f.native_required=true;f.native=T::from_frame(n);}if constexpr(requires{f.native_action;})f.native_action={n.flip_known,n.flip_id,n.selection_object};}
 struct Pipeline {
  NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeInputFrame native{};AirMotion motion;
  AirMotionIntent intent{true,true,10,0,0,0,0,1};AirMotionFrame body{10,3,100,1.0f/60,5,0,0,true};
- void observe(std::uint64_t at,unsigned state){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=1;native=producer.observe(at,owner,s,{true,-1});body.now=at;body.state=state;current(body,native);}
+ void observe(std::uint64_t at,unsigned state,std::int32_t action=-1){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=1;native=producer.observe(at,owner,s,{true,action,16});body.now=at;body.state=state;current(body,native);}
  void publish(std::uint64_t at,float rate){intent.sampled_at=at;intent.yaw_rate=rate;proof(intent,native);}
  AirMotionOutput sample(){auto o=motion.step(intent,body);if(o.vertical)body.velocity_y=o.velocity_y;return o;}
 };
@@ -77,7 +77,7 @@ int main(){
  for(unsigned cadence:{17u,34u})for(unsigned charge:{0u,199u,200u})for(unsigned fault=0;fault<25;++fault){
   Pipeline p;p.body.dt=static_cast<float>(cadence)*.001f;
   p.observe(1000,100);p.publish(1000,0);p.sample();
-  p.observe(1017,103);p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.charge_ms=charge;p.publish(1017,0);p.sample();
+  p.observe(1017,103);p.intent.release_sequence=1;p.intent.native_launch_id=1;p.intent.release_at=1017;p.intent.charge_ms=charge;p.publish(1017,0);p.sample();
   p.observe(1051,200);p.publish(1051,0);auto output=p.sample();
   check(output.vertical && std::abs(output.velocity_y-GameplayProfile{}.jump_speed(charge))<.0001f,
         "qualified ordinary launch keeps the selected absolute charge mapping");
@@ -106,6 +106,68 @@ int main(){
   const bool expected=fault==0 || fault==12 || fault==13;
   check(AirMotion::vertical_target_current(output,p.intent,original,current,now,velocity,dt)==expected,
         "cached vertical target requires original current flight, valid cadence, fresh input and unsuperseded native velocity");
+ }
+ for(unsigned cadence:{17u,34u})for(int action:{2,3,4,17,18,19}){
+  Pipeline p;p.body.dt=cadence*.001f;p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.observe(1017,103,1);p.intent.release_sequence=1;p.intent.native_launch_id=1;p.intent.release_at=1017;p.intent.charge_ms=100;p.publish(1017,0);p.sample();
+  p.observe(1051,200,1);p.publish(1051,0);const auto ordinary=p.sample();
+  check(ordinary.vertical,"ordinary jump still owns its original launch before a different native actor");
+  const auto ordinary_proof=NativeAirSpinProof::from_frame(p.native);
+  const float unchanged_velocity=p.body.velocity_y;
+  p.observe(1051+cadence,201,action);p.publish(1051+cadence,7.75f);
+  check(!AirMotion::vertical_target_current(ordinary,p.intent,ordinary_proof,NativeAirSpinProof::from_frame(p.native),p.body.now,
+      unchanged_velocity,p.body.dt,{true,action,16}),
+      "new native actor rejects a cached ordinary height before the next body update despite identical velocity");
+  const auto native=p.sample();
+  check(!native.vertical&&!native.horizontal&&native.angular&&native.spin_y==7.75f&&p.body.velocity_y==unchanged_velocity,
+      "native actor takes trajectory ownership without losing independent qualified shoulder yaw");
+  p.observe(1051+2*cadence,201);p.publish(p.body.now,7.75f);const auto idle=p.sample();
+  check(!idle.vertical&&!idle.horizontal&&idle.angular,"native actor retirement cannot resume old ordinary gravity or speed limits");
+  p.observe(1051+3*cadence,100);p.publish(p.body.now,0);p.sample();
+  p.intent.release_sequence=2;p.intent.release_at=p.body.now;p.intent.native_launch_id=1;p.observe(1051+4*cadence,200,1);p.publish(p.body.now,0);
+  check(p.sample().vertical,"a new qualified ordinary flight may establish fresh trajectory ownership");
+ }
+ for(int launch:{1,16})for(int actor:{-1,1,16,2,3,4,17,18,19}){
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=launch;
+  p.observe(1017,103,launch);p.publish(1017,0);p.sample();
+  p.observe(1034,200,launch);p.publish(1034,0);const auto launched=p.sample();
+  check(launched.vertical&&launched.native_launch_id==launch,"admitted Ollie or Nollie owns only its captured native launch");
+  const auto proof=NativeAirSpinProof::from_frame(p.native);
+  p.intent.native_launch_id=actor; // A later input sample cannot relabel this flight.
+  p.observe(1051,201,actor);p.publish(1051,7.75f);
+  const bool ordinary=actor==-1||actor==launch;
+  check(AirMotion::vertical_target_current(launched,p.intent,proof,NativeAirSpinProof::from_frame(p.native),1051,
+      p.body.velocity_y,p.body.dt,{true,actor,16})==ordinary,"cached target uses captured launch identity, not a mutable later publication");
+  const auto out=p.sample();check(out.vertical==ordinary&&out.angular,"unrelated positive actor yields trajectory while retaining qualified yaw");
+  if(!ordinary){p.observe(1068,201,launch);p.publish(1068,7.75f);check(!p.sample().vertical,"even the original launch ID cannot reacquire after native takeover");
+   p.observe(1085,201,-1);p.publish(1085,7.75f);check(!p.sample().vertical,"idle cannot revive retired flight ownership");}
+ }
+ for(int actor:{-1,1,16}){
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();p.observe(1017,200,actor);p.publish(1017,0);
+  check(p.sample().vertical==(actor==-1),"a ledge without admitted release cannot globally exempt a positive launch actor");
+ }
+ for(int launch:{1,16}){
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=launch;
+  p.observe(1017,200,launch);p.publish(1017,0);check(p.sample().vertical,"fresh matching launch starts trajectory");
+  p.observe(1034,100);p.publish(1034,0);p.sample();
+  p.observe(1051,200,launch);p.publish(1051,0);
+  check(!p.sample().vertical,"a consumed release cannot exempt its old native actor in another flight");
+  p.observe(1068,100);p.publish(1068,0);p.sample();
+  p.intent.release_sequence=2;p.intent.release_at=1085;
+  p.observe(1085,200,launch);p.publish(1085,0);
+  check(p.sample().vertical,"fresh same-kind release can own a subsequent qualified flight");
+ }
+ {
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;p.observe(1017,200,1);p.publish(1017,0);
+  check(p.sample().vertical,"original body establishes an ordinary vertical write");
+  // The guarded target callback can observe actor takeover before the next
+  // body update. Its retirement must survive a later idle observation.
+  p.motion.yield_ordinary_motion();p.observe(1034,201,-1);p.publish(1034,7.75f);
+  auto out=p.sample();check(!out.vertical&&!out.horizontal&&out.angular,"target-first retirement is irreversible in the same flight and independent of yaw");
+  p.observe(1051,100);p.publish(1051,0);p.sample();p.intent.release_sequence=2;p.intent.release_at=1068;p.intent.native_launch_id=1;p.observe(1068,200,1);p.publish(1068,0);
+  check(p.sample().vertical,"target-first retirement ends only at a new ordinary flight");
  }
  std::cout<<checks<<" native motion publication proof checks passed\n";
 }

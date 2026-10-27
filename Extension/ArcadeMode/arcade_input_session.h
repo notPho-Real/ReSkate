@@ -212,7 +212,7 @@ public:
             diagnostic.pad_at, manual_.requested_at(),
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
             admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed,
-            manual_.recognized_at(), manual_.from_air(),manual_.recognition_id()};
+            manual_.recognized_at(), manual_.from_air(),manual_.recognition_id(),manual_.held_air()};
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
         if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {

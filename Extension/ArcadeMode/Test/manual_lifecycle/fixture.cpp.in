@@ -74,6 +74,8 @@ std::uint64_t diagnostic_draws{};BalanceHudSource diagnostic_draw_source{};
 void diagnostic_draw_receipt(BalanceHudSource source,std::uint64_t,std::uint64_t)noexcept{
  ++diagnostic_draws;diagnostic_draw_source=source;capture_manual_join.render_seen=true;
 }
+void publish_balance_hud(const State&,unsigned,BalanceHudSource,
+    BalanceEndpoints = BalanceEndpoints::bail_both,float = 1) noexcept;
 @@HUD_PUBLISH@@
 @@HUD_PENDING@@
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
@@ -484,7 +486,10 @@ void rendered(bool expected,const char* why,BalanceKind kind=BalanceKind::manual
  if(expected){
   const auto& display=combo_session.balance_display_state();
   check(display.balance_kind==kind,"native lifecycle selects the expected displayed balance family");
-  const auto color=danger_level>=2?IM_COL32(255,65,65,255):danger_level==1?IM_COL32(255,190,65,255):IM_COL32(90,225,230,255);
+  const bool safe_side=kind==BalanceKind::manual && (physical_manual.nose()?display.balance>0:display.balance<0);
+  const auto color=safe_side?IM_COL32(90,225,150,255):danger_level>=2?IM_COL32(255,65,65,255):danger_level==1?IM_COL32(255,190,65,255):IM_COL32(90,225,230,255);
+  if(kind==BalanceKind::manual)check(meter.endpoints==(physical_manual.nose()?BalanceEndpoints::negative_bail:BalanceEndpoints::positive_bail)&&
+      meter.limit==physical_manual.display_limit(),"actual HUD retains the governing physical type and terminal limit");
   float left=std::numeric_limits<float>::max(),top=left,right=std::numeric_limits<float>::lowest(),bottom=right;
   unsigned cursor{};const ImU32 rgb=~IM_COL32_A_MASK;
   for(int i=vertices.Size-1;i>=0&&(vertices[i].col&rgb)==(color&rgb);--i){
@@ -492,7 +497,7 @@ void rendered(bool expected,const char* why,BalanceKind kind=BalanceKind::manual
    ++cursor;left=std::min(left,vertices[i].pos.x);right=std::max(right,vertices[i].pos.x);
    top=std::min(top,vertices[i].pos.y);bottom=std::max(bottom,vertices[i].pos.y);
   }
-  check(cursor>=3,"actual renderer uses the current admitted danger color");
+  check(cursor>=3,"actual renderer distinguishes the governing safe-putdown side from danger");
   const auto screen=ImGui::GetIO().DisplaySize;const float balance=std::clamp(display.balance,-1.f,1.f);
   const float x=kind==BalanceKind::manual?screen.x*.8f:screen.x*(.5f+.15f*balance);
   const float y=kind==BalanceKind::manual?screen.y*(.5f-.15f*balance):screen.y*.78f;
@@ -793,12 +798,22 @@ int main(){
   bool finished{};for(unsigned i=0;i<100;++i){tick(dt,200,0);if(!remap().authored_playback){finished=true;break;}}check(finished,"accepted hop playback finishes without inventing native out clock");
   if(prepared_return){tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);check(remap(nose?1u:2u).manual.owns,"a fresh airborne pair owns the separately bounded return preparation");}
   else{
-   tick(dt,100,0xc000);remap();check(!physical_manual.active()&&!balance_hud_pending(),"ordinary observed landing without return preparation resets old physical section");
+   tick(dt,100,0xc000);remap();check(!physical_manual.active()&&!balance_hud_pending(),"ordinary observed landing stops integration and hides the old physical section");
    tick(dt,100,0xc000);remap(nose?2u:1u);tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"new ordinary-ground gesture requires fresh input before later balance admission");
   }
   rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
   check(manual_balance_admitted.load()&&balance_hud_pending(),"new matching history/contact admits later balance without stale old input or identity");
-  check(prepared_return?snapshot().elapsed>before:snapshot().elapsed<before,"known hop preserves retained history, while actual ordinary landing resets it");
+  check(snapshot().elapsed>before,"same-combo air or brief grounded links preserve accumulated physical difficulty");
+ }
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,800);const auto before=snapshot().elapsed;
+  tick(dt,200,0);remap();
+  for(unsigned i=0;i<100;++i){tick(dt,100,0xc000);remap();}
+  check(!combo_session.model().state().combo_active&&!physical_manual.active()&&!balance_hud_pending(),
+        "actual combo bank clears retained dynamics without a stale meter");
+  tick(dt,100,0xc000);remap(nose?2u:1u);tick(dt,100,0xc000);remap(nose?1u:2u);
+  rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_balance_admitted.load()&&snapshot().elapsed<before,"a new banked-combo entry begins fresh physical difficulty");
  }
  for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{300u,401u,504u,701u}){
   const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,300);

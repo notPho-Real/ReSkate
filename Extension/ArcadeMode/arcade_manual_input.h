@@ -27,6 +27,7 @@ struct ManualInputDiagnostic {
         std::uint64_t recognized_at{};
         bool from_air{};
         std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
+        bool held_air{}; // Continuously held final direction, owned by this actor.
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the
@@ -48,6 +49,7 @@ public:
     std::uint64_t recognized_at() const noexcept { return requested_ ? recognized_at_ : 0; }
     std::uint64_t recognition_id() const noexcept { return requested_ ? recognition_id_ : 0; }
     bool from_air() const noexcept { return requested_ && air_prepared_; }
+    bool held_air() const noexcept { return requested_ && air_prepared_ && !landed_ && held_air_; }
     std::uint64_t requested_at() const noexcept { return requested_ ? requested_at_ : 0; }
     bool request(std::uint64_t now, int direction, bool airborne, bool safe,
                  bool prepared_air, std::uint64_t recognized_at,std::uint64_t recognition_id=0, bool held_air=false) noexcept {

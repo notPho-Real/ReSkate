@@ -12,18 +12,18 @@ namespace dingosdk::arcade_mode {
 // latch, not native acceptance evidence: raw A alone cannot create a launch.
 class NativeCharge {
 public:
-    struct Release { std::uint64_t sequence{}, ms{}; unsigned charge_ms{}; LaunchDescriptor launch{}; };
+    struct Release { std::uint64_t sequence{}, ms{}; unsigned charge_ms{}; LaunchDescriptor launch{}; bool nollie{}; };
     void cancel() noexcept { charging_ = setup_bound_ = false; released_ = {}; }
     // Replacement of an accepted input setup withdraws its old pending release.
     // This binding is not proof of a native script or animation occurrence.
-    void admit_setup(std::uint64_t now, std::uint64_t pressed, LaunchDescriptor launch, bool valid) noexcept {
+    void admit_setup(std::uint64_t now, std::uint64_t pressed, LaunchDescriptor launch, bool valid, bool nollie = false) noexcept {
         cancel();
         if(!valid || !launch.ordinary_writer() || now<pressed || now-pressed>150 || (clocked_ && now<last_))return;
-        setup_bound_=true; setup_pressed_=pressed; launch_=launch;
+        setup_bound_=true; setup_pressed_=pressed; launch_=launch; nollie_=nollie;
     }
     Release semantic_release(std::uint64_t now, bool released, bool admitted,
                              bool from_rail, std::uint64_t pressed, std::uint64_t at, bool valid,
-                             LaunchDescriptor launch = LaunchDescriptor::ordinary()) noexcept {
+                             LaunchDescriptor launch = LaunchDescriptor::ordinary(), bool nollie = false) noexcept {
         const bool fresh_release = released && (!semantic_seen_ || at != semantic_at_ || pressed != semantic_pressed_);
         // A reported release identity is observed even when execution is denied.
         // Later policy/readiness changes cannot promote that same edge.
@@ -35,23 +35,23 @@ public:
         if(released && (!admitted || from_rail || !launch.ordinary_writer() || at<pressed || now<at || now-at>150)) {
             cancel(); return {};
         }
-        if(released && setup_bound_ && (pressed!=setup_pressed_ || launch!=launch_)) { cancel(); return {}; }
+        if(released && setup_bound_ && (pressed!=setup_pressed_ || launch!=launch_ || nollie!=nollie_)) { cancel(); return {}; }
         if (fresh_release) {
-            if (sequence_ != UINT64_MAX) released_ = {++sequence_, at, static_cast<unsigned>(std::min<std::uint64_t>(at-pressed,200)),launch};
+            if (sequence_ != UINT64_MAX) released_ = {++sequence_, at, static_cast<unsigned>(std::min<std::uint64_t>(at-pressed,200)),launch,nollie};
         }
         return released_;
     }
     Release poll(std::uint64_t now, bool accepted_crouch, bool held, bool valid,
-                 LaunchDescriptor launch = LaunchDescriptor::ordinary()) noexcept {
+                 LaunchDescriptor launch = LaunchDescriptor::ordinary(), bool nollie = false) noexcept {
         if (!valid || (clocked_ && now < last_)) { cancel(); clocked_ = false; return {}; }
         clocked_ = true; last_ = now;
         if (accepted_crouch && held && !charging_) {
             if(!launch.ordinary_writer()){cancel();return {};}
-            charging_ = true; released_ = {}; began_ = now; launch_ = launch;
+            charging_ = true; released_ = {}; began_ = now; launch_ = launch; nollie_=nollie;
         }
         if (charging_ && !held) {
             charging_ = false;
-            if (sequence_ != UINT64_MAX) released_ = {++sequence_, now, static_cast<unsigned>(std::min<std::uint64_t>(now - began_, 200)),launch_};
+            if (sequence_ != UINT64_MAX) released_ = {++sequence_, now, static_cast<unsigned>(std::min<std::uint64_t>(now - began_, 200)),launch_,nollie_};
         }
         return released_;
     }
@@ -59,7 +59,7 @@ private:
     Release released_{};
     LaunchDescriptor launch_{};
     std::uint64_t began_{}, last_{}, sequence_{};
-    bool charging_{}, clocked_{}, semantic_seen_{}, setup_bound_{};
+    bool charging_{}, clocked_{}, semantic_seen_{}, setup_bound_{}, nollie_{};
     std::uint64_t semantic_at_{}, semantic_pressed_{}, setup_pressed_{};
 };
 // Original physics proof accompanying a current held-input publication. It
@@ -96,6 +96,7 @@ struct AirMotionIntent {
     GroundControl ground_controls{};
     SpinCommand spin{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
+    std::int32_t native_launch_id{}; // Captured admitted setup: 1 ordinary, 16 Nollie; zero unavailable.
 };
 struct AirMotionFrame {
     std::uint64_t now{}, owner{};
@@ -105,6 +106,7 @@ struct AirMotionFrame {
     float velocity_x{}, velocity_z{};
     bool native_required{}; // Production always requires original native proof.
     NativeAirSpinProof native{};
+    NativeFlipSelection native_action{}; // From that same original physics frame.
 };
 struct AirMotionOutput {
     bool ready{}, vertical{}, angular{};
@@ -113,6 +115,7 @@ struct AirMotionOutput {
     float delta_x{}, delta_z{};
     SpinCommand spin{};
     bool tap_step{};
+    std::int32_t native_launch_id{};
 };
 // The host still chooses takeoff, air, collision, landing and bail. Ordinary
 // ground entry is required before this controller can own an air episode.
@@ -132,12 +135,16 @@ public:
         return std::isfinite(a) && std::isfinite(b) &&
             std::abs(a-b)<=8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
     }
+    static bool other_native_action(const NativeFlipSelection& action,std::int32_t captured_launch) noexcept {
+        return action.valid && action.object && action.id >= 0 &&
+            ((captured_launch!=1 && captured_launch!=16) || action.id!=captured_launch);
+    }
     static bool vertical_target_current(const AirMotionOutput& output,const AirMotionIntent& intent,
             const NativeAirSpinProof& output_proof,const NativeAirSpinProof& current,
-            std::uint64_t now,float velocity_y,float dt) noexcept {
+            std::uint64_t now,float velocity_y,float dt,NativeFlipSelection action = {}) noexcept {
         // A cached physical target must belong to this flight and still own
         // the delivered velocity. A collision or another native impulse wins.
-        return output.ready && output.vertical && intent.enabled &&
+        return output.ready && output.vertical && intent.enabled && !other_native_action(action,output.native_launch_id) &&
             (!intent.release_sequence || intent.launch.ordinary_writer()) &&
             now>=intent.sampled_at && now-intent.sampled_at<=150 && output_proof.matches(current,now) &&
             std::isfinite(dt) && dt>0 && dt<=.1f &&
@@ -154,11 +161,16 @@ public:
             output_proof.matches(current,now) && intent.angular_proof.matches(current,now);
     }
     explicit AirMotion(GameplayProfile profile = {}) noexcept : profile_(profile), air_limits_(profile) {}
+    void yield_ordinary_motion() noexcept {
+        pending_ = vertical_ = limits_active_ = false;
+        launch_blocked_ = true;
+        air_limits_.reset();
+    }
     void reset() noexcept {
         air_limits_.reset();tap_spin_={};
         owner_ = seen_release_ = pending_at_ = 0;
         pending_ = grounded_ = ordinary_ = vertical_ = spun_ = limits_active_ = air_seen_ = spin_blocked_ = launch_blocked_ = false; yaw_ = 0;
-        launch_ = {};
+        launch_ = {}; native_launch_id_=0;
     }
     AirMotionOutput step(const AirMotionIntent& intent, const AirMotionFrame& frame) noexcept {
         if (!intent.enabled || !frame.owner || frame.now < intent.sampled_at || frame.now - intent.sampled_at > 150 ||
@@ -186,6 +198,7 @@ public:
                 intent.release_at <= intent.sampled_at && frame.now - intent.release_at <= 150 && intent.launch.ordinary_writer();
             pending_at_ = intent.release_at; charge_ = std::min(intent.charge_ms, 200u);
             launch_ = intent.launch; launch_blocked_ = !intent.launch.ordinary_writer();
+            native_launch_id_=pending_ && (intent.native_launch_id==1 || intent.native_launch_id==16) ? intent.native_launch_id : 0;
         }
         if (pending_ && (frame.now < pending_at_ || frame.now - pending_at_ > 150)) pending_ = false;
         if(intent.release_sequence && !intent.launch.ordinary_writer()) { pending_=vertical_=false; launch_blocked_=true; }
@@ -194,6 +207,7 @@ public:
             // Physics can observe landing and relaunch between input polls.
             // A stale held rate cannot restart the completed spin episode.
             if (air_seen_ && intent.yaw_rate != 0) spin_blocked_ = true;
+            if (air_seen_ && !pending_) native_launch_id_=0;
             air_seen_ = false;
             tap_spin_.baseline(intent.spin);
             grounded_ = true; ordinary_ = frame.ordinary_ground; limits_active_ = ordinary_;
@@ -210,6 +224,15 @@ public:
         grounded_ = false;
         if (!ordinary_) return {};
         if(!frame.ordinary_ground) { pending_=vertical_=false; launch_blocked_=true; }
+        // A different positively observed native actor owns its trajectory,
+        // even if its first velocity equals our last delivered value. Yield
+        // both ordinary gravity and target height for the rest of this flight;
+        // actor retirement to idle cannot resurrect the old launch. Independent
+        // qualified shoulder yaw remains available below.
+        if (frame.native_required && frame.native.fresh(frame.now) && frame.native.airborne &&
+            frame.native.owner.core == frame.owner && other_native_action(frame.native_action,native_launch_id_)) {
+            yield_ordinary_motion();
+        }
         if (taking_off && pending_) {
             vy_ = std::max(ground_vy_, 0.0f) + profile_.launch_speed(charge_,launch_);
             vertical_ = true; pending_ = false;
@@ -242,6 +265,7 @@ public:
             spun_ = yaw_rate != 0;
         } else if(!spin_context) spun_ = false;
         AirMotionOutput output{true, vertical_, angular, vy_, yaw_rate, static_cast<float>(yaw_)};
+        output.native_launch_id=native_launch_id_;
         output.spin=intent.spin;output.tap_step=tap_spin_.tap_step();
         // Default ordinary flight carries the same hard/soft limits as ground,
         // without rolling drag. A native trajectory takeover also withdraws
@@ -302,6 +326,7 @@ private:
     TapSpin tap_spin_;
     std::uint64_t owner_{}, seen_release_{}, pending_at_{}, last_{}, generation_{};
     unsigned charge_{};
+    std::int32_t native_launch_id_{};
     LaunchDescriptor launch_{};
     float ground_vy_{}, vy_{};
     double yaw_{};

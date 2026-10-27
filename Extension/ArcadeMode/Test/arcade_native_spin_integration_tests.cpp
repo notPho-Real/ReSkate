@@ -1,8 +1,11 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include <cstdlib>
 #include <iostream>
+#include <utility>
+#include <vector>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};void check(bool v,const char* m){++checks;if(!v){std::cerr<<m<<'\n';std::exit(1);}}
@@ -23,8 +26,65 @@ struct Pipeline {
  }
  AirMotionOutput step(){return motion.step(intent,body);}
 };
+struct AuthoredPipeline {
+ NativeInputState producer;NativeInputReadiness readiness;NativeInputOwner owner{1,2,3,4,5};
+ ArcadeInput facade{true};AirRotation rotation;AirMotion motion;NativeInputFrame frame{};
+ AirMotionIntent intent{};AirMotionOutput physical{};std::vector<PreparedGesture> catalog;
+ float dt{1.f/60};
+ AuthoredPipeline(){
+  facade.enable(true);
+  for(unsigned id:{1u,2u,3u,4u,17u,18u,19u})
+   catalog.emplace_back(static_cast<std::uint8_t>(id),id>=16,GestureContext::ground,
+    std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
+ }
+ NativeGesture::Output poll(std::uint64_t now,std::uint16_t buttons=0,unsigned state=201,
+                            int selection=-1,unsigned mode=2,SpinFacts facts={}){
+  NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=mode;
+  sample.words[1]=state==100?0xc000u:0;
+  frame=producer.observe(now,owner,sample,{true,selection,16});
+  readiness.publish(frame,{true,state==100&&mode==1,false,false,false,false,false,false,true,0});
+  facade.publish_native_context(frame);
+  if(facade.publish_authority(now,frame.owner_generation,1,true))rotation.reset();
+  const auto available=readiness.sample(now,frame);
+  const auto pose=native_rotation_pose(frame,SkatePose::riding,false);
+  const auto output=facade.poll(0,now,buttons,0,0,0,0,true,available.start,false,0,false,state==100,
+   true,now/17,false,catalog,available.mirror_x,false,pose,false,false,false,false,
+   available.flip_ready,false,0,0,ActionExperiment::classic,available.action,available.mirror_x,false);
+  const auto rate=rotation.poll_qualified(now,buttons,false,false,true,pose,true,
+   output.action.owned||output.phase==3,SpinMode::held,facts,&frame);
+  intent.enabled=true;intent.angular_allowed=!output.action.owned&&output.phase!=3&&
+   facade.allows_air_rotation(0,output.authored_playback);
+  intent.sampled_at=now;intent.yaw_rate=rate.yaw_rate;intent.angular_proof=NativeAirSpinProof::from_frame(frame);
+  intent.spin=rate.spin;
+  physical=motion.step(intent,{now,owner.core,state,dt,5,0,0,true,0,0,true,NativeAirSpinProof::from_frame(frame)});
+  return output;
+ }
+};
 }
 int main(){
+ for(unsigned cadence:{17u,34u})for(auto side:{BoardChord::lb,BoardChord::rb})
+ for(const auto& choice:{std::pair<unsigned,unsigned>{0,2},{8,3},{2,4}}){
+  AuthoredPipeline p;p.dt=static_cast<float>(cadence)/1000;
+  p.poll(1000,0,100,-1,1);p.poll(1000+cadence);
+  auto out=p.poll(1000+2*cadence,static_cast<std::uint16_t>(0x4000u|choice.first));
+  if(!choice.first)out=p.poll(1000+3*cadence);
+  check(out.requested_id==choice.second&&out.authored_playback,"real basic flip request starts its existing authored RS actor");
+  check(p.facade.allows_air_rotation(0,out.authored_playback),"ordinary flip RS playback leaves independent AIR rotation eligible");
+  const auto begin=1000+4*cadence;
+  out=p.poll(begin,side);
+  check(out.authored_playback&&p.physical.angular&&p.physical.spin_y==(side==BoardChord::lb?-1:1)*GameplayProfile{}.angular_speed(),
+   "held shoulder and actual flip playback compose through the original native physics proof");
+  out=p.poll(begin+cadence,side,201,static_cast<int>(choice.second));
+  check(out.authored_playback&&p.physical.angular&&p.physical.spin_y!=0,"actual native flip selection does not suppress held yaw");
+  out=p.poll(begin+2*cadence,0,201,static_cast<int>(choice.second));
+  check(out.authored_playback&&p.physical.spin_y==0,"physical shoulder release stops native yaw while the flip actor retains RS");
+  p.poll(begin+3*cadence,BoardChord::pair,201,static_cast<int>(choice.second));
+  check(p.physical.spin_y==0,"opposed shoulders during a flip select no angular direction");
+  p.poll(begin+4*cadence,side,201,static_cast<int>(choice.second),2,{SpinFact::set,SpinFact::unknown,SpinFact::unknown});
+  check(!p.physical.angular,"known native spin prohibition still wins during authored playback");
+  p.poll(begin+5*cadence,side,100,-1,1);
+  check(!p.physical.angular,"ground contact stops AIR rotation and does not become ordinary ground steering");
+ }
  for(unsigned cadence:{17u,34u})for(auto side:{BoardChord::lb,BoardChord::rb})for(bool seen:{false,true}){
   Pipeline p;p.dt=static_cast<float>(cadence)/1000;p.observe(1000,100);p.publish(0);p.step();
   p.observe(1000+cadence,200);p.publish(side);check(p.step().angular,"actual producer/current held rotation reaches native motion");

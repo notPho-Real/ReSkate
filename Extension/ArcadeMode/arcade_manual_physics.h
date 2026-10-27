@@ -32,6 +32,9 @@ public:
     bool active() const noexcept { return active_; }
     bool closed() const noexcept { return closed_; }
     bool nose() const noexcept { return nose_; }
+    float display_limit() const noexcept {
+        return profile_.balance(PhysicalBalanceKind::manual).endpoint / GameplayProfile::balance_display_scale;
+    }
     // The caller must already own a qualified native transition. This changes
     // retained dynamics only: no type, setup, section clock or history reset.
     bool adjust(const ManualBalanceAdjustment& adjustment) noexcept {

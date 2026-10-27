@@ -54,13 +54,17 @@ void displayed(bool expected, const char* label) {
 }
 // Inspect the actual final cursor primitive, including its warning color. A
 // new ImGui frame for every observation also detects stale submitted geometry.
-void rendered_cursor(BalanceKind kind, float balance, unsigned danger) {
+void rendered_cursor(BalanceKind kind, float balance, unsigned danger,
+        BalanceEndpoints endpoints = BalanceEndpoints::bail_both) {
     require(balance_hud_pending(), "fresh admitted balance schedules an overlay frame");
     ImGui::NewFrame();
     draw_balance_hud();
     const auto& vertices = ImGui::GetBackgroundDrawList()->VtxBuffer;
     require(vertices.Size > 0, "fresh admitted balance submits geometry this frame");
-    const ImU32 color = danger >= 2 ? IM_COL32(255, 65, 65, 255) :
+    const bool safe_side = kind == BalanceKind::manual &&
+        ((endpoints == BalanceEndpoints::positive_bail && balance < 0) ||
+         (endpoints == BalanceEndpoints::negative_bail && balance > 0));
+    const ImU32 color = safe_side ? IM_COL32(90, 225, 150, 255) : danger >= 2 ? IM_COL32(255, 65, 65, 255) :
         danger == 1 ? IM_COL32(255, 190, 65, 255) : IM_COL32(90, 225, 230, 255);
     const ImU32 rgb_mask = ~IM_COL32_A_MASK;
     float left = std::numeric_limits<float>::max(), top = left;
@@ -301,6 +305,24 @@ int main() {
 
     lifecycle_frames(30);
     lifecycle_frames(60);
+    clock_ms.store(159000);
+    for(bool nose:{false,true})for(float lean:{-.9f,.9f}){
+        ManualPhysics dynamics;dynamics.begin(nose);
+        const auto endpoints=nose?BalanceEndpoints::negative_bail:BalanceEndpoints::positive_bail;
+        const auto typed=balance_meter(snapshot(BalanceKind::manual,lean),endpoints,dynamics.display_limit());
+        require(typed.cursor_y==-lean&&typed.limit==4000.0f/4096.0f,
+            "typed meter keeps governing lean and actual terminal threshold without rescaling dynamics");
+        require(typed.bail_side(nose?1.0f:-1.0f)&&!typed.bail_side(nose?-1.0f:1.0f),
+            "Manual and Nose putdown endpoints are opposite their failure endpoints");
+        require(std::string_view(typed.title())==(nose?"NOSE MANUAL":"MANUAL"),
+            "title retains the actual governing type at both boundaries");
+        publish_balance_hud(snapshot(BalanceKind::manual,lean),2,{159000,true},endpoints,dynamics.display_limit());
+        rendered_cursor(BalanceKind::manual,lean,2,endpoints);
+    }
+    for(float limit:{0.0f,-1.0f,1.1f,std::numeric_limits<float>::quiet_NaN()}){
+        publish_balance_hud(active(),0,{159000,true},BalanceEndpoints::positive_bail,limit);
+        displayed(false,"unknown physical terminal limit cannot create a misleading typed meter");
+    }
     set_balance_hud_render_ack(render_receipt);
     clock_ms.store(160000);
     BalanceHudSource source{160000,true};
