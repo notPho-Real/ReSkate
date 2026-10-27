@@ -231,7 +231,7 @@ using ClientTelemetry = std::variant<Observation, RevertLinkEvidence, BalanceFai
     BalanceSampleEvidence, ComboEventEvidence, BalanceBailEvidence, ScoreEdgeEvidence,
     HeartbeatEvidence, NativeCaptureEvidence, NativeSampleEvidence, InputEdgeEvidence,
     ScorePresenceEvidence, ScoreNodeEvidence, ScoreValueEvidence, ManualHistoryEvidence, FixtureTrajectoryEvidence,
-    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence>;
+    FootMotionEvidence, BoardMotionEvidence, CaptureCorrelationEvidence, ControllerRouteEvidence, GroundWriterEvidence, camera_diagnostics::Evidence, AngularWriterEvidence>;
 // Native UI observers use this bridge; the sink never receives native objects.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept;
 inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
@@ -245,6 +245,7 @@ inline bool client_telemetry_valid(const ClientTelemetry& row) noexcept {
     if (const auto* route = std::get_if<ControllerRouteEvidence>(&row)) return controller_route_evidence_valid(*route);
     if (const auto* board = std::get_if<BoardMotionEvidence>(&row)) return board_motion_valid(*board);
     if (const auto* writer = std::get_if<GroundWriterEvidence>(&row)) return ground_writer_valid(*writer);
+    if (const auto* angular = std::get_if<AngularWriterEvidence>(&row)) return angular_writer_valid(*angular);
     if (const auto* camera = std::get_if<camera_diagnostics::Evidence>(&row)) return camera_diagnostics::valid(*camera);
     if (const auto* node = std::get_if<ScoreNodeEvidence>(&row)) return node->path.valid();
     if (const auto* value = std::get_if<ScoreValueEvidence>(&row)) return value->path.valid();
@@ -565,6 +566,14 @@ public:
     // or extends the finite interval. Schema4 keeps its existing evidence set.
     unsigned ground_writer_owner(std::uint64_t now,const NativeInputOwner& owner)const noexcept{
         if(!active_||!observational_||schema4_||!(scope_&64)||now<started_||now>until_||!owner.valid())return 0;
+        for(unsigned i=0;i<owners_.size();++i)if(owners_[i]==owner)return i+1;
+        return 0;
+    }
+    bool angular_writer_active(std::uint64_t now)const noexcept{
+        return active_&&observational_&&!schema4_&&scope_==39&&now>=started_&&now<=until_;
+    }
+    unsigned angular_writer_owner(std::uint64_t now,const NativeInputOwner& owner)const noexcept{
+        if(!angular_writer_active(now)||!owner.valid())return 0;
         for(unsigned i=0;i<owners_.size();++i)if(owners_[i]==owner)return i+1;
         return 0;
     }

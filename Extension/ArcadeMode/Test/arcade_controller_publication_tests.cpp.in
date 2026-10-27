@@ -32,12 +32,14 @@ void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned cha
     ++sink.air;sink.charge=charge;sink.yaw=yaw;sink.angular=angular;sink.ground_turn=turn&&turn->serial==1;sink.release=release;
     sink.native_launch_id=native_launch_id;
 }
+void observe_angular_controller(std::uint64_t,const NativeInputFrame&,std::uint16_t,unsigned,
+        bool,bool,bool,bool,const AirRotation::Output&) noexcept {}
 void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkatePose pose,
         bool reference=false,bool occupied=false,bool releasing_manual=false){
     // Mirrors the earlier production routing boundary; nonowners never reach
     // the extracted statements. Proof freshness remains owned by the facade.
     if(!route.accepts(user,now)||!arcade_input.admitted(NativeControllerRoute::session,now))return;
-    const bool drive_safe=true,crouched=false,rotation_enabled=true;
+    const bool drive_safe=true,crouched=false,rotation_enabled=true,native_rate_ready=true;
     const std::uint16_t physical_buttons=0;
     ActionInputOutput action{};action.owned=occupied;
     const auto rotation_native=arcade_input.native_context(now);

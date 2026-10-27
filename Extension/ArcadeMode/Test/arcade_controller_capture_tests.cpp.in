@@ -26,6 +26,7 @@ bool capture_focus=true,capture_gameplay=true,capture_source_available=true,capt
 unsigned capture_bitmap_as_read=2;std::uint64_t capture_source_at=1000;
 std::atomic<bool> input_clock_valid{true},controller_capture_live{};
 CaptureCorrelationProducer input_capture_correlation;
+bool angular_writer_requested{};
 struct CaptureManualJoinFixture {
     std::uint64_t request{},recognized_ms{},owner_generation{},episode{},session{};
     std::int8_t family{};bool from_air{},last_owns{},last_reserved{},last_neutral{},exit_seen{};
@@ -49,7 +50,7 @@ bool capture_row(const CaptureCorrelationEvidence& row){
 @controller_capture_polls@
 bool activate(unsigned required_sources,unsigned duration_ms){
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=capture_native_frame;
-    const bool semantic=false;
+    const bool semantic=false,angular_writer=false;
 @controller_capture_activation@
     return begun;
 }

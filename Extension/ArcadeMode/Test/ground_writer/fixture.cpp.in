@@ -13,11 +13,23 @@ namespace dingosdk::arcade_mode {
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation;
 GroundWriterBudget ground_writer_budget;
+AngularWriterCapture angular_writer_capture;
+bool angular_writer_requested{};
 NativeInputFrame capture_native_frame;
 std::mutex ollie_mutex;
 std::atomic<bool> mode{true},ground_writer_capture_live{true};
 std::atomic<std::uint64_t> motion_capture_until{1150};
 bool enabled()noexcept{return mode.load();}
+@ANGULAR_OBSERVER@
+void angular_boundary(const CaptureCorrelationEvidence& row) noexcept {
+@ANGULAR_BOUNDARIES@
+}
+bool angular_start(std::uint64_t now,unsigned duration,unsigned sources,bool angular){
+    if(!angular_writer_request_valid(duration,sources,angular)||angular_writer_capture.pending())return false;
+    angular_writer_requested=angular;
+    const bool result=input_capture_correlation.begin(now,duration,sources,capture_native_frame,input_telemetry.client_dropped(),angular_boundary);
+    angular_writer_requested=false;return result;
+}
 @OBSERVER@
 }
 unsigned checks{};
@@ -37,6 +49,7 @@ GroundWriterEvidence ticket(const NativeInputFrame& f=frame()){
     r.controls=11;r.bodies=2;r.before=r.staged={1,0,2};return r;
 }
 GroundWriterEvidence emitted;unsigned emissions{};
+AngularWriterEvidence emitted_angular;
 void sink(const GroundWriterEvidence& r)noexcept{emitted=r;++emissions;finish_ground_writer_observation(r);}
 bool owner_ok{},verify_ok{};unsigned write_calls{},fail_copy{},fail_peek{};
 std::map<std::uintptr_t,std::vector<unsigned char>> memory_bytes;
@@ -57,10 +70,22 @@ struct Reader{void verify(){source_require(verify_ok,"source changed");}};
 struct Drive{unsigned calls{};void account_resistance(float){++calls;}};
 struct Push{Drive arcade_drive;}push;
 Push& push_speed(){return push;}
-void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_source=true,unsigned copy_error=0,unsigned peek_error=0,bool later_error=false){
+void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_source=true,unsigned copy_error=0,unsigned peek_error=0,bool later_error=false,bool observe_angular=false){
     reset();emissions=0;write_calls=0;owner_ok=valid_owner;verify_ok=valid_source;fail_copy=copy_error;fail_peek=peek_error;push={};memory_bytes.clear();
+    auto ground_ticket=ticket();
+    AngularWriterEvidence angular_ticket;
+    if(observe_angular){
+        input_capture_correlation.end(1000,frame(),input_telemetry.client_dropped(),[](auto){});
+        check(angular_start(1000,1000,39,true),"explicit angular option starts on base39");
+        AirRotation::Output r;r.yaw_rate=7.75f;r.owns_left=true;
+        observe_angular_controller(1000,frame(),BoardChord::rb,0,true,true,false,true,r);
+        std::array<std::uintptr_t,32> parts{};parts[0]=1000;parts[1]=2000;
+        angular_ticket=begin_angular_writer_observation(1000,owner,frame(),parts);angular_ticket.bodies=2;
+        angular_ticket.before={.1f,.2f,.3f};
+    }
     try{
-        GroundWriterObservation writer_observation{ticket(),sink};
+        GroundWriterObservation writer_observation{ground_ticket,sink};
+        AngularWriterObservation angular_observation{angular_ticket,finish_angular_writer_observation};
         writer_observation.policy(true,true,{GroundStepStatus::next,false,1.f/30},false);writer_observation.selected(true);
         Reader reader;struct{std::array<std::uintptr_t,2>parts{1000,2000};}bodies;
         std::array<std::array<float,3>,2>velocities{{{.5f,0,1},{.7f,0,1.2f}}},spins{};
@@ -71,6 +96,15 @@ void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_sourc
     }catch(const std::runtime_error&){}
     check(emissions==1,"one terminal observation even on exception");
     check(ground_writer_valid(emitted),"terminal receipt is valid");
+    emitted_angular={};
+    if(observe_angular){
+        input_capture_correlation.end(1001,frame(),input_telemetry.client_dropped(),angular_boundary);
+        ClientTelemetry rows[64];const auto n=queue.client.take(rows);
+        for(std::size_t i=0;i<n;++i)if(const auto* r=std::get_if<AngularWriterEvidence>(&rows[i])){
+            check(angular_writer_valid(*r),"actual typed body/closure valid");
+            if(r->kind==AngularWriterKind::body)emitted_angular=*r;
+        }
+    }
 }
 namespace angular_release_tests {
 namespace arcade_mode=dingosdk::arcade_mode;
@@ -81,6 +115,7 @@ bool consume(Adapter& a,const AirMotionOutput& output,const NativeInputFrame& na
     std::array<std::array<float,3>,32>velocities{};
     const bool ordinary=AirMotion::ordinary_basis(bodies.up);
     bool angular_release{},wrote{};float resistance_change{};
+    AngularWriterEvidence angular_row;
     AirMotionIntent intent{};intent.angular_allowed=permitted;struct{bool admitted{};}manual;
     const auto commit_motion=[&](bool,bool angular){wrote=angular;};
 @ANGULAR_RELEASE@
@@ -167,7 +202,152 @@ void run(){
         check(f.release(1034),"subsequent exact proof retires the unrenewed tilted AIR write");}
 }
 }
+namespace angular_receipt_tests {
+AngularWriterEvidence sample(unsigned step=1){
+    AngularWriterEvidence r;r.ms=r.native_ms=1000+step*33;r.step=step;r.owner=1;r.owner_generation=2;r.contact_generation=3;r.action_generation=4;
+    r.native_valid=r.context_owner_matches=r.airborne=r.enabled=r.allowed=r.ready=r.armed=true;r.buttons=BoardChord::lb;
+    r.requested_rate=r.published_rate=-7.75f;r.seconds=1.f/30;r.state=201;r.mode=2;r.episode=1;r.spin_epoch=1;return r;
+}
+void run(){
+    const std::array<std::uintptr_t,32> parts{100,200};
+    for(unsigned sources:{0u,1u,32u,39u,55u,63u,64u,103u,255u,256u})for(unsigned duration:{0u,1u,5000u,5001u}){
+        check(angular_writer_request_valid(duration,sources,true)==(sources==39&&duration>=1&&duration<=5000),"angular option admits only explicit finite base39");
+        check(angular_writer_request_valid(duration,sources,false),"default OFF preserves original mask/duration validation");
+    }
+    {AngularWriterCapture c;auto r=sample();check(!c.controller(r)&&!c.body(r,parts),"observer is off by default");
+        auto begin=c.begin(1,1000);check(angular_writer_valid(begin),"typed begin is valid");
+        r.buttons=0;check(!c.controller(r)&&!c.body(r,parts),"no shoulder interest emits no motion rows");
+        r.buttons=BoardChord::lb;check(c.controller(r)&&r.sequence==1,"physical shoulder starts bounded interest");c.settle(true);
+        auto same=sample();check(!c.controller(same),"same-step unchanged controller poll deduplicated");
+        same.buttons=0;same.requested_rate=same.published_rate=0;
+        check(c.controller(same)&&same.sequence==2,"same-step release edge and decision retained");c.settle(true);
+        auto body=sample();check(c.body(body,parts)&&body.body_set==1,"body observation begins after interest");c.settle(true);
+        auto next=sample(2);check(c.body(next,parts)&&next.body_set==1,"new original step preserves same body set token");c.settle(true);
+        auto moved=parts;moved[9]=999;next=sample(3);check(c.body(next,moved)&&next.body_set==2,"body replacement gets a new private equality token");c.settle(true);
+        auto land=sample(4);land.airborne=false;land.state=100;land.mode=1;land.buttons=0;
+        check(c.controller(land),"first non-AIR controller observation retained");c.settle(true);
+        land=sample(4);land.airborne=false;land.state=100;land.mode=1;
+        check(c.body(land,moved),"first non-AIR body observation retained");c.settle(true);
+        auto after=sample(5);check(!c.controller(after)&&!c.body(after,moved),"single flight closes observation selection after both landing observations");
+        auto end=c.end(1200);check(end.complete&&end.reserved==7&&end.queued==7&&angular_writer_valid(end),"exact enqueue closure");}
+    for(unsigned fault=0;fault<12;++fault){
+        AngularWriterCapture c;c.begin(1,1000);auto r=sample();check(c.controller(r),"baseline controller selected");c.settle(true);
+        r=sample();
+        if(fault==0)r.enabled=false;if(fault==1)r.allowed=false;if(fault==2)r.ready=false;if(fault==3)r.conflict=true;
+        if(fault==4)r.native_valid=false;if(fault==5)++r.owner;if(fault==6)++r.owner_generation;if(fault==7)r.facts=2;
+        if(fault==8)r.spin_mode=1;if(fault==9)r.armed=false;if(fault==10)r.buttons=BoardChord::pair;if(fault==11)++r.action_generation;
+        check(c.controller(r),"same-step OFF, policy, invalid proof, owner, NoSpin, mode, armed and chord changes remain visible");
+        check((fault!=4||!r.native_valid)&&(fault!=7||r.facts==2),"no validity or fact promotion");c.settle(true);check(c.end(1100).complete,"changed-decision receipt settles");
+    }
+    {AngularWriterCapture c;c.begin(1,1000);for(unsigned i=0;i<64;++i){auto r=sample(i+1);check(c.controller(r)&&r.sequence==i+1,"hard event budget contiguous reservation");c.settle(true);}
+        auto r=sample(65);check(!c.controller(r),"65th eligible record refused");
+        const auto end=c.end(4000);check(end.reserved==64&&end.queued==64&&end.lost==1&&!end.complete&&angular_writer_valid(end),"overflow is explicit incomplete closure");}
+    {AngularWriterCapture c;c.begin(1,1000);auto r=sample();check(c.controller(r),"pending ticket reserved");
+        const auto end=c.end(1100);check(!end.complete&&end.pending==1&&end.reserved==1,"in-flight closure stays incomplete");
+        check(c.late(r)&&!c.begin(2,1200).capture,"late row retains old identity and prevents reset while pending");
+        c.settle(true);check(!c.pending()&&c.begin(2,1200).capture,"settled late row permits distinct next capture");c.end(1300);
+        check(!end.complete,"late completion cannot rewrite prior footer");}
+    {AngularWriterCapture c;c.begin(1,1000);auto r=sample();c.controller(r);c.settle(false);
+        auto end=c.end(1100);check(!end.complete&&end.lost==1&&!end.queued&&!end.pending,"failed queue acceptance settles debt once as loss");}
+    {AngularWriterCapture c;c.begin(1,1000);c.lose();const auto end=c.end(1100);check(!end.complete&&end.lost==1,"lock/observation loss is explicit without a false event");}
+    {AngularWriterCapture c;c.begin(1,1000);std::atomic<bool> admitted{},finish{};
+        std::thread body([&]{AngularWriterCapture::Attempt attempt(c);check(static_cast<bool>(attempt),"body attempt pins live epoch before try-lock");
+            admitted=true;while(!finish.load())std::this_thread::yield();c.lose();});
+        while(!admitted.load())std::this_thread::yield();
+        const auto end=c.end(1100);
+        check(!end.complete&&end.pending==1&&end.lost==0,"footer cannot claim completeness while failed-lock loss is delayed");
+        check(c.pending()&&!c.begin(2,1200).capture,"admitted failed-lock attempt prevents future epoch reset");
+        {AngularWriterCapture::Attempt late(c);check(!late,"closed epoch admits no additional attempt");}
+        finish=true;body.join();
+        check(!c.pending()&&!end.complete,"late loss settles only original epoch; old footer stays incomplete");
+        check(c.begin(2,1200).capture==2,"new epoch can arm after original attempt fully settles");
+        const auto next=c.end(1300);check(next.complete&&!next.lost&&!next.pending,"late old loss is not charged to future epoch");
+    }
+    {AngularWriterCapture c;c.begin(1,1000);
+        {AngularWriterCapture::Attempt attempt(c);c.lose();}
+        const auto end=c.end(1100);check(!end.complete&&!end.pending&&end.lost==1,"loss completed before footer is counted directly");
+    }
+    for(unsigned mask:{4u,32u,39u,55u,63u,64u,103u,255u}){
+        reset();input_capture_correlation.end(1000,frame(),0,[](auto){});
+        check(angular_start(1000,1000,mask,false),"existing capture scopes accepted unchanged");
+        check((input_capture_correlation.angular_writer_owner(1000,owner)!=0)==(mask==39),"only base39 exposes read-only existing token");
+        check(!angular_writer_capture.live(),"no legacy mask alone activates angular receipts");
+        check(!input_capture_correlation.angular_writer_owner(999,owner)&&!input_capture_correlation.angular_writer_owner(2001,owner),"capture time bounds retained");
+        if(mask==39){
+            observe_angular_controller(2001,frame(),BoardChord::lb,0,true,true,false,true,{});
+            check(!begin_angular_writer_observation(2001,owner,frame(),parts).capture,"expired-but-not-yet-closed capture never emits outside its original interval");
+        }
+        input_capture_correlation.end(1100,frame(),0,angular_boundary);
+        ClientTelemetry rows[64];unsigned count=0;const auto n=queue.client.take(rows);
+        for(std::size_t i=0;i<n;++i)if(std::get_if<AngularWriterEvidence>(&rows[i]))++count;
+        check(!count,"legacy scopes produce no new typed rows");
+    }
+    for(unsigned mask:{39u,55u})for(bool manual_termination:{false,true}){
+        CaptureCorrelationProducer p;CaptureCorrelationDrain drain;CaptureCorrelationEvidence end;
+        const auto sink=[&](const CaptureCorrelationEvidence& r){
+            if(r.kind==CaptureCorrelationKind::end)end=drain.footer(r,0);else drain.written(r,true);return true;};
+        check(p.begin(1000,1000,mask,frame(),0,sink),"native closure comparison begins");
+        for(auto source:{CaptureCorrelationSource::input,CaptureCorrelationSource::recognition,CaptureCorrelationSource::native,CaptureCorrelationSource::native_admission}){
+            CaptureCorrelationEvidence row;row.source=source;row.source_sequence=1;row.ms=1000;row.events_known=true;p.event(row,frame(),0,sink);
+        }
+        if(manual_termination){CaptureCorrelationEvidence row;row.source=CaptureCorrelationSource::manual_termination;row.source_sequence=1;row.ms=1000;row.events_known=true;p.event(row,frame(),0,sink);}
+        p.end(1100,frame(),0,sink);
+        check(!end.dropped&&!end.overflow&&end.expected==end.drained,"native closure retains exact ordinals without fabricated rows");
+        check(end.complete==(mask==39||manual_termination),"ordinary A-only base39 closes; legacy55 still honestly requires real Manual termination");
+    }
+    // Actual extracted body-copy lambda: diagnostics cannot alter any copied
+    // byte, failure position, readback, or resistance accounting.
+    for(unsigned fault=0;fault<16;++fault){
+        const bool linear=fault!=0, angular=fault!=1, valid_owner=fault!=2, valid_source=fault!=3;
+        const unsigned copy_error=fault>=4&&fault<10?fault-3:0,peek_error=fault>=10?fault-9:0;
+        commit_case(linear,angular,valid_owner,valid_source,copy_error,peek_error);
+        const auto bytes=memory_bytes;const auto calls=write_calls,accounts=push.arcade_drive.calls;
+        commit_case(linear,angular,valid_owner,valid_source,copy_error,peek_error,false,true);
+        check(memory_bytes==bytes&&write_calls==calls&&push.arcade_drive.calls==accounts,"diagnostic ON/OFF preserves exact native writes, failures and account calls");
+        check(emitted_angular.capture!=0,"actual writer receipt retained");
+        if(fault==0)check(emitted_angular.stage==GroundWriterStage::verified&&emitted_angular.angular&&emitted_angular.completed==2,"successful angular copies/readbacks verified");
+        if(fault==1)check(!emitted_angular.angular&&emitted_angular.stage!=GroundWriterStage::verified,"linear-only write is not angular verification");
+        if(fault>=2)check(emitted_angular.unwinding&&emitted_angular.stage!=GroundWriterStage::verified,"guard/copy/readback failure never becomes angular success");
+    }
+    // Actual helper owner/context field mapping and shared queue failure.
+    reset();input_capture_correlation.end(1000,frame(),0,[](auto){});
+    check(angular_start(1000,1000,39,true),"explicit angular helper capture begins");
+    AirRotation::Output decision;decision.owns_left=true;decision.yaw_rate=-7.75f;
+    auto air=frame();air.airborne=true;air.state=201;air.mode=2;air.airborne_episode=9;air.air_departure=4;
+    observe_angular_controller(1000,air,BoardChord::lb,0,true,false,false,true,decision);
+    auto body=begin_angular_writer_observation(1000,owner,air,parts);
+    check(body.capture&&body.native_valid&&body.context_owner_matches&&body.owner==1&&body.episode==9&&body.departure==4,"exact current native epochs and owner token copied");
+    body.bodies=32;finish_angular_writer_observation(body);
+    auto invalid=begin_angular_writer_observation(1001,owner,{},parts);
+    check(invalid.capture&&!invalid.native_valid&&!invalid.context_owner_matches&&!invalid.native_ms,"missing native frame remains unknown; no cached timestamp replacement");
+    invalid.bodies=32;finish_angular_writer_observation(invalid);
+    auto malformed=air;malformed.physics_step++;
+    auto rejected=begin_angular_writer_observation(1002,owner,malformed,parts);rejected.before[0]=NAN;
+    auto before_invalid=input_telemetry.client_dropped();finish_angular_writer_observation(rejected);
+    check(input_telemetry.client_dropped()==before_invalid+1,"nonfinite typed measurement is dropped, never fabricated or sanitized into evidence");
+    auto drops=input_telemetry.client_dropped();std::unique_lock held(ollie_mutex);
+    std::thread contender([&]{check(!begin_angular_writer_observation(1002,owner,air,parts).capture,"observation lock contention cannot block physics");});contender.join();held.unlock();
+    check(input_telemetry.client_dropped()==drops+1,"observer contention charges existing loss");
+    input_capture_correlation.end(1100,air,input_telemetry.client_dropped(),angular_boundary);
+    ClientTelemetry rows[64];auto n=queue.client.take(rows);bool saw_end=false;
+    for(std::size_t i=0;i<n;++i)if(auto* r=std::get_if<AngularWriterEvidence>(&rows[i]);r&&r->kind==AngularWriterKind::end){saw_end=true;check(!r->complete&&r->lost,"contended typed closure incomplete");}
+    check(saw_end,"typed closure is on existing queue");
+    {AngularWriterCapture c;c.begin(1,1000);auto r=sample();c.controller(r);
+        AngularWriterObservation observation{r,[](const AngularWriterEvidence&) noexcept{}};
+        observation.row.kind=AngularWriterKind::body;observation.row.bodies=32;observation.staging(true,{0,-7.75f,0});observation.validated();observation.writing();
+        for(unsigned i=0;i<31;++i)observation.body_completed();observation.verified();
+        check(!angular_writer_valid(observation.row),"partial angular readback cannot claim verified completion");
+        observation.body_completed();check(angular_writer_valid(observation.row),"all existing copies/readbacks are required");
+        c.settle(true);c.end(1100);}
+    {AngularWriterCapture c;c.begin(1,1000);auto r=sample();c.controller(r);c.settle(true);
+        auto b=sample();c.body(b,parts);
+        auto different=parts;different[7]=1234;c.settle(true);b=sample();
+        check(c.body(b,different)&&b.body_set==2,"same-frame body replacement is not hidden by step deduplication");c.settle(true);c.end(1100);}
+    static_assert(sizeof(AngularWriterEvidence)<=sizeof(CaptureCorrelationEvidence));
+}
+}
 int main(){
+    angular_receipt_tests::run();
     angular_release_tests::run();
     reset();auto base=ticket();check(base.capture&&base.owner==1,"existing anonymous token reused");
     check(ground_writer_valid(base),"initial receipt valid");

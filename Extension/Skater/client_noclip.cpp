@@ -592,6 +592,23 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         arcade_mode::MotionCleanupProof cleanup{};
         const auto native_frame = arcade_mode::native_air_context(now,
             {owner.base,owner.entity,owner.core,owner.context,owner.rig},sampled,&cleanup);
+        // Angular writer observation begin. Reuse only the reads above.
+        arcade_mode::AngularWriterObservation angular_observation{
+            arcade_mode::begin_angular_writer_observation(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},native_frame,bodies.parts),
+            arcade_mode::finish_angular_writer_observation};
+        auto& angular_row=angular_observation.row;
+        angular_row.input_ms=intent.sampled_at;angular_row.input_generation=intent.generation;
+        angular_row.enabled=intent.enabled;angular_row.allowed=intent.angular_allowed;angular_row.published_rate=intent.yaw_rate;
+        angular_row.proof_ms=intent.angular_proof.sampled_at;angular_row.proof_step=intent.angular_proof.physics_step;
+        angular_row.proof_owner_generation=intent.angular_proof.owner_generation;
+        angular_row.proof_episode=intent.angular_proof.episode;angular_row.proof_departure=intent.angular_proof.departure;
+        angular_row.proof_valid=intent.angular_proof.valid;
+        angular_row.proof_owner_matches=intent.angular_proof.owner==arcade_mode::NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        angular_row.spin_mode=static_cast<unsigned>(intent.spin.mode);angular_row.facts=intent.spin.facts.encode();angular_row.armed=intent.spin.physical_armed;
+        angular_row.spin_epoch=intent.spin.epoch;angular_row.spin_serial=intent.spin.serial;
+        angular_row.bodies=static_cast<unsigned>(bodies.parts.size());angular_row.before=angular_row.staged=spins[0];
+        angular_row.up=bodies.up;angular_row.forward=bodies.forward;
+        // Angular writer observation end.
         // Ground writer observation begin. No new native reads or permissions.
         arcade_mode::GroundWriterObservation writer_observation{
             arcade_mode::begin_ground_writer_observation(now,{owner.base,owner.entity,owner.core,owner.context,owner.rig},native_frame,
@@ -612,19 +629,24 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         // Stage every owned change first. SourceReader keeps original bytes;
         // no native write may invalidate that snapshot before final validation.
         const auto commit_motion = [&](bool linear,bool angular) {
+            angular_observation.staging(angular,spins[0]); // Angular writer observation.
             writer_observation.staging(linear,angular,velocities[0],resistance_change); // Ground writer observation.
             if (!linear && !angular) return;
             reader.verify(); NoBailSkater after{};
             source_require(no_bail_skater(after) && after==owner, "Arcade motion ownership changed before writing.");
             writer_observation.validated(); // Ground writer observation.
+            angular_observation.validated(); // Angular writer observation.
             writer_observation.writing(); // Ground writer observation.
+            angular_observation.writing(); // Angular writer observation.
             for (std::size_t i=0;i<bodies.parts.size();++i) {
                 if (linear) body_write(bodies.parts[i]+0x70,velocities[i]);
                 if (angular) body_write(bodies.parts[i]+0x90,spins[i]);
                 body_write(bodies.parts[i]+0x60,flags[i] | (linear?8u:0u) | (angular?0x20u:0u));
                 writer_observation.body_completed(); // Ground writer observation.
+                angular_observation.body_completed(); // Angular writer observation.
             }
             writer_observation.verified(); // Ground writer observation.
+            angular_observation.verified(); // Angular writer observation.
             if (resistance_change<0) push_speed().arcade_drive.account_resistance(resistance_change);
         };
         const auto release_turn = [&](bool permitted,bool off=false) {
@@ -644,6 +666,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             arcade_mode::AirMotionOutput neutral{}; neutral.ready=neutral.angular=true;
             source_require(arcade_mode::AirMotion::apply_bodies(neutral,velocities,spins,bodies.up), "Invalid angular release.");
             angular_release=true;
+            angular_row.release=true; // Angular writer observation.
         };
         if (!intent.enabled) {
             a.ground_yaw.cancel(&ground_turn); a.ground_output={}; a.output={}; a.controller.reset();
@@ -664,6 +687,8 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
             {native_frame.flip_known,native_frame.flip_id,native_frame.selection_object}});
+        // Angular writer observation: controller result, before native writes.
+        angular_row.output_known=true;angular_row.output_ready=output.ready;angular_row.output_angular=output.angular;angular_row.output_rate=output.spin_y;
         NoBailSkater after{};
         reader.verify();
         source_require(no_bail_skater(after) && after == owner, "Air motion ownership changed before execution.");
@@ -712,6 +737,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
+        angular_row.ground_selected=a.ground_output.ready; // Angular writer observation.
         // Neutral is a withdrawal of our previous ground rate, not permission
         // to overwrite a new native impulse with an unconditional zero.
         if (a.ground_output.ready && applied.angular && !a.ground_output.command.serial &&

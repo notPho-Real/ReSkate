@@ -16,6 +16,8 @@ def generate(root):
     client = (root / 'Extension/Skater/client_noclip.cpp').read_text()
     chunks = {
         'OBSERVER': between(mode, 'GroundWriterEvidence begin_ground_writer_observation(', 'bool set_input_capture('),
+        'ANGULAR_OBSERVER': between(mode, '// Angular writer observation begin. Every field', '// Angular writer observation end.'),
+        'ANGULAR_BOUNDARIES': between(mode, '    // Angular receipt boundaries are separate', '    // Angular receipt boundaries end.'),
         'BODY_WRITE': between(client, 'template<class T> void body_write(', '\n}\nvoid debug_stop_noclip'),
         'COMMIT': between(client, '        const auto commit_motion = ', '        const auto release_turn = '),
         'ANGULAR_RELEASE': between(client, '        const auto release_turn = ', '        if (!intent.enabled) {'),

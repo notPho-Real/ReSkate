@@ -19,6 +19,8 @@ namespace {
 InputTelemetry capture_telemetry;
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation;
+AngularWriterCapture angular_writer_capture;
+bool angular_writer_requested{};
 CaptureFooterRecovery capture_footer_recovery;
 std::atomic<bool> controller_capture_live{},capture_render_ack_lost{},capture_transport_pending{};
 std::atomic<bool> ground_writer_capture_live{};

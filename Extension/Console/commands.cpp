@@ -68,11 +68,13 @@ void register_console_commands(Commands &registry) {
         out(arcade_mode::spin_mode()==arcade_mode::SpinMode::tap ? "Tap spin ON" : "Held spin ON");
     };
     registry.add(std::move(tap_spin));
-    auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..127 or bounded semantic255)",Group::gameplay,
-        {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true)});
+    auto capture=action("arcadeinputcapture","Finite input/native correlation capture; duration0 stops (milliseconds, source mask1..127 or bounded semantic255; optional angular-on requires mask39)",Group::gameplay,
+        {argument("milliseconds",Type::unsigned_integer,false),argument("source-mask",Type::unsigned_integer,true),argument("angular-on|off",Type::boolean,true)});
     capture.run=[](const Model&,const Values& values,const Output& out){
         const auto duration=std::get<std::uint64_t>(values[0]);const auto scope=values.size()>1?std::get<std::uint64_t>(values[1]):96;
-        if(duration>5000||!scope||(scope>127&&scope!=255)||(scope==255&&duration>1000)||!arcade_mode::set_input_capture(static_cast<unsigned>(duration),static_cast<unsigned>(scope)))
+        const bool angular=values.size()>2&&std::get<bool>(values[2]);
+        if(angular&&(!duration||duration>5000||scope!=39)){out("Angular observation requires duration1..5000 and base source mask39.");return;}
+        if(duration>5000||!scope||(scope>127&&scope!=255)||(scope==255&&duration>1000)||!arcade_mode::set_input_capture(static_cast<unsigned>(duration),static_cast<unsigned>(scope),angular))
             out("Capture unavailable: require active telemetry, duration1..5000 and source mask1..127, or semantic255 for at most1000ms; legacy sources1..31 also require Arcade ON and a fresh native owner; duration0 stops an active capture.");
         else if(duration&&scope==255)out("Input capture capability=manual_capture_schema4_v2 required_semantics=255 active_only=true; completeness and native acceptance remain unverified.");
         else out(duration?"Input correlation capture started; completeness and native acceptance remain unverified.":"Input correlation capture stopped.");

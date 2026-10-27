@@ -130,6 +130,8 @@ std::array<NativeCharge, 4> native_charges;
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation; // ollie_mutex, same owners as native/input adapters.
 GroundWriterBudget ground_writer_budget; // Same mutex; diagnostics only.
+AngularWriterCapture angular_writer_capture; // Explicit base39 option, same input mutex.
+bool angular_writer_requested{}; // Only the serialized begin transaction.
 struct CaptureManualJoin {
     std::uint64_t request{},session{},recognized_ms{},episode{},departure{},owner_generation{};
     std::int8_t family{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{},native_seen{},native_exit_seen{};
@@ -187,6 +189,18 @@ void capture_semantic(CaptureCorrelationEvidence& row,unsigned kind,unsigned clo
         m.m_known|=32u;
 }
 bool capture_row(const CaptureCorrelationEvidence& row) noexcept {
+    // Angular receipt boundaries are separate typed rows. Existing schema3/4
+    // records and their source/ordinal accounting are not reinterpreted.
+    if(row.schema==3 && row.required_sources==39){
+        if(row.kind==CaptureCorrelationKind::begin && angular_writer_requested){
+            const auto begin=angular_writer_capture.begin(row.capture,row.ms);
+            if(!begin.capture || !input_telemetry.client(begin)){angular_writer_capture.lose();input_telemetry.client_lost();}
+        }else if(row.kind==CaptureCorrelationKind::end && angular_writer_capture.live() && angular_writer_capture.capture_id()==row.capture){
+            const auto end=angular_writer_capture.end(row.ms);
+            if(!end.capture || !input_telemetry.client(end))input_telemetry.client_lost();
+        }
+    }
+    // Angular receipt boundaries end.
     if(row.kind==CaptureCorrelationKind::end&&(row.schema==3||row.schema==4)) {
         controller_capture_live.store(false,std::memory_order_release);
         ground_writer_capture_live.store(false,std::memory_order_release);
@@ -800,6 +814,15 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.controls,r.controls_current,r.state,r.mode,r.contacts,r.requests,r.ordinary,r.balancing,r.ground_eligible,static_cast<unsigned>(r.step_status),r.baseline,r.ground_seconds,
                 r.native_brake,r.selected_known,r.selected_brake,r.before[0],r.before[1],r.before[2],r.staged[0],r.staged[1],r.staged[2],r.requested_resistance,r.resistance,
                 r.linear,r.angular,static_cast<unsigned>(r.stage),r.bodies,r.completed,r.unwinding);
+        else if constexpr (std::is_same_v<T, AngularWriterEvidence>)
+            logging::log(logging::Level::info, logging::Channel::skater,
+                "ARCADE ANGULAR WRITER: kind={} capture={} seq={} ms={} native_ms={} step={} episode={} departure={} owner={} owner_gen={} contact_gen={} action_gen={} native_valid={} context_owner_matches={} airborne={} dt={} state={} mode={} contacts={} input_ms={} input_gen={} proof_ms={} proof_step={} proof_owner_gen={} proof_episode={} proof_departure={} proof_valid={} proof_owner_matches={} buttons={} phase={} spin_mode={} facts={} spin_epoch={} spin_serial={} armed={} enabled={} allowed={} ready={} conflict={} owns_left={} requested_rate={} published_rate={} output_known={} output_ready={} output_angular={} output_rate={} ground_selected={} release={} body_set={} before={},{},{} staged={},{},{} entity_up={},{},{} entity_horizontal_forward={},{},{} angular={} stage={} bodies={} completed={} unwinding={} late={} reserved={} queued={} lost={} pending={} complete={} target_observed=false final_engine_verified=false.",
+                static_cast<unsigned>(r.kind),r.capture,r.sequence,r.ms,r.native_ms,r.step,r.episode,r.departure,r.owner,r.owner_generation,r.contact_generation,r.action_generation,
+                r.native_valid,r.context_owner_matches,r.airborne,r.seconds,r.state,r.mode,r.contacts,r.input_ms,r.input_generation,r.proof_ms,r.proof_step,r.proof_owner_generation,r.proof_episode,r.proof_departure,r.proof_valid,r.proof_owner_matches,
+                r.buttons,r.phase,r.spin_mode,r.facts,r.spin_epoch,r.spin_serial,r.armed,r.enabled,r.allowed,r.ready,r.conflict,r.owns_left,r.requested_rate,r.published_rate,
+                r.output_known,r.output_ready,r.output_angular,r.output_rate,r.ground_selected,r.release,r.body_set,
+                r.before[0],r.before[1],r.before[2],r.staged[0],r.staged[1],r.staged[2],r.up[0],r.up[1],r.up[2],r.forward[0],r.forward[1],r.forward[2],
+                r.angular,static_cast<unsigned>(r.stage),r.bodies,r.completed,r.unwinding,r.late,r.reserved,r.queued,r.lost,r.pending,r.complete);
         else if constexpr (std::is_same_v<T, BalanceSampleEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE BALANCE SAMPLE: ms={} kind={} x={} v={} input={} difficulty={} raw_x={} raw_y={}.",
@@ -1314,6 +1337,46 @@ void complete_controller_poll(ControllerPollCapture& capture) noexcept {
 
 // Controller capture polls publication end.
 bool enqueue_client_telemetry(const ClientTelemetry& row) noexcept { return input_telemetry.client(row); }
+// Angular writer observation begin. Every field comes from an existing typed
+// observation; invalid/missing original context remains explicitly unknown.
+void angular_writer_context(AngularWriterEvidence& r,std::uint64_t now,const NativeInputFrame& f) noexcept {
+    r.ms=now;r.native_ms=f.sampled_at;r.step=f.physics_step;r.episode=f.airborne_episode;r.departure=f.air_departure;
+    r.owner=input_capture_correlation.angular_writer_owner(now,f.owner);
+    r.owner_generation=f.owner_generation;r.contact_generation=f.contact_generation;r.action_generation=f.action_generation;
+    r.native_valid=f.valid;r.context_owner_matches=f.owner.valid();r.airborne=f.airborne;r.seconds=f.physics_seconds;r.state=f.state;r.mode=f.mode;r.contacts=f.contacts;
+}
+void finish_angular_writer_observation(const AngularWriterEvidence& value) noexcept {
+    auto r=value;r.late=angular_writer_capture.late(r);
+    angular_writer_capture.settle(input_telemetry.client(r));
+}
+void observe_angular_controller(std::uint64_t now,const NativeInputFrame& frame,std::uint16_t buttons,unsigned phase,
+        bool enabled,bool ready,bool conflict,bool allowed,const AirRotation::Output& rotation) noexcept {
+    if(!angular_writer_capture.live()||!input_capture_correlation.angular_writer_active(now))return;
+    AngularWriterEvidence r;angular_writer_context(r,now,frame);
+    r.buttons=buttons;r.phase=phase;r.enabled=enabled;r.ready=ready;r.conflict=conflict;r.allowed=allowed;r.owns_left=rotation.owns_left;
+    r.requested_rate=rotation.yaw_rate;r.published_rate=allowed?rotation.yaw_rate:0;
+    r.spin_mode=static_cast<unsigned>(rotation.spin.mode);r.facts=rotation.spin.facts.encode();r.armed=rotation.spin.physical_armed;
+    r.spin_epoch=rotation.spin.epoch;r.spin_serial=rotation.spin.serial;
+    if(angular_writer_capture.controller(r))finish_angular_writer_observation(r);
+}
+AngularWriterEvidence begin_angular_writer_observation(std::uint64_t now,const NativeInputOwner& owner,
+        const NativeInputFrame& consumed,const std::array<std::uintptr_t,32>& parts) noexcept {
+    AngularWriterCapture::Attempt attempt(angular_writer_capture);
+    if(!attempt)return {};
+    try{
+        std::unique_lock lock(ollie_mutex,std::try_to_lock);
+        if(!lock.owns_lock()){angular_writer_capture.lose();input_telemetry.client_lost();return {};}
+        if(!input_capture_correlation.angular_writer_active(now))return {};
+        AngularWriterEvidence r;angular_writer_context(r,now,consumed);
+        // No fallback can make a missing consumed frame valid. The owner token
+        // may still identify the already-validated body set without that proof.
+        r.owner=input_capture_correlation.angular_writer_owner(now,owner);
+        r.context_owner_matches=consumed.owner==owner;
+        if(angular_writer_capture.body(r,parts))return r;
+    }catch(...){angular_writer_capture.lose();input_telemetry.client_lost();}
+    return {};
+}
+// Angular writer observation end.
 GroundWriterEvidence begin_ground_writer_observation(std::uint64_t now,const NativeInputOwner& owner,const NativeInputFrame& consumed,
         bool intent_enabled,bool down,unsigned requests) noexcept {
     if(!ground_writer_gate(intent_enabled&&enabled(),ground_writer_capture_live.load(std::memory_order_acquire),
@@ -1340,7 +1403,8 @@ void finish_ground_writer_observation(const GroundWriterEvidence& row) noexcept 
     // from source7 completeness and never upgrades missing writer coverage.
     input_telemetry.client(row);
 }
-bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept {
+bool set_input_capture(unsigned duration_ms,unsigned required_sources,bool angular_writer) noexcept {
+    if(!angular_writer_request_valid(duration_ms,required_sources,angular_writer))return false;
     std::lock_guard lock(ollie_mutex);const auto now=GetTickCount64();const auto frame=(!duration_ms?input_capture_correlation.observational():(required_sources&96)!=0)?capture_native_frame:arcade_input.native_context(now);
     if(!duration_ms){
         if(!input_capture_correlation.active())return false;
@@ -1351,6 +1415,7 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     }
     if((!enabled()&&!(required_sources&96))||!input_telemetry.available())return false;
     if(duration_ms&&capture_transport_pending.load(std::memory_order_acquire))return false;
+    if(duration_ms&&angular_writer_capture.pending())return false;
     const bool semantic=required_sources==255;
     if(semantic){
         capture_transport_pending.store(true,std::memory_order_release);
@@ -1362,7 +1427,9 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources) noexcept 
     // Controller capture activation publication begin.
     const bool activating=!input_capture_correlation.active()&&(required_sources&96);
     if(activating)controller_capture_live.store(true,std::memory_order_release);
+    angular_writer_requested=angular_writer;
     const bool begun=input_capture_correlation.begin(now,duration_ms,required_sources,frame,input_telemetry.client_dropped(),capture_row);
+    angular_writer_requested=false;
     if(!begun&&semantic){input_telemetry.end_capture_accounting();capture_transport_pending.store(false,std::memory_order_release);}
     if(!begun&&activating)controller_capture_live.store(false,std::memory_order_release);
     // Controller capture activation publication end.
@@ -2235,6 +2302,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch,
                 rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
                 release.sequence ? (release.nollie ? 16 : 1) : 0);
+            observe_angular_controller(now,rotation_native,physical_buttons,static_cast<unsigned>(result.phase),rotation_enabled,
+                native_rate_ready,reference || action.owned || result.phase==3,angular_allowed,rotation);
         }
         // Controller route air publication end.
         // BoardChord has already consumed a valid pair and emitted native Y.

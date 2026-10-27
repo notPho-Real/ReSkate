@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <array>
 #include "arcade_controller_capture_types.h"
 #include "arcade_surface_geometry.h"
 #include "arcade_traffic_surface_provider.h"
@@ -13,6 +14,10 @@ struct NativeInputOwner;
 struct NativeRequestSample;
 struct MotionCleanupProof;
 struct GroundWriterEvidence;
+struct AngularWriterEvidence;
+AngularWriterEvidence begin_angular_writer_observation(std::uint64_t now,const NativeInputOwner& owner,
+    const NativeInputFrame& consumed,const std::array<std::uintptr_t,32>& parts) noexcept;
+void finish_angular_writer_observation(const AngularWriterEvidence&) noexcept;
 // Optional finite numeric observation only; never grants motion authority.
 GroundWriterEvidence begin_ground_writer_observation(std::uint64_t now,const NativeInputOwner& owner,const NativeInputFrame& consumed,
     bool intent_enabled,bool down,unsigned requests) noexcept;
@@ -61,7 +66,7 @@ PlaybackExperiment playback_experiment() noexcept;
 bool set_action_experiment(ActionExperiment value) noexcept;
 ActionExperiment action_experiment() noexcept;
 // Explicit finite diagnostic capture on the existing client channel; zero stops.
-bool set_input_capture(unsigned duration_ms,unsigned required_sources=96) noexcept;
+bool set_input_capture(unsigned duration_ms,unsigned required_sources=96,bool angular_writer=false) noexcept;
 // Independent, unsaved finite camera observations (1..3000ms; zero stops).
 // No input/physics/camera authority; continues observing OFF restoration.
 bool set_camera_capture(unsigned duration_ms) noexcept;
