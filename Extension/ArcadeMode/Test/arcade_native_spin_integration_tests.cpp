@@ -63,6 +63,18 @@ struct AuthoredPipeline {
 };
 }
 int main(){
+ for(auto side:{BoardChord::lb,BoardChord::rb})for(bool nollie:{false,true}) {
+  AirRotation preparation; NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
+  f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;f.state=103;
+  auto sample=[&](std::uint64_t at,std::uint16_t buttons){f.sampled_at=at;return preparation.poll_preparation(at,buttons,true,f,f.state==103,nollie,false,SpinMode::held);};
+  sample(1000,0);check(!sample(1017,side).owns_left,"prewind respects the existing chord window");
+  check(sample(1138,side).owns_left,"fresh native crouch admits preparation");
+  auto out=sample(1150,side);check(out.y*(nollie?1:-1)>0&&out.yaw_rate==0,"prewind starts at the native pop end without a body rate");
+  out=sample(1198,side);check(out.x*(side==BoardChord::lb?-1:1)>0,"prewind sweeps toward the selected spin direction");
+  check(!sample(1200,BoardChord::pair).owns_left,"board pair wins preparation ownership");
+  sample(1217,0);f.state=100;check(!sample(1234,side).owns_left,"ordinary ground steering is untouched");
+ }
+
  for(auto side:{BoardChord::lb,BoardChord::rb})for(bool allowed:{false,true})for(auto mode:{SpinMode::held,SpinMode::tap}) {
   AirRotation::Output request{true,0,0,side==BoardChord::lb?-7.75f:7.75f,{}};
   const auto delivered=AirRotation::native_shoulder_output(request,mode,side,allowed);

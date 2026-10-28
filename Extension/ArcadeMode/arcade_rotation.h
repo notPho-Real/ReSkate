@@ -40,6 +40,16 @@ public:
         }
         return output;
     }
+    // Separate preparation actor: never relax the airborne proof or own RS.
+    Output poll_preparation(std::uint64_t now, std::uint16_t buttons, bool gameplay,
+            const NativeInputFrame& frame, bool crouched, bool nollie, bool conflict, SpinMode mode) noexcept {
+        const bool ground = frame.valid && frame.owner.valid() && frame.owner_generation &&
+            frame.contact_generation && frame.action_generation && frame.physics_step &&
+            now >= frame.sampled_at && now-frame.sampled_at <= 150 &&
+            (frame.state == 100 || frame.state == 103) && !frame.airborne && !frame.rail_family;
+        return poll(now,buttons,gameplay && mode==SpinMode::held,
+            ground ? SkatePose::riding : SkatePose::unknown,crouched,nollie,conflict);
+    }
     void reset() noexcept {
         const auto epoch=qualified_.epoch;
         *this = {};

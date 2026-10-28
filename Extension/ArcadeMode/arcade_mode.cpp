@@ -125,6 +125,7 @@ std::atomic<bool> surface_geometry_available{};
 TrafficSurfaceMotion traffic_surface_snapshot;
 std::atomic<bool> traffic_surface_available{};
 std::array<AirRotation, 4> rotations;
+std::array<AirRotation, 4> prewinds;
 std::array<NativeCharge, 4> native_charges;
 // Bounded edge evidence at the game-facing input boundary, not requested lab input.
 InputTelemetryLink input_telemetry;
@@ -642,6 +643,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         if (!valid || owner_changed || observation_gap || bail || release.started) {
             arcade_input.cancel_commands();
             for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
             for (auto& charge : native_charges) charge.cancel();
             neutral_delivery = {}; retire_playback_packets();
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
@@ -709,6 +711,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             std::lock_guard lock(ollie_mutex);
             arcade_input.cancel_commands();
             for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
         }
         input_telemetry.client(BalanceFailureEvidence{now, static_cast<unsigned>(kind), serial});
     }
@@ -1665,6 +1668,7 @@ static void withdraw_controller_authority() noexcept {
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
+    for(auto& prewind:prewinds)prewind.reset();
     for(auto& charge:native_charges)charge.cancel();
     neutral_delivery={};retire_playback_packets();
     set_arcade_push_intent(false);set_arcade_air_intent(false,0,0,0,0,false);
@@ -1720,6 +1724,7 @@ void set_enabled(bool value, bool persist) noexcept {
         arcade_input.enable(value);
         arcade_input.cancel_commands();
         for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
         mode_enabled.store(value, std::memory_order_release);
         camera_diagnostics::capture.mode(value,GetTickCount64());
         camera_reset_generation.fetch_add(1, std::memory_order_release);
@@ -1919,6 +1924,7 @@ void on_client_tick() noexcept {
                 if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
                         input.available ? 1u : 0u, gameplay && focus_available && watch.valid && frame.valid)) {
                     for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
                     for (auto& charge : native_charges) charge.cancel();
                     neutral_delivery = {}; retire_playback_packets();
                     set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
@@ -2069,6 +2075,7 @@ void on_client_tick() noexcept {
             native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
             for (auto& charge : native_charges) charge.cancel();
             set_arcade_air_intent(false,0,0,0,0,false);
         }
@@ -2151,6 +2158,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (owner_epoch != arcade_input.owner_epoch()) {
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
+            for (auto& prewind : prewinds) prewind.reset();
             for (auto& charge : native_charges) charge.cancel();
             neutral_delivery = {}; retire_playback_packets();
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
@@ -2282,6 +2290,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[NativeControllerRoute::session].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
             rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
+        const auto prewind = prewinds[NativeControllerRoute::session].poll_preparation(now,physical_buttons,
+            rotation_enabled,rotation_native,crouched,(result.right_y>0),
+            reference || action.owned || result.phase==3 || hop_origin.valid,spin_mode());
+        if (prewind.owns_left) rotation=prewind;
         // Controller route air publication begin.
         {
             const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
