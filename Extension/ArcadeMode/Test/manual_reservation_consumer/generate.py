@@ -187,16 +187,16 @@ def generate(root,variant='current'):
     void coupling_cases(){
      for(unsigned hz:{30u,60u})for(bool nose:{false,true}){
       const unsigned contact=nose?0x8000u:0x4000u;
-      const short inward=nose?-20000:20000,outward=static_cast<short>(-inward);
+      const short inward=nose?20000:-20000,outward=static_cast<short>(-inward);
       enter_ground(nose,hz);
       // New physical correction cannot borrow an earlier post-integration decision.
       remap(0,inward,15000);expect(last_pad.correction&&last_pad.y==0,"new physical direction waits for its own original-step model decision");
       physical_step(hz,contact);remap(0,inward,15000);
-      expect(last_pad.correction&&last_pad.y==(nose?-32768:32767),"actual protected model correction becomes full-scale native LSY");
+      expect(last_pad.correction&&last_pad.y==(nose?32767:-32768),"actual protected model correction becomes full-scale native LSY");
       expect(last_pad.ry==(nose?20000:-20000)&&last_pad.x==15000,"partial RS and independent horizontal steering coexist with projected LSY");
       expect(!last_pad.drive&&!(last_pad.buttons&0x4000u),"admitted Manual cannot acquire SDK drive or automatic native X push despite granted outer drive permission");
       trace("effective-inward",hz,nose,inward);
-      for(unsigned poll=0;poll<4;++poll){++clock_ms;remap(0,inward,15000);expect(last_pad.y==(nose?-32768:32767)&&!last_pad.drive,"repeated input polls reuse force decision without creating drive authority");}
+      for(unsigned poll=0;poll<4;++poll){++clock_ms;remap(0,inward,15000);expect(last_pad.y==(nose?32767:-32768)&&!last_pad.drive,"repeated input polls reuse force decision without creating drive authority");}
       remap(0,0,15000);expect(last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),"physical neutral withdraws LSY while preserving native manual hold");
       remap(0,outward,15000);expect(last_pad.correction&&last_pad.y==0,"opposite physical input cannot reuse old inward force");
       competing_left_owner=true;remap(0,inward);expect(!last_pad.correction&&last_pad.x==1111&&last_pad.y==2222,"manual projection yields to actual competing left-stick owner");

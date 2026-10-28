@@ -67,16 +67,18 @@ struct GameplayProfile {
         const auto correction_diff = difficulty == GameplayDifficulty::easy ? .75f : 1.0f;
         const auto manual_diff = difficulty == GameplayDifficulty::easy ? .5f :
             difficulty == GameplayDifficulty::hard ? 2.0f : 1.0f;
+        // Manual inputs are digital: reduce the impulse per held frame and
+        // outward lean growth independently; retain noise, fatigue and endpoints.
         return {
             manual ? value(700, 700, s) : grind ? value(2500, 2500, s) : value(3000, 1000, s),
             manual ? value(100, 100, s) : grind ? value(30, 30, s) : value(180, 180, s),
-            value(.02f, .02f, s) * gravity_diff,
+            (manual ? .008f * s : value(.02f, .02f, s)) * gravity_diff,
             manual ? value(.099f, .07f, s) * manual_diff : grind ? value(.104f, .09f, s) : value(.5f, .2f, s),
             value(1, 1, s), manual ? value(5, 5, s) : grind ? value(5, 5, s) : value(10, 10, s),
             manual ? value(20, 20, s) : grind ? std::max(6.0f, value(7.07f, 6, s)) : value(20, 20, s),
             value(1, 1, s), manual ? value(.25f, .25f, s) : grind ? value(.31f, .1f, s) : value(1, 1, s),
             manual ? value(.8f, .8f, s) : grind ? value(.607f, .5f, s) : value(1, 1, s),
-            value(10, 10, s) * correction_diff, value(4000, 4000, s),
+            (manual ? 3.0f * s : value(10, 10, s)) * correction_diff, value(4000, 4000, s),
             grind ? value(2, 2, s) : 0, grind ? value(-.286f, 0, s) : 0
         };
     }

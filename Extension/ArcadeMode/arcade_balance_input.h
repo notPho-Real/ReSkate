@@ -9,13 +9,13 @@ namespace dingosdk::arcade_mode {
 // the input owner. A wins when both controls are held; neutral is not required.
 struct ManualBalanceButtons { bool a{}, b{}; };
 constexpr float manual_balance_correction(ManualBalanceButtons buttons) noexcept {
-    return buttons.a ? -1.0f : buttons.b ? 1.0f : 0.0f;
+    return buttons.a ? 1.0f : buttons.b ? -1.0f : 0.0f;
 }
 // Coordinate conversion only, after the existing correction/ownership gates.
 // Unknown or fractional values cannot become a new native correction request.
 constexpr std::int16_t manual_balance_native_y(float effective_correction) noexcept {
-    return effective_correction == -1.0f ? std::int16_t{32767} :
-        effective_correction == 1.0f ? std::int16_t{-32768} : std::int16_t{0};
+    return effective_correction == 1.0f ? std::int16_t{32767} :
+        effective_correction == -1.0f ? std::int16_t{-32768} : std::int16_t{0};
 }
 // Compatibility boundary delegates normalization to the existing controller
 // rather than defining another axis threshold. Configured layouts should pass
@@ -27,8 +27,8 @@ inline ManualBalanceButtons manual_balance_buttons(short y, std::uint32_t button
     const auto direction = normalized.held_direction();
     return {direction >= 7, direction >= 1 && direction <= 3};
 }
-// Left stick: right increases rail lean; up reduces manual lean and down
-// increases it. Manual and Nose share these controls, with distinct endpoints.
+// Left stick: right increases rail lean; up increases manual lean (screen up) and down
+// decreases it. Manual and Nose share these controls, with distinct endpoints.
 // Caller supplies the raw physical sample, never the synthetic game-facing pad.
 inline float balance_correction(BalanceKind kind, short left_x, short left_y, bool available,
                                 std::uint32_t buttons = 0) noexcept {

@@ -56,7 +56,7 @@ void neutral_drift_vectors() {
         if(branch==4)control={1,true,true,1000};
         if(branch==5)control={1,true,true,1001};
         const auto first=physics.sample(1.f/60,control);
-        check(first.velocity==(draws?14.f:branch==2?-10.f:branch==3?0.f:10.f)/4096,
+        check(first.velocity==(draws?14.f:branch==2?-3.f:branch==3?0.f:3.f)/4096,
               "neutral/unarmed draws once; inward, protected and full held correction draw zero times");
         physics.adjust({1,0,0,0,0,0});
         check(physics.sample(1.f/60,0).velocity==(draws?1.f:14.f)/4096,
@@ -93,10 +93,14 @@ void neutral_trajectories_and_boundaries() {
         Expected{0x3d44a608,0x3b67d70a,0x3e73b648},Expected{0x3d6af26f,0x3b6851eb,0x3e8b4397}};
     for(bool nose:{false,true})for(bool longer:{false,true}) {
         ManualPhysics physics;physics.begin(nose);
+        float lean=0,speed=nose?-1.f:1.f;
         for(const auto& expected:longer?long_steps:short_steps){
             const auto actual=physics.sample(longer?.034f:.017f,0);
             const auto sign=nose?0x80000000u:0u;
-            const auto position=std::bit_cast<float>(expected.position|sign);
+            const float dt=longer?.034f:.017f;
+            const float instability=1+std::bit_cast<float>(expected.time)*.07f;
+            lean+=(lean*.008f*instability)*dt*60; lean+=(speed*instability)*dt*60;
+            const auto position=lean/4096; speed=std::bit_cast<float>(expected.velocity|sign)*4096;
             check(std::abs(actual.position-position)<=4*std::numeric_limits<float>::epsilon()*std::abs(position)&&
                   std::bit_cast<std::uint32_t>(actual.velocity)==(expected.velocity|sign)&&
                   std::bit_cast<std::uint32_t>(actual.elapsed)==expected.time,
@@ -107,7 +111,7 @@ void neutral_trajectories_and_boundaries() {
         ManualPhysics physics;physics.begin(nose);physics.adjust({1,0,0,lean,0,0});
         BalanceControl controls;controls.begin_manual(0);controls.poll_manual(999,lean,{true,true},true);
         const auto actual=physics.sample(1.f/60,controls.manual_input());
-        check(actual.velocity==(lean<0?0.f:-10.f)/4096,"both configured controls retain A priority and outward protection");
+        check(actual.velocity==(lean<0?3.f:0.f)/4096,"both configured controls retain A priority and outward protection");
         physics.adjust({1,0,0,0,0,0});
         check(physics.sample(.017f,0).velocity==14.f/4096,"both-controls correction/protection never consumes a drift draw");
     }
@@ -189,7 +193,7 @@ int main() {
         const auto sign = nose ? -1.0f : 1.0f;
         check(initial.valid && initial.active && near(initial.position, sign * (1 + .07f / 60) / 4096),
               "position integrates the existing velocity and selected instability before correction");
-        check(near(initial.velocity, -sign * 9 / 4096), "correction uses ten internal units per reference step");
+        check(near(initial.velocity, -sign * 2 / 4096), "correction uses three internal units per reference step");
         check(near(initial.repeat_pressure, 693), "repeat pressure decays by the frame-scaled seven internal units");
         check(physics.begin(nose), "same active balance request is idempotent rather than a history reset");
         const auto continued = physics.sample(1.0f / 60, nose ? 1.0f : -1.0f);
@@ -230,7 +234,7 @@ int main() {
         check(near(zero_draw.sample(1.0f / 60, 0).velocity, 6.0f / 4096),
               "neutral drift recovers positively from a zero random draw instead of sticking at zero");
         ManualPhysics zero_velocity({}, 1); zero_velocity.begin(nose);
-        check(zero_velocity.sample(1.0f / 600, nose ? 1.0f : -1.0f).velocity == 0,
+        check(zero_velocity.sample(1.0f / 180, nose ? 1.0f : -1.0f).velocity == 0,
               "physical correction can exactly cancel initial drift");
         check(near(zero_velocity.sample(1.0f / 60, 0).velocity, 14.0f / 4096),
               "zero velocity selects positive neutral drift on the next nonzero draw");
@@ -244,17 +248,17 @@ int main() {
         const auto prior=held.sample(1.0f/60,toward); // Lean and velocity now have opposite signs.
         BalanceControl controls;
         controls.poll(0,BalanceKind::manual,prior.position,0,0,true);
-        controls.poll(elapsed,BalanceKind::manual,prior.position,0,nose?-32768:32767,true);
+        controls.poll(elapsed,BalanceKind::manual,prior.position,0,nose?32767:-32768,true);
         const auto crossed=held.sample(1.0f/60,controls.manual_input());
         check(crossed.position*toward>0, "physical lean crosses zero during integration before safe-period direction is tested");
-        check(near(crossed.velocity,(elapsed<1000?9.0f:19.0f)*toward/4096),
+        check(near(crossed.velocity,(elapsed<1000?2.0f:5.0f)*toward/4096),
               "post-integration outward hold is suppressed before1000ms and acts at the exact boundary");
         if(elapsed<1000) {
             const auto noise=held.sample(1.0f/60,0);
-            check(near(noise.velocity,9.33f*toward/4096), "suppressed held correction preserves the neutral RNG footprint");
+            check(near(noise.velocity,14.f*toward/4096), "suppressed held correction preserves the neutral RNG footprint");
         }
         ManualPhysics neutral({},1);neutral.begin(nose);neutral.sample(1.0f/60,toward);
-        check(near(neutral.sample(1.0f/60,0).velocity,9.33f*toward/4096),
+        check(near(neutral.sample(1.0f/60,0).velocity,14.f*toward/4096),
               "true neutral consumes its random drift update rather than behaving as a suppressed hold");
     }
     for(bool nose : {false,true}) {
@@ -271,7 +275,7 @@ int main() {
         check(typed.begin(!original_nose)&&typed.nose()!=original_nose,
               "independently admitted opposite manual type installs its physical endpoint policy");
         const auto next=typed.sample(1.0f/60,-direction);
-        check(near(next.velocity,-direction*5.25f/4096)&&next.elapsed>prior.elapsed,
+        check(near(next.velocity,-direction*1.75f/4096)&&next.elapsed>prior.elapsed,
               "typed transition applies repeat multiplier to retained velocity and preserves accumulated instability");
         check(near(next.repeat_pressure,693)&&near(prior.repeat_pressure,686),
               "a changed manual type performs new setup and resets section repeat pressure");
@@ -328,7 +332,7 @@ int main() {
             const auto& state = session.model().state();
             const auto goal = std::clamp(-8 * state.balance - 3 * state.balance_velocity * 60, -1.0f, 1.0f);
             const auto magnitude = goal == 0 ? 0 : 7849 + std::abs(goal) * (32767 - 7849);
-            const auto y = static_cast<std::int16_t>(goal < 0 ? magnitude : -magnitude);
+            const auto y = static_cast<std::int16_t>(goal < 0 ? -magnitude : magnitude);
             const auto out = sample(now, SkatePose::riding, wanted, y, true);
             check(out.manual.owns && !physics.closed() && session.model().state().balance_kind == BalanceKind::manual &&
                 balance_meter(session.balance_display_state()).visible,

@@ -10,16 +10,16 @@ void check(bool v,const char* why){++checks;if(!v){std::cerr<<"FAIL: "<<why<<'\n
 bool near(float a,float b){return std::abs(a-b)<.000001f;}
 void digital_states(){
  for(bool a:{false,true})for(bool b:{false,true}){
-  const auto expected=a?-1.0f:b?1.0f:0.0f;
+  const auto expected=a?1.0f:b?-1.0f:0.0f;
   check(manual_balance_correction({a,b})==expected,"configured A precedes B including both held");
   const auto raw=static_cast<std::uint32_t>((a?1u:0u)|(b?2u:0u));
   check(balance_correction(BalanceKind::manual,0,0,true,raw)==expected,"raw Dpad compatibility path retains independent A and B pressed states");
  }
  for(short y:{short{16000},short{25000},short{32767},short{-16000},short{-32768}})
-  check(balance_correction(BalanceKind::manual,0,y,true)==(y>0?-1.0f:1.0f),"active compatibility axes produce a full digital step rather than fractional force");
+  check(balance_correction(BalanceKind::manual,0,y,true)==(y>0?1.0f:-1.0f),"active compatibility axes produce a full digital step rather than fractional force");
  for(short y:{short{-9000},short{-7849},short{-5000},short{0},short{5000},short{7849},short{9000}})
   check(balance_correction(BalanceKind::manual,0,y,true)==0,"compatibility bridge uses controller-normalized neutral rather than a second balance deadzone");
- check(manual_balance_native_y(-1)==32767 && manual_balance_native_y(1)==-32768 && manual_balance_native_y(0)==0,
+ check(manual_balance_native_y(1)==32767 && manual_balance_native_y(-1)==-32768 && manual_balance_native_y(0)==0,
   "effective correction converts to the existing native full-range LS convention for both manual types");
  for(float invalid:{.5f,-.5f,std::numeric_limits<float>::infinity(),std::numeric_limits<float>::quiet_NaN()})
   check(manual_balance_native_y(invalid)==0,"fractional or nonfinite values cannot fabricate a native correction");
@@ -28,7 +28,7 @@ void digital_states(){
 void timing_and_physics(){
  for(bool nose:{false,true})for(int lean_sign:{-1,1})for(bool a:{false,true})for(bool b:{false,true})
  for(std::uint64_t elapsed:{0u,1u,999u,1000u,1001u})for(float dt:{1.0f/60,1.0f/30}){
-  const ManualBalanceButtons buttons{a,b};const float direction=a?-1.0f:b?1.0f:0.0f;
+  const ManualBalanceButtons buttons{a,b};const float direction=a?1.0f:b?-1.0f:0.0f;
   BalanceControl controls;controls.poll_manual(1000,static_cast<float>(lean_sign)*.2f,buttons,true);
   const auto effective=controls.poll_manual(1000+elapsed,static_cast<float>(lean_sign)*.2f,buttons,true);
   const bool released=(!a&&!b) || elapsed>0;
@@ -50,14 +50,14 @@ void timing_and_physics(){
 void release_and_boundaries(){
  for(std::uint64_t cadence:{17u,34u}){
   BalanceControl controls;controls.poll_manual(0,0,{true,false},true);
-  check(controls.poll_manual(cadence,0,{true,false},true)==-1,"held entry direction becomes effective on the next30/60Hz sample");
+  check(controls.poll_manual(cadence,0,{true,false},true)==1,"held entry direction becomes effective on the next30/60Hz sample");
   const auto elapsed=controls.manual_input().elapsed_ms;
   check(controls.poll_manual(2*cadence,0,{},true)==0 && !controls.manual_input().held,"neutral releases the control without a manufactured press");
-  check(controls.poll_manual(3*cadence,0,{false,true},true)==1 && controls.manual_input().elapsed_ms>elapsed,
+  check(controls.poll_manual(3*cadence,0,{false,true},true)==-1 && controls.manual_input().elapsed_ms>elapsed,
    "fresh opposite or repressed correction retains original section clock");
   check(controls.poll_manual(4*cadence,0,{true,true},false)==0 && !controls.manual_input().held,"unavailable input cannot correct balance");
-  check(controls.poll_manual(5*cadence,0,{true,true},true)==-1,"same-section input reacquisition retains its original clock and armed state");
-  check(controls.poll_manual(6*cadence,0,{true,true},true)==-1,"A priority survives held input without a renewed entry instant");
+  check(controls.poll_manual(5*cadence,0,{true,true},true)==1,"same-section input reacquisition retains its original clock and armed state");
+  check(controls.poll_manual(6*cadence,0,{true,true},true)==1,"A priority survives held input without a renewed entry instant");
   controls.reset_manual();check(!controls.manual_input().held && !controls.manual_input().released,"StopBalance clears control state without altering physical history");
   check(controls.poll_manual(7*cadence,0,{true,false},true)==0,"new owner or menu reset cannot borrow the previous section's released flag");
   check(controls.poll_manual(6*cadence,0,{true,false},true)==0,"clock rollback cancels correction continuity");
@@ -66,7 +66,7 @@ void release_and_boundaries(){
  }
  for(bool nose:{false,true})for(bool unsafe:{false,true})for(float dt:{.017f,.034f}){
   ManualPhysics model({},1);model.begin(nose);BalanceControl controls;PhysicalBalanceSample out{};
-  const int sign=(nose!=unsafe)?1:-1;const ManualBalanceButtons buttons{sign<0,sign>0};
+  const int sign=(nose!=unsafe)?1:-1;const ManualBalanceButtons buttons{sign>0,sign<0};
   std::uint64_t now{};
   for(unsigned i=0;i<2000 && model.active();++i){
    controls.poll_manual(now,out.position,buttons,true);out=model.sample(dt,controls.manual_input());
@@ -100,7 +100,7 @@ void input_lease_continuity(){
  }
  for(std::uint64_t elapsed:{999u,1000u,1001u}){
   BalanceControl controls;controls.begin_manual(1000);controls.poll_manual(1000,1,{},false);
-  const float value=controls.poll_manual(1000+elapsed,1,{false,true},true);
+  const float value=controls.poll_manual(1000+elapsed,1,{true,false},true);
   check(value==(elapsed<1000?0:1)&&controls.manual_input().elapsed_ms==elapsed,
         "native section start precedes first available input rather than borrowing its timestamp");
  }
@@ -115,10 +115,10 @@ void thumb_travel(){
   std::uint64_t now{};
   for(const auto& frame:trace){
    const auto effective=controls.poll(now,BalanceKind::manual,0,frame.x,frame.y,true,frame.pad);
-   check(effective==frame.expected,"human-like partial/diagonal/neutral travel and Dpad priority remain digital at30/60Hz");
+   check(effective==-frame.expected,"human-like partial/diagonal/neutral travel and Dpad priority remain digital at30/60Hz");
    const float dt=static_cast<float>(cadence)/1000;
    const auto actual=model.sample(dt,controls.manual_input());
-   const auto expected=oracle.sample(dt,PhysicalManualControl{frame.expected,frame.expected!=0,true,now});
+   const auto expected=oracle.sample(dt,PhysicalManualControl{-frame.expected,frame.expected!=0,true,now});
    check(near(actual.position,expected.position)&&near(actual.velocity,expected.velocity)&&actual.exit==expected.exit,
     "mixed stick/Dpad held-release travel reaches the unchanged physical adapter with exact digital strength");
    now+=cadence;
@@ -153,7 +153,7 @@ void admitted_pad_boundary(){
    const auto admitted=input.balance_admission(now,kind);
    return admitted.valid&&!blocked?manual_balance_native_y(effective):physical;
   };
-  check(route(1000,-1,false,0)==32767 && route(1000,1,false,0)==-32768 && route(1000,0,false,2345)==0,
+  check(route(1000,1,false,0)==32767 && route(1000,-1,false,0)==-32768 && route(1000,0,false,2345)==0,
    "qualified composition sends digital/neutral correction through the preserved native LS Y channel");
   check(route(1000,-1,true,2345)==2345,"another actor's channel is never overwritten");
   check(route(1151,-1,false,2345)==2345,"stale original admission proof cannot qualify native output");
@@ -167,5 +167,39 @@ void admitted_pad_boundary(){
    "Arcade OFF restores physical directions and axes without any correction ownership");
  }
 }
+
+void signed_trajectories() {
+ for(bool nose:{false,true}) for(float dt:{1.f/30,1.f/60,1.f/120}) {
+  std::array<float,3> positions{};
+  for(int direction:{-1,0,1}) {
+   ManualPhysics physics({},1); physics.begin(nose);
+   physics.adjust({1,0,0,0,0,0});
+   BalanceControl controls; controls.begin_manual(0);
+   InputEvents input;
+   auto mapping=InputBalanceControls::vertical(nose?InputBalanceKind::nose:InputBalanceKind::manual);
+   PhysicalBalanceSample out{};
+   for(unsigned i=0;i<static_cast<unsigned>(std::lround(.1f/dt));++i) {
+    const auto now=1000+static_cast<std::uint64_t>(i*dt*1000);
+    input.sample(now,{0,0,static_cast<short>(direction*25000)},mapping,true,InputPolicy::production());
+    const auto pair=input.digital_state().configured(mapping);
+    controls.poll_manual(now,out.position,{pair.first,pair.second},true);
+    out=physics.sample(dt,controls.manual_input());
+   }
+   positions[direction+1]=out.position;
+   check(out.active && std::abs(out.position)<.05f,"100ms correction is manageable for both manual types and cadences");
+   if(direction)check(out.position*direction>0,"physical UP raises actual balance; DOWN lowers it");
+   State state{}; state.combo_active=true;state.balance_kind=BalanceKind::manual;state.balance=out.position;
+   check(balance_meter(state).cursor_y==-out.position,"HUD follows corrected physical trajectory without inversion");
+  }
+  check(positions[0]<positions[2] && std::abs(positions[1])<.05f,"neutral drift stays bounded while UP and DOWN trajectories separate");
+  ManualPhysics physics({},1);physics.begin(nose);PhysicalBalanceSample out{};
+  for(unsigned i=0;i<static_cast<unsigned>(std::lround(6.f/dt));++i) {
+   const float predicted=out.position+out.velocity*24;
+   const float correction=predicted>.03f?-1.f:predicted<-.03f?1.f:0;
+   out=physics.sample(dt,correction);
+   check(out.active,"predictive brief corrections sustain six seconds without disabling endpoints");
+  }
+ }
 }
-int main(){digital_states();timing_and_physics();release_and_boundaries();input_lease_continuity();thumb_travel();exclusions();admitted_pad_boundary();std::cout<<checks<<" digital manual input checks passed\n";}
+}
+int main(){signed_trajectories();digital_states();timing_and_physics();release_and_boundaries();input_lease_continuity();thumb_travel();exclusions();admitted_pad_boundary();std::cout<<checks<<" digital manual input checks passed\n";}

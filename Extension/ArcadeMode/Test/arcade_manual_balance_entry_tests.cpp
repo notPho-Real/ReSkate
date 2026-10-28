@@ -73,7 +73,7 @@ void composed(){
     for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(float speed:{0.0f,8.0f}){
         Pipeline p(nose,cadence,speed);p.enter();
         while(p.now<2500){
-            const short correction=p.combo.model().state().balance_velocity>0?25000:-25000;
+            const short correction=p.combo.model().state().balance_velocity>0?-25000:25000;
             const auto previous_time=p.modeled_balance.elapsed;
             p.step(p.wanted(),correction,p.now>=1500&&p.label_sequence==0);
             check(p.modeled_balance.elapsed>previous_time,"late name presentation cannot restart physical balance history");
@@ -82,7 +82,7 @@ void composed(){
     }
     for(bool nose:{false,true})for(bool unsafe:{false,true}){
         Pipeline p(nose,17);p.enter();
-        const auto raw=static_cast<short>((nose!=unsafe)?-32768:32767);
+        const auto raw=static_cast<short>((nose!=unsafe)?32767:-32768);
         while(p.now<7000&&!p.combo.manual_putdown()&&!p.combo.failed_section())p.step(p.wanted(),raw);
         if(unsafe){
             check(p.combo.failed_section()&&p.failed&&!p.exiting,"unsafe physical endpoint routes failure without substituting safe putdown");
