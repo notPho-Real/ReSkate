@@ -1350,10 +1350,10 @@ void finish_angular_writer_observation(const AngularWriterEvidence& value) noexc
     angular_writer_capture.settle(input_telemetry.client(r));
 }
 void observe_angular_controller(std::uint64_t now,const NativeInputFrame& frame,std::uint16_t buttons,unsigned phase,
-        bool enabled,bool ready,bool conflict,bool allowed,const AirRotation::Output& rotation) noexcept {
+        bool enabled,bool native_ready,bool conflict,bool allowed,const AirRotation::Output& rotation) noexcept {
     if(!angular_writer_capture.live()||!input_capture_correlation.angular_writer_active(now))return;
     AngularWriterEvidence r;angular_writer_context(r,now,frame);
-    r.buttons=buttons;r.phase=phase;r.enabled=enabled;r.ready=ready;r.conflict=conflict;r.allowed=allowed;r.owns_left=rotation.owns_left;
+    r.buttons=buttons;r.phase=phase;r.enabled=enabled;r.ready=native_ready;r.conflict=conflict;r.allowed=allowed;r.owns_left=rotation.owns_left;
     r.requested_rate=rotation.yaw_rate;r.published_rate=allowed?rotation.yaw_rate:0;
     r.spin_mode=static_cast<unsigned>(rotation.spin.mode);r.facts=rotation.spin.facts.encode();r.armed=rotation.spin.physical_armed;
     r.spin_epoch=rotation.spin.epoch;r.spin_serial=rotation.spin.serial;
