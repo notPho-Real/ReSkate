@@ -99,6 +99,10 @@ public:
                 admission.manual_balance_admitted = false;
             }
         }
+        // Only an already-started revert may cross the measured native slide state.
+        if (auxiliary_.busy() && !grab_actor_ && native.required && native.fresh(now) &&
+            !native.airborne && !native.rail_family && native.flip.state==101 && native.flip.mode<=1)
+            admission.action_fresh=true;
         if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_ || admission.export_rail_requests != export_rail_)) reset();
         offboard_ = admission.offboard; board_binding_ = admission.board_binding; export_rail_ = admission.export_rail_requests;
         policy_ = admission.input_policy;
@@ -224,7 +228,8 @@ public:
             context == InputContext::air, context == InputContext::ground, admission.inspected_stance,
             busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
-        if (!admission.inspected_stance || (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
+        if ((grab_actor_ ? !admission.inspected_stance : !revert_context(admission,now)) ||
+            (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
@@ -398,6 +403,12 @@ private:
         current_->unsupported = result == InputDisposition::unsupported;
         return result;
     }
+    static bool revert_context(const InputAdmission& admission,std::uint64_t now) noexcept {
+        const auto& n=admission.native_context;
+        if(!n.required)return admission.inspected_stance;
+        return n.fresh(now) && !n.airborne && !n.rail_family &&
+            (n.flip.state==100 || n.flip.state==101 || n.flip.state==103) && n.flip.mode<=1;
+    }
     InputDisposition request_auxiliary(const InputRequest& request) noexcept {
         auto& out = current_->action;
         const auto& admission = admission_;
@@ -428,9 +439,14 @@ private:
                 grab_actor_ = true; grab_actor_episode_ = admission.native_context.air_episode();
             }
         } else {
-            out.result = !admission.inspected_stance || (classic && admission.nollie) ? DispatchResult::unsafe_context :
-                auxiliary_.request_revert(admission.action_mode == ActionExperiment::revert_backside ? RevertSide::backside : RevertSide::frontside,
-                    {admission.nollie, false, false}, now_, context);
+            const bool backside = admission.action_mode == ActionExperiment::revert_backside ||
+                (classic && (request.direction==1 || request.direction==4 || request.direction==7));
+            out.request_kind=backside?4u:3u;
+            const bool native_start = !admission.native_context.required ||
+                (admission.native_context.flip.state==100 && admission.native_context.flip.mode<=1);
+            out.result = !native_start || !revert_context(admission,now_) || (classic && admission.nollie) ? DispatchResult::unsafe_context :
+                auxiliary_.request_revert(backside ? RevertSide::backside : RevertSide::frontside,
+                    {admission.nollie, admission.mirror_x, false}, now_, context);
         }
         return out.result == DispatchResult::started ? InputDisposition::started :
             out.result == DispatchResult::busy ? InputDisposition::waiting : InputDisposition::unsupported;

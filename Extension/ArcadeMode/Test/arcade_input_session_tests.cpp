@@ -428,6 +428,7 @@ struct ConformanceSession {
         if(next_air&&!air)++episode;air=next_air;
         admission.tick=now/17;
         admission.native_context={true,true,{1,1,1},++step,now,false,air,episode,episode};
+        admission.native_context.flip.state=air?200u:100u;admission.native_context.flip.mode=1;
         const auto out=session.poll(now,physical,0,0,admission);
         if(conformance_record)conformance_record(trace,now,out,session.diagnostic(),session.history());
         return out;
@@ -989,8 +990,29 @@ void native_pending_and_active_flights(){
 }
 
 }
+void native_revert_stances() {
+ for(bool mirrored:{false,true})for(short x:{short{-25000},short{25000}}) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=0xc000;
+  h.admission.inspected_stance=false;h.admission.mirror_x=mirrored;
+  auto poll=[&](std::uint64_t now,unsigned state,unsigned rt){
+   raw.state=state;raw.words[0]=mirrored?0u:0x20u;
+   auto f=producer.observe(now,owner,raw,{true,-1});
+   h.admission.native_context=InputNativeContext::from_frame(f);h.admission.action_fresh=state==100;
+   return h.poll(now,{0,x,0,0,static_cast<std::uint8_t>(rt)});
+  };
+  poll(1000,100,0);auto out=poll(1017,100,255);
+  check(out.action.owned,"valid native stance does not require a particular stance bit value");
+  out=poll(1047,101,255);
+  check(out.action.owned && (out.action.pad.left_x>0)==((x>0)!=mirrored),"native101 continues the existing mirrored FS/BS recipe");
+  check(!poll(1252,100,255).action.owned,"revert ownership expires without extending the recipe");
+  check(!poll(1300,100,255).action.owned,"held RT cannot repeat");
+  poll(1317,100,0);check(poll(1334,100,255).action.owned,"released RT rearms a successive revert");
+  poll(1600,101,0);check(!poll(1617,101,255).action.owned,"transitional slide does not admit a new revert");
+ }
+}
 int main() {
-    jump_idle_tests::run();
+    native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();
