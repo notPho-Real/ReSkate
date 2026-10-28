@@ -26,6 +26,20 @@ inline SkatePose native_rotation_pose(const NativeInputFrame& frame, SkatePose o
 class AirRotation {
 public:
     struct Output { bool owns_left{}; std::int16_t x{}, y{}; float yaw_rate{}; SpinCommand spin{}; };
+    // Recover the established native LS body-spin consumer for held shoulders.
+    // Qualification above the actuator still owns episode, freshness and conflicts.
+    // Do not simultaneously command native stick spin and an SDK body rate.
+    static Output native_shoulder_output(Output output, SpinMode mode,
+            std::uint16_t buttons, bool allowed) noexcept {
+        const auto held = static_cast<std::uint16_t>(buttons & BoardChord::pair);
+        if (allowed && mode == SpinMode::held && output.owns_left && output.yaw_rate != 0 &&
+            (held == BoardChord::lb || held == BoardChord::rb)) {
+            output.x = static_cast<std::int16_t>((output.yaw_rate < 0 ? -.97f : .97f) * 32767);
+            output.y = 0;
+            output.yaw_rate = 0; // Native body-spin owns angular speed and constraints.
+        }
+        return output;
+    }
     void reset() noexcept {
         const auto epoch=qualified_.epoch;
         *this = {};
