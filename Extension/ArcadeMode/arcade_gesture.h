@@ -197,6 +197,9 @@ public:
         enabled_ = value; cancel_commands();
         if (native_bound_) invalidate_authority();
     }
+    void observe_native_revert(std::uint64_t now,const NativeInputFrame& frame) noexcept {
+        sessions_[0].observe_native_revert(now,InputNativeContext::from_frame(frame));
+    }
     void cancel_commands() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
     // Ordinary jump and basic-flip recipes own RS, not the independent AIR
     // rotation channel. This is actor metadata, not native clip readiness,

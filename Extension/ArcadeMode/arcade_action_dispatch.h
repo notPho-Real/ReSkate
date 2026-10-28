@@ -7,6 +7,7 @@ enum class DispatchResult : std::uint8_t { started, disabled, busy, unsafe_conte
 struct ActionContext {
     bool experimental_enabled{}, gameplay_fresh{}, airborne{}, riding{}, inspected_grab_stance{};
     bool other_input_owner{};
+    bool verified_manual{};
 };
 // One owner for future grab/revert actuation. Authored flips, manuals and board
 // chords remain external owners. Runtime wiring must supply fresh native context.
@@ -37,7 +38,7 @@ public:
                                   const ActionContext& context) noexcept {
         const auto gate = eligibility(context);
         if (gate != DispatchResult::started) return gate;
-        if (!context.riding || context.airborne) return DispatchResult::unsafe_context;
+        if (!(context.riding || context.verified_manual) || context.airborne) return DispatchResult::unsafe_context;
         return revert_.start(now, side, stance, true) ? DispatchResult::started : DispatchResult::unavailable;
     }
     DispatchResult request_grind(ArcadeTrick trick, RailRelationship rail, const ActionContext& context) const noexcept {
@@ -53,7 +54,7 @@ public:
             if (out.owns_pad) return {true, false, true, true, 0, 0, out.pad.right_x, out.pad.right_y,
                                      out.pad.left_trigger, out.pad.right_trigger, out.pad.buttons};
         } else if (revert_.busy()) {
-            const auto out = revert_.sample(now, context.riding && !context.airborne);
+            const auto out = revert_.sample(now, (context.riding || context.verified_manual) && !context.airborne);
             if (out.owns_sticks) return {true, true, true, true, out.left_x, out.left_y, out.right_x, out.right_y,
                                         out.left_trigger, out.right_trigger, 0};
         }

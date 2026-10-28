@@ -1244,10 +1244,11 @@ using namespace dingosdk::arcade_mode::baseline;
             NativeComboObservation{true, false, true, false, 101, 1, 0xc000},
             NativeComboObservation{true, true, true, true, 101, 1, 0xc000},
             NativeComboObservation{true, true, true, false, 201, 1, 0xc000},
-            NativeComboObservation{true, true, true, false, 401, 1, 0xc000},
-            NativeComboObservation{true, true, true, false, 100, 1, 0x4000}})
+            NativeComboObservation{true, true, true, false, 401, 1, 0xc000}})
             check(!observed_native_revert(rejected, label, 300),
-                "revert acknowledgement retains owner, freshness, bail and riding guards");
+                "revert acknowledgement retains owner, freshness, bail and ground guards");
+        for(unsigned contact:{0x4000u,0x8000u})check(observed_native_revert({true,true,true,false,100,1,contact},label,300),
+            "fresh native revert occurrence can arrive while an actual manual retains wheel contact");
         session.step(observed_pose(transition), 0.05f, 0, observed_native_revert(transition, label, 300));
         check(session.model().state().revert_pending, "independent native label grants one continuation");
         for (int i = 0; i < 5; ++i) session.step(SkatePose::riding, 0.1f, 0, true);

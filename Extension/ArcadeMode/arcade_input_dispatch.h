@@ -506,7 +506,8 @@ public:
                 continue;
             }
             if (environment.auxiliary_enabled && event.token.source == InputSource::triggers && event.token.code == 1 &&
-                event.token.edge == InputEdge::press && environment.context == InputContext::ground)
+                event.token.edge == InputEdge::press && (environment.context == InputContext::ground ||
+                    (environment.context == InputContext::balance && environment.branch_ready)))
                 { const auto match = consume(event); enqueue(InputAction::revert, now, 1, environment,1,0,0,0,{},&match); }
             if (event.token.source != InputSource::buttons || event.owners) continue;
             const auto code = event.token.code;

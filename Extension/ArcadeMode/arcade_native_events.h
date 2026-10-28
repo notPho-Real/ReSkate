@@ -63,6 +63,7 @@ inline bool observed_native_revert(const NativeComboObservation& sample,
     // Neither physics state alone nor an input request acknowledges a revert.
     return sample.valid && sample.score_valid && !sample.bailed &&
         (sample.state == 100 || sample.state == 101) &&
-        observed_pose(sample) == SkatePose::riding && observed_revert_label(label, now);
+        (observed_pose(sample) == SkatePose::riding || balance_kind(observed_pose(sample))==BalanceKind::manual) &&
+        observed_revert_label(label, now);
 }
 }

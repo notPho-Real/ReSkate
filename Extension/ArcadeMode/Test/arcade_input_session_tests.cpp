@@ -1011,8 +1011,47 @@ void native_revert_stances() {
   poll(1600,101,0);check(!poll(1617,101,255).action.owned,"transitional slide does not admit a new revert");
  }
 }
+void native_manual_revert_links() {
+ for(bool nose:{false,true})for(unsigned fault=0;fault<6;++fault) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.crouch_mode=1;raw.words[1]=nose?0x8000u:0x4000u;
+  auto poll=[&](std::uint64_t now,unsigned state,unsigned rt,bool switched){
+   raw.state=state;raw.words[0]=switched?0x20u:0u;
+   auto f=producer.observe(now,owner,raw,{true,-1});
+   h.admission.native_context=InputNativeContext::from_frame(f);
+   h.admission.balance_generations=h.admission.native_context.generations;
+   h.admission.manual_balance_admitted=state==100&&now<1300&&fault!=1;
+   h.admission.pose=state==100&&now<1300?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
+   h.admission.action_fresh=state==100;h.admission.manual_safe=state==100;
+   return h.poll(now,{0,0,0,0,static_cast<std::uint8_t>(rt)});
+  };
+  poll(1000,100,0,false);auto out=poll(1017,100,255,false);
+  check(out.action.owned==(fault!=1),"only independently admitted Manual/Nose may transfer ownership to RT");
+  if(fault==1)continue;
+  poll(1100,101,0,false);poll(1200,101,0,false);poll(1300,101,0,false);
+  if(fault!=2)h.session.observe_native_revert(1300,h.admission.native_context);
+  if(fault==4)++owner.core;
+  out=poll(fault==5?2600u:1334u,100,0,fault!=3);
+  check(out.manual.owns==(fault==0),"opposite manual requires native revert, changed stance, same owner and bounded grace");
+  if(fault==0)check(out.manual.request==(nose?-1:1)&&out.right_y==(nose?-20000:20000)&&!out.manual.confirmed,
+   "handoff requests opposite partial native RS without fabricating contact or balance confirmation");
+ }
+ for(bool nose:{false,true}) {
+  ComboSession combo(native_combo_tuning());
+  const auto first=nose?SkatePose::nose_manual:SkatePose::manual;
+  const auto other=nose?SkatePose::manual:SkatePose::nose_manual;
+  combo.step(first,.017f,0);combo.step(first,.017f,0,true);
+  check(combo.model().state().combo_active&&combo.model().state().revert_pending,"native revert from manual opens existing bounded link grace");
+  combo.step(SkatePose::riding,.2f,0);combo.step(other,.2f,0);
+  check(combo.model().state().combo_active&&combo.model().state().balance_kind==BalanceKind::manual&&!combo.model().state().revert_pending,
+    "independently observed opposite manual consumes revert grace without banking");
+  combo.step(other,.017f,0,true);combo.step(SkatePose::riding,.2f,0);combo.step(first,.2f,0);
+  check(combo.model().state().combo_active&&!combo.failed_section(),"both directions can chain twice in one combo");
+  combo.step(SkatePose::bail,.017f,0);check(!combo.model().state().combo_active,"native bail still fails a linked manual combo");
+ }
+}
 int main() {
-    native_revert_stances(); jump_idle_tests::run();
+    native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();

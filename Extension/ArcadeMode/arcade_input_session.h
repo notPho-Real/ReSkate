@@ -43,6 +43,13 @@ public:
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
         takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false;
+        revert_link_={};
+    }
+    // Called only for the existing independently observed native revert event.
+    void observe_native_revert(std::uint64_t now,const InputNativeContext& frame) noexcept {
+        if(revert_link_.direction && !revert_link_.confirmed_at && frame.fresh(now) && frame.generations.owner==revert_link_.owner &&
+            now>=revert_link_.started && now-revert_link_.started<=1500 &&
+            (frame.flip.state==100 || frame.flip.state==101)) revert_link_.confirmed_at=now;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
@@ -138,6 +145,21 @@ public:
         // A performed-Lip observation retires the generic ticket. It does not
         // fabricate a physical Y release or reset the held-event baseline.
         if (!(physical.buttons & 0x8000u) || admission.observed_lip) rail_ = false;
+        if(revert_link_.direction) {
+            const bool expired=now<revert_link_.started || now-revert_link_.started>1500 ||
+                (revert_link_.confirmed_at && now-revert_link_.confirmed_at>1100);
+            if(expired || !native.required || !native.fresh(now) || native.generations.owner!=revert_link_.owner ||
+                native.airborne || native.rail_family || admission.external_owner || physical.lt>30 ||
+                (physical.buttons & 0xf330u)) revert_link_={};
+            else if(revert_link_.confirmed_at && !auxiliary_.busy() && !manual_.busy() && admission.manual_safe && physical.rt<=30 &&
+                native.flip.state==100 && native.flip.mode==1 &&
+                (native.flip.stance&0x20u)!=revert_link_.stance) {
+                // Deliver the existing partial RS manual actuator. Contact/history
+                // acquisition, not this request, establishes the new balance.
+                if(manual_.request(now,revert_link_.direction,false,true,false,
+                    revert_link_.started,revert_link_.recognition)) revert_link_={};
+            }
+        }
         const bool triggers = physical.lt > 30 || physical.rt > 30;
         // Native adapter wiring only: an admitted balance can retain its RS
         // hold when a stance/branch trigger has no competing channel owner.
@@ -160,7 +182,7 @@ public:
         // all current input ownership and native context guards.
         const ActionContext prior_action_context{admission.action_mode != ActionExperiment::observe,
             admission.action_fresh, context == InputContext::air, context == InputContext::ground,
-            admission.inspected_stance, admission.external_owner};
+            admission.inspected_stance, admission.external_owner, verified_manual(admission,now)};
         (void) auxiliary_.sample(now,prior_action_context);
         output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
@@ -226,7 +248,8 @@ public:
         }
         ActionContext action_context{admission.action_mode != ActionExperiment::observe, admission.action_fresh,
             context == InputContext::air, context == InputContext::ground, admission.inspected_stance,
-            busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
+            busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0,
+            verified_manual(admission,now)};
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
         if ((grab_actor_ ? !admission.inspected_stance : !revert_context(admission,now)) ||
             (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
@@ -403,6 +426,12 @@ private:
         current_->unsupported = result == InputDisposition::unsupported;
         return result;
     }
+    static bool verified_manual(const InputAdmission& a,std::uint64_t now) noexcept {
+        return a.manual_balance_admitted && a.branch_ready && a.native_context.required &&
+            a.native_context.fresh(now) && a.native_context.correlates_action(a.balance_generations) &&
+            a.native_context.flip.state==100 && a.native_context.flip.mode==1 &&
+            (a.pose==SkatePose::manual || a.pose==SkatePose::nose_manual);
+    }
     static bool revert_context(const InputAdmission& admission,std::uint64_t now) noexcept {
         const auto& n=admission.native_context;
         if(!n.required)return admission.inspected_stance;
@@ -415,7 +444,7 @@ private:
         const bool grab = request.action == InputAction::grab;
         const bool classic = admission.action_mode == ActionExperiment::classic;
         if (!admission.action_fresh || admission.action_mode == ActionExperiment::off) return InputDisposition::cancelled;
-        if (authored_.busy() || manual_.busy() || auxiliary_.busy() || rail_) return InputDisposition::waiting;
+        if (authored_.busy() || (manual_.busy() && (grab || !verified_manual(admission,now_))) || auxiliary_.busy() || rail_) return InputDisposition::waiting;
         if (request.form != InputForm::ordinary) return request_extension(request);
         out.requested = true; out.request_kind = grab ? 1u : admission.action_mode == ActionExperiment::revert_backside ? 4u : 3u;
         if (grab && admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
@@ -423,7 +452,8 @@ private:
         }
         ActionContext context{admission.action_mode != ActionExperiment::observe, true,
             admission.pose == SkatePose::air, admission.pose == SkatePose::riding, admission.inspected_stance,
-            admission.external_owner || (physical_.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0};
+            admission.external_owner || (physical_.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0,
+            verified_manual(admission,now_)};
         if (grab) {
             out.trick = classic && !request.named_binding && request.presses == 1 ? ArcadeTrick::basic_bs_grab :
                 select_named_trick(TrickFamily::grab, direction(request.direction), request.presses);
@@ -446,7 +476,14 @@ private:
                 (admission.native_context.flip.state==100 && admission.native_context.flip.mode<=1);
             out.result = !native_start || !revert_context(admission,now_) || (classic && admission.nollie) ? DispatchResult::unsafe_context :
                 auxiliary_.request_revert(backside ? RevertSide::backside : RevertSide::frontside,
-                    {admission.nollie, admission.mirror_x, false}, now_, context);
+                    {context.verified_manual ? admission.pose==SkatePose::nose_manual : admission.nollie,
+                     admission.mirror_x, false}, now_, context);
+            if(out.result==DispatchResult::started && context.verified_manual) {
+                revert_link_={admission.pose==SkatePose::manual?1:-1,now_,0,
+                    admission.native_context.generations.owner,admission.native_context.flip.stance&0x20u,
+                    request.recognition?request.recognition->sequence:0};
+                manual_.cancel(); input_.reset_manual_continuity();
+            }
         }
         return out.result == DispatchResult::started ? InputDisposition::started :
             out.result == DispatchResult::busy ? InputDisposition::waiting : InputDisposition::unsupported;
@@ -473,6 +510,8 @@ private:
         const auto physical=InputEvents::normalize(physical_,now_,true,admission_.input_policy);
         return (same_flight || first_landing) && physical.direction==(direction<0?2:8);
     }
+    struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
+        std::uint32_t stance{};std::uint64_t recognition{};} revert_link_;
     UnifiedInput input_{};
     AuthoredPlayback authored_{};
     ManualActuation manual_{};

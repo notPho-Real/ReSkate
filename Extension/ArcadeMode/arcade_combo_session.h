@@ -89,6 +89,7 @@ public:
         if (model_.balance_exit() == BalanceExit::putdown) manual_putdown_ = true;
         if (failure) failed_section_ = true;
         if (kind == BalanceKind::none) failed_section_ = manual_putdown_ = false;
+        if (observed_revert && !failed_section_ && !manual_putdown_) model_.revert();
         if (pose != previous_) {
             if (kind != BalanceKind::none) {
                 if (!failed_section_ && !manual_putdown_) model_.begin_balance(kind);
@@ -108,7 +109,6 @@ public:
             if (failure) failed_section_ = true;
             if (physical->exit == BalanceExit::putdown) manual_putdown_ = true;
         }
-        if (observed_revert) model_.revert();
         scoring_.poll(model_);
         previous_ = pose;
         return failure;

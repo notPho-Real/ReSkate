@@ -659,6 +659,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // An admitted endpoint already owns its safe-putdown or bail path.
         // Unadmitted cleanup must never substitute a putdown for a failed bail.
         if (combo_session.failed_section() || combo_session.manual_putdown()) manual_acquisition.reset();
+        if(native_revert)arcade_input.observe_native_revert(now,native_frame);
         const bool balance_admitted = manual_observation.confirmed &&
             combo_session.model().state().balance_kind == BalanceKind::manual && !manual_closed;
         manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);

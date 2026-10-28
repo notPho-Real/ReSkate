@@ -87,7 +87,9 @@ public:
         state_.link_grace_s = tuning_.combo_link_grace_s;
     }
     bool revert() noexcept {
-        if (!state_.combo_active || !state_.landing_grace || state_.revert_pending || state_.link_grace_s <= 0) return false;
+        if (!state_.combo_active || state_.revert_pending ||
+            (state_.balance_kind != BalanceKind::manual && (!state_.landing_grace || state_.link_grace_s <= 0))) return false;
+        end_balance();
         state_.landing_grace = false;
         state_.revert_pending = true;
         state_.link_grace_s = tuning_.revert_link_grace_s;
