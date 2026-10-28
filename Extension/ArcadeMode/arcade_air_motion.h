@@ -234,7 +234,7 @@ public:
             yield_ordinary_motion();
         }
         if (taking_off && pending_) {
-            vy_ = std::max(ground_vy_, 0.0f) + profile_.launch_speed(charge_,launch_);
+            vy_ = std::max(ground_vy_, 0.0f) + profile_.launch_speed(charge_,launch_,native_launch_id_==16);
             vertical_ = true; pending_ = false;
         } else if (taking_off && !launch_blocked_) {
             vy_ = frame.velocity_y; vertical_ = true; // A step off a ledge is not an extra jump.

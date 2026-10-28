@@ -12,14 +12,15 @@ void policy(){
     for(unsigned ms:{0u,1u,17u,34u,50u,100u,150u,199u,200u,201u,500u}){
         const auto fraction=static_cast<float>(std::min(ms,200u))/200;
         const LaunchDescriptor ordinary=LaunchDescriptor::ordinary(),extended{LaunchFamily::extended,LaunchContext::flat,0};
-        check(near(profile.launch_speed(ms,ordinary),(350+100*fraction)*.0254f*1.25f),"ordinary flat charge curve adds25percent launch speed");
+        check(near(profile.launch_speed(ms,ordinary),(350+100*fraction)*.0254f*1.77f),"ordinary flat charge curve uses the taller ordinary ollie curve");
         check(near(profile.launch_speed(ms,extended),(400+125*fraction)*.0254f),"extended physical height policy is distinct from actor/pose admission");
         check(near(profile.launch_speed(ms,{LaunchFamily::ordinary,LaunchContext::vertical,0}),(100+175*fraction)*.0254f),"vertical policy uses its separate selected charge range");
         check(near(profile.launch_speed(ms,{LaunchFamily::extended,LaunchContext::vertical,0}),(200+125*fraction)*.0254f),"vertical extended range does not borrow ordinary flat values");
     }
     check(near(profile.launch_speed(200,{LaunchFamily::ordinary,LaunchContext::rail,0}),11.43f),"rail policy is unchanged");
     check(near(profile.launch_speed(200,{LaunchFamily::ordinary,LaunchContext::inverted,0}),11.43f),"inverted policy is unchanged");
-    check(near(profile.launch_speed(200,LaunchDescriptor::ordinary()),14.2875f),"full ordinary launch has additional airtime");
+    check(near(profile.launch_speed(200,LaunchDescriptor::ordinary()),20.2311f),"full ordinary launch has additional airtime");
+    check(near(profile.launch_speed(200,LaunchDescriptor::ordinary(),true),14.2875f),"nollie preserves its previously playable launch curve");
     for(std::uint64_t age:{332u,333u,334u}){
         check(LaunchDescriptor::late_ground_eligible(1000+age,1000,true)==(age<=333),"late ground policy ends only after333ms from qualified departure");
         check(!LaunchDescriptor::late_ground_eligible(1000+age,1000,false),"elapsed time alone cannot qualify a late ground launch");
@@ -61,7 +62,7 @@ void release_transport_writer(){
         intent.native_launch_id=release.nollie?16:1;
         channel.store(release.launch);intent.launch=channel.load();intent.release_sequence=release.sequence;intent.release_at=release.ms;intent.charge_ms=release.charge_ms;
         physics(released,103);frame.velocity_y=30;const auto output=physics(released+cadence,200);
-        const float expected=(350+100*static_cast<float>(std::min(duration,200u))/200)*.0254f*1.25f;
+        const float expected=(350+100*static_cast<float>(std::min(duration,200u))/200)*.0254f*(nollie?1.25f:1.77f);
         check(output.native_launch_id==(nollie?16:1),"physical writer retains admitted launch identity with its flight");
         check(output.vertical&&near(output.velocity_y,expected),"descriptor read by owned writer selects physical charge without stacking native launch impulse");
         std::array<std::array<float,3>,2> velocities{{{3,30,4},{5,31,6}}},spins{};

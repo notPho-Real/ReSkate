@@ -61,7 +61,7 @@ int main() {
     Fixture falling; falling.frame.velocity_y = -2; falling.sample(1000, 100);
     falling.intent.release_sequence = 1; falling.intent.release_at = 1017; falling.sample(1017, 103);
     falling.frame.velocity_y = 30;
-    check(near(falling.sample(1034, 200).velocity_y, 11.1125f), "negative prelaunch vertical velocity is cleared rather than deducted from selected jump");
+    check(near(falling.sample(1034, 200).velocity_y, 15.7353f), "negative prelaunch vertical velocity is cleared rather than deducted from selected jump");
     for (unsigned fault = 0; fault < 9; ++fault) {
         Fixture f; f.sample(1000, 100); f.intent.release_sequence = 1; f.intent.release_at = 1017;
         f.sample(1017, 103);

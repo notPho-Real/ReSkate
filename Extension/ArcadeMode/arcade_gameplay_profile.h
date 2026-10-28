@@ -52,12 +52,12 @@ struct GameplayProfile {
         return (low * standard_switch() + (high - low * standard_switch()) *
             static_cast<float>(std::min(charge_ms, 200u)) / 200) * metres_per_inch;
     }
-    float launch_speed(unsigned charge_ms, LaunchDescriptor launch) const noexcept {
+    float launch_speed(unsigned charge_ms, LaunchDescriptor launch, bool nollie = false) const noexcept {
         if(!launch.known())return 0;
         if(launch.context==LaunchContext::explicit_speed)return launch.speed_mps;
         // Give the ordinary flat ollie more airtime without changing other launch families.
         const float speed = jump_speed(charge_ms,launch.context==LaunchContext::vertical,launch.family==LaunchFamily::extended);
-        return launch.ordinary_writer() ? speed * 1.25f : speed;
+        return launch.ordinary_writer() ? speed * (nollie ? 1.25f : 1.77f) : speed;
     }
     constexpr PhysicalBalanceParameters balance(PhysicalBalanceKind kind) const noexcept {
         const auto s = standard_switch();
