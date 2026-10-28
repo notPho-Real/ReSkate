@@ -79,7 +79,7 @@ int main(){
   p.observe(1000,100);p.publish(1000,0);p.sample();
   p.observe(1017,103);p.intent.release_sequence=1;p.intent.native_launch_id=1;p.intent.release_at=1017;p.intent.charge_ms=charge;p.publish(1017,0);p.sample();
   p.observe(1051,200);p.publish(1051,0);auto output=p.sample();
-  check(output.vertical && std::abs(output.velocity_y-GameplayProfile{}.jump_speed(charge))<.0001f,
+  check(output.vertical && std::abs(output.velocity_y-GameplayProfile{}.launch_speed(charge,LaunchDescriptor::ordinary()))<.0001f,
         "qualified ordinary launch keeps the selected absolute charge mapping");
   auto original=NativeAirSpinProof::from_frame(p.native);auto current=original;
   float velocity=output.velocity_y,dt=p.body.dt;std::uint64_t now=1051;

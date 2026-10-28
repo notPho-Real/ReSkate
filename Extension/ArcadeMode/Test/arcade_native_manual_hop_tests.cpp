@@ -43,7 +43,7 @@ int main(int argc,char** argv){
         intent={true,true,1017+hold,token.sequence,token.ms,token.charge_ms,0,1};
         air.step(intent,{1017+hold,1,103,dt,5,0,0,true});
         const auto launch=air.step(intent,{1034+hold,1,200,dt,5,30,0,true});
-        check(launch.vertical&&std::abs(launch.velocity_y-GameplayProfile{}.jump_speed(hold))<.0001f,
+        check(launch.vertical&&std::abs(launch.velocity_y-GameplayProfile{}.launch_speed(hold,LaunchDescriptor::ordinary()))<.0001f,
               "actual takeoff compensates one selected jump impulse after Manual/Nose setup");
         std::array<std::array<float,3>,3> velocities{{{2,30,3},{3,31,4},{4,32,5}}},spins{};
         check(AirMotion::apply_bodies(launch,velocities,spins)&&velocities[0][0]==2&&velocities[0][2]==3&&

@@ -55,7 +55,9 @@ struct GameplayProfile {
     float launch_speed(unsigned charge_ms, LaunchDescriptor launch) const noexcept {
         if(!launch.known())return 0;
         if(launch.context==LaunchContext::explicit_speed)return launch.speed_mps;
-        return jump_speed(charge_ms,launch.context==LaunchContext::vertical,launch.family==LaunchFamily::extended);
+        // Give the ordinary flat ollie more airtime without changing other launch families.
+        const float speed = jump_speed(charge_ms,launch.context==LaunchContext::vertical,launch.family==LaunchFamily::extended);
+        return launch.ordinary_writer() ? speed * 1.25f : speed;
     }
     constexpr PhysicalBalanceParameters balance(PhysicalBalanceKind kind) const noexcept {
         const auto s = standard_switch();

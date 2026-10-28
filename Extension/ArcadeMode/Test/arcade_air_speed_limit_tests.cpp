@@ -66,7 +66,7 @@ int main(){
             held={true,true,1017+charge,token.sequence,token.ms,token.charge_ms,0,1};launch.now=1017+charge;
             jump.step(held,launch);launch.state=200;launch.now=held.sampled_at=1034+charge;horizontal(launch,0,40);
             const auto out=jump.step(held,launch);
-            check(near(out.velocity_y,GameplayProfile{}.jump_speed(charge)),"horizontal limits preserve the source-selected physical charge launch target");
+            check(near(out.velocity_y,GameplayProfile{}.launch_speed(charge,LaunchDescriptor::ordinary())),"horizontal limits preserve the source-selected physical charge launch target");
         }
     }
     for(unsigned fault=0;fault<9;++fault) {

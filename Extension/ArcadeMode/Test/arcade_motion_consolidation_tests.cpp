@@ -19,7 +19,7 @@ template<class Drive> bool deliver(std::span<std::array<float,3>> velocities,flo
 }
 int main(int argc,char**argv){
     if(argc==1 || argv[1][0]=='t')for(float dt:{1.0f/30,1.0f/60})for(unsigned charge:{0u,17u,34u,50u,100u,150u,200u,500u}){
-        const float launch=GameplayProfile{}.jump_speed(charge);
+        const float launch=GameplayProfile{}.launch_speed(charge,LaunchDescriptor::ordinary());
         AirMotionOutput out{true,true,false,launch,0,0};
         const float expected=5+launch*dt-.5f*34.29f*dt*dt;
         check(near(target<AirMotion>(5,out,dt),expected),"ordinary native motion target includes the source half-acceleration displacement");
@@ -30,7 +30,7 @@ int main(int argc,char**argv){
     }
     if(argc==1) {
         for(unsigned rate:{30u,60u})for(unsigned charge:{0u,17u,34u,50u,100u,150u,200u,500u}) {
-            const float dt=1.0f/static_cast<float>(rate),launch=GameplayProfile{}.jump_speed(charge);
+            const float dt=1.0f/static_cast<float>(rate),launch=GameplayProfile{}.launch_speed(charge,LaunchDescriptor::ordinary());
             AirMotion motion;AirMotionIntent intent{true,true,1000,0,0,0,0,1};
             AirMotionFrame f{1000,1,100,dt,0,0,0,true};motion.step(intent,f);
             intent.release_sequence=1;intent.release_at=f.now=intent.sampled_at=1017;intent.charge_ms=std::min(charge,200u);motion.step(intent,f);

@@ -42,7 +42,7 @@ int main() {
         f.sample(1017, 103);
         f.frame.velocity_y = 30; // Native jump already applied an impulse.
         const auto launch = f.sample(1034, 200);
-        const auto expected = 2 + GameplayProfile{}.jump_speed(duration);
+        const auto expected = 2 + GameplayProfile{}.launch_speed(duration,LaunchDescriptor::ordinary());
         check(launch.vertical && near(launch.velocity_y, expected) && launch.velocity_y < 30,
               "takeoff compensates to the charged target instead of adding a second impulse");
         const auto next = f.sample(1051, 201);
@@ -61,7 +61,7 @@ int main() {
     Fixture falling; falling.frame.velocity_y = -2; falling.sample(1000, 100);
     falling.intent.release_sequence = 1; falling.intent.release_at = 1017; falling.sample(1017, 103);
     falling.frame.velocity_y = 30;
-    check(near(falling.sample(1034, 200).velocity_y, 8.89f), "negative prelaunch vertical velocity is cleared rather than deducted from selected jump");
+    check(near(falling.sample(1034, 200).velocity_y, 11.1125f), "negative prelaunch vertical velocity is cleared rather than deducted from selected jump");
     for (unsigned fault = 0; fault < 9; ++fault) {
         Fixture f; f.sample(1000, 100); f.intent.release_sequence = 1; f.intent.release_at = 1017;
         f.sample(1017, 103);
