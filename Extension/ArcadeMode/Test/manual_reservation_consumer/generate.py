@@ -138,6 +138,7 @@ def generate(root,variant='current'):
      std::array<std::array<float,3>,2>velocities{{{0,0,5},{1,2,4}}},spins{};std::array<std::uint32_t,2>flags{};
      Reader reader;float resistance_change{};linear_writes=dirty_writes=0;
      GroundWriterObservation writer_observation{{},+[](const GroundWriterEvidence&)noexcept{}};
+     AngularWriterObservation angular_observation{{},+[](const AngularWriterEvidence&)noexcept{}};
      auto& writer_row=writer_observation.row;
      COMMIT
      RESISTANCE
