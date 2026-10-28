@@ -19,10 +19,10 @@ int main(){
   const float expected=age==0 || (age<1000&&amount*result.position>0) ? 0 : amount;
   check(result.applied_correction==expected,"native publication exposes the kernel's actual post-integration safe-period decision");
   Pipeline p;if(nose){p.raw.words[1]=0x8000;p.step(117);}p.admit(result.applied_correction,nose);
-  const ManualBalanceButtons buttons{amount<0,amount>0};auto out=p.input.manual_correction(p.frame.sampled_at,buttons,true);
+  const ManualBalanceButtons buttons{amount>0,amount<0};auto out=p.input.manual_correction(p.frame.sampled_at,buttons,true);
   check(out.owns_y&&out.y==manual_balance_native_y(expected),"qualified physical correction reaches existing native LS convention with protected zero ownership");
   out=p.input.manual_correction(p.frame.sampled_at,{},true);check(out.owns_y&&out.y==0,"physical release withdraws an old force before a later client step");
-  out=p.input.manual_correction(p.frame.sampled_at,{amount>0,amount<0},true);check(out.owns_y&&out.y==0,"opposite new input cannot borrow an old post-integration force decision");
+  out=p.input.manual_correction(p.frame.sampled_at,{amount<0,amount>0},true);check(out.owns_y&&out.y==0,"opposite new input cannot borrow an old post-integration force decision");
  }
  for(unsigned fault=0;fault<13;++fault){
   Pipeline p;p.admit(-1);check(p.input.manual_correction(100,{true,false},true).owns_y,"negative-control fixture starts with admitted correction");
@@ -43,7 +43,7 @@ int main(){
   check(!p.input.manual_correction(now,{true,false},compatible).owns_y,"OFF/focus/owner/contact/action/hop/air/push/stale/cancel/competing/invalid/closed contexts relinquish native correction");
  }
  {
-  Pipeline p;p.admit(-1);p.step(250);check(p.input.manual_correction(250,{true,true},true).y==32767,"both configured controls choose A and retain original inclusive150ms lease");
+  Pipeline p;p.admit(1);p.step(250);check(p.input.manual_correction(250,{true,true},true).y==32767,"both configured controls choose A and retain original inclusive150ms lease");
   p.step(251);check(!p.input.manual_correction(251,{true,true},true).owns_y,"a new physical frame cannot renew old effective force");
  }
  {
