@@ -34,6 +34,7 @@ void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned cha
 }
 void observe_angular_controller(std::uint64_t,const NativeInputFrame&,std::uint16_t,unsigned,
         bool,bool,bool,bool,const AirRotation::Output&) noexcept {}
+SpinMode spin_mode(){return SpinMode::held;}
 void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkatePose pose,
         bool reference=false,bool occupied=false,bool releasing_manual=false){
     // Mirrors the earlier production routing boundary; nonowners never reach
@@ -43,7 +44,7 @@ void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkateP
     const std::uint16_t physical_buttons=0;
     ActionInputOutput action{};action.owned=occupied;
     const auto rotation_native=arcade_input.native_context(now);
-    const AirRotation::Output rotation{false,0,0,2.0f,{}};
+    AirRotation::Output rotation{false,0,0,2.0f,{}};
     const GroundControl ground_controls{};
 @controller_route_push@
 @controller_route_air@
