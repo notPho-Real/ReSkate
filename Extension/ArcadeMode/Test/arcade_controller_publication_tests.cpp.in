@@ -133,7 +133,7 @@ ArcadeInput arcade_input{true};
 NativeControllerRoute controller_route;
 std::array<PlaybackPacket,4> playback_packets;
 std::array<NativeCharge,4> native_charges;
-std::array<AirRotation,4> rotations;
+std::array<AirRotation,4> rotations,prewinds;
 std::array<NeutralStickDelivery,4> neutral_delivery;
 std::atomic<bool> ready{true},reset_physical_manual{};
 std::atomic<std::uint64_t> gameplay_valid_until{};

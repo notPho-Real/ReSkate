@@ -52,7 +52,7 @@ NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.enti
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
 bool native_score_active=true;
 struct Score{bool valid=true,active=true;std::uint64_t sampled_at=1000;};Score score_activity(){return{true,native_score_active,clock_ms};}
-struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations;std::array<NativeCharge,4>native_charges;
+struct Reset{void reset(){}bool ready(std::uint64_t)const{return true;}};std::array<Reset,4> rotations,prewinds;std::array<NativeCharge,4>native_charges;
 std::array<Reset,4> neutral_delivery;
 std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_route;
 @@PACKET_RETIRE@@
