@@ -38,7 +38,7 @@ class InputSession {
 public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
-        push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false;
+        push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
@@ -58,7 +58,10 @@ public:
             now-revert_link_.started<=1500 && !frame.airborne && !frame.rail_family &&
             (frame.flip.state==100 || frame.flip.state==101) && frame.flip.mode<=1;
     }
-
+    std::int32_t authored_air_followup(std::uint64_t now,const InputNativeContext& frame) const noexcept {
+        return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
+            frame.air_episode()==air_actor_episode_ && (air_followup_id_==2 || air_followup_id_==3) ? air_followup_id_ : 0;
+    }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
         return native_.required && current.required && native_.fresh(now) && current.fresh(now) &&
@@ -368,7 +371,7 @@ private:
                 }
                 const auto id = native_flip_id(selected,request.nollie);
                 air_action_ = start(id, request.nollie, false, context, true);
-                if (air_action_) air_actor_episode_ = admission.native_context.air_episode();
+                if (air_action_) { air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id; }
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;
             }
         }
@@ -567,6 +570,7 @@ private:
     TrickDirection rail_direction_{};
     std::uint64_t now_{}, last_{}, last_tick_{}, jump_pressed_at_{};
     bool jump_nollie_{}, extension_started_{};
+    std::int32_t air_followup_id_{};
     bool rail_{}, holding_{}, air_action_{}, clocked_{};
     std::uint16_t grab_hold_button_{};
 };

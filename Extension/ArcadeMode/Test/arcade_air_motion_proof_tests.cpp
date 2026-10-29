@@ -169,5 +169,35 @@ int main(){
   p.observe(1051,100);p.publish(1051,0);p.sample();p.intent.release_sequence=2;p.intent.release_at=1068;p.intent.native_launch_id=1;p.observe(1068,200,1);p.publish(1068,0);
   check(p.sample().vertical,"target-first retirement ends only at a new ordinary flight");
  }
+ for(int flip:{2,3}) {
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
+  p.observe(1017,200,1);p.publish(1017,0);const auto launch=p.sample();
+  const auto launch_proof=NativeAirSpinProof::from_frame(p.native);
+  p.observe(1034,201,flip);p.publish(1034,0);p.intent.native_followup_id=flip;
+  const auto current=NativeAirSpinProof::from_frame(p.native);
+  check(AirMotion::vertical_target_current(launch,p.intent,launch_proof,current,1034,p.body.velocity_y,p.body.dt,{true,flip,16}),
+    "target-first native flip acknowledgment retains the qualified ordinary trajectory before the body callback");
+  check(!AirMotion::other_native_action({true,flip,16},launch.native_launch_id,AirMotion::qualified_followup(p.intent,current,1034)),
+    "target-first retirement guard uses current authored flight authority");
+ }
+ for(int flip:{2,3})for(unsigned fault=0;fault<5;++fault){
+  Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
+  p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
+  p.observe(1017,200,1);p.publish(1017,0);check(p.sample().vertical,"qualified ordinary launch begins");
+  p.intent.native_followup_id=fault==1?0:flip;
+  p.observe(1034,201,fault==2?4:flip);p.publish(1034,0);
+  if(fault==3)++p.intent.angular_proof.departure;
+  if(fault==4)p.body.velocity_y+=4; // independent native impulse, even during a legitimate flip
+  const auto out=p.sample();
+  check(out.vertical==(fault==0),"only qualified same-flight basic flip retains launch; unknown actor, lost proof and native impulse still win");
+  if(!fault){const auto proof=NativeAirSpinProof::from_frame(p.native);
+   check(AirMotion::vertical_target_current(out,p.intent,proof,proof,1034,p.body.velocity_y,p.body.dt,{true,flip,16}),
+     "native motion-target callback agrees with body writer on legitimate basic flip continuation");
+   p.intent.native_followup_id=0;
+   check(!AirMotion::vertical_target_current(out,p.intent,proof,proof,1034,p.body.velocity_y,p.body.dt,{true,flip,16}),
+     "withdrawn authored ownership cannot retain the flip trajectory exemption");
+  }
+ }
  std::cout<<checks<<" native motion publication proof checks passed\n";
 }

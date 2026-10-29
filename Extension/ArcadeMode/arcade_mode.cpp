@@ -2320,7 +2320,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             set_arcade_air_intent(rotation_enabled, release.sequence, release.ms, release.charge_ms,
                 angular_allowed ? rotation.yaw_rate : 0, angular_allowed, &manual, &spin_proof,&ground_controls,&rotation.spin,&release.launch,
                 rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
-                release.sequence ? (release.nollie ? 16 : 1) : 0);
+                release.sequence ? (release.nollie ? 16 : 1) : 0,arcade_input.authored_air_followup(now,rotation_native));
             observe_angular_controller(now,rotation_native,physical_buttons,static_cast<unsigned>(result.phase),rotation_enabled,
                 native_rate_ready,reference || action.owned || result.phase==3,angular_allowed,rotation);
         }

@@ -28,7 +28,7 @@ void set_arcade_push_intent(bool enabled,bool){++sink.push;sink.drive=enabled;}
 // Nonactuating sink observes the original production publication arguments.
 void set_arcade_air_intent(bool,std::uint64_t release,std::uint64_t,unsigned charge,
         float yaw,bool angular,const NativeManualContact*,const NativeInputFrame*,
-        const GroundControl*,const SpinCommand*,const LaunchDescriptor*,const GroundTurnCommand* turn,std::int32_t native_launch_id){
+        const GroundControl*,const SpinCommand*,const LaunchDescriptor*,const GroundTurnCommand* turn,std::int32_t native_launch_id,std::int32_t){
     ++sink.air;sink.charge=charge;sink.yaw=yaw;sink.angular=angular;sink.ground_turn=turn&&turn->serial==1;sink.release=release;
     sink.native_launch_id=native_launch_id;
 }

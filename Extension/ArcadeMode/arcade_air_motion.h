@@ -100,6 +100,7 @@ struct AirMotionIntent {
     SpinCommand spin{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
     std::int32_t native_launch_id{}; // Captured admitted setup: 1 ordinary, 16 Nollie; zero unavailable.
+    std::int32_t native_followup_id{}; // Admitted basic airborne flip in this exact flight.
 };
 struct AirMotionFrame {
     std::uint64_t now{}, owner{};
@@ -138,16 +139,26 @@ public:
         return std::isfinite(a) && std::isfinite(b) &&
             std::abs(a-b)<=8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
     }
-    static bool other_native_action(const NativeFlipSelection& action,std::int32_t captured_launch) noexcept {
+    static bool other_native_action(const NativeFlipSelection& action,std::int32_t captured_launch,std::int32_t followup=0) noexcept {
+        // A qualified authored Kickflip/Heelflip rotates the board in the same
+        // ordinary flight. It is not a new vertical launch. Independent native
+        // velocity changes still retire assistance below. All other actors win.
+        if(action.valid && action.object && captured_launch==1 && (followup==2 || followup==3) && action.id==followup)return false;
         return action.valid && action.object && action.id >= 0 &&
             ((captured_launch!=1 && captured_launch!=16) || action.id!=captured_launch);
+    }
+    static std::int32_t qualified_followup(const AirMotionIntent& intent,
+            const NativeAirSpinProof& current,std::uint64_t now) noexcept {
+        return intent.angular_proof.matches(current,now) && intent.sampled_at>=intent.angular_proof.sampled_at ?
+            intent.native_followup_id : 0;
     }
     static bool vertical_target_current(const AirMotionOutput& output,const AirMotionIntent& intent,
             const NativeAirSpinProof& output_proof,const NativeAirSpinProof& current,
             std::uint64_t now,float velocity_y,float dt,NativeFlipSelection action = {}) noexcept {
         // A cached physical target must belong to this flight and still own
         // the delivered velocity. A collision or another native impulse wins.
-        return output.ready && output.vertical && intent.enabled && !other_native_action(action,output.native_launch_id) &&
+        return output.ready && output.vertical && intent.enabled && !other_native_action(action,output.native_launch_id,
+                qualified_followup(intent,current,now)) &&
             (!intent.release_sequence || intent.launch.ordinary_writer()) &&
             now>=intent.sampled_at && now-intent.sampled_at<=150 && output_proof.matches(current,now) &&
             std::isfinite(dt) && dt>0 && dt<=.1f &&
@@ -227,13 +238,14 @@ public:
         grounded_ = false;
         if (!ordinary_) return {};
         if(!frame.ordinary_ground) { pending_=vertical_=false; launch_blocked_=true; }
+        const auto followup=frame.native_required ? qualified_followup(intent,frame.native,frame.now) : 0;
         // A different positively observed native actor owns its trajectory,
         // even if its first velocity equals our last delivered value. Yield
         // both ordinary gravity and target height for the rest of this flight;
         // actor retirement to idle cannot resurrect the old launch. Independent
         // qualified shoulder yaw remains available below.
         if (frame.native_required && frame.native.fresh(frame.now) && frame.native.airborne &&
-            frame.native.owner.core == frame.owner && other_native_action(frame.native_action,native_launch_id_)) {
+            frame.native.owner.core == frame.owner && other_native_action(frame.native_action,native_launch_id_,followup)) {
             yield_ordinary_motion();
         }
         if (taking_off && pending_) {

@@ -235,7 +235,7 @@ void early_press_cadences() {
             const bool held=elapsed>=delay && elapsed<delay+120;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
                 elapsed<40?103u:201u,elapsed<250?1:-1,elapsed<40?0u:2u);
-            if(out.requested_id==2)++starts;
+            if(out.requested_id==2){++starts;check(h->input.authored_air_followup(release+elapsed,h->frame)==2,"actual facade publishes only its admitted same-flight basic flip identity");}
             if(starts && out.authored_playback && (out.right_x || out.right_y) && !first_motion)first_motion=elapsed;
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)

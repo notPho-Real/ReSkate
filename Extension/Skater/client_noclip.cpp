@@ -473,7 +473,7 @@ struct AtomicAirSpinProof {
 struct ArcadeAir {
     std::atomic<std::uint64_t> version{}, sampled{}, release_sequence{}, release_at{}, ready_until{}, epoch{};
     std::atomic<unsigned> charge{}, ground_controls{}, spin_mode{}, spin_facts{};
-    std::atomic<std::int32_t> native_launch_id{};
+    std::atomic<std::int32_t> native_launch_id{}, native_followup_id{};
     std::atomic<std::uint64_t> spin_epoch{},spin_serial{},left_pressed_at{},right_pressed_at{};
     std::atomic<std::int64_t> spin_balance{};
     std::atomic<float> yaw_rate{};
@@ -514,6 +514,7 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     candidate.angular_proof = a.spin_proof.load();
     candidate.launch = a.launch.load();
     candidate.native_launch_id = a.native_launch_id.load(std::memory_order_relaxed);
+    candidate.native_followup_id = a.native_followup_id.load(std::memory_order_relaxed);
     const arcade_mode::GroundTurnCommand candidate_turn{a.turn_serial.load(std::memory_order_relaxed),a.turn_at.load(std::memory_order_relaxed),
         {a.turn_generations[0].load(std::memory_order_relaxed),a.turn_generations[1].load(std::memory_order_relaxed),a.turn_generations[2].load(std::memory_order_relaxed)},
         a.turn_step.load(std::memory_order_relaxed),a.turn_sampled.load(std::memory_order_relaxed)};
@@ -806,7 +807,8 @@ bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     }
     const auto current=arcade_mode::NativeAirSpinProof::from_frame(current_frame);
     if (a.output_proof.matches(current,now) && arcade_mode::AirMotion::other_native_action(
-            {current_frame.flip_known,current_frame.flip_id,current_frame.selection_object},a.output.native_launch_id)) {
+            {current_frame.flip_known,current_frame.flip_id,current_frame.selection_object},a.output.native_launch_id,
+            arcade_mode::AirMotion::qualified_followup(intent,current,now))) {
         // This callback can see the actor before the next body update. Retire
         // the old trajectory now so a subsequent idle sample cannot revive it.
         a.controller.yield_ordinary_motion();
@@ -981,7 +983,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     const arcade_mode::NativeManualContact* manual, const arcade_mode::NativeInputFrame* angular_proof,
     const arcade_mode::GroundControl* ground_controls, const arcade_mode::SpinCommand* spin_command,
     const arcade_mode::LaunchDescriptor* launch, const arcade_mode::GroundTurnCommand* ground_turn,
-    std::int32_t native_launch_id) noexcept {
+    std::int32_t native_launch_id, std::int32_t native_followup_id) noexcept {
     auto& a = arcade_air();
     if (!active) a.ready_until.store(0, std::memory_order_release);
     a.version.fetch_add(1, std::memory_order_acq_rel);
@@ -992,6 +994,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.release_at.store(release_at, std::memory_order_relaxed);
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
     a.native_launch_id.store(active && release_sequence && (native_launch_id==1 || native_launch_id==16) ? native_launch_id : 0,std::memory_order_relaxed);
+    a.native_followup_id.store(active && (native_followup_id==2 || native_followup_id==3) ? native_followup_id : 0,std::memory_order_relaxed);
     a.launch.store(active && launch ? *launch : arcade_mode::LaunchDescriptor{});
     const auto turn=active&&angular_allowed&&ground_turn ? *ground_turn : arcade_mode::GroundTurnCommand{};
     a.turn_serial.store(turn.serial,std::memory_order_relaxed);a.turn_at.store(turn.requested_at,std::memory_order_relaxed);
