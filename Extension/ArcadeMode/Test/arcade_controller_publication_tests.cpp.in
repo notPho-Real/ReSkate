@@ -45,6 +45,7 @@ void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkateP
     ActionInputOutput action{};action.owned=occupied;
     const auto rotation_native=arcade_input.native_context(now);
     AirRotation::Output rotation{false,0,0,2.0f,{}};
+    const AirRotation::Output prewind{}; // This fixture exercises the rate-publication path.
     const GroundControl ground_controls{};
 @controller_route_push@
 @controller_route_air@
