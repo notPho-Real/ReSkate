@@ -230,17 +230,19 @@ void early_press_cadences() {
     for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u,500u,650u}) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
         h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},100,1,0);
-        const unsigned release=1100;unsigned starts{}, first_motion{};std::uint64_t pressed{};
+        const unsigned release=1100;unsigned starts{}, first_motion{}, first_flick{};std::uint64_t pressed{};
         for(unsigned elapsed=0;elapsed<delay+350;elapsed+=cadence) {
             const bool held=elapsed>=delay && elapsed<delay+120;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
                 elapsed<40?103u:201u,elapsed<delay+250?1:-1,elapsed<40?0u:2u);
             if(out.requested_id==2){++starts;check(h->input.authored_air_followup(release+elapsed,h->frame)==2,"actual facade publishes only its admitted same-flight basic flip identity");}
             if(starts && out.authored_playback && (out.right_x || out.right_y) && !first_motion)first_motion=elapsed;
+            if(starts && out.authored_playback && out.right_x && !first_flick)first_flick=elapsed;
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
                 pressed=d->recognition[i].request.physical_pressed_at;
         }
+        check(first_flick && first_flick<delay+250,"actual kickflip flick arc, not just load position, is delivered promptly after the physical press");
         check(starts==1 && first_motion && first_motion<delay+200,"early X emits a nonneutral native flip gesture before Ollie selection retirement at each cadence");
         check(pressed==release+((delay+cadence-1)/cadence)*cadence,"handoff preserves actual sampled physical X time");
     }
