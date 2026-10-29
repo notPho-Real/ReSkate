@@ -162,18 +162,22 @@ public:
         // fabricate a physical Y release or reset the held-event baseline.
         if (!(physical.buttons & 0x8000u) || admission.observed_lip) rail_ = false;
         if(revert_link_.direction) {
-            const bool expired=now<revert_link_.started || now-revert_link_.started>1500 ||
-                (revert_link_.confirmed_at && now-revert_link_.confirmed_at>1100);
+            const bool expired=now<revert_link_.started || (!revert_link_.confirmed_at && now-revert_link_.started>1500) ||
+                (revert_link_.confirmed_at && (now<revert_link_.confirmed_at || now-revert_link_.confirmed_at>1100));
             if(expired || !native.required || !native.fresh(now) || native.generations.owner!=revert_link_.owner ||
                 native.airborne || native.rail_family || admission.external_owner || physical.lt>30 ||
-                (physical.buttons & 0xf330u)) revert_link_={};
-            else if(revert_link_.confirmed_at && !auxiliary_.busy() && !manual_.busy() && admission.manual_safe && physical.rt<=30 &&
+                (physical.buttons & 0x9330u)) revert_link_={};
+            else if(revert_link_.issued && admission.manual_balance_admitted && manual_.busy() &&
+                manual_.requested()==revert_link_.direction &&
+                admission.pose==(revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual)) revert_link_={};
+            else if(revert_link_.issued && !manual_.busy()) revert_link_={};
+            else if(!revert_link_.issued && revert_link_.confirmed_at && !auxiliary_.busy() && !manual_.busy() && admission.manual_safe && physical.rt<=30 &&
                 native.flip.state==100 && native.flip.mode==1 &&
                 (native.flip.stance&0x20u)!=revert_link_.stance) {
                 // Deliver the existing partial RS manual actuator. Contact/history
                 // acquisition, not this request, establishes the new balance.
                 if(manual_.request(now,revert_link_.direction,false,true,false,
-                    revert_link_.started,revert_link_.recognition)) revert_link_={};
+                    revert_link_.started,revert_link_.recognition)) revert_link_.issued=true;
             }
         }
         if (physical.rt<=30) revert_trigger_owned_=false;
@@ -264,6 +268,9 @@ public:
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
             admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed,
             manual_.recognized_at(), manual_.from_air(),manual_.recognition_id(),manual_.held_air()};
+        if(revert_link_.issued && manual.owns_stick && manual_.requested()==revert_link_.direction)
+            output.manual.revert={revert_link_.owner,revert_link_.step,revert_link_.contact,
+                revert_link_.confirmed_at,revert_link_.stance};
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
         if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {
@@ -518,7 +525,8 @@ private:
             if(out.result==DispatchResult::started && context.verified_manual) {
                 revert_link_={admission.pose==SkatePose::manual?1:-1,now_,0,
                     admission.native_context.generations.owner,admission.native_context.flip.stance&0x20u,
-                    request.recognition?request.recognition->sequence:0};
+                    request.recognition?request.recognition->sequence:0,
+                    admission.native_context.physics_step,admission.native_context.generations.contact,false};
                 manual_.cancel(); input_.reset_manual_continuity();
             }
         }
@@ -548,7 +556,7 @@ private:
         return (same_flight || first_landing) && physical.direction==(direction<0?2:8);
     }
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
-        std::uint32_t stance{};std::uint64_t recognition{};} revert_link_;
+        std::uint32_t stance{};std::uint64_t recognition{},step{},contact{};bool issued{};} revert_link_;
     bool revert_trigger_owned_{};
     UnifiedInput input_{};
     AuthoredPlayback authored_{};

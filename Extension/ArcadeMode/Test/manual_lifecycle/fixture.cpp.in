@@ -749,7 +749,7 @@ void analog_air_lifecycle(){
 
 
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u})for(bool ack:{false,true}){
+ for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u})for(bool ack:{false,true})for(bool already:{false,true}){
   qualified(nose,dt,300);
   for(unsigned link=0;link<(ack?2u:1u);++link){
    const auto began=clock_ms;
@@ -767,12 +767,18 @@ void manual_revert_production(){
    ScoreLabelOccurrence event{true,score_label_bit(3),link+1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
    client(dt/1000.f,history(),event);
    check(combo_session.model().state().revert_pending,"only independent native revert acknowledgment creates the post-revert link");
-   raw.words[0]^=0x20u;clock_ms+=dt;observe(dt/1000.f,0xc000);client(dt/1000.f,history());
-   const auto out=remap();
+   raw.words[0]^=0x20u;clock_ms+=dt;observe(dt/1000.f,already?(nose?0x4000u:0x8000u):0xc000u);client(dt/1000.f,history());
+   const auto out=remap(already?0x6000u:0u);
    check(out.manual.owns&&out.manual.request==(nose?-1:1),"changed native stance admits opposite manual actuator after the sampled revert finishes");
    nose=!nose;clock_ms+=dt;observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());remap();
    check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
-      "new independent opposite-wheel contact activates opposite balance and HUD without banking");
+      "new or revert-attributed opposite-wheel contact activates opposite balance and HUD without banking");
+   const auto acquired=clock_ms;
+   while(clock_ms-acquired<1500){const auto state=snapshot();tick(dt,100,nose?0x8000u:0x4000u);remap(0,state.position+state.velocity*.4f>0?-25000:25000);
+    if(!(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active))
+     std::cerr<<"linked failure nose="<<nose<<" dt="<<dt<<" already="<<already<<" age="<<clock_ms-acquired<<" balance="<<manual_balance_admitted.load()<<" hud="<<balance_hud_pending()<<" combo="<<combo_session.model().state().combo_active<<" putdown="<<manual_release.pending()<<" position="<<state.position<<" velocity="<<state.velocity<<" elapsed="<<state.elapsed<<"\n";
+    check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "revert-linked balance survives the acquisition deadline without artificial putdown");}
   }
  }
 }

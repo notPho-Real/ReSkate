@@ -19,6 +19,13 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
         unsigned mode, bool revert_pending) noexcept {
     return valid && !bail && state == 101 && mode == 1 && revert_pending;
 }
+// Internal handoff proof from a verified balance and independently observed
+// native revert. This is not a generic permission to adopt one-wheel contact.
+struct ManualRevertContact {
+    std::uint64_t owner{},step{},contact{},ack_at{};
+    std::uint32_t previous_stance{};
+    bool operator==(const ManualRevertContact&) const = default;
+};
 struct ManualInputDiagnostic {
         int stick{}, pad{}, stick_first{}, pad_first{}, request{};
         std::uint64_t stick_at{}, pad_at{}, request_at{};
@@ -28,6 +35,7 @@ struct ManualInputDiagnostic {
         bool from_air{};
         std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
         bool held_air{}; // Continuously held final direction, owned by this actor.
+        ManualRevertContact revert{};
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the

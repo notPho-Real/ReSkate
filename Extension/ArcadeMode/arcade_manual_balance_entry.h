@@ -36,9 +36,19 @@ public:
         pending_ = false;
         // Existing one-wheel contact, including a kick, is never a new entry.
         // Unattributed air preparations retain their independent history route.
-        if (command.from_air || frame.contacts != 0xc000u) return;
+        const auto& revert=command.revert;
+        const bool linked = revert.owner && revert.owner==frame.owner_generation && revert.ack_at &&
+            now>=revert.ack_at && now-revert.ack_at<=1100 && command.request_at>=revert.ack_at &&
+            frame.physics_step>revert.step && frame.contact_generation>revert.contact &&
+            (frame.stance_and_push&0x20u)!=revert.previous_stance &&
+            frame.contacts==(command.request<0?0x4000u:0x8000u);
+        if (command.from_air || (frame.contacts != 0xc000u && !linked)) return;
         owner_ = frame.owner; generation_ = frame.owner_generation;
         step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
+        // Already-present opposite contact is attributable only to this
+        // acknowledged stance-changing link. Still require a subsequent real
+        // physics step after owned RS delivery before admitting balance.
+        if(linked) contact_generation_=revert.contact;
         began_ = acquisition_at_ = command.request_at; first_delivery_at_ = delivered_at_ = now;
         direction_ = command.request; pending_ = true; clocked_ = false;
         air_origin_ = false; landed_ = true;

@@ -330,5 +330,23 @@ void landing_phase_handoff(){
  }
 }
 
+void revert_contact_guards(){
+ for(bool nose:{false,true})for(unsigned fault=0;fault<7;++fault){
+  GroundManualBalance balance;Native n;auto frame=n.step(1000,nose?0x8000u:0x4000u);
+  frame.stance_and_push=0x20;frame.physics_step=10;frame.contact_generation=4;
+  auto delivered=command(nose,1000);delivered.revert={frame.owner_generation,8,2,990,0};
+  if(fault==1)delivered.revert.owner++;
+  if(fault==2)delivered.revert.ack_at=0;
+  if(fault==3)delivered.revert.previous_stance=0x20;
+  if(fault==4)delivered.revert.contact=4;
+  if(fault==5)delivered.revert.step=10;
+  if(fault==6)delivered.request_at=980;
+  balance.observe(1000,frame,delivered,true);
+  check(!balance.sample(1000,frame,true,true).confirmed,"linked contact still requires subsequent native physics after RS delivery");
+  frame.physics_step++;frame.sampled_at=1017;
+  check(balance.sample(1017,frame,true,true).admitted==(fault==0),"only verified original-owner stance-changing acknowledged revert may adopt existing opposite contact");
+ }
 }
-int main(){landing_phase_handoff();composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
+
+}
+int main(){revert_contact_guards();landing_phase_handoff();composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
