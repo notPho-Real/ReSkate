@@ -8,6 +8,16 @@ void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<
 NativeRequestSample sample(unsigned state=100,unsigned contacts=0xc000){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=1;s.words[1]=contacts;return s;}
 }
 int main(){
+    for(unsigned phase:{100u,101u}) {
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+        const auto admitted=producer.observe(1000,owner,sample(phase),{true,-1});
+        const auto pending=sample(phase==100?101u:100u);
+        check(producer.defer_client_phase(1017,owner,pending,admitted,true),"fresh native revert phase lead defers withdrawal until original physics catches up");
+        check(!producer.correlate(1017,owner,pending).valid,"deferral never publishes a client-manufactured native phase");
+        check(!producer.defer_client_phase(1151,owner,pending,admitted,true),"revert phase deferral cannot renew native freshness");
+        check(!producer.defer_client_phase(1017,owner,sample(300),admitted,true),"bail never inherits revert phase deferral");
+    }
+
     NativeInputOwner owner{1,2,3,4,5};NativeInputState state;
     const auto first=state.observe(1000,owner,sample(),{true,-1});
     check(first.valid&&first.owner_generation&&first.contact_generation&&first.action_generation&&first.physics_step==1,"actual owner/contact/selection establish one native generation");

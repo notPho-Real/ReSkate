@@ -1050,8 +1050,39 @@ void native_manual_revert_links() {
   combo.step(SkatePose::bail,.017f,0);check(!combo.model().state().combo_active,"native bail still fails a linked manual combo");
  }
 }
+
+void revert_crouch_ownership() {
+ for(bool nose:{false,true})for(bool manual:{false,true})for(unsigned cadence:{8u,17u,33u}) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.state=100;raw.crouch_mode=1;raw.words[1]=manual?(nose?0x8000u:0x4000u):0xc000u;
+  auto poll=[&](std::uint64_t now,unsigned mode,unsigned rt,short y=0) {
+   raw.words[1]=manual&&now>=1000?(nose?0x8000u:0x4000u):0xc000u;
+   raw.crouch_mode=mode;const auto frame=producer.observe(now,owner,raw,{true,-1});
+   h.admission.native_context=InputNativeContext::from_frame(frame);
+   h.admission.balance_generations=h.admission.native_context.generations;
+   h.admission.manual_balance_admitted=manual&&mode==1&&now>=1000;
+   h.admission.pose=manual&&now>=1000?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
+   h.admission.action_fresh=mode==1;
+   return h.poll(now,{0,0,y,0,static_cast<std::uint8_t>(rt)});
+  };
+  if(manual) {
+   poll(900,1,0);poll(920,1,0,static_cast<short>(nose?-25000:25000));
+   check(poll(940,1,0,static_cast<short>(nose?25000:-25000)).manual.owns,"manual actor owns RS before the verified revert transfer");
+  }
+  poll(1000,1,0);check(poll(1017,1,255).action.owned,"fresh ground or confirmed balance admits one RT actor");
+  for(unsigned elapsed=cadence;elapsed<235;elapsed+=cadence) {
+   const auto out=poll(1017+elapsed,0,255);
+   check(out.action.owned&&out.action.consume_rt&&out.action.pad.right_trigger==0,
+         "native setup crouch retains both stick ownership and RT masking at each cadence");
+  }
+  const auto ended=poll(1260,0,255);
+  check(!ended.action.owned&&ended.action.consume_rt,"expired recipe cannot leak the original held RT into powerslide");
+  check(!poll(1270,0,0).action.consume_rt,"physical release retires only the accepted trigger ownership");
+  check(!poll(1280,0,255).action.owned,"unqualified crouch cannot start a new revert");
+ }
+}
 int main() {
-    native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
+    revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();
     production_session_boundary_matrix(); production_facade_matrix(); production_air_query_matrix(); production_order_and_boundary_matrix(); production_queue_and_release_matrix();

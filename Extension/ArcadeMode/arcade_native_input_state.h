@@ -124,7 +124,8 @@ public:
             NativeRequestSample sample, const NativeInputFrame& admitted, bool permitted) const noexcept {
         const auto original = binding_owner_proof(now,owner,sample);
         const auto ordinary=[](unsigned state,unsigned mode) {
-            return mode<=2 && (state==100 || state==103 || state==200 || state==201);
+            return (state==101 && mode<=1) ||
+                (mode<=2 && (state==100 || state==103 || state==200 || state==201));
         };
         return permitted && original.valid && admitted.valid && admitted.owner == original.owner &&
             ordinary(original.state,original.mode) && ordinary(sample.state,sample.crouch_mode) &&

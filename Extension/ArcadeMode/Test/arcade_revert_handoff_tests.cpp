@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace dingosdk::arcade_mode;
 InputAdmission base(){InputAdmission a{};a.gameplay=a.may_start=a.authored=a.action_fresh=a.inspected_stance=a.manual_safe=a.manual_prepare=true;a.pose=SkatePose::riding;a.action_mode=ActionExperiment::classic;return a;}
-NativeGesture::Output poll(InputSession& s,InputAdmission& a,std::uint64_t now,PhysicalInputSample p={}){a.tick=now;a.native_context={true,true,{1,1,1},now+1,now,false,a.pose==SkatePose::air,1,1};return s.poll(now,p,0,0,a);}
+NativeGesture::Output poll(InputSession& s,InputAdmission& a,std::uint64_t now,PhysicalInputSample p={}){a.tick=now;a.native_context={true,true,{1,1,1},now+1,now,false,a.pose==SkatePose::air,1,1};a.native_context.flip={true,-1,1,a.pose==SkatePose::air?201u:100u,a.pose==SkatePose::air?2u:1u};return s.poll(now,p,0,0,a);}
 int main(){
  const std::array catalog{PreparedGesture{1,false,GestureContext::ground,{{0,0,-32767},{18,0,32767},{21,0,0},{24,0,0}}},PreparedGesture{2,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
  unsigned failures{};

@@ -13,7 +13,7 @@ void client_phase_gap() {
         auto physical(std::uint64_t now)const{return now>=pad.at&&now-pad.at<=150?pad:ArcadeInput::Physical{};}
         unsigned selected_slot()const{return 1u;}unsigned generation()const{return 7u;}} route;
     const NativeInputOwner owner{1,2,3,4,5};
-    for(unsigned state:{103u,200u,201u}) {
+    for(unsigned state:{101u,103u,200u,201u}) {
         NativeInputState physics;ArcadeInput input(true);input.enable(true);NativeInputReadiness readiness;
         const auto original=physics.observe(1000,owner,sample(),{true,1,16});
         input.publish_native_context(original);input.publish_authority(1000,original.owner_generation,1,true);
@@ -37,8 +37,8 @@ void client_phase_gap() {
             check(!physics.defer_client_phase(1010,changed,current,admitted,permitted),"owner/invalid/OFF-focus-source/epoch/absent admission withdraw immediately");
         }
         check(!physics.defer_client_phase(999,owner,next,original,true),"clock rollback cannot retain authority");
-        for(unsigned excluded:{101u,300u,400u,504u,701u})
-            check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/revert/bail/rail/offboard exit cannot defer withdrawal");
+        for(unsigned excluded:{300u,400u,504u,701u})
+            check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/bail/rail/offboard exit cannot defer withdrawal");
     }
 }
 void held_air_manual() {

@@ -43,7 +43,7 @@ public:
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
         takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false;
-        revert_link_={};
+        revert_link_={}; revert_trigger_owned_=false;
     }
     // Called only for the existing independently observed native revert event.
     void observe_native_revert(std::uint64_t now,const InputNativeContext& frame) noexcept {
@@ -106,9 +106,10 @@ public:
                 admission.manual_balance_admitted = false;
             }
         }
-        // Only an already-started revert may cross the measured native slide state.
+        // Only an already-started revert may retain ownership through its own
+        // crouch/setup and native slide phases; this does not admit new requests.
         if (auxiliary_.busy() && !grab_actor_ && native.required && native.fresh(now) &&
-            !native.airborne && !native.rail_family && native.flip.state==101 && native.flip.mode<=1)
+            revert_context(admission,now))
             admission.action_fresh=true;
         if (clocked_ && (admission.input_policy != policy_ || admission.board_binding != board_binding_ || admission.offboard != offboard_ || admission.export_rail_requests != export_rail_)) reset();
         offboard_ = admission.offboard; board_binding_ = admission.board_binding; export_rail_ = admission.export_rail_requests;
@@ -160,6 +161,7 @@ public:
                     revert_link_.started,revert_link_.recognition)) revert_link_={};
             }
         }
+        if (physical.rt<=30) revert_trigger_owned_=false;
         const bool triggers = physical.lt > 30 || physical.rt > 30;
         // Native adapter wiring only: an admitted balance can retain its RS
         // hold when a stance/branch trigger has no competing channel owner.
@@ -181,13 +183,14 @@ public:
         // This output is not delivered; the normal sample below still applies
         // all current input ownership and native context guards.
         const ActionContext prior_action_context{admission.action_mode != ActionExperiment::observe,
-            admission.action_fresh, context == InputContext::air, context == InputContext::ground,
+            admission.action_fresh, context == InputContext::air, context == InputContext::ground ||
+            (auxiliary_.busy() && !grab_actor_ && revert_context(admission,now)),
             admission.inspected_stance, admission.external_owner, verified_manual(admission,now)};
         (void) auxiliary_.sample(now,prior_action_context);
         output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
              (admission.action_mode == ActionExperiment::classic && context == InputContext::air)) ? 0x2000 : 0;
-        output.action.consume_rt = action_enabled && admission.action_fresh &&
+        output.action.consume_rt = action_enabled && ((revert_trigger_owned_ && revert_context(admission,now)) || admission.action_fresh) &&
             (admission.action_mode == ActionExperiment::classic || admission.action_mode == ActionExperiment::revert_frontside ||
              admission.action_mode == ActionExperiment::revert_backside);
         const bool manual_conflict = authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers;
@@ -247,7 +250,8 @@ public:
             output.phase = 1; busy = true;
         }
         ActionContext action_context{admission.action_mode != ActionExperiment::observe, admission.action_fresh,
-            context == InputContext::air, context == InputContext::ground, admission.inspected_stance,
+            context == InputContext::air, context == InputContext::ground ||
+            (auxiliary_.busy() && !grab_actor_ && revert_context(admission,now)), admission.inspected_stance,
             busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0,
             verified_manual(admission,now)};
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
@@ -478,6 +482,7 @@ private:
                 auxiliary_.request_revert(backside ? RevertSide::backside : RevertSide::frontside,
                     {context.verified_manual ? admission.pose==SkatePose::nose_manual : admission.nollie,
                      admission.mirror_x, false}, now_, context);
+            if(out.result==DispatchResult::started) revert_trigger_owned_=physical_.rt>30;
             if(out.result==DispatchResult::started && context.verified_manual) {
                 revert_link_={admission.pose==SkatePose::manual?1:-1,now_,0,
                     admission.native_context.generations.owner,admission.native_context.flip.stance&0x20u,
@@ -512,6 +517,7 @@ private:
     }
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
         std::uint32_t stance{};std::uint64_t recognition{};} revert_link_;
+    bool revert_trigger_owned_{};
     UnifiedInput input_{};
     AuthoredPlayback authored_{};
     ManualActuation manual_{};
