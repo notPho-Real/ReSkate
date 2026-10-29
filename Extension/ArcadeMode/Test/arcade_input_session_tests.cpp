@@ -64,10 +64,11 @@ void native_adapters() {
     check(h.poll(1002, {0x2000}).buttons == 0x2000, "grounded B remains physical native brake");
     h.session.reset(); h.poll(1000);
     out = h.poll(1017, {0, 0, 0, 0, 255});
-    check(out.action.owned && out.action.pad.right_y == -32767 && out.action.request_kind == 3,
-        "fresh RT reaches the unchanged native revert recipe");
+    check(out.action.owned && out.action.pad.right_y == 0 && out.action.request_kind == 3,
+        "fresh RT reaches the LS revert path without a crouch or grab");
     check(h.poll(1047, {0, 0, 0, 0, 255}).action.pad.left_x > 32000, "revert rotation follows existing absolute-time recipe");
-    check(!h.poll(1252, {0, 0, 0, 0, 255}).action.owned, "revert releases at235ms without renewed grace");
+    for(unsigned t=1064;t<2017;t+=17)h.poll(t, {0,0,0,0,255});
+    check(!h.poll(2017, {0,0,0,0,255}).action.owned, "revert releases within its fixed bound without repeated held-trigger commands");
     h.session.reset(); h.poll(1300); h.admission.nollie = true;
     out = h.poll(1317, {0, 0, 0, 255, 255});
     check(!out.action.owned && out.action.result == DispatchResult::unsafe_context, "unverified revert stance cannot own sticks");
@@ -837,8 +838,8 @@ void auxiliary_mode_contract() {
         if(revert) {
             check(out.action.request_kind==(mode==ActionExperiment::revert_backside?4u:3u),
                 "existing frontside/backside recipe selection remains separate from observed native identity");
-            check(!h.poll(1000+cadence+235,{0,0,0,0,255}).action.owned,
-                "held RT cannot renew the existing absolute235ms recipe lifetime");
+            check(!h.poll(1000+cadence+1000,{0,0,0,0,255}).action.owned,
+                "held RT cannot renew the existing bounded recipe lifetime");
         }
     }
     // The actual caller supports selecting this experiment only while disabled.
@@ -895,9 +896,9 @@ void auxiliary_release_handoff_contract() {
     h.poll(40,{0,0,0,0,255});
     check(h.session.diagnostic().dispatched==1&&h.session.diagnostic().dispatch[0].disposition==InputDisposition::expired,
         "existing bounded RT handoff expiry cannot renew the already active recipe");
-    check(!h.poll(245,{0,0,0,0,255}).action.owned,"repeated RT cannot extend the first absolute235ms ownership window");
-    check(!h.poll(300,{0,0,0,0,255}).action.requested,"held RT does not recreate an expired pending request");
-    h.poll(310);check(h.poll(320,{0,0,0,0,255}).action.owned,"release and fresh press after completion starts one new recipe");
+    check(!h.poll(1010,{0,0,0,0,255}).action.owned,"repeated RT cannot extend the first bounded ownership window");
+    check(!h.poll(1030,{0,0,0,0,255}).action.requested,"held RT does not recreate an expired pending request");
+    h.poll(1040);check(h.poll(1050,{0,0,0,0,255}).action.owned,"release and fresh press after completion starts one new recipe");
 }
 
 void native_pending_and_active_flights(){
@@ -1005,10 +1006,11 @@ void native_revert_stances() {
   check(out.action.owned,"valid native stance does not require a particular stance bit value");
   out=poll(1047,101,255);
   check(out.action.owned && (out.action.pad.left_x>0)==((x>0)!=mirrored),"native101 continues the existing mirrored FS/BS recipe");
-  check(!poll(1252,100,255).action.owned,"revert ownership expires without extending the recipe");
-  check(!poll(1300,100,255).action.owned,"held RT cannot repeat");
-  poll(1317,100,0);check(poll(1334,100,255).action.owned,"released RT rearms a successive revert");
-  poll(1600,101,0);check(!poll(1617,101,255).action.owned,"transitional slide does not admit a new revert");
+  for(unsigned t=1064;t<2017;t+=17)poll(t,101,255);
+  check(!poll(2017,100,255).action.owned,"revert ownership expires without extending the recipe");
+  check(!poll(2034,100,255).action.owned,"held RT cannot repeat");
+  poll(2051,100,0);check(poll(2068,100,255).action.owned,"released RT rearms a successive revert");
+  poll(2400,101,0);check(!poll(2417,101,255).action.owned,"transitional slide does not admit a new revert");
  }
 }
 void native_manual_revert_links() {
@@ -1031,7 +1033,9 @@ void native_manual_revert_links() {
   poll(1100,101,0,false);poll(1200,101,0,false);poll(1300,101,0,false);
   if(fault!=2)h.session.observe_native_revert(1300,h.admission.native_context);
   if(fault==4)++owner.core;
-  out=poll(fault==5?2600u:1334u,100,0,fault!=3);
+  for(unsigned t=1317;t<1800;t+=17)poll(t,101,0,false);
+  out=poll(fault==5?2600u:1834u,100,0,fault!=3);
+  if(fault!=5)for(unsigned t=1851;t<2200;t+=17)out=poll(t,100,0,fault!=3);
   check(out.manual.owns==(fault==0),"opposite manual requires native revert, changed stance, same owner and bounded grace");
   if(fault==0)check(out.manual.request==(nose?-1:1)&&out.right_y==(nose?-20000:20000)&&!out.manual.confirmed,
    "handoff requests opposite partial native RS without fabricating contact or balance confirmation");
@@ -1070,15 +1074,18 @@ void revert_crouch_ownership() {
    check(poll(940,1,0,static_cast<short>(nose?25000:-25000)).manual.owns,"manual actor owns RS before the verified revert transfer");
   }
   poll(1000,1,0);check(poll(1017,1,255).action.owned,"fresh ground or confirmed balance admits one RT actor");
-  for(unsigned elapsed=cadence;elapsed<235;elapsed+=cadence) {
+  for(unsigned elapsed=cadence;elapsed<680;elapsed+=cadence) {
    const auto out=poll(1017+elapsed,0,255);
+   check(out.action.pad.right_y==(manual?(nose?20000:-20000):0),
+         "revert preserves confirmed partial manual pressure; ground revert never adds full crouch");
    check(out.action.owned&&out.action.consume_rt&&out.action.pad.right_trigger==0,
          "native setup crouch retains both stick ownership and RT masking at each cadence");
   }
-  const auto ended=poll(1260,0,255);
+  for(unsigned elapsed=680;elapsed<1000;elapsed+=cadence)poll(1017+elapsed,0,255);
+  const auto ended=poll(2017,0,255);
   check(!ended.action.owned&&ended.action.consume_rt,"expired recipe cannot leak the original held RT into powerslide");
-  check(!poll(1270,0,0).action.consume_rt,"physical release retires only the accepted trigger ownership");
-  check(!poll(1280,0,255).action.owned,"unqualified crouch cannot start a new revert");
+  check(!poll(2034,0,0).action.consume_rt,"physical release retires only the accepted trigger ownership");
+  check(!poll(2051,0,255).action.owned,"unqualified crouch cannot start a new revert");
  }
 }
 int main() {

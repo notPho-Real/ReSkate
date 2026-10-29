@@ -43,12 +43,12 @@ int run_arcade_action_runtime_tests() {
     check(classic_out.requested && classic_out.result == DispatchResult::started && classic_out.owned &&
         classic_out.consume_rt && !classic_out.consume_buttons && classic_out.request_kind == 3,
         "default RT requests the existing native recipe without enabling grab candidates");
-    check(classic_out.pad.right_y == -32767 && classic_out.pad.left_trigger == 0 && classic_out.pad.right_trigger == 0,
-        "default generic revert uses verified regular setup and owns triggers");
+    check(classic_out.pad.right_y == 0 && classic_out.pad.left_trigger == 0 && classic_out.pad.right_trigger == 0,
+        "default generic revert keeps RS neutral and owns triggers");
     check(poll(default_action_mode, 40, {0, 0, 0, 0, 255}).pad.left_x > 32000,
         "default route reuses the existing rotation direction without claiming native side");
     check(!poll(default_action_mode, 245, {0, 0, 0, 0, 255}).owned && !input.busy(),
-        "default ownership ends at original235ms deadline");
+        "missed native polling cancels rather than replaying a stale trajectory");
     check(!poll(default_action_mode, 500, {0, 0, 0, 0, 255}).requested,
         "held default RT never restarts after expiry");
     poll(default_action_mode, 510);
@@ -132,7 +132,7 @@ int run_arcade_action_runtime_tests() {
         out = poll(mode, 1010, {0, 0, 0, 0, 255});
         check(out.requested && out.result == DispatchResult::started && out.consume_rt && out.owned,
             "RT edge routes explicitly selected side candidate");
-        check(out.pad.right_y == -32767 && out.pad.left_trigger == 0 && out.pad.right_trigger == 0,
+        check(out.pad.right_y == 0 && out.pad.left_trigger == 0 && out.pad.right_trigger == 0,
             "native setup owns triggers without passing physical RT");
         out = poll(mode, 1040, {0, 0, 0, 0, 255});
         check(out.pad.owns_left_stick && (mode == ActionExperiment::revert_frontside ? out.pad.left_x > 32000 : out.pad.left_x < -32000),
@@ -140,11 +140,11 @@ int run_arcade_action_runtime_tests() {
         poll(mode, 1050);
         out = poll(mode, 1060, {0, 0, 0, 0, 255});
         check(out.requested && out.result == DispatchResult::busy, "repeated RT cannot extend current playback");
-        check(!poll(mode, 1245, {0, 0, 0, 0, 255}).owned, "retrigger did not extend 235 ms expiry");
+        check(!poll(mode, 1300, {0, 0, 0, 0, 255}).owned, "retrigger cannot preserve playback across a lost native polling interval");
         check(!poll(mode, 2000, {0, 0, 0, 0, 255}).requested, "held RT cannot restart after expiry");
         poll(mode, 2010);
         out = poll(mode, 2020, {0, 0, 0, 255, 255});
-        check(out.pad.right_y == 32767, "nollie context reaches candidate independent of physical LT masking");
+        check(out.owned && out.pad.right_y == 0, "nollie context retains neutral RS independent of physical LT masking");
         check(!poll(mode, 2021, {}, SkatePose::riding, true, false).owned, "stale observer cancels both sticks");
         check(!poll(mode, 2100, {0, 0, 0, 0, 255}).requested, "held RT after stale gap must rearm");
     }

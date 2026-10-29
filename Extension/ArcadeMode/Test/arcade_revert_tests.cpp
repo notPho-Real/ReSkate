@@ -13,59 +13,39 @@ void check(bool passed, const char* description) {
 
 int run_arcade_revert_tests() {
     using namespace dingosdk::arcade_mode;
-    const auto fs = make_revert_recipe(RevertSide::frontside);
-    const auto bs = make_revert_recipe(RevertSide::backside);
-    unsigned duration{}, rotations{};
-    for (const auto& step : fs) {
-        duration += step.duration_ms;
-        rotations += step.phase == RevertPhase::rotation;
-        check(step.right_x == 0 && step.right_y == -32767,
-            "the full regular pop remains held throughout the candidate");
-    }
-    check(duration == 235 && rotations == 33,
-        "inclusive circle endpoint produces the reference's actual 235 ms duration");
-    check(fs[1].left_x == 32767 && fs[1].left_y == 0 &&
-        fs[9].left_x == 0 && fs[9].left_y == -32767 &&
-        fs[17].left_x == -32767 && fs[25].left_y == 32767,
-        "frontside candidate starts right and rotates clockwise in game coordinates");
-    check(bs[1].left_x == -32767 && bs[9].left_y == -32767 &&
-        bs[17].left_x == 32767 && bs[25].left_y == 32767,
-        "backside candidate starts left and rotates counterclockwise");
-    check(fs[33].left_x == fs[1].left_x && fs[33].left_y == fs[1].left_y,
-        "the final rotational sample repeats the starting position");
-    for (const bool nollie : {false, true}) {
-        const auto mirrored = make_revert_recipe(RevertSide::frontside, {nollie, true, false});
-        const auto regular = make_revert_recipe(RevertSide::frontside, {nollie, false, false});
-        for (unsigned i = 0; i < fs.size(); ++i) {
-            check(mirrored[i].left_x == bs[i].left_x && mirrored[i].left_y == bs[i].left_y,
-                "stance mirroring reverses the requested circle including its starting side");
-            check(regular[i].left_x == fs[i].left_x && regular[i].left_y == fs[i].left_y &&
-                regular[i].right_y == (nollie ? 32767 : -32767),
-                "default nollie context changes pop polarity without reversing the circle");
+    for (bool mirror : {false,true}) for (auto side : {RevertSide::frontside,RevertSide::backside})
+    for (short hold : {short(0),short(-20000),short(20000)}) {
+        const auto recipe=make_revert_recipe(side,{false,mirror,false,hold});
+        unsigned duration{};
+        for(const auto& point:recipe) {
+            duration+=point.duration_ms;
+            check(point.right_x==0 && point.right_y==hold,"revert preserves only the qualified partial Manual hold; ordinary ground has no crouch");
+        }
+        check(duration==revert_recipe_duration_ms,"source-supported path duration includes endpoint and neutral settle");
+        const int sign=((side==RevertSide::frontside)!=mirror)?1:-1;
+        check(recipe[0].left_x==sign*32767 && recipe[4].left_y==-32767 && recipe[8].left_x*sign<0 && recipe[8].left_y>0,
+            "both stances sweep from side through bottom to opposite upper side");
+        for(unsigned cadence:{8u,17u,34u}) {
+            RevertPlayback playback;
+            check(playback.start(100,side,{false,mirror,false,hold},true),"fresh discrete request starts");
+            unsigned visits{};bool bottom{},crossed{},neutral{};short previous_x=123,previous_y=123;
+            for(unsigned now=100;now<1150;now+=cadence) {
+                auto out=playback.sample(now,true);
+                if(!out.owns_sticks)break;
+                const auto repeat=playback.sample(now,true);
+                check(out.left_x==repeat.left_x && out.left_y==repeat.left_y,"same-time input polls cannot consume multiple waypoints");
+                check(out.right_y==hold && !out.left_trigger && !out.right_trigger,"quick RT release does not interrupt the owned path or leak grab input");
+                if(out.left_x!=previous_x || out.left_y!=previous_y){++visits;previous_x=out.left_x;previous_y=out.left_y;}
+                bottom|=out.left_y==-32767;
+                crossed|=bottom && out.left_x*sign<0 && out.left_y>0;
+                neutral|=crossed && !out.left_x && !out.left_y;
+                check(!playback.start(now,side,{},true),"held/repeated request cannot restart active path");
+            }
+            check(visits>=10 && bottom && crossed && neutral && !playback.busy(),"30/60/120Hz reaches every essential native path boundary then releases");
         }
     }
-    const auto twice_mirrored = make_revert_recipe(RevertSide::frontside, {true, true, true});
-    check(twice_mirrored[1].left_x == fs[1].left_x && twice_mirrored[9].left_y == fs[9].left_y,
-        "explicit nollie and stance mirroring compose without ambiguity");
-
     RevertPlayback playback;
-    check(!playback.start(100, RevertSide::frontside, {}, false) && !playback.busy(),
-        "ineligible requests cannot acquire synthetic input");
-    check(playback.start(100, RevertSide::frontside, {}, true), "eligible candidate starts");
-    check(!playback.start(110, RevertSide::backside, {}, true),
-        "repeated requests cannot restart or extend an active candidate");
-    check(playback.sample(129, true).phase == RevertPhase::setup &&
-        playback.sample(130, true).left_x == 32767,
-        "lead phase transitions to circle at the absolute 30 ms boundary");
-    check(playback.sample(170, true).left_y == -32767 &&
-        playback.sample(170, true).left_y == -32767,
-        "late polls catch up and repeated polls do not advance the circle");
-    const auto tail = playback.sample(295, true);
-    check(tail.phase == RevertPhase::settle && tail.left_x == 0 && tail.left_y == 0 &&
-        tail.right_y == -32767 && tail.left_trigger == 0 && tail.right_trigger == 0,
-        "tail centers left stick while pop remains held and triggers remain released");
-    check(playback.sample(334, true).owns_sticks && !playback.sample(335, true).owns_sticks &&
-        !playback.busy(), "ownership expires at 235 ms despite missed polls and repeated requests");
+    check(!playback.start(100,RevertSide::frontside,{},false),"ineligible revert is rejected");
     playback.start(1000, RevertSide::backside, {}, true);
     check(!playback.sample(2000, true).owns_sticks && !playback.busy(),
         "an entirely missed gesture cannot replay stale input");
