@@ -2297,7 +2297,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (prewind.owns_left) rotation=prewind;
         // Controller route air publication begin.
         {
-            const bool charge_valid = rotation_enabled && !action.owned && !(physical_buttons & 0xe030u);
+            // X is a following flip request, not cancellation of the admitted A release.
+            const bool charge_valid = NativeCharge::input_permitted(rotation_enabled,action.owned,physical_buttons);
             if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid,result.jump.nollie);
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);

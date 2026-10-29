@@ -23,6 +23,21 @@ struct Fixture {
 };
 }
 int main() {
+    for(unsigned hz:{30u,60u,120u})for(unsigned delay:{0u,17u,33u,66u,100u}) {
+        NativeCharge charge;charge.admit_setup(1000,1000,LaunchDescriptor::ordinary(),true);
+        auto released=charge.semantic_release(1100,true,true,false,1000,1100,
+            NativeCharge::input_permitted(true,false,delay==0?0x4000u:0u));
+        check(released.sequence!=0,"simultaneous A release and X retain launch identity");
+        for(unsigned n=0;n<20;++n){const auto now=1100+n*1000/hz;
+            const auto next=charge.semantic_release(now,false,false,false,0,0,
+                NativeCharge::input_permitted(true,false,now>=1100+delay?0x4000u:0u));
+            check(next.sequence==released.sequence&&next.ms==1100&&next.charge_ms==100,
+                "following X cannot erase or renew original charged launch before physics consumes it");
+        }
+        check(!charge.semantic_release(1800,false,false,false,0,0,NativeCharge::input_permitted(true,false,0x8000)).sequence,
+            "incompatible rail input still withdraws ordinary launch");
+    }
+
     NativeCharge charge;
     check(!charge.poll(1000, false, true, true).sequence && !charge.poll(1017, false, false, true).sequence,
           "raw A without accepted native crouch can never create a launch token");

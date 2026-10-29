@@ -12,6 +12,9 @@ namespace dingosdk::arcade_mode {
 // latch, not native acceptance evidence: raw A alone cannot create a launch.
 class NativeCharge {
 public:
+    static constexpr bool input_permitted(bool enabled, bool other_owner, std::uint16_t buttons) noexcept {
+        return enabled && !other_owner && !(buttons & 0xa030u);
+    }
     struct Release { std::uint64_t sequence{}, ms{}; unsigned charge_ms{}; LaunchDescriptor launch{}; bool nollie{}; };
     void cancel() noexcept { charging_ = setup_bound_ = false; released_ = {}; }
     // Replacement of an accepted input setup withdraws its old pending release.
