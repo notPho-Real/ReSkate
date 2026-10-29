@@ -63,6 +63,20 @@ struct AuthoredPipeline {
 };
 }
 int main(){
+ for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned fault=0;fault<5;++fault) {
+  AirRotation buffered;NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
+  f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;f.state=100;
+  auto poll=[&](unsigned t,std::uint16_t buttons,bool crouched){f.sampled_at=t;++f.physics_step;return buffered.poll_preparation(t,buttons,true,f,crouched,false,false,SpinMode::held);};
+  poll(1000,0,true);poll(1017,side,true);auto prep=poll(1150,side,true);
+  check(prep.owns_left && !prep.x && !prep.y,"buffered preparation never steers the ground");
+  if(fault==1)++f.owner.rig;
+  if(fault==2)poll(1167,0,false);
+  if(fault==3)poll(1167,BoardChord::pair,false);
+  f.airborne=true;f.state=200;f.airborne_episode=1;f.airborne_started_known=true;f.airborne_started_at=fault==4?1500:1184;
+  auto air=poll(fault==4?1500:1184,side,false);
+  check((air.owns_left && air.x!=0)==(fault==0),"only fresh same-owner prepared shoulder reaches first genuine AIR");
+  if(!fault){check((air.x<0)==(side==BoardChord::lb) && air.yaw_rate==0,"buffer uses native LS only with intended sign");check(!poll(1201,0,false).owns_left,"release ends buffered AIR command");}
+ }
  for(auto side:{BoardChord::lb,BoardChord::rb})for(bool nollie:{false,true}) {
   AirRotation preparation; NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
   f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;f.state=103;

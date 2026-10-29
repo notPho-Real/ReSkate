@@ -43,15 +43,37 @@ public:
     // Separate preparation actor: never relax the airborne proof or own RS.
     Output poll_preparation(std::uint64_t now, std::uint16_t buttons, bool gameplay,
             const NativeInputFrame& frame, bool crouched, bool nollie, bool conflict, SpinMode mode) noexcept {
-        const bool ground = frame.valid && frame.owner.valid() && frame.owner_generation &&
+        const auto held=static_cast<std::uint16_t>(buttons & BoardChord::pair);
+        const bool fresh=frame.valid && frame.owner.valid() && frame.owner_generation &&
             frame.contact_generation && frame.action_generation && frame.physics_step &&
-            now >= frame.sampled_at && now-frame.sampled_at <= 150 &&
-            (frame.state == 100 || frame.state == 103) && !frame.airborne && !frame.rail_family;
-        auto output = poll(now,buttons,gameplay && mode==SpinMode::held,
-            ground ? SkatePose::riding : SkatePose::unknown,crouched,nollie,conflict);
-        // Horizontal LS is also native ground steering. Reserve preparation
-        // without delivering yaw until the independently qualified AIR path owns it.
-        if (output.owns_left) output.x = output.y = 0;
+            now>=frame.sampled_at && now-frame.sampled_at<=150;
+        const bool safe=gameplay && mode==SpinMode::held && fresh && !conflict &&
+            !(buttons&0x30u) && !frame.rail_family && (held==BoardChord::lb || held==BoardChord::rb);
+        const bool same=prepared_.valid && prepared_.owner==frame.owner &&
+            prepared_.owner_generation==frame.owner_generation && prepared_buttons_==held;
+        if (!safe || (prepared_.valid && !same)) { prepared_={}; prepared_air_=0; }
+        if (safe && same && frame.airborne && (frame.state==200 || frame.state==201) &&
+            frame.airborne_episode && frame.airborne_started_known) {
+            if (!prepared_air_ && now>=prepared_.sampled_at && now-prepared_.sampled_at<=250 &&
+                frame.airborne_started_at>=prepared_.sampled_at && frame.air_departure==prepared_.air_departure)
+                prepared_air_=frame.airborne_episode;
+            if (prepared_air_==frame.airborne_episode && frame.air_departure==prepared_.air_departure)
+                return {true,static_cast<std::int16_t>((held==BoardChord::lb?-.97f:.97f)*32767),0};
+            prepared_={}; prepared_air_=0;
+        }
+        const bool ground=fresh && !frame.airborne && !frame.rail_family &&
+            (frame.state==100 || frame.state==103);
+        if (prepared_air_ && ground) { prepared_={}; prepared_air_=0; }
+        auto output=poll(now,buttons,gameplay && mode==SpinMode::held,
+            ground?SkatePose::riding:SkatePose::unknown,crouched,nollie,conflict);
+        if (safe && ground && crouched && output.owns_left) {
+            prepared_=frame; prepared_buttons_=held;
+        }
+        // Explicit buffered AIR spin, not a claim of native ground wind-up.
+        // Only a fresh crouch-owned shoulder can bridge the bounded pop gap.
+        if (safe && ground && prepared_.valid && now>=prepared_.sampled_at && now-prepared_.sampled_at<=250)
+            output.owns_left=true;
+        if (output.owns_left) output.x=output.y=0;
         return output;
     }
     void reset() noexcept {
@@ -165,6 +187,9 @@ public:
     }
 private:
     SpinCommand qualified_{};
+    NativeInputFrame prepared_{};
+    std::uint64_t prepared_air_{};
+    std::uint16_t prepared_buttons_{};
     bool qualified_clocked_{},qualified_armed_{},qualified_air_{},left_held_{},right_held_{};
     std::uint16_t qualified_buttons_{};
     std::uint64_t qualified_at_{},left_at_{},right_at_{};

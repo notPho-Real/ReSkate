@@ -2304,6 +2304,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
             const bool angular_allowed = !reference && !action.owned &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
+            if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};
             rotation = AirRotation::native_shoulder_output(rotation,spin_mode(),physical_buttons,angular_allowed);
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
