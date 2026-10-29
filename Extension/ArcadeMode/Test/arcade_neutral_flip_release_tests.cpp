@@ -192,8 +192,8 @@ void prompt_released_ollie_tap() {
             if(n<8)check(out.requested_id!=2,"prompt tap cannot bypass native jump selection/idle or the existing actor");
         }
         check(flip_starts==1,"one ordinary post-Ollie tap survives pre-AIR/initial-mode timing and reaches existing Kickflip once");
-        check(original_press==release+press_step*cadence && original_release==release+(press_step+2)*cadence,
-            "deferred recognition retains the real early physical press/release rather than synthetic later edges");
+        check(original_press==release+press_step*cadence && (original_release==0 || original_release==release+(press_step+2)*cadence),
+            "early recognition retains the real press and never invents a future release");
     }
     for(unsigned fault=0;fault<12;++fault) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);h->poll(1017,{0x1000},100,-1,1);
@@ -225,5 +225,24 @@ void prompt_released_ollie_tap() {
         check(h->starts==(observed_jump?2u:1u),"a fast A/X release can await actual native Ollie confirmation but cannot borrow an unrelated fall");
     }
 }
+void early_press_cadences() {
+    for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u}) {
+        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},100,1,0);
+        const unsigned release=1100;unsigned starts{};std::uint64_t pressed{};
+        for(unsigned elapsed=0;elapsed<350;elapsed+=cadence) {
+            const bool held=elapsed>=delay && elapsed<delay+120;
+            const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
+                elapsed<40?103u:201u,elapsed<70?1:-1,elapsed<40?0u:2u);
+            if(out.requested_id==2)++starts;
+            const auto* d=h->input.input_diagnostic(0);
+            for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
+                pressed=d->recognition[i].request.physical_pressed_at;
+        }
+        check(starts==1,"early held X transfers exactly once at each controller cadence");
+        check(pressed==release+((delay+cadence-1)/cadence)*cadence,"handoff preserves actual sampled physical X time");
+    }
 }
-int main() {neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+
+}
+int main() {early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

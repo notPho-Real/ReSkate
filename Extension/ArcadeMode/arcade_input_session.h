@@ -127,7 +127,7 @@ public:
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
         if (takeoff_release_at_) {
-            if (admission.external_owner || now<takeoff_release_at_ || now-takeoff_release_at_>=InputTiming::direction_ms ||
+            if (admission.external_owner || (physical.buttons & 0xa000u) || physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || now-takeoff_release_at_>=InputTiming::direction_ms ||
                 !native.released_jump_continues(takeoff_native_,now)) takeoff_release_at_=0;
             else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
         }
@@ -332,14 +332,14 @@ private:
                 out.unsupported = true; return InputDisposition::unsupported;
             }
             if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
-            if (request.form != InputForm::ordinary && request.form != InputForm::neutral_release) return request_extension(request);
+            if (request.form != InputForm::ordinary && request.form != InputForm::neutral_release && request.form != InputForm::neutral_press) return request_extension(request);
             {
-                if (request.form == InputForm::neutral_release &&
+                if ((request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) &&
                     (request.direction || request.presses != 1 || request.air.family != TrickFamily::flip ||
                      request.air.trick != ArcadeTrick::kickflip || request.air.predicate != AirInputPredicate::face)) {
                     out.unsupported = true; return InputDisposition::unsupported;
                 }
-                const auto selected=request.form == InputForm::neutral_release ? ArcadeTrick::kickflip :
+                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? ArcadeTrick::kickflip :
                     select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
                 if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
                     out.unsupported=true;return InputDisposition::unsupported;

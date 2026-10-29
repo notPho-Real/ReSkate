@@ -15,7 +15,7 @@ enum class InputDisposition : std::uint8_t { waiting, started, unsupported, canc
 // The caller selects one installed release table only after establishing its
 // exact native actor. Disabled preserves the ordinary jump path.
 enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
-enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release, neutral_press };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
 // generations below are eligibility lineage, not this original observation.
@@ -257,7 +257,7 @@ private:
         // Fixed ordinary input waits for the existing jump selection to become
         // idle; all other selection/context transitions keep their cancellation.
         return request.action == InputAction::flip &&
-            (request.form == InputForm::ordinary || request.form == InputForm::neutral_release) && request.presses == 1 &&
+            (request.form == InputForm::ordinary || request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) && request.presses == 1 &&
             request.selection.table == InputAirTableKind::none &&
             (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
              native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip));
@@ -665,7 +665,7 @@ private:
         if (action == InputAction::flip || action == InputAction::grab) {
             request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
                 request.direction,presses);
-            if (action == InputAction::flip && form == InputForm::neutral_release) {
+            if (action == InputAction::flip && (form == InputForm::neutral_release || form == InputForm::neutral_press)) {
                 // Basic selection comes from the physical button release, not
                 // an invented Left event or a previously cached direction.
                 request.direction = 0; request.direction_source = InputSource::buttons;
@@ -904,6 +904,17 @@ private:
         if (!match) {
             const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
             match = binding.match; defined_direction = binding.direction;
+        }
+        // An admitted ordinary pop gives an early neutral X press an explicit
+        // basic-flip meaning. Preserve its journal edge; readiness still gates
+        // execution. Outside this short handoff, release/directional rules stay.
+        if (!match && environment.policy.neutral_flip_on_release && takeoff_release_at_ &&
+            now >= takeoff_release_at_ && now-takeoff_release_at_ <= InputTiming::takeoff_preload_ms &&
+            !events_.held_direction()) {
+            const std::array tokens{face};
+            match = events_.history().match({tokens,InputTiming::takeoff_preload_ms,ordinary_reject},now);
+            if (match && match.first_at < takeoff_release_at_) match = {};
+            if (match) form = InputForm::neutral_press;
         }
         if (!match && environment.policy.neutral_flip_on_release && (release || takeoff_release_at_) && !events_.held_direction()) {
             // The release is new in this poll. Intervening input and a consumed
