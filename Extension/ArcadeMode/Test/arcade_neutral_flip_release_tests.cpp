@@ -60,7 +60,7 @@ void directional_precedence() {
     for(const auto choice:{Choice{4,2},Choice{8,3},Choice{1,36},Choice{2,4},Choice{5,9},Choice{9,6},Choice{6,5},Choice{10,8}})
     for(bool simultaneous:{false,true}) {
         auto h=std::make_unique<Route>();h->poll(1000);
-        h->poll(1020,{choice.direction});
+        h->poll(1020,{static_cast<std::uint16_t>(simultaneous?0:choice.direction)});
         auto out=h->poll(1040,{static_cast<std::uint16_t>(choice.direction|0x4000u)});
         check(out.requested_id==choice.id,"direction before or in the release poll selects its existing exact native variant");
         h->poll(1060);check(h->starts==1,"release following a consumed directional face never adds a default Kickflip");
