@@ -74,10 +74,12 @@ def generate(root,variant='current'):
     ''')
     signatures=(
         'NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0){',
-        'NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0){')
+        'NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0){',
+        'NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,unsigned char physical_rt=0){')
     declarations=(
         'const auto buttons=physical_buttons;short left_x=0,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;',
-        'const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;')
+        'const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;',
+        'const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=physical_rt;')
     signature_counts=[source.count(value) for value in signatures]
     declaration_counts=[source.count(value) for value in declarations]
     if sum(signature_counts)!=1 or sum(declaration_counts)!=1:
@@ -92,7 +94,11 @@ def generate(root,variant='current'):
                                unsigned char lt=0,unsigned char rt=0){''')
     once(declarations[remap_form],
          'const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=lt,right_trigger=rt;')
-    once('const bool reference=false;const unsigned char physical_right_trigger=0;',
+    if remap_form==2:
+        # The lifecycle fixture has RT as argument4; this consumer has LT/RT
+        # as arguments4/5. Preserve the physical RT edge in its new link test.
+        once('remap(0,0,0,255).action.owned','remap(0,0,0,0,255).action.owned')
+    once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
     once('may_push=false,may_toggle_board=false','may_push=admission.push,may_toggle_board=false')
     once('struct PadResult {short x{},y{},rx{},ry{};',
