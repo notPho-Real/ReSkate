@@ -149,7 +149,15 @@ class WorkflowSecurity(unittest.TestCase):
             header, jobs = text.split('jobs:\n', 1)
             self.assertIn('permissions:\n  contents: read\n', header)
             for action in re.findall(r'uses: (\S+)', text):
-                self.assertRegex(action, r'^actions/(checkout|upload-artifact|download-artifact)@[0-9a-f]{40}$')
+                if action == './.github/actions/spotify-cache':
+                    composite = (ROOT / '.github/actions/spotify-cache/action.yml').read_text()
+                    nested = re.findall(r'uses: (\S+)', composite)
+                    self.assertEqual(nested, [
+                        'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830',
+                        'actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830'])
+                    self.assertNotIn('credentials', composite)
+                else:
+                    self.assertRegex(action, r'^actions/(checkout|upload-artifact|download-artifact)@[0-9a-f]{40}$')
             for part in re.split(r'(?m)^  (?=[a-z][a-z-]*:\s*$)', jobs):
                 if not part.strip():
                     continue
@@ -161,7 +169,7 @@ class WorkflowSecurity(unittest.TestCase):
                     self.assertNotIn('actions/checkout@', part)
                     self.assertNotIn('python3 contrib/', part)
                     self.assertIn('cmp artifacts/channel.json', part)
-                    self.assertIn('needs: [build, linux-tests, macos-lab, deck]', part)
+                    self.assertIn('needs: [build, windows-tests, linux-tests, macos-lab, deck]', part)
 
     def test_repository_has_no_execution_allowlist(self):
         self.assertNotIn('decision = "allow"', (ROOT / '.codex/rules/arcade-lab.rules').read_text())

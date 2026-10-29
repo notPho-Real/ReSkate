@@ -1,0 +1,60 @@
+name: Spotify Cargo cache
+description: Cache only registry data and toolchain-compatible Spotify build outputs
+inputs:
+  build-cache:
+    description: Restore/save compiled outputs only for the runtime job
+    default: 'false'
+  cold:
+    description: Bypass all cache restore/save for a cold benchmark
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Fingerprint Rust and Windows toolchain
+      id: toolchain
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $rust = & rustc -vV
+        if ($LASTEXITCODE) { throw 'rustc identification failed' }
+        $cargo = & cargo -V
+        if ($LASTEXITCODE) { throw 'cargo identification failed' }
+        if (-not ($rust -match 'host: x86_64-pc-windows-msvc')) { throw 'Unexpected Rust host' }
+        $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+        $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if ($LASTEXITCODE -or -not $vs) { throw 'MSVC installation missing' }
+        $msvc = Get-Content "$vs/VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt"
+        $flags = Get-ChildItem Env: | Where-Object Name -Match '^(RUSTFLAGS|CARGO_ENCODED_RUSTFLAGS|CARGO_BUILD_TARGET|CARGO_PROFILE_RELEASE_.*)$' | Sort-Object Name | ForEach-Object { "$($_.Name)=$($_.Value)" }
+        $identity = (@($rust) + @($cargo) + @($msvc, $env:ImageOS, $env:ImageVersion) + @($flags)) -join "`n"
+        $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
+        "digest=$digest" >> $env:GITHUB_OUTPUT
+        @('### Spotify toolchain', '```text', $identity, '```') >> $env:GITHUB_STEP_SUMMARY
+    - name: Cache Cargo registry and git dependencies
+      if: inputs.cold != 'true'
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: |
+          ${{ env.CARGO_HOME }}/registry/index
+          ${{ env.CARGO_HOME }}/registry/cache
+          ${{ env.CARGO_HOME }}/registry/src
+          ${{ env.CARGO_HOME }}/git/db
+          ${{ env.CARGO_HOME }}/git/checkouts
+        key: spotify-registry-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('SpotifyHelper/Cargo.lock') }}
+        restore-keys: |
+          spotify-registry-v1-${{ runner.os }}-${{ runner.arch }}-
+    - name: Cache Spotify release outputs
+      id: outputs
+      if: inputs.build-cache == 'true' && inputs.cold != 'true'
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: SpotifyHelper/target
+        key: spotify-release-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake') }}-${{ hashFiles('SpotifyHelper/src/**', 'SpotifyHelper/build.rs') }}
+        restore-keys: |
+          spotify-release-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake') }}-
+    - name: Record cache outcome
+      shell: pwsh
+      env:
+        COLD: ${{ inputs.cold }}
+        EXACT_HIT: ${{ steps.outputs.outputs.cache-hit }}
+      run: |
+        "Spotify output cache: cold=$env:COLD exact-hit=$env:EXACT_HIT" >> $env:GITHUB_STEP_SUMMARY

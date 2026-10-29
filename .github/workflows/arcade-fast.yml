@@ -1,0 +1,33 @@
+name: Arcade Mode targeted tests
+on:
+  push:
+    branches: [arcade-mode, 'arcade-stage-*']
+    paths:
+      - 'Extension/ArcadeMode/**'
+      - 'contrib/arcade-mode/ci/**'
+      - '.github/workflows/arcade-fast.yml'
+  pull_request:
+    paths:
+      - 'Extension/ArcadeMode/**'
+      - 'contrib/arcade-mode/ci/**'
+      - '.github/workflows/arcade-fast.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: arcade-fast-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  targeted:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - name: Configure standalone existing tests
+        run: cmake -S contrib/arcade-mode/ci/targeted -B build/arcade-fast -G "Visual Studio 17 2022" -A x64
+      - name: Build targeted tests
+        run: cmake --build build/arcade-fast --config Release --parallel 4
+      - name: Run targeted tests
+        run: ctest --test-dir build/arcade-fast -C Release --output-on-failure --no-tests=error

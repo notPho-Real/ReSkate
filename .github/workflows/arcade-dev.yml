@@ -3,22 +3,39 @@ on:
   push:
     branches: [arcade-mode, 'arcade-stage-*']
   workflow_dispatch:
+    inputs:
+      cold_cache:
+        description: Bypass Cargo caches for a measured cold run
+        type: boolean
+        default: false
+      benchmark:
+        description: Run every gate and package, but do not publish or update the channel
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
-  build:
+  windows-tests:
     if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
     runs-on: windows-2022
+    env:
+      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
+      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
+      - name: Restore Spotify dependencies and build cache
+        uses: ./.github/actions/spotify-cache
+        with:
+          build-cache: 'false'
+          cold: ${{ inputs.cold_cache == true && 'true' || 'false' }}
       - name: Fetch native dependencies required at configure time
         run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
       - name: Configure
         run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
-      # Compile and run the selected Windows tests before the runtime/Rust build.
-      # One configure/build tree keeps shared dependencies incremental.
+      # Independent runner/build tree: never race MSBuild on the runtime tree.
+      # This complete test gate remains required by packaging and publishing.
       - name: Compile Windows test preflight
         run: cmake --build --preset release --parallel 4 --target dingosdk_arcade_runtime_reset_tests dingosdk_profile_preference_snapshot_tests dingosdk_arcade_settings_snapshot_tests dingosdk_child_identity_tests dingosdk_rotating_log_tests dingosdk_arcade_camera_input_tests dingosdk_arcade_camera_diagnostics_tests dingosdk_arcade_ground_motion_step_tests dingosdk_arcade_ground_writer_tests dingosdk_camera_observer_tests dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_balance_hud_publication_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_arcade_fixture_geometry_tests dingosdk_arcade_fixture_trajectory_tests dingosdk_arcade_input_telemetry_tests dingosdk_arcade_input_contract_tests dingosdk_arcade_input_session_tests dingosdk_arcade_manual_input_tests dingosdk_arcade_neutral_flip_release_tests dingosdk_arcade_air_motion_proof_tests dingosdk_arcade_native_spin_integration_tests dingosdk_arcade_launch_descriptor_tests dingosdk_arcade_manual_balance_entry_tests dingosdk_arcade_manual_reservation_current dingosdk_arcade_controller_route_tests dingosdk_arcade_manual_observation_tests dingosdk_arcade_manual_history_tests dingosdk_arcade_manual_step_tests dingosdk_arcade_manual_lifecycle_tests dingosdk_arcade_manual_lifecycle_composition_tests dingosdk_arcade_manual_acquisition_boundary_tests dingosdk_park_editor_transaction_tests dingosdk_arcade_score_asset_tests
       # Separate unresolved parity check: arcade_input_manual_differential.
@@ -26,6 +43,28 @@ jobs:
         run: ctest --test-dir build/vs2022-x64 -C Release -R "^(profile_preference_snapshot|arcade_(runtime_reset(_rollback_(persist|initial_load|expiry|owner|restore_mode|cleanup_scope))?|settings_snapshot(_source)?|camera_input|camera_diagnostics|ground_motion_step|ground_writer(_source)?|mode|native_score(_replay)?|grind_observer|fixture_geometry|fixture_trajectory|input_telemetry|input_contract|input_session|balance_hud_publication|controller_route|manual_input|neutral_flip_release|air_motion_proof|native_spin_integration|launch_descriptor|manual_balance_entry|manual_reservation(_.*)?|manual_observation|manual_history|manual_step|manual_lifecycle(_.*)?|manual_acquisition_boundary|score_assets)|child_identity|rotating_log(_startup_rollback)?|park_editor_transactions|launcher_depot_output|camera_observer_recovery)$" --output-on-failure
       - name: Check bounded session records
         run: python contrib/arcade-mode/test_session_records.py
+      - name: Check optional asset regeneration
+        run: python contrib/arcade-mode/test_ci_build.py
+
+  build:
+    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
+    runs-on: windows-2022
+    env:
+      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
+      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+      - name: Restore Spotify dependencies and build cache
+        uses: ./.github/actions/spotify-cache
+        with:
+          build-cache: 'true'
+          cold: ${{ inputs.cold_cache == true && 'true' || 'false' }}
+      - name: Fetch native dependencies required at configure time
+        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: Configure
+        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
       - name: Build runtime and release tools
         run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_arcade_score_assets
       - name: Stage tested scoring metadata inspector
@@ -138,7 +177,7 @@ jobs:
           find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
 
   deck:
-    needs: [build, linux-tests, macos-lab]
+    needs: [build, windows-tests, linux-tests, macos-lab]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -168,8 +207,8 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [build, linux-tests, macos-lab, deck]
-    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [build, windows-tests, linux-tests, macos-lab, deck]
+    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !(github.event_name == 'workflow_dispatch' && inputs.benchmark)
     runs-on: ubuntu-24.04
     permissions:
       contents: write
