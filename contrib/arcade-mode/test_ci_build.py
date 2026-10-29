@@ -35,7 +35,7 @@ class OptionalAssetTests(unittest.TestCase):
             asset.write_text("{}")
             self.assertIn("ASSET_CONFIGURE", run("--build", build))
             watched = (build / "watched.txt").read_text().split(";")
-            self.assertIn(asset.as_posix(), watched)
+            self.assertTrue(any(asset.samefile(name) for name in watched))
             self.assertTrue(all(Path(name).is_file() for name in watched))
             self.assertNotIn("ASSET_CONFIGURE", run("--build", build))
             asset.write_text('{"changed":true}')
