@@ -252,13 +252,15 @@ find_program(DINGOSDK_CARGO cargo HINTS "$ENV{USERPROFILE}/.cargo/bin")
 set(dingosdk_spotify_dir "${PROJECT_SOURCE_DIR}/SpotifyHelper")
 if(WIN32 AND DINGOSDK_CARGO AND EXISTS "${dingosdk_spotify_dir}/Cargo.toml")
     set(dingosdk_spotify_lib "${dingosdk_spotify_dir}/target/release/reskate_spotify.lib")
-    add_custom_command(OUTPUT "${dingosdk_spotify_lib}"
-        COMMAND "${DINGOSDK_CARGO}" build --release --lib
+    # Cargo must validate its fingerprints even when a CI cache restored a newer
+    # .lib than the checkout. A timestamp-only custom OUTPUT can link stale Rust.
+    add_custom_target(dingosdk_spotify_device
+        COMMAND "${DINGOSDK_CARGO}" build --locked --release --lib
+        BYPRODUCTS "${dingosdk_spotify_lib}"
         WORKING_DIRECTORY "${dingosdk_spotify_dir}"
         DEPENDS "${dingosdk_spotify_dir}/src/lib.rs" "${dingosdk_spotify_dir}/Cargo.toml" "${dingosdk_spotify_dir}/Cargo.lock"
         COMMENT "Building the Spotify device (cargo)"
         VERBATIM)
-    add_custom_target(dingosdk_spotify_device DEPENDS "${dingosdk_spotify_lib}")
     add_dependencies(dingosdk_runtime dingosdk_spotify_device)
     # (An import library of the Windows API that the Rust code is linked against, which cargo
     # has fetched beside the code that uses it.)
@@ -296,16 +298,10 @@ set(dingosdk_startup_art "${PROJECT_SOURCE_DIR}/assets/startup_splash.png")
 if(NOT EXISTS "${dingosdk_startup_art}")
     set(dingosdk_startup_art "${PROJECT_SOURCE_DIR}/assets/startup_splash.jpg")
 endif()
-if(EXISTS "${PROJECT_SOURCE_DIR}/assets")
-    # Adding or removing the picture re-runs the configure step.
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/assets")
-endif()
+include("${PROJECT_SOURCE_DIR}/cmake/OptionalAssets.cmake")
 # Chat emotes (Better Chat's pack format; Extension/UI/Overlay/chat_emotes.h), built into
 # ReSkate.dll when the repository has assets/emotes/emotes.json and emotes.png.
 set(dingosdk_emotes "${PROJECT_SOURCE_DIR}/assets/emotes")
-if(EXISTS "${dingosdk_emotes}")
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${dingosdk_emotes}")
-endif()
 if(EXISTS "${dingosdk_emotes}/emotes.json" AND EXISTS "${dingosdk_emotes}/emotes.png")
     file(TO_NATIVE_PATH "${dingosdk_emotes}" dingosdk_emotes_native)
     string(REPLACE "\\" "\\\\" dingosdk_emotes_native "${dingosdk_emotes_native}")
