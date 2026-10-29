@@ -40,17 +40,17 @@ struct Route {
 void neutral_once() {
     for(unsigned cadence:{17u,34u}) {
         auto h=std::make_unique<Route>();h->poll(1000);
-        check(!h->poll(1000+cadence,{0x4000}).requested_id,"neutral held X waits for physical release or direction");
-        const auto out=h->poll(1000+2*cadence);
-        check(out.requested_id==2 && out.authored_playback,"production neutral X release reaches the existing basic Kickflip adapter");
-        const auto* d=h->input.input_diagnostic(0);check(d->recognition_count==1,"neutral release recognizes one immutable request");
-        const auto& request=d->recognition[0].request;
-        check(static_cast<unsigned>(request.form)==3 && request.direction==0 && request.direction_source==InputSource::buttons &&
+        const auto out=h->poll(1000+cadence,{0x4000});
+        check(out.requested_id==2 && out.authored_playback,"production neutral X press immediately requests the basic Kickflip adapter");
+        const auto* d=h->input.input_diagnostic(0);check(d->recognition_count==1,"neutral press recognizes one immutable request");
+        const auto request=d->recognition[0].request;
+        check(request.form==InputForm::neutral_press && request.direction==0 &&
             request.air.trick==ArcadeTrick::kickflip && request.air.predicate==AirInputPredicate::face,
-            "default Kickflip is explicit button semantics without a fictional direction");
-        check(request.physical_pressed_at==1000+cadence && request.physical_released_at==1000+2*cadence &&
-            request.recognized_at==1000+2*cadence && request.recognition && request.recognition->footprint.count==2,
-            "original physical press and release form the actual recognition footprint");
+            "default Kickflip uses explicit neutral-press semantics");
+        check(request.physical_pressed_at==1000+cadence && !request.physical_released_at &&
+            request.recognized_at==1000+cadence && request.recognition && request.recognition->footprint.count==1,
+            "recognition preserves the original press without waiting for or inventing release");
+        check(!h->poll(1000+2*cadence).requested_id,"release cannot repeat a consumed neutral press");
         for(unsigned n=3;n<10;++n)h->poll(1000+std::uint64_t{n}*cadence);
         check(h->starts==1,"neutral release cannot repeat from held state, later polls or its consumed face");
     }
@@ -60,8 +60,8 @@ void directional_precedence() {
     for(const auto choice:{Choice{4,2},Choice{8,3},Choice{1,36},Choice{2,4},Choice{5,9},Choice{9,6},Choice{6,5},Choice{10,8}})
     for(bool simultaneous:{false,true}) {
         auto h=std::make_unique<Route>();h->poll(1000);
-        h->poll(1020,{0x4000});
-        auto out=h->poll(1040,{static_cast<std::uint16_t>(choice.direction|(simultaneous?0u:0x4000u))});
+        h->poll(1020,{choice.direction});
+        auto out=h->poll(1040,{static_cast<std::uint16_t>(choice.direction|0x4000u)});
         check(out.requested_id==choice.id,"direction before or in the release poll selects its existing exact native variant");
         h->poll(1060);check(h->starts==1,"release following a consumed directional face never adds a default Kickflip");
     }
@@ -109,7 +109,7 @@ void cancellation() {
         auto h=std::make_unique<Route>();h->poll(1000);h->poll(1020,{0x4000});
         for(std::uint64_t now=1100;now<1520;now+=100)h->poll(now,{0x4000});
         const auto out=h->poll(1020+age);
-        check((out.requested_id==2)==(age<500),"neutral release uses the existing strict500ms physical query without a new timeout");
+        check(!out.requested_id&&h->starts==1,"held neutral X and delayed release never repeat the original press");
     }
     auto ground=std::make_unique<Route>();ground->poll(1000,{},100,-1,1);ground->poll(1020,{0x4000},100,-1,1);
     check(!ground->poll(1040).requested_id,"ground face press is never borrowed by a later airborne release");
@@ -117,17 +117,17 @@ void cancellation() {
     check(!startup->poll(1020).requested_id,"held startup X must release before any fresh command can arm");
     auto cached=std::make_unique<Route>();cached->poll(1000);cached->poll(1020,{8});cached->poll(1040);
     for(std::uint64_t now=1100;now<=1600;now+=100)cached->poll(now);
-    cached->poll(1620,{0x4000});const auto out=cached->poll(1640);
+    const auto out=cached->poll(1620,{0x4000});
     check(out.requested_id==2 && cached->input.input_diagnostic(0)->recognition[0].request.direction==0,
         "stale cached Right cannot turn neutral release into a Heelflip or fictional direction");
 }
 void release_order() {
     for(bool simultaneous:{false,true}) {
         auto h=std::make_unique<Route>();h->poll(1000,{0x1000});
-        h->poll(1020,{0x5000});
+        const auto first=h->poll(1020,{0x5000});
         if(!simultaneous)h->poll(1040,{0x4000});
         const auto out=h->poll(1060);
-        check(out.requested_id==2,"an intervening A release cannot make neutral X delivery depend on physical release order");
+        check(first.requested_id==2&&!out.requested_id,"A release order cannot delay or duplicate the original airborne X press");
     }
 }
 void queued_withdrawal() {
@@ -154,7 +154,7 @@ void prompt_directional_tap() {
         const auto release=1000+3*cadence;h->poll(release,{},100,1,0);
         unsigned flips{};std::uint64_t pressed{};
         for(unsigned n=1;n<=15;++n) {
-            const bool direction=n>=(before?1u:3u) && (!release_direction || n<5);
+            const bool direction=n>=(before?1u:2u) && (!release_direction || n<5);
             const auto buttons=static_cast<std::uint16_t>((n>=2 && n<4?0x4000u:0u)|(direction?choice.pad:0u));
             const auto out=h->poll(release+n*cadence,{buttons},n<4?103u:n==4?200u:201u,n<8?1:-1,n<=4?0u:2u);
             if(out.requested_id && out.requested_id!=1) {
@@ -227,21 +227,21 @@ void prompt_released_ollie_tap() {
     }
 }
 void early_press_cadences() {
-    for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u}) {
+    for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u,500u,650u}) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
         h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},100,1,0);
         const unsigned release=1100;unsigned starts{}, first_motion{};std::uint64_t pressed{};
-        for(unsigned elapsed=0;elapsed<350;elapsed+=cadence) {
+        for(unsigned elapsed=0;elapsed<delay+350;elapsed+=cadence) {
             const bool held=elapsed>=delay && elapsed<delay+120;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
-                elapsed<40?103u:201u,elapsed<250?1:-1,elapsed<40?0u:2u);
+                elapsed<40?103u:201u,elapsed<delay+250?1:-1,elapsed<40?0u:2u);
             if(out.requested_id==2){++starts;check(h->input.authored_air_followup(release+elapsed,h->frame)==2,"actual facade publishes only its admitted same-flight basic flip identity");}
             if(starts && out.authored_playback && (out.right_x || out.right_y) && !first_motion)first_motion=elapsed;
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
                 pressed=d->recognition[i].request.physical_pressed_at;
         }
-        check(starts==1 && first_motion && first_motion<250,"early X emits a nonneutral native flip gesture before Ollie selection retirement at each cadence");
+        check(starts==1 && first_motion && first_motion<delay+200,"early X emits a nonneutral native flip gesture before Ollie selection retirement at each cadence");
         check(pressed==release+((delay+cadence-1)/cadence)*cadence,"handoff preserves actual sampled physical X time");
     }
 }

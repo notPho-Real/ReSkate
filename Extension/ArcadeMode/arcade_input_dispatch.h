@@ -154,7 +154,7 @@ public:
     }
     template<class Report>
     void dispatch(std::uint64_t now, std::uint64_t session, InputContext context,
-                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}) noexcept {
+                  InputAdapter adapter, Report report, InputNativeContext native = {}, bool rail_ready = false, InputAirTables tables = {}, std::uint64_t released_jump = 0) noexcept {
         bool started{};
         // Installed extras precede the ordinary FIFO; each retains insertion
         // order. Manual keeps its independent replaceable slot.
@@ -162,7 +162,7 @@ public:
             auto& slot = slots_[1 + front_];
             if (slot.action == InputAction::none) { pop(); continue; }
             const auto request = slot;
-            const auto gate = eligibility(request, now, session, context, native, tables);
+            const auto gate = eligibility(request, now, session, context, native, tables, released_jump);
             if (gate != InputDisposition::waiting) { pop(); report(InputDispatchEvent{request, gate}); continue; }
             if (started || now < request.ready_at) break;
             pop(); // Removal precedes any adapter/reentrant boundary.
@@ -187,7 +187,7 @@ public:
         const auto slot_dispatch = [&](std::size_t index, std::uint64_t& slot_epoch) noexcept {
             if (slots_[index].action == InputAction::none) return;
             const auto request = slots_[index];
-            auto result = eligibility(request, now, session, context, native, tables);
+            auto result = eligibility(request, now, session, context, native, tables, released_jump);
             if (result == InputDisposition::waiting && started) return;
             if (index == capacity + 1 && result == InputDisposition::waiting &&
                 (context != InputContext::rail || !rail_ready || !request.geometry_known || !request.rail_generation)) return;
@@ -254,17 +254,25 @@ private:
     }
     static bool rail(InputAction action) noexcept { return action == InputAction::rail_select; }
     static bool manual(InputAction action) noexcept { return action == InputAction::manual || action == InputAction::nose_manual; }
-    static bool jump_selection_retired(const InputRequest& request, const InputNativeContext& native) noexcept {
-        // Fixed ordinary input waits for the existing jump selection to become
-        // idle; all other selection/context transitions keep their cancellation.
+    static bool jump_selection_retired(const InputRequest& request, const InputNativeContext& native, std::uint64_t released_jump = 0) noexcept {
+        // Generic requests retain the observed jump/idle transition. The
+        // optional release timestamp comes only from the Session's continuously
+        // validated native Ollie proof, never from a raw button or caller clock.
+        // It carries queued intent across that pop's forward AIR phases only;
+        // owner/episode checks below and actuator readiness still apply.
         return request.action == InputAction::flip &&
             (request.form == InputForm::ordinary || request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) && request.presses == 1 &&
             request.selection.table == InputAirTableKind::none &&
             (native.jump_selection_retired(request.generations,request.air_episode,request.waiting_flip) ||
-             native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip));
+             native.ordinary_flip_wait_continues(request.generations,request.air_episode,request.waiting_flip) ||
+             (released_jump && request.physical_pressed_at>=released_jump &&
+              request.waiting_flip.valid && request.waiting_flip.id==1 && native.flip.valid &&
+              request.waiting_flip.object && request.waiting_flip.object==native.flip.object &&
+              request.waiting_flip.stance==native.flip.stance &&
+              (native.flip.id==1 || native.flip.id==-1) && native.airborne));
     }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
-                                        std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables) noexcept {
+                                        std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables, std::uint64_t released_jump) noexcept {
         if (request.selection.table != InputAirTableKind::none) {
             const auto* row = contextual_trick(request.selection.table);
             const auto& table = tables.get(request.selection.table);
@@ -278,7 +286,7 @@ private:
             request.generations.owner != native.generations.owner ||
             ((request.generation_mask & 2u) && request.generations.contact != native.generations.contact) ||
             ((request.generation_mask & 4u) && request.generations.action != native.generations.action &&
-             !jump_selection_retired(request,native))))
+             !jump_selection_retired(request,native,released_jump))))
             return InputDisposition::cancelled;
         if (request.air_episode.number && (!native.airborne || request.air_episode != native.air_episode()))
             return InputDisposition::cancelled;
@@ -379,7 +387,7 @@ public:
         diagnostic_.recognition_count = 0; diagnostic_.recognition_omitted = 0;
         const auto native = environment.native_context;
         const auto takeoff = environment.takeoff_release_at && now>=environment.takeoff_release_at &&
-            now-environment.takeoff_release_at<InputTiming::direction_ms ? environment.takeoff_release_at : 0;
+            (native.airborne || now-environment.takeoff_release_at<InputTiming::direction_ms) ? environment.takeoff_release_at : 0;
         native_required_ = native_required_ || native.required;
         if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
             reset(); return;
@@ -580,7 +588,7 @@ public:
                 pending_.cancel(InputAction::rail_select);
             record_dispatch(event);
         }, native, environment.context == InputContext::rail && environment.rail.fresh && environment.rail.ready &&
-            environment.rail.geometry_known && environment.rail.generation, air_tables_);
+            environment.rail.geometry_known && environment.rail.generation, air_tables_,takeoff);
         diagnostic_.session = session_;
         diagnostic_.journal_overflows = events_.history().overflows();
     }
@@ -884,7 +892,6 @@ private:
             InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
-        if (takeoff_release_at_ && environment.takeoff_actor_busy) return false;
         // The session's observed released-Ollie proof carries the physical
         // edge into real AIR; mode 2 and selection retirement are not required
         // to present the next native stick gesture after the pop flick ends.
@@ -907,16 +914,17 @@ private:
             const auto binding = match_air_direction(events_,TrickFamily::flip,now,ordinary_reject);
             match = binding.match; defined_direction = binding.direction;
         }
-        // An admitted ordinary pop gives an early neutral X press an explicit
-        // basic-flip meaning. Preserve its journal edge; readiness still gates
-        // execution. Outside this short handoff, release/directional rules stay.
-        if (!match && environment.policy.neutral_flip_on_release && takeoff_release_at_ &&
-            now >= takeoff_release_at_ && now-takeoff_release_at_ <= InputTiming::takeoff_preload_ms &&
-            !events_.held_direction()) {
+        // A physical airborne X press means a basic flip immediately. Recognition
+        // does not wait for the RS actor or for release; the existing queue and
+        // native handoff still gate execution and retain the original edge time.
+        const bool preload=takeoff_release_at_ && now>=takeoff_release_at_ &&
+            now-takeoff_release_at_<=InputTiming::takeoff_preload_ms;
+        if (!match && environment.policy.neutral_flip_on_release &&
+            (environment.context==InputContext::air || preload) && !events_.held_direction()) {
             const std::array tokens{face};
-            match = events_.history().match({tokens,InputTiming::takeoff_preload_ms,ordinary_reject},now);
-            if (match && match.first_at < takeoff_release_at_) match = {};
-            if (match) form = InputForm::neutral_press;
+            match=events_.history().match({tokens,InputTiming::readiness_ms,ordinary_reject},now);
+            if(match && preload && match.first_at<takeoff_release_at_)match={};
+            if(match)form=InputForm::neutral_press;
         }
         if (!match && environment.policy.neutral_flip_on_release && (release || takeoff_release_at_) && !events_.held_direction()) {
             // The release is new in this poll. Intervening input and a consumed

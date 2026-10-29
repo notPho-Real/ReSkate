@@ -143,7 +143,7 @@ public:
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
         if (takeoff_release_at_) {
-            if (admission.external_owner || (physical.buttons & 0xa000u) || physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || now-takeoff_release_at_>=InputTiming::direction_ms ||
+            if (admission.external_owner || (physical.buttons & 0xa000u) || physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || (!native.airborne && now-takeoff_release_at_>=InputTiming::direction_ms) ||
                 !native.released_jump_continues(takeoff_native_,now)) takeoff_release_at_=0;
             else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
         }

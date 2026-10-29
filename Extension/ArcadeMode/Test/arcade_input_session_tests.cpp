@@ -455,7 +455,7 @@ void production_air_query_matrix() {
         const auto out=h.poll(age+1,conformance_direction(static_cast<std::int16_t>(held?code:0),pad,0x4000));
         const bool expected=held||(!unrelated&&age<500);
         const auto& d=h.session.diagnostic();
-        check(d.recognition_count==(expected?1u:0u),
+        check(d.recognition_count==1,
             "actual Session applies held/released direction windows and the press-only intervening barrier for every ordinary flip direction");
         if(expected) {
             const auto& request=d.recognition[0].request;
@@ -466,11 +466,11 @@ void production_air_query_matrix() {
             bool consumed{};for(const auto& event:h.session.history().events())
                 if(event.token==InputToken{InputSource::buttons,14,InputEdge::press})consumed=event.owners==InputConsumption::regular;
             check(consumed,"only successful ordinary Session matching commits its face category");
-        } else check(!out.requested_id&&!out.authored_playback,"failed query creates no native request or owner");
+        } else check(out.requested_id==2&&d.recognition[0].request.form==InputForm::neutral_press,"expired direction falls back to the new physical neutral X press, never its stale variant");
     }
     for(auto age:{499u,500u,501u})for(bool released:{false,true}) {
         ConformanceSession h;h.trace="face-before-direction";
-        if(released)h.admission.input_policy=InputPolicy::compatibility();
+        h.admission.input_policy=InputPolicy::compatibility();
         h.poll(0);h.poll(1,{0x4000});
         if(released)h.poll(2);
         const auto out=h.poll(age+1,{static_cast<std::uint16_t>(released?0:0x4000),-25000});
@@ -499,7 +499,7 @@ void production_air_query_matrix() {
 }
 void production_order_and_boundary_matrix() {
     for(auto cadence:{17u,34u})for(auto code:{4,6,8,2})for(bool simultaneous:{false,true}) {
-        ConformanceSession h;h.trace="triple-tail-order";h.poll(0);
+        ConformanceSession h;h.trace="triple-tail-order";h.admission.input_policy=InputPolicy::compatibility();h.poll(0);
         h.poll(cadence,conformance_direction(static_cast<std::int16_t>(code),false));h.poll(2*cadence);
         if(!simultaneous) {
             h.poll(3*cadence,{0x0100});const auto early=h.poll(4*cadence,{0x4000});
