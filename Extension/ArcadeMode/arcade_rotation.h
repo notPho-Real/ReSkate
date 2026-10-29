@@ -47,8 +47,12 @@ public:
             frame.contact_generation && frame.action_generation && frame.physics_step &&
             now >= frame.sampled_at && now-frame.sampled_at <= 150 &&
             (frame.state == 100 || frame.state == 103) && !frame.airborne && !frame.rail_family;
-        return poll(now,buttons,gameplay && mode==SpinMode::held,
+        auto output = poll(now,buttons,gameplay && mode==SpinMode::held,
             ground ? SkatePose::riding : SkatePose::unknown,crouched,nollie,conflict);
+        // Horizontal LS is also native ground steering. Reserve preparation
+        // without delivering yaw until the independently qualified AIR path owns it.
+        if (output.owns_left) output.x = output.y = 0;
+        return output;
     }
     void reset() noexcept {
         const auto epoch=qualified_.epoch;
@@ -77,7 +81,8 @@ public:
             native->contact_generation && native->action_generation && native->physics_step && native->airborne && native->airborne_episode && native->airborne_started_known &&
             (native->state==200 || native->state==201) && native->airborne_started_at<=native->sampled_at &&
             now>=native->sampled_at && now-native->sampled_at<=150);
-        if(!air || !ready || !proof_ready || conflict || !qualified_armed_ || facts.no_spin==SpinFact::set)return {false,0,0,0,qualified_};
+        const bool native_held_ready = mode==SpinMode::held && native && proof_ready;
+        if(!air || (!ready && !native_held_ready) || !proof_ready || conflict || !qualified_armed_ || facts.no_spin==SpinFact::set)return {false,0,0,0,qualified_};
         // A new physical edge may follow actual native AIR before the first
         // AIR input poll. A preheld or transition-coincident edge is distinct.
         const bool after_native_entry=native && proof_ready && now>native->airborne_started_at;

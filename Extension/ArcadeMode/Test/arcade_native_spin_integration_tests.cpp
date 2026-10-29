@@ -69,12 +69,26 @@ int main(){
   auto sample=[&](std::uint64_t at,std::uint16_t buttons){f.sampled_at=at;return preparation.poll_preparation(at,buttons,true,f,f.state==103,nollie,false,SpinMode::held);};
   sample(1000,0);check(!sample(1017,side).owns_left,"prewind respects the existing chord window");
   check(sample(1138,side).owns_left,"fresh native crouch admits preparation");
-  auto out=sample(1150,side);check(out.y*(nollie?1:-1)>0&&out.yaw_rate==0,"prewind starts at the native pop end without a body rate");
-  out=sample(1198,side);check(out.x*(side==BoardChord::lb?-1:1)>0,"prewind sweeps toward the selected spin direction");
+  auto out=sample(1150,side);check(out.x==0&&out.y==0&&out.yaw_rate==0,"ground preparation reserves LS without delivering ground steering");
+  out=sample(1198,side);check(out.x==0&&out.y==0,"held prewind cannot turn the grounded skater");
   check(!sample(1200,BoardChord::pair).owns_left,"board pair wins preparation ownership");
   sample(1217,0);f.state=100;check(!sample(1234,side).owns_left,"ordinary ground steering is untouched");
  }
 
+
+ for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned cadence:{8u,17u,33u}) {
+  AirRotation rotation;NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
+  f.owner_generation=f.action_generation=f.contact_generation=f.physics_step=1;
+  rotation.poll_qualified(1000,0,false,false,true,SkatePose::riding,false,false,SpinMode::held,{},&f);
+  f.airborne=true;f.state=200;f.airborne_episode=1;f.airborne_started_known=true;
+  f.sampled_at=f.airborne_started_at=1000+cadence;
+  const auto request=rotation.poll_qualified(f.sampled_at,side,false,false,true,SkatePose::air,false,false,SpinMode::held,{},&f);
+  check(AirRotation::native_shoulder_output(request,SpinMode::held,side,true).x!=0,
+        "fresh native AIR can consume held shoulders before custom body-rate readiness");
+  f.valid=false;
+  check(!rotation.poll_qualified(f.sampled_at+cadence,side,false,false,true,SkatePose::air,false,false,SpinMode::held,{},&f).owns_left,
+        "decoupling the unused body writer never bypasses native AIR proof");
+ }
  for(auto side:{BoardChord::lb,BoardChord::rb})for(bool allowed:{false,true})for(auto mode:{SpinMode::held,SpinMode::tap}) {
   AirRotation::Output request{true,0,0,side==BoardChord::lb?-7.75f:7.75f,{}};
   const auto delivered=AirRotation::native_shoulder_output(request,mode,side,allowed);
