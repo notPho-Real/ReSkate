@@ -169,7 +169,7 @@ int main(){
   p.observe(1051,100);p.publish(1051,0);p.sample();p.intent.release_sequence=2;p.intent.release_at=1068;p.intent.native_launch_id=1;p.observe(1068,200,1);p.publish(1068,0);
   check(p.sample().vertical,"target-first retirement ends only at a new ordinary flight");
  }
- for(int flip:{2,3}) {
+ for(int flip:{2,3,4}) {
   Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
   p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
   p.observe(1017,200,1);p.publish(1017,0);const auto launch=p.sample();
@@ -181,12 +181,12 @@ int main(){
   check(!AirMotion::other_native_action({true,flip,16},launch.native_launch_id,AirMotion::qualified_followup(p.intent,current,1034)),
     "target-first retirement guard uses current authored flight authority");
  }
- for(int flip:{2,3})for(unsigned fault=0;fault<5;++fault){
+ for(int flip:{2,3,4})for(unsigned fault=0;fault<5;++fault){
   Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
   p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
   p.observe(1017,200,1);p.publish(1017,0);check(p.sample().vertical,"qualified ordinary launch begins");
   p.intent.native_followup_id=fault==1?0:flip;
-  p.observe(1034,201,fault==2?4:flip);p.publish(1034,0);
+  p.observe(1034,201,fault==2?16:flip);p.publish(1034,0);
   if(fault==3)++p.intent.angular_proof.departure;
   if(fault==4)p.body.velocity_y+=4; // independent native impulse, even during a legitimate flip
   const auto out=p.sample();
@@ -199,7 +199,7 @@ int main(){
      "withdrawn authored ownership cannot retain the flip trajectory exemption");
   }
  }
- for(unsigned rate:{30u,60u,120u})for(int flip:{2,3}) {
+ for(unsigned rate:{30u,60u,120u})for(int flip:{2,3,4}) {
   Pipeline plain,flipped;float plain_y{},flip_y{};
   for(auto* p:{&plain,&flipped}) {
    p->body.dt=1.0f/static_cast<float>(rate);p->observe(1000,100);p->publish(1000,0);p->sample();

@@ -60,7 +60,7 @@ public:
     }
     std::int32_t authored_air_followup(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
-            frame.air_episode()==air_actor_episode_ && (air_followup_id_==2 || air_followup_id_==3) ? air_followup_id_ : 0;
+            frame.air_episode()==air_actor_episode_ && ordinary_ollie_followup(air_followup_id_) ? air_followup_id_ : 0;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {

@@ -25,6 +25,11 @@ constexpr std::uint8_t native_flip_id(ArcadeTrick trick, bool nollie) noexcept {
     default: return 0;
     }
 }
+// Only ordinary basic flips admitted by the same-flight proof may retain an
+// existing Ollie trajectory. This grants neither trick admission nor an impulse.
+constexpr bool ordinary_ollie_followup(std::int32_t id) noexcept {
+    return id == 2 || id == 3 || id == 4;
+}
 inline const AuthoredGesture* exact_authored_gesture(std::span<const AuthoredGesture> catalog,
         std::uint8_t native_id, bool nollie, GestureContext context) noexcept {
     if (!native_id) return nullptr;

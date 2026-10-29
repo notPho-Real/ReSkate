@@ -3,6 +3,7 @@
 #include "arcade_movement.h"
 #include "arcade_spin_control.h"
 #include "arcade_native_input_state.h"
+#include "arcade_native_mapping.h"
 #include <array>
 #include <cmath>
 #include <limits>
@@ -140,10 +141,10 @@ public:
             std::abs(a-b)<=8*std::numeric_limits<float>::epsilon()*std::max({1.0f,std::abs(a),std::abs(b)});
     }
     static bool other_native_action(const NativeFlipSelection& action,std::int32_t captured_launch,std::int32_t followup=0) noexcept {
-        // A qualified authored Kickflip/Heelflip rotates the board in the same
+        // A qualified authored basic flip rotates the board in the same
         // ordinary flight. It is not a new vertical launch. Independent native
         // velocity changes still retire assistance below. All other actors win.
-        if(action.valid && action.object && captured_launch==1 && (followup==2 || followup==3) && action.id==followup)return false;
+        if(action.valid && action.object && captured_launch==1 && ordinary_ollie_followup(followup) && action.id==followup)return false;
         return action.valid && action.object && action.id >= 0 &&
             ((captured_launch!=1 && captured_launch!=16) || action.id!=captured_launch);
     }

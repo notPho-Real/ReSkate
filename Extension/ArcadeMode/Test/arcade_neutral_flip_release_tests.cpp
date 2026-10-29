@@ -159,7 +159,8 @@ void prompt_directional_tap() {
             const auto out=h->poll(release+n*cadence,{buttons},n<4?103u:n==4?200u:201u,n<8?1:-1,n<=4?0u:2u);
             if(out.requested_id && out.requested_id!=1) {
                 if(out.requested_id!=choice.native)std::cerr<<"wanted "<<choice.native<<" got "<<out.requested_id<<" before "<<before<<" release "<<release_direction<<'\n';
-                check(out.requested_id==choice.native,"prompt direction before/during X selects the original basic variant");++flips;
+                check(out.requested_id==choice.native,"prompt direction before/during X selects the original basic variant");
+                check(h->input.authored_air_followup(release+n*cadence,h->frame)==static_cast<std::int32_t>(choice.native),"admitted basic directional flip retains its original flight trajectory identity");++flips;
             }
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
