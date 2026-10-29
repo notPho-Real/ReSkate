@@ -38,7 +38,7 @@ public:
     static constexpr auto ground_pair_ms = InputTiming::ground_pair_ms, ground_sample_slack_ms = InputTiming::ground_sample_slack_ms;
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
-    void cancel() noexcept { confirmed_ = established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    void cancel() noexcept { confirmed_ = established_ = balance_established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
     bool initial_ground_acquisition(std::uint64_t now) const noexcept {
@@ -62,7 +62,7 @@ public:
         recognized_at_ = recognized_at;recognition_id_=recognition_id;
         air_prepared_ = prepared_air; landed_ = !airborne;
         held_air_ = prepared_air && airborne && held_air;
-        confirmed_ = established_ = wrong_contact_ = false;
+        confirmed_ = established_ = balance_established_ = wrong_contact_ = false;
         return true;
     }
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
@@ -118,6 +118,7 @@ public:
             if (observed == wanted) {
                 if (!confirmed_) first_confirmed_at_ = now;
                 confirmed_ = true; confirmed_at_ = now;
+                balance_established_ = balance_established_ || balance_admitted;
                 // Physical confirmation remains available to existing balance
                 // controls. Independent history ends only the initial ground
                 // acquisition exception; model feedback alone cannot do so.
@@ -125,10 +126,10 @@ public:
             }
             // Brief observer gaps must not drop a held native manual. A failed
             // request or an observed exit always has a bounded release path.
-            // Acquisition ends once matching native contact is confirmed.
+            // Acquisition ends once matching contact and independent balance are admitted.
             // A one-poll balance-publication gap must use the continuation
             // lease below, not re-enter an already expired acquisition timer.
-            if (((!air_prepared_ || landed_) && !confirmed_ && now - requested_at_ >= acquisition_ms) ||
+            if (((!air_prepared_ || landed_) && (!confirmed_ || !balance_established_) && now - requested_at_ >= acquisition_ms) ||
                 (confirmed_ && !initial_ground_acquisition(now) &&
                  now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
@@ -138,7 +139,7 @@ public:
         return {};
     }
 private:
-    bool hard_reset_{}, clocked_{}, confirmed_{}, established_{}, air_prepared_{}, landed_{}, wrong_contact_{}, held_air_{};
+    bool hard_reset_{}, clocked_{}, confirmed_{}, established_{}, balance_established_{}, air_prepared_{}, landed_{}, wrong_contact_{}, held_air_{};
     int requested_{};
     std::uint64_t last_{}, requested_at_{}, recognized_at_{}, recognition_id_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };
