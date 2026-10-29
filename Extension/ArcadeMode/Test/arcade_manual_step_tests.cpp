@@ -43,7 +43,7 @@ int main(){
   if(fault==2)--p.frame.physics_step;if(fault==3)p.frame.valid=false;
   if(fault==4)p.frame.sampled_at+=1;
   if(fault==5)p.steps.invalidate();if(fault==6)p.steps.reset();
-  if(fault==7){p.frame.physics_step+=1;}
+  if(fault==7){p.frame.physics_step+=1; ++p.frame.contact_generation;}
   const auto now=fault==8?p.frame.sampled_at+151:fault==9?p.frame.sampled_at-1:p.frame.sampled_at;
   const auto pose=fault==10?(nose?SkatePose::manual:SkatePose::nose_manual):p.pose();
   check(!p.steps.sample(p.physics,p.frame,pose,now,fault!=11).valid,"mismatch/rollback/gap/clock/stale/OFF/reset/type/paused context cannot advance old physical ownership");
@@ -52,6 +52,10 @@ int main(){
  for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
   Pipeline p(nose,dt);p.observe(0);p.sample();p.observe(1);p.steps.observe(p.frame,dt/1000.f,p.input(1));
   check(!p.sample().valid,"duplicate producer sequence is an invalid interval, not two physics steps");
+  Pipeline duplicate(nose,dt);duplicate.observe(0);const auto once=duplicate.sample();
+  auto original_controls=duplicate.input(0);original_controls.sampled_at=duplicate.frame.sampled_at;
+  duplicate.steps.observe(duplicate.frame,dt/1000.f,original_controls);
+  check(same(duplicate.sample(),once) && duplicate.steps.seconds()==0,"identical producer retry neither revokes nor repeats a committed interval");
   Pipeline gap(nose,dt);gap.observe(0);gap.sample();NativeRequestSample missing{};missing.valid=true;missing.state=100;missing.crouch_mode=1;missing.words[1]=nose?0x8000:0x4000;gap.observer.observe(gap.now,gap.owner,missing,{true,-1});gap.now+=dt;gap.observe(2);
   const auto retained=gap.sample();
   check(retained.valid && std::abs(retained.elapsed-2*dt/1000.f)<1e-6f,"unchanged native contact survives a missing record without integrating guessed time");

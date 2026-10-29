@@ -53,7 +53,7 @@ public:
               const PhysicalBalanceSample* physical = nullptr) noexcept {
         if (pose == SkatePose::unknown ||
             (physical && !physical->valid) ||
-            !std::isfinite(dt) || dt < 0 || dt > 0.25f) {
+            !std::isfinite(dt) || dt < 0 || dt > (physical && physical->valid && balance_kind(pose)==BalanceKind::manual ? 1.0f : 0.25f)) {
             invalidate();
             return false;
         }

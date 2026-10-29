@@ -16,17 +16,45 @@ public:
     float seconds() const noexcept { return seconds_; }
     void invalidate() noexcept { count_=0; fault_=true; completion_={}; }
     NativeInputFrame completion() const noexcept { return completion_; }
+    // Current native identity may outlive one missing dynamics row. This does
+    // not integrate time or renew the last committed interval. Longer client
+    // delays require every intervening original producer row, within 1s.
+    bool continuity(const NativeInputFrame& current,std::uint64_t now) const noexcept {
+        if(fault_ || !cached_.valid || !cached_.active || !current.valid ||
+            now<current.sampled_at || now-current.sampled_at>150 ||
+            current.sampled_at<committed_.sampled_at || current.sampled_at-committed_.sampled_at>1000 ||
+            current.physics_step<consumed_ || !stable_contact(committed_,current))return false;
+        if(current.physics_step==consumed_)return same_frame(committed_,current);
+        if(current.sampled_at-committed_.sampled_at<=150)return true;
+        auto previous=consumed_;
+        for(std::size_t i=0;i<count_;++i){const auto& row=records_[i];
+            if(row.frame.physics_step<=consumed_)continue;
+            if(row.frame.physics_step>current.physics_step)break;
+            if(row.frame.physics_step!=previous+1 || !stable_contact(committed_,row.frame))return false;
+            previous=row.frame.physics_step;
+        }
+        return previous==current.physics_step;
+    }
+
     void observe(const NativeInputFrame& frame,float seconds,InputDigitalState controls) noexcept {
+        if(observed_ && frame.physics_step==observed_ && same_frame(frame,last_observed_.frame) &&
+            seconds==last_observed_.seconds && controls.sampled_at==last_observed_.controls.sampled_at &&
+            controls.buttons==last_observed_.controls.buttons && controls.stick_buttons==last_observed_.controls.stick_buttons &&
+            controls.pad_buttons==last_observed_.controls.pad_buttons && controls.triggers==last_observed_.controls.triggers &&
+            controls.direction==last_observed_.controls.direction && controls.available==last_observed_.controls.available)return;
         if (!frame.valid || !frame.owner.valid() || !frame.owner_generation || !frame.physics_step ||
             !std::isfinite(seconds) || seconds<.001f || seconds>.1f ||
             (observed_ && frame.physics_step<=observed_)) { invalidate(); return; }
-        observed_=frame.physics_step;
+        observed_=frame.physics_step; last_observed_={frame,seconds,controls};
         if (ManualRelease::completed_contact(frame)) completion_=frame;
         if (count_==capacity) { invalidate(); return; }
         records_[count_++]={frame,seconds,controls};
     }
     PhysicalBalanceSample sample(ManualPhysics& physics,const NativeInputFrame& current,
             SkatePose pose,std::uint64_t now,bool valid,bool preserve_history=false) noexcept {
+        seconds_=0;
+        const bool continuous=continuity(current,now);
+        const auto retain=[&]() noexcept { return cached_; };
         const auto fail=[&]() noexcept { physics.reset(); reset(); return PhysicalBalanceSample{}; };
         if (!valid || !current.valid || !current.owner.valid() || !current.owner_generation || !current.physics_step ||
             now<current.sampled_at || now-current.sampled_at>150 || fault_) return fail();
@@ -62,7 +90,7 @@ public:
         std::size_t first=count_;
         for(std::size_t i=0;i<count_;++i)
             if(records_[i].frame.physics_step>(continuing?consumed_:current.physics_step-1)){first=i;break;}
-        if(first==count_) return fail();
+        if(first==count_) return continuous ? retain() : fail();
         std::uint64_t previous=continuing?consumed_:current.physics_step-1;
         auto contact_at=continuing?contact_at_:current.sampled_at;
         auto previous_frame=committed_;
@@ -80,13 +108,13 @@ public:
                 f.sampled_at>=previous_frame.sampled_at && f.sampled_at-previous_frame.sampled_at<=150;
             if((f.physics_step!=previous+1 && !stable_gap) || f.owner!=current.owner || f.owner_generation!=current.owner_generation ||
                 f.action_generation!=current.action_generation || f.state!=100 || f.mode!=1 || (f.stance_and_push&0x40u) ||
-                f.sampled_at>now || now-f.sampled_at>150 || (continuing && f.sampled_at<sampled_at_))return fail();
+                f.sampled_at>now || (!continuous && now-f.sampled_at>150) || (continuing && f.sampled_at<sampled_at_))return fail();
             if(f.contacts==wanted)contact_at=f.sampled_at;
             else if(f.contacts!=0xc000u || f.sampled_at<contact_at || f.sampled_at-contact_at>=100)return fail();
             if(f.physics_step==current.physics_step && !same_frame(f,current))return fail();
             previous=f.physics_step; previous_frame=f;
         }
-        if(previous!=current.physics_step)return fail();
+        if(previous!=current.physics_step)return continuous ? retain() : fail();
         if(!continuing)controls_.reset_manual();
         auto configured=InputBalanceControls::vertical(pose==SkatePose::nose_manual?InputBalanceKind::nose:InputBalanceKind::manual);
         configured.admitted=true; // Query mapping only; admission was supplied by the native mechanic owner.
@@ -99,7 +127,7 @@ public:
             const auto pair=input.configured(configured);
             controls_.begin_manual(row.frame.sampled_at);
             controls_.poll_manual(row.frame.sampled_at,cached_.position,{pair.first,pair.second},available);
-            cached_=manual_physics_pose(physics,pose,row.seconds,controls_.manual_input()); seconds_=row.seconds;
+            cached_=manual_physics_pose(physics,pose,row.seconds,controls_.manual_input()); seconds_+=row.seconds;
             // An endpoint owns termination at its original interval. Later
             // buffered steps cannot restart or continue that closed section.
             if(!cached_.active)break;
@@ -110,6 +138,14 @@ public:
         return cached_;
     }
 private:
+    static bool stable_contact(const NativeInputFrame& a,const NativeInputFrame& b) noexcept {
+        return a.valid && b.valid && a.owner==b.owner && a.owner_generation==b.owner_generation &&
+            a.contact_generation==b.contact_generation && a.action_generation==b.action_generation &&
+            a.mode_generation==b.mode_generation && a.state==100 && b.state==100 && a.mode==1 && b.mode==1 &&
+            (a.contacts==0x4000u || a.contacts==0x8000u) && a.contacts==b.contacts &&
+            !(b.stance_and_push&0x40u) && a.stance_and_push==b.stance_and_push &&
+            a.flip_known==b.flip_known && a.flip_id==b.flip_id && a.selection_object==b.selection_object;
+    }
     static bool same_frame(const NativeInputFrame& a,const NativeInputFrame& b) noexcept {
         return a.valid==b.valid && a.owner==b.owner && a.owner_generation==b.owner_generation &&
             a.contact_generation==b.contact_generation && a.action_generation==b.action_generation &&
@@ -118,6 +154,7 @@ private:
             a.flip_id==b.flip_id && a.selection_object==b.selection_object;
     }
     NativeInputFrame committed_{}, completion_{};
+    Interval last_observed_{};
     std::array<Interval,capacity> records_{};
     std::size_t count_{};
     bool fault_{};

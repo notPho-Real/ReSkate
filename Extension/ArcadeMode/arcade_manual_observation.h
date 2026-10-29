@@ -7,6 +7,7 @@ struct ManualObservationContext {
     bool enabled{}, valid{}, activity_fresh{}, owner_changed{}, gap{};
     SkatePose contact{SkatePose::unknown};
     bool pushing{};
+    bool native_continuity{};
 };
 inline SkatePose manual_contact_pose(const NativeComboObservation& native, bool pushing) noexcept {
     if (!native.valid || native.bailed || pushing || native.state != 100 || native.mode != 1)
@@ -58,7 +59,7 @@ public:
         }
         const bool same_context = primed_ && context.enabled && context.valid && context.generation &&
             context.generation == generation_ && !context.owner_changed && !context.gap &&
-            context.now >= last_at_ && context.now - last_at_ <= ScoreLabelEdges::freshness_ms;
+            context.now >= last_at_ && (context.now - last_at_ <= ScoreLabelEdges::freshness_ms || context.native_continuity);
         if (same_context && confirmed_ && (context.contact == candidate_ ||
                 (context.contact == SkatePose::riding && context.now >= contact_at_ && context.now - contact_at_ < 100))) {
             last_at_ = context.now;

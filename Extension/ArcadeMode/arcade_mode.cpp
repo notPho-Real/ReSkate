@@ -505,10 +505,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     const auto score = score_activity();
     NativeInputFrame native_frame{}, manual_completion{};
+    bool manual_continuity{};
     {
         std::lock_guard lock(ollie_mutex);
         native_frame = native_input_state.correlate(GetTickCount64(),input_owner(owner),native);
         manual_completion = physical_manual_steps.completion();
+        manual_continuity = physical_manual_steps.continuity(native_frame,now);
     }
     if (manual_completion.owner == native_frame.owner && manual_completion.owner_generation == native_frame.owner_generation)
         manual_release.retire_observed(now,manual_completion);
@@ -517,7 +519,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool owner_changed = valid && had_combo_owner &&
         (owner != combo_owner || manual_identity_epoch != native_frame.owner_generation);
     if (valid) manual_identity_epoch = native_frame.owner_generation;
-    const bool observation_gap = combo_tick_at &&
+    const bool observation_gap = !manual_continuity && combo_tick_at &&
         (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
     if (!valid || owner_changed) {
         reset_manual_physics();
@@ -544,7 +546,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         {now, manual_identity_epoch, enabled(), valid && !bail, activity_fresh,
          owner_changed, observation_gap,
          manual_contact_pose({valid, false, false, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u},
-             (native.words[0] & 0x40u) != 0), (native.words[0] & 0x40u) != 0});
+             (native.words[0] & 0x40u) != 0), (native.words[0] & 0x40u) != 0, manual_continuity});
     ManualObservationResult manual_observation{};
     const auto physical_contact = manual_acquisition_pose(native_frame,bail);
     bool acquisition_putdown{}, acquiring_history{},ground_confirmed{};
@@ -552,7 +554,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         std::lock_guard lock(ollie_mutex);
         const auto ground = ground_manual_balance.sample(now,native_frame,
             enabled() && valid && !owner_changed && !observation_gap && !bail,
-            !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown());
+            !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown(),manual_continuity);
         // Original history and owned physical contact retain distinct admission
         // evidence; an absent/delayed name cannot suppress acquired balance.
         manual_observation = manual_balance_observation(ground,history_observation);
@@ -614,7 +616,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); }
     }
     if (!physical.valid) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
-    const bool failed = combo_session.step(pose, dt, correction, native_revert,
+    const bool failed = combo_session.step(pose, manual_pose && physical.valid ? physical_seconds : dt, correction, native_revert,
         manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
     // Ending a section stops integration; banking the combo resets its retained
     // difficulty. Brief grounded links cannot silently start a fresh history.

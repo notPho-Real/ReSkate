@@ -44,7 +44,7 @@ public:
         air_origin_ = false; landed_ = true;
     }
     ManualObservationResult sample(std::uint64_t now, const NativeInputFrame& frame,
-                                   bool valid, bool may_begin) noexcept {
+                                   bool valid, bool may_begin, bool continuous = false) noexcept {
         if (!pending_ && !confirmed_) return {};
         if (pending_ && air_origin_) {
             const bool live = valid && fresh(now,frame) && same_owner(frame) &&
@@ -61,7 +61,7 @@ public:
         }
         if (!valid || !fresh(now,frame) || !same_owner(frame) ||
             frame.state != 100 || frame.mode != 1 || (frame.stance_and_push & 0x40u) ||
-            (clocked_ && (now < last_at_ || now-last_at_ > 150 || frame.physics_step < last_step_))) {
+            (clocked_ && (now < last_at_ || (!continuous && now-last_at_ > 150) || frame.physics_step < last_step_))) {
             reset(); return {};
         }
         clocked_ = true; last_at_ = now; last_step_ = frame.physics_step;

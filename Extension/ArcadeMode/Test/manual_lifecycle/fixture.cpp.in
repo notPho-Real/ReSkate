@@ -746,11 +746,39 @@ void analog_air_lifecycle(){
        "held-final and released-final analog gestures both enter without a second face press or synthetic history label");
  }
 }
+void manual_observation_continuity(){
+ for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,300);
+  const auto start=clock_ms;
+  for(unsigned i=0;clock_ms-start<10000;++i){
+   // The real producer advances independently of the client. One missing
+   // dynamics row still has a native observer frame with unchanged identity.
+   clock_ms+=dt;
+   if(i==30){latest=native_input_state.observe(clock_ms,input_owner(owner),raw,{true,-1});}
+   else observe(dt/1000.f,wanted);
+   if(i>=50 && i<50+200/dt)continue; // queued original physics rows, no invented dt
+   client(dt/1000.f,history());
+   const auto before=snapshot().elapsed;
+   client(dt/1000.f,history());
+   check(snapshot().elapsed==before,"duplicate client polls never reintegrate manual time");
+   if(!(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active))std::cerr<<"continuity nose="<<nose<<" dt="<<dt<<" i="<<i<<" age="<<clock_ms-start<<" active="<<physical_manual.active()<<" failed="<<combo_session.failed_section()<<" putdown="<<combo_session.manual_putdown()<<"\n";
+   check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "production manual survives missing row and delayed client without reset or HUD loss");
+   // Ordinary signed correction through the real facade, not direct model writes.
+   const auto feedback=snapshot();
+   remap(0,(feedback.velocity+.02f*feedback.position)>0?-25000:25000);
+  }
+  tick(dt,100,0xc000);remap();
+  for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"real completed contact exit still ends retained manual");
+ }
+}
 int main(){
  camera_client_phase();
 #if defined(DINGOSDK_INPUT_PHASE_ONLY)
  std::cout<<checks<<" source-composed client phase and camera checks passed\n";return 0;
 #endif
+ manual_observation_continuity();
  analog_air_boundaries();
  analog_air_lifecycle();
  air_admission_lifecycle();
