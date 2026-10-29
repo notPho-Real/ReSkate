@@ -1014,7 +1014,7 @@ void native_revert_stances() {
  }
 }
 void native_manual_revert_links() {
- for(bool nose:{false,true})for(unsigned fault=0;fault<6;++fault) {
+ for(bool nose:{false,true})for(unsigned fault=0;fault<7;++fault) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
   raw.valid=true;raw.crouch_mode=1;raw.words[1]=nose?0x8000u:0x4000u;
   auto poll=[&](std::uint64_t now,unsigned state,unsigned rt,bool switched){
@@ -1030,7 +1030,10 @@ void native_manual_revert_links() {
   poll(1000,100,0,false);auto out=poll(1017,100,255,false);
   check(out.action.owned==(fault!=1),"only independently admitted Manual/Nose may transfer ownership to RT");
   if(fault==1)continue;
+  check(h.session.pending_manual_revert(1017,h.admission.native_context),"admitted manual RT holds a bounded pending transition without claiming success");
+  if(fault==6)h.admission.action_mode=ActionExperiment::off;
   poll(1100,101,0,false);poll(1200,101,0,false);poll(1300,101,0,false);
+  if(fault==6)check(!h.session.pending_manual_revert(1300,h.admission.native_context),"action-mode cancellation cannot retain pending combo authority");
   if(fault!=2)h.session.observe_native_revert(1300,h.admission.native_context);
   if(fault==4)++owner.core;
   for(unsigned t=1317;t<1800;t+=17)poll(t,101,0,false);

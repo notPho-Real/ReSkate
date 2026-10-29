@@ -28,10 +28,10 @@ int run_arcade_revert_tests() {
         for(unsigned cadence:{8u,17u,34u}) {
             RevertPlayback playback;
             check(playback.start(100,side,{false,mirror,false,hold},true),"fresh discrete request starts");
-            unsigned visits{};bool bottom{},crossed{},neutral{};short previous_x=123,previous_y=123;
+            unsigned completed{};unsigned visits{};bool bottom{},crossed{},neutral{};short previous_x=123,previous_y=123;
             for(unsigned now=100;now<1150;now+=cadence) {
                 auto out=playback.sample(now,true);
-                if(!out.owns_sticks)break;
+                if(!out.owns_sticks){completed=now-100;break;}
                 const auto repeat=playback.sample(now,true);
                 check(out.left_x==repeat.left_x && out.left_y==repeat.left_y,"same-time input polls cannot consume multiple waypoints");
                 check(out.right_y==hold && !out.left_trigger && !out.right_trigger,"quick RT release does not interrupt the owned path or leak grab input");
@@ -41,6 +41,7 @@ int run_arcade_revert_tests() {
                 neutral|=crossed && !out.left_x && !out.left_y;
                 check(!playback.start(now,side,{},true),"held/repeated request cannot restart active path");
             }
+            check(completed>=680 && completed<680+cadence,"cumulative deadlines bound total duration to one poll of nominal time without skipped geometry");
             check(visits>=10 && bottom && crossed && neutral && !playback.busy(),"30/60/120Hz reaches every essential native path boundary then releases");
         }
     }

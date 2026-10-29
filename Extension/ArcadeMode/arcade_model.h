@@ -157,7 +157,7 @@ public:
     // Returns true on balance failure. Expired landing/revert grace banks into
     // take_banked_points(), independently of active-combo reset/bail.
     bool tick(float dt, float correction = 0.0f, float drift_sign = 1.0f,
-              BalanceEndpoints endpoints = BalanceEndpoints::bail_both, bool integrate_manual = true) noexcept {
+              BalanceEndpoints endpoints = BalanceEndpoints::bail_both, bool integrate_manual = true, bool pending_manual_revert = false) noexcept {
         balance_exit_ = BalanceExit::none;
         dt = bounded(dt, 0.0f, 1.0f);
         if (!state_.combo_active || dt == 0.0f) return false;
@@ -171,7 +171,7 @@ public:
             elapsed_ = std::min(86400.0, elapsed_ + step);
             state_.combo_age_s = static_cast<float>(elapsed_);
             state_.fatigue = std::min(1.0f, state_.fatigue + tuning_.fatigue_per_second * h);
-            if (state_.landing_grace || state_.revert_pending) {
+            if ((state_.landing_grace || state_.revert_pending) && !pending_manual_revert) {
                 state_.link_grace_s = std::max(0.0f, state_.link_grace_s - h);
                 if (state_.link_grace_s <= 1e-6f) {
                     const auto p = bank();

@@ -51,6 +51,14 @@ public:
             now>=revert_link_.started && now-revert_link_.started<=1500 &&
             (frame.flip.state==100 || frame.flip.state==101)) revert_link_.confirmed_at=now;
     }
+    // This is an admitted transition lease, not a revert success or score event.
+    bool pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
+        return revert_link_.direction && !revert_link_.confirmed_at && frame.required && frame.fresh(now) &&
+            frame.generations.owner==revert_link_.owner && now>=revert_link_.started &&
+            now-revert_link_.started<=1500 && !frame.airborne && !frame.rail_family &&
+            (frame.flip.state==100 || frame.flip.state==101) && frame.flip.mode<=1;
+    }
+
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
         return native_.required && current.required && native_.fresh(now) && current.fresh(now) &&
@@ -115,7 +123,7 @@ public:
         offboard_ = admission.offboard; board_binding_ = admission.board_binding; export_rail_ = admission.export_rail_requests;
         policy_ = admission.input_policy;
         if (clocked_ && admission.action_mode != mode_) {
-            auxiliary_.cancel(); grab_hold_button_ = 0; input_.cancel_auxiliary();
+            auxiliary_.cancel(); grab_hold_button_ = 0; input_.cancel_auxiliary(); revert_link_={};
         }
         mode_ = admission.action_mode;
         if (!admission.gameplay || (physical.buttons & 0x0030u) || admission.pose == SkatePose::bail ||

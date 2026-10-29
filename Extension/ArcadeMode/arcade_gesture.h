@@ -197,6 +197,10 @@ public:
         enabled_ = value; cancel_commands();
         if (native_bound_) invalidate_authority();
     }
+
+    bool pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
+        return enabled_ && admitted(0,now) && sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame));
+    }
     void observe_native_revert(std::uint64_t now,const NativeInputFrame& frame) noexcept {
         sessions_[0].observe_native_revert(now,InputNativeContext::from_frame(frame));
     }

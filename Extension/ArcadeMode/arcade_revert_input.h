@@ -62,7 +62,7 @@ public:
     bool start(std::uint64_t now_ms, RevertSide side, RevertContext context, bool may_start) noexcept {
         if (!may_start || active_) return false;
         recipe_ = make_revert_recipe(side, context);
-        started_ = last_ = step_at_ = now_ms; index_=0;
+        started_ = last_ = step_at_ = now_ms; index_=0; deadline_=recipe_[0].duration_ms;
         active_ = true;
         return true;
     }
@@ -71,15 +71,17 @@ public:
     Output sample(std::uint64_t now_ms, bool allowed) noexcept {
         if (!active_) return {};
         if (!allowed || now_ms < last_) { cancel(); return {}; }
+        const bool new_poll=now_ms!=last_;
         last_ = now_ms;
         const auto elapsed = now_ms - started_;
         // At 30/60/120 Hz every geometric waypoint is presented. Repeated
         // reads at one timestamp cannot advance; a long missed poll cancels
         // instead of replaying a stale path or jumping over the bottom corner.
         if (elapsed >= 1000 || now_ms-step_at_>150+recipe_[index_].duration_ms) { cancel(); return {}; }
-        if (now_ms-step_at_>=recipe_[index_].duration_ms) {
+        if (new_poll && elapsed>=deadline_) {
             if (++index_==recipe_.size()) { cancel(); return {}; }
             step_at_=now_ms;
+            deadline_+=recipe_[index_].duration_ms;
         }
         const auto& step=recipe_[index_];
         return {true,step.left_x,step.left_y,step.right_x,step.right_y,0,0,step.phase};
@@ -88,6 +90,7 @@ private:
     RevertRecipe recipe_{};
     std::uint64_t started_{}, last_{}, step_at_{};
     std::size_t index_{};
+    unsigned deadline_{};
     bool active_{};
 };
 }

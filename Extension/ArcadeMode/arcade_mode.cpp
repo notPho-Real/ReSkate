@@ -505,12 +505,13 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     const auto score = score_activity();
     NativeInputFrame native_frame{}, manual_completion{};
-    bool manual_continuity{};
+    bool manual_continuity{}, pending_manual_revert{};
     {
         std::lock_guard lock(ollie_mutex);
         native_frame = native_input_state.correlate(GetTickCount64(),input_owner(owner),native);
         manual_completion = physical_manual_steps.completion();
         manual_continuity = physical_manual_steps.continuity(native_frame,now);
+        pending_manual_revert = arcade_input.pending_manual_revert(now,native_frame);
     }
     if (manual_completion.owner == native_frame.owner && manual_completion.owner_generation == native_frame.owner_generation)
         manual_release.retire_observed(now,manual_completion);
@@ -617,7 +618,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     if (!physical.valid) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
     const bool failed = combo_session.step(pose, manual_pose && physical.valid ? physical_seconds : dt, correction, native_revert,
-        manual_pose || kind == BalanceKind::manual ? &physical : nullptr);
+        manual_pose || kind == BalanceKind::manual ? &physical : nullptr,pending_manual_revert);
     // Ending a section stops integration; banking the combo resets its retained
     // difficulty. Brief grounded links cannot silently start a fresh history.
     if (!combo_session.model().state().combo_active && !combo_session.failed_section()) {

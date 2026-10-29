@@ -111,11 +111,11 @@ void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,
 unsigned checks{};void check(bool b,const char* why){++checks;if(!b){std::cerr<<why<<'\n';std::exit(1);}}
 bool same(const PhysicalBalanceSample& a,const PhysicalBalanceSample& b){return a.valid==b.valid&&a.active==b.active&&a.exit==b.exit&&std::abs(a.position-b.position)<=1e-6f&&std::abs(a.velocity-b.velocity)<=1e-6f&&std::abs(a.elapsed-b.elapsed)<=1e-6f&&std::abs(a.repeat_pressure-b.repeat_pressure)<=1e-6f;}
 auto snapshot(){auto copy=physical_manual;return copy.sample(.001f,PhysicalManualControl{});}
-void client(float seconds,const ScoreLabelOccurrence& label){
+void client(float seconds,const ScoreLabelOccurrence& label,const ScoreLabelOccurrence& native_event={}){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
- update_combo(raw,owner,ControllerInput{},fixture_watch,0,clock_ms,{},label,false,seconds);
+ update_combo(raw,owner,ControllerInput{},fixture_watch,0,clock_ms,native_event,label,false,seconds);
  const auto live=[&](auto& deadline){const auto at=deadline.load();return at>=clock_ms&&at-clock_ms<=150;};
  native_readiness.publish(latest,{active&&fixture_watch,raw.state==100&&raw.crouch_mode==1,false,false,false,
   live(manual_eligible_until),live(manual_prepare_until),live(manual_release_until),live(action_eligible_until),0});
@@ -129,9 +129,9 @@ ScoreLabelOccurrence history(){const auto diagnostic=presenters.observe(rows,{cl
 const std::optional<std::vector<PreparedGesture>> prepared{std::vector<PreparedGesture>{
  {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},
  {16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}}};
-NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0){
+NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,unsigned char physical_rt=0){
  const unsigned user=0;const auto now=clock_ms;const auto tick=now/17;NativeGesture::Output result{};
- const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=0;
+ const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=physical_rt;
  const bool authored=true;
  arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
  const auto admission=native_readiness.sample(now,arcade_input.native_context(now));
@@ -144,7 +144,7 @@ NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,
 @@POLL@@
  if(corrupt_manual_delivery)result.right_y=0;
 @@DELIVERY@@
- const bool reference=false;const unsigned char physical_right_trigger=0;
+ const bool reference=false;const unsigned char physical_right_trigger=physical_rt;
 @@HOP@@
  if(releasing_manual&&!result.authored_playback&&!action.owned)result.right_x=result.right_y=0;
  return result;
@@ -746,6 +746,36 @@ void analog_air_lifecycle(){
        "held-final and released-final analog gestures both enter without a second face press or synthetic history label");
  }
 }
+
+
+void manual_revert_production(){
+ for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u})for(bool ack:{false,true}){
+  qualified(nose,dt,300);
+  for(unsigned link=0;link<(ack?2u:1u);++link){
+   const auto began=clock_ms;
+   check(remap(0,0,0,255).action.owned,"qualified production manual admits one discrete RT actor");
+   while(clock_ms-began<900){
+    clock_ms+=dt;observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();
+    check(combo_session.model().state().combo_active&&!combo_session.model().state().revert_pending,
+       "admitted native revert preparation preserves original combo beyond landing grace without claiming success");
+   }
+   if(!ack){
+    while(clock_ms-began<2400){clock_ms+=dt;observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();}
+    check(!combo_session.model().state().combo_active,"unacknowledged bounded revert settles without a phantom link");
+    continue;
+   }
+   ScoreLabelOccurrence event{true,score_label_bit(3),link+1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
+   client(dt/1000.f,history(),event);
+   check(combo_session.model().state().revert_pending,"only independent native revert acknowledgment creates the post-revert link");
+   raw.words[0]^=0x20u;clock_ms+=dt;observe(dt/1000.f,0xc000);client(dt/1000.f,history());
+   const auto out=remap();
+   check(out.manual.owns&&out.manual.request==(nose?-1:1),"changed native stance admits opposite manual actuator after the sampled revert finishes");
+   nose=!nose;clock_ms+=dt;observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());remap();
+   check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "new independent opposite-wheel contact activates opposite balance and HUD without banking");
+  }
+ }
+}
 void manual_observation_continuity(){
  for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u}){
   const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,300);
@@ -778,6 +808,7 @@ int main(){
 #if defined(DINGOSDK_INPUT_PHASE_ONLY)
  std::cout<<checks<<" source-composed client phase and camera checks passed\n";return 0;
 #endif
+ manual_revert_production();
  manual_observation_continuity();
  analog_air_boundaries();
  analog_air_lifecycle();

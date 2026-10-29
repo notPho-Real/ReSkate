@@ -50,7 +50,7 @@ public:
         exit_elapsed_ = 0;
     }
     bool step(SkatePose pose, float dt, float correction, bool observed_revert = false,
-              const PhysicalBalanceSample* physical = nullptr) noexcept {
+              const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false) noexcept {
         if (pose == SkatePose::unknown ||
             (physical && !physical->valid) ||
             !std::isfinite(dt) || dt < 0 || dt > (physical && physical->valid && balance_kind(pose)==BalanceKind::manual ? 1.0f : 0.25f)) {
@@ -85,7 +85,9 @@ public:
         // Rail balance retains its existing two-sided failure behavior.
         const auto endpoints = previous_ == SkatePose::manual ? BalanceEndpoints::positive_bail :
             previous_ == SkatePose::nose_manual ? BalanceEndpoints::negative_bail : BalanceEndpoints::bail_both;
-        bool failure = model_.tick(dt, correction, 1, endpoints, physical == nullptr);
+        bool failure = model_.tick(dt, correction, 1, endpoints, physical == nullptr,
+            pending_manual_revert && !failed_section_ && !manual_putdown_ &&
+            (pose==SkatePose::riding || kind==BalanceKind::manual));
         if (model_.balance_exit() == BalanceExit::putdown) manual_putdown_ = true;
         if (failure) failed_section_ = true;
         if (kind == BalanceKind::none) failed_section_ = manual_putdown_ = false;
