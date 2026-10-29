@@ -770,6 +770,9 @@ void manual_revert_production(){
    raw.words[0]^=0x20u;clock_ms+=dt;observe(dt/1000.f,already?(nose?0x4000u:0x8000u):0xc000u);client(dt/1000.f,history());
    const auto out=remap(already?0x6000u:0u);
    check(out.manual.owns&&out.manual.request==(nose?-1:1),"changed native stance admits opposite manual actuator after the sampled revert finishes");
+   // Client publication can run again before either XInput or the next
+   // original physics callback. It must not erase the delivered acquisition.
+   client(dt/1000.f,history());
    nose=!nose;clock_ms+=dt;observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());remap();
    check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
       "new or revert-attributed opposite-wheel contact activates opposite balance and HUD without banking");
