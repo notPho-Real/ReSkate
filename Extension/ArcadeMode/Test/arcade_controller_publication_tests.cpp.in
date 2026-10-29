@@ -290,7 +290,7 @@ void run(){
 namespace preparation_path {
 std::array<AirRotation,4> prewinds;
 AirRotation::Output sample(unsigned now,unsigned buttons,const NativeInputFrame& rotation_native,bool authored,bool manual=false){
- const std::uint16_t physical_buttons=static_cast<std::uint16_t>(buttons),classic_a=0x1000;
+ const std::uint16_t physical_buttons=static_cast<std::uint16_t>(buttons);
  const bool rotation_enabled=true,crouched=false,reference=false;
  NativeGesture::Output result{};result.authored_playback=authored;
  ActionInputOutput action{};struct{bool valid;}hop_origin{manual};
