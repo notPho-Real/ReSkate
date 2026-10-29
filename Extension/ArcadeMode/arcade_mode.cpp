@@ -2296,10 +2296,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[NativeControllerRoute::session].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
             rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
+        // Controller route preparation publication begin.
         const auto prewind = prewinds[NativeControllerRoute::session].poll_preparation(now,physical_buttons,
-            rotation_enabled,rotation_native,crouched,(result.right_y>0),
+            rotation_enabled,rotation_native,crouched || ((physical_buttons&classic_a) && result.authored_playback &&
+                rotation_native.state==103 && rotation_native.mode==0),(result.right_y>0),
             reference || action.owned || result.phase==3 || hop_origin.valid,spin_mode());
         if (prewind.owns_left) rotation=prewind;
+        // Controller route preparation publication end.
         // Controller route air publication begin.
         {
             // X is a following flip request, not cancellation of the admitted A release.

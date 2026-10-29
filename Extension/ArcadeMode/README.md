@@ -128,6 +128,21 @@ installed source identity and the controlled Deck comparison. Delivery and
 reference each produced five exact IDs in eight initial trials; one reference
 trial had incomplete evidence. Neither mode has repeatability acceptance.
 
+Neutral airborne X is recognized on its physical press, independently of RS
+playback availability. Its original press is queued through the verified native
+ollie handoff; release does not issue a second flip. The continuous native
+ollie proof ends on its actual owner/flight/action boundary, rather than at an
+arbitrary500ms age. Software delivery is not proof of native animation timing.
+
+A manual/revert link retains its original verified balance and native revert
+acknowledgment until opposite balance acquires. A changed stance plus attributed
+opposite contact may already be present when the new RS hold begins; one later
+native physics step must corroborate it. Generic existing one-wheel contact
+still cannot create a manual. Ground revert gesture/sweep/stance playback is
+unchanged. Shoulder preparation is buffered AIR spin: short crouches retain
+intent across takeoff while finishing the existing120ms chord interval. Ground
+LS remains neutral; genuine native wind-up is not claimed.
+
 Automatic skating uses left-stick movement intent and the existing native held
 push adapter. `arcadeautokick on|off` saves the ordinary-ground preference;
 it defaults ON. Physical X is reserved for flips and never requests a push,

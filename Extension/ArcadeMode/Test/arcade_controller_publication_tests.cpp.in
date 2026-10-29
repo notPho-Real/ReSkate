@@ -287,7 +287,37 @@ void run(){
 }
 }
 
+namespace preparation_path {
+std::array<AirRotation,4> prewinds;
+AirRotation::Output sample(unsigned now,unsigned buttons,const NativeInputFrame& rotation_native,bool authored,bool manual=false){
+ const std::uint16_t physical_buttons=static_cast<std::uint16_t>(buttons),classic_a=0x1000;
+ const bool rotation_enabled=true,crouched=false,reference=false;
+ NativeGesture::Output result{};result.authored_playback=authored;
+ ActionInputOutput action{};struct{bool valid;}hop_origin{manual};
+ AirRotation::Output rotation{};
+@controller_route_preparation@
+ return rotation;
+}
+void run(){
+ for(unsigned dt:{8u,17u,34u})for(auto side:{BoardChord::lb,BoardChord::rb}){
+  prewinds={};NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+  auto poll=[&](unsigned now,unsigned buttons,unsigned state,bool authored){
+   NativeRequestSample raw{};raw.valid=true;raw.state=state;raw.crouch_mode=state==103?0:1;raw.words[1]=state==200?0:0xc000;
+   return sample(now,buttons,producer.observe(now,owner,raw,{true,1,16}),authored);
+  };
+  poll(1000,0,100,false);poll(1000+dt,side,100,false);
+  const auto ground=poll(1000+2*dt,side|0x1000u,103,true);
+  require(!ground.x&&!ground.y,"actual preparation publication cannot steer native grounded crouch");
+  auto air=poll(1000+3*dt,side,200,true);
+  for(unsigned now=1000+4*dt;now<1300;now+=dt)air=poll(now,side,200,true);
+  require(air.owns_left&&air.x==(side==BoardChord::lb?-31783:31783),"actual remap call retains short authored native crouch even with neutral RS and delayed client pose");
+  require(!poll(1300,0,200,false).owns_left,"actual preparation publication releases shoulder command");
+ }
+}
+}
+
 void run_controller_publication_tests(){
+    preparation_path::run();
     unsigned checks{};
     for(unsigned user=0;user<4;++user)for(bool nollie:{false,true}){
         const std::uint64_t base=user*10000u+(nollie?5000u:0u);
