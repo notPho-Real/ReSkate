@@ -61,7 +61,7 @@ void native_adapters() {
     check(!h.poll(968).action.owned, "basic grab releases ownership after its34ms neutral tail");
     check(!h.poll(985).action.requested, "held B cannot replay after native recipe completes");
     h.admission.pose = SkatePose::riding;
-    check(h.poll(1002, {0x2000}).buttons == 0x2000, "grounded B remains physical native brake");
+    check(h.poll(1002, {0x2000}).buttons == 0, "grounded B remains Arcade-only and cannot publish native brake");
     h.session.reset(); h.poll(1000);
     out = h.poll(1017, {0, 0, 0, 0, 255});
     check(out.action.owned && out.action.pad.right_y == 0 && out.action.request_kind == 3,

@@ -33,6 +33,12 @@ def generate(root,variant='current'):
                               '        observe_grind_pad(user, now,')
     manual_publication=module.between(mode,'            const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ?',
                                       '            const auto& spin_proof = rotation_native;')
+    control_owner=module.between(mode,'        const auto admission = native_readiness.sample(now,arcade_input.native_context(now));',
+                                 '        const auto release_deadline = manual_release_until.load')
+    final_controls=module.between(mode,'        // Controller route final_controls publication begin.',
+                                  '        // Controller route final_controls publication end.')
+    action_delivery=module.between(mode,'        result.buttons &= ~action.consume_buttons;',
+                                   '        // Neutral is the existing native manual release recipe.')
     native_current=module.function(mode,'bool native_manual_contact_current(')
     noclip=(TREE/'Extension/Skater/client_noclip.cpp').read_text()
     resistance=module.between(noclip,'        const bool braking = (requests & 4u) != 0 || ((requests & 2u) != 0 &&\n',
@@ -56,6 +62,12 @@ def generate(root,variant='current'):
     once('#include "Extension/Skater/no_bail.h"','#include "Extension/Skater/no_bail.h"\n#include "Extension/Skater/native_bail_request.h"')
     if has_ground_step:
      once('#include "Extension/ArcadeMode/arcade_air_motion.h"','#include "Extension/ArcadeMode/arcade_air_motion.h"\n#include "Extension/ArcadeMode/arcade_ground_motion_step.h"\n#include "Extension/ArcadeMode/arcade_ground_writer_observation.h"')
+    once(' {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},',
+         ' {2,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},\n {1,false,GestureContext::ground,{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}},')
+    once('bool corrupt_manual_delivery{};', 'bool fixture_air_mode2{},corrupt_manual_delivery{};')
+    once('const NativeFlipSelection flip{idle_known,-1};',
+         'const NativeFlipSelection flip{idle_known,fixture_air_mode2&&(state==103||state==200)?1:-1,fixture_air_mode2?16u:0u};')
+    once('raw.crouch_mode=state==103?0:1;', 'raw.crouch_mode=state==103?0:(fixture_air_mode2&&state==200?2:1);')
     once('bool auto_kick_enabled(){return true;}','bool automatic_kick=true;bool auto_kick_enabled(){return automatic_kick;}')
     once('namespace dingosdk {void cancel_balance_bail()noexcept{}std::uint64_t request_balance_bail(const NoBailSkater&)noexcept{return 1;}}',r'''
     // Native service boundary only: record the production request; no impact or solver.
@@ -88,7 +100,7 @@ def generate(root,variant='current'):
     if declaration_counts.index(1)!=remap_form:
         raise ValueError('mismatched remap fixture signature and axis declaration')
     once(signatures[remap_form],r'''
-    struct PadResult {short x{},y{},rx{},ry{};unsigned buttons{},controls{};bool correction{},drive{};}last_pad;
+    struct PadResult {short x{},y{},rx{},ry{};unsigned buttons{},controls{};bool correction{},drive{};unsigned lt{},rt{},physical{};}last_pad;
     bool competing_left_owner{};
     NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,
                                unsigned char lt=0,unsigned char rt=0){''')
@@ -100,7 +112,11 @@ def generate(root,variant='current'):
         once('remap(0,0,0,255).action.owned','remap(0,0,0,0,255).action.owned')
     once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
-    once('may_push=false,may_toggle_board=false','may_push=admission.push,may_toggle_board=false')
+    once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
+         ' bool game_input=active&&fixture_watch,capture_game_input{};\n'+control_owner+'\n (void)capture_game_input;')
+    once('const bool flip_ready=admission.flip_ready,action_safe=admission.action,may_exit_grind=false;',
+         'const bool may_exit_grind=false;')
+    once('bool competing_left_owner{};', 'std::atomic<bool> input_clock_valid{true};bool competing_left_owner{};')
     once('struct PadResult {short x{},y{},rx{},ry{};',
          'NativeManualContact writer_manual;AirMotionIntent writer_intent;bool writer_manual_hold{};\nstruct PadResult {short x{},y{},rx{},ry{};')
     # Deliberately grant outer drive eligibility to stress the real inner balance/
@@ -113,6 +129,7 @@ def generate(root,variant='current'):
      struct RotationBoundary{bool owns_left;short x{1111},y{2222};}rotation{competing_left_owner};
      const auto rail_pad=arcade_input.sample_native_rail(result.rail,now,game_input&&!offboard&&!releasing_manual&&!reference&&!action.owned);
      movement_eligible_until.store(now+150);
+     ACTION_DELIVERY
      DRIVE
      const auto rotation_native=arcade_input.native_context(now);
      MANUAL_PUBLICATION
@@ -121,8 +138,9 @@ def generate(root,variant='current'):
      writer_intent.ground_controls=ground_controls;writer_intent.angular_proof=NativeAirSpinProof::from_frame(rotation_native);
      if(rotation.owns_left){left_x=rotation.x;left_y=rotation.y;}
      CORRECTION
-     last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive};
-     return result;'''.replace('DRIVE',drive).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
+     FINAL_CONTROLS
+     last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive,left_trigger,right_trigger,physical_buttons};
+     return result;'''.replace('DRIVE',drive).replace('ACTION_DELIVERY',action_delivery).replace('FINAL_CONTROLS',final_controls).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
     once(old,new)
 
     scalar_template=r'''
@@ -189,6 +207,79 @@ def generate(root,variant='current'):
      <<",\"physical_y\":"<<physical_y<<",\"output_x\":"<<last_pad.x<<",\"output_y\":"<<last_pad.y
      <<",\"rs_y\":"<<last_pad.ry<<",\"correction_owned\":"<<last_pad.correction<<",\"drive\":"<<last_pad.drive
      <<",\"native_x_push\":"<<bool(last_pad.buttons&0x4000u)<<",\"control_down\":"<<GroundControl::decode(last_pad.controls).down<<"}\n";
+    }
+
+    void controller_conflicts(){
+     for(unsigned hz:{30u,60u,120u})for(bool automatic:{false,true}){
+      reset_case();source_step=0;automatic_kick=automatic;competing_left_owner=false;
+      physical_step(hz,0xc000);remap();
+      for(unsigned i=0;i<hz;++i){
+       physical_step(hz,0xc000);const auto out=remap(0x6000);
+       expect(last_pad.physical==0x6000&&!(last_pad.buttons&0x6000)&&!out.automatic_push&&!last_pad.drive,
+              "physical ground X/B never publish native push/brake or grant drive with auto push on or off");
+       expect(!out.action.owned&&!out.authored_playback,"ground face buttons do not create grabs or flips");
+      }
+      physical_step(hz,0xc000);remap();physical_step(hz,0,200);
+      const auto later=remap();expect(!later.authored_playback&&!later.action.owned,"ground X/B cannot queue an unrelated airborne trick");
+      reset_case();source_step=0;automatic_kick=automatic;
+      physical_step(hz,0xc000);remap();
+      bool pushed=false;
+      for(unsigned i=0;i<hz;++i){physical_step(hz,0xc000);const auto out=remap(0x4000,25000);
+       pushed|=out.automatic_push;
+       expect(bool(last_pad.buttons&0x4000)==out.automatic_push,"only explicit auto push receipt permits native X");
+       expect(!GroundControl::decode(last_pad.controls).square,"physical X never becomes scalar push eligibility");
+      }
+      expect(pushed==automatic,"qualified movement auto pushes independently of held physical X and respects setting");
+     }
+
+     for(unsigned dt:{8u,17u,34u}){
+      start_analog_air(dt);
+      for(unsigned i=0;i<100;++i){tick(dt,200,0);if(!remap().authored_playback)break;}
+      tick(dt,200,0);const auto original=clock_ms;const auto grab=remap(0x2000,0,25000);
+      expect(grab.action.owned&&grab.action.trick==ArcadeTrick::basic_bs_grab&&last_pad.rt==255&&!(last_pad.buttons&0x2000),
+             "physical air B reaches grab actuator but final native packet contains only owned trigger, never brake B");
+      for(unsigned i=0;i<4;++i){tick(dt,200,0);const auto held=remap(0x2000,0,25000);
+       expect(held.action.owned&&last_pad.rt==255&&!(last_pad.buttons&0x2000),"held grab retains authorized actuator without native B");}
+      tick(dt,200,0);remap();expect(last_pad.rt==0,"grab release publishes neutral trigger");
+      tick(dt,100,0xc000);remap();expect(last_pad.rt==0&&!(last_pad.buttons&0x6000),"landing cannot retain grab or face-button actuator");
+      expect(clock_ms>original,"grab checks advance physical clock");
+     }
+
+     for(unsigned dt:{8u,17u,34u})for(unsigned delay:{0u,17u,33u,66u,100u}){
+      fixture_air_mode2=true;reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();
+      tick(dt,100,0xc000);remap(0x1000);
+      for(unsigned i=0;i<3;++i){tick(dt,103,0xc000);remap(0x1000);}
+      tick(dt,103,0xc000);const auto released=clock_ms;remap();
+      unsigned flips=0;std::uint64_t first{};
+      for(unsigned age=0;age<300;age+=dt){
+       if(age)tick(dt,age>=dt?200:103,age>=dt?0:0xc000);
+       const bool pressed=age>=delay&&age<delay+dt;
+       const auto out=remap(pressed?0x4000:0);
+       if(out.requested_id==2&&out.authored_playback){++flips;if(!first)first=clock_ms;}
+       expect(!(last_pad.buttons&0x4000)&&!out.automatic_push&&!last_pad.drive,"early X handoff cannot also publish pushing");
+      }
+      if(flips!=1||first-released>=200)std::cerr<<"flip packet dt="<<dt<<" delay="<<delay<<" count="<<flips<<" latency="<<(first?first-released:0)<<"\n";
+      expect(flips==1&&first-released<200,"one original early X edge reaches authored flip promptly through real production remap composition");
+     }
+     fixture_air_mode2=false;
+     // Current authority can withhold mapped buttons during missing action
+     // readiness, but cannot grant an actuator or outlive its existing lease.
+     reset_case();source_step=0;automatic_kick=true;physical_step(60,0xc000);remap();
+     arcade_input.publish_native_context({}); // missing producer sample, original authority still fresh
+     remap(0x6000,0,0,0,255);
+     expect(!(last_pad.buttons&0x6000)&&!last_pad.rt,"readiness mismatch cannot leak native X/B/RT within valid control ownership");
+     fixture_watch=false;remap(0x6000,0,0,0,255);
+     expect((last_pad.buttons&0x6000)==0x6000&&last_pad.rt==255,"focus loss intentionally restores native fallback");
+     reset_case();source_step=0;physical_step(60,0xc000);remap();active=false;
+     remap(0x6000,0,0,0,255);
+     expect((last_pad.buttons&0x6000)==0x6000&&last_pad.rt==255,"Arcade OFF preserves stock physical buttons and trigger");
+     for(bool nose:{false,true}){
+      enter_ground(nose,60);physical_step(60,nose?0x8000:0x4000);
+      const auto out=remap(0x6000);
+      expect(out.manual.owns&&manual_balance_admitted.load()&&!(last_pad.buttons&0x6000),
+             "unavailable ground X/B cannot cancel confirmed manual RS ownership or leak native actions");
+     }
+     automatic_kick=true;
     }
     void coupling_cases(){
      for(unsigned hz:{30u,60u})for(bool nose:{false,true}){
@@ -380,7 +471,7 @@ def generate(root,variant='current'):
      reset_case();
     }
     '''
-    once('int main(){','void coupling_cases();\nint main(){\n coupling_cases();')
+    once('int main(){','void controller_conflicts();void coupling_cases();\nint main(){\n coupling_cases();controller_conflicts();')
     # Insert exact native guard and scalar blocks before the new test main, after
     # their ordinary fixture services and owner variables have been declared.
     once('void coupling_cases();',baseline_scalar+'\n'+candidate_scalar+'\nvoid coupling_cases();')
@@ -412,6 +503,7 @@ def generate(root,variant='current'):
     return source, {'base_chunks':json.loads(generated['correspondence.json']),
      'variant':variant,
      'production_chunks_sha256':{name:hashlib.sha256(value.encode()).hexdigest() for name,value in {
+      'control_owner':control_owner,'final_controls':final_controls,'action_delivery':action_delivery,
       'reverse_mask':reverse_mask,'drive_and_reservation_publication':drive,'correction':correction,'manual_publication':manual_publication,
       'native_manual_current':native_current,'resistance_current':resistance_current,
       'resistance_before':resistance,'commit_motion':commit,'carrier_store':store,'carrier_load':load,

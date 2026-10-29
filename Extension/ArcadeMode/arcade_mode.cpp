@@ -2168,6 +2168,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
         const auto admission = native_readiness.sample(now,arcade_input.native_context(now));
+        // Controller route control_owner publication begin.
+        const bool owns_controls = mode_enabled.load(std::memory_order_acquire) && game_input &&
+            input_clock_valid.load(std::memory_order_acquire) && !(physical_buttons & 0x0030u) &&
+            arcade_input.admitted(NativeControllerRoute::session,now) &&
+            native_readiness.owns_controls(now,arcade_input.owner_epoch(),arcade_input.native_context(now));
+        // Controller route control_owner publication end.
         game_input = game_input && input_clock_valid.load(std::memory_order_acquire) &&
             admission.gameplay && !(physical_buttons & 0x0010u);
         const bool may_start = admission.start;
@@ -2176,7 +2182,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool offboard = admission.offboard;
         const bool action_safe = admission.action;
         const bool flip_ready = admission.flip_ready;
-        if (!game_input) arcade_input.invalidate_authority();
+        if (!game_input && !owns_controls) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(NativeControllerRoute::session,now);
         capture_game_input=game_input;
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
@@ -2272,14 +2278,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
               result.right_x == 0 && result.right_y == result.manual.request * 20000) ||
              (releasing_manual && result.right_x == 0 && result.right_y == 0));
         // Manual vertical reservation publication end.
-        const bool square_push = rotation_enabled && admission.drive && ground_controls.known && ground_controls.square && pose == SkatePose::riding &&
-            !manual_hop.active() && physical_left_trigger <= 30 && physical_right_trigger <= 30 &&
-            !result.suppress_reverse && (!result.command_busy || crouched) && !action.owned && !reference;
-        if (!ground_controls.auto_kick && square_push) result.buttons |= classic_x;
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
         // A balance hop must not gain an ordinary crouch-kick assistance budget.
         const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && admission.drive && !offboard && !manual_hop.active() &&
-            drive_until >= now && drive_until - now <= 150 && ((ground_controls.auto_kick && result.movement_intent) || square_push) && !ground_controls.down &&
+            drive_until >= now && drive_until - now <= 150 && (ground_controls.auto_kick && result.movement_intent) && !ground_controls.down &&
             pose == SkatePose::riding && !(physical_buttons & static_cast<std::uint16_t>(~(classic_x | (crouched ? classic_a : 0)))) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
@@ -2340,8 +2342,22 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if(manual_correction.owns_y)left_y=manual_correction.y;
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
+        // Controller route final_controls publication begin.
+        if (owns_controls) {
+            // Only admitted actuators may publish native face buttons. Raw
+            // recognition history is untouched, including B/X press timestamps.
+            const auto native_faces = action.pad.owns_face_buttons ? action.pad.face_buttons :
+                static_cast<std::uint16_t>((result.automatic_push ? classic_x : 0) |
+                    (result.phase==3 ? BoardChord::native_y : 0));
+            result.buttons = static_cast<std::uint16_t>((result.buttons & ~0xf30fu) | (native_faces & 0xf000u));
+            if (!action.pad.owns_triggers) left_trigger = right_trigger = 0;
+            if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick)
+                result.right_x = result.right_y = 0;
+        }
+        // Controller route final_controls publication end.
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
-            result.right_x != physical_right_x || result.right_y != physical_right_y) ^
+            result.right_x != physical_right_x || result.right_y != physical_right_y ||
+            left_trigger != physical_left_trigger || right_trigger != physical_right_trigger) ^
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         capture_ownership=(result.authored_playback?16u:0u) | (action.owned||action.consume_rt||action.consume_buttons?32u:0u) |

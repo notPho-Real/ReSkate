@@ -130,13 +130,30 @@ trial had incomplete evidence. Neither mode has repeatability acceptance.
 
 Automatic skating uses left-stick movement intent and the existing native held
 push adapter. `arcadeautokick on|off` saves the ordinary-ground preference;
-it defaults ON. With it OFF, hold X to request a push. Ordinary ground drive
+it defaults ON. Physical X is reserved for flips and never requests a push,
+including with auto-kick OFF. Only qualified left-stick movement may produce
+synthetic native X through the auto-push actor. Ordinary ground drive
 and resistance use the existing guarded body writer, preserve vertical and
 relative body velocities, and credit observed native speed loss. Physical Down,
 turning, reverse-facing motion and low speed select the brake policy. Missing
 support-plane and locked-vector facts do not select their special branches.
 Native resistance remains authoritative when it exceeds the selected budget.
 Manual, rail, air, bail, menu, owner loss and stale evidence exclude ground drive.
+
+While Arcade owns focused, onboard gameplay, physical A/X/B/Y and D-pad
+controls belong to recognition, not native face-button passthrough. B requests
+an eligible airborne grab; ground B cannot invoke native braking. LT supplies
+nollie/stance modifiers and RT requests an eligible revert. Only an admitted
+native action actor may publish triggers or face buttons; auto-push may publish
+X and the board chord may publish Y. Single shoulders drive the existing spin
+adapter, RS belongs to camera unless a native gesture/manual/rail actor owns it,
+and LS retains steering except during a qualified action or balance correction.
+Physical samples and original edge times remain unchanged for recognition.
+
+A temporary missing native action sample may withhold mapped controls under the
+original focused owner proof (at most its existing150ms lease); this grants no
+new action authority. OFF, menu/focus loss, offboard and actual owner loss retain
+native fallback. Unsupported ground X/B do not release an established manual.
 
 LB+RB within 120 ms requests one native board toggle from a verified safe riding
 or grounded offboard state. Both bumpers must release before another request;

@@ -174,7 +174,7 @@ int main() {
         check(c.trying_to_brake(5,-1)==down,"reverse-facing Down plus turn still selects braking");
     }
     const auto no_auto=GroundControl::physical(false,0,0,32767),square=GroundControl::physical(false,0x4000,0,32767);
-    check(!no_auto.can_kick(5,false)&&square.can_kick(5,false),"auto-kick OFF requires the physical Square channel");
+    check(!no_auto.can_kick(5,false)&&!square.can_kick(5,false),"physical X cannot authorize a kick when auto-push is OFF");
     for(unsigned hz:{30u,60u}) {
         GroundResistance coast;const float dt=1.f/static_cast<float>(hz);GroundFriction friction{false,false};
         coast.step(dt,5,false,false,false,friction);

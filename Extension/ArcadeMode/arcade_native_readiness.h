@@ -18,6 +18,16 @@ class NativeInputReadiness {
 public:
     NativeInputFrame observed_proof()const noexcept{return proof_;}
     void reset() noexcept { proof_ = {}; permissions_ = {}; }
+    // Withholding mapped controls is distinct from admitting an action. An
+    // original focused client proof can reserve them during a missing physics
+    // observation, but cannot renew its150ms lease or cross a known owner exit.
+    bool owns_controls(std::uint64_t now,std::uint64_t owner,const NativeInputFrame& current) const noexcept {
+        return permissions_.gameplay && proof_.valid && proof_.owner.valid() && owner &&
+            proof_.owner_generation==owner && now>=proof_.sampled_at && now-proof_.sampled_at<=150 &&
+            proof_.state!=game::build::v20260929::arcade_native_probe::offboard_state &&
+            (!current.valid || (current.owner==proof_.owner && current.owner_generation==owner &&
+                current.state!=game::build::v20260929::arcade_native_probe::offboard_state));
+    }
     void publish(NativeInputFrame proof, NativeInputPermissions permissions) noexcept {
         proof_ = proof; permissions_ = proof.valid ? permissions : NativeInputPermissions{};
     }

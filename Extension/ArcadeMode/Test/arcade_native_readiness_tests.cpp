@@ -8,6 +8,21 @@ namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 NativeRequestSample sample(unsigned state=100,unsigned stance=0,unsigned mode=1){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=mode;s.words[0]=stance;s.words[1]=0xc000;return s;}
+void control_ownership() {
+ NativeInputReadiness readiness;NativeInputState state;NativeInputOwner owner{1,2,3,4,5};
+ const auto proof=state.observe(1000,owner,sample(),{true,1,16});
+ readiness.publish(proof,{true,true,true,true,true,true,false,false,true,0});
+ check(readiness.owns_controls(1050,proof.owner_generation,{}),"missing action sample retains only bounded original control reservation");
+ check(!readiness.sample(1050,{}).gameplay,"reservation cannot manufacture gameplay/action readiness");
+ check(!readiness.owns_controls(1151,proof.owner_generation,{}),"control reservation expires at original150ms boundary");
+ check(!readiness.owns_controls(999,proof.owner_generation,{}),"clock rollback cannot retain controls");
+ auto changed=proof;++changed.owner.rig;
+ check(!readiness.owns_controls(1050,proof.owner_generation,changed),"known owner change restores fallback");
+ check(!readiness.owns_controls(1050,proof.owner_generation+1,proof),"authority epoch mismatch restores fallback");
+ changed=proof;changed.state=dingosdk::game::build::v20260929::arcade_native_probe::offboard_state;
+ check(!readiness.owns_controls(1050,proof.owner_generation,changed),"offboard controls retain native meanings");
+ readiness.reset();check(!readiness.owns_controls(1050,proof.owner_generation,proof),"reset cannot revive masked authority");
+}
 void client_phase_gap() {
     struct Route { ArcadeInput::Physical pad{true,1000,0,0,0,0,0,0,0};
         auto physical(std::uint64_t now)const{return now>=pad.at&&now-pad.at<=150?pad:ArcadeInput::Physical{};}
@@ -81,7 +96,7 @@ void held_air_manual() {
     }
 }
 }
-int main(){
+int main(){control_ownership();
     client_phase_gap();held_air_manual();
     const NativeInputOwner owner{1,2,3,4,5};
     const NativeInputPermissions all{true,true,true,true,true,true,true,true,true,7};

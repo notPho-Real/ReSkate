@@ -60,6 +60,7 @@ struct NativeGesture {
         InputJumpEdge jump{};
         InputRailOutput rail{};
         GroundTurnCommand ground_turn{};
+        bool automatic_push{}; // Receipt from AutomaticPush, never inferred from physical X.
     };
 };
 }

@@ -92,6 +92,10 @@ public:
     NativeGesture::Output poll(std::uint64_t now, PhysicalInputSample physical,
                               std::int16_t rx, std::int16_t ry, InputAdmission admission) noexcept {
         NativeGesture::Output output{physical.buttons, rx, ry};
+        // Recognition below still receives the original physical sample. A
+        // gameplay-owned early return must not expose mapped face buttons.
+        if (admission.gameplay && !admission.offboard && !(physical.buttons & 0x0030u))
+            output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         const auto native = admission.native_context;
         native_required_ = native_required_ || native.required;
         if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
@@ -143,7 +147,7 @@ public:
                 !native.released_jump_continues(takeoff_native_,now)) takeoff_release_at_=0;
             else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
         }
-        if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~(classic_a | classic_x | 15u | 0x8000u));
+        if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
@@ -179,9 +183,14 @@ public:
         // hold when a stance/branch trigger has no competing channel owner.
         // Preparation and actual authored/auxiliary/external conflicts still cancel.
         const bool manual_trigger_only=triggers && !authored_.busy() && !auxiliary_.busy() && !admission.external_owner;
+        // Unavailable ground flip/grab buttons have no competing actuator.
+        // Keep their physical edges in recognition, but do not release a valid
+        // manual hold merely because the old native face-button mask included them.
+        const bool ground_balance = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
+        const auto manual_buttons = static_cast<std::uint16_t>(physical.buttons & (ground_balance ? ~0x6000u : 0xffffu));
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -238,7 +247,7 @@ public:
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, physical.buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;
@@ -284,9 +293,10 @@ public:
             output.buttons = static_cast<std::uint16_t>((output.buttons & ~board_control_) | BoardChord::native_y);
             output.phase = 3; busy = true;
         }
-        const bool conflict = physical.buttons || triggers || busy || output.action.owned || admission.external_owner;
-        if (push_.poll(now, physical.x, physical.y, admission.speed, true, !admission.offboard && admission.pose == SkatePose::riding && admission.may_push && !conflict))
-            output.buttons |= NativeGesture::x;
+        const bool conflict = (physical.buttons & ~classic_x) || triggers || busy || output.action.owned || admission.external_owner;
+        output.automatic_push = push_.poll(now, physical.x, physical.y, admission.speed, true,
+            !admission.offboard && admission.pose == SkatePose::riding && admission.may_push && !conflict);
+        if (output.automatic_push) output.buttons |= NativeGesture::x;
         output.movement_intent = push_.movement_intent();
         if (export_rail_ && (rail_ || rail_released)) {
             output.rail = {rail_request_,rail_,busy || triggers || auxiliary_.busy() || board.pulse || admission.external_owner,output.action.pad};
