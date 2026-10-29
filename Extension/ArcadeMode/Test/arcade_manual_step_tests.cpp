@@ -53,7 +53,8 @@ int main(){
   Pipeline p(nose,dt);p.observe(0);p.sample();p.observe(1);p.steps.observe(p.frame,dt/1000.f,p.input(1));
   check(!p.sample().valid,"duplicate producer sequence is an invalid interval, not two physics steps");
   Pipeline gap(nose,dt);gap.observe(0);gap.sample();NativeRequestSample missing{};missing.valid=true;missing.state=100;missing.crouch_mode=1;missing.words[1]=nose?0x8000:0x4000;gap.observer.observe(gap.now,gap.owner,missing,{true,-1});gap.now+=dt;gap.observe(2);
-  check(!gap.sample().valid,"lost original interval is not replaced by last dt times a guessed count");
+  const auto retained=gap.sample();
+  check(retained.valid && std::abs(retained.elapsed-2*dt/1000.f)<1e-6f,"unchanged native contact survives a missing record without integrating guessed time");
   Pipeline invalid(nose,dt);invalid.observe(0);invalid.sample();invalid.observe(1);invalid.steps.observe(invalid.frame,0,{});
   check(!invalid.sample().valid,"invalid original dt revokes the original batch");
   Pipeline many(nose,dt);many.observe(0);many.sample();for(unsigned i=1;i<=ManualPhysicsSteps::capacity+1;++i)many.observe(i);

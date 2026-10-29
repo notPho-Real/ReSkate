@@ -200,7 +200,7 @@ void air_guards(){
    if(fault==21)landing.mode=2;
    if(fault==22)landing.valid=false;
    if(fault==25)++landing.mode_generation;
-   if(fault==26)++landing.contact_generation;
+   if(fault==26)landing.contact_generation+=2;
    if(fault==27)landing.stance_and_push^=0x20u;
    if(fault==28)landing.flip_known=false;
    check(!balance.sample(1017,landing,fault!=23,fault!=24).confirmed,
@@ -315,5 +315,20 @@ void held_landing_clock(){
         "long held AIR still requires actual delivery no older than150ms at landing");
  }
 }
+void landing_phase_handoff(){
+ for(bool nose:{false,true})for(unsigned cadence:{8u,17u,33u})for(bool full_first:{false,true}) {
+  Native n;GroundManualBalance balance;auto delivered=command(nose);
+  delivered.from_air=true;delivered.recognized_at=1000;
+  balance.observe(1000,n.step(1000,0,200),delivered,true);
+  const auto descending=n.step(1000+cadence,0,201);
+  check(!balance.sample(1000+cadence,descending,true,true).confirmed,"AIR phase transition cannot perform a manual");
+  balance.observe(1000+cadence,descending,delivered,true);
+  if(full_first)n.step(1000+2*cadence,0xc000u);
+  const auto landing=n.step(1000+3*cadence,nose?0x8000u:0x4000u);
+  check(balance.sample(1000+3*cadence,landing,true,true).admitted,
+        "same physical command survives descending AIR and a two-wheel landing between client polls");
+ }
 }
-int main(){composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}
+
+}
+int main(){landing_phase_handoff();composed();guards();air_guards();held_air_landing();held_landing_clock();std::cout<<checks<<" basic ground Manual balance entry checks passed\n";}

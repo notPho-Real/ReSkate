@@ -53,7 +53,7 @@ public:
             if (!live || (frame.airborne ? landed_ || !same_air(frame) : !matching_landing(frame))) {
                 retire_air(); reset(); return {};
             }
-            if (frame.airborne) return {}; // Delivery is never a performed balance.
+            if (frame.airborne) { air_frame_ = frame; return {}; } // Retain the latest proved phase, not a new intent.
             // Start the bounded acquisition clock once at the qualified native
             // landing, independently of the original AIR gesture's identity.
             // Cached client views and renewed delivery cannot restart it.
@@ -90,10 +90,12 @@ public:
     }
 private:
     bool same_air(const NativeInputFrame& frame) const noexcept {
-        return frame.airborne && frame.contacts == 0 && frame.state == air_frame_.state &&
+        const bool next_phase = air_frame_.state==200 && frame.state==201 &&
+            air_frame_.action_generation!=UINT64_MAX && air_frame_.contact_generation!=UINT64_MAX;
+        return frame.airborne && frame.contacts == 0 && (frame.state == air_frame_.state || next_phase) &&
             frame.mode == air_frame_.mode && frame.airborne_episode == air_frame_.airborne_episode &&
-            frame.air_departure == air_frame_.air_departure && frame.action_generation == air_frame_.action_generation &&
-            frame.contact_generation == air_frame_.contact_generation && frame.mode_generation == air_frame_.mode_generation && same_selection(frame) &&
+            frame.air_departure == air_frame_.air_departure && frame.action_generation == air_frame_.action_generation+(next_phase?1u:0u) &&
+            frame.contact_generation == air_frame_.contact_generation+(next_phase?1u:0u) && frame.mode_generation == air_frame_.mode_generation && same_selection(frame) &&
             frame.physics_step >= air_frame_.physics_step && frame.sampled_at >= air_frame_.sampled_at;
     }
     bool same_selection(const NativeInputFrame& frame) const noexcept {
@@ -106,8 +108,8 @@ private:
             air_frame_.air_departure != UINT64_MAX && frame.air_departure == air_frame_.air_departure+1 &&
             air_frame_.action_generation != UINT64_MAX && frame.action_generation == air_frame_.action_generation+1 &&
             air_frame_.contact_generation != UINT64_MAX &&
-            (landed_ ? frame.contact_generation >= air_frame_.contact_generation+1 :
-                       frame.contact_generation == air_frame_.contact_generation+1) &&
+            frame.contact_generation >= air_frame_.contact_generation+1 &&
+            (landed_ || frame.contact_generation-air_frame_.contact_generation<=2) &&
             frame.mode_generation >= air_frame_.mode_generation &&
             frame.mode_generation-air_frame_.mode_generation == (air_frame_.mode == 1 ? 0u : 1u) &&
             frame.physics_step > air_frame_.physics_step &&
@@ -135,6 +137,7 @@ private:
             command.recognized_at == spent_at_ && command.request == spent_direction_) return;
         if (pending_ && air_origin_ && same_owner(frame) && began_ == command.recognized_at && direction_ == command.request) {
             if (!same_air(frame)) { retire_air(); pending_ = air_origin_ = false; return; }
+            air_frame_ = frame;
             held_air_ = held_air_ && command.held_air;
             delivered_at_ = now; return; // Only delivery freshness renews, never intent lifetime.
         }

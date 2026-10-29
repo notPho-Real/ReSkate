@@ -65,19 +65,26 @@ public:
         if(first==count_) return fail();
         std::uint64_t previous=continuing?consumed_:current.physics_step-1;
         auto contact_at=continuing?contact_at_:current.sampled_at;
+        auto previous_frame=committed_;
         const auto wanted=pose==SkatePose::manual?0x4000u:0x8000u;
         // Validate the complete batch before advancing dynamics. Missing steps
         // cannot be reconstructed from cached dt or client elapsed time.
         for(std::size_t i=first;i<count_;++i){
             const auto& f=records_[i].frame;
             if(f.physics_step>current.physics_step)break;
-            if(f.physics_step!=previous+1 || f.owner!=current.owner || f.owner_generation!=current.owner_generation ||
+            // A missed balance record may not erase a contact whose native
+            // generations prove no intervening exit. Never integrate the missing dt.
+            const bool stable_gap=continuing && f.physics_step>previous+1 &&
+                f.contact_generation==previous_frame.contact_generation && f.contacts==wanted &&
+                previous_frame.contacts==wanted && f.action_generation==previous_frame.action_generation &&
+                f.sampled_at>=previous_frame.sampled_at && f.sampled_at-previous_frame.sampled_at<=150;
+            if((f.physics_step!=previous+1 && !stable_gap) || f.owner!=current.owner || f.owner_generation!=current.owner_generation ||
                 f.action_generation!=current.action_generation || f.state!=100 || f.mode!=1 || (f.stance_and_push&0x40u) ||
                 f.sampled_at>now || now-f.sampled_at>150 || (continuing && f.sampled_at<sampled_at_))return fail();
             if(f.contacts==wanted)contact_at=f.sampled_at;
             else if(f.contacts!=0xc000u || f.sampled_at<contact_at || f.sampled_at-contact_at>=100)return fail();
             if(f.physics_step==current.physics_step && !same_frame(f,current))return fail();
-            previous=f.physics_step;
+            previous=f.physics_step; previous_frame=f;
         }
         if(previous!=current.physics_step)return fail();
         if(!continuing)controls_.reset_manual();
