@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
+#include "Extension/ArcadeMode/arcade_native_mapping.h"
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -34,6 +35,19 @@ bool angular_start(std::uint64_t now,unsigned duration,unsigned sources,bool ang
 }
 unsigned checks{};
 void check(bool ok,const char* why){++checks;if(!ok)throw std::runtime_error(why);}
+namespace dingosdk {
+void followup_publication() {
+    struct { std::atomic<std::int32_t> native_launch_id{},native_followup_id{}; } a;
+    for(bool active:{false,true}) for(std::int32_t native_followup_id:{0,1,2,3,4,16,19,36}) {
+        const std::uint64_t release_sequence=1;
+        const std::int32_t native_launch_id=1;
+@FOLLOWUP_PUBLICATION@
+        const bool accepted=active&&(native_followup_id==2||native_followup_id==3||native_followup_id==4);
+        check(a.native_followup_id.load()==(accepted?native_followup_id:0),
+            "actual native publisher preserves qualified basic followups and clears unsupported or disabled actors");
+    }
+}
+}
 const NativeInputOwner owner{1,2,3,4,5};
 NativeInputFrame frame(){NativeInputFrame f;f.valid=true;f.owner=owner;f.owner_generation=2;f.contact_generation=3;f.action_generation=4;f.physics_step=5;f.sampled_at=1000;f.physics_seconds=1.f/30;return f;}
 InputTelemetry queue;
@@ -347,6 +361,7 @@ void run(){
 }
 }
 int main(){
+    dingosdk::followup_publication();
     angular_receipt_tests::run();
     angular_release_tests::run();
     reset();auto base=ticket();check(base.capture&&base.owner==1,"existing anonymous token reused");

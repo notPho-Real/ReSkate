@@ -19,6 +19,7 @@ def generate(root):
         'ANGULAR_OBSERVER': between(mode, '// Angular writer observation begin. Every field', '// Angular writer observation end.'),
         'ANGULAR_BOUNDARIES': between(mode, '    // Angular receipt boundaries are separate', '    // Angular receipt boundaries end.'),
         'BODY_WRITE': between(client, 'template<class T> void body_write(', '\n}\nvoid debug_stop_noclip'),
+        'FOLLOWUP_PUBLICATION': between(client, '    a.native_launch_id.store(', '    a.launch.store('),
         'COMMIT': between(client, '        const auto commit_motion = ', '        const auto release_turn = '),
         'ANGULAR_RELEASE': between(client, '        const auto release_turn = ', '        if (!intent.enabled) {'),
         'ANGULAR_BODY': between(client, '        auto applied=a.ground_output.ready', '\n    } catch (...) { a.controller.reset();'),

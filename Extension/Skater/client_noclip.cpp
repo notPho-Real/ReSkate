@@ -994,7 +994,7 @@ void set_arcade_air_intent(bool active, std::uint64_t release_sequence, std::uin
     a.release_at.store(release_at, std::memory_order_relaxed);
     a.charge.store(std::min(charge_ms, 200u), std::memory_order_relaxed);
     a.native_launch_id.store(active && release_sequence && (native_launch_id==1 || native_launch_id==16) ? native_launch_id : 0,std::memory_order_relaxed);
-    a.native_followup_id.store(active && (native_followup_id==2 || native_followup_id==3) ? native_followup_id : 0,std::memory_order_relaxed);
+    a.native_followup_id.store(active && arcade_mode::ordinary_ollie_followup(native_followup_id) ? native_followup_id : 0,std::memory_order_relaxed);
     a.launch.store(active && launch ? *launch : arcade_mode::LaunchDescriptor{});
     const auto turn=active&&angular_allowed&&ground_turn ? *ground_turn : arcade_mode::GroundTurnCommand{};
     a.turn_serial.store(turn.serial,std::memory_order_relaxed);a.turn_at.store(turn.requested_at,std::memory_order_relaxed);
