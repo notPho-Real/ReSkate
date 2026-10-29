@@ -234,7 +234,7 @@ public:
         // command modifier owned by the delivered RS actor. Do not also send
         // native LY (Down selects the ordinary ground reverse/revert path).
         // Actual confirmed balance retains its existing correction writer.
-        if (manual.owns_stick && manual_.from_air() && !manual.confirmed &&
+        if (manual.owns_stick && manual_.from_air() && (!manual.confirmed || !admission.manual_balance_admitted) &&
             InputEvents::normalize(physical,now,true,admission.input_policy).direction==(manual_.requested()<0?2:8))
             output.suppress_reverse=true;
         output.manual = {diagnostic.stick, diagnostic.pad,

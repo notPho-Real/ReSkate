@@ -760,6 +760,9 @@ int main(){
   if(seen_unknown){client(dt/1000.f,history());remap();}
   clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());
   check(!manual_balance_admitted.load()&&!balance_hud_pending(),"unknown original interval retires balance/HUD without inventing recovery identity");
+  // Cleanup must retain the acquired contact even after the RS actor withdraws.
+  // Otherwise a new actor publication can mask an accidental acquisition reset.
+  arcade_input.cancel_manuals();
   remap();
   for(unsigned i=0;i<duplicates;++i){++clock_ms;client(dt/1000.f,history());remap();}
   if(!manual_release.pending()&&clock_ms>=original+1200){tick(dt,100,wanted);remap();}

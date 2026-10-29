@@ -94,12 +94,13 @@ private:
             air_frame_.action_generation!=UINT64_MAX && air_frame_.contact_generation!=UINT64_MAX;
         return frame.airborne && frame.contacts == 0 && (frame.state == air_frame_.state || next_phase) &&
             frame.mode == air_frame_.mode && frame.airborne_episode == air_frame_.airborne_episode &&
-            frame.air_departure == air_frame_.air_departure && frame.action_generation == air_frame_.action_generation+(next_phase?1u:0u) &&
+            frame.air_departure == air_frame_.air_departure && frame.action_generation == air_frame_.action_generation+((next_phase || frame.flip_id!=air_frame_.flip_id)?1u:0u) &&
             frame.contact_generation == air_frame_.contact_generation+(next_phase?1u:0u) && frame.mode_generation == air_frame_.mode_generation && same_selection(frame) &&
             frame.physics_step >= air_frame_.physics_step && frame.sampled_at >= air_frame_.sampled_at;
     }
     bool same_selection(const NativeInputFrame& frame) const noexcept {
-        return frame.flip_known && frame.flip_id == -1 && frame.selection_object == air_frame_.selection_object &&
+        return frame.flip_known && (frame.flip_id == air_frame_.flip_id ||
+            (air_frame_.flip_id >= 0 && frame.flip_id == -1)) && frame.selection_object == air_frame_.selection_object &&
             frame.stance_and_push == air_frame_.stance_and_push;
     }
     bool matching_landing(const NativeInputFrame& frame) const noexcept {
@@ -130,7 +131,7 @@ private:
             (now-command.recognized_at > ManualActuation::air_request_ms && !continuing_hold) ||
             (frame.state != 200 && frame.state != 201) || (frame.mode != 1 && frame.mode != 2) ||
             !frame.airborne_episode || !frame.mode_generation || frame.contacts || (frame.stance_and_push & 0x40u) ||
-            !frame.flip_known || frame.flip_id != -1) {
+            !frame.flip_known || frame.flip_id < -1) {
             retire_air(); pending_ = air_origin_ = false; return;
         }
         if (spent_ && frame.owner == spent_owner_ && frame.owner_generation == spent_generation_ &&

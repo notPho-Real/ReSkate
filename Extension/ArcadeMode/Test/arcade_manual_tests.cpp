@@ -28,6 +28,20 @@ void start(dingosdk::arcade_mode::test::SessionManual& manual, std::uint64_t ms 
 }
 
 int run_arcade_manual_tests() {
+    // Real actuator lifetime, with brief downstream publication loss after
+    // the acquisition deadline. No integration of unobserved physics is used.
+    for (int direction : {-1, 1}) {
+        ManualActuation actor;
+        const auto pose=direction<0?SkatePose::manual:SkatePose::nose_manual;
+        check(actor.request(100,direction,false,true,false,100),"manual actor starts");
+        for (unsigned now=117;now<10100;now+=17) {
+            const bool gap=now%510<34;
+            auto out=actor.sample(now,true,true,gap?SkatePose::riding:pose,false,0,!gap,false,true);
+            check(out.owns_stick && out.y==direction*20000,"confirmed manual survives brief admission gap beyond acquisition timeout");
+        }
+        check(!actor.sample(10300,true,true,SkatePose::riding,false,0,false).owns_stick,
+            "actual prolonged contact exit still releases the actor");
+    }
     for (bool pad : {false, true}) for (bool nose : {false, true}) {
         const int first = nose ? -1 : 1;
         for (bool prior_neutral : {false, true}) for (unsigned gap : {0u, 1u, 2u}) {

@@ -125,10 +125,10 @@ public:
             }
             // Brief observer gaps must not drop a held native manual. A failed
             // request or an observed exit always has a bounded release path.
-            // Physical contact alone cannot waive the preparation bound. Only
-            // independently admitted balance can maintain a continuing hold;
-            // admitted corrected balances have no arbitrary lifespan limit.
-            if (((!air_prepared_ || landed_) && (!confirmed_ || !balance_admitted) && now - requested_at_ >= acquisition_ms) ||
+            // Acquisition ends once matching native contact is confirmed.
+            // A one-poll balance-publication gap must use the continuation
+            // lease below, not re-enter an already expired acquisition timer.
+            if (((!air_prepared_ || landed_) && !confirmed_ && now - requested_at_ >= acquisition_ms) ||
                 (confirmed_ && !initial_ground_acquisition(now) &&
                  now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};

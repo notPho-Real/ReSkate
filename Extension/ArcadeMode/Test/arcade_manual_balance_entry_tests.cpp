@@ -159,11 +159,11 @@ void guards(){
 void air_guards(){
  for(bool nose:{false,true}){
   const auto wanted=nose?0x8000u:0x4000u;
-  for(unsigned state:{200u,201u})for(unsigned mode:{1u,2u}){
+  for(unsigned state:{200u,201u})for(unsigned mode:{1u,2u})for(int selected:{-1,1,2,3}){
    NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};GroundManualBalance balance;
    NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=mode;
    auto delivered=command(nose);delivered.from_air=true;delivered.recognized_at=1000;
-   balance.observe(1000,producer.observe(1000,owner,sample,{true,-1}),delivered,true);
+   balance.observe(1000,producer.observe(1000,owner,sample,{true,selected}),delivered,true);
    sample.state=100;sample.crouch_mode=1;sample.words[1]=wanted;
    const auto landing=producer.observe(1017,owner,sample,{true,-1});
    check(balance.sample(1017,landing,true,true).admitted,
@@ -179,7 +179,7 @@ void air_guards(){
    if(fault==2)delivered.request_at=999;
    if(fault==3)delivered.owns=false;
    if(fault==4)initial.flip_known=false;
-   if(fault==5)initial.flip_id=1;
+   if(fault==5)initial.flip_id=-2;
    if(fault==6)initial.contacts=wanted;
    balance.observe(1000,initial,delivered,true);
    if(fault==7){delivered.owns=false;balance.observe(1010,initial,delivered,true);}
