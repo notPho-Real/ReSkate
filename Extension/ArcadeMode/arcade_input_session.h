@@ -190,7 +190,9 @@ public:
         // Unavailable ground flip/grab buttons have no competing actuator.
         // Keep their physical edges in recognition, but do not release a valid
         // manual hold merely because the old native face-button mask included them.
-        const bool ground_balance = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
+        const bool ground_balance = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual ||
+            (revert_link_.issued && native.required && native.fresh(now) && !native.airborne &&
+             native.flip.state==100 && native.flip.mode==1);
         const auto manual_buttons = static_cast<std::uint16_t>(physical.buttons & (ground_balance ? ~0x6000u : 0xffffu));
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
