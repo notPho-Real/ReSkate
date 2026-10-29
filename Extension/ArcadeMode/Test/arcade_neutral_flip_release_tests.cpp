@@ -12,7 +12,7 @@ struct Route {
     ArcadeInput input{true}; NativeInputState producer; NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5}; NativeInputFrame frame{};
     std::vector<PreparedGesture> recipes;
-    unsigned starts{},recognized{};
+    unsigned starts{},recognized{}; bool exact_clock{};
     NativeGesture::Output output{};
     Route() {
         for(const unsigned id:{1u,2u,3u,4u,5u,6u,8u,9u,36u})
@@ -29,7 +29,7 @@ struct Route {
         input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         const auto admit=readiness.sample(now,frame);
         output=input.poll(0,now,pad.buttons,pad.x,pad.y,0,0,gameplay,admit.start,false,0,false,false,
-            true,now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
+            true,exact_clock?now*60/1000:now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
             false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.mirror_x,false);
         starts+=output.requested_id?1u:0u;
         const auto* diagnostic=input.input_diagnostic(0);
@@ -178,6 +178,8 @@ void prompt_released_ollie_tap() {
         h->poll(1000+2*cadence,{0x1000},100,1,0);
         const auto release=1000+3*cadence;h->poll(release,{static_cast<std::uint16_t>(press_step==0?0x4000:0)},100,1,0);
         unsigned flip_starts{}, first_flip_step{};std::uint64_t original_press{},original_release{};
+        if(press_step==0)for(const auto& attempt:h->input.input_diagnostic(0)->recognition)
+            if(attempt.request.action==InputAction::flip)original_press=attempt.request.physical_pressed_at;
         for(unsigned n=1;n<=15;++n) {
             const auto now=release+n*cadence;
             const auto state=n<4?103u:n==4?200u:201u;
@@ -226,13 +228,39 @@ void prompt_released_ollie_tap() {
         check(h->starts==(observed_jump?2u:1u),"a fast A/X release can await actual native Ollie confirmation but cannot borrow an unrelated fall");
     }
 }
-void early_press_cadences() {
-    for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u,500u,650u}) {
+void delivered_pop_handoff() {
+    for(unsigned cadence:{8u,17u,34u}) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
+        h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},103,1,0);
+        // Release delivers the actual last nonneutral pop arc. A valid AIR
+        // frame alone must not truncate an undelivered arc or held setup.
+        const auto pop=h->poll(1100,{0x4000},103,1,0);
+        check(pop.authored_playback && std::abs(pop.right_x)==28000 && pop.right_y==28000,
+            "physical release delivers the native pop before pending X takes ownership");
+        check(!h->poll(1100,{0x4000},200,1,0).requested_id,
+            "a repeated same-tick AIR read cannot pretend the pop was consumed");
+        unsigned now=1100+cadence;
+        while(now/17==1100/17) {check(!h->poll(now,{0x4000},200,1,0).requested_id,"no handoff inside the pop delivery tick");now+=cadence;}
+        const auto flip=h->poll(now,{0x4000},200,1,0);
+        check(flip.requested_id==2 && flip.authored_playback && !flip.right_x && !flip.right_y,
+            "first distinct AIR tick hands delivered pop directly to the flip neutral reset, before old tail");
+        const auto* d=h->input.input_diagnostic(0);
+        check(d->dispatch[0].request.physical_pressed_at==1100,
+            "pop handoff retains original physical X identity");
+        h->poll(now+cadence,{},201,1,2);
+        check(h->starts==2,"release does not duplicate the Ollie and single flip");
+    }
+}
+void early_press_cadences() {
+    for(unsigned rate:{120u,60u,30u}) for(unsigned delay:{0u,17u,33u,66u,100u,250u,500u,650u}) {
+        auto h=std::make_unique<Route>();h->exact_clock=true;h->poll(1000,{},100,-1,1);
         h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},100,1,0);
-        const unsigned release=1100;unsigned starts{}, first_motion{}, first_flick{};std::uint64_t pressed{};
-        for(unsigned elapsed=0;elapsed<delay+350;elapsed+=cadence) {
+        const unsigned release=1100;unsigned starts{}, first_motion{}, first_flick{}, recognized_at{};std::uint64_t pressed{},physical_at{};
+        for(unsigned sample=0;;++sample) {
+            const auto elapsed=(sample*1000+rate-1)/rate;
+            if(elapsed>=delay+350)break;
             const bool held=elapsed>=delay && elapsed<delay+120;
+            if(held && !physical_at)physical_at=release+elapsed;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
                 elapsed<40?103u:201u,elapsed<delay+250?1:-1,elapsed<40?0u:2u);
             if(out.requested_id==2){++starts;check(h->input.authored_air_followup(release+elapsed,h->frame)==2,"actual facade publishes only its admitted same-flight basic flip identity");}
@@ -240,13 +268,15 @@ void early_press_cadences() {
             if(starts && out.authored_playback && out.right_x && !first_flick)first_flick=elapsed;
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
-                pressed=d->recognition[i].request.physical_pressed_at;
+                {pressed=d->recognition[i].request.physical_pressed_at;recognized_at=static_cast<unsigned>(d->recognition[i].request.recognized_at);}
         }
+        check(recognized_at==pressed,"selection occurs on physical X press, independently of the pop actor");
+        std::cout<<"flip_timing hz="<<rate<<" delay="<<delay<<" recognition="<<(recognized_at-pressed)<<" load="<<(release+first_motion-pressed)<<" flick="<<(release+first_flick-pressed)<<" ms\n";
         check(first_flick && first_flick<delay+250,"actual kickflip flick arc, not just load position, is delivered promptly after the physical press");
         check(starts==1 && first_motion && first_motion<delay+200,"early X emits a nonneutral native flip gesture before Ollie selection retirement at each cadence");
-        check(pressed==release+((delay+cadence-1)/cadence)*cadence,"handoff preserves actual sampled physical X time");
+        check(pressed==physical_at,"handoff preserves actual sampled physical X time");
     }
 }
 
 }
-int main() {early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+int main() {delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

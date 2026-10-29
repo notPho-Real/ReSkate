@@ -401,3 +401,22 @@ Schema1 remains readable, but its recognition bounds cannot prove membership.
 Missing/duplicate members and exhausted identities prevent complete accounting.
 Input scope covers the shared physical-event journal; ordinary pad diagnostics
 remain separate. Capture completeness never verifies a native action or cause.
+
+### Pop-to-flip handoff
+
+Physical X selects neutral Kickflip or the existing directional flip on press.
+A qualified released ordinary Ollie may select before AIR using its original
+release identity and the existing bounded 200 ms handoff; it cannot actuate on
+the ground or survive an unrelated release. Every pop arc must actually have
+been delivered, including the last endpoint on an earlier simulation tick,
+before independently observed same-flight Ollie/AIR permits the RS handoff.
+The following flip owns the native neutral reset (30 ms) and initial load
+(35 ms). A redundant neutral waypoint and the previous pop's end hold no longer
+serialize the two actors. Neither handoff changes the launch ticket or adds an
+impulse. Existing same-flight Kickflip/Heelflip trajectory preservation remains;
+other action IDs retain their native override until independently justified.
+
+Production-composed tests verify original press timing, actual stick stages,
+negative ownership/flight cases and identical Ollie/qualified-flip motion targets
+at 30/60/120 Hz. They do not measure native acknowledgment, visible board rotation
+or acknowledgment relative to apex. Those remain gameplay acceptance requirements.

@@ -88,6 +88,7 @@ struct InputRequest {
     ContextualTrickRow selection{};
     std::uint64_t table_generation{}, table_expires_at{};
     InputFlipObservation waiting_flip{};
+    std::uint64_t pop_release_at{}; // Qualified original release; recognition only, never AIR authority.
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -269,10 +270,12 @@ private:
               request.waiting_flip.valid && request.waiting_flip.id==1 && native.flip.valid &&
               request.waiting_flip.object && request.waiting_flip.object==native.flip.object &&
               request.waiting_flip.stance==native.flip.stance &&
-              (native.flip.id==1 || native.flip.id==-1) && native.airborne));
+              (native.flip.id==1 || native.flip.id==-1) &&
+              (native.airborne || request.pop_release_at==released_jump)));
     }
     static InputDisposition eligibility(const InputRequest& request, std::uint64_t now,
                                         std::uint64_t session, InputContext context, InputNativeContext native, const InputAirTables& tables, std::uint64_t released_jump) noexcept {
+        if (request.pop_release_at && request.pop_release_at != released_jump) return InputDisposition::cancelled;
         if (request.selection.table != InputAirTableKind::none) {
             const auto* row = contextual_trick(request.selection.table);
             const auto& table = tables.get(request.selection.table);
@@ -293,6 +296,8 @@ private:
         if (rail(request.action) && context == InputContext::lip) return InputDisposition::cancelled;
         if (request.session != session || (request.context != context &&
             !(manual(request.action) && request.context == InputContext::air && context == InputContext::ground) &&
+            !(request.action == InputAction::flip && request.pop_release_at &&
+              request.context == InputContext::ground && context == InputContext::air) &&
             !(request.action == InputAction::rail_select &&
               (context == InputContext::ground || context == InputContext::air || context == InputContext::rail))))
             return InputDisposition::cancelled;
@@ -395,8 +400,13 @@ public:
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
-                if (native.air_episode() != native_.air_episode())
-                    cancel_air_episode(takeoff || native.ordinary_air_transition(native_,now));
+                if (native.air_episode() != native_.air_episode()) {
+                    if (takeoff && !native_.airborne && native.airborne) {
+                        // The ground-selected flip remains tied to this exact
+                        // released pop; eligibility rejects any other release.
+                        pending_.cancel(InputAction::grab); active_flip_=active_grab_=false;
+                    } else cancel_air_episode(takeoff || native.ordinary_air_transition(native_,now));
+                }
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
                     if (!takeoff && !native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
@@ -559,6 +569,9 @@ public:
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
         }
+        if (environment.context == InputContext::ground && takeoff &&
+            now-takeoff<=InputTiming::takeoff_preload_ms)
+            recognize_flip(now,environment,flip_release);
         if (grab_pressed) direction_ = 0;
         recognize_manual(now, physical, environment);
         recognize_rail_selection(now, environment);
@@ -666,6 +679,10 @@ private:
         }
         if (action == InputAction::jump_variant) request.jump_generation = environment.jump_generation;
         request.form = form;
+        if(action==InputAction::flip && environment.context==InputContext::ground) {
+            request.pop_release_at=takeoff_release_at_;request.air_episode={};
+            request.unbounded=false; // A ground preload uses the existing 200ms handoff bound.
+        }
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
         if (form == InputForm::repeated_direction || ((action == InputAction::flip || action == InputAction::grab) && defined_direction)) {
             request.direction = defined_direction; request.direction_source = InputSource::direction;
@@ -848,6 +865,7 @@ private:
         const auto after = ordinary_flip ? air_flip_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
             if ((event.sequence > after || (ordinary_flip && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
+                (!ordinary_flip || previous_context_==InputContext::air || (takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 event.token == InputToken{InputSource::buttons,code,InputEdge::press})
                 for (std::size_t i = 0; i < match.count; ++i) if (match.events[i] == event.sequence) return true;
         return false;

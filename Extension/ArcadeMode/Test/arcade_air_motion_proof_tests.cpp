@@ -199,5 +199,23 @@ int main(){
      "withdrawn authored ownership cannot retain the flip trajectory exemption");
   }
  }
+ for(unsigned rate:{30u,60u,120u})for(int flip:{2,3}) {
+  Pipeline plain,flipped;float plain_y{},flip_y{};
+  for(auto* p:{&plain,&flipped}) {
+   p->body.dt=1.0f/static_cast<float>(rate);p->observe(1000,100);p->publish(1000,0);p->sample();
+   p->intent.release_sequence=1;p->intent.release_at=1017;p->intent.native_launch_id=1;
+  }
+  for(unsigned step=0;step<rate;++step) {
+   const auto now=1017+step*1000/rate;
+   plain.observe(now,step?201:200,1);plain.publish(now,0);
+   flipped.observe(now,step?201:200,step>=2?flip:1);flipped.publish(now,0);
+   if(step>=1)flipped.intent.native_followup_id=flip;
+   const auto a=plain.sample(),b=flipped.sample();
+   check(a.vertical && b.vertical && a.velocity_y==b.velocity_y,
+     "same launch retains identical velocity before and after qualified native flip acknowledgment without a second impulse");
+   plain_y=AirMotion::next_height(plain_y,a,plain.body.dt);flip_y=AirMotion::next_height(flip_y,b,flipped.body.dt);
+   check(plain_y==flip_y,"production native motion targets retain identical trajectory through flip selection and playback");
+  }
+ }
  std::cout<<checks<<" native motion publication proof checks passed\n";
 }

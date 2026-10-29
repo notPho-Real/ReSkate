@@ -233,6 +233,13 @@ public:
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
+        // A released owned setup with an independently selected native Ollie
+        // may SELECT X in this poll; the actual release below still delivers
+        // the pop and execution still requires genuine AIR and delivered arcs.
+        if (holding_ && !(physical.buttons&classic_a) && !jump_nollie_ &&
+            launch_context_==GestureContext::ground && native.required && native.fresh(now) &&
+            !native.airborne && native.flip.valid && native.flip.id==1 && native.flip.object &&
+            (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
         if (reset_manual) input_.reset_manual_continuity();
@@ -363,7 +370,7 @@ private:
             if (holding_) authored_.release(admission.tick);
             holding_ = false; return InputDisposition::started;
         case InputAction::flip: {
-            if (!airborne) return InputDisposition::cancelled;
+            if (!airborne) return request.pop_release_at ? InputDisposition::waiting : InputDisposition::cancelled;
             if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
                 out.unsupported = true; return InputDisposition::unsupported;
             }
@@ -375,6 +382,12 @@ private:
                 admission.action_fresh && admission.native_context.fresh(now_) &&
                 admission.native_context.airborne && admission.native_context.flip.valid &&
                 (admission.native_context.flip.id == 1 || admission.native_context.flip.id == -1);
+            // Recognition already selected this request from the physical X
+            // edge. Retire only this released pop's delivered actuator, never
+            // a held setup or an airborne flip. Native AIR/Ollie continuity is
+            // independent proof; the launch ticket and trajectory are untouched.
+            if (own_ollie && !air_action_ && !auxiliary_.busy())
+                authored_.handoff_delivered_pop(admission.tick,now_);
             if ((!admission.flip_ready && !own_ollie) || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             if (request.form != InputForm::ordinary && request.form != InputForm::neutral_release && request.form != InputForm::neutral_press) return request_extension(request);
             {

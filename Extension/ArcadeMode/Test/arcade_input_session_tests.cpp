@@ -306,7 +306,7 @@ void repeated_air_safety() {
         a.gameplay=a.authored=a.action_fresh=a.inspected_stance=a.may_start=true;
         a.action_mode=ActionExperiment::classic;a.pose=SkatePose::air;a.catalog=prepared;
         unsigned dispatched{};
-        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,510u,578u};
+        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,476u,578u};
         for(unsigned now=0;now<1000;now+=step) {
             a.tick=now/step;
             const auto buttons=static_cast<std::uint16_t>(((now>=150&&now<200)||(now>=350&&now<400)||(now>=550&&now<600))?0x4000:0);

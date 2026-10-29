@@ -88,7 +88,7 @@ inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const Aut
     if (ground.empty() || ground.size() > 128) return {};
     std::vector<AuthoredStickStep> result;
     unsigned tick{};
-    if (neutral_reset) { result = {{0, 0, 0}, {2, 0, 0}}; tick = 3; }
+    if (neutral_reset) { result = {{0, 0, 0}}; tick = 2; }
     bool first = true;
     for (const auto& point : ground) {
         if (!point.x && !point.y) break;
@@ -183,7 +183,8 @@ public:
             // Tick publication can occur just after this output is delivered.
             // Preserve the existing native35ms airborne load in elapsed time,
             // including starts between frames. Other authored stages are unchanged.
-            const auto minimum_ms = airborne_ && index_ == first_non_neutral_ ? 35u : 0u;
+            const auto minimum_ms = !airborne_ ? 0u : index_ == first_non_neutral_ ? 35u :
+                index_ < first_non_neutral_ ? 30u : 0u;
             if (since_step >= due && now - step_at_ms_ >= minimum_ms) {
                 // A late input poll must deliver the next arc, never jump over it.
                 // Schedule later arcs from this delivery; same-tick reads are stable.
@@ -198,6 +199,19 @@ public:
         holding_ = released_ = airborne_ = timed_ = false;
     }
     bool busy() const noexcept { return size_ != 0; }
+    bool handoff_delivered_pop(std::uint64_t tick, std::uint64_t now) noexcept {
+        // Only the session's independently observed native Ollie may use this.
+        // Delivery-relative playback has emitted every arc, including its final
+        // nonneutral endpoint, on a preceding simulation tick. The following
+        // airborne recipe owns the neutral reset; an old end hold is not a pop.
+        if (!size_ || holding_ || airborne_ || !timed_ ||
+            schedule_ != AuthoredPlaybackSchedule::delivery_relative ||
+            first_non_neutral_ >= last_non_neutral_ ||
+            index_ < last_non_neutral_ || tick <= step_at_ || now <= step_at_ms_ ||
+            tick < last_ || now < last_ms_) return false;
+        cancel();
+        return true;
+    }
     bool finish_neutral_tail() noexcept {
         // A completed flick has already delivered neutral before a following
         // airborne action may take ownership. Never truncate an authored arc.
