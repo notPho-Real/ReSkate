@@ -114,6 +114,7 @@ struct InputEnvironment {
     std::uint64_t jump_generation{};
     InputAirTables air_tables{};
     std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
+    bool takeoff_actor_busy{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -390,11 +391,11 @@ public:
                     cancel_air_episode(takeoff || native.ordinary_air_transition(native_,now));
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
-                    if (!native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
+                    if (!takeoff && !native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
                         !native.ordinary_flip_wait_continues(native_.generations,native_.air_episode(),native_.flip))
                         air_flip_after_ = last_event_;
                 }
-                if (native.flip.mode_generation != native_.flip.mode_generation) {
+                if (!takeoff && native.flip.mode_generation != native_.flip.mode_generation) {
                     // A physics-observed mode excursion ends pending Flip intent,
                     // even when its endpoints match between input polls. Wheel
                     // contact changes and admitted native playback are separate.
@@ -883,9 +884,10 @@ private:
             InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
-        // Keep a pre-AIR tap in the physical journal through the native pop's
-        // mode transition; only the ordinary airborne mode can bind its actor.
-        if (takeoff_release_at_ && environment.native_context.flip.mode!=2) return false;
+        if (takeoff_release_at_ && environment.takeoff_actor_busy) return false;
+        // The session's observed released-Ollie proof carries the physical
+        // edge into real AIR; mode 2 and selection retirement are not required
+        // to present the next native stick gesture after the pop flick ends.
         const InputToken face{InputSource::buttons,14,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};

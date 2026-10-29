@@ -86,9 +86,10 @@ void native_wait_and_ollie() {
     check(jump->poll(1017,{0x1000},100,-1,1).requested_id==1,"ordinary A reaches the existing authored Ollie setup");
     jump->poll(1051,{0x1000},100,1,0);jump->poll(1085,{},100,1,0);
     jump->poll(1102,{},200,1);jump->poll(1119,{},201,1);jump->poll(1136,{},201,1);
-    jump->poll(1153,{0x4000},201,1);jump->poll(1170,{},201,1);
-    out=jump->poll(1187);
-    check(out.requested_id==2 && out.authored_playback && jump->starts==2,
+    out=jump->poll(1153,{0x4000},201,1);
+    check(out.requested_id==2,"early physical X starts while the owned native Ollie remains selected");
+    jump->poll(1170,{},201,1);out=jump->poll(1187);
+    check(out.authored_playback && jump->starts==2,
         "actual production A release, native flight and neutral X release hand off to the existing Kickflip actor once");
 }
 void cancellation() {
@@ -176,22 +177,22 @@ void prompt_released_ollie_tap() {
         h->poll(1000+cadence,{0x1000},100,-1,1);
         h->poll(1000+2*cadence,{0x1000},100,1,0);
         const auto release=1000+3*cadence;h->poll(release,{static_cast<std::uint16_t>(press_step==0?0x4000:0)},100,1,0);
-        unsigned flip_starts{};std::uint64_t original_press{},original_release{};
+        unsigned flip_starts{}, first_flip_step{};std::uint64_t original_press{},original_release{};
         for(unsigned n=1;n<=15;++n) {
             const auto now=release+n*cadence;
             const auto state=n<4?103u:n==4?200u:201u;
             const auto mode=n<=4?0u:2u;
             const bool held=n>=press_step && n<press_step+2;
             const auto out=h->poll(now,{static_cast<std::uint16_t>(held?0x4000:0)},state,n<8?1:-1,mode);
-            if(out.requested_id==2)++flip_starts;
+            if(out.requested_id==2){++flip_starts;first_flip_step=n;}
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip) {
                 original_press=d->recognition[i].request.physical_pressed_at;
                 original_release=d->recognition[i].request.physical_released_at;
             }
-            if(n<8)check(out.requested_id!=2,"prompt tap cannot bypass native jump selection/idle or the existing actor");
+            if(n<4)check(out.requested_id!=2,"prompt tap cannot execute before real native AIR");
         }
-        check(flip_starts==1,"one ordinary post-Ollie tap survives pre-AIR/initial-mode timing and reaches existing Kickflip once");
+        check(flip_starts==1 && first_flip_step<8,"owned Ollie hands off during native jump selection, before retirement, exactly once");
         check(original_press==release+press_step*cadence && (original_release==0 || original_release==release+(press_step+2)*cadence),
             "early recognition retains the real press and never invents a future release");
     }
@@ -229,17 +230,18 @@ void early_press_cadences() {
     for(unsigned cadence:{8u,17u,33u}) for(unsigned delay:{0u,17u,33u,66u,100u}) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
         h->poll(1017,{0x1000},100,-1,1);h->poll(1034,{0x1000},100,1,0);
-        const unsigned release=1100;unsigned starts{};std::uint64_t pressed{};
+        const unsigned release=1100;unsigned starts{}, first_motion{};std::uint64_t pressed{};
         for(unsigned elapsed=0;elapsed<350;elapsed+=cadence) {
             const bool held=elapsed>=delay && elapsed<delay+120;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>(held?0x4000:0)},
-                elapsed<40?103u:201u,elapsed<70?1:-1,elapsed<40?0u:2u);
+                elapsed<40?103u:201u,elapsed<250?1:-1,elapsed<40?0u:2u);
             if(out.requested_id==2)++starts;
+            if(starts && out.authored_playback && (out.right_x || out.right_y) && !first_motion)first_motion=elapsed;
             const auto* d=h->input.input_diagnostic(0);
             for(std::size_t i=0;i<d->recognition_count;++i)if(d->recognition[i].request.action==InputAction::flip)
                 pressed=d->recognition[i].request.physical_pressed_at;
         }
-        check(starts==1,"early held X transfers exactly once at each controller cadence");
+        check(starts==1 && first_motion && first_motion<250,"early X emits a nonneutral native flip gesture before Ollie selection retirement at each cadence");
         check(pressed==release+((delay+cadence-1)/cadence)*cadence,"handoff preserves actual sampled physical X time");
     }
 }

@@ -206,6 +206,7 @@ public:
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
+        environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
         if (reset_manual) input_.reset_manual_continuity();
         // A released A ends native setup even when another request superseded
@@ -330,12 +331,20 @@ private:
             out.jump = {true,holding_,request.nollie,launch_context_ == GestureContext::from_grind,request.physical_pressed_at,request.physical_released_at,jump_launch_};
             if (holding_) authored_.release(admission.tick);
             holding_ = false; return InputDisposition::started;
-        case InputAction::flip:
+        case InputAction::flip: {
             if (!airborne) return InputDisposition::cancelled;
             if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
                 out.unsupported = true; return InputDisposition::unsupported;
             }
-            if (!admission.flip_ready || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
+            // A released, independently observed ordinary Ollie may hand its
+            // completed RS flick to another native gesture during ascent. The
+            // selection ID describes the current trick, not a pad-input lock.
+            // Keep generic/late requests on their existing idle readiness gate.
+            const bool own_ollie = takeoff_release_at_ && takeoff_jump_observed_ &&
+                admission.action_fresh && admission.native_context.fresh(now_) &&
+                admission.native_context.airborne && admission.native_context.flip.valid &&
+                (admission.native_context.flip.id == 1 || admission.native_context.flip.id == -1);
+            if ((!admission.flip_ready && !own_ollie) || authored_.busy() || auxiliary_.busy()) return InputDisposition::waiting;
             if (request.form != InputForm::ordinary && request.form != InputForm::neutral_release && request.form != InputForm::neutral_press) return request_extension(request);
             {
                 if ((request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) &&
@@ -353,6 +362,7 @@ private:
                 if (air_action_) air_actor_episode_ = admission.native_context.air_episode();
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;
             }
+        }
         case InputAction::manual: case InputAction::nose_manual:
             if (admission.external_owner || physical_.lt > 30 || physical_.rt > 30 ||
                 (physical_.buttons & 0xf030u) || (physical_.buttons & 0x0300u) == 0x0300u) return InputDisposition::cancelled;
