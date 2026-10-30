@@ -155,7 +155,7 @@ jobs:
           persist-credentials: false
       - name: Native input and animation-ownership contract regressions (no hardware)
         run: |
-          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab; do
+          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab control_state; do
             c++ -std=c++20 -O2 -I. "Extension/ArcadeMode/Test/arcade_${suite}_tests.cpp" -o "$RUNNER_TEMP/arcade_${suite}_tests"
             "$RUNNER_TEMP/arcade_${suite}_tests"
           done
@@ -177,7 +177,7 @@ jobs:
           persist-credentials: false
       - name: Native input and animation-ownership contract regressions (no hardware)
         run: |
-          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab; do
+          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab control_state; do
             c++ -std=c++20 -O2 -I. "Extension/ArcadeMode/Test/arcade_${suite}_tests.cpp" -o "$RUNNER_TEMP/arcade_${suite}_tests"
             "$RUNNER_TEMP/arcade_${suite}_tests"
           done

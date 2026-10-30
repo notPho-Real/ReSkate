@@ -895,7 +895,9 @@ private:
             if (!environment.deferred_grabs && (selected || environment.named_grabs)) {
                 const auto binding = match_air_direction(events_,TrickFamily::grab,now,ordinary_reject);
                 match = binding.match; selected = binding.direction;
-                if (!match && !selected) {
+                // A neutral first grab is valid. An expired named-grab extra
+                // remains buffered for a genuine direction; never relabel it.
+                if (!match && !selected && (!active_grab_ || !grab_direction_)) {
                     const std::array tokens{face};
                     match=events_.history().match({tokens,500,ordinary_reject},now);
                 }

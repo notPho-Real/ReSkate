@@ -51,6 +51,12 @@ input-path logging; the adapter now queues that evidence and the focused telemet
 contract passes. The full lab rerun passed 458 tests with one skip. Current CI
 and DLL identity must be taken from the build receipt. Grab delivery is enabled
 only when the existing candidate-entry hook has also installed successfully.
+Windows also exposed an expired directional-extra request falling through to
+the newly enabled neutral B binding. Neutral fallback now applies only without
+an active named-grab direction; expired named requests retain their original
+buffering rule. All 67,042 control-state checks pass locally after the fix, and
+that existing suite is now included in Linux/macOS CI too. The 206 grab checks,
+production input-session checks and neutral-flip checks also pass after the fix.
 
 See `native-grab-source-pilot.json` for exact original identities and asset
 receipts. Required gameplay acceptance remains A→B, A→Left+B, A→Left+double B,
