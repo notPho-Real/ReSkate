@@ -293,6 +293,9 @@ void native_transition_requests() {
         }
     };
     struct Choice {std::uint16_t direction;int id;};
+    // Exercise the production native callback path at each requested cadence.
+    // The callback receipt remains a request, not native animation evidence.
+    for(unsigned rate:{30u,60u,120u})
     for(bool delayed_selection:{false,true})
     for(bool retired_selection:{false,true})
     for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9}}) {
@@ -300,7 +303,8 @@ void native_transition_requests() {
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
         h->poll(1060,{0x1000},100,delayed_selection?-1:1,delayed_selection?1:0);
         constexpr unsigned release=1100;unsigned issued{};
-        for(unsigned elapsed=0;elapsed<=800;elapsed+=20) {
+        for(unsigned frame=0;frame<=rate*800/1000;++frame) {
+            const unsigned elapsed=frame*1000/rate;
             const bool held=elapsed>=delay && elapsed<delay+80;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>((held?0x4000u:0u)|choice.direction)},
                 elapsed<120?100u:elapsed<220?103u:elapsed<260?200u:201u,
