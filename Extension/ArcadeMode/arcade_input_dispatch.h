@@ -89,6 +89,9 @@ struct InputRequest {
     std::uint64_t table_generation{}, table_expires_at{};
     InputFlipObservation waiting_flip{};
     std::uint64_t pop_release_at{}; // Qualified original release; recognition only, never AIR authority.
+    constexpr GrindChangeTarget grind_target() const noexcept {
+        return action == InputAction::rail_change ? grind_change_target(variant) : GrindChangeTarget::none;
+    }
     bool operator==(const InputRequest&) const = default;
 };
 struct InputEnvironment {
@@ -1019,10 +1022,15 @@ private:
             }
         }
         struct Pair { std::int16_t first, second; std::uint8_t target; };
-        constexpr std::array front{Pair{15,15,1}, Pair{15,14,2}, Pair{15,13,3}, Pair{13,13,4}, Pair{13,14,5},
-            Pair{13,15,6}, Pair{14,14,7}, Pair{14,13,8}, Pair{14,15,9}};
-        constexpr std::array back{Pair{15,15,1}, Pair{15,14,2}, Pair{15,13,3}, Pair{13,13,4}, Pair{13,14,5},
-            Pair{13,15,6}, Pair{14,15,9}, Pair{14,14,7}, Pair{14,13,8}};
+        constexpr auto named = [](std::int16_t first,std::int16_t second,GrindChangeTarget target) {
+            return Pair{first,second,grind_change_variant(target)};
+        };
+        using Target = GrindChangeTarget;
+        constexpr std::array front{
+            named(15,15,Target::grind_50_50), named(15,14,Target::noseslide), named(15,13,Target::nosegrind),
+            named(13,13,Target::crooked), named(13,14,Target::bluntslide), named(13,15,Target::nosebluntslide),
+            named(14,14,Target::smith), named(14,13,Target::grind_5_0), named(14,15,Target::tailslide)};
+        constexpr std::array back{front[0],front[1],front[2],front[3],front[4],front[5],front[8],front[6],front[7]};
         constexpr std::array lips{Pair{13,13,40}, Pair{13,14,41}, Pair{14,14,42}, Pair{14,13,43},
             Pair{15,15,44}, Pair{15,14,45}, Pair{15,13,46}};
         constexpr std::array inverted{Pair{14,14,50}, Pair{15,15,51}, Pair{13,13,52}, Pair{13,14,53}, Pair{14,13,54}, Pair{15,13,55}};

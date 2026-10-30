@@ -27,6 +27,8 @@ InputEnvironment rail_environment(InputRailPhase phase){
     env.rail.phase=phase;env.rail.generation=7;env.rail.fresh=env.rail.ready=env.rail.geometry_known=true;return env;
 }
 void pair_boundaries(){
+    constexpr std::array<std::string_view,10> names{"","50-50","Noseslide","Nosegrind","Crooked",
+        "Bluntslide","Nosebluntslide","Smith","5-0","Tailslide"};
     struct Pair{unsigned table,first,second,target,window;};
     const Pair pairs[]{{0,15,15,1,300},{0,15,14,2,300},{0,15,13,3,300},{0,13,13,4,300},{0,13,14,5,300},
         {0,13,15,6,300},{0,14,14,7,300},{0,14,13,8,300},{0,14,15,9,300},
@@ -41,6 +43,11 @@ void pair_boundaries(){
         env.rail.ready=true;input.poll(10+age,{},env,sink.adapter());
         check(age<row.window?sink.requests.size()==1&&sink.requests[0].variant==row.target:sink.requests.empty(),
             "every installed established pair keeps strict299/300/301 or special499/500/501 first-edge age");
+        if (age<row.window && !sink.requests.empty()) {
+            const auto target=sink.requests[0].grind_target();
+            check(row.table ? target==GrindChangeTarget::none : grind_change_name(target)==names[row.target],
+                "established rail targets have explicit names; Lip variants cannot alias them");
+        }
         const auto count=sink.requests.size();input.poll(11+age,{},env,sink.adapter());
         check(sink.requests.size()==count,"consumption prevents held or neutral polls from repeating a change");
     }

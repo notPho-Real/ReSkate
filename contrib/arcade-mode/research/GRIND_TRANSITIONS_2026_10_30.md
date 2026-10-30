@@ -34,7 +34,8 @@ identify the following native assets (asset index and uncompressed SHA-1):
 | `enableexperimentalgrindtransitions` | 37122 | `7ddbf73dbbd5a7e0e89993b00a417a78b4b3cceb` |
 
 The last two names do not establish an enabled or callable transition API.
-Their payloads are absent from the inspected local cache. The index also
+Their payloads were absent during the initial inspection; the bounded read-only
+follow-up below recovered them. The index also
 contains `grindstates_grinding_ag_a0148c8`, `grindstates_trick_ag_b2daa3f`,
 their conditions/actions, and native grind/popout animation sequences.
 
@@ -103,12 +104,107 @@ acceptance. No such writes were imported.
 
 The missing contract is the owner-scoped native consumer of
 `input_grindtransition`, its conditions/settings, target mapping, and native
-motion initialization/cleanup. Need the indexed asset payloads and a native
-control trace proving whether each transition maintains contact or briefly
+motion initialization/cleanup. The follow-up established the animation
+reselection path below; a native control trace must still prove which input
+selects each physics target and whether each transition maintains contact or briefly
 leaves it. Neither executable addresses nor calling conventions for a new
 grind actor are established. No fake executor or success acknowledgment was
 added. Pair order/simultaneous/held-input acceptance remains pending that
 executor and mapping; existing semantic-table tests alone are insufficient.
+
+## Follow-up: native reselection and named request definitions
+
+The user selected the classic ordered two-button layout. Existing semantic
+variants now have explicit `GrindChangeTarget` names, available through
+`InputRequest::grind_target()`. No native enum conversion is implied:
+
+| Input | Target | Semantic variant |
+| --- | --- | ---: |
+| Y, Y | 50-50 | 1 |
+| Y, X | Noseslide | 2 |
+| Y, B | Nosegrind | 3 |
+| B, B | Crooked | 4 |
+| B, X | Bluntslide | 5 |
+| B, Y | Nosebluntslide | 6 |
+| X, X | Smith | 7 |
+| X, B | 5-0 | 8 |
+| X, Y | Tailslide | 9 |
+
+The requested layout was checked against the user-selected control reference;
+its external citation is retained with the private investigation artifacts.
+The existing recognizer, strict 300 ms window, front/back precedence and
+consumption remain unchanged. Early and Lip variants cannot alias these targets.
+These are defined bindings, **not confirmed working transitions**.
+
+Before the user requested offline-only continuation, a bounded read-only
+inspection retrieved 87 indexed EBX assets (262,563 compressed bytes), checked
+their manifest SHA-1 values and the executable SHA-256, and decoded them locally.
+A separate read-only registry inspection resolved six exact native GUIDs plus
+the reselection expression's dependencies. No native functions, input, hooks,
+game file writes or installation were performed. Raw game assets remain in
+ignored local research artifacts and are not included in source publication.
+
+The actual native animation path is now established:
+
+- `Transition_Grind.Loop.Node_to_Grind.Loop.Node`, GUID
+  `54919b5b-1690-9a7a-5491-9b5b16909a7a`, re-enters
+  `Grind.Loop.Node` (`8cc0ec9b-0e9f-ea14-8cc0-ec9b0e9fea14`).
+  Its condition is `EBool.Anim.InCorrectGrind`
+  (`5d2236d7-69c7-271e-5d22-36d769c7271e`), required false. The native
+  DiffBlend has BlendTime 30 in asset units, not an inferred millisecond duration.
+- The loaded expression's exact dependencies are `Enum.GS.SkateGrindType`
+  (`0844b155-be0e-9228-0844-b155be0e9228`) and
+  `Enum.GS.Anim.CurrentGrindType`. Its kernel reads both, compares the first
+  with zero and with the second, and ORs the comparisons. Equality at RVA
+  `0x1458e50` and boolean OR at `0x16eb6e0` were checked in the pinned executable.
+  Thus reselection is requested when the physics type is nonzero and differs
+  from the animated type. This is **not** a callable named-target selector.
+- `PTM_Match_Grind_Loop` uses `CDB_PTM_Filter_GrindLoop`; that context database
+  selects `PTM_Filter_GrindFromInto` versus `PTM_Filter_GrindLoopReselect`
+  using `Bool.State.Is.GrindInto`. The reselection filter includes 32769 and
+  excludes 0. No animation ID or filter is overwritten by this branch.
+- `SkaterCorePhysicsGrindInputConfig` binds native heading, pitch, LR/UD,
+  boardslide, double-grind, exit, and lip target inputs. Tuning includes minimum
+  transition heading velocity/change and separate board/tip/5-0 pitch curves.
+  These do not establish a target-independent stick recipe.
+- `Input_GrindTransition` is a boolean input (NameHash 3069668163), consumed
+  by the `GrindStates_Trick` condition graph. The experimental setting's key is
+  `exp_grind_transitions`, default false. Neither is a named-grind API.
+
+Production diagnostics now sample the independently selected physics grind
+alongside both existing animation identities, through the same owner-validated
+reader. Missing optional data leaves the original observations available.
+Late-arriving or withdrawn bindings are republished independently. A separate
+`ARCADE GRIND SELECTION` line preserves the old capture protocol and reports
+unavailable/no-target/matched/mismatch; none is an action acknowledgment.
+Balance, combo, scoring and native flip implementation are untouched.
+
+The final input-ownership pass also reproduced a retained semantic Y request
+after a successful rail A setup. The adapter withdrew its physical channel,
+but the session could still report a busy rail owner until Y release or expiry,
+blocking auxiliary actions during that interval. Successful from-grind setup
+now retires that old request. Missing/unsupported rail recipes preserve it.
+The physical event baseline is unchanged: holding Y cannot restart the old
+request; a new Y press can prepare the next grind. The production facade and
+native rail adapter are composed in 144 additional checks at 30/60/120 Hz,
+covering first contact, A setup/release, 701/AIR, completed playback and re-entry.
+The test failed on retained ownership before the correction. It does not claim
+an observed native launch or successful early native flip.
+
+Remaining execution blocker: resolve and verify the native input/geometry path
+from each named target to the physics-selected grind, including stance,
+front/back context, admissible starting grinds and rollback. The animation path
+cannot safely substitute for that physical transition. No production named
+executor is enabled. The user declined a live native-control trial, so work
+continued offline and no gameplay acceptance is claimed.
+
+Follow-up local verification: 40,089 observer checks (including selector/animation
+lag at 30/60/120 Hz), 771 existing selector checks, 504 rail-pop checks, 5,645
+production input-session plus 326 jump-idle checks, 2,486 ordinary flip checks,
+342 native Lip probe checks, 40 native rail facade checks, 67,042 control-state
+checks, 1,736 combo trace checks and 166 rail handoff checks pass. The concurrent
+queue check passed this run; the earlier baseline failure remains recorded below
+and no queue algorithm change is claimed.
 
 ## Verification and limits
 

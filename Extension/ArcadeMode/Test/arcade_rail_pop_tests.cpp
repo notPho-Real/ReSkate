@@ -5,6 +5,7 @@
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
+constexpr std::uint16_t classic_y=0x8000;
 void check(bool value, const char* why) {
     ++checks; if (!value) { std::cerr << "FAIL: " << why << '\n'; std::exit(1); }
 }
@@ -13,6 +14,7 @@ struct Pipeline {
     NativeInputOwner owner{1,2,3,4,5};
     ArcadeInput input{true};
     NativeInputFrame frame{};
+    RailAdapterPad rail_pad{};
     AuthoredTickClock clock;
     std::uint64_t tick{};
     // Distinct ground/rail vectors expose any accidental ground fallback.
@@ -28,8 +30,10 @@ struct Pipeline {
         tick=clock.advance(hz);
     }
     NativeGesture::Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay=true, bool may_start=true) {
-        return input.poll(0,now,buttons,0,0,0,0,gameplay,may_start,false,0,false,false,true,tick,false,catalog,
+        auto out=input.poll(0,now,buttons,0,0,0,0,gameplay,may_start,false,0,false,false,true,tick,false,catalog,
             false,false,SkatePose::grind);
+        rail_pad=input.sample_native_rail(out.rail,now,gameplay && !out.action.owned);
+        return out;
     }
 };
 }
@@ -64,6 +68,38 @@ int main() {
         check(flick,"release delivers the authored native rail flick");
     }
     for (unsigned hz : {30u,60u,120u}) {
+        for (bool recipe_available : {false,true}) {
+            Pipeline p; p.step(1000,200,hz); p.poll(1000,0);
+            const auto press=1000+1000/hz;
+            p.step(press,200,hz); p.poll(press,classic_y);
+            check(p.rail_pad.owns_right_stick,"held Y acquires the production rail adapter before contact");
+            const auto contact=1000+2*1000/hz;
+            p.step(contact,401,hz); p.poll(contact,classic_y);
+            check(p.rail_pad.owns_right_stick,"ordinary first-grind handoff retains its channel");
+            if(!recipe_available)p.catalog.pop_back();
+            const auto setup=1000+3*1000/hz;
+            p.step(setup,401,hz); auto out=p.poll(setup,classic_y|classic_a);
+            check(out.jump.setup_started==recipe_available,"only an available native rail recipe can replace the held rail command");
+            check(recipe_available ? out.rail.request.action==InputAction::none : out.rail.held,
+                "admitted rail pop retires the old semantic Y owner; unsupported setup preserves it");
+            check(p.rail_pad.owns_right_stick!=recipe_available,"native rail pressure cannot overwrite the admitted A setup");
+            if(!recipe_available)continue;
+            const auto release=1000+4*1000/hz;
+            p.step(release,403,hz); out=p.poll(release,classic_y);
+            check(out.jump.released && out.jump.setup_admitted,"A release pops while the initiating Y remains held");
+            for(unsigned i=5;i<40;++i) {
+                const auto now=1000+i*1000/hz;
+                p.step(now,i==5?701:200,hz); out=p.poll(now,classic_y);
+                check(!p.rail_pad.owns_right_stick && out.rail.request.action==InputAction::none,
+                    "the old held Y cannot resume a rail channel through exit and AIR");
+            }
+            check(!out.command_busy,"completed rail pop leaves no stale semantic owner blocking later actions");
+            const auto neutral=1000+40*1000/hz;
+            p.step(neutral,200,hz); p.poll(neutral,0);
+            const auto reenter=1000+41*1000/hz;
+            p.step(reenter,200,hz); p.poll(reenter,classic_y);
+            check(p.rail_pad.owns_right_stick,"a fresh physical Y edge can prepare the next grind");
+        }
         for (unsigned phase : {402u,404u}) {
             Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);

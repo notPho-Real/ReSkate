@@ -40,13 +40,14 @@ bool visit(void* context, std::uintptr_t begin, std::size_t bytes) noexcept {
     ++r.scanned_pages;
     inspect_grind_candidates(Read{}, begin, bytes, r.candidates.generation, r.candidates);
     inspect_rail_lip_candidates(Read{},begin,bytes,r.candidates.generation,r.lip_candidates);
-    return !r.candidates.objects[0] || !r.candidates.objects[1] ||
+    return std::any_of(r.candidates.objects.begin(),r.candidates.objects.end(),[](auto p){return !p;}) ||
         std::any_of(r.lip_candidates.objects.begin(),r.lip_candidates.objects.end(),[](auto p){return !p;});
 }
 void worker(Runtime& r) noexcept {
-    std::uint64_t scan_generation{}, published_generation{}, report_at{}, retry_at{};
+    std::uint64_t scan_generation{}, report_at{}, retry_at{};
     std::uintptr_t scan_base{};
     RailAdapterLipBindings published_lip{};
+    GrindStateBindings published_grind{};
     for (;;) {
         try {
             const auto now = GetTickCount64(), generation = r.generation.load();
@@ -64,8 +65,9 @@ void worker(Runtime& r) noexcept {
             }
             // Assets may unload without changing the local skater. Revalidate
             // optional hints before deciding discovery is complete.
+            r.candidates = refresh_grind_candidates(Read{},r.candidates,generation);
             r.lip_candidates = refresh_rail_lip_candidates(Read{},r.lip_candidates,generation);
-            const bool missing = !r.candidates.objects[0] || !r.candidates.objects[1] ||
+            const bool missing = std::any_of(r.candidates.objects.begin(),r.candidates.objects.end(),[](auto p){return !p;}) ||
                 std::any_of(r.lip_candidates.objects.begin(),r.lip_candidates.objects.end(),[](auto p){return !p;});
             if (now <= r.expires.load() && now >= retry_at && missing) {
                 const bool lowered = SetThreadPriority(GetCurrentThread(), THREAD_MODE_BACKGROUND_BEGIN) != 0;
@@ -76,14 +78,15 @@ void worker(Runtime& r) noexcept {
                     r.cursor = {}; retry_at = now + 1000;
                 }
             }
-            // Publish independent value snapshots. Missing optional Lip assets
-            // never delay the two-enum consumer; partial fields can arrive later.
-            const bool publish_grind = published_generation != generation && r.candidates.objects[0] && r.candidates.objects[1];
+            // Publish partial bindings independently. A late physics selector
+            // must reach the consumer even after both animation assets arrived.
+            const bool publish_grind = published_grind.generation != r.candidates.generation ||
+                published_grind.objects != r.candidates.objects;
             const bool publish_lip = published_lip.generation != r.lip_candidates.generation ||
                 published_lip.objects != r.lip_candidates.objects;
             if ((publish_grind || publish_lip) && !r.guard.test_and_set(std::memory_order_acquire)) {
                 if (r.generation.load() == generation && now <= r.expires.load()) {
-                    if (publish_grind) { r.bindings = r.candidates; published_generation = generation; }
+                    if (publish_grind) { r.bindings = r.candidates; published_grind = r.candidates; }
                     if (publish_lip) { r.lip_bindings = r.lip_candidates; published_lip = r.lip_candidates; }
                 }
                 r.guard.clear(std::memory_order_release);
@@ -99,6 +102,12 @@ void worker(Runtime& r) noexcept {
                     "ARCADE GRIND STATE: seq={} ms={} generation={} valid={} state={} edge={} duration={} grind_valid={} grind={} skate_valid={} skate={} speed_valid={} speed_mm_s={} arcade={} dropped={}.",
                     s.seq, s.ms, s.generation, s.valid, s.state, static_cast<unsigned>(s.edge), s.duration_ms,
                     s.grind_valid, s.grind, s.skate_valid, s.skate, s.speed_valid, s.speed_mm_s, s.arcade, s.dropped);
+                // Separate diagnostic line preserves the existing grind/HUD
+                // capture protocol. A mismatch is not an executed transition.
+                if (s.kind == 0) logging::log(logging::Level::info, logging::Channel::skater,
+                    "ARCADE GRIND SELECTION: seq={} ms={} generation={} physics_valid={} physics={} animation_valid={} animation={} relation={}.",
+                    s.seq,s.ms,s.generation,s.physics_grind_valid,s.physics_grind,s.grind_valid,s.grind,
+                    static_cast<unsigned>(s.selection_relation));
             }
             if (now >= report_at) {
                 report_at = now + 1000;
@@ -170,6 +179,8 @@ RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied, std::uin
     if (sample.valid && sample.physics_state == row.state) {
         row.grind_valid = sample.grind_type_valid; row.grind = sample.grind_type;
         row.skate_valid = sample.skate_grind_type_valid; row.skate = sample.skate_grind_type;
+        row.physics_grind_valid = sample.physics_grind_type_valid; row.physics_grind = sample.physics_grind_type;
+        row.selection_relation = sample.selection_relation();
     }
     if (!row.valid || lip.physics_state != row.state) lip = {};
     if (r->step_guard.test_and_set(std::memory_order_acquire)) { ++r->rejected; return lip; }
@@ -177,7 +188,9 @@ RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied, std::uin
     const auto& old = r->previous;
     if (row.edge != GrindEdge::sample || now >= r->next_sample || row.generation != old.generation ||
         row.valid != old.valid || row.state != old.state || row.grind_valid != old.grind_valid ||
-        row.skate_valid != old.skate_valid || row.grind != old.grind || row.skate != old.skate) {
+        row.skate_valid != old.skate_valid || row.grind != old.grind || row.skate != old.skate ||
+        row.physics_grind_valid != old.physics_grind_valid || row.physics_grind != old.physics_grind ||
+        row.selection_relation != old.selection_relation) {
         r->queue.push(row); r->previous = row; r->next_sample = now + 100;
     }
     r->step_guard.clear(std::memory_order_release);

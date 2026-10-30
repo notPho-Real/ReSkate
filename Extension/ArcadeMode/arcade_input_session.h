@@ -377,6 +377,11 @@ private:
             launch_context_ = admission.pose == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground;
             holding_ = start(request.nollie ? 16 : 1, request.nollie, true, launch_context_, false);
             if (holding_) {
+                // The rail pop replaces the initiating Y pressure command.
+                // Retire its semantic owner as well as the adapter channel so
+                // a still-held Y cannot block later AIR actions or resume the
+                // old rail request. A missing recipe leaves that owner intact.
+                if (launch_context_==GestureContext::from_grind) { rail_=false; rail_request_={}; }
                 jump_pressed_at_ = request.physical_pressed_at; jump_nollie_ = request.nollie; jump_launch_ = admission.launch;
                 if(launch_context_==GestureContext::from_grind)jump_launch_.context=LaunchContext::rail;
                 out.jump={false,false,jump_nollie_,launch_context_==GestureContext::from_grind,jump_pressed_at_,0,jump_launch_,true};

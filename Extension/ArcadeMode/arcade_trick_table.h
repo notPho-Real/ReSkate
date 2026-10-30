@@ -7,6 +7,32 @@ namespace dingosdk::arcade_mode {
 // Semantic requests only. A native adapter must separately establish exact support.
 enum class TrickDirection : std::uint8_t { none, left, up, right, down, up_left, up_right, down_left, down_right, invalid };
 enum class TrickFamily : std::uint8_t { flip, grab, grind };
+// Established-rail two-button targets. These retain the existing semantic
+// variant numbers; none is a native animation or physics enum value.
+enum class GrindChangeTarget : std::uint8_t {
+    none, grind_50_50, noseslide, nosegrind, crooked, bluntslide,
+    nosebluntslide, smith, grind_5_0, tailslide
+};
+constexpr std::uint8_t grind_change_variant(GrindChangeTarget target) noexcept {
+    return static_cast<std::uint8_t>(target);
+}
+constexpr GrindChangeTarget grind_change_target(std::uint8_t variant) noexcept {
+    return variant >= 1 && variant <= 9 ? static_cast<GrindChangeTarget>(variant) : GrindChangeTarget::none;
+}
+constexpr std::string_view grind_change_name(GrindChangeTarget target) noexcept {
+    switch (target) {
+    case GrindChangeTarget::grind_50_50: return "50-50";
+    case GrindChangeTarget::noseslide: return "Noseslide";
+    case GrindChangeTarget::nosegrind: return "Nosegrind";
+    case GrindChangeTarget::crooked: return "Crooked";
+    case GrindChangeTarget::bluntslide: return "Bluntslide";
+    case GrindChangeTarget::nosebluntslide: return "Nosebluntslide";
+    case GrindChangeTarget::smith: return "Smith";
+    case GrindChangeTarget::grind_5_0: return "5-0";
+    case GrindChangeTarget::tailslide: return "Tailslide";
+    default: return {};
+    }
+}
 enum class ArcadeTrick : std::uint8_t {
     none, kickflip, impossible, heelflip, pop_shove_it,
     hardflip, inward_heelflip, varial_kickflip, varial_heelflip,
