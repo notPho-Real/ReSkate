@@ -8,6 +8,7 @@
 #include "spotify_rows.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Core/Platform/memory.h"
+#include <set>
 #include <Windows.h>
 #include <algorithm>
 #include <atomic>
@@ -33,6 +34,10 @@ void left_at_store() noexcept;
 // flagged when the player asked for the next song, and when this last asked it itself.
 std::atomic<std::uintptr_t> player_queue{}, player_queue_table{}; // (the table a queue begins with: by it the queue is known to be there still)
 std::atomic<std::uint8_t> asked_flag{1};
+// The same of the player's own channel without a station (game_next), and how a press of the
+// player's flagged it.
+std::atomic<std::uintptr_t> plain_queue{}, plain_queue_table{};
+std::atomic<std::uint8_t> plain_asked_flag{1};
 std::atomic<std::uint64_t> self_asked{};
 constexpr std::size_t queue_asked = 0xf1, queue_start = 0xf2;
 
@@ -58,7 +63,13 @@ std::vector<std::uintptr_t> again;
 // What each of the game's music channels last began (its metadata asset).
 std::array<std::uintptr_t, 16> channel_song{};
 std::uintptr_t current_artist{}, current_title{};
-std::vector<std::unique_ptr<char[]>> kept;
+// The texts the game's songs are made to read: each kept once, for as long as the game runs
+// (the game holds their addresses). A set's strings stay where they are as it grows.
+//
+// They were copied anew on every call of show(), which is every frame while the station's own
+// song cannot be made to read (its asset gone after a change of map, or 64 songs shown
+// already): memory that only ever grew, by two copies a frame (reported 2026-10-13).
+std::set<std::string, std::less<>> kept;
 
 bool poke(std::uintptr_t address, std::uintptr_t value) noexcept {
     __try {
@@ -73,10 +84,7 @@ bool there(std::uintptr_t metadata) noexcept {
     return metadata && memory::peek(metadata, table) && table == metadata_table;
 }
 std::uintptr_t keep(const std::string& text) {
-    auto copy = std::make_unique<char[]>(text.size() + 1);
-    std::memcpy(copy.get(), text.c_str(), text.size() + 1);
-    kept.push_back(std::move(copy));
-    return reinterpret_cast<std::uintptr_t>(kept.back().get());
+    return reinterpret_cast<std::uintptr_t>(kept.insert(text).first->c_str());
 }
 // (With the mutex held.)
 void restore_locked() noexcept {
@@ -212,7 +220,9 @@ void bound(std::uint32_t channel, bool music_channel, std::uint32_t playlist, st
     }
     const auto before = station_channel.load(std::memory_order_relaxed);
     if (station < 0) {
+        // A queue is made anew when its channel is bound again (see song_chosen).
         plain_channel.store(channel, std::memory_order_relaxed);
+        plain_queue.store(0, std::memory_order_relaxed);
         plain_at.store(GetTickCount64(), std::memory_order_relaxed);
     }
     if (station >= 0 || before == channel) player_queue.store(0, std::memory_order_relaxed);
@@ -226,6 +236,23 @@ void bound(std::uint32_t channel, bool music_channel, std::uint32_t playlist, st
     }
 }
 
+// The map is about to change, and the game's songs with it.
+//
+// A song is in the game's registry under its artist and title, and is taken out of it by them
+// when its bundle is unloaded. One that reads as Spotify's is looked for under Spotify's
+// words and not found, so its own entry stays, pointing at an asset that is freed; the game
+// then reads that asset as it registers the song again for the new map (Skate.exe+0x3dd1db0
+// from 0x43e260, on joining a session with a station on, 2026-10-13). So every song is given
+// its own words back first, and none is remembered: their assets are not the next map's.
+void before_level_transition() noexcept {
+    try {
+        std::lock_guard lock(mutex);
+        restore_locked();
+        again.clear();
+        channel_song.fill(0);
+        for (auto& station : stations) station.metadata = 0;
+    } catch (...) {}
+}
 void restore_presentation() noexcept {
     std::lock_guard lock(mutex);
     // (While a station is on they are only put back for a moment, for the catalog to be read.)
@@ -263,6 +290,55 @@ void refresh_now_playing() noexcept {
         *reinterpret_cast<std::uint8_t*>(queue + queue_asked) = 1;
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         self_asked.store(0, std::memory_order_relaxed);
+    }
+}
+void plain_song_chosen(std::uintptr_t queue, std::uint32_t channel, bool asked) noexcept {
+    if (channel != plain_channel.load(std::memory_order_relaxed)) return;
+    if (std::uintptr_t table{}; memory::peek(queue, table)) {
+        plain_queue_table.store(table, std::memory_order_relaxed);
+        plain_queue.store(queue, std::memory_order_relaxed);
+    }
+    if (std::uint8_t start{}; asked && memory::peek(queue + queue_start, start)) plain_asked_flag.store(start, std::memory_order_relaxed);
+}
+std::uint32_t plain() noexcept { return plain_channel.load(std::memory_order_relaxed); }
+std::optional<GameSong> game_song() noexcept {
+    if (active()) return std::nullopt; // a station's songs read as Spotify's
+    const auto channel = plain_channel.load(std::memory_order_relaxed);
+    std::uintptr_t metadata{};
+    {
+        std::lock_guard lock(mutex);
+        if (channel >= channel_song.size()) return std::nullopt;
+        metadata = channel_song[channel];
+    }
+    std::uintptr_t artist{}, title{};
+    char artist_text[128]{}, title_text[128]{};
+    if (!metadata || !memory::peek(metadata + artist_at, artist) || !memory::peek(metadata + title_at, title) ||
+        memory::peek_cstring(title, title_text, sizeof(title_text)) <= 0)
+        return std::nullopt;
+    if (memory::peek_cstring(artist, artist_text, sizeof(artist_text)) < 0) artist_text[0] = 0;
+    try {
+        return GameSong{artist_text, title_text};
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+bool game_next() noexcept {
+    if (active()) return false;
+    const auto queue = plain_queue.load(std::memory_order_relaxed);
+    if (!queue) return false;
+    if (std::uintptr_t table{}; !memory::peek(queue, table) || table != plain_queue_table.load(std::memory_order_relaxed)) {
+        plain_queue.store(0, std::memory_order_relaxed);
+        return false;
+    }
+    std::uint8_t asked{};
+    if (!memory::peek(queue + queue_asked, asked) || asked) return false; // it is choosing one as it is
+    __try {
+        *reinterpret_cast<std::uint8_t*>(queue + queue_start) = plain_asked_flag.load(std::memory_order_relaxed);
+        *reinterpret_cast<std::uint8_t*>(queue + queue_asked) = 1;
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        plain_queue.store(0, std::memory_order_relaxed);
+        return false;
     }
 }
 bool active() noexcept { return station_channel.load(std::memory_order_relaxed) != no_channel; }

@@ -42,7 +42,7 @@ public:
         out.gameplay = true;
         // Stance and immediate native exclusions always come from the same
         // current owner frame used by the facade, including between client ticks.
-        out.mirror_x = !(current.stance_and_push & game::build::v20260929::grind_exit::stance_switch_mask);
+        out.mirror_x = !(current.stance_and_push & game::build::v20260929::launches::stance_switch_mask);
         out.offboard = current.state == game::build::v20260929::arcade_native_probe::offboard_state;
         // This is the existing native action predicate, not clip readiness. It
         // can be reevaluated from the current frame so own selection/crouch

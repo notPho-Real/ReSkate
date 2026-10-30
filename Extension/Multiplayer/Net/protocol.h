@@ -1,4 +1,5 @@
 #pragma once
+#include "map_fetch_policy.h"
 #include "Extension/Multiplayer/Remote/cosmetics.h"
 #include "Extension/Multiplayer/Session/peer_slots.h"
 #include "Extension/Multiplayer/Session/object_state.h"
@@ -26,7 +27,7 @@ namespace dingosdk::multiplayer {
 constexpr std::size_t max_skater_bones = 512, max_board_bones = 64;
 constexpr std::size_t max_packet = 24576;
 constexpr std::size_t packet_header_size = 64;
-constexpr std::uint16_t protocol_version = 51;
+constexpr std::uint16_t protocol_version = 55;
 // How long a receiver keeps typing dots after the last "still typing" notice. The sender
 // clears them after three seconds without input; this only covers a lost "stopped" packet.
 constexpr std::uint64_t typing_hold_us = 4000000;
@@ -149,8 +150,16 @@ enum class PacketKind : std::uint16_t {
     next_maps = 34,
     // The sender's chat box changed recently (typing true) or they stopped (false).
     // Relayed like chat. Not a chat line: receivers draw grey dots above that skater.
-    typing = 35
+    typing = 35,
+    // 36 was the FPV drone's marker, before the drone became a plugin: not used again.
+    // A player telling a dedicated server they are at their game: they worked its controls
+    // lately, though their skater may stand still (flying a plugin's drone). The server counts
+    // it as activity for its away limit. Nothing but the header; never relayed.
+    present = 37,
 };
+// How often a game says it is present (PacketKind::present) while its player works the controls,
+// and the least time a server lets pass between two it counts.
+constexpr std::uint64_t present_interval_us = 20000000, present_least_us = 10000000;
 // Packet::party_action. Requests go from a player to whoever hosts, a dedicated server or a
 // lobby's host (party_player = the other player involved, 0 for leave/open/close); invited
 // and withdrawn go from the host to the invitee (party_player = the inviter). The host
@@ -207,14 +216,20 @@ bool valid_map_asset(std::string_view asset) noexcept;
 bool valid_map_pool(std::span<const std::uint16_t> pool, std::size_t maps) noexcept; // distinct indices below `maps`
 bool valid_map_label(std::string_view label) noexcept; // empty, or a name like a member's
 // How long a host goes on waiting for a player who says they are fetching the map
-// (Packet::map_fetching), from the first time they say so: a large map on a slow line. Past
-// it they are held to the time a load takes again.
-inline constexpr std::uint64_t map_fetch_limit_us = 45ull * 60 * 1000000;
+// (Packet::map_fetching), from the first time they say so, including installation and joining.
+// Repeated requests never extend this limit. Each host uses its own monotonic clock.
+inline constexpr std::uint64_t map_fetch_limit_us = map_fetch_policy::session_us;
 // The Thunderstore package a map comes from, so a player without it can be offered it:
 // "Owner-Name", or "Owner-Name-1.2.3" when the host knows its version. Empty for the game's own
 // maps and for a map mod that is not from Thunderstore.
 inline constexpr std::size_t max_map_package = 96;
 bool valid_map_package(std::string_view package) noexcept;
+// The plugins a dedicated server needs its players to have, named as map packages are
+// ("Owner-Name", or "Owner-Name-1.2.3" for at least that version): each a valid_map_package,
+// none empty, none twice. A player's game fetches only what Thunderstore lists as a plugin and
+// what runs Luau code, whatever a server names (Extension/Assets/map_download.h).
+inline constexpr std::size_t max_required_plugins = 16;
+bool valid_required_plugins(const std::vector<std::string> &packages) noexcept;
 // That name for a mod folder and the version its manifest gives; empty when the folder is not
 // named as a package: "Owner-Name", as the launcher installs one, or "Owner-Name-1.2.3", as its
 // zip unpacks by hand. The manifest's version comes before the folder's; one that is not three
@@ -347,8 +362,9 @@ struct Packet {
     std::string text;
     float voice_range = default_voice_range; // roster: how far the host forwards proximity voice
     // roster: whether guests may use noclip (and teleport) / No Bail / the forward and up boosts
-    // (the host and a dedicated server's admins always may)
-    bool guest_noclip = true, guest_no_bail = true, guest_boosts = true;
+    // (the host and a dedicated server's admins always may); and ollies, which only a dedicated
+    // server's lock takes away
+    bool guest_noclip = true, guest_no_bail = true, guest_boosts = true, guest_ollies = true;
     // roster: guests skate with the host's physics tuning (a dedicated server's: the game's own)
     bool enforce_tuning = true;
     // roster: the votes a dedicated server lets players start (server_vote_* bits)
@@ -363,6 +379,7 @@ struct Packet {
     std::uint16_t map_rotation{};             // maps: minutes per map (0: off)
     std::string map_label;                    // map_offer, world_state: the map's name for people (may be empty)
     std::string map_package;                  // map_offer, world_state: valid_map_package (may be empty)
+    std::vector<std::string> required_plugins; // map_offer: valid_required_plugins (a player's lobby: none)
     std::vector<std::uint8_t> throwdown;      // throwdown: one encoded message (1..max_throwdown_message bytes)
     std::array<float, 3> teleport{};          // teleport: where the receiver goes (world position)
     std::vector<std::uint8_t> tuning;         // physics_tuning: 0..max_physics_tuning bytes
@@ -417,9 +434,11 @@ std::vector<std::uint8_t> encode(const Packet &, bool compact_pose = false);
 // zero and pack away. One step is about 0.0025 degrees times 2^bits: 4 bits is 0.04 degrees,
 // 7 bits a third of a degree.
 void coarsen_rotations(Pose &pose, unsigned bits) noexcept;
-// Keeps every bone's scale within 1/limit to limit on each axis (1: no scaling at all). A mod
-// that resizes part of a skater (a head four times the size) does it with a bone's scale,
-// which travels in the pose and so shows to everyone, mod or not.
+// Keeps every bone's scale within 1/limit to limit on each axis (1: no scaling at all), and the
+// size each skater bone shows at (its own times its parents' and the whole skater's, after
+// skater_bone_parents.h) within the same. A mod that resizes part of a skater (a head four times
+// the size) does it with a bone's scale, which travels in the pose and so shows to everyone, mod
+// or not; one that resized each bone of a chain to the limit grew past it.
 // The skateboard is held closer, to board_scale_limit: nothing in the game resizes one, and a
 // hacked client that does shows everyone a board the size of a car.
 inline constexpr float board_scale_limit = 1.1f;

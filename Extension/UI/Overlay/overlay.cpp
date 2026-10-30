@@ -44,7 +44,7 @@ bool is_input(UINT message) {
 
 bool interactive_visible(const State& s) {
     return s.visible.load() || s.console_visible.load() || s.editor_visible.load() || s.chat_visible.load() ||
-           s.hub_typing.load() || s.prompt_pointer.load() || s.item_search_visible.load();
+           s.hub_typing.load() || s.prompt_pointer.load() || s.item_search_visible.load() || s.plugin_screen_visible.load() || s.plugin_dialog_visible.load();
 }
 
 void restore_input(bool hide_menu) {
@@ -391,6 +391,7 @@ bool start_overlay(const dingosdk::overlay::CallbacksV3* callbacks) {
         reinterpret_cast<LPCWSTR>(&start_overlay), &pinned)) return false;
     const auto status = dingosdk::hook_initialize();
     if (status != dingosdk::HookOk && status != dingosdk::HookAlreadyInitialized) return false;
+    dingosdk::overlay::watch_gpu_memory();
     const auto user32 = GetModuleHandleW(L"user32.dll");
     if (!user32 || !install(s.clip_cursor, reinterpret_cast<void*>(GetProcAddress(user32, "ClipCursor")),
             reinterpret_cast<void*>(clip_cursor)) ||

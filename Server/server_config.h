@@ -42,6 +42,9 @@ struct VoteSettings {
     std::vector<CustomVote> custom;
     unsigned seconds = 30;  // how long a vote runs
     unsigned cooldown = 60; // seconds before the same player may start another
+    // How long a player kicked by a vote is kept out, in minutes; 0: until the server restarts.
+    // (An admin's kick goes by ServerConfig::kick_minutes.)
+    unsigned kick_minutes = 5;
     bool starter_votes_yes = true; // whoever starts a vote has voted yes
     // Polls: questions with up to six answers that run nothing. "off", "admins" or "everyone".
     std::string polls = "admins";
@@ -84,6 +87,12 @@ inline constexpr unsigned max_spawned_parks = 16;
 // ReSkateServer.json. Every setting an admin or the console changes is saved
 // back, so a restart keeps it.
 inline constexpr unsigned dedicated_tps = 20;
+// The tools the server can take away from single players (lock, throwdown_locks): noclip with
+// teleporting, No Bail, the boosts, their own physics tuning, and placing objects. "all" is the
+// first four, as throwdown_locks has always read it: objects are only ever locked by name.
+inline constexpr std::uint8_t lock_noclip = 1, lock_nobail = 2, lock_boosts = 4, lock_tuning = 8, lock_objects = 16, lock_ollies = 32;
+inline constexpr std::uint8_t lock_movement = lock_noclip | lock_nobail | lock_boosts | lock_ollies; // what the role's "movement" gives
+inline constexpr std::uint8_t lock_all = lock_movement | lock_tuning;
 struct ServerConfig {
     std::filesystem::path file;
     std::string name = "ReSkate server";
@@ -104,6 +113,12 @@ struct ServerConfig {
     // version (server_map_update.h), looked up at start and every so many minutes.
     bool latest_versions = false;
     unsigned latest_check_minutes = 60;
+    // Thunderstore packages every player must have to join ("plugins.required"): "Owner-Name",
+    // or "Owner-Name-1.2.3" for at least that version. A player without them is offered them on
+    // the card that offers a missing map, and fetches only what Thunderstore lists as a plugin
+    // and what runs Luau code. The server checks each on Thunderstore as it starts and leaves
+    // out one that is not a plugin there (RequiredPluginCheck, server_map_update.h).
+    std::vector<std::string> required_plugins;
     unsigned max_players = 16; // players; the server itself is not one
     // The most poses a second one player is sent (crowd_limits); 0: no limit.
     unsigned crowd_budget = crowd_pose_budget;
@@ -151,6 +166,8 @@ struct ServerConfig {
     bool global_bans = true;   // turn away players the ReSkate team has banned (global_bans.h)
     bool activity_log = true;  // console lines for throwdowns, objects and loading
     bool announce_throwdowns = true; // tell everyone in chat when a throwdown drop is placed
+    // The tools locked for the players of a throwdown while it runs (lock_* bits); 0: none.
+    std::uint8_t throwdown_locks{};
     // Players form parties (/party, the game's Social menu): 2-8 players each (the game's Party
     // panel has eight rows). Off, nobody can be in one.
     bool parties = true;
@@ -262,6 +279,11 @@ bool valid_park_key(std::string_view key) noexcept;
 // A scoring fingerprint as the config and console write it (16 hex digits), and read back
 // (nothing for text that is not one, or for 0: the game's own scoring needs no entry).
 std::string scoring_text(std::uint64_t fingerprint);
+// Lock tools by name: "noclip" (or "teleport"), "nobail", "boosts", "tuning", "all", several
+// joined by commas. Nothing for an unknown name or an empty list.
+std::optional<std::uint8_t> parse_lock_tools(std::string_view text);
+// "noclip, nobail, tuning"; "none" for 0.
+std::string lock_tools_text(std::uint8_t tools);
 std::optional<std::uint64_t> parse_scoring(std::string_view text);
 
 // Maps. The game always has its root level (DingoLevel_Root) loaded, and a map

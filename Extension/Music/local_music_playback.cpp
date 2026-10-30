@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <random>
 
 namespace dingosdk::profile_runtime {
 namespace {
@@ -242,6 +243,58 @@ bool member_index(std::uintptr_t members, std::uint32_t member_count_value,
     return true;
 }
 
+// Whether the game's selection would read past the end of the playlist asset's songs.
+//
+// A playlist asset of type 4 with a selector (the reference at +0x68) has the game score the
+// queue's candidates (the u32 list at queue + 0x78 .. + 0x80, each an index into the asset's
+// songs): for each it reads the song at that place in the asset's own list (+0x60) and a number
+// from the song (sub_1414F8ED0, the branch at 0x14f9569, and its callback 0x14f23a0, which
+// checks nothing). In the game's own sessions the candidates are that asset's, so they fit. A
+// channel bound to a playlist the asset was not made for (Favorites, local files, a mod's: any
+// of thousands of songs) has candidates the asset has no song for, and the game then reads
+// whatever lies beyond its list as a song (seen 2026-10-13 in 2.0.8's crash reports: place
+// 0x840 of an authored list, and a "song" of 0x7fa12fb757340c93).
+bool selector_overruns(std::uintptr_t queue, std::uintptr_t playlist_asset,
+                       std::uint32_t& candidates, std::uint32_t& songs) noexcept {
+    candidates = songs = 0;
+    std::uint32_t type{};
+    std::uintptr_t selector{}, begin{}, end{};
+    if (!read_at(playlist_asset + 0x70, type) || type != 4 ||
+        !read_at(playlist_asset + 0x68, selector) || !(selector & ~std::uintptr_t{4})) return false;
+    if (!read_at(queue + 0x78, begin) || !read_at(queue + 0x80, end) || end < begin || (end - begin) % 4) return false;
+    const auto count = (end - begin) / 4;
+    if (!count) return false; // (nothing is scored)
+    candidates = count > 0xffffffffu ? 0xffffffffu : static_cast<std::uint32_t>(count);
+    // (No songs at all, or more than a playlist can have: nothing the candidates could fit.)
+    if (!song_count(playlist_asset, songs)) { songs = 0; return true; }
+    if (count > songs) return true;
+    for (std::uintptr_t i = 0; i < count; ++i) {
+        std::uint32_t place{};
+        if (!read_at(begin + i * 4, place) || place >= songs) return true;
+    }
+    return false;
+}
+
+// The game's shuffle (the selector's slot 0x10, 0x148eb60) keeps the candidates it has not tried
+// in a table of 1024 on its own stack, fills only that many, and then picks rand() % the whole
+// count and moves the last into the picked place (0x148ed17, 0x148edcc): with more candidates it
+// writes past its table, over its caller's callbacks and saved registers (2.1.1: about 1,700
+// crash reports at a dozen sites, from merged music mods' playlists of 1,130 to 1,780 songs;
+// 2026-10-21).
+constexpr std::uint32_t selector_table_size = 1024;
+
+// A place in the queue's candidates other than the one playing, as the game's shuffle would
+// have chosen. -1 when there is none.
+std::int32_t own_pick(std::uintptr_t queue, std::uint32_t candidates) noexcept {
+    if (!candidates || candidates > 0x7fffffffu) return -1;
+    std::int32_t current{-1};
+    (void)read_at(queue + 0x70, current);
+    thread_local std::minstd_rand random{static_cast<std::uint32_t>(GetTickCount64() ^ reinterpret_cast<std::uintptr_t>(&current))};
+    auto pick = static_cast<std::int32_t>(random() % candidates);
+    if (candidates > 1 && pick == current) pick = static_cast<std::int32_t>((static_cast<std::uint32_t>(pick) + 1) % candidates);
+    return pick;
+}
+
 bool pending_song_request(std::uintptr_t queue, bool& pending) noexcept {
     std::uintptr_t begin{}, end{};
     pending = false;
@@ -433,6 +486,34 @@ bool music_playback_available() noexcept { return playback_available.load(std::m
 
 MusicSelectNext& music_select_next_original() noexcept { return select_next; }
 
+// The scorer asks for places the asset has no song at (selector_overruns, which sees only what
+// the queue holds before the game is asked: 2.0.9 still crashed here with places such as 0xd570,
+// far past any list the queue had). The game's callback reads whatever lies there as a song.
+// This is that callback with the one check it lacks: a place past the end has no song, which
+// the game's own answer for is 0. It replaces the game's whole function, which is these few
+// reads.
+MusicSongScore song_score{};
+MusicSongScore& music_song_score_original() noexcept { return song_score; }
+void __fastcall music_song_score_hook(std::uint32_t place, std::uint32_t* out, std::uintptr_t** context) {
+    const auto* const songs = *context ? reinterpret_cast<const std::uintptr_t*>(**context) : nullptr;
+    // (The count is the u32 before the first song, its top bit apart: song_count.)
+    const auto count = songs ? *(reinterpret_cast<const std::uint32_t*>(songs) - 1) & 0x7fffffffu : 0u;
+    if (place >= count) {
+        *out = 0;
+        static std::atomic<unsigned> said{};
+        if (said.fetch_add(1, std::memory_order_relaxed) < 8) {
+            try {
+                dingosdk::logging::log(dingosdk::logging::Level::warning, dingosdk::logging::Channel::music,
+                    "Next song: the game asked for song {} of a playlist asset that has {}, where it would have crashed; "
+                    "it was told there is none there.", place, count);
+            } catch (...) {}
+        }
+        return;
+    }
+    const auto song = songs[place] & ~std::uintptr_t{4};
+    *out = song ? *reinterpret_cast<const std::uint32_t*>(song + 0x7c) : 0;
+}
+
 // When each channel was last bound to a playlist.
 std::array<std::atomic<std::uint64_t>, 256> channel_bound_at{};
 
@@ -441,6 +522,13 @@ std::int32_t __fastcall music_select_next_hook(std::uintptr_t queue, std::uintpt
     // next while a Spotify station is on.
     // Only of the queue the station is on: the others (a speaker's in the world, the one a song
     // grabbed from a speaker plays on) go on to their next songs for reasons of their own.
+    // Without a station, the player's own channel's queue is kept for plugins' next
+    // (spotify_station::game_next).
+    if (std::uint8_t asked{}; !spotify_station::active() && dingosdk::memory::peek(queue + 0xf1, asked)) {
+        std::uint32_t channel{};
+        if (const auto base = image_base.load(std::memory_order_acquire); base && native_queue_channel(base, queue, channel))
+            spotify_station::plain_song_chosen(queue, channel, asked != 0);
+    }
     if (std::uint8_t asked{}; spotify_station::active() && dingosdk::memory::peek(queue + 0xf1, asked)) {
         std::uint32_t channel{};
         if (const auto base = image_base.load(std::memory_order_acquire); base && native_queue_channel(base, queue, channel)) {
@@ -455,7 +543,38 @@ std::int32_t __fastcall music_select_next_hook(std::uintptr_t queue, std::uintpt
     }
     if (select_next) {
         apply_policy(queue, playlist_asset);
-        auto chosen = select_next(queue, playlist_asset);
+        // The game is not asked when its answer would be read from beyond the asset's songs:
+        // no song is chosen, as when the game finds none (selector_overruns).
+        std::int32_t chosen = -1;
+        std::uint32_t candidates{}, songs{};
+        if (selector_overruns(queue, playlist_asset, candidates, songs)) {
+            static std::atomic<unsigned> said{};
+            if (said.fetch_add(1, std::memory_order_relaxed) < 8) {
+                try {
+                    std::uint32_t channel{~0u};
+                    native_queue_channel(image_base.load(std::memory_order_acquire), queue, channel);
+                    dingosdk::logging::log(dingosdk::logging::Level::warning, dingosdk::logging::Channel::music,
+                        "Next song: channel {} (queue 0x{:x}) has {} candidate(s) for a playlist asset of {} song(s) that scores "
+                        "them by its own list, where the game would have crashed; no song was chosen for it.",
+                        channel, queue, candidates, songs);
+                } catch (...) {}
+            }
+        } else if (candidates > selector_table_size) {
+            // (selector_overruns sets the count only for a queue the game's shuffle scores.)
+            chosen = own_pick(queue, candidates);
+            static std::atomic<unsigned> said{};
+            if (said.fetch_add(1, std::memory_order_relaxed) < 8) {
+                try {
+                    std::uint32_t channel{~0u};
+                    native_queue_channel(image_base.load(std::memory_order_acquire), queue, channel);
+                    dingosdk::logging::log(dingosdk::logging::Level::info, dingosdk::logging::Channel::music,
+                        "Next song: channel {} has {} candidate(s), more than the {} the game's shuffle holds, where the game "
+                        "would have crashed; ReSkate chose place {} for it.", channel, candidates, selector_table_size, chosen);
+                } catch (...) {}
+            }
+        } else {
+            chosen = select_next(queue, playlist_asset);
+        }
         // While a Spotify station is on, the game's one song of it is played again when the game
         // finds none to go on to (it is at the end of a playlist of one song it can play): the
         // music would stop otherwise.

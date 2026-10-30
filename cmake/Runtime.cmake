@@ -11,6 +11,7 @@ add_library(dingosdk_runtime SHARED
     Engine/Game/Abi/native_data.cpp
     Extension/Console/commands.cpp
     Extension/Console/perf_commands.cpp
+    Extension/Console/memory_ledger.cpp
     Extension/Skater/console_commands.cpp
     Extension/Multiplayer/console_commands.cpp
     Extension/Customization/console_commands.cpp
@@ -22,6 +23,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Multiplayer/Session/session_party.cpp
     Extension/Multiplayer/Session/party_book.cpp
     Extension/UI/NativeMenu/native_menu.cpp
+    Extension/UI/NativeMenu/throwdown_menu.cpp
     Extension/UI/NativeMenu/native_menu_rows.cpp
     Extension/UI/NativeMenu/native_menu_multiplayer.cpp
     Extension/UI/NativeMenu/ui_sound.cpp
@@ -44,8 +46,10 @@ add_library(dingosdk_runtime SHARED
     Extension/Multiplayer/Hud/native_party_hooks.cpp
     Extension/Multiplayer/Hud/native_party_requests.cpp
     Extension/Throwdowns/native_throwdowns.cpp
+    Extension/Localization/text_overrides.cpp
     Extension/Throwdowns/native_type_scan.cpp
     Extension/Throwdowns/throwdown_lab.cpp
+    Extension/Throwdowns/native_flag_session.cpp
     Extension/Throwdowns/throwdown_relay.cpp
     Extension/Throwdowns/throwdown_debug_text.cpp
     Extension/Throwdowns/skate_trick_rule.cpp
@@ -75,6 +79,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Music/spotify_station.cpp
     Extension/Music/spotify_cover.cpp
     Extension/Music/spotify_web.cpp
+    Extension/Music/plex_web.cpp
     Extension/Music/spotify_device.cpp
     Extension/Music/spotify_dashboard.cpp
     Extension/Music/external_audio.cpp
@@ -84,12 +89,27 @@ add_library(dingosdk_runtime SHARED
     Extension/Music/app_audio_capture.cpp
     Extension/Music/music_inject.cpp
     Extension/World/mesh_unload_guard.cpp
+    Extension/World/mesh_settings_guard.cpp
+    Extension/World/shader_permutation_guard.cpp
+    Extension/World/shader_registry_guard.cpp
+    Extension/World/light_table_guard.cpp
     Extension/World/stack_check_report.cpp
     Extension/World/texture_handle_limit.cpp
+    Extension/World/texture_handle_guard.cpp
+    Extension/World/physics_wake_guard.cpp
+    Extension/World/streaming_copy_guard.cpp
     Extension/Settings/replay_drafts.cpp
     Extension/UI/ui_pointer_skip.cpp
     Extension/Settings/named_settings.cpp
     Extension/World/console_commands.cpp
+    Extension/World/world_entities.cpp
+    Extension/World/owned_bodies.cpp
+    Extension/World/character_room.cpp
+    Extension/World/guid_table_guard.cpp
+    Extension/Skater/bone_cam.cpp
+    Extension/Skater/trick_gestures.cpp
+    Extension/AnimationStudio/game_clips.cpp
+    Extension/Skater/trick_feed.cpp
     Extension/Rendering/console_commands.cpp
     Extension/Progression/console_commands.cpp
     Extension/Objects/console_commands.cpp
@@ -97,6 +117,7 @@ add_library(dingosdk_runtime SHARED
     Extension/Objects/ParkEditor/park_editor_runtime.cpp
     Extension/Objects/ParkEditor/park_editor_preview.cpp
     Extension/Objects/ParkEditor/park_editor_selection.cpp
+    Extension/Objects/ParkEditor/world_pick.cpp
     Extension/Objects/ParkEditor/park_editor_lobby.cpp
     Extension/Objects/ParkEditor/park_editor_operations.cpp
     Extension/Objects/network_object_runtime.cpp
@@ -109,16 +130,48 @@ add_library(dingosdk_runtime SHARED
     Extension/Assets/map_icons.cpp
     Engine/Vfs/thunderstore_package.cpp
     Launcher/mod_manager.cpp
+    Launcher/thunderstore.cpp
+    Extension/Assets/mod_store.cpp
+    Extension/Assets/mod_store_view.cpp
     Extension/Assets/loose_files.cpp
     Extension/Scripting/lua_startup.cpp
     Extension/Scripting/lua_native_block.cpp
     Extension/Scripting/custom_script_loader.cpp
+    Extension/Plugins/plugin_runtime.cpp
+    Extension/Plugins/plugin_commands.cpp
+    Extension/Plugins/plugin_http.cpp
+    Extension/Plugins/plugin_game_runtime.cpp
+    Extension/Rendering/plugin_effects.cpp
+    Extension/Plugins/plugin_joystick.cpp
+    Extension/Skater/skater_animation.cpp
+    Extension/Plugins/plugin_sound.cpp
+    Extension/Skater/skater_events.cpp
+    Extension/Skater/outfit_overlay.cpp
+    Extension/Skater/layer_materials.cpp
+    Extension/Skater/board_pose.cpp
+    Extension/Skater/skater_physics.cpp
+    Extension/Skater/xray.cpp
+    Extension/Skater/xray_render.cpp
+    Extension/Skater/xray_skeleton.cpp
+    Extension/Skater/game_speed.cpp
+    Extension/Skater/launches.cpp
+    Extension/Skater/pad_hide.cpp
+    Extension/Skater/trick_rewrite.cpp
+    Extension/Skater/arm_reach.cpp
+    Extension/Skater/carry.cpp
+    Extension/UI/hud_corner.cpp
     Extension/Assets/morph_memory_pool.cpp
     Extension/Assets/native_render_resource_pool.cpp
     Extension/World/native_entity_pages.cpp
+    Extension/World/world_pool_usage.cpp
     Extension/World/physics_world_size.cpp
+    Extension/World/spatial_cull_ids.cpp
     Extension/Rendering/display_startup.cpp
     Extension/Rendering/replay_export.cpp
+    Extension/ReplayKeyframes/replay_curve.cpp
+    Extension/ReplayKeyframes/replay_keyframes.cpp
+    Extension/ReplayKeyframes/replay_keyframes_commands.cpp
+    Extension/ReplayKeyframes/replay_settings.cpp
     Engine/Game/World/world_model.cpp
     Extension/World/level_loading.cpp
     Extension/World/loading_screen.cpp
@@ -127,17 +180,17 @@ add_library(dingosdk_runtime SHARED
     Extension/Boot/discord_presence.cpp
     Extension/Customization/developer_hoodie.cpp
     Extension/Customization/developer_board.cpp
+    Extension/Customization/board_material.cpp
     Extension/Skater/skater_model.cpp
     Extension/Skater/skater_observer.cpp
     Extension/Skater/client_source_spawn.cpp
     Extension/Skater/source_spawn_camera.cpp
     Extension/Skater/client_noclip.cpp
+    Extension/Skater/skater_push.cpp
     Extension/Skater/client_first_person.cpp
     Extension/Skater/client_debug.cpp
     Extension/Skater/ai_skaters.cpp
     Extension/Skater/no_bail.cpp
-    Extension/Skater/grind_exit_commands.cpp
-    Extension/Skater/grind_exit_control.cpp
     Extension/Skater/physics_tuning.cpp
     Extension/Multiplayer/Remote/remote_collision.cpp
     Extension/Skater/physics_tuning_model.cpp
@@ -151,28 +204,18 @@ add_library(dingosdk_runtime SHARED
     Extension/ArcadeMode/arcade_grind_runtime.cpp
     Extension/ArcadeMode/arcade_grind_fixture.cpp
     Extension/ArcadeMode/arcade_balance_hud.cpp
-    Extension/HallOfMeat/hall_of_meat.cpp
-    Extension/HallOfMeat/hall_of_meat_card.cpp
-    Extension/HallOfMeat/hall_of_meat_commands.cpp
-    Extension/HallOfMeat/hall_of_meat_hud.cpp
-    Extension/HallOfMeat/hall_of_meat_model.cpp
-    Extension/HallOfMeat/hall_of_meat_render.cpp
-    Extension/HallOfMeat/hall_of_meat_skater.cpp
-    Extension/HallOfMeat/hall_of_meat_skeleton.cpp
-    Extension/HallOfMeat/hall_of_meat_slow_motion.cpp
-    Extension/RoadRash/road_rash.cpp
-    Extension/RoadRash/road_rash_commands.cpp
-    Extension/BoardBreak/board_break.cpp
-    Extension/BoardBreak/board_break_commands.cpp
     Extension/Trainer/trainer.cpp
     Extension/Trainer/trainer_presets.cpp
     Extension/Trainer/trainer_jump.cpp
     Extension/Trainer/trainer_classes.cpp
+    Extension/Trainer/trainer_gamestate.cpp
     Extension/Trainer/trainer_commands.cpp
     Extension/Trainer/trainer_session.cpp
     Extension/Trainer/trainer_waypoint.cpp
     Extension/Skater/offboard_flight.cpp
     Extension/Skater/camera_observer.cpp
+    Extension/Skater/trick_watch.cpp
+    Extension/Skater/score_hud.cpp
     Extension/Boot/offline_boot.cpp
     Extension/Progression/progression_service_guard.cpp
     Extension/Progression/mission_progression_override.cpp
@@ -188,8 +231,12 @@ add_library(dingosdk_runtime SHARED
     Extension/Profile/local_profile_objects.cpp
     Extension/Profile/local_profile_missions.cpp
     Extension/Customization/local_cosmetic_catalog.cpp
+    Extension/Customization/item_origins.cpp
     Extension/Customization/local_customization_runtime.cpp
     Extension/Customization/item_browser.cpp
+    Extension/Customization/worn_items.cpp
+    Extension/Rendering/Capture/capture_runtime.cpp
+    Extension/Rendering/Capture/capture_commands.cpp
     Extension/Progression/local_entitlement_trigger_runtime.cpp
     Extension/Progression/local_neighborhood_runtime.cpp
     Extension/Customization/local_player_card_runtime.cpp
@@ -232,11 +279,14 @@ add_library(dingosdk_runtime SHARED
     Extension/Progression/neighborhood_unlock_override.cpp
     Extension/Boot/user_data_redirect.cpp
     Extension/Boot/ea_app_block.cpp
-    Extension/Boot/ea_service_block.cpp)
+    Extension/Boot/ea_service_block.cpp
+    Extension/Boot/eadp_errors_arena.cpp
+    Extension/Boot/descriptor_heap_size.cpp
+    Extension/Boot/game_fatal_dump.cpp)
 
 target_link_libraries(dingosdk_runtime PRIVATE dingosdk_logging dingosdk_profiler dingosdk_supported_build dingosdk_overlay dingosdk_console_core dingosdk_steam_restart_guard
     dingosdk_startup_interventions dingosdk_fast_travel_unlock dingosdk_local_profile dingosdk_initfs dingosdk_mods dingosdk_mod_list dingosdk_launcher_support dingosdk_miniz shell32 dingosdk_startup_window dingosdk_custom_scripts dingosdk_world_layer_scan bcrypt
-    dingosdk_https winhttp ws2_32 xaudio2 ole32 dingosdk_game_archives dingosdk_word_filter)
+    dingosdk_https winhttp ws2_32 xaudio2 ole32 dingosdk_game_archives dingosdk_word_filter dingosdk_plugins)
 
 add_library(dingosdk_custom_level_manifest STATIC
     Engine/Game/World/custom_level_manifest.cpp)
@@ -311,6 +361,40 @@ if(EXISTS "${dingosdk_emotes}/emotes.json" AND EXISTS "${dingosdk_emotes}/emotes
         "EMOTES_PNG RCDATA \"${dingosdk_emotes_native}\\\\emotes.png\"\n")
     target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/emotes.rc")
 endif()
+# Game content ReSkate carries itself (Engine/Vfs/builtin_packs.h), one zip each in assets/builtin:
+# the Throwdowns page's logo grid (tools/builtin/build_throwdown_menu_pack.py). A missing zip is
+# left out.
+# Each zip is made into a zstd pack by ReSkateBuiltinPacker as the build goes (again only when the
+# zip changes), which is what the DLL carries: compressed whole, a pack's repeated files cost
+# next to nothing.
+set(dingosdk_builtin_rc "")
+set(dingosdk_builtin_packs "")
+foreach(pack IN ITEMS "THROWDOWN_MENU throwdown_menu")
+    separate_arguments(pack)
+    list(GET pack 0 pack_resource)
+    list(GET pack 1 pack_file)
+    set(pack_zip "${PROJECT_SOURCE_DIR}/assets/builtin/${pack_file}.zip")
+    if(EXISTS "${pack_zip}")
+        set(pack_out "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin/${pack_file}.rskpack")
+        add_custom_command(OUTPUT "${pack_out}"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin"
+            COMMAND dingosdk_builtin_packer "${pack_zip}" "${pack_out}"
+            DEPENDS "${pack_zip}" dingosdk_builtin_packer
+            COMMENT "Packing built-in content ${pack_file}"
+            VERBATIM)
+        file(TO_NATIVE_PATH "${pack_out}" pack_out_native)
+        string(REPLACE "\\" "\\\\" pack_out_native "${pack_out_native}")
+        string(APPEND dingosdk_builtin_rc "BUILTIN_PACK_${pack_resource} RCDATA \"${pack_out_native}\"\n")
+        list(APPEND dingosdk_builtin_packs "${pack_out}")
+    endif()
+endforeach()
+if(dingosdk_builtin_rc)
+    add_custom_target(dingosdk_builtin_content DEPENDS ${dingosdk_builtin_packs})
+    add_dependencies(dingosdk_runtime dingosdk_builtin_content)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc" "${dingosdk_builtin_rc}")
+    target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc")
+    set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc" APPEND PROPERTY OBJECT_DEPENDS "${dingosdk_builtin_packs}")
+endif()
 # The music sources' setup page (Extension/Music/spotify_dashboard.h).
 file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Extension/Music/setup_page.html" dingosdk_music_page_native)
 string(REPLACE "\\" "\\\\" dingosdk_music_page_native "${dingosdk_music_page_native}")
@@ -339,3 +423,4 @@ if(EXISTS "${dingosdk_startup_art}")
         "STARTUP_SPLASH RCDATA \"${dingosdk_startup_art_native}\"\n")
     target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_art.rc")
 endif()
+target_link_libraries(dingosdk_runtime PRIVATE dingosdk_capture)

@@ -1,4 +1,5 @@
 #include "protocol.h"
+#include "skater_bone_parents.h"
 #include <algorithm>
 #include <bit>
 #include <charconv>
@@ -353,6 +354,25 @@ void limit_bone_scale(Pose &pose, float limit) noexcept {
     hold(pose.root, limit);
     for (auto &t : pose.skater) hold(t, limit);
     for (auto &t : pose.board) hold(t, std::min(limit, board_scale_limit));
+    // A bone shows at its own size times its parents' (and the whole skater's): each held to the
+    // limit, a chain of them grew past it (four neck bones at 2x made a neck 16 times as long,
+    // seen 2026-10-15). So each bone is held to what is left of the limit after its parents: the
+    // size it shows stays within 1/limit to limit, on its largest axis and its smallest.
+    const auto largest = [](const Transform &t) { return std::max({t.scale[0], t.scale[1], t.scale[2]}); };
+    const auto smallest = [](const Transform &t) { return std::min({t.scale[0], t.scale[1], t.scale[2]}); };
+    const float root_grow = largest(pose.root), root_shrink = smallest(pose.root);
+    std::array<float, skater_bone_parents.size()> grown{}, shrunk{};
+    for (std::size_t i = 0; i < pose.skater.size(); ++i) {
+        const auto parent = i < skater_bone_parents.size() ? skater_bone_parents[i] : std::int16_t{-1};
+        const float up = parent >= 0 ? grown[static_cast<std::size_t>(parent)] : root_grow;
+        const float down = parent >= 0 ? shrunk[static_cast<std::size_t>(parent)] : root_shrink;
+        auto &t = pose.skater[i];
+        for (float &axis : t.scale) axis = std::clamp(axis, 1.f / (limit * down), limit / up);
+        if (i < grown.size()) {
+            grown[i] = up * largest(t);
+            shrunk[i] = down * smallest(t);
+        }
+    }
 }
 void limit_bone_reach(Pose &pose, float limit) noexcept {
     if (!(limit > 0.f)) return;
@@ -406,6 +426,8 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
         throw std::invalid_argument("Invalid chat message");
     if (p.kind == PacketKind::typing && !p.source)
         throw std::invalid_argument("Invalid typing notice");
+    if (p.kind == PacketKind::present && !p.source)
+        throw std::invalid_argument("Invalid presence notice");
     if (p.kind == PacketKind::admin && (!p.source || !valid_admin_text(p.text)))
         throw std::invalid_argument("Invalid admin message");
     if (p.kind == PacketKind::throwdown && (!p.source || p.throwdown.empty() || p.throwdown.size() > max_throwdown_message))
@@ -458,6 +480,8 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
         throw std::invalid_argument("Invalid map name");
     if ((p.kind == PacketKind::map_offer || p.kind == PacketKind::world_state) && !valid_map_package(p.map_package))
         throw std::invalid_argument("Invalid map package");
+    if (!p.required_plugins.empty() && (p.kind != PacketKind::map_offer || !valid_required_plugins(p.required_plugins)))
+        throw std::invalid_argument("Invalid required plugins");
     if (p.map_fetching && (p.world_ready || (p.kind != PacketKind::map_request && p.kind != PacketKind::world_ready)))
         throw std::invalid_argument("Invalid map fetch notice");
     if (p.kind == PacketKind::world_state &&
@@ -477,7 +501,7 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
         p.kind != PacketKind::throwdown && p.kind != PacketKind::teleport && p.kind != PacketKind::physics_tuning &&
         p.kind != PacketKind::party && p.kind != PacketKind::scoring && p.kind != PacketKind::physics_extras &&
         p.kind != PacketKind::effects && p.kind != PacketKind::permissions && p.kind != PacketKind::words &&
-        p.kind != PacketKind::next_maps && p.kind != PacketKind::typing)
+        p.kind != PacketKind::next_maps && p.kind != PacketKind::typing && p.kind != PacketKind::present)
         throw std::invalid_argument("Unknown packet kind");
     const auto payload = greeting ? 72
                          : p.kind == PacketKind::away
@@ -508,6 +532,11 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
             w.bytes.insert(w.bytes.end(), p.map_label.begin(), p.map_label.end());
             w.integer(p.map_package.size(), 1);
             w.bytes.insert(w.bytes.end(), p.map_package.begin(), p.map_package.end());
+            w.integer(p.required_plugins.size(), 1);
+            for (const auto &plugin : p.required_plugins) {
+                w.integer(plugin.size(), 1);
+                w.bytes.insert(w.bytes.end(), plugin.begin(), plugin.end());
+            }
         }
         if (p.kind == PacketKind::map_request) w.integer(p.map_fetching ? 1 : 0, 1);
         if (p.kind == PacketKind::hello) {
@@ -729,6 +758,7 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
         w.integer(p.object_limit, 2);
         w.integer(p.object_scaling ? 1 : 0, 1);
         w.integer(p.sync_effects ? 1 : 0, 1);
+        w.integer(1, 1); // was whether players saw each other's FPV drones; read and passed over
         w.integer(p.force_world_layers, 1);
         // One mode per world-layer catalog row; both peers read the same catalog
         // from the same game build.
@@ -745,7 +775,7 @@ std::vector<std::uint8_t> encode(const Packet &p, bool compact_pose, std::uint32
         w.integer(static_cast<std::uint16_t>(std::lround(p.voice_range)), 2);
         if (p.server_votes > 7) throw std::invalid_argument("Invalid server votes");
         w.integer((p.guest_noclip ? 1U : 0U) | (p.guest_no_bail ? 2U : 0U) | (p.guest_boosts ? 4U : 0U) |
-                      (static_cast<unsigned>(p.server_votes) << 3) | (p.enforce_tuning ? 64U : 0U), 1);
+                      (static_cast<unsigned>(p.server_votes) << 3) | (p.enforce_tuning ? 64U : 0U) | (p.guest_ollies ? 128U : 0U), 1);
         if (p.server_polls > static_cast<std::uint8_t>(ServerPolls::everyone) || p.server_custom_votes.size() > server_custom_vote_limit ||
             !std::all_of(p.server_custom_votes.begin(), p.server_custom_votes.end(), [](const auto &v) { return valid_server_custom_vote(v); }))
             throw std::invalid_argument("Invalid server votes");
@@ -851,6 +881,14 @@ std::optional<Packet> decode(std::span<const std::uint8_t> bytes) noexcept {
                 r.at += static_cast<std::size_t>(length);
                 if (!valid_map_destination(p.destination) || p.map != map_hash(p.destination) || !read_map_label(r, bytes, p))
                     return {};
+                const auto plugins = r.integer(1);
+                if (plugins > max_required_plugins) return {};
+                for (std::uint64_t i = 0; i < plugins; ++i) {
+                    auto plugin = read_text(r, bytes, 1, max_map_package);
+                    if (!plugin) return {};
+                    p.required_plugins.push_back(std::move(*plugin));
+                }
+                if (!valid_required_plugins(p.required_plugins)) return {};
             }
             if (p.kind == PacketKind::map_request) {
                 const auto fetching = r.integer(1);
@@ -1177,17 +1215,23 @@ std::optional<Packet> decode(std::span<const std::uint8_t> bytes) noexcept {
             const auto shared_effects = r.integer(1);
             if (shared_effects > 1) return {};
             p.sync_effects = shared_effects != 0;
+            if (r.integer(1) > 1) return {}; // the FPV drones' old switch
             const auto forced = r.integer(1);
             if (forced > 1) return {};
             p.force_world_layers = forced != 0;
             const auto layer_count = r.integer(2);
-            if (layer_count != world_layers().size() && (layer_count || p.force_world_layers)) return {};
-            p.layers.resize(world_layers().size());
+            // A list that is not one choice for each of this game's layers is of another catalog
+            // (a server whose world-layers.json is of another version of the game): which layer
+            // each choice is for cannot be told, so none is taken and every layer stays as the
+            // player has it. Turning the message down put the player out of the session as they
+            // joined, with nothing to say why (2.0.8's servers, 2026-10-13).
+            const bool same_catalog = layer_count == world_layers().size();
+            if (!same_catalog) p.force_world_layers = false;
+            p.layers.assign(world_layers().size(), 0);
             for (std::uint64_t i = 0; i < layer_count; ++i) {
-                auto &choice = p.layers[static_cast<std::size_t>(i)];
                 const auto mode = r.integer(1);
                 if (mode >= world_layer_modes.size()) return {};
-                choice = static_cast<std::uint8_t>(mode);
+                if (same_catalog) p.layers[static_cast<std::size_t>(i)] = static_cast<std::uint8_t>(mode);
             }
             const auto voice_allowed = r.integer(1);
             p.voice_policy.revision = static_cast<std::uint32_t>(r.integer(4));
@@ -1196,12 +1240,12 @@ std::optional<Packet> decode(std::span<const std::uint8_t> bytes) noexcept {
             p.voice_range = static_cast<float>(r.integer(2));
             if (!valid_voice_range(p.voice_range)) return {};
             const auto tools = r.integer(1);
-            if (tools > 127) return {};
             p.guest_noclip = (tools & 1) != 0;
             p.guest_no_bail = (tools & 2) != 0;
             p.guest_boosts = (tools & 4) != 0;
             p.server_votes = static_cast<std::uint8_t>((tools >> 3) & 7);
             p.enforce_tuning = (tools & 64) != 0;
+            p.guest_ollies = (tools & 128) != 0;
             const auto polls = r.integer(1), custom = r.integer(1);
             if (polls > static_cast<std::uint8_t>(ServerPolls::everyone) || custom > server_custom_vote_limit) return {};
             p.server_polls = static_cast<std::uint8_t>(polls);
@@ -1260,6 +1304,8 @@ std::optional<Packet> decode(std::span<const std::uint8_t> bytes) noexcept {
             }
             for (std::uint64_t i = 0; i < removed; ++i) chunk.removed.push_back(r.integer(8));
             if (!valid_object_chunk(chunk)) return {};
+        } else if (p.kind == PacketKind::present) {
+            if (!p.source) return {};
         } else if (p.kind != PacketKind::away)
             return {};
         if (r.at != bytes.size())
@@ -1390,6 +1436,22 @@ bool valid_map_package(std::string_view package) noexcept {
     const auto second = rest.find('-');
     if (!package_word(package.substr(0, first)) || !package_word(rest.substr(0, second))) return false;
     return second == std::string_view::npos || package_version(rest.substr(second + 1));
+}
+bool valid_required_plugins(const std::vector<std::string> &packages) noexcept {
+    if (packages.size() > max_required_plugins) return false;
+    for (std::size_t i = 0; i < packages.size(); ++i) {
+        if (packages[i].empty() || !valid_map_package(packages[i])) return false;
+        // (Twice is twice whatever the version or the case: "A-B" and "a-b-1.0.0" are one package.)
+        const auto name = packages[i].substr(0, packages[i].size() - map_package_version(packages[i]).size());
+        for (std::size_t k = 0; k < i; ++k) {
+            const auto other = packages[k].substr(0, packages[k].size() - map_package_version(packages[k]).size());
+            const auto bare = [](std::string_view text) { return text.ends_with('-') ? text.substr(0, text.size() - 1) : text; };
+            const auto a = bare(name), b = bare(other);
+            if (a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), [](char x, char y) { return (x | 0x20) == (y | 0x20); }))
+                return false;
+        }
+    }
+    return true;
 }
 std::string map_package_name(std::string_view folder, std::string_view version) {
     const auto dash = folder.find('-');

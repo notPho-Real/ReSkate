@@ -33,9 +33,9 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
-#include "Engine/Game/Build/20260929/grind_exit.h"
+#include "Engine/Game/Build/20260929/launches.h"
 #include "Extension/Skater/no_bail.h"
-#include "Extension/HallOfMeat/hall_of_meat_skater.h"
+#include "Extension/Skater/skater_physics.h"
 #include "Extension/Trainer/trainer.h"
 #include "Extension/Skater/client_source_spawn.h"
 #include "Extension/Skater/camera_diagnostics_format.h"
@@ -1106,8 +1106,8 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     const bool offboard = sample.state == game::build::v20260929::no_bail::offboard_physics_state;
     // Same physics-step reader used by Hall of Meat; Trainer's position carries
     // separate provenance, just as it does for the existing fixture observer.
-    const auto foot = offboard && hall_of_meat::skater_available()
-        ? hall_of_meat::read_step(owner, seconds, wipeout) : hall_of_meat::Step{};
+    const auto foot = offboard && skater_physics::available()
+        ? skater_physics::read_step(owner, seconds, wipeout) : skater_physics::Step{};
     const auto motion = offboard ? trainer::telemetry() : trainer::Telemetry{};
     NoBailSkater after{};
     if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
@@ -1809,7 +1809,7 @@ bool start(std::uintptr_t image_base) noexcept {
 void on_client_tick() noexcept {
     if (!ready.load(std::memory_order_acquire)) return;
     try {
-        const float step = hall_of_meat::step_length();
+        const float step = skater_physics::step_length();
         const bool valid_clock = std::isfinite(step) && step >= .001f && step <= .1f;
         const auto stepped_at = input_step_at.load(std::memory_order_acquire);
         const auto clock_now = GetTickCount64();
