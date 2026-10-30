@@ -97,3 +97,16 @@ A-release, +100 ms and +500 ms. Those tests are not animation evidence.
 Remaining acceptance work: compiled Windows runtime, complete CI, end-to-end
 physical X timing, native scoring/landing observations and visual blending.
 The installed Deck DLL and rollback artifact remain untouched.
+
+## Button-timed prototype follow-up
+
+`physical-native-evidence.json` adds three trials with X scheduled 0, 100 and
+500 ms after A release. The probe independently observed BTN_X from the
+validated virtual controller through EVIOCGKEY; it did not infer X from a
+requested gesture. All three reached a positive-delta normal Kickflip PTM
+evaluation with positive hips vertical velocity, both Late flags clear, one
+sampled Pop edge and final ground state 100. X-to-evaluation intervals were
+348, 259 and 51 ms respectively: the first two include the original native
+pop/setup before takeoff. These remain temporary debugger prototypes; the
+installed old DLL still emits its legacy gesture, while the probe submits the
+normal intent. They do not establish production-DLL end-to-end acceptance.

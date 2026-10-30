@@ -91,6 +91,9 @@ ControllerInput previous_pad,previous_source_pad;bool preference_loaded{};unsign
 void invalidate_surface_geometry(){}void invalidate_traffic_surface(){}void invalidate_grind_observer(){}
 void prepare_authored_catalog(){}void reset_score_label_occurrences(){}void capture_row(){}
 namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){}}
+// Nonactuating native service boundary; manual tests do not claim flip playback.
+namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
+NativeFlipRequest normal_flip{};
 namespace dingosdk::logging{
 enum class Level{info};enum class Channel{skater};
 template<class... Args>void log(Level,Channel,const char*,Args&&...){}
