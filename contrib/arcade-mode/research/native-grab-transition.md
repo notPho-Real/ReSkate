@@ -48,7 +48,9 @@ dispatch suites; 58,213 existing extracted manual lifecycle checks. Those tests
 use explicit native observation fixtures and do not prove native animation,
 landing, scoring or legal chains. The full lab suite initially caught synchronous
 input-path logging; the adapter now queues that evidence and the focused telemetry
-contract passes. Current CI and DLL identity must be taken from the build receipt.
+contract passes. The full lab rerun passed 458 tests with one skip. Current CI
+and DLL identity must be taken from the build receipt. Grab delivery is enabled
+only when the existing candidate-entry hook has also installed successfully.
 
 See `native-grab-source-pilot.json` for exact original identities and asset
 receipts. Required gameplay acceptance remains A→B, A→Left+B, A→Left+double B,

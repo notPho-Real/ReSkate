@@ -31,6 +31,8 @@ std::array<Asset,6> assets{{
     {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail}
 }};
 const std::array<Guid,3> actor_guids{contract::actor_bs,contract::actor_melon,contract::actor_method};
+constexpr std::array<const char*,3> actor_names{"e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+    "3fbc3fdd-701e-719d-3fbc-3fdd701e719d","12d1f15d-c040-6fd0-12d1-f15dc0406fd0"};
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
 struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
 struct Session {
@@ -149,8 +151,8 @@ void acknowledge(std::uint64_t now) noexcept {
             const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
                 read(bodies,count) && count==9 && read(bodies+0x74,vy) && std::isfinite(vy);
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE NATIVE GRAB: serial={} episode={} detail={} actor={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
-                session.serial,session.episode,detail,a.object,a.before,a.after,a.delta,velocity_known,vy);
+                "ARCADE NATIVE GRAB: serial={} episode={} detail={} actor={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
+                session.serial,session.episode,detail,a.object,actor_names[i],a.before,a.after,a.delta,velocity_known,vy);
         }
     }
 }
@@ -167,8 +169,8 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
             read(actor+0x20,duration) && std::isfinite(duration) && duration>0 && duration<10000) {
             session.actors[index]={actor,0,0,0,0,true};
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} duration={}.",
-                occurrence,session.episode,pilots[index].detail,actor,duration);
+                "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} actor_asset={} duration={}.",
+                occurrence,session.episode,pilots[index].detail,actor,actor_names[index],duration);
         }
     }
 }

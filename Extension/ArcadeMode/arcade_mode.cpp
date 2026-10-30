@@ -1790,10 +1790,11 @@ bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
     score_probe_base = image_base;
+    const bool native_flip_bridge=native_flip::start(image_base);
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip::start(image_base));
+        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip_bridge);
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE GRAB BRIDGE: available={} gameplay_acceptance=unverified.",native_grab::start(image_base));
+        "ARCADE NATIVE GRAB BRIDGE: available={} gameplay_acceptance=unverified.",native_flip_bridge && native_grab::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
