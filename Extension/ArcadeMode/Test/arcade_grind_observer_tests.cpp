@@ -98,7 +98,45 @@ int main() {
     check(sample.context == GrindContext::grind_physics && sample.physics_state == 401 &&
           sample.sampled_at == 1000 && sample.generation == 1, "fresh native grind context accompanies numeric sample");
     check(sample.grind_semantic == GrindSemantic::unknown && sample.skate_grind_semantic == GrindSemantic::unknown,
-          "no numeric value is assigned a named grind");
+          "legacy capture semantics remain unchanged");
+    check(sample.animated_identity().target==GrindChangeTarget::tailslide,
+          "guarded native animated value 5 identifies FS TailSlide from the original enum");
+    {
+        // Independent enumeration rows transcribed from the original asset.
+        constexpr std::array<std::array<std::uint32_t,4>,9> ids{{
+            {3,20,37,54}, {4,21,38,55}, {6,23,40,57}, {15,32,49,66},
+            {14,31,48,65}, {13,30,47,64}, {9,26,43,60}, {7,24,41,58}, {5,22,39,56}}};
+        for (unsigned i=0;i<ids.size();++i) for(unsigned bank=0;bank<4;++bank) {
+            const auto native=native_grind_identity(ids[i][bank]);
+            check(native && native.target==grind_change_target(i+1) && native.value==ids[i][bank] &&
+                  native.bf==(bank>=2) && native.side==(bank%2 ? NativeGrindSide::backside : NativeGrindSide::frontside),
+                  "native enum rows preserve exact named target and original side/block");
+            check(native_grind_target(ids[0][bank],grind_change_target(i+1))==ids[i][bank],
+                  "target resolution preserves the verified native origin block");
+        }
+        for (auto invalid : {0u,1u,2u,8u,10u,11u,12u,16u,17u,69u,73u,77u,78u,UINT32_MAX})
+            check(!native_grind_identity(invalid) && !native_grind_target(invalid,GrindChangeTarget::nosegrind),
+                  "unsupported origins, Invalid and Exit cannot alias a target");
+        for (unsigned hz : {30u,60u,120u}) {
+            auto named=f;
+            for (unsigned step=0;step<3;++step) {
+                named.owner.sampled_at=1000+step*1000/hz;
+                named.put(named.page+0x28,std::uint32_t{step ? 6u : 3u});
+                named.put(named.page+0x20,std::uint32_t{step==2 ? 6u : 3u});
+                const auto observation=named.sample(named.owner.sampled_at);
+                check(observation.selected_identity().target==(step ? GrindChangeTarget::nosegrind : GrindChangeTarget::grind_50_50) &&
+                      observation.animated_identity().target==(step==2 ? GrindChangeTarget::nosegrind : GrindChangeTarget::grind_50_50),
+                      "native selector and animation names retain their independently observed timing");
+            }
+            named.put(named.owner.context+0x1414,std::uint32_t{200});
+            check(!named.sample(named.owner.sampled_at).selected_identity() && !named.sample(named.owner.sampled_at).animated_identity(),
+                  "airborne state withdraws retained named grind identities");
+        }
+        auto unavailable=sample;unavailable.valid=false;
+        check(!unavailable.selected_identity() && !unavailable.animated_identity(),"invalid observation has no named identity");
+        unavailable=sample;unavailable.grind_type_valid=false;unavailable.physics_grind_type_valid=false;
+        check(!unavailable.selected_identity() && !unavailable.animated_identity(),"missing native fields have no named identity");
+    }
     f.put(f.page + 0x20, UINT32_MAX); f.put(f.page + 0x24, std::uint32_t{0});
     sample = f.sample();
     check(sample.grind_type_valid && sample.grind_type == UINT32_MAX && sample.skate_grind_type_valid && sample.skate_grind_type == 0,

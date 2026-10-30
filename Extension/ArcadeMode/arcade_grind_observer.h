@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_grind_identity.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -31,8 +32,16 @@ struct NativeGrindSnapshot {
         if (!grind_type_valid) return GrindSelectionRelation::unavailable;
         return physics_grind_type == grind_type ? GrindSelectionRelation::matched : GrindSelectionRelation::mismatch;
     }
-    // Readability is not an enum mapping, a trick occurrence, or proof that a
-    // commanded Y trick happened. All numeric values have UNKNOWN semantics.
+    NativeGrindIdentity selected_identity() const noexcept {
+        return valid && context==GrindContext::grind_physics && physics_grind_type_valid ?
+            native_grind_identity(physics_grind_type) : NativeGrindIdentity{};
+    }
+    NativeGrindIdentity animated_identity() const noexcept {
+        return valid && context==GrindContext::grind_physics && grind_type_valid ?
+            native_grind_identity(grind_type) : NativeGrindIdentity{};
+    }
+    // Matching named selector and animation values still does not prove a new
+    // occurrence, completed actor transition, or uninterrupted contact.
 };
 // Internal integration context, never serialized. Resolve this from the existing
 // validated local owner before AND after sampling. Increment generation on owner,

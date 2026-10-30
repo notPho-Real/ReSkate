@@ -103,7 +103,9 @@ separate generic `RailAdapter` explicitly rejects `named_grind`, and only
 delivers alignment/nose/tail input. Adding another recognizer cannot fix this.
 
 `arcade_grind_observer.h` resolves local AntDriven state pages and reads
-`CurrentGrindType` / `CurrentSkateGrindType`; both semantics remain unknown.
+`CurrentGrindType` / `CurrentSkateGrindType`; their semantics were unknown at
+the initial inspection. The native enumeration follow-up below resolves the
+nine requested identities without making them executable actions.
 `arcade_grind_runtime.cpp` discovers bindings and publishes observations;
 `GrindTransitions` detects contact entry/exit, not commanded named transitions.
 The trainer fork also exposes `GrindControlLR/UD`, `GrindStabilityNudge`,
@@ -208,6 +210,10 @@ cannot safely substitute for that physical transition. No production named
 executor is enabled. The user declined a live native-control trial, so work
 continued offline and no gameplay acceptance is claimed.
 
+The user subsequently authorized shared Deck access. Static retrieval and
+read-only readiness inspection are recorded below; no controller trial has
+run under that authorization yet.
+
 ## Local follow-up: early flip after native rail exit
 
 Cached original assets close the animation-ownership question without hardware:
@@ -273,6 +279,120 @@ queue check passed this run; the earlier baseline failure remains recorded below
 and no queue algorithm change is claimed.
 
 ## Verification and limits
+
+### Shared Deck static-data follow-up
+
+The user subsequently authorized sharing Deck access with the manuals task.
+After notifying that task, a bounded read copied 169 indexed static CAS spans
+(212,592 compressed bytes). Every span matched its previously indexed SHA-1.
+The request used read-only file descriptors and positional reads; it performed
+no controller input, console commands, process access, remote writes, restart,
+installation, or build. The manuals task was notified when the read completed.
+Raw game assets remain in ignored local investigation storage.
+
+All 57 EBX assets and 112 expression kernels decoded successfully. This resolves
+the missing-file blocker above, including RES 16986. The newly inspected
+`AirGround_Grinding_AG_B12391C` actions establish these additional dependencies:
+
+- `SetFloatIntentGameStateData_6/7` initializes `Float.Intent.GrindControlUD`
+  and updates it from `Input_GrindControl`.
+- `SetFloatIntentGameStateData_9/10` initializes `Float.Intent.GrindControlLR`
+  and updates it from `Input_GrindControl`, with additional conditions.
+- `SetFloatIntentGameStateData_15/16` and `_18/19` initialize the heading and
+  pitch control multipliers. Both update programs reference
+  `Input_GrindTransition` plus two further dependencies whose semantics are
+  not yet resolved (GUIDs `9eaa146b-f270-4468-bf4d-1489c11a3b21` and
+  `701c5884-eb0b-414b-a220-7911d90ea021`).
+- The intent graph installs `OnboardGrindGestureSetCollection`; that collection
+  alone does not establish a named grind-change actor.
+
+These are static control dependencies, not verified target recipes. The
+remaining execution blocker is establishing the native control-to-physical-
+grind selection contract, including stance, geometry, admission and named
+identity. No two-button executor has been enabled on this evidence alone, and
+no new DLL or CI build was started. Early rail-to-flip routing remains locally
+implemented and tested as described above, with live acceptance outstanding.
+
+### Native identities and control dependencies
+
+Further bounded reads retrieved the grind orientation routines (70 spans,
+144,476 compressed bytes), two enumeration assets (4,069 bytes), the original
+input/settings definitions (289 spans, 334,682 bytes), and the active gamepad
+routing graph (33 spans, 71,600 bytes). Every span matched its manifest SHA-1.
+These were static reads; no executable or game configuration was changed.
+
+`Animation/Dingo/Enum.SkateGrindType`, GUID
+`75934470-c85c-df18-7593-4470c85cdf18`, has 78 explicit entries. Global gameconfig
+EBX 1767 has compressed SHA-1 `2938c5adc35526f70447d4063bb0cd88f65d01ff`.
+All three observed grind fields reference this same enumeration. The requested
+identities are:
+
+| Target | FS | BS | BF_FS | BF_BS |
+| --- | ---: | ---: | ---: | ---: |
+| 50-50 | 3 | 20 | 37 | 54 |
+| Noseslide | 4 | 21 | 38 | 55 |
+| Nosegrind | 6 | 23 | 40 | 57 |
+| Crooked | 15 | 32 | 49 | 66 |
+| Bluntslide | 14 | 31 | 48 | 65 |
+| Nosebluntslide | 13 | 30 | 47 | 64 |
+| Smith | 9 | 26 | 43 | 60 |
+| 5-0 | 7 | 24 | 41 | 58 |
+| Tailslide | 5 | 22 | 39 | 56 |
+
+The new `arcade_grind_identity.h` resolves these exact values and target IDs
+within a supported current identity's native block. It retains the asset's
+`BF` distinction without guessing its physical meaning. Invalid (0), Exit
+(77), unknown values and other unimplemented origins cannot alias the nine
+targets. `NativeGrindSnapshot` exposes independently guarded selected and
+animated identities. It does not promote them into scoring, contact ownership,
+actor readiness or a completed transition. The legacy capture protocol and
+balance/HUD code remain unchanged.
+
+The observer suite passes 40,190 checks, including independent enum rows,
+selector/animation disagreement at 30/60/120 Hz, missing fields, invalid owner
+evidence and rail departure. These verify interpretation of real asset IDs;
+they are not native grind execution tests.
+
+The previously unresolved multiplier dependencies are now identified:
+`701c5884-eb0b-414b-a220-7911d90ea021` is `EnableLegacyGrinds`, and
+`9eaa146b-f270-4468-bf4d-1489c11a3b21` is
+`EnableHybridSimplifiedFlickItTricks`. Both assets default to false. The native
+multiplier programs contain values 8.0, 1.0 and 0.2; settings affect the control
+path, so a fixed guessed pressure duration is not a verified recipe.
+
+The gamepad update kernel (RES 7573) publishes `Input_GrindControl` at PC
+0x272c, assembled from its LR/UD outputs. At PC 0x2844 it calls the boolean
+input producer for `Input_GrindTransition` with false (constant offset 0x781).
+The descriptor for call hash `f40d569c` points to native RVA 0x830840, whose
+first test returns immediately for a false third argument. This does not
+establish a safe callable named-grind actor: the context/owner contract and
+target control sequence still need proof. No hook or direct state writer was
+introduced from that address alone.
+
+Read-only Deck readiness inspection confirmed the original game executable
+and the manuals candidate DLL (`62844b58c57a2c64fa46cb055db4e9748c286529`,
+SHA-256 `adae9ab43a31806ed90ea217df3d7620f45075598be0feab3970eecb928c6d42`).
+The display showed Steam's idle artwork and the existing trace contained no
+fresh native observations. A visible rail approach was requested before any
+native control trial. At that readiness check no input was sent and no new
+build was started.
+
+The user subsequently authorized a short native control trial and reported
+the game ready. Fresh compositor properties still identified Steam (app 769)
+in front of Skate; a bounded one-pixel pointer movement and return did not
+dismiss the idle artwork. A later capture showed Skate, but the skater was
+fallen in the stadium, with no nearby rail. A reviewed, installed external
+diagnostic pinned to the installed executable/DLL then ran only
+`arcadefixture status` and `arcadeinputcapture 5000 96`, serialized with the
+shared device lock. It reported map `bam`, native state 504, Arcade ON,
+`configured=false`, `present=false`, and native UI outside menus. The capture
+also reported no available controller source without a virtual trial device.
+No controller actuation or settings change occurred; the finite observation
+finished and the shared control window was released. This is readiness
+evidence, not a native grind trial. The local diagnostic receipt is
+`grind-readiness-62844b5-v1/results/1793389644898445000.json` in the external
+lab directory. A valid rail approach remains necessary to establish the
+named transition control sequence. No new DLL or CI build was started.
 
 Local macOS checks:
 
