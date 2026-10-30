@@ -1,10 +1,15 @@
 #pragma once
 #include "Extension/ArcadeMode/arcade_native_flip_entry.h"
 #include <cstring>
+#include <type_traits>
+#include "Engine/Game/Build/20260929/arcade_flip_transition.h"
 #include <vector>
 #include <iostream>
 #include <cstdlib>
 namespace native_entry_tests {
+using NativeCandidate=dingosdk::game::build::v20260929::arcade_flip_transition::Candidate;
+static_assert(std::is_invocable_r_v<std::uint32_t,NativeCandidate,std::uintptr_t,std::uint32_t,std::uintptr_t,float,std::uint32_t,float>);
+static_assert(!std::is_invocable_v<NativeCandidate,std::uintptr_t,std::uint32_t,std::uintptr_t,float>);
 using namespace dingosdk::arcade_mode::native_flip;
 struct Memory {
     std::vector<unsigned char> bytes=std::vector<unsigned char>(0x3000);

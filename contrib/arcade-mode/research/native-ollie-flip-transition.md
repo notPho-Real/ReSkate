@@ -120,3 +120,21 @@ not. After separating those pointer rules, the production reader returned
 entry tick 16 and Pop/Jump end tick 14 for all five original clips. Regression
 fixtures now exercise both four- and eight-byte-aligned arrays. This check
 validates the production reader against native data, not runtime hook delivery.
+
+## Native hook ABI correction from isolated DLL testing
+
+The b6e918f candidate failed native off-board mount startup in the isolated copy.
+A prior-DLL control using the same retained virtual controller reached native
+riding state 100/mode 1 with Y; the candidate remained in state 504. This is a
+failed acceptance result, not a passing flip trial. Inspection found that the
+StateFlow candidate wrapper omitted its fifth and sixth arguments. At entry,
+129f360 sets RBP = entry RSP - 1192; 129f6ae reads the flags at RBP+1232
+(entry RSP+40), and 129f6bf reads a float limit at RBP+1240 (entry RSP+48).
+Caller 129fc52..129fc6f explicitly supplies those stack arguments. They must be
+forwarded even with no Arcade lease. The corrected signature is six arguments;
+the production callback is compile-time checked against that build contract.
+
+The other two signatures were audited: PTM evaluation 106a2f0 uses RCX/RDX,
+XMM2 and R9, returning the output pointer in RAX at 106d2d2. Motion commit
+ed6da0..ed6e1e uses RCX/RDX/R8/R9b, has no incoming stack arguments, and
+returns AL. A new compiled-DLL native acceptance run is still required.

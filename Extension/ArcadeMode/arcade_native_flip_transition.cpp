@@ -8,12 +8,13 @@
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
 #include <atomic>
 #include <mutex>
+#include <type_traits>
 #include <Windows.h>
 
 namespace dingosdk::arcade_mode::native_flip {
 namespace {
 namespace contract=game::build::v20260929::arcade_flip_transition;
-using Candidate=std::uint32_t(*)(std::uintptr_t,std::uint32_t,std::uintptr_t,float);
+using Candidate=contract::Candidate;
 using Evaluate=std::uintptr_t(*)(std::uintptr_t,std::uintptr_t,float,std::uintptr_t);
 using Commit=bool(*)(std::uintptr_t,std::uintptr_t,std::uintptr_t,bool);
 Candidate original_candidate{}; Evaluate original_evaluate{}; Commit original_commit{};
@@ -88,7 +89,7 @@ bool rising(const Lease& l) noexcept {
         read(bodies+0x74,vy) && std::isfinite(vy) && vy>0.25f;
 }
 Lease snapshot() noexcept { std::lock_guard lock(mutex);return lease; }
-std::uint32_t candidate(std::uintptr_t context,std::uint32_t index,std::uintptr_t view,float delta) {
+std::uint32_t candidate(std::uintptr_t context,std::uint32_t index,std::uintptr_t view,float delta,std::uint32_t flags,float limit) {
     auto l=snapshot();
     if (valid(l) && view==l.block+0x48 && in_air(l)) {
         std::int32_t current{}, intent{}; bool changed{},allowed{};
@@ -111,8 +112,11 @@ std::uint32_t candidate(std::uintptr_t context,std::uint32_t index,std::uintptr_
             }
         }
     }
-    return original_candidate(context,index,view,delta);
+    // Native reads argument five at entry RSP+0x28 and argument six at
+    // RSP+0x30. Both are required even when no Arcade lease is active.
+    return original_candidate(context,index,view,delta,flags,limit);
 }
+static_assert(std::is_same_v<decltype(&candidate), contract::Candidate>);
 struct Evaluation { Lease lease{}; std::uintptr_t ptm{}; bool initialized{}; float entry{}; };
 thread_local Evaluation* evaluating{};
 bool commit(std::uintptr_t path,std::uintptr_t result,std::uintptr_t parameters,bool update) {
