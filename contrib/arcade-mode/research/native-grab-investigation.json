@@ -1,0 +1,1591 @@
+{
+  "schema": 1,
+  "stage": "A",
+  "status": "incomplete",
+  "baseline_commit": "65d34a0bc06034125b28779d10490e479df37fba",
+  "game_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
+  "scope": "Stage A pilot metadata and required native enum dependency; not a complete flip/grab execution catalog",
+  "runtime_changes": false,
+  "new_tricks_implemented": 0,
+  "native_trials": 0,
+  "stage_a_passed": false,
+  "later_stages": "not started; native Stage A acceptance gate remains unsatisfied",
+  "catalog": [
+    {
+      "native_name": "Backside",
+      "native_id": 2,
+      "family": "grab",
+      "arcade_semantic_name": "BS Grab",
+      "animation_asset": "animation/dingo/seq_c_proto_onb_inair_bs_grab_loop",
+      "animation_asset_guid": "f09bea81-0623-9bec-f09b-ea8106239bec",
+      "body_clip_asset": "animation/dingo/c_proto_onb_inair_bs_grab_loop",
+      "body_clip_guid": "01e7dd28-3ef6-0288-01e7-dd283ef60288",
+      "body_animation_id": 1717756076,
+      "context": "BS in-air blendspace; entry eligibility and stance-specific input mapping unverified",
+      "native_transition": "Grab.Into.Node -> Grab.Loop.Node -> CDB chooser -> native BS looping blendspace",
+      "native_blendspace_coordinate": [
+        0,
+        0
+      ],
+      "arcade_binding": "B",
+      "binding_status": "existing primitive recipe; native playback not verified by this checkpoint",
+      "evidence_status": "partially_verified",
+      "verified_scope": "native enum declaration, sequence/body clip assets and blendspace membership",
+      "test_result": {
+        "native_action_acknowledgment": null,
+        "animation_initialization": null,
+        "positive_delta_advancement": null,
+        "same_airborne_episode": null,
+        "hold_release": null,
+        "landing": null,
+        "scoring": null,
+        "status": "unverified; source/build only"
+      }
+    },
+    {
+      "native_name": "Melon",
+      "native_id": 11,
+      "family": "grab",
+      "arcade_semantic_name": "Melon",
+      "animation_asset": "animation/dingo/seq_c_proto_onb_inair_bs_grab_melon_loop",
+      "animation_asset_guid": "e14ab760-837b-cca3-e14a-b760837bcca3",
+      "body_clip_asset": "animation/dingo/c_proto_onb_inair_bs_grab_melon_loop",
+      "body_clip_guid": "7558f81c-b5cf-66cf-7558-f81cb5cf66cf",
+      "body_animation_id": 1781550572,
+      "context": "BS in-air blendspace; entry eligibility and stance-specific input mapping unverified",
+      "native_transition": "Grab.Into.Node -> Grab.Loop.Node -> CDB chooser -> native BS looping blendspace",
+      "native_blendspace_coordinate": [
+        0,
+        1
+      ],
+      "arcade_binding": "Left + B",
+      "binding_status": "semantic table only; disabled in classic dispatch",
+      "evidence_status": "partially_verified",
+      "verified_scope": "native enum declaration, sequence/body clip assets and blendspace membership",
+      "test_result": {
+        "native_action_acknowledgment": null,
+        "animation_initialization": null,
+        "positive_delta_advancement": null,
+        "same_airborne_episode": null,
+        "hold_release": null,
+        "landing": null,
+        "scoring": null,
+        "status": "unverified; source/build only"
+      }
+    },
+    {
+      "native_name": "Method",
+      "native_id": 13,
+      "family": "grab",
+      "arcade_semantic_name": "Method",
+      "animation_asset": "animation/dingo/seq_c_proto_onb_inair_bs_grab_method_loop",
+      "animation_asset_guid": "20fc5405-7f20-bed6-20fc-54057f20bed6",
+      "body_clip_asset": "animation/dingo/c_proto_onb_inair_bs_grab_method_loop",
+      "body_clip_guid": "8e0eaccf-3cde-2158-8e0e-accf3cde2158",
+      "body_animation_id": 3853008748,
+      "context": "BS in-air blendspace; entry eligibility and stance-specific input mapping unverified",
+      "native_transition": "Grab.Into.Node -> Grab.Loop.Node -> CDB chooser -> native BS looping blendspace",
+      "native_blendspace_coordinate": [
+        1,
+        0
+      ],
+      "arcade_binding": "Left + two B presses",
+      "binding_status": "semantic table only; disabled in classic dispatch",
+      "evidence_status": "partially_verified",
+      "verified_scope": "native enum declaration, sequence/body clip assets and blendspace membership",
+      "test_result": {
+        "native_action_acknowledgment": null,
+        "animation_initialization": null,
+        "positive_delta_advancement": null,
+        "same_airborne_episode": null,
+        "hold_release": null,
+        "landing": null,
+        "scoring": null,
+        "status": "unverified; source/build only"
+      }
+    }
+  ],
+  "native_grab_enum": {
+    "asset": "Animation/Dingo/Enum.GrabType",
+    "guid": "3d9f40e8-a05c-34fb-3d9f-40e8a05c34fb",
+    "values": [
+      {
+        "native_name": "None",
+        "native_id": 0
+      },
+      {
+        "native_name": "Frontside",
+        "native_id": 1
+      },
+      {
+        "native_name": "Backside",
+        "native_id": 2
+      },
+      {
+        "native_name": "Tail",
+        "native_id": 3
+      },
+      {
+        "native_name": "Seatbelt",
+        "native_id": 4
+      },
+      {
+        "native_name": "Crail",
+        "native_id": 5
+      },
+      {
+        "native_name": "Nose",
+        "native_id": 6
+      },
+      {
+        "native_name": "Stale",
+        "native_id": 7
+      },
+      {
+        "native_name": "Mute",
+        "native_id": 8
+      },
+      {
+        "native_name": "Double",
+        "native_id": 9
+      },
+      {
+        "native_name": "Rocket",
+        "native_id": 10
+      },
+      {
+        "native_name": "Melon",
+        "native_id": 11
+      },
+      {
+        "native_name": "CrossBone",
+        "native_id": 12
+      },
+      {
+        "native_name": "Method",
+        "native_id": 13
+      },
+      {
+        "native_name": "BSTweak",
+        "native_id": 14
+      },
+      {
+        "native_name": "ChristAir",
+        "native_id": 15
+      },
+      {
+        "native_name": "JudoAir",
+        "native_id": 16
+      },
+      {
+        "native_name": "BSOneFootAir",
+        "native_id": 17
+      },
+      {
+        "native_name": "TuckKnee",
+        "native_id": 18
+      },
+      {
+        "native_name": "Nosebone",
+        "native_id": 19
+      },
+      {
+        "native_name": "Tailbone",
+        "native_id": 20
+      },
+      {
+        "native_name": "Stiffy",
+        "native_id": 21
+      },
+      {
+        "native_name": "FrigidAir",
+        "native_id": 22
+      },
+      {
+        "native_name": "FSOneFootAir",
+        "native_id": 23
+      },
+      {
+        "native_name": "DoubleModNose",
+        "native_id": 24
+      },
+      {
+        "native_name": "DoubleModTail",
+        "native_id": 25
+      },
+      {
+        "native_name": "DoubleModLeft",
+        "native_id": 26
+      },
+      {
+        "native_name": "DoubleModRight",
+        "native_id": 27
+      },
+      {
+        "native_name": "Superdude",
+        "native_id": 28
+      },
+      {
+        "native_name": "ModTailGrab",
+        "native_id": 29
+      },
+      {
+        "native_name": "BSShiftyTailGrab",
+        "native_id": 30
+      },
+      {
+        "native_name": "FSShiftyTailGrab",
+        "native_id": 31
+      },
+      {
+        "native_name": "Benihanna",
+        "native_id": 32
+      },
+      {
+        "native_name": "OneFootTailGrab",
+        "native_id": 33
+      },
+      {
+        "native_name": "Tailwalk",
+        "native_id": 34
+      },
+      {
+        "native_name": "BSShiftySeatbelt",
+        "native_id": 35
+      },
+      {
+        "native_name": "FSShiftySeatbelt",
+        "native_id": 36
+      },
+      {
+        "native_name": "BSShiftyCrail",
+        "native_id": 37
+      },
+      {
+        "native_name": "FSShiftyCrail",
+        "native_id": 38
+      },
+      {
+        "native_name": "JudoNoseGrab",
+        "native_id": 39
+      },
+      {
+        "native_name": "Airwalk",
+        "native_id": 40
+      },
+      {
+        "native_name": "BSShiftyNoseGrab",
+        "native_id": 41
+      },
+      {
+        "native_name": "FSShiftyNoseGrab",
+        "native_id": 42
+      },
+      {
+        "native_name": "ModNoseGrab",
+        "native_id": 43
+      },
+      {
+        "native_name": "DogPiss",
+        "native_id": 44
+      },
+      {
+        "native_name": "StaleGrab",
+        "native_id": 45
+      },
+      {
+        "native_name": "StaleTailbone",
+        "native_id": 46
+      },
+      {
+        "native_name": "StaleNosebone",
+        "native_id": 47
+      },
+      {
+        "native_name": "StaleTuckKnee",
+        "native_id": 48
+      },
+      {
+        "native_name": "WeddleNosebone",
+        "native_id": 49
+      },
+      {
+        "native_name": "ModWeddle",
+        "native_id": 50
+      },
+      {
+        "native_name": "WeddleTuckKnee",
+        "native_id": 51
+      },
+      {
+        "native_name": "WeddleTailbone",
+        "native_id": 52
+      },
+      {
+        "native_name": "FSGroundGrab",
+        "native_id": 53
+      },
+      {
+        "native_name": "BSGroundGrab",
+        "native_id": 54
+      },
+      {
+        "native_name": "DoubleGroundGrab",
+        "native_id": 55
+      },
+      {
+        "native_name": "Coffin",
+        "native_id": 56
+      },
+      {
+        "native_name": "NoFootAir",
+        "native_id": 57
+      },
+      {
+        "native_name": "NoseTailbone",
+        "native_id": 58
+      },
+      {
+        "native_name": "TailNosebone",
+        "native_id": 59
+      },
+      {
+        "native_name": "StaleFSTuckKnee",
+        "native_id": 60
+      },
+      {
+        "native_name": "BSFingerflip",
+        "native_id": 61
+      },
+      {
+        "native_name": "FSFingerflip",
+        "native_id": 62
+      },
+      {
+        "native_name": "FSVarial",
+        "native_id": 63
+      },
+      {
+        "native_name": "BSVarial",
+        "native_id": 64
+      },
+      {
+        "native_name": "BSToWeddle",
+        "native_id": 65
+      },
+      {
+        "native_name": "FSToStale",
+        "native_id": 66
+      },
+      {
+        "native_name": "Fingerflip",
+        "native_id": 67
+      },
+      {
+        "native_name": "TailFlip",
+        "native_id": 68
+      },
+      {
+        "native_name": "StaleFlip",
+        "native_id": 69
+      },
+      {
+        "native_name": "WeddleFlip",
+        "native_id": 70
+      },
+      {
+        "native_name": "WeddleToBS",
+        "native_id": 71
+      },
+      {
+        "native_name": "CrailToTail",
+        "native_id": 72
+      },
+      {
+        "native_name": "SeatbeltToNose",
+        "native_id": 73
+      },
+      {
+        "native_name": "StaleToFS",
+        "native_id": 74
+      },
+      {
+        "native_name": "BSHeelflip",
+        "native_id": 75
+      },
+      {
+        "native_name": "FSHeelflip",
+        "native_id": 76
+      },
+      {
+        "native_name": "FingerHeelflip",
+        "native_id": 77
+      },
+      {
+        "native_name": "TailHeelflip",
+        "native_id": 78
+      },
+      {
+        "native_name": "StaleHeelflip",
+        "native_id": 79
+      },
+      {
+        "native_name": "WeddleHeelflip",
+        "native_id": 80
+      },
+      {
+        "native_name": "CoffinFingerflip",
+        "native_id": 81
+      },
+      {
+        "native_name": "CoffinHeelflip",
+        "native_id": 82
+      },
+      {
+        "native_name": "CoffinBSVarial",
+        "native_id": 83
+      },
+      {
+        "native_name": "CoffinFSVarial",
+        "native_id": 84
+      },
+      {
+        "native_name": "DoubleGrabFingerflip",
+        "native_id": 85
+      },
+      {
+        "native_name": "DoubleGrabHeelflip",
+        "native_id": 86
+      },
+      {
+        "native_name": "DoubleGrabBSVarial",
+        "native_id": 87
+      },
+      {
+        "native_name": "DoubleGrabFSVarial",
+        "native_id": 88
+      },
+      {
+        "native_name": "TailToCrail",
+        "native_id": 89
+      },
+      {
+        "native_name": "NoseToSeatbelt",
+        "native_id": 90
+      }
+    ],
+    "evidence_status": "verified enum declaration only",
+    "warning": "Includes None, ground states and compound transitions. Enumeration membership does not establish an executable animation or binding."
+  },
+  "blendspace": {
+    "asset": "Animation/Dingo/BlendSpace_InAir_Grab_BS_Proto",
+    "guid": "6326a5cc-641e-4f79-6326-a5cc641e4f79",
+    "signal_x_guid": "806e09fc-e770-8456-806e-09fce7708456",
+    "signal_y_guid": "5e9afe38-769a-3d80-5e9a-fe38769a3d80",
+    "input_signal_mapping": "unresolved",
+    "native_signal_max_inc_dec_acc": 0.075,
+    "update_tags_on_most_heavily_weighted_controller": true
+  },
+  "source_assets": [
+    {
+      "name": "gameplay/input/inputs/input_grabtweaklr",
+      "size": 599,
+      "decoded_size": 836,
+      "sha1": "f71e26e1481fb45f2a3543f6f42387aa9358d6e4",
+      "bundle": "level",
+      "resource_index": 771,
+      "root_type": "DelMarFloatGameplayInput",
+      "guid": "aa065510-7378-4fee-bb62-88e247407fff",
+      "decoded_sha256": "574d5549ac7ec9e4e32285c556659103c3e00a156180c39c106d1e1c66206c96"
+    },
+    {
+      "name": "animation/dingo/grab.into.node",
+      "size": 2917,
+      "decoded_size": 6204,
+      "sha1": "05b44a3473e34286e66a1f891c148f7508a9bda6",
+      "bundle": "level",
+      "resource_index": 1268,
+      "root_type": "StateFlowNodeControllerAsset",
+      "guid": "7d452193-72dc-1a9a-7d45-219372dc1a9a",
+      "decoded_sha256": "547b99fb22ebe6b6e9986653a01bbfabb4c312465c0bc029045d53f92bd91d90"
+    },
+    {
+      "name": "animation/dingo/transition_grab.into.node_to_grab.into.node",
+      "size": 1154,
+      "decoded_size": 1942,
+      "sha1": "10fe19c57c8f000540d8dc9ed9877be65af28583",
+      "bundle": "level",
+      "resource_index": 2343,
+      "root_type": "TransitionAsset",
+      "guid": "05406d1e-d84d-09e8-0540-6d1ed84d09e8",
+      "decoded_sha256": "4124c9b8e1cc121e742a3fbc3527cc31ed72c6c97f35f99d4ca74f73f89d348d"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_10_ss_onupdate",
+      "size": 3441,
+      "decoded_size": 6738,
+      "sha1": "30d311a9b3b208a6fda0afc790ab9d161725676e",
+      "bundle": "level",
+      "resource_index": 2738,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "0125ed52-cb73-c1d7-0ad5-ea0b090cdea3",
+      "decoded_sha256": "11be287abe51ca85b3629821967de4d754dd76b41e608f0cc7c68e66e2a539bd"
+    },
+    {
+      "name": "animation/dingo/c_proto_onb_inair_bs_grab_method_loop",
+      "size": 1241,
+      "decoded_size": 2042,
+      "sha1": "21efda244c32e7b63b5331fa56d5f5b2de9d615e",
+      "bundle": "level",
+      "resource_index": 3228,
+      "root_type": "ClipControllerAsset",
+      "guid": "8e0eaccf-3cde-2158-8e0e-accf3cde2158",
+      "decoded_sha256": "dfaac464ff6c1f0763a9bf86f7f995c94da87afa18fa346ebd5e041a97bf54b8"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.node_to_grab.loop.end2",
+      "size": 1210,
+      "decoded_size": 2096,
+      "sha1": "a908b2fc95978db6b0b02b4a02d6a5bbcf5466b3",
+      "bundle": "level",
+      "resource_index": 3303,
+      "root_type": "TransitionAsset",
+      "guid": "b3c43e54-b665-bac8-b3c4-3e54b665bac8",
+      "decoded_sha256": "cb8549c3785e627e9c84c012d5a8d44923a0739070e9fa26256845bd3cd17631"
+    },
+    {
+      "name": "animation/dingo/transition_default.grab.node_to_grab.loop.node",
+      "size": 1319,
+      "decoded_size": 2148,
+      "sha1": "176719944ba96c3cfb9a92f7e1229d3cd1f91818",
+      "bundle": "level",
+      "resource_index": 3665,
+      "root_type": "TransitionAsset",
+      "guid": "7fe2abcb-f76e-54a9-7fe2-abcbf76e54a9",
+      "decoded_sha256": "56ad87b88fc52dd1e1c7997f7dd8cb76ea14e0085a4bc18b01aa0c98a1489116"
+    },
+    {
+      "name": "animation/dingo/c_proto_onb_inair_bs_grab_melon_loop",
+      "size": 1239,
+      "decoded_size": 2040,
+      "sha1": "e3557d1e7af6a0c53073a6ed96fe56cfe06aec80",
+      "bundle": "level",
+      "resource_index": 4625,
+      "root_type": "ClipControllerAsset",
+      "guid": "7558f81c-b5cf-66cf-7558-f81cb5cf66cf",
+      "decoded_sha256": "4c6254cd5b96cd6a1e6887cf03caf0ac1c14de7ac89aa51120b17c049510c068"
+    },
+    {
+      "name": "_af/2bfef83e-3dce-a0d0/expressiontag",
+      "size": 1247,
+      "decoded_size": 2536,
+      "sha1": "4620c54644da5ec312e129af25bd5cb9ccf5887e",
+      "bundle": "level",
+      "resource_index": 4672,
+      "root_type": "ExpressionAsset",
+      "guid": "2bfef83e-3dce-a0d0-2bfe-f83e3dcea0d0",
+      "decoded_sha256": "654811c6a30a4f544b3181c4e641c1839b5fbba813d639f8951369d8a144ed62"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_0_ss_onbegin",
+      "size": 3569,
+      "decoded_size": 7086,
+      "sha1": "542445f9fd4d49ce0af688eb20a5ca54e2d8f236",
+      "bundle": "level",
+      "resource_index": 4717,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "bc8a3117-4516-cb21-dfae-e50b401901fc",
+      "decoded_sha256": "e03e3e12455b61aed86767bab13ca3f0fff632e1e437ac3f5af9bc264d0ec444"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_3_ss_onbegin",
+      "size": 3585,
+      "decoded_size": 7086,
+      "sha1": "3532867360ac4c1d2ef97bf2bc1ac0b33c01962c",
+      "bundle": "level",
+      "resource_index": 5720,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "654755c3-ff59-e0a8-194a-9e5fd7ef5a00",
+      "decoded_sha256": "76656ee00081805f891c7141116c35ed61415cef2790a45c3dc58c61e4225057"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_2_ss_onend",
+      "size": 3297,
+      "decoded_size": 6504,
+      "sha1": "cf0e218e0e4f38d58b3466ceead2e22b2860f84a",
+      "bundle": "level",
+      "resource_index": 6223,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "a4be1ed0-5f19-0715-3a00-486120ab8576",
+      "decoded_sha256": "160ce21769b7f1918fcdc13d32d1373d56b72087462e5b40d648d1890895966b"
+    },
+    {
+      "name": "animation/dingo/transition_grab.into.node_to_grab.loop.node",
+      "size": 1356,
+      "decoded_size": 2534,
+      "sha1": "8092f40bc90dcefb253b851a0c9dc376dbc0d6bb",
+      "bundle": "level",
+      "resource_index": 6620,
+      "root_type": "TransitionAsset",
+      "guid": "74d627eb-bf62-821a-74d6-27ebbf62821a",
+      "decoded_sha256": "b3e149f919c19361c76c7f6394710d3e6c69fef5571ee747c97b859b7f7a63aa"
+    },
+    {
+      "name": "animation/dingo/superlayer_onboard_inair_grab_exit",
+      "size": 1829,
+      "decoded_size": 3904,
+      "sha1": "0927fb16895b6dccb4717e87a3e89d89e3285651",
+      "bundle": "level",
+      "resource_index": 7235,
+      "root_type": "SuperLayersControllerAsset",
+      "guid": "b2fe619b-a645-c874-b2fe-619ba645c874",
+      "decoded_sha256": "b1fa7b97d208b86c427dfec3cc9f93a5d417d331c1a0f44804bc8e376c4c158f"
+    },
+    {
+      "name": "animation/dingo/grab.inair.conduit",
+      "size": 1900,
+      "decoded_size": 3844,
+      "sha1": "528e950b6fb5e6366d639dcf389bc480142beb46",
+      "bundle": "level",
+      "resource_index": 8673,
+      "root_type": "StateFlowNodeControllerAsset",
+      "guid": "303c01bc-e480-a896-303c-01bce480a896",
+      "decoded_sha256": "33ab61ecac2b2a8f2b91e0fda2425d7d93f4bbc9fac44d1a3c07cf08ed52b915"
+    },
+    {
+      "name": "gameplay/input/inputs/input_righthandgrab",
+      "size": 506,
+      "decoded_size": 742,
+      "sha1": "dd12dae92ab2321c7a18abdc8a2f52341c6f8765",
+      "bundle": "level",
+      "resource_index": 9585,
+      "root_type": "DelMarBoolGameplayInput",
+      "guid": "e135c41d-c9a4-4b68-96be-45999e4ec18a",
+      "decoded_sha256": "2eb43b837741c6cd4b3930034de8822a4d1f6346d331b300cdd2a53e2b812f45"
+    },
+    {
+      "name": "animation/dingo/sf_onboard_l_grab_inair",
+      "size": 931,
+      "decoded_size": 1400,
+      "sha1": "57aa114b45d6463c9952c9aaf93ce90e56f2ed25",
+      "bundle": "level",
+      "resource_index": 9734,
+      "root_type": "StateFlowControllerAsset",
+      "guid": "7580b46d-8a4e-5e67-7580-b46d8a4e5e67",
+      "decoded_sha256": "1f2c38854819178f68788520f986a4e5e38f6a0c4d0036b0c11837664eb0c443"
+    },
+    {
+      "name": "gameplay/input/inputs/input_lefthandgrab",
+      "size": 509,
+      "decoded_size": 742,
+      "sha1": "b12552f84f46511e3bca428ac58007b36b0dec94",
+      "bundle": "level",
+      "resource_index": 10269,
+      "root_type": "DelMarBoolGameplayInput",
+      "guid": "453c60de-355b-44f6-8d08-715a4ec623c0",
+      "decoded_sha256": "c3617af1707548fa3f5ebc816917d003a61cfe947ba5de2ace3fdb58aa5488df"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_4_ss_onupdate",
+      "size": 3435,
+      "decoded_size": 6738,
+      "sha1": "22f2eef4d8bcf4e1719fef2033454cb4a19cc2bb",
+      "bundle": "level",
+      "resource_index": 10366,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "9d2e91d9-c521-872f-64b1-2825161b8bae",
+      "decoded_sha256": "3a8a4eb475d76f251bb4c6c85992aed5fdff3e838eb1798b3ebee97e09a7e33b"
+    },
+    {
+      "name": "animation/dingo/seq_c_proto_onb_inair_bs_grab_loop",
+      "size": 3200,
+      "decoded_size": 6378,
+      "sha1": "e07443a75cebcd7e233c15c26c89b9b7c4f1ca72",
+      "bundle": "level",
+      "resource_index": 11089,
+      "root_type": "SequenceContainerAsset",
+      "guid": "f09bea81-0623-9bec-f09b-ea8106239bec",
+      "decoded_sha256": "ea37358a3baab6500636e96662ee2a132a23ab26c3bf14e927928e45402854e5"
+    },
+    {
+      "name": "animation/dingo/superlayer_onboard_inair_grab_into",
+      "size": 1828,
+      "decoded_size": 3904,
+      "sha1": "d962196b7f7089f27ac00014ec5b0aa92894608a",
+      "bundle": "level",
+      "resource_index": 11144,
+      "root_type": "SuperLayersControllerAsset",
+      "guid": "d44d95d8-aaa8-97d7-d44d-95d8aaa897d7",
+      "decoded_sha256": "92cccbe72c08b1ac566908585507fdd593e480ef43c17733c45d0f8f12825ee1"
+    },
+    {
+      "name": "animation/dingo/c_proto_onb_inair_bs_grab_loop",
+      "size": 1817,
+      "decoded_size": 3292,
+      "sha1": "fa3b77aff88e861827581176abbf899e83df29af",
+      "bundle": "level",
+      "resource_index": 11848,
+      "root_type": "ClipControllerAsset",
+      "guid": "01e7dd28-3ef6-0288-01e7-dd283ef60288",
+      "decoded_sha256": "3286e7b7f6f2e417991a4f12c6d00d2b681ac070d2ae9c3a833633debddfe83e"
+    },
+    {
+      "name": "animation/dingo/grab.loop.exit",
+      "size": 2893,
+      "decoded_size": 6058,
+      "sha1": "07e2dbc960cc17a4c591c7fea7962927e0ff3981",
+      "bundle": "level",
+      "resource_index": 12330,
+      "root_type": "StateFlowNodeControllerAsset",
+      "guid": "372777f1-9157-60a8-3727-77f1915760a8",
+      "decoded_sha256": "de40720b43f0fd6fa2e3d8cbeb36ed9c3225eaad42c41cffec401652aa606067"
+    },
+    {
+      "name": "animation/dingo/cdbchooser_onboard_grab_exit_(pbrate)",
+      "size": 913,
+      "decoded_size": 1502,
+      "sha1": "6c7a3764e964528c1914e122a3e414a2f289f1cc",
+      "bundle": "level",
+      "resource_index": 13309,
+      "root_type": "PlaybackRateControllerAsset",
+      "guid": "cb7131d4-a458-37e7-cb71-31d4a45837e7",
+      "decoded_sha256": "4c9b46cac0416a72b10d4db4b03be073465f698377a6453846152e1da7f1d6a1"
+    },
+    {
+      "name": "animation/dingo/cdbchooser_onboard_grab_loop",
+      "size": 1119,
+      "decoded_size": 1688,
+      "sha1": "fb6d4e165cac7bccd0e195b1dadaeddbb1cc01a7",
+      "bundle": "level",
+      "resource_index": 14895,
+      "root_type": "ContextDatabaseChooserControllerAsset",
+      "guid": "0992e23a-53a0-7606-0992-e23a53a07606",
+      "decoded_sha256": "df0f5fe934cdde0538d039ce5f98af08c5f7940fbc2fe9f7315477764cf5629a"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_7_ss_onupdate",
+      "size": 3452,
+      "decoded_size": 6738,
+      "sha1": "dc5d038165e8c98d6d1557b25980de4332acf5f9",
+      "bundle": "level",
+      "resource_index": 15284,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "6d80985f-ef69-92a4-0c02-17ca20f2356b",
+      "decoded_sha256": "b862075e74ad150b3da18ede9170b9b1563f240c210a167f4527c940026e0474"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_6_ss_onbegin",
+      "size": 3560,
+      "decoded_size": 7084,
+      "sha1": "6efbb2e1445fc221e522cee567aa3ae12adbd304",
+      "bundle": "level",
+      "resource_index": 15498,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "f0e478b3-2619-22a0-5822-fc00af213325",
+      "decoded_sha256": "2ca0f05bc80ec4b22221c8cd678ae812bcc9446cb0aa7af0bcc538360aecba7c"
+    },
+    {
+      "name": "animation/dingo/branch_end_early_grab",
+      "size": 528,
+      "decoded_size": 782,
+      "sha1": "8c66ce7c00555a2166bf77af14b9133531659069",
+      "bundle": "level",
+      "resource_index": 15549,
+      "root_type": "BranchTypeAsset",
+      "guid": "80630f1b-a806-c15a-8063-0f1ba806c15a",
+      "decoded_sha256": "6dd3a84678b98ab1336566d2717a22a317c3a90102b798c1c4100cb7412aa957"
+    },
+    {
+      "name": "animation/dingo/grab.loop.node",
+      "size": 3479,
+      "decoded_size": 7934,
+      "sha1": "eb109c5ffd2cb9251be46d59d605cd942f7c3a69",
+      "bundle": "level",
+      "resource_index": 16296,
+      "root_type": "StateFlowNodeControllerAsset",
+      "guid": "3349e070-311b-0c70-3349-e070311b0c70",
+      "decoded_sha256": "64dcfa4529ea2b351808b3c164c8473eaa238e274dc2ee5b5826c27b1cdcd264"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_11_ss_onend",
+      "size": 3290,
+      "decoded_size": 6504,
+      "sha1": "96006df8aaba273dfe28078a3a6c62f143538472",
+      "bundle": "level",
+      "resource_index": 17178,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "62acd222-a72d-1b83-f4d9-58cc5e840bc3",
+      "decoded_sha256": "ad41b423673a68575dcd1d20ff55f1b12afcee2db22f4433b874dd45e110f970"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.node_to_grab.loop.end3",
+      "size": 1165,
+      "decoded_size": 1974,
+      "sha1": "8114fd7fe80573c6903dd9881f4f1996cf7ce1be",
+      "bundle": "level",
+      "resource_index": 17534,
+      "root_type": "TransitionAsset",
+      "guid": "2eb16cf0-993f-33a8-2eb1-6cf0993f33a8",
+      "decoded_sha256": "2db2341c6fbb64c4c1daa657b7ac52644f9d66fe186964209730d1f53ba479d6"
+    },
+    {
+      "name": "animation/dingo/cdb_onboard_grab_loop",
+      "size": 2608,
+      "decoded_size": 5314,
+      "sha1": "fc74f0c19629fbdd24a13a195c171a0db7f8d32b",
+      "bundle": "level",
+      "resource_index": 17741,
+      "root_type": "ContextDatabaseAsset",
+      "guid": "2271d754-9a11-784e-2271-d7549a11784e",
+      "decoded_sha256": "771c75e14d2f6e5dabe62f5caa76f2ad13e9729595700f085d4f8bf3bbb6a3be"
+    },
+    {
+      "name": "animation/dingo/transition_grab.inair.conduit_to_grab.loop.node",
+      "size": 983,
+      "decoded_size": 1656,
+      "sha1": "e8182a5af5c8612340449541766b397caae07f41",
+      "bundle": "level",
+      "resource_index": 18493,
+      "root_type": "TransitionAsset",
+      "guid": "3ca4445e-0361-74ca-3ca4-445e036174ca",
+      "decoded_sha256": "9463011dfbcde74c826ccde7ecd873560ec854f6e320e4b49ba73e04546f98f8"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.node_to_grab.loop.end1",
+      "size": 1208,
+      "decoded_size": 2096,
+      "sha1": "73aef5042e056d066a1693e7b434d3de9033f277",
+      "bundle": "level",
+      "resource_index": 18689,
+      "root_type": "TransitionAsset",
+      "guid": "96fb30ee-790f-3fa9-96fb-30ee790f3fa9",
+      "decoded_sha256": "5179371fabc80c8e3d51348f2c3812970ac984013cb72af0acc4411660a9f2b2"
+    },
+    {
+      "name": "animation/dingo/seq_c_proto_onb_inair_bs_grab_method_loop",
+      "size": 3197,
+      "decoded_size": 6392,
+      "sha1": "8284c9b274cac10273502d8ca6e49bdfa603ff95",
+      "bundle": "level",
+      "resource_index": 18768,
+      "root_type": "SequenceContainerAsset",
+      "guid": "20fc5405-7f20-bed6-20fc-54057f20bed6",
+      "decoded_sha256": "1e8a4949347b415c710682e941e17f693a0d847a1341476b316c7046ccd4a5d5"
+    },
+    {
+      "name": "animation/dingo/default.grab.node",
+      "size": 1686,
+      "decoded_size": 3394,
+      "sha1": "54de5250c6bd8474e6359b18d9f6037d6f79ed52",
+      "bundle": "level",
+      "resource_index": 18812,
+      "root_type": "StateFlowNodeControllerAsset",
+      "guid": "81516654-6919-cfc0-8151-66546919cfc0",
+      "decoded_sha256": "a3735f85c9ab0db1f67d85d157d82521d6118256cbe45f6dd0cd75cc266d645d"
+    },
+    {
+      "name": "animation/dingo/transition_default.node_to_grab.into.node_1",
+      "size": 2022,
+      "decoded_size": 3914,
+      "sha1": "f78b5b64ea0f665831050ef0abe25046b99332b3",
+      "bundle": "level",
+      "resource_index": 19856,
+      "root_type": "TransitionAsset",
+      "guid": "a5ba2c71-555d-a729-a5ba-2c71555da729",
+      "decoded_sha256": "962745c54da160efc00867492227761aed822da53d75302a52b90921b65b2124"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_8_ss_onend",
+      "size": 3306,
+      "decoded_size": 6502,
+      "sha1": "3120bcfae116aee00b94ffb892ba34b7a74a9ffc",
+      "bundle": "level",
+      "resource_index": 23459,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "3eaa4378-e126-352c-e43c-d36c368f8a12",
+      "decoded_sha256": "f48601c30fd07899a0f28819ef5b2d73c8930fc495efd10b79bdf206b52ac209"
+    },
+    {
+      "name": "animation/dingo/cdbchooser_onboard_grab_exit",
+      "size": 1119,
+      "decoded_size": 1688,
+      "sha1": "526f1810802f7ea571e21dcaad18470b03c8e24f",
+      "bundle": "level",
+      "resource_index": 24232,
+      "root_type": "ContextDatabaseChooserControllerAsset",
+      "guid": "4cca7b0a-562a-3f7a-4cca-7b0a562a3f7a",
+      "decoded_sha256": "51312a194648dae7eb55019937c0392c2d2411f144e31b6adb2ea529eeb1be33"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_5_ss_onend",
+      "size": 3293,
+      "decoded_size": 6504,
+      "sha1": "54d47f19023531f80f611225498104ae3e07efbf",
+      "bundle": "level",
+      "resource_index": 24512,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "1ec20b06-d5d7-5eff-92b5-244aa4ce3021",
+      "decoded_sha256": "4c732d3f0b808f451e9fa1b5029c51cfe6796ae40a615d28d150eb6b9e77cdf1"
+    },
+    {
+      "name": "animation/dingo/sigbranchtuner_grab_phase",
+      "size": 587,
+      "decoded_size": 886,
+      "sha1": "0c17acd67c754bbadc92f097a46ac6f161bb988c",
+      "bundle": "level",
+      "resource_index": 25185,
+      "root_type": "SignalBranchTunerAsset",
+      "guid": "567cd0ab-3f2f-3b0e-567c-d0ab3f2f3b0e",
+      "decoded_sha256": "28332e04bfad8bef90200f119c6a2e5dde0a42f381cebb9a34db76fb099505ba"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.node_to_grab.into.node",
+      "size": 1737,
+      "decoded_size": 3648,
+      "sha1": "7a6be77218d6f8d0f3c54b30248daac90e95ddbd",
+      "bundle": "level",
+      "resource_index": 25340,
+      "root_type": "TransitionAsset",
+      "guid": "b1ed8335-2b73-52c5-b1ed-83352b7352c5",
+      "decoded_sha256": "e006781667c18e165c6f359bea0d6644afc28f2e1edda08198de915c50f1539b"
+    },
+    {
+      "name": "animation/dingo/cdbchooser_onboard_grab_into",
+      "size": 1119,
+      "decoded_size": 1688,
+      "sha1": "af3405f5362694a338c7bfdc57499b9a547e0463",
+      "bundle": "level",
+      "resource_index": 26534,
+      "root_type": "ContextDatabaseChooserControllerAsset",
+      "guid": "0a9cb0d0-25ba-d87c-0a9c-b0d025bad87c",
+      "decoded_sha256": "48bef51fc288a20735e236ca571ecfad986e9972294deccc546e722610841012"
+    },
+    {
+      "name": "gameplay/input/inputs/input_grabtweakud",
+      "size": 600,
+      "decoded_size": 836,
+      "sha1": "b700d05d4eb6b35c0d03ed77869ce393e07d3c5a",
+      "bundle": "level",
+      "resource_index": 26706,
+      "root_type": "DelMarFloatGameplayInput",
+      "guid": "771c1f63-c827-46f0-bc9c-0cefd182f670",
+      "decoded_sha256": "7aec47eed13881619bb357854bdb2bac01389d4445cbd8d68abd90721831a104"
+    },
+    {
+      "name": "animation/dingo/blendspace_inair_grab_bs_proto",
+      "size": 3638,
+      "decoded_size": 8964,
+      "sha1": "d7d6e39de2e8b5bdd7437c507a435cc1a5559388",
+      "bundle": "level",
+      "resource_index": 27078,
+      "root_type": "SignalDrivenBlendSpaceControllerAsset",
+      "guid": "6326a5cc-641e-4f79-6326-a5cc641e4f79",
+      "decoded_sha256": "7eddacd9b312a3789de1dedc5e9ddbe4fd73c5ce1e585c63e8abef683e42e0dd"
+    },
+    {
+      "name": "animation/dingo/transition_default.grab.node_to_grab.into.node",
+      "size": 2026,
+      "decoded_size": 3916,
+      "sha1": "cd466f490062993c654894ac26bf161417ce1748",
+      "bundle": "level",
+      "resource_index": 27611,
+      "root_type": "TransitionAsset",
+      "guid": "783f98fb-fb81-8a23-783f-98fbfb818a23",
+      "decoded_sha256": "4578f5d0836732f50958e16538ff404952599fbe37ccd97ebc5930cae88a0007"
+    },
+    {
+      "name": "animation/dingo/seq_c_proto_onb_inair_bs_grab_melon_loop",
+      "size": 3203,
+      "decoded_size": 6390,
+      "sha1": "cfa8192c6186f1c54a5d0e0c7511ffb2b3a6a745",
+      "bundle": "level",
+      "resource_index": 28506,
+      "root_type": "SequenceContainerAsset",
+      "guid": "e14ab760-837b-cca3-e14a-b760837bcca3",
+      "decoded_sha256": "6e5190a88798a8f1ee08461eebc38a772717df1d80de69eabe30447a7786bb3b"
+    },
+    {
+      "name": "animation/dingo/cdbchooser_onboard_grab_into_(pbrate)",
+      "size": 930,
+      "decoded_size": 1538,
+      "sha1": "ee6ad48525886c0a240d41a2f0460cee6b610b28",
+      "bundle": "level",
+      "resource_index": 29785,
+      "root_type": "PlaybackRateControllerAsset",
+      "guid": "a967c696-b740-46a3-a967-c696b74046a3",
+      "decoded_sha256": "7802657316371bbef1ea87e098b41409f0d03345b445e63792aa5dee64130615"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893",
+      "size": 2007,
+      "decoded_size": 3518,
+      "sha1": "29503e0740b04dad3d10d708e33d5e68e8b51dcd",
+      "bundle": "level",
+      "resource_index": 31339,
+      "root_type": "EATActionGraph",
+      "guid": "5c433ad3-331b-4e67-9fca-f835351770ea",
+      "decoded_sha256": "836ff5a37ceff761ca77f293040be7b7d9d1508f8841a476f5b6823ec758778b"
+    },
+    {
+      "name": "animation/dingo/branch_enter_grab",
+      "size": 550,
+      "decoded_size": 814,
+      "sha1": "9143ae15782d6f01f697e4f12e38d4ea898003bd",
+      "bundle": "level",
+      "resource_index": 31504,
+      "root_type": "BranchTypeAsset",
+      "guid": "2f5089ff-7115-0262-2f50-89ff71150262",
+      "decoded_sha256": "1ea82fa9d3559c19415873d0d1d58f28d8d69fa0f8d7da5f46f4c841ba49e098"
+    },
+    {
+      "name": "animation/dingo/blendspace_inair_grab_bs_proto_(loop)",
+      "size": 683,
+      "decoded_size": 1046,
+      "sha1": "3277cdfcd934d143193ecb57178c54095725c145",
+      "bundle": "level",
+      "resource_index": 31564,
+      "root_type": "LoopingControllerAsset",
+      "guid": "1bdb6664-1b12-dd56-1bdb-66641b12dd56",
+      "decoded_sha256": "d12b1b6c177c2ceee649306922892939f3d3aa14d8a15b8a0a794f89d8cee6d0"
+    },
+    {
+      "name": "animation/dingo/branch_end_grab",
+      "size": 522,
+      "decoded_size": 776,
+      "sha1": "d0c53168204a663dc87a55869b56c7c0e5777f97",
+      "bundle": "level",
+      "resource_index": 32014,
+      "root_type": "BranchTypeAsset",
+      "guid": "e9281606-21d8-94eb-e928-160621d894eb",
+      "decoded_sha256": "4bd604ec77cc7274f8fb3a36ec15e44bdbf0545fb1184868532801ff3c6a3f07"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.node_to_grab.loop.end",
+      "size": 1969,
+      "decoded_size": 3814,
+      "sha1": "87731451de48073cd53a2bd79abf7fd8ba82f2f9",
+      "bundle": "level",
+      "resource_index": 32129,
+      "root_type": "TransitionAsset",
+      "guid": "29671f5c-0f96-c067-2967-1f5c0f96c067",
+      "decoded_sha256": "372ade975fdff24b576c30501514a623e4f7d529e9238326360e9186a052fc61"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_1_ss_onupdate",
+      "size": 3441,
+      "decoded_size": 6738,
+      "sha1": "6e8491e84732571af9e24afdba13bb90d22bec19",
+      "bundle": "level",
+      "resource_index": 32442,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "aa172e22-46d5-41b4-bb44-d808adbdd045",
+      "decoded_sha256": "73577421e08600369e6a759fe1a1efe924ffcb249e4470048004fcf6d6994b63"
+    },
+    {
+      "name": "animation/dingo/cdb_onboard_grab_into",
+      "size": 2947,
+      "decoded_size": 6496,
+      "sha1": "81bdf586dca8c9a248e759acf8094f52ebd32c12",
+      "bundle": "level",
+      "resource_index": 32512,
+      "root_type": "ContextDatabaseAsset",
+      "guid": "d1d29b83-7f4f-3402-d1d2-9b837f4f3402",
+      "decoded_sha256": "de10bdecc112001e1495395a964f12360b083e24f510d5b476b63a065819ea4f"
+    },
+    {
+      "name": "animation/dingo/transition_grab.loop.exit_to_grab.into.node",
+      "size": 1381,
+      "decoded_size": 2382,
+      "sha1": "3e0be1c965606375049c32d5f7ea760129168125",
+      "bundle": "level",
+      "resource_index": 32714,
+      "root_type": "TransitionAsset",
+      "guid": "6680d4ce-7c45-a625-6680-d4ce7c45a625",
+      "decoded_sha256": "632ac88395aad3030025ba5c3785a3b474530a5e869866d6207be8e9079b2a65"
+    },
+    {
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setboolintentgamestatedata_9_ss_onbegin",
+      "size": 3562,
+      "decoded_size": 7084,
+      "sha1": "28f4b2d1ca80af634cf2c79819fff68fb1260abe",
+      "bundle": "level",
+      "resource_index": 34036,
+      "root_type": "ExpressionFunctionTypeInfoAsset",
+      "guid": "495f1127-14fb-b62b-13be-fd3202d80c5c",
+      "decoded_sha256": "fc836367dd55f48db168a99510ec78ae160a957119b54811a9137b09cdab831f"
+    },
+    {
+      "name": "animation/dingo/cdb_onboard_grab_exit",
+      "size": 2703,
+      "decoded_size": 5716,
+      "sha1": "d529053609ae4b77fe3c3445475fdcc696729824",
+      "bundle": "level",
+      "resource_index": 34988,
+      "root_type": "ContextDatabaseAsset",
+      "guid": "0121732e-914e-0c99-0121-732e914e0c99",
+      "decoded_sha256": "c263fbadbc29eacb34bd6c01504e3c5145c577dc5c6fb9edd7083ef46fde32a2"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.offboardinair",
+      "size": 930,
+      "decoded_size": 1430,
+      "sha1": "06b6ff5c965b036a49563ac4671dcb9d57566ab1",
+      "bundle": "gameconfig",
+      "resource_index": 1124,
+      "root_type": "BoolAsset",
+      "guid": "137c6026-ddf1-d46a-137c-6026ddf1d46a",
+      "decoded_sha256": "83a744538717fea9f4c4cbd2ed1ea13d7ab74207c0cf8b86808cda59069db4a5"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.offboardinairdropkickloop",
+      "size": 942,
+      "decoded_size": 1442,
+      "sha1": "607cf4d6cf5b0021ac8ff01a01e18cf4e15d4558",
+      "bundle": "gameconfig",
+      "resource_index": 1139,
+      "root_type": "BoolAsset",
+      "guid": "d97aa39d-9740-2b81-d97a-a39d97402b81",
+      "decoded_sha256": "b0365d1d2d192d5319d2d8fd03e02dfd4f5edb91301a11e9bb75a6f665fc6303"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.groundgrab",
+      "size": 928,
+      "decoded_size": 1428,
+      "sha1": "c79e1e6d30d074054bfec99d5a600c5109e9ce43",
+      "bundle": "gameconfig",
+      "resource_index": 1176,
+      "root_type": "BoolAsset",
+      "guid": "f786e2fa-da08-287d-f786-e2fada08287d",
+      "decoded_sha256": "a83d95c56017657f63f22d8a32a48f146dccb3dc32de99e68ef8655f1ba9fdca"
+    },
+    {
+      "name": "animation/dingo/bool.anim.inairstate",
+      "size": 917,
+      "decoded_size": 1424,
+      "sha1": "5923347f05c6cff527a07550bd02c3903423613f",
+      "bundle": "gameconfig",
+      "resource_index": 1181,
+      "root_type": "BoolAsset",
+      "guid": "62f5fa46-cf11-0137-62f5-fa46cf110137",
+      "decoded_sha256": "f6f17709e99094da1e41a66d0081f75e76d3bb5fe86eaf09fd742db071954a36"
+    },
+    {
+      "name": "animation/dingo/bool.gp.cangrab",
+      "size": 914,
+      "decoded_size": 1418,
+      "sha1": "b83df3cc6247dc54931dc8edaf81962d16199f15",
+      "bundle": "gameconfig",
+      "resource_index": 1232,
+      "root_type": "BoolAsset",
+      "guid": "aa379a76-0ada-6e20-aa37-9a760ada6e20",
+      "decoded_sha256": "f7c190db81b97bb571adcfc8728b5697e9c6e97c291c90e605030a3f178ec28b"
+    },
+    {
+      "name": "animation/dingo/enum.set.inair.type",
+      "size": 1082,
+      "decoded_size": 1990,
+      "sha1": "d1834ed3bfe41b3c06d71219b0660199579c344a",
+      "bundle": "gameconfig",
+      "resource_index": 1521,
+      "root_type": "AntEnumerationAsset",
+      "guid": "0f37eb3f-d1b4-a7ee-0f37-eb3fd1b4a7ee",
+      "decoded_sha256": "5363c30859e8dc6a21ad7825c6f99e3b4f63259c89fda1452f371491eff65a63"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.offboardinairtorpedoloop",
+      "size": 937,
+      "decoded_size": 1442,
+      "sha1": "4f08ecceb015e336148bbdf00cc0f9c13be3dbfe",
+      "bundle": "gameconfig",
+      "resource_index": 1539,
+      "root_type": "BoolAsset",
+      "guid": "809ff344-e91c-2dc3-809f-f344e91c2dc3",
+      "decoded_sha256": "5116aa1b0c158ffa69a3327537d5eda4e8daaabdbdbe0f7d94bb8015e40864d5"
+    },
+    {
+      "name": "animation/dingo/bool.intent.lefthandgrab",
+      "size": 928,
+      "decoded_size": 1428,
+      "sha1": "06f0087c65c175b6e35aa8d9ca41b775650490c6",
+      "bundle": "gameconfig",
+      "resource_index": 1643,
+      "root_type": "BoolAsset",
+      "guid": "1aa7dec5-8570-edfa-1aa7-dec58570edfa",
+      "decoded_sha256": "5380216347bf1b37df01bc265142d440f7e32f91fcf5051c2da127ee70d801a4"
+    },
+    {
+      "name": "animation/dingo/bool.physics.offboard.inair",
+      "size": 928,
+      "decoded_size": 1430,
+      "sha1": "7c45c724726035e21745b255a4900ffaad2548e0",
+      "bundle": "gameconfig",
+      "resource_index": 1649,
+      "root_type": "BoolAsset",
+      "guid": "40eb3b1c-4466-4a42-40eb-3b1c44664a42",
+      "decoded_sha256": "e0ff3802b2770707d9acfb3753399a8a5c67cbd5af78f0170a33516ba05ce456"
+    },
+    {
+      "name": "animation/dingo/float.intent.ob.rightgrab",
+      "size": 834,
+      "decoded_size": 1264,
+      "sha1": "d353bfca05c9c3bdeedd2394b6e6c1e9ee63c9f6",
+      "bundle": "gameconfig",
+      "resource_index": 1658,
+      "root_type": "FloatAsset",
+      "guid": "85eeabe8-3bdf-64ed-85ee-abe83bdf64ed",
+      "decoded_sha256": "0dc583eea7e08a5dbb92fa4267ad39395700dbea52be3d93e1a8d8b1548709ff"
+    },
+    {
+      "name": "animation/dingo/bool.anim.grabintorechoose",
+      "size": 927,
+      "decoded_size": 1430,
+      "sha1": "6bd2fe5eca18229224343b885a9e947c5b390038",
+      "bundle": "gameconfig",
+      "resource_index": 1692,
+      "root_type": "BoolAsset",
+      "guid": "f00f8590-82fd-e7db-f00f-859082fde7db",
+      "decoded_sha256": "ae5c3fbb72b0a69bf60a634b6463ce12f745fdddb859c8d16d6c07bc421bc315"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.offboardinairdiveloop",
+      "size": 938,
+      "decoded_size": 1438,
+      "sha1": "d20dfce25bbe84dcbd4b4147fdcf55fd45b04adb",
+      "bundle": "gameconfig",
+      "resource_index": 1719,
+      "root_type": "BoolAsset",
+      "guid": "4d765690-d3c2-7b64-4d76-5690d3c27b64",
+      "decoded_sha256": "8c2eb35e8a4fd92afb646e265e868a474c6e968768e3b599e941bf10e97f5b3d"
+    },
+    {
+      "name": "animation/dingo/float.loco.offboard.timeinair",
+      "size": 837,
+      "decoded_size": 1268,
+      "sha1": "a60c3787290d78e35156d5f7598d3aed09e7325a",
+      "bundle": "gameconfig",
+      "resource_index": 1755,
+      "root_type": "FloatAsset",
+      "guid": "2c52b127-d803-8d2c-2c52-b127d8038d2c",
+      "decoded_sha256": "d4ccb9cc086cbb6e3a2f9e0288d0dac26e548b193e389b90ac103afc479de4a5"
+    },
+    {
+      "name": "animation/dingo/float.intent.ob.leftgrab",
+      "size": 833,
+      "decoded_size": 1264,
+      "sha1": "0a1834538aa8c0939c7cbb0293c191666c942fda",
+      "bundle": "gameconfig",
+      "resource_index": 1771,
+      "root_type": "FloatAsset",
+      "guid": "15e91125-03c8-6ed0-15e9-112503c86ed0",
+      "decoded_sha256": "c9e1bafaa82dc4f28387ccd75f546ba8bb0e211149488da6659a6c2eb57d1bd2"
+    },
+    {
+      "name": "animation/dingo/bool.anim.isinair.loop",
+      "size": 918,
+      "decoded_size": 1426,
+      "sha1": "f4c7daaac0021c58634483c4aeff2742842e96f0",
+      "bundle": "gameconfig",
+      "resource_index": 1799,
+      "root_type": "BoolAsset",
+      "guid": "53b4bfbd-8d06-aa2f-53b4-bfbd8d06aa2f",
+      "decoded_sha256": "c6e30b46863939e7cb53f29102bde8137fbc4c1463fd23f0f1eec443cdbf56dd"
+    },
+    {
+      "name": "animation/dingo/bool.state.inair.loop",
+      "size": 922,
+      "decoded_size": 1424,
+      "sha1": "652c23ef093cfe75117474a69551330dd30717be",
+      "bundle": "gameconfig",
+      "resource_index": 1809,
+      "root_type": "BoolAsset",
+      "guid": "7b18f59c-09da-bca7-7b18-f59c09dabca7",
+      "decoded_sha256": "ae17c52849f381f95cae366bd050961cea8c5693f45edac19cf3f0de33ba972c"
+    },
+    {
+      "name": "animation/dingo/bool.gp.canonefoot",
+      "size": 917,
+      "decoded_size": 1422,
+      "sha1": "aaadc40eed23fc7065971c1634b94e9a3966af2a",
+      "bundle": "gameconfig",
+      "resource_index": 1812,
+      "root_type": "BoolAsset",
+      "guid": "0bcc2831-25e4-7950-0bcc-283125e47950",
+      "decoded_sha256": "e2a3fdabe3e5b3ec386516bcf0ce1b79a832604185666ed5e37a6022943c23d8"
+    },
+    {
+      "name": "animation/dingo/bool.anim.inair.adjust.active",
+      "size": 925,
+      "decoded_size": 1432,
+      "sha1": "8888cb3f911a7be0464d33da6922435dda9f9410",
+      "bundle": "gameconfig",
+      "resource_index": 1816,
+      "root_type": "BoolAsset",
+      "guid": "61846210-a094-80a1-6184-6210a09480a1",
+      "decoded_sha256": "830ce2935077676bae743862bc9e5bacac1faeb5e8a6d0d050016bffb2ef930c"
+    },
+    {
+      "name": "animation/dingo/enumgs.cas.requested.grabtrick",
+      "size": 912,
+      "decoded_size": 1372,
+      "sha1": "980afe3cafd6a62e3a6e7957ae44cff214a82db9",
+      "bundle": "gameconfig",
+      "resource_index": 1881,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "fb39e3ef-fade-47ff-fb39-e3effade47ff",
+      "decoded_sha256": "74410262a7ad9cb8c50510a0c08a425f565a55f59bca96be4f07b29d2b349363"
+    },
+    {
+      "name": "animation/dingo/bool.anim.isinair.preland",
+      "size": 925,
+      "decoded_size": 1428,
+      "sha1": "5c9ee1449dedb6ef0d75aeb893c89a5d6776c363",
+      "bundle": "gameconfig",
+      "resource_index": 2023,
+      "root_type": "BoolAsset",
+      "guid": "15537f5f-d2a1-5268-1553-7f5fd2a15268",
+      "decoded_sha256": "462a67f98d8878561e53faa66b239898caf5316628de7b28f21bb5cfa454da92"
+    },
+    {
+      "name": "animation/dingo/float.physics.handplanttimetograb",
+      "size": 840,
+      "decoded_size": 1272,
+      "sha1": "c178ee8dc8576532355f075e9c49bb7c76a3b3d1",
+      "bundle": "gameconfig",
+      "resource_index": 2027,
+      "root_type": "FloatAsset",
+      "guid": "64fba8d5-2168-5dfd-64fb-a8d521685dfd",
+      "decoded_sha256": "206bbd837b4096fe815ed861324629dde85fb45a4fef906e1a4e0daf64b01b6e"
+    },
+    {
+      "name": "animation/dingo/enumgs.cas.skatepedia.requested.onefoottrick",
+      "size": 926,
+      "decoded_size": 1386,
+      "sha1": "737d1cd39c03ddab99882abb8f9ca83d1099c8fc",
+      "bundle": "gameconfig",
+      "resource_index": 2084,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "08f0bbb3-a456-71ff-08f0-bbb3a45671ff",
+      "decoded_sha256": "8d70995f0c6ecf9bdb8fa66b3221923507747fc3f6df6c623aaf8c811e886487"
+    },
+    {
+      "name": "animation/dingo/enum.onefootertype",
+      "size": 1341,
+      "decoded_size": 2742,
+      "sha1": "fa077b9b729164de310a55d382656637b0a97b94",
+      "bundle": "gameconfig",
+      "resource_index": 2217,
+      "root_type": "AntEnumerationAsset",
+      "guid": "3f62f74e-70cc-b8c4-3f62-f74e70ccb8c4",
+      "decoded_sha256": "f90de81dc3ab84ed60a9b10658d8c827aac19f5c7214a9c70bdfe52029317079"
+    },
+    {
+      "name": "animation/dingo/bool.gp.cangrabdouble",
+      "size": 921,
+      "decoded_size": 1424,
+      "sha1": "e4d027dadddf5f9503a8e790bc8769ea3cde2aa8",
+      "bundle": "gameconfig",
+      "resource_index": 2423,
+      "root_type": "BoolAsset",
+      "guid": "f626acaa-8eee-054f-f626-acaa8eee054f",
+      "decoded_sha256": "4f5ecac2120fcf33bf15e51d7529d1449a24b6e244317a65dc4f2c8f776ea8df"
+    },
+    {
+      "name": "animation/dingo/bool.intent.ob.inairtuck",
+      "size": 928,
+      "decoded_size": 1428,
+      "sha1": "ed733ec6d470ef3489deebe5d5209cde5bd94e99",
+      "bundle": "gameconfig",
+      "resource_index": 2566,
+      "root_type": "BoolAsset",
+      "guid": "801cfe59-0624-ad3f-801c-fe590624ad3f",
+      "decoded_sha256": "4bebe4b592fb60a5c9a756df3dc26d542c484b311414433ea9e589de806529c4"
+    },
+    {
+      "name": "animation/dingo/enumgs.set.inair.type",
+      "size": 903,
+      "decoded_size": 1362,
+      "sha1": "5ea667ffbe870147613b0c7a723a401b94441e60",
+      "bundle": "gameconfig",
+      "resource_index": 2677,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "574916bf-598e-7292-5749-16bf598e7292",
+      "decoded_sha256": "9e4d6f4b2226bf39f9367def63345cd0c854808ff82d9a5ff0df29845b3389cc"
+    },
+    {
+      "name": "animation/dingo/bool.anim.inair.adjust.active.delayed",
+      "size": 934,
+      "decoded_size": 1440,
+      "sha1": "4162151fdd5800c627ea7ef14bf4de9934fe1005",
+      "bundle": "gameconfig",
+      "resource_index": 2885,
+      "root_type": "BoolAsset",
+      "guid": "5308dafb-bef0-9ccc-5308-dafbbef09ccc",
+      "decoded_sha256": "9388b0181f73b46809b99b5eb56f43cd8d0c9b6cc7aac3d046c7c1df4f3fa55c"
+    },
+    {
+      "name": "animation/dingo/bool.anim.doingtrick",
+      "size": 918,
+      "decoded_size": 1424,
+      "sha1": "4a9e61c2b22fddd20181939f9d79c170e221a4ef",
+      "bundle": "gameconfig",
+      "resource_index": 2920,
+      "root_type": "BoolAsset",
+      "guid": "aefbb9d8-9900-3ab4-aefb-b9d899003ab4",
+      "decoded_sha256": "ec3040341362d3873ba207d666bea614b4c9221ee214ed5065fce8f766ec5456"
+    },
+    {
+      "name": "animation/dingo/float.intent.ob.inairslide",
+      "size": 836,
+      "decoded_size": 1266,
+      "sha1": "4ed94859e00230257d19461d170dbcbc48818071",
+      "bundle": "gameconfig",
+      "resource_index": 3105,
+      "root_type": "FloatAsset",
+      "guid": "39016ac6-f5d3-cc04-3901-6ac6f5d3cc04",
+      "decoded_sha256": "45fc4e187c3ea22392f9e0adaf07c9ae4cf7e8356a916fefbce06b8391a4894f"
+    },
+    {
+      "name": "animation/dingo/enumgs.set.inair.type.buffered",
+      "size": 912,
+      "decoded_size": 1372,
+      "sha1": "9535a7ec4b7e60daf19021311f06f5646f64a6c7",
+      "bundle": "gameconfig",
+      "resource_index": 3170,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "5fa43d31-4f59-c100-5fa4-3d314f59c100",
+      "decoded_sha256": "0dd94b2d1cfa6b81b954562c15e15ac425ac187e302c7415154f7144c660d627"
+    },
+    {
+      "name": "animation/dingo/float.anim.inair.upperbodytwist",
+      "size": 837,
+      "decoded_size": 1270,
+      "sha1": "9ed1c253c835313445f0cd699a79d91cb832d4d8",
+      "bundle": "gameconfig",
+      "resource_index": 3221,
+      "root_type": "FloatAsset",
+      "guid": "8b2c5619-6f7e-5b39-8b2c-56196f7e5b39",
+      "decoded_sha256": "ff374aba279363e939bdda602b8ef9386028d17d2084b989215e7f32c727feb2"
+    },
+    {
+      "name": "animation/dingo/bool.state.is.offboardinairspreadeagleloop",
+      "size": 940,
+      "decoded_size": 1446,
+      "sha1": "3d94dcc0d98d3a45e80af0df544ac4b1947b4a92",
+      "bundle": "gameconfig",
+      "resource_index": 3261,
+      "root_type": "BoolAsset",
+      "guid": "9d6f6334-0455-32cf-9d6f-6334045532cf",
+      "decoded_sha256": "3bde384c5f93c1db8e85ec7e874bf9ef904081e7fc33f076e1bc04a889971ff9"
+    },
+    {
+      "name": "animation/dingo/bool.gp.cangroundgrab",
+      "size": 922,
+      "decoded_size": 1424,
+      "sha1": "8c4de957d09732af445512df3fe175a6c3fe5437",
+      "bundle": "gameconfig",
+      "resource_index": 3299,
+      "root_type": "BoolAsset",
+      "guid": "1b81c373-3b6e-0480-1b81-c3733b6e0480",
+      "decoded_sha256": "97c31a2d2a380ecf452458e4f5bddd1ee0347fd2c9f0c747efb42c05a24cf911"
+    },
+    {
+      "name": "animation/dingo/float.anim.offboard.inair.flailamount",
+      "size": 838,
+      "decoded_size": 1276,
+      "sha1": "eb46f3d9216209007ae4b9c58ffc3b2d9a2fd308",
+      "bundle": "gameconfig",
+      "resource_index": 3372,
+      "root_type": "FloatAsset",
+      "guid": "fcdf2bd5-dca4-3f72-fcdf-2bd5dca43f72",
+      "decoded_sha256": "4b32feb629453867843265b2cd43477e5f85d8e126c6b21a412ee3494a4ccee9"
+    },
+    {
+      "name": "animation/dingo/enumgs.grabtype",
+      "size": 895,
+      "decoded_size": 1356,
+      "sha1": "1d4bf9c2a85e9aa3b64883e96dbcc52669f2e635",
+      "bundle": "gameconfig",
+      "resource_index": 3401,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "387fb01d-9950-ce5d-387f-b01d9950ce5d",
+      "decoded_sha256": "187422ef30dc92564f896ce014c39a8856de8d1973986fb4606e021d2e95a6d4"
+    },
+    {
+      "name": "animation/dingo/bool.intent.grabnose",
+      "size": 918,
+      "decoded_size": 1424,
+      "sha1": "a2a450c510dc22f128130a006349331ef5090716",
+      "bundle": "gameconfig",
+      "resource_index": 3426,
+      "root_type": "BoolAsset",
+      "guid": "eb0c1ee7-004b-3db7-eb0c-1ee7004b3db7",
+      "decoded_sha256": "554808521e0d404b571a09acd0ffe51d9261c503488e4ae30e18420b0d3b0c7b"
+    },
+    {
+      "name": "animation/dingo/enum.grabtype",
+      "size": 3533,
+      "decoded_size": 11966,
+      "sha1": "ddcd5edb97a697fec2097d24238ea30949ca3544",
+      "bundle": "gameconfig",
+      "resource_index": 3447,
+      "root_type": "AntEnumerationAsset",
+      "guid": "3d9f40e8-a05c-34fb-3d9f-40e8a05c34fb",
+      "decoded_sha256": "d2b54fee39caa142b90c6ba71c1dd1f2bfd965fdc64740227b6212e94d88fb07"
+    },
+    {
+      "name": "animation/dingo/bool.anim.allowgrabintorechoose",
+      "size": 927,
+      "decoded_size": 1434,
+      "sha1": "a30344062a4ea071d440b20a3e6edbdf9910df34",
+      "bundle": "gameconfig",
+      "resource_index": 3538,
+      "root_type": "BoolAsset",
+      "guid": "9c2b6b6f-3c20-fc35-9c2b-6b6f3c20fc35",
+      "decoded_sha256": "d2852b76085d9afb0471aa4a0e56eef3269f6083329d99790ddefb5b73383713"
+    },
+    {
+      "name": "animation/dingo/bool.gp.spin.inair.counterclockwise",
+      "size": 935,
+      "decoded_size": 1438,
+      "sha1": "7cd52d4dedd6ca6866c5c0edc567ff1ac2b4d30a",
+      "bundle": "gameconfig",
+      "resource_index": 3584,
+      "root_type": "BoolAsset",
+      "guid": "eed1495e-a4ac-2264-eed1-495ea4ac2264",
+      "decoded_sha256": "82bad9c8150b781c2dd83319ade08589f6b834f94a889c1b484a0f0adb811bd5"
+    },
+    {
+      "name": "animation/dingo/enumgs.cas.requested.groundgrab",
+      "size": 913,
+      "decoded_size": 1372,
+      "sha1": "49e6f819f3f8806ef87134f07557f27bf34305ec",
+      "bundle": "gameconfig",
+      "resource_index": 3617,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "1390a3fe-a6bd-243c-1390-a3fea6bd243c",
+      "decoded_sha256": "5854aafc8bb6ffd3d8fe52fd90134543d51c111a19dfb1580f6493567956c5b3"
+    },
+    {
+      "name": "animation/dingo/bool.intent.righthandgrab",
+      "size": 928,
+      "decoded_size": 1428,
+      "sha1": "b406694c3eac6fdb27084957d248e80b4fbbc511",
+      "bundle": "gameconfig",
+      "resource_index": 3620,
+      "root_type": "BoolAsset",
+      "guid": "2c8810b6-e93a-5732-2c88-10b6e93a5732",
+      "decoded_sha256": "7288c14ad4d04782377df1786c9fa1eef90dce6848844d5eaf12ad4f0d364b61"
+    },
+    {
+      "name": "animation/dingo/bool.gp.spin.inair.clockwise",
+      "size": 928,
+      "decoded_size": 1432,
+      "sha1": "868da26b9c937aa5cb2aaf413c85815c8468c44e",
+      "bundle": "gameconfig",
+      "resource_index": 3655,
+      "root_type": "BoolAsset",
+      "guid": "652f0e36-713b-0cad-652f-0e36713b0cad",
+      "decoded_sha256": "9f5bf5a69b3a1773062b41f8c11c788c2801ae8b7bca7e01eb699db43cf95760"
+    }
+  ]
+}
