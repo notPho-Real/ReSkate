@@ -2,11 +2,17 @@
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
+#include "Extension/Skater/no_bail.h"
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
 using namespace dingosdk::arcade_mode;
+// Nonactuating native bridge boundary; these tests verify controller ownership.
+namespace dingosdk::arcade_mode::native_flip {
+void arm(const NoBailSkater&) noexcept {}
+void cancel() noexcept {}
+}
 static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
     route.observe_unfiltered(slot,pad);route.observe(slot,pad);
 }
@@ -44,6 +50,8 @@ void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkateP
     const std::uint16_t physical_buttons=0;
     ActionInputOutput action{};action.owned=occupied;
     const auto rotation_native=arcade_input.native_context(now);
+    const auto& native_owner=rotation_native.owner;
+    const dingosdk::NoBailSkater native_flip_owner{native_owner.base,native_owner.entity,native_owner.core,native_owner.context,native_owner.rig};
     AirRotation::Output rotation{false,0,0,2.0f,{}};
     const AirRotation::Output prewind{}; // This fixture exercises the rate-publication path.
     const GroundControl ground_controls{};
