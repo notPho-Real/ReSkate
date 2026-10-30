@@ -2408,7 +2408,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.phase!=3 && !rail_pad.owns_right_stick && !rail_pad.button_mask && !rotation.owns_left &&
             !(physical_buttons & (classic_a | 0x0030u)) &&
             physical_left_trigger<=30 && physical_right_trigger<=30);
-        if(manual_correction.owns_y)left_y=manual_correction.y;
+        // The manual's vertical controls feed its balance model, not native
+        // locomotion. Reserve the final axis from initial RS delivery through
+        // owned putdown, including gaps in correction/contact publication.
+        // A real native revert/rotation owner retains its own left-stick recipe.
+        if(manual_correction.owns_y || (ground_controls.manual_vertical_reserved && !rotation.owns_left))left_y=0;
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
         // Controller route final_controls publication begin.
