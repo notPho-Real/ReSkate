@@ -15,7 +15,7 @@ struct Memory {
         std::memcpy(&value,bytes.data()+at-0x10000,sizeof(value));return true;
     }
     void ptr(std::uintptr_t at,std::uintptr_t value) { put(at,value); }
-    Memory() {
+    explicit Memory(bool four_byte_arrays=false) {
         // Scalar layout and tag timing independently captured from native
         // Kickflip high. No skeletons, animations or other game assets included.
         put(0x10000,std::uint32_t{0x8400000d});ptr(0x10008,0x10100);ptr(0x101d0,0x10400);
@@ -28,13 +28,22 @@ struct Memory {
         }
         ptr(0x10d40,0x10f10);ptr(0x10e40,0x11010);put(0x10f00,pop_guid);put(0x11000,jump_guid);
         put(0x110fc,20u);for(unsigned i=0;i<20;++i)put(0x11104+16*i,float(i*2));
+        if(four_byte_arrays) {
+            auto shift=[&](std::uintptr_t at,std::uintptr_t data,unsigned count,unsigned stride) {
+                std::memmove(bytes.data()+data-0x10000+4,bytes.data()+data-0x10000,count*stride);
+                put(data,count);ptr(at,data+4);
+            };
+            shift(0x10640,0x10700,1,8);shift(0x10928,0x10a00,1,8);
+            shift(0x10b28,0x10c00,2,8);shift(0x10538,0x11100,20,16);
+        }
     }
     auto entry() { return post_pop_entry([&](auto at,auto& value){return read(at,value);},base,0x10000); }
 };
 inline void check(bool ok,const char* why) { if(!ok){std::cerr<<"FAIL native entry: "<<why<<'\n';std::exit(1);} }
 inline void run() {
-    for(unsigned initial:{0u,3u,5u,6u,7u}) {
-        Memory m;m.put(0x10000,0x8400000du|(initial<<12));const auto out=m.entry();
+    // Native arrays can retain address bit 2; only object references tag it.
+    for(bool four_byte_arrays:{false,true}) for(unsigned initial:{0u,3u,5u,6u,7u}) {
+        Memory m(four_byte_arrays);m.put(0x10000,0x8400000du|(initial<<12));const auto out=m.entry();
         check(out && out->tick==16 && out->pop_end==14,"first sample strictly beyond the inclusive native pop interval");
         check(out->key==0x8400800d && out->clip==0x10500,"native sequence, database index, mirror and other key bits preserved");
     }

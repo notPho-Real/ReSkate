@@ -41,7 +41,10 @@ std::optional<MotionEntry> post_pop_entry(Reader&& read, std::uintptr_t base,
     };
     auto array = [&](std::uintptr_t at, std::uintptr_t& data, std::uint32_t& count,
                      std::uint32_t maximum) {
-        if (!pointer(at,data) || !read(data-4,count)) return false;
+        // Array payloads may be only four-byte aligned; bit 2 belongs to
+        // their address, unlike tagged EBX object references.
+        if (!read(at,data) || data<0x10000 || data>=0x00007fffffff0000ULL ||
+            !read(data-4,count)) return false;
         count &= 0x7fffffff;
         return count && count <= maximum;
     };

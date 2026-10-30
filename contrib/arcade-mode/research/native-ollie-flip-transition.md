@@ -110,3 +110,13 @@ sampled Pop edge and final ground state 100. X-to-evaluation intervals were
 pop/setup before takeoff. These remain temporary debugger prototypes; the
 installed old DLL still emits its legacy gesture, while the probe submits the
 normal intent. They do not establish production-DLL end-to-end acceptance.
+
+## Production metadata reader checked against live native data
+
+A bounded read-only capture of the five observed clips was replayed through
+the actual C++ `post_pop_entry` template. This exposed an array-alignment bug:
+array payloads retain address bit 2, whereas tagged EBX object references do
+not. After separating those pointer rules, the production reader returned
+entry tick 16 and Pop/Jump end tick 14 for all five original clips. Regression
+fixtures now exercise both four- and eight-byte-aligned arrays. This check
+validates the production reader against native data, not runtime hook delivery.
