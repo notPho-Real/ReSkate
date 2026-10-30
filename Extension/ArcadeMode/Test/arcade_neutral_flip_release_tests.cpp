@@ -200,8 +200,12 @@ void prompt_released_ollie_tap() {
         check(original_press==release+press_step*cadence && (original_release==0 || original_release==release+(press_step+2)*cadence),
             "early recognition retains the real press and never invents a future release");
     }
-    for(unsigned fault=0;fault<12;++fault) {
-        auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);h->poll(1017,{0x1000},100,-1,1);
+    for(bool native_route:{false,true}) for(unsigned fault=0;fault<12;++fault) {
+        auto h=std::make_unique<Route>();unsigned submissions{};
+        if(native_route)h->normal_flip={&submissions,[](void* context,std::int32_t) noexcept {
+            ++*static_cast<unsigned*>(context);return true;
+        }};
+        h->poll(1000,{},100,-1,1);h->poll(1017,{0x1000},100,-1,1);
         h->poll(1051,{0x1000},100,1,0);h->poll(1085,{},100,1,0);
         h->poll(1102,{0x4000},103,1,0);h->poll(1119,{},103,1,0);
         if(fault==0)++h->owner.rig;
@@ -211,16 +215,16 @@ void prompt_released_ollie_tap() {
         if(fault==4)h->poll(1136,{0x8000},103,1,0);
         if(fault==5)h->poll(1136,{},103,2,0);
         if(fault==6)h->poll(1136,{},100,1,0); // Reversed native phase.
-        if(fault==7){for(unsigned t=1136;t<1600;t+=34)h->poll(t,{},103,1,0);}
+        if(fault==7){for(unsigned t=1136;t<1650;t+=34)h->poll(t,{},103,1,0);}
         if(fault>=9) {
             NativeRequestSample raw{};raw.valid=true;raw.state=103;raw.crouch_mode=fault==11?1u:0u;
             h->producer.observe(1125,h->owner,raw,{true,fault==9?3:1,fault==10?24u:16u});
             raw.crouch_mode=0;h->producer.observe(1130,h->owner,raw,{true,1,16});
         }
-        const auto now=fault==7?1636u:fault==8?1300u:1153u;
+        const auto now=fault==7?1680u:fault==8?1300u:1153u;
         h->poll(now,{},200,1,0);h->poll(now+34,{},201,1,2);h->poll(now+68,{},201,-1,2);
-        if(h->starts!=1)std::cerr<<"early fault="<<fault<<" starts="<<h->starts<<'\n';
-        check(h->starts==1,"early intent dies on owner/OFF/authority/bail/intervening input/other action/reversal/deadline/producer gap/hidden action-object-mode excursion");
+        if(h->starts!=1 || submissions)std::cerr<<"early fault="<<fault<<" starts="<<h->starts<<'\n';
+        check(h->starts==1 && submissions==0,"early intent dies on owner/OFF/authority/bail/intervening input/other action/reversal/deadline/producer gap/hidden action-object-mode excursion");
     }
     for(bool observed_jump:{false,true}) {
         auto h=std::make_unique<Route>();h->poll(1000,{},100,-1,1);
@@ -289,16 +293,18 @@ void native_transition_requests() {
         }
     };
     struct Choice {std::uint16_t direction;int id;};
+    for(bool delayed_selection:{false,true})
     for(bool retired_selection:{false,true})
     for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9}}) {
         auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
-        h->poll(1060,{0x1000},100,1,0);
+        h->poll(1060,{0x1000},100,delayed_selection?-1:1,delayed_selection?1:0);
         constexpr unsigned release=1100;unsigned issued{};
         for(unsigned elapsed=0;elapsed<=800;elapsed+=20) {
             const bool held=elapsed>=delay && elapsed<delay+80;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>((held?0x4000u:0u)|choice.direction)},
-                elapsed<100?103u:elapsed<140?200u:201u,retired_selection && elapsed>=200?-1:1,elapsed<100?0u:2u);
+                elapsed<120?100u:elapsed<220?103u:elapsed<260?200u:201u,
+                (delayed_selection && elapsed==0) || (retired_selection && elapsed>=400)?-1:1,delayed_selection && elapsed==0?1u:elapsed<240?0u:2u);
             if(out.native_flip_request) {
                 ++issued;check(out.native_flip_request==choice.id && !out.authored_playback,
                     "owned A-to-X submits its selected native transition without a second RS gesture");

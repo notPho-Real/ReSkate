@@ -234,6 +234,7 @@ public:
             admission.action_mode == ActionExperiment::grabs, admission.input_policy, admission.branch_ready && admission.manual_balance_admitted, admission.rail, admission.surface,
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
+        environment.native_pop_transition=admission.normal_flip.submit!=nullptr;
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers

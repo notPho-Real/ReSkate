@@ -167,3 +167,34 @@ The production input test now includes selector retirement before the 500 ms
 press for Kickflip, Heelflip, Pop Shove-it and Hardflip, alongside 0 and 100 ms.
 It failed on 911c82b and passes with the continuity correction (1,418 checks).
 Compiled-DLL animation acceptance must still be repeated for this correction.
+
+## Compiled startup-boundary correction
+
+The ddda330 compiled DLL passed independent native animation observation for
+Kickflip at +100 and +500 ms, Heelflip and Hardflip at +500 ms: replacement clip
+identity, advancing PTM clock from tick 16, positive hips vertical velocity,
+one Pop/Jump edge, normal native classification and landing state 100.
+A pause-free +500 ms trial independently reached the production native
+evaluation acknowledgment and normal landing. These are compiled results,
+not the earlier direct-intent prototype.
+
+Simultaneous release/X still failed. The captured native sequence remained
+ground state 100 until about +120 ms, entered 103, then 200 at +220 ms and 201
+at +260 ms. The ground-selected request inherited the generic 200 ms AIR
+readiness deadline and expired before the first real AIR frame. Replaying
+that sequence in the production-header test failed on ddda330; the previous
+test incorrectly entered AIR at +100 ms.
+
+For the verified native transition adapter only, a ground-selected request now
+belongs to its admitted released-pop lifetime. Existing exact release, owner,
+freshness, forward-phase and mode checks cancel it on withdrawal, discontinuity
+or landing; the existing ground-continuity bound still rejects stalled setup.
+No recognition or animation timeout is increased. Generic gesture requests keep
+their existing deadline. The new regression covers delayed native selection,
+the observed 220 ms takeoff, selector retirement, all requested X delays and
+four trick families; cancellation tests run with and without the native adapter.
+
+The immediate-X correction requires another compiled native acceptance run.
+Pop Shove-it production acknowledgments were observed, but its independent
+hardware observer stopped on a Wine-handled exception before the new clip;
+those captures are not accepted as animation proof.

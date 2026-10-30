@@ -114,6 +114,7 @@ struct InputEnvironment {
     InputJumpBinding jump_binding{};
     std::uint64_t jump_generation{};
     InputAirTables air_tables{};
+    bool native_pop_transition{}; // Validated native bridge owns this pop's pending selection.
     std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
     bool takeoff_actor_busy{};
 };
@@ -681,7 +682,11 @@ private:
         request.form = form;
         if(action==InputAction::flip && environment.context==InputContext::ground) {
             request.pop_release_at=takeoff_release_at_;request.air_episode={};
-            request.unbounded=false; // A ground preload uses the existing 200ms handoff bound.
+            // This request belongs to an admitted released pop. Native setup
+            // can outlast the generic AIR readiness deadline (observed 220ms).
+            // Its exact release/owner/forward-phase proof above cancels it on
+            // withdrawal or landing; do not expire it before genuine takeoff.
+            request.unbounded=environment.native_pop_transition && request.pop_release_at!=0;
         }
         if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
         if (form == InputForm::repeated_direction || ((action == InputAction::flip || action == InputAction::grab) && defined_direction)) {
