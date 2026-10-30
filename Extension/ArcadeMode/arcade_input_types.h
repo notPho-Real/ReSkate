@@ -46,6 +46,10 @@ struct GroundTurnCommand {
     bool operator==(const GroundTurnCommand&) const = default;
 };
 // Output contracts only; all production recognition belongs to InputSession.
+struct NativeFlipRequest {
+    void* context{};
+    bool (*submit)(void*,std::int32_t) noexcept{};
+};
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
     struct Output {
@@ -60,6 +64,7 @@ struct NativeGesture {
         InputJumpEdge jump{};
         InputRailOutput rail{};
         GroundTurnCommand ground_turn{};
+        std::int32_t native_flip_request{}; // Queued intent, never an animation acknowledgment.
         bool automatic_push{}; // Receipt from AutomaticPush, never inferred from physical X.
     };
 };

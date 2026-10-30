@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
+#include "arcade_native_flip_entry_tests.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include <cstdlib>
 #include <iostream>
@@ -12,7 +13,7 @@ struct Route {
     ArcadeInput input{true}; NativeInputState producer; NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5}; NativeInputFrame frame{};
     std::vector<PreparedGesture> recipes;
-    unsigned starts{},recognized{}; bool exact_clock{};
+    unsigned starts{},recognized{}; bool exact_clock{};NativeFlipRequest normal_flip{};
     NativeGesture::Output output{};
     Route() {
         for(const unsigned id:{1u,2u,3u,4u,5u,6u,8u,9u,36u})
@@ -30,7 +31,7 @@ struct Route {
         const auto admit=readiness.sample(now,frame);
         output=input.poll(0,now,pad.buttons,pad.x,pad.y,0,0,gameplay,admit.start,false,0,false,false,
             true,exact_clock?now*60/1000:now/17,false,recipes,admit.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
-            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.mirror_x,false);
+            false,false,false,false,admit.flip_ready,false,0,0,ActionExperiment::classic,admit.action,admit.mirror_x,false,normal_flip);
         starts+=output.requested_id?1u:0u;
         const auto* diagnostic=input.input_diagnostic(0);
         recognized+=static_cast<unsigned>(diagnostic->recognition_count);
@@ -280,4 +281,33 @@ void early_press_cadences() {
 }
 
 }
-int main() {delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}
+void native_transition_requests() {
+    struct Sink {
+        unsigned calls{};std::int32_t selected{};
+        static bool submit(void* self,std::int32_t id) noexcept {
+            auto& s=*static_cast<Sink*>(self);++s.calls;s.selected=id;return true;
+        }
+    };
+    struct Choice {std::uint16_t direction;int id;};
+    for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9}}) {
+        auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
+        h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
+        h->poll(1060,{0x1000},100,1,0);
+        constexpr unsigned release=1100;unsigned issued{};
+        for(unsigned elapsed=0;elapsed<=800;elapsed+=20) {
+            const bool held=elapsed>=delay && elapsed<delay+80;
+            const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>((held?0x4000u:0u)|choice.direction)},
+                elapsed<100?103u:elapsed<140?200u:201u,1,elapsed<100?0u:2u);
+            if(out.native_flip_request) {
+                ++issued;check(out.native_flip_request==choice.id && !out.authored_playback,
+                    "owned A-to-X submits its selected native transition without a second RS gesture");
+                check(h->input.authored_air_followup(release+elapsed,h->frame)==choice.id,
+                    "normal native directional handoff retains the original launch identity");
+            }
+            check(!(out.buttons&0x6000u),"X/B native push and brake remain masked during transition");
+        }
+        check(issued==1 && sink.calls==1 && sink.selected==choice.id,
+            "A-to-X at release,100ms,500ms queues exactly one normal native selection");
+    }
+}
+int main() {native_entry_tests::run();native_transition_requests();delivered_pop_handoff();early_press_cadences();neutral_once();directional_precedence();native_wait_and_ollie();cancellation();release_order();queued_withdrawal();prompt_directional_tap();prompt_released_ollie_tap();std::cout<<checks<<" neutral flip release production checks passed\n";}

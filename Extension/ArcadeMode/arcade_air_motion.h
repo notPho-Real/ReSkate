@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_native_flip_entry.h"
 #include "arcade_gameplay_profile.h"
 #include "arcade_movement.h"
 #include "arcade_spin_control.h"
@@ -144,7 +145,7 @@ public:
         // A qualified authored basic flip rotates the board in the same
         // ordinary flight. It is not a new vertical launch. Independent native
         // velocity changes still retire assistance below. All other actors win.
-        if(action.valid && action.object && captured_launch==1 && ordinary_ollie_followup(followup) && action.id==followup)return false;
+        if(action.valid && action.object && captured_launch==1 && native_flip::ordinary_flip(followup) && action.id==followup)return false;
         return action.valid && action.object && action.id >= 0 &&
             ((captured_launch!=1 && captured_launch!=16) || action.id!=captured_launch);
     }

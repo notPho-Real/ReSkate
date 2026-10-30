@@ -20,6 +20,7 @@
 #include "arcade_manual_balance_entry.h"
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
+#include "arcade_native_flip_transition.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -1669,6 +1670,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    native_flip::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1698,6 +1700,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    native_flip::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -1784,6 +1787,8 @@ bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
     score_probe_base = image_base;
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -1896,6 +1901,7 @@ void on_client_tick() noexcept {
         motion_capture_until.store(trainer_view && trainer_view->logging && ui.available && !ui.in_menu ? now + 150 : 0,
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
+        native_flip::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
@@ -2197,6 +2203,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
         input_capture_correlation.maintain(now,arcade_input.native_context(now),input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(NativeControllerRoute::session,input_capture_correlation.captures(CaptureCorrelationSource::recognition));
+        const auto flip_owner=arcade_input.native_context(now).owner;
+        NoBailSkater native_flip_owner{flip_owner.base,flip_owner.entity,flip_owner.core,flip_owner.context,flip_owner.rig};
+        NativeFlipRequest normal_flip{};
+        if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
+            return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
+        }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2205,7 +2217,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed));
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip);
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){
@@ -2310,6 +2322,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid,result.jump.nollie);
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
+            if (result.jump.released && release.sequence && !result.jump.from_rail && !reference &&
+                rotation_enabled && result.jump.launch.ordinary_writer()) native_flip::arm(native_flip_owner);
             const bool angular_allowed = !reference && !action.owned &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};

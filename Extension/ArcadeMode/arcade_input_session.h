@@ -4,6 +4,7 @@
 #include "arcade_classic_input.h"
 #include "arcade_push.h"
 #include "arcade_board.h"
+#include "arcade_native_flip_entry.h"
 
 namespace dingosdk::arcade_mode {
 struct InputAdmission {
@@ -30,6 +31,7 @@ struct InputAdmission {
     InputGenerations balance_generations{};
     bool export_rail_requests{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
+    NativeFlipRequest normal_flip{};
     bool manual_contact_only{}; // Physical admission without matching native history.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
@@ -60,7 +62,7 @@ public:
     }
     std::int32_t authored_air_followup(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
-            frame.air_episode()==air_actor_episode_ && ordinary_ollie_followup(air_followup_id_) ? air_followup_id_ : 0;
+            frame.air_episode()==air_actor_episode_ && (native_followup_ ? native_flip::ordinary_flip(air_followup_id_) : ordinary_ollie_followup(air_followup_id_)) ? air_followup_id_ : 0;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
@@ -339,6 +341,7 @@ private:
     static InputDisposition receive(void* self, const InputRequest& request) noexcept {
         return static_cast<InputSession*>(self)->request(request);
     }
+    bool native_followup_{};
     InputDisposition request(const InputRequest& request) noexcept {
         if (!current_) return InputDisposition::cancelled;
         auto& out = *current_;
@@ -402,6 +405,13 @@ private:
                     out.unsupported=true;return InputDisposition::unsupported;
                 }
                 const auto id = native_flip_id(selected,request.nollie);
+                if (own_ollie && admission.normal_flip.submit) {
+                    if (!admission.normal_flip.submit(admission.normal_flip.context,id)) return InputDisposition::waiting;
+                    out.native_flip_request=id;native_followup_=true;
+                    air_action_=true;air_actor_episode_=admission.native_context.air_episode();air_followup_id_=id;
+                    return InputDisposition::started;
+                }
+                native_followup_=false;
                 air_action_ = start(id, request.nollie, false, context, true);
                 if (air_action_) { air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id; }
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;

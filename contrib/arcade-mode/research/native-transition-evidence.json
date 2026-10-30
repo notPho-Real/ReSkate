@@ -1,0 +1,138 @@
+{
+  "scope": "bounded debugger prototype; native animation evaluation, not production DLL acceptance",
+  "trials": [
+    {
+      "trial": "kick0",
+      "sha256": "dd1bfe64a9edcbf98f015f621d2816889f450807b316996d41faf5ebe9bddf5e",
+      "requested": 2,
+      "intent_after_air_ms": 0.59,
+      "advancing_clip_after_intent_ms": 78.01,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.13333332538604736,
+        15.999999046325684,
+        120.0
+      ],
+      "hips_vy_before_advancing_evaluation": 3.2144017219543457,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "kick100",
+      "sha256": "a2f7f8a483630ecd771e8c955b2d0009dc5d8e5f3af0a238e83df355ff05866b",
+      "requested": 2,
+      "intent_after_air_ms": 110.62,
+      "advancing_clip_after_intent_ms": 80.74,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.13333332538604736,
+        15.999999046325684,
+        120.0
+      ],
+      "hips_vy_before_advancing_evaluation": 2.443568229675293,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "gate280s",
+      "sha256": "f49b96813fd730f9088e74ca4d93d6a9de343ab784d762347c5698e133c088fe",
+      "requested": 2,
+      "intent_after_air_ms": 280.67,
+      "advancing_clip_after_intent_ms": 60.77,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.13333332538604736,
+        15.999999046325684,
+        120.0
+      ],
+      "hips_vy_before_advancing_evaluation": 0.9216561913490295,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "shove280",
+      "sha256": "8b26235dacae983ed6ae797a14a74e62b5f05bd933afec06141f94bb45e79e7d",
+      "requested": 4,
+      "intent_after_air_ms": 290.31,
+      "advancing_clip_after_intent_ms": 63.13,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.16326530277729034,
+        16.0,
+        98.0
+      ],
+      "hips_vy_before_advancing_evaluation": 0.918060302734375,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "heel280c",
+      "sha256": "ac8d645030d41e13442bdb3d08e76bc000134cfa85e886601a94a382d40930d1",
+      "requested": 3,
+      "intent_after_air_ms": 290.89,
+      "advancing_clip_after_intent_ms": 79.51,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.13333334028720856,
+        16.0,
+        120.0
+      ],
+      "hips_vy_before_advancing_evaluation": 0.9227284789085388,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "hard280",
+      "sha256": "8e40da27a942a0eab1760cdbc1bf47a2fac73a57f6f394973b717840a572fd40",
+      "requested": 9,
+      "intent_after_air_ms": 280.58,
+      "advancing_clip_after_intent_ms": 87.91,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.13333332538604736,
+        15.999999046325684,
+        120.0
+      ],
+      "hips_vy_before_advancing_evaluation": 0.924027681350708,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    },
+    {
+      "trial": "impossible280",
+      "sha256": "628e68648cbfd4219000f91baab7b73369b4ed5a0a96d333729aa4b3ad440177",
+      "requested": 36,
+      "intent_after_air_ms": 280.58,
+      "advancing_clip_after_intent_ms": 53.26,
+      "entry_tick": 16.0,
+      "initial_native_time": [
+        0.1230769231915474,
+        16.0,
+        130.0
+      ],
+      "hips_vy_before_advancing_evaluation": 0.9237500429153442,
+      "physics_state_before_evaluation": 201,
+      "late_observed": false,
+      "pop_edges": 1,
+      "final_physics_state": 100,
+      "cached_step": 0.03333333134651184
+    }
+  ]
+}
