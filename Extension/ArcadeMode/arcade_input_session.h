@@ -5,6 +5,7 @@
 #include "arcade_push.h"
 #include "arcade_board.h"
 #include "arcade_native_flip_entry.h"
+#include "arcade_rail_pop.h"
 
 namespace dingosdk::arcade_mode {
 struct InputAdmission {
@@ -119,7 +120,9 @@ public:
             if (!native.correlates_action(admission.surface.generations)) admission.surface.fresh = false;
             if (native.rail_family && !admission.offboard) {
                 admission.pose = SkatePose::grind;
-                admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
+                admission.may_start = admission.may_start && rail_pop_input_ready(native,now);
+                admission.launch = LaunchDescriptor::rail_pop();
+                admission.may_push = admission.manual_safe = admission.manual_prepare = false;
                 admission.manual_balance_admitted = false;
             }
         }
@@ -154,6 +157,14 @@ public:
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
         if (admission.external_owner || auxiliary_.busy()) { authored_.cancel(); holding_ = false; }
+        // A rail setup cannot become a ground crouch or pop after owner/contact
+        // loss. After release, only the native rail-exit/takeoff corridor may
+        // finish the already admitted authored flick. No position/state writes.
+        if (native.required && launch_context_==GestureContext::from_grind && authored_.busy() &&
+            ((holding_ && !rail_pop_input_continues(native,now)) || (!holding_ &&
+             !native.rail_family && native.flip.state!=701 && !native.airborne))) {
+            authored_.cancel(); holding_=false; input_.acknowledge_jump_release();
+        }
         // Shared intent was withdrawn by the competing owner. Do not retain a
         // held rail ticket that can resume output or block later fresh actions.
         // The journal still observes the physical baseline through this gap.
@@ -359,7 +370,9 @@ private:
         case InputAction::crouch:
             // Lip exits require their own admitted actor and release policy.
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
-            if (!admission.launch.ordinary_writer()) { out.unsupported = true; return InputDisposition::unsupported; }
+            if (admission.pose==SkatePose::grind && admission.native_context.required ?
+                (!admission.launch.rail_input() || !rail_pop_input_ready(admission.native_context,now_)) :
+                !admission.launch.ordinary_writer()) { out.unsupported = true; return InputDisposition::unsupported; }
             if (airborne || !admission.may_start || authored_.busy() || auxiliary_.busy() || manual_.busy()) return InputDisposition::cancelled;
             launch_context_ = admission.pose == SkatePose::grind ? GestureContext::from_grind : GestureContext::ground;
             holding_ = start(request.nollie ? 16 : 1, request.nollie, true, launch_context_, false);

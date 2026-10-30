@@ -295,7 +295,9 @@ public:
             // remain unavailable; an observed Lip flag only vetoes generic input.
             if (native.rail_family) {
                 admission.pose = SkatePose::grind;
-                admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
+                admission.may_start = admission.may_start && rail_pop_input_ready(admission.native_context,now);
+                admission.launch = LaunchDescriptor::rail_pop();
+                admission.may_push = admission.manual_safe = admission.manual_prepare = false;
                 admission.manual_balance_admitted = false;
             }
             admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;

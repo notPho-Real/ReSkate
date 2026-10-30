@@ -14,6 +14,8 @@ struct LaunchDescriptor {
     float speed_mps{};
     bool operator==(const LaunchDescriptor&) const = default;
     static constexpr LaunchDescriptor ordinary() noexcept { return {LaunchFamily::ordinary,LaunchContext::flat,0}; }
+    static constexpr LaunchDescriptor rail_pop() noexcept { return {LaunchFamily::ordinary,LaunchContext::rail,0}; }
+    bool rail_input() const noexcept { return *this == rail_pop(); }
     bool known() const noexcept {
         return (family==LaunchFamily::ordinary||family==LaunchFamily::extended) &&
             context>=LaunchContext::flat && context<=LaunchContext::inverted && std::isfinite(speed_mps) &&
