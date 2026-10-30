@@ -894,7 +894,6 @@ BOOL WINAPI captured_cursor_position(LPPOINT output) {
     if (result && output && !overlay_input_access) { last = *output; sampled = true; }
     return result;
 }
-// Controller capture xinput publication begin.
 // ---- Dark Pop: the D-pad hidden from the game in the air -----------------------------------------------------
 // skate. opens the Quick Drop radial on D-pad Right (and Down, held), and in keyboard/mouse mode letting the radial
 // go selects what the cursor sits on: the object browser. Dark Pop arms on a D-pad press in the air, so while the
@@ -1002,6 +1001,7 @@ void game_pad_read(DWORD user, XINPUT_STATE* output) noexcept {
     (void)turn_grind_stick(output->Gamepad);
     lean_grind_stick(output->Gamepad);
 }
+// Controller capture xinput publication begin.
 template<std::size_t I, bool Extended = false>
 DWORD WINAPI captured_xinput(DWORD user, XINPUT_STATE* output) {
     const auto& hook = Extended ? input_hooks().xinput_extended[I] : input_hooks().xinput_state[I];

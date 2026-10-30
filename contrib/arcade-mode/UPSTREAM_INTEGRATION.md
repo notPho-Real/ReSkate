@@ -93,3 +93,45 @@ local history from remote `arcade-mode`; it must not be reset to promote this
 candidate. Reconcile its additional documentation commit separately and preserve
 all uncommitted work. Remote Arcade promotion must be non-forced and conditional
 on validation of the candidate being promoted.
+
+## Validation and current blockers
+
+Local macOS results on the merged tree:
+
+- Lab simulations: 459 tests, one skipped, successful. The full Python discovery
+  run independently returned the same result.
+- Standalone compiled native flip/input/motion/manual lane: 8/8 passed.
+- Controller-route and input-telemetry suites: 2/2 passed, including the extracted
+  production polling code and new scripted-pad ownership negative controls.
+- PlayStation reports: compiled with `-Wall -Wextra -Werror` and passed, including
+  a padded DS4 report filtered through Arcade's existing exit helper with an
+  independently computed upstream CRC and unchanged padding.
+- Broad CTest run: 160 passed, 13 failed, 10 not run (183 registered). Twelve
+  failing Arcade tests were compiled and reproduced on the untouched verified
+  baseline. The remaining failure, `trainer_tuning_names`, requires actual game
+  data; `DINGOSDK_TEST_GAME_ROOT` was empty.
+- Broad macOS build is not successful: AppleClang 15/libc++ lacks floating-point
+  `from_chars`, atomic shared pointers and `jthread` used by upstream; Windows
+  game-clip tests also require Windows headers. Upstream server builds officially
+  target Linux, and the runtime/launcher target Windows. Its SHA256 deprecation
+  and server enum warnings are in upstream code, not newly added integrations.
+
+The twelve baseline failures are `arcade_input_events`,
+`arcade_input_ownership_lifecycle`, `arcade_input_manual_differential`,
+`arcade_input_differential`, `arcade_input_lifecycle`, `arcade_input_review`,
+`arcade_configured_balance_bridge`, `arcade_input_physical_state`,
+`arcade_air_selection`, `arcade_input_pattern_dispatch`, `arcade_native_facade`,
+and `arcade_balance_control`. Do not change verified gameplay merely to make older
+expectations pass; reconcile those contracts in their feature acceptance work.
+
+Hosted Windows/Linux/macOS CI has not run for this candidate. The installed
+external publication hook rejected creation of the integration branch: it permits
+only a separately reviewed update to `arcade-mode`. Do not bypass it or promote
+this candidate just to trigger CI. A separately reviewed publication of this
+exact integration branch is needed. Existing Arcade development CI builds and
+stages the DLL; the new integration workflow adds full upstream Windows tests and
+a Linux server build. It deliberately exposes the inherited test failures.
+
+No integrated Windows DLL or candidate DLL SHA-256 is available yet. No gameplay
+equivalence is asserted. Remote and local `arcade-mode` have not been advanced,
+and the three concurrent feature branches have not been changed by this work.

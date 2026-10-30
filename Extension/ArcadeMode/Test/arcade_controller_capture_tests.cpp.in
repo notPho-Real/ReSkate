@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_controller_route.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
+#include "Engine/Game/Input/owned_menu_input.h"
 #include <mutex>
 #include <iostream>
 #include <cstdlib>
@@ -77,12 +78,23 @@ unsigned remap_xinput(unsigned user,unsigned short& buttons,short& right_x,short
 }
 namespace hook {
 using DWORD=std::uint32_t;
+using WORD=std::uint16_t;
+namespace game=dingosdk::game;
 #define WINAPI
 constexpr DWORD ERROR_SUCCESS=0,ERROR_DEVICE_NOT_CONNECTED=1167;
 struct Gamepad {unsigned short wButtons{};unsigned char bLeftTrigger{},bRightTrigger{};short sThumbLX{},sThumbLY{},sThumbRX{},sThumbRY{};};
 struct XINPUT_STATE {DWORD dwPacketNumber{};Gamepad Gamepad{};};
 unsigned overlay_input_access{};
 bool blocked{},filter_enabled{};unsigned reads{};DWORD read_result{};XINPUT_STATE raw{};
+bool menu{},scripted{};
+std::atomic<std::uint16_t> mode_hidden_buttons{};
+constexpr WORD XINPUT_GAMEPAD_START=0x10;
+bool suppress_challenge_menu(){return menu;}
+void note_xinput(DWORD,const XINPUT_STATE&) noexcept {}
+bool scripted_pad(DWORD,XINPUT_STATE& out) noexcept {
+    if(!scripted)return false;
+    out={91,{0x1000,0,0,123,456,0,0}};return true;
+}
 constexpr int prompt_xinput=0;
 void note_prompt_read(int){}
 bool block_polled_input(){return blocked;}
@@ -92,6 +104,7 @@ Hooks& input_hooks(){static Hooks h;return h;}
 DWORD native_poll(DWORD,XINPUT_STATE* out){++reads;clock_ms+=2;if(out&&read_result==ERROR_SUCCESS)*out=raw;return read_result;}
 template<class T>T original(int){return native_poll;}
 void filter_pad(bool outer,DWORD,XINPUT_STATE* out){if(outer&&filter_enabled){out->Gamepad.wButtons|=0x4000;out->Gamepad.sThumbLY=-4321;}++clock_ms;}
+void game_pad_read(DWORD user,XINPUT_STATE* out) noexcept {filter_pad(true,user,out);}
 namespace arcade_mode=dingosdk::arcade_mode;
 @controller_capture_front@
 @controller_capture_xinput@
@@ -117,6 +130,7 @@ void reset(){
     native_readiness.publish(capture_native_frame,{true,true,true,true,true,true,true,true,true,3});
     controller_route.observe(1,{true,1000,0,0,0,0,0,0,0});controller_route.select(1000,2,true);
     hook::blocked=hook::filter_enabled=false;hook::read_result=0;hook::reads=hook::overlay_input_access=0;hook::raw={20,{}};
+    hook::menu=hook::scripted=false;hook::mode_hidden_buttons=0;
 }
 void begin(unsigned scope=64,unsigned duration=1000){
     check(activate(scope,duration),"finite diagnostic capture begins");
@@ -397,8 +411,22 @@ void compact_hook_invariance(){
             "compact observation leaves every final returned payload and packet component unchanged");
     }
 }
+void upstream_scripted_pad_ownership(){
+    for(unsigned kind=0;kind<3;++kind)for(bool capture_menu:{false,true}){
+        reset();begin();hook::scripted=true;hook::blocked=capture_menu;
+        hook::raw={22,{0x4000,12,34,111,222,333,444}};hook::XINPUT_STATE out{};
+        const auto result=kind==0?hook::captured_front<0>(1,&out):kind==1?hook::captured_xinput<0>(1,&out):hook::captured_xinput<0,true>(1,&out);
+        check(result==0&&hook::reads==1&&out.dwPacketNumber==91&&out.Gamepad.sThumbLY==456,
+            "upstream scripted pad reaches the game without Arcade remapping or menu neutralization");
+        check(!controller_route.physical(clock_ms).valid,"scripted pad retires physical Arcade ownership");
+        const auto rows=drain();check(rows.size()==2&&rows.back().controller.raw.packet==22&&
+            rows.back().controller.returned.packet==91&&!rows.back().controller.ownership_known,
+            "scripted substitution closes the same-poll receipt without claiming Arcade execution");
+    }
+}
 }
 void run_controller_capture_tests(){
     input_telemetry.publish(telemetry);hooks_and_off();observation_negatives();readiness_provenance();binding_context();tickets_and_loss();footer_and_validation();unchanged_and_invalid();compact_selected_polls();compact_accounting();compact_hook_invariance();
+    upstream_scripted_pad_ownership();
     std::cout<<checks<<" production controller capture checks passed\n";
 }

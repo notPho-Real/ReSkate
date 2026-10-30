@@ -128,6 +128,16 @@ int main() {
             "A full report of another length is not written");
         check(!refresh_playstation_bluetooth_crc(nullptr, 547), "No report, nothing written");
 
+        auto filtered = ds4bt;
+        filtered[10] = 120;
+        const auto original_padding = filtered;
+        check(filter_playstation_exit_report(PlayStationPad::dualshock4, filtered.data(), filtered.size(),
+            [](PlayStationGamepad& pad) { pad.left_trigger = 0; }), "Exit filter accepts padded Bluetooth input");
+        check(filtered[10] == 0 && stored_crc(filtered.data()) == bluetooth_crc(filtered.data(), 74),
+            "Exit filter uses upstream CRC location after masking the native trigger");
+        check(std::equal(filtered.begin() + 78, filtered.end(), original_padding.begin() + 78),
+            "Exit filter preserves Windows padding");
+
         check(controller_combo_label(0x300) == "LB + RB", "Xbox labels");
         check(controller_combo_label(0x300 | 0x1000, ControllerStyle::dualshock4) == "L1 + R1 + Cross", "PlayStation labels");
         check(controller_combo_label(0x20, ControllerStyle::dualsense) == "Create" &&

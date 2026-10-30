@@ -1,0 +1,48 @@
+name: Arcade upstream integration
+on:
+  push:
+    branches: [arcade-stage-upstream-integration]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  upstream-windows-tests:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Fetch native build dependencies
+        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
+      - name: Configure upstream and Arcade regression groups
+        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON -DDINGOSDK_BUILD_TRAINER_TESTS=ON -DDINGOSDK_BUILD_MULTIPLAYER_TESTS=ON -DDINGOSDK_BUILD_PLUGIN_TESTS=ON -DDINGOSDK_BUILD_CRASH_REPORT_TESTS=ON
+      - name: Build all configured targets with upstream warning policy
+        run: cmake --build --preset release --parallel 4
+      - name: Run all tests that do not require a separately supplied game installation
+        # This diagnostic gate deliberately exposes inherited Arcade failures.
+        # trainer_tuning_names reads real game data and cannot run on hosted CI.
+        run: ctest --test-dir build/vs2022-x64 -C Release -E '^trainer_tuning_names$' --output-on-failure --output-junit integration-results.xml
+      - name: Preserve complete test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: integration-windows-tests-${{ github.sha }}
+          path: |
+            build/vs2022-x64/integration-results.xml
+            build/vs2022-x64/Testing/Temporary/
+          if-no-files-found: warn
+  linux-server-and-arcade:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+      - name: Build upstream Linux server
+        run: |
+          cmake --preset linux-x64
+          cmake --build build/linux --target dingosdk_server --parallel 4
+      - name: Compile and run portable native Arcade regressions
+        run: |
+          cmake -S contrib/arcade-mode/ci/targeted -B build/integration-targeted -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/integration-targeted --parallel 4
+          ctest --test-dir build/integration-targeted --output-on-failure --no-tests=error
