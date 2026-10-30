@@ -1,0 +1,312 @@
+{
+  "schema": 1,
+  "stage": "A",
+  "status": "native_actuator_not_established",
+  "source_checkpoint": "911819950ef977cef414763855e8001b447c189f",
+  "baseline_commit": "65d34a0bc06034125b28779d10490e479df37fba",
+  "game_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
+  "runtime_changes": false,
+  "new_tricks_implemented": 0,
+  "native_trials": 0,
+  "new_gameplay_build": null,
+  "stage_a_passed": false,
+  "installation_changed": false,
+  "expression_findings": {
+    "includes_float_updates": {
+      "ebx_indices": [
+        32442,
+        10366
+      ],
+      "compiled_res_indices": [
+        5892,
+        5893
+      ],
+      "input_asset": "Gameplay/Input/Inputs/Input_ArmsUp",
+      "input_file_guid": "a9ed1f33-71e6-40f9-a325-61cf67d30888",
+      "getter_call_hash": "adef306d",
+      "getter_rva": "0x8314c0",
+      "production_route_verified": false
+    },
+    "separate_input_graph": {
+      "ebx_index": 25045,
+      "actions": 5,
+      "float_update_index": 31101,
+      "inspected_float_input": "Input_ArmsUp",
+      "production_route_verified": false
+    },
+    "tweak_calculation": {
+      "graph_ebx_index": 28360,
+      "update_ebx_index": 19055,
+      "compiled_res_index": 13815,
+      "dependency_ebx_indices": [
+        771,
+        26706,
+        280,
+        26080,
+        28631,
+        20515
+      ],
+      "float_getter_rva": "0x831250",
+      "spring_rva": "0xfea340",
+      "blendspace_connection_verified": false
+    }
+  },
+  "scene_dispatcher_trace": {
+    "asset": "Animation/Dingo/SkaterInput_SceneOp",
+    "asset_update_rva": "0x10681a0",
+    "context_callback_offset": "0x10c0",
+    "callback_setter_rva": "0x106a220",
+    "registration_helper_rva": "0xfccdd0",
+    "registration_call_site_rva": "0xf8789b",
+    "registry_constructor_rva": "0xfaa890",
+    "registry_vtable_rva": "0x6176088",
+    "registry_update_rva": "0xfb85d0",
+    "local_grab_producer_identified": false,
+    "hook_added": false,
+    "classification": "static dispatcher trace; not a qualified runtime actuator"
+  },
+  "physics_input_configuration_references": {
+    "WantsToGrab": "fbba4d5f-7e58-944c-fbba-4d5f7e58944c",
+    "IsGrabbing": "1851635a-bdf0-f51a-1851-635abdf0f51a",
+    "IsGrabbingWorld": "200d09a7-6d1a-23f9-200d-09a76d1a23f9"
+  },
+  "unresolved_blendspace_signals": [
+    {
+      "field": "SignalX",
+      "guid": "806e09fc-e770-8456-806e-09fce7708456"
+    },
+    {
+      "field": "SignalY",
+      "guid": "5e9afe38-769a-3d80-5e9a-fe38769a3d80"
+    }
+  ],
+  "missing_evidence": [
+    "Definitions and active producers of both BS blendspace signals",
+    "Owner-qualified grab intent consumer and native selection ordering",
+    "Independent native chooser/actor initialization and positive-delta advancement",
+    "Native tap, hold, release, cleanup and family-chaining contract",
+    "Gameplay animation, flight, landing and scoring acceptance"
+  ],
+  "resources": [
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 280,
+      "name": "gameplay/skatervariables/eatvariable_grabtweaktimer",
+      "compressed_sha1": "bac5505d078cf735abc0a551a439642ba6a18ecd",
+      "decoded_sha256": "8925142a6e02b83bc32e4b12a5c45603fab3e44ad6762ae69255b5e1ca064f41",
+      "decoded_bytes": 1066,
+      "root_guid": "40b89f12-15a5-464c-ab21-88300e968e16"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 771,
+      "name": "gameplay/input/inputs/input_grabtweaklr",
+      "compressed_sha1": "f71e26e1481fb45f2a3543f6f42387aa9358d6e4",
+      "decoded_sha256": "574d5549ac7ec9e4e32285c556659103c3e00a156180c39c106d1e1c66206c96",
+      "decoded_bytes": 836,
+      "root_guid": "aa065510-7378-4fee-bb62-88e247407fff"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 9546,
+      "name": "gameplay/input/inputs/input_armsup",
+      "compressed_sha1": "d74c12aaab6ab33d67d1be796dfeef6701a06f3e",
+      "decoded_sha256": "1497f14b09a2aa5ce759cd3636c5a6a4ba6d25b45dc365bf02a724e4f485586a",
+      "decoded_bytes": 736,
+      "root_guid": "a9ed1f33-71e6-40f9-a325-61cf67d30888"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 10366,
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_4_ss_onupdate",
+      "compressed_sha1": "22f2eef4d8bcf4e1719fef2033454cb4a19cc2bb",
+      "decoded_sha256": "3a8a4eb475d76f251bb4c6c85992aed5fdff3e838eb1798b3ebee97e09a7e33b",
+      "decoded_bytes": 6738,
+      "root_guid": "9d2e91d9-c521-872f-64b1-2825161b8bae"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 16420,
+      "name": "animation/dingo/skatercorephysicsoutputconfig",
+      "compressed_sha1": "49012526872ee91c8f29af6267175eb15ecb5e04",
+      "decoded_sha256": "b4d33be4dfae2cb3bc6d17bd98d3479e66b9c76db2a8f071419c233f57179431",
+      "decoded_bytes": 11610,
+      "root_guid": "add993c7-8513-9a14-add9-93c785139a14"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 19055,
+      "name": "gameplay/skaterintenttree/includes_grabtweakcalculation_ag_a353937_eatcommandactiondata_1_ss_onupdate",
+      "compressed_sha1": "f3a32eebe37b23fcbafa66e779654342a720769d",
+      "decoded_sha256": "7223b22726eaa96e574044133435dc0ba8a362def89138c05e98f3fc93ef63ff",
+      "decoded_bytes": 7222,
+      "root_guid": "d1aff5f0-4ecb-58ca-8e1a-0f1c90ae1b35"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 20515,
+      "name": "gameplay/skatervariables/eatvariable_vec2_currentgrabtweak",
+      "compressed_sha1": "a3457056ad9a65f5747ff1b4dceff5ebc3a923ce",
+      "decoded_sha256": "045ed6401eaf59bd2089987d5c838933123870818f0a954a3aab860603f51af8",
+      "decoded_bytes": 1072,
+      "root_guid": "30648eb7-c1fe-4530-b034-3366ea3870d7"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 21229,
+      "name": "animation/dingo/skatercorephysicsinputconfig",
+      "compressed_sha1": "dccdc1e23a2d296e7d1f0ac8968991450f2c332d",
+      "decoded_sha256": "173fb26bcc373e6b9feb2af7269bc2427f89a360ae7f86ef1ebf00e71ce9afa1",
+      "decoded_bytes": 12698,
+      "root_guid": "aec4c83a-6fe6-44c8-aec4-c83a6fe644c8"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 25045,
+      "name": "gameplay/skaterintenttree/input_grabintents_ag_b01c97f",
+      "compressed_sha1": "0f5e30be99ec155aa5a5adb8a55ab38ac72903e6",
+      "decoded_sha256": "ad424e05caaa5075fe6038854ba2169ff1a6835a390bc187f21aa16cd04a0e19",
+      "decoded_bytes": 3914,
+      "root_guid": "3e415e47-da43-4228-b936-de165c3dfb34"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 26080,
+      "name": "gameplay/skatervariables/eatvariable_float_grabtweakdelta_x",
+      "compressed_sha1": "5f305b762a69564bc1f75af1a329c02993d01689",
+      "decoded_sha256": "c10e9194294f9518e2931b27d7da89e895d1aff3967b3a1dd993fd2ec745534a",
+      "decoded_bytes": 1074,
+      "root_guid": "b01cb245-8401-443d-a180-3f894b601012"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 26706,
+      "name": "gameplay/input/inputs/input_grabtweakud",
+      "compressed_sha1": "b700d05d4eb6b35c0d03ed77869ce393e07d3c5a",
+      "decoded_sha256": "7aec47eed13881619bb357854bdb2bac01389d4445cbd8d68abd90721831a104",
+      "decoded_bytes": 836,
+      "root_guid": "771c1f63-c827-46f0-bc9c-0cefd182f670"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 28360,
+      "name": "gameplay/skaterintenttree/includes_grabtweakcalculation_ag_a353937",
+      "compressed_sha1": "05db34aba320975b240024772ade99d160d7cb08",
+      "decoded_sha256": "a505d63831436a29a06c1fc47bab9c7fa441e7faafc92559bc5acb88e30fe18a",
+      "decoded_bytes": 2076,
+      "root_guid": "2c2ca134-e4a1-48bc-9f87-d181687209ce"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 28631,
+      "name": "gameplay/skatervariables/eatvariable_float_grabtweakdelta_y",
+      "compressed_sha1": "68f752b0779363e0b65d98b4d9ea8e91a9744145",
+      "decoded_sha256": "362683c6af3edb2fc42f04699115a26fb22642a5fe10d357a99dedfb675c608e",
+      "decoded_bytes": 1074,
+      "root_guid": "6d3206b1-8ed0-42f4-a758-d86d14e7fbbc"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 31101,
+      "name": "gameplay/skaterintenttree/input_grabintents_ag_b01c97f_setfloatintentgamestatedata_1_ss_onupdate",
+      "compressed_sha1": "f271307e0ec38fdcebd99e3354eafd9cd67fc9ce",
+      "decoded_sha256": "3f52b41fae4b8ddb68ce7bd0440fcfaa5ebd7a6a491ab427bf981c238521c0b4",
+      "decoded_bytes": 6730,
+      "root_guid": "032d62ca-17c6-7d01-a806-a680e197eb62"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 31339,
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893",
+      "compressed_sha1": "29503e0740b04dad3d10d708e33d5e68e8b51dcd",
+      "decoded_sha256": "836ff5a37ceff761ca77f293040be7b7d9d1508f8841a476f5b6823ec758778b",
+      "decoded_bytes": 3518,
+      "root_guid": "5c433ad3-331b-4e67-9fca-f835351770ea"
+    },
+    {
+      "bundle": "level",
+      "kind": "EBX",
+      "index": 32442,
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_1_ss_onupdate",
+      "compressed_sha1": "6e8491e84732571af9e24afdba13bb90d22bec19",
+      "decoded_sha256": "73577421e08600369e6a759fe1a1efe924ffcb249e4470048004fcf6d6994b63",
+      "decoded_bytes": 6738,
+      "root_guid": "aa172e22-46d5-41b4-bb44-d808adbdd045"
+    },
+    {
+      "bundle": "gameconfig",
+      "kind": "EBX",
+      "index": 1149,
+      "name": "animation/dingo/skaterinput_sceneop",
+      "compressed_sha1": "6dfd8805d568187262e8fedcd02a23e8bbde43cf",
+      "decoded_sha256": "ab27ec6735ea3681c6a1c484ff58f65eeac0b3ea28e6e87f7df8137c5eac3361",
+      "decoded_bytes": 718,
+      "root_guid": "99991eea-e709-3546-9999-1eeae7093546"
+    },
+    {
+      "bundle": "gameconfig",
+      "kind": "EBX",
+      "index": 1658,
+      "name": "animation/dingo/float.intent.ob.rightgrab",
+      "compressed_sha1": "d353bfca05c9c3bdeedd2394b6e6c1e9ee63c9f6",
+      "decoded_sha256": "0dc583eea7e08a5dbb92fa4267ad39395700dbea52be3d93e1a8d8b1548709ff",
+      "decoded_bytes": 1264,
+      "root_guid": "85eeabe8-3bdf-64ed-85ee-abe83bdf64ed"
+    },
+    {
+      "bundle": "gameconfig",
+      "kind": "EBX",
+      "index": 1771,
+      "name": "animation/dingo/float.intent.ob.leftgrab",
+      "compressed_sha1": "0a1834538aa8c0939c7cbb0293c191666c942fda",
+      "decoded_sha256": "c9e1bafaa82dc4f28387ccd75f546ba8bb0e211149488da6659a6c2eb57d1bd2",
+      "decoded_bytes": 1264,
+      "root_guid": "15e91125-03c8-6ed0-15e9-112503c86ed0"
+    },
+    {
+      "bundle": "level",
+      "kind": "RES",
+      "index": 5892,
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_1_ss_onupdate",
+      "compressed_sha1": "51c373b687f7b6c4e8cc918119a202e16667bd3d",
+      "decoded_sha256": "b11a42315d22b2e4187b8279ad50b748d19aafb929633db6b3f7393574fcb299",
+      "decoded_bytes": 464,
+      "resource_id": "0x225383991c99d4f9"
+    },
+    {
+      "bundle": "level",
+      "kind": "RES",
+      "index": 5893,
+      "name": "gameplay/skaterintenttree/includes_updategrabintents_ag_9aed893_setfloatintentgamestatedata_4_ss_onupdate",
+      "compressed_sha1": "51c373b687f7b6c4e8cc918119a202e16667bd3d",
+      "decoded_sha256": "b11a42315d22b2e4187b8279ad50b748d19aafb929633db6b3f7393574fcb299",
+      "decoded_bytes": 464,
+      "resource_id": "0xcc64dd85dc921a13"
+    },
+    {
+      "bundle": "level",
+      "kind": "RES",
+      "index": 13815,
+      "name": "gameplay/skaterintenttree/includes_grabtweakcalculation_ag_a353937_eatcommandactiondata_1_ss_onupdate",
+      "compressed_sha1": "752f6f0885f88371cdd963e8b268504a1db0443f",
+      "decoded_sha256": "1ac062c86eb2c7a0bf8bfdfd64e65a133214853583afa727a8164bbe3733bc6e",
+      "decoded_bytes": 1536,
+      "resource_id": "0xe782f057e7968bfb"
+    }
+  ]
+}

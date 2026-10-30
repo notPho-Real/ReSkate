@@ -59,13 +59,18 @@ Source: <https://github.com/lvlvllvlvllvlvl/oozextract>.
 Resource indices below are local to the indicated original bundle; they are
 not trick IDs or executable addresses.
 
-1. **Intent:** `Includes_UpdateGrabIntents_AG_9AED893` (level EBX 31339)
+1. **Candidate intent graph, not a qualified gameplay route:**
+   `Includes_UpdateGrabIntents_AG_9AED893` (level EBX 31339)
    contains two float and two bool intent actions with native lifetime and
    reset-on-end behavior. Independent original assets include
    `Bool.Intent.LeftHandGrab`, `Bool.Intent.RightHandGrab`,
    `Float.Intent.OB.LeftGrab`, `Float.Intent.OB.RightGrab`, and the signed
    `Input_GrabTweakLR/UD` inputs. The exact compiled expression operand-to-state
-   bindings and timing relative to Arcade dispatch are still unresolved.
+   bindings and timing relative to Arcade dispatch were initially unresolved.
+   Follow-up decoding resolves a significant limitation: its inspected float
+   update expressions reference `Input_ArmsUp`, not a verified left/right
+   trigger input. See the follow-up below before treating this graph as the
+   production grab producer.
 2. **Owner:** `SF_OnBoard_L_Grab_InAir` (9734) is a dedicated StateFlow
    controller, with `MaxActiveNodes=3` and `EndOnSubjectEnd=false`.
    `Grab.Into.Node` (1268) requires `Bool.GP.CanGrab`. Its subject is
@@ -153,3 +158,88 @@ This checkpoint leaves runtime gameplay unchanged. It does not enable named
 grabs, substitute animations, change physics, alter manual/grind work, or
 claim that model tests prove native playback. Broad catalog implementation
 must wait for the missing native mechanism and Stage A acceptance.
+
+## Follow-up for the next gameplay build
+
+Source-only follow-up to `911819950ef977cef414763855e8001b447c189f`.
+The existing checkpoint DLL is not a new grab implementation and must not be
+installed as one. No installation, process-memory capture, controller input or
+gameplay trial was performed in this follow-up. Static archive reads and local
+PE disassembly do not establish that a recovered path is active in gameplay.
+Machine-readable findings and selected resource receipts are in
+[`native-grab-input-followup.json`](native-grab-input-followup.json).
+
+### Expression dependencies
+
+The private inspection utility previously omitted `ResourceReference` values.
+Printing those values allows an expression EBX's `GraphData.Resource` to be
+matched to its compiled RES entry. This was an inspection limitation; changing
+the utility does not change game behavior.
+
+* The float OnUpdate expressions at level EBX 32442 and 10366 use compiled
+  RES 5892 and 5893. Their constant-reference patches resolve to the file GUID
+  `a9ed1f33-71e6-40f9-a325-61cf67d30888`, whose original asset is
+  `Gameplay/Input/Inputs/Input_ArmsUp` (9546). The compiled boolean input getter
+  has call hash `adef306d`, resolved to native RVA `0x8314c0`. This establishes
+  what the inspected expressions read, not that normal grabs execute them.
+* The separate `Input_GrabIntents_AG_B01C97F` (25045) has five actions. Its
+  inspected float update (31101) also patches that ArmsUp reference. At least
+  one of its bool actions is disabled. Neither graph qualifies a named-grab
+  actuator merely by having “GrabIntents” in its name.
+* `Includes_GrabTweakCalculation_AG_A353937` (28360) is more specific. Its
+  update (19055, compiled RES 13815) references `Input_GrabTweakLR` (771),
+  `Input_GrabTweakUD` (26706), the native tweak timer (280), the X/Y delta
+  variables (26080/28631), and `EATVariable_Vec2_CurrentGrabTweak` (20515).
+  The native float getter resolves to RVA `0x831250`; the expression also
+  calls the native spring function at `0xfea340`. The connection from that
+  Vec2 to the BS blendspace's SignalX/SignalY is still missing. It would be
+  incorrect to equate those names or write the blendspace coordinates directly.
+
+### Native scene update and physics configuration
+
+`SkaterInput_SceneOp` (gameconfig EBX 1149) identifies a native scene operation.
+Its update at RVA `0x10681a0` loads the callback at scene context `+0x10c0`,
+converts the update interval and calls callback vtable slot zero. Setter
+`0x106a220` stores that callback. Registration helper `0xfccdd0` is called
+from `0xf8789b` after the registry constructor `0xfaa890`; the registry vtable
+is `0x6176088`, with update `0xfb85d0`. That update iterates registered
+callbacks and invokes their first virtual method.
+
+This identifies a dispatcher, **not the per-skater grab producer**. Its local
+owner binding, the relevant registered callback, and the ordering relative to
+the actual grab state transitions remain unqualified. No hook was added at
+any of these locations, and none is declared a supported command API.
+
+The original `SkaterCorePhysicsInputConfig` (21229) includes `WantsToGrab`,
+`IsGrabbing`, and `IsGrabbingWorld` references. They describe animation inputs
+to physics; their names do not establish physical-button commands or action
+acknowledgments. Their asset GUIDs are preserved in the follow-up JSON.
+The physics output configuration (16420) was also decoded. No physics field
+was written or reinterpreted as a grab actuator.
+
+### Unresolved acceptance gates
+
+The following are the exact outstanding dependencies for the three pilots:
+
+1. Locate the definitions and producers of BS blendspace signals
+   `806e09fc-e770-8456-806e-09fce7708456` and
+   `5e9afe38-769a-3d80-5e9a-fe38769a3d80`. They were not resolved in the
+   inspected float/input/small-signal assets. This bounded search is not proof
+   that the definitions are absent from the game.
+2. Identify the active local-skater grab intent consumer and its eligibility
+   and selection ordering. The recovered generic callback registry does not
+   supply that ownership proof.
+3. Qualify native chooser/actor initialization and advancement independently
+   of requested enum, controller packets and StateFlow candidate evaluation.
+4. Establish the tap lifetime, held-pose renewal, native release/cleanup, and
+   allowed family transitions. No arbitrary pulse duration is accepted.
+5. Obtain actual animation, continuous-flight, landing and scoring evidence
+   in a subsequently authorized gameplay test. Source-only tests cannot pass
+   this gate.
+
+Stage A remains incomplete; zero new grabs are enabled. Runtime source and
+the verified native flip bridge are unchanged. There is no new gameplay DLL,
+new DLL hash or new CI success to report from this follow-up. The previous
+CI result applies only to the previous source checkpoint. Do not start the
+broad catalog or ship repeated/compound bindings on the strength of this
+static investigation.

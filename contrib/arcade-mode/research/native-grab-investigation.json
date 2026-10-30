@@ -2,6 +2,8 @@
   "schema": 1,
   "stage": "A",
   "status": "incomplete",
+  "input_followup": "native-grab-input-followup.json",
+  "intent_route_correction": "Inspected candidate float updates read Input_ArmsUp; an active normal-grab producer has not been established. See the follow-up before using the candidate graphs as actuators.",
   "baseline_commit": "65d34a0bc06034125b28779d10490e479df37fba",
   "game_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
   "scope": "Stage A pilot metadata and required native enum dependency; not a complete flip/grab execution catalog",
