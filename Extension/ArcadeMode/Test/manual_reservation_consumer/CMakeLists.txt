@@ -10,7 +10,7 @@ get_filename_component(reservation_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../..
 set(reservation_generator "${CMAKE_CURRENT_SOURCE_DIR}/generate.py")
 set(reservation_output "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${reservation_output}")
-foreach(variant current rollback-no-reservation rollback-admitted-only rollback-first-down-mask rollback-native-axis)
+foreach(variant current rollback-no-reservation rollback-admitted-only rollback-first-down-mask rollback-native-axis rollback-revert-delivery)
     set(source "${reservation_output}/${variant}.cpp")
     set(target "dingosdk_arcade_manual_reservation_${variant}")
     add_custom_command(OUTPUT "${source}" "${reservation_output}/${variant}.json"
@@ -45,4 +45,4 @@ endforeach()
 set_tests_properties(arcade_manual_reservation_consumer
     arcade_manual_reservation_rollback-no-reservation
     arcade_manual_reservation_rollback-admitted-only arcade_manual_reservation_rollback-first-down-mask
-    arcade_manual_reservation_rollback-native-axis PROPERTIES TIMEOUT 60)
+    arcade_manual_reservation_rollback-native-axis arcade_manual_reservation_rollback-revert-delivery PROPERTIES TIMEOUT 60)

@@ -174,19 +174,22 @@ public:
             if(expired || !native.required || !native.fresh(now) || native.generations.owner!=revert_link_.owner ||
                 native.airborne || native.rail_family || admission.external_owner || physical.lt>30 ||
                 (physical.buttons & 0x9330u)) revert_link_={};
-            else if(revert_link_.issued && admission.manual_balance_admitted && manual_.busy() &&
+            else if(revert_link_.issued && !auxiliary_.busy() && admission.manual_balance_admitted && manual_.established_balance() &&
                 manual_.requested()==revert_link_.direction &&
                 admission.pose==(revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual)) revert_link_={};
             else if(revert_link_.issued && !manual_.busy()) revert_link_={};
-            else if(!revert_link_.issued && revert_link_.confirmed_at && !auxiliary_.busy() && !manual_.busy() && admission.manual_safe && physical.rt<=30 &&
+            else if(!revert_link_.issued && revert_link_.confirmed_at && !manual_.busy() && admission.manual_safe &&
                 native.flip.state==100 && native.flip.mode==1 &&
                 (native.flip.stance&0x20u)!=revert_link_.stance) {
-                // Deliver the existing partial RS manual actuator. Contact/history
-                // acquisition, not this request, establishes the new balance.
+                // Native acknowledgment and changed stance transfer only RS.
+                // The existing revert keeps its complete LS trajectory. Waiting
+                // for that actor to finish would keep pressing the old manual
+                // through the opposite contact, then emit an unowned neutral poll.
                 if(manual_.request(now,revert_link_.direction,false,true,false,
                     revert_link_.started,revert_link_.recognition)) revert_link_.issued=true;
             }
         }
+        const bool manual_revert_handoff=revert_link_.issued && !grab_actor_;
         if (physical.rt<=30) revert_trigger_owned_=false;
         else if(auxiliary_.busy() && !grab_actor_) revert_trigger_owned_=true;
         const bool triggers = physical.lt > 30 || physical.rt > 30;
@@ -210,7 +213,8 @@ public:
                 (revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual) : SkatePose::riding) : admission.pose;
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, admission.manual_safe, actuator_pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            authored_.busy() || (auxiliary_.busy() && !manual_revert_handoff) || admission.external_owner ||
+            (triggers && !manual_revert_handoff), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -275,7 +279,8 @@ public:
             output.authored_playback = true;
         }
         manual = manual_.sample(now, true, admission.manual_safe, actuator_pose,
-            authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            authored_.busy() || (auxiliary_.busy() && !manual_revert_handoff) || admission.external_owner ||
+            (triggers && !manual_revert_handoff), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();
         output.suppress_reverse = !manual_.busy() && diagnostic.suppress_reverse;
@@ -305,12 +310,14 @@ public:
         ActionContext action_context{admission.action_mode != ActionExperiment::observe, admission.action_fresh,
             context == InputContext::air, context == InputContext::ground ||
             (auxiliary_.busy() && !grab_actor_ && revert_context(admission,now)), admission.inspected_stance,
-            busy || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0,
+            authored_.busy() || input_.pending_stick() || extension_started_ ||
+            (manual_.busy() && !manual_revert_handoff) || board_active_ || admission.external_owner || (physical.buttons & (0x5000u | 0x0300u | 0x0010u)) != 0,
             verified_manual(admission,now)};
         if (grab_hold_button_ && !(physical.buttons & grab_hold_button_)) { auxiliary_.release_grab(now); grab_hold_button_ = 0; }
         if ((grab_actor_ ? !admission.inspected_stance : !revert_context(admission,now)) ||
             (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
+        if(manual_revert_handoff && manual.owns_stick)output.action.pad.owns_right_stick=false;
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
         output.action.owned = action.owns_right_stick || action.owns_left_stick || action.owns_triggers || action.owns_face_buttons;

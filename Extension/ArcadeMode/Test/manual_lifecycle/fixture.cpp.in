@@ -756,20 +756,34 @@ void analog_air_lifecycle(){
 
 
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(bool already:{false,true}){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(bool already:{false,true})for(unsigned ack_delay:{300u,900u}){
   const unsigned dt=1000/hz;
   qualified(nose,dt,300);const bool initial_nose=nose;trial_hz=hz;trial_start=clock_ms;trial_frame=0;
   const auto episode_id=manual_episode.serial();
   const auto multiplier=combo_session.model().state().multiplier;
   for(unsigned link=0;link<(ack?2u:1u);++link){
    const auto began=clock_ms;
-   check(remap(0,0,0,255).action.owned,"qualified production manual admits one discrete RT actor");
-   while(clock_ms-began<900){
-    advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();
+   const auto started=remap(0,0,0,255);
+   check(started.action.owned,"qualified production manual admits one discrete RT actor");
+   RevertPlayback reference;
+   check(reference.start(began,RevertSide::frontside,{nose,!(raw.words[0]&0x20u),false,static_cast<short>(nose?20000:-20000)},true),"reference uses the unchanged native revert recipe");
+   const auto verify_left=[&](const NativeGesture::Output& actual){
+    const auto expected=reference.sample(clock_ms,true);
+    if(actual.action.pad.owns_left_stick!=expected.owns_sticks || (expected.owns_sticks&&(actual.action.pad.left_x!=expected.left_x||actual.action.pad.left_y!=expected.left_y)))
+     std::cerr<<"revert waypoint nose="<<nose<<" hz="<<hz<<" ack_delay="<<ack_delay<<" age="<<clock_ms-began<<" owns="<<actual.action.pad.owns_left_stick<<" expected="<<expected.owns_sticks<<" manual="<<actual.manual.owns<<"\n";
+    check(actual.action.pad.owns_left_stick==expected.owns_sticks&&
+       (!expected.owns_sticks||(actual.action.pad.left_x==expected.left_x&&actual.action.pad.left_y==expected.left_y)),
+       "manual successor preserves every native LS revert waypoint and its original clock");
+   };
+   verify_left(started);
+   while(clock_ms-began<ack_delay){
+    advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
     check(combo_session.model().state().combo_active&&!combo_session.model().state().revert_pending,
        "admitted native revert preparation preserves original combo beyond landing grace without claiming success");
    }
    if(!ack){
+    raw.words[0]^=0x20u;advance_trial(dt);observe(dt/1000.f,nose?0x4000u:0x8000u);client(dt/1000.f,history());
+    check(!remap(0,0,0,255).manual.owns,"changed stance and opposite contact without native acknowledgment cannot fabricate a successor");
     while(clock_ms-began<2400){advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();}
     check(!combo_session.model().state().combo_active,"unacknowledged bounded revert settles without a phantom link");
     continue;
@@ -777,17 +791,23 @@ void manual_revert_production(){
    ScoreLabelOccurrence event{true,score_label_bit(3),link+1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
    client(dt/1000.f,history(),event);
    check(combo_session.model().state().revert_pending,"only independent native revert acknowledgment creates the post-revert link");
+   check(!remap(0,0,0,255).manual.owns,"native acknowledgment alone cannot transfer RS before changed stance");
    raw.words[0]^=0x20u;advance_trial(dt);observe(dt/1000.f,already?(nose?0x4000u:0x8000u):0xc000u);client(dt/1000.f,history());
-   const auto out=remap(already?0x6000u:0u);
-   check(out.manual.owns&&out.manual.request==(nose?-1:1),"changed native stance admits opposite manual actuator after the sampled revert finishes");
+   const auto out=remap(already&&ack_delay==900?0x6000u:0u,0,0,255);
+   check(out.manual.owns&&out.manual.request==(nose?-1:1),"acknowledged stance change transfers manual RS before the native LS revert finishes");
+   verify_left(out);
+   check(!out.action.pad.owns_right_stick&&out.right_y==(nose?-20000:20000),"successor alone owns the correct RS pressure while RT remains held");
    // Client publication can run again before either XInput or the next
    // original physics callback. It must not erase the delivered acquisition.
    client(dt/1000.f,history());
-   nose=!nose;advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());remap();
-   check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
-      "new or revert-attributed opposite-wheel contact activates opposite balance and HUD without banking");
+   remap(0,0,0,255);client(dt/1000.f,history());remap(0,0,0,255);
+   nose=!nose;advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
+   check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "delivered successor owns opposite balance and HUD on the next original step while native LS may still run");
    const auto acquired=clock_ms;
-   while(clock_ms-acquired<10000){const auto state=snapshot();tick(dt,100,nose?0x8000u:0x4000u);remap(0,state.velocity+.02f*state.position>0?-25000:25000);
+   while(clock_ms-acquired<10000){const auto state=snapshot();tick(dt,100,nose?0x8000u:0x4000u);const auto held=remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0);
+    if(clock_ms-began<1200)verify_left(held);
+    check(held.manual.owns&&held.right_y==(nose?20000:-20000)&&!held.action.pad.owns_right_stick,"opposite RS ownership remains continuous across native revert completion and held RT release");
     if(!(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active))
      std::cerr<<"linked failure nose="<<nose<<" dt="<<dt<<" already="<<already<<" age="<<clock_ms-acquired<<" balance="<<manual_balance_admitted.load()<<" hud="<<balance_hud_pending()<<" combo="<<combo_session.model().state().combo_active<<" putdown="<<manual_release.pending()<<" position="<<state.position<<" velocity="<<state.velocity<<" elapsed="<<state.elapsed<<"\n";
     check(manual_episode.serial()==episode_id&&combo_session.model().state().multiplier==multiplier&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,

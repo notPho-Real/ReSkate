@@ -68,6 +68,26 @@ requires changed contact generation and verified revert provenance. Balance,
 fatigue and RNG transfer without a new setup penalty. The original ground
 revert recipe is unchanged.
 
+The linked successor takes RS as soon as the acknowledged native revert has
+changed stance in state100/mode1. It does not wait for the remaining LS recipe
+to finish. The old implementation kept the original manual's RS pressure
+through this interval and could emit a neutral poll between actors. The LS
+actor now retains its original trajectory, timing and trigger ownership while
+the linked manual owns RS. The delivery observer accepts this specific shared
+handoff; an unrelated action still excludes manual delivery. Neither an
+acknowledgment alone nor a stance/contact change alone authorizes adoption.
+
+The transition link retires only after both the LS actor has finished and the
+successor actuator has independently consumed admitted matching balance. A
+client's opposite-pose publication alone is too early: clearing the link before
+actuator confirmation allowed a still-held RT to cancel the successor. RT
+release is not a prerequisite for this existing verified transition.
+
+Ordinary owned manual input also reserves native vertical locomotion through
+acquisition and correction-publication gaps. The physical input still feeds
+the balance model; it no longer simultaneously sends native reverse/slide Y.
+An actual revert or rotation owner retains its own LS output.
+
 `sample_episode()` integrates only original native rows with matching owner,
 contact, input and dt, at or after the independently admitted section step.
 Duplicate client reads do not integrate. The episode token owns manual HUD
@@ -88,6 +108,16 @@ Actual ImGui vertices verify HUD axis/cursor continuity. Source mutations prove
 regressions are detected. Old tests requiring observation loss to cause putdown
 now require no fabricated putdown. Existing flip/launch/spin, ground control,
 camera, controller routing, grind, score and endpoint regressions remain.
+
+The revert vectors include acknowledgment before and after LS playback ends,
+held RT through successor admission, repeated client/input polls before the
+next native step, and both preexisting and newly acquired opposite contacts.
+They require the opposite episode type, continuous RS through actor completion,
+the same combo/episode, and every original LS waypoint. The final packet
+composition checks both axes after all production writers. Removing shared
+successor delivery must fail at the next-original-step admission assertion.
+These fixtures supply native evidence at the observation boundary; they do not
+prove that the game produces that evidence or that live reverts succeed.
 
 `ARCADE BALANCE TERMINATION` now records episode, original physics step/source
 time and first reason. `ManualEpisode::Exit` numbers: 1 disabled, 2 owner,

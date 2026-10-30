@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import subprocess
 
-VARIANTS=('current','rollback-no-reservation','rollback-admitted-only','rollback-first-down-mask','rollback-native-axis')
+VARIANTS=('current','rollback-no-reservation','rollback-admitted-only','rollback-first-down-mask','rollback-native-axis','rollback-revert-delivery')
 
 def generate(root,variant='current'):
     if variant not in VARIANTS:raise ValueError('unknown control')
@@ -24,6 +24,9 @@ def generate(root,variant='current'):
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     generated=module.generated(TREE)
     source=generated['current.cpp']
+    if variant=='rollback-revert-delivery':
+        source=module.replace_once(source,'(!action.owned || linked_manual_delivery)',
+                                   '(!action.owned || (false && linked_manual_delivery))')
     mode=(TREE/'Extension/ArcadeMode/arcade_mode.cpp').read_text()
     reverse_mask=module.between(mode,'        if (result.suppress_reverse) left_y = 0;',
                                '        // The inspected guide stance')
@@ -113,7 +116,10 @@ def generate(root,variant='current'):
     if remap_form==2:
         # The lifecycle fixture has RT as argument4; this consumer has LT/RT
         # as arguments4/5. Preserve the physical RT edge in its new link test.
-        once('remap(0,0,0,255).action.owned','remap(0,0,0,0,255).action.owned')
+        source=source.replace('remap(0,0,0,255)','remap(0,0,0,0,255)')
+        once('remap(already&&ack_delay==900?0x6000u:0u,0,0,255)','remap(already&&ack_delay==900?0x6000u:0u,0,0,0,255)')
+        once('remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
+             'remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
     once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
@@ -144,6 +150,12 @@ def generate(root,variant='current'):
      CORRECTION
      FINAL_CONTROLS
      last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive,left_trigger,right_trigger,physical_buttons};
+     if(result.manual.owns&&result.manual.revert.ack_at&&action.pad.owns_left_stick){
+      check(last_pad.ry==result.manual.request*20000&&!action.pad.owns_right_stick,
+         "final native packet retains the successor RS owner during LS revert playback");
+      check(last_pad.x==action.pad.left_x&&last_pad.y==action.pad.left_y,
+         "final native packet preserves the original LS revert recipe during manual handoff");
+     }
      return result;'''.replace('DRIVE',drive).replace('ACTION_DELIVERY',action_delivery).replace('FINAL_CONTROLS',final_controls).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
     once(old,new)
 
@@ -554,7 +566,8 @@ def main():
         expected={'rollback-no-reservation':'production reservation grants no linear write during unresolved Manual hold',
                   'rollback-admitted-only':'new acquisition RS ownership must withdraw ordinary Down brake before balance admission',
                   'rollback-first-down-mask':'actual first-Down return mask ends only after275ms',
-                  'rollback-native-axis':'owned manual correction must not also send native locomotion LSY'}[args.verify_control]
+                  'rollback-native-axis':'owned manual correction must not also send native locomotion LSY',
+                  'rollback-revert-delivery':'delivered successor owns opposite balance and HUD on the next original step while native LS may still run'}[args.verify_control]
         result=subprocess.run([str(args.binary.resolve())],capture_output=True,text=True)
         if result.returncode!=1 or result.stderr.strip()!=expected:
             raise ValueError('rollback did not fail at its intended assertion: '+result.stderr)

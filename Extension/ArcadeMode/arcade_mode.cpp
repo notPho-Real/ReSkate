@@ -2291,7 +2291,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Revert mirroring outside that baseline remains a separate native test.
         const auto& action = result.action;
         const auto manual_delivery_frame = arcade_input.native_context(now);
-        const bool manual_delivery = game_input && !offboard && !result.authored_playback && !action.owned &&
+        const bool linked_manual_delivery = result.manual.revert.ack_at && action.pad.owns_left_stick && !action.pad.owns_right_stick;
+        const bool manual_delivery = game_input && !offboard && !result.authored_playback && (!action.owned || linked_manual_delivery) &&
             !(physical_buttons & (classic_a | 0x0030u));
         manual_acquisition.observe(now,manual_delivery_frame,result.manual,manual_delivery);
         const bool manual_pad_delivery = manual_delivery && !releasing_manual && !result.rail.held &&

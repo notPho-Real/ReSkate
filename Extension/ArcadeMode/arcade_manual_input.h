@@ -57,6 +57,7 @@ public:
     }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
+    bool established_balance() const noexcept { return requested_ && confirmed_ && balance_established_; }
     bool initial_ground_acquisition(std::uint64_t now) const noexcept {
         return requested_ && !air_prepared_ && !established_ && now >= requested_at_ &&
             now-requested_at_ < acquisition_ms;
