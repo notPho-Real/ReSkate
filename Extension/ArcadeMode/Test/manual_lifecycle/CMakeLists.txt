@@ -26,6 +26,7 @@ add_custom_command(
         "${lifecycle_root}/Extension/ArcadeMode/arcade_mode.cpp"
         "${lifecycle_root}/Extension/ArcadeMode/arcade_balance_hud.cpp"
         "${lifecycle_root}/Extension/ArcadeMode/arcade_manual_acquisition.h"
+        "${lifecycle_root}/Extension/ArcadeMode/arcade_manual_episode.h"
     VERBATIM)
 add_custom_target(dingosdk_arcade_manual_lifecycle_composition_generate DEPENDS ${lifecycle_outputs})
 foreach(variant IN LISTS lifecycle_variants)

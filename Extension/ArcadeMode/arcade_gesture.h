@@ -213,6 +213,12 @@ public:
     bool allows_air_rotation(unsigned user, bool authored_playback) const noexcept {
         return !authored_playback || (user < ordinary_jump_playback_.size() && ordinary_jump_playback_[user]);
     }
+    void resume_manual_episode(const ManualInputDiagnostic& command,const NativeInputFrame& proof,std::uint64_t now) noexcept {
+        const auto current=native_context(now);
+        if(!command.owns || !current.valid || !proof.valid || current.owner!=proof.owner ||
+            current.owner_generation!=proof.owner_generation || current.physics_step!=proof.physics_step)return;
+        sessions_[0].resume_manual_episode(command,InputNativeContext::from_frame(proof));
+    }
     void cancel_manuals() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.cancel_manual(); }
     bool initial_ground_acquisition(unsigned user, std::uint64_t now) const noexcept {
         const auto native=native_context(now);

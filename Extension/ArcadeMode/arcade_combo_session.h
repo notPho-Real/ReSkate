@@ -50,7 +50,22 @@ public:
         exit_elapsed_ = 0;
     }
     bool step(SkatePose pose, float dt, float correction, bool observed_revert = false,
-              const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false) noexcept {
+              const PhysicalBalanceSample* physical = nullptr, bool pending_manual_revert = false, bool manual_episode = false) noexcept {
+        if(manual_episode && balance_kind(pose)==BalanceKind::manual && !failed_section_ && !manual_putdown_) {
+            model_.begin_balance(BalanceKind::manual);
+            model_.manual_transition(observed_revert);
+            if(!pending_manual_revert)model_.manual_continue();
+            bool failure=false;
+            if(physical && physical->valid){
+                model_.tick(dt,0,1,BalanceEndpoints::bail_both,false,true);
+                failure=model_.apply_physical_balance(physical->position,physical->velocity,physical->exit);
+                failed_section_=failure;manual_putdown_=physical->exit==BalanceExit::putdown;
+            }
+            previous_=pose;scoring_.poll(model_);return failure;
+        }
+        if(manual_episode && (pose==SkatePose::air || pose==SkatePose::riding) && !failed_section_ && !manual_putdown_) {
+            model_.manual_airborne();previous_=pose;scoring_.poll(model_);return false;
+        }
         if (pose == SkatePose::unknown ||
             (physical && !physical->valid) ||
             !std::isfinite(dt) || dt < 0 || dt > (physical && physical->valid && balance_kind(pose)==BalanceKind::manual ? 1.0f : 0.25f)) {

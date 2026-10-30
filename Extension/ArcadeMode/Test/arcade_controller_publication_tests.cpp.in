@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_controller_route.h"
+#include "Extension/ArcadeMode/arcade_manual_episode.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
@@ -137,6 +138,7 @@ void run(){
 }
 }
 namespace binding_api {
+ManualEpisode manual_episode;
 std::mutex ollie_mutex;
 ArcadeInput arcade_input{true};
 NativeControllerRoute controller_route;

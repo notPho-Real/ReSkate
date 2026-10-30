@@ -39,10 +39,10 @@ int main(){
   p.command.owns=true;p.command.request_at=2241;p.step(2241);p.step(2258);
   for(std::uint64_t now=2300;now<3400;now+=100)check(!p.step(now),"new genuine request owns its own original deadline");
   check(!p.step(3440),"new request remains below original1199ms boundary");
-  check(p.step(3441),"new request expires at its own original1200ms boundary");
+  check(!p.step(3441),"acquired contact never expires into physical putdown at1200ms");
  }
  for(bool nose:{false,true})for(unsigned boundary:{300u,504u,401u,402u,403u,404u,499u,701u}){
-  Pipeline p(nose);p.acquire();check(p.step(2200),"setup has an actually pending old putdown");p.command.owns=false;
+  Pipeline p(nose);p.acquire();check(!p.step(2200),"acquisition cannot manufacture pending putdown");p.command.owns=false;
   check(!p.step(2217,boundary),"positive bail/rail/exit evidence also withdraws an already pending release owner");
   check(!p.step(2234),"completed old release cannot affect unrelated later contact");
  }
@@ -54,7 +54,7 @@ int main(){
  for(bool nose:{false,true}){
   Pipeline p(nose);p.acquire();p.command.owns=false;
   check(!p.step(2199,101),"unknown native settling does not fabricate a completion at1199ms");
-  check(p.step(2200),"unknown settling preserves bounded acquired cleanup at1200ms");
+  check(!p.step(2200),"unknown settling never becomes a physical cleanup request");
   Pipeline admitted(nose);admitted.acquire();check(!admitted.step(2200,100,true),"independently admitted continuing balance never receives unadmitted cleanup");
   for(unsigned fault=0;fault<5;++fault){
    Pipeline f(nose);f.acquire();f.command.owns=false;
@@ -72,7 +72,7 @@ int main(){
   p.command.owns=false;check(!p.step(2224),"buffered native exit cannot leave old cleanup in later recovery");
   p.command.owns=true;p.command.request_at=2241;p.step(2241);p.step(2258);
   for(std::uint64_t now=2300;now<3400;now+=100)check(!p.step(now),"fresh post-exit request retains its own lease");
-  check(p.step(3441),"fresh post-exit request expires at its original deadline");
+  check(!p.step(3441),"fresh acquired contact retires the acquisition watchdog");
  }
  std::cout<<checks<<" native acquisition boundary lifecycle checks passed\n";
 }

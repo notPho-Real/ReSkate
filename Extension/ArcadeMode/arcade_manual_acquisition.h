@@ -13,9 +13,9 @@ inline SkatePose manual_acquisition_pose(const NativeInputFrame& frame, bool bai
         frame.state == 701 ? SkatePose::grind_exit_transition :
         manual_contact_pose({frame.valid,false,false,bail,frame.state,frame.mode,frame.contacts},false);
 }
-// Bounded cleanup for a delivered basic Manual request that acquired native
-// contact without an independently admitted balance lifecycle. Contact cannot
-// create identity or a meter; expiry requests the existing putdown adapter.
+// Initial request provenance only. This observer has no established-manual
+// lifetime authority and can never request a physical putdown. The episode
+// owns continuation; the actuator owns expiry of an unadmitted input request.
 class ManualAcquisition {
 public:
     void reset() noexcept { active_ = grounded_ = acquired_ = exiting_ = delivered_ = false; }
@@ -63,7 +63,9 @@ public:
                 physical == SkatePose::manual || physical == SkatePose::nose_manual || frame.state == 103)) {
             reset(); return false;
         }
-        if (acquired_ && !balance_admitted && now-began_ >= ManualActuation::acquisition_ms) exiting_ = true;
+        // Matching native contact retires acquisition expiry permanently. Missing
+        // balance publication has no authority to request physical termination.
+        (void)balance_admitted;
         return exiting_;
     }
     bool preserves_history(std::uint64_t now, const NativeInputFrame& frame) const noexcept {

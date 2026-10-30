@@ -55,16 +55,16 @@ int main(){
   check(p.admitted&&p.meter()&&!p.exiting,"admitted contact continues balance after1200ms without waiting for presentation or refreshing identity");
   p.step(2310,100,0);check(!p.admitted&&!p.meter(),"unknown contact grants no new physical balance or stale meter");
   p.step(2327,100,nose?0x8000:0x4000);
-  check(p.exiting&&!p.meter()&&p.output.right_y==0,"lost identity with persistent acquired contact enters neutral putdown instead of endless no-bar manual");
+  check(!p.exiting&&!p.meter(),"independent observer identity loss cannot request physical putdown");
   p.step(2344,100,nose?0x8000:0x4000,0,true);
-  check(p.exiting&&!p.admitted&&!p.meter(),"late identity cannot reopen a native section already delivering controlled exit");
-  p.step(2361,100,0xc000);check(!p.exiting&&!p.meter(),"only actual two-wheel completion retires the putdown owner");
+  check(!p.exiting&&p.admitted&&p.meter(),"fresh history can admit observer balance without an invented cleanup owner");
+  p.step(2361,100,0xc000);check(!p.exiting,"actual two-wheel contact never invents a cleanup request");
  }
  for(bool nose:{false,true}){
   Pipeline p(nose);p.pair();p.step(1051,100,nose?0x8000:0x4000);
   for(std::uint64_t now=1068;now<2251;now+=17)p.step(now,100,nose?0x8000:0x4000);
   p.step(2251,100,nose?0x8000:0x4000);
-  check(p.exiting&&!p.admitted&&!p.meter()&&p.output.right_y==0,"no identity means bounded acquisition exit at the original1200ms grounded lease");
+  check(!p.exiting&&!p.admitted&&!p.meter()&&p.output.right_y==0,"unadmitted actuator request expires without requesting physical putdown");
  }
  for(bool nose:{false,true}) {
   Pipeline p(nose);p.pair();p.step(1051,100,nose?0x8000:0x4000,0,true);
@@ -86,7 +86,7 @@ int main(){
   for(std::uint64_t at=1100;at<2200;at+=100){f=observer.observe(at,owner,s,{true,-1});acquisition.observe(at,f,request,true);check(!acquisition.step(at,f,SkatePose::unknown,false,true),"unknown contact and repeated polls cannot renew or prematurely finish the original acquisition deadline");}
   f=observer.observe(2199,owner,s,{true,-1});check(!acquisition.step(2199,f,wanted,false,true),"unadmitted acquisition is still valid at1199ms");
   f=observer.observe(2200,owner,s,{true,-1});
-  if(fault==0)check(acquisition.step(2200,f,wanted,false,true),"original1200ms boundary requests putdown");
+  if(fault==0)check(!acquisition.step(2200,f,wanted,false,true),"acquired contact is never put down by acquisition expiry");
   if(fault==1)check(!acquisition.step(2200,f,wanted,true,true),"independently admitted balance waives the unadmitted acquisition cap");
   if(fault==2)check(!acquisition.step(2200,f,wanted,false,false),"invalid gameplay cannot retain a cleanup actuator");
   if(fault==3)check(!acquisition.step(2200,f,wanted,false,true,true),"actual native pushing revokes an old acquisition token");

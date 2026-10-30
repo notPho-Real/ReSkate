@@ -100,9 +100,10 @@ def generated(root):
         "camera_recheck": ("if (!enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())) {", "if (false) {"),
         "camera_publish": (" ||\n            !enabled() || camera_reset_generation.load(std::memory_order_acquire) != generation ||\n            !input.same_binding(read_input())", ""),
         "camera_toggle": ("camera_reset_generation.fetch_add(1, std::memory_order_release);", ""),
-        "model_reset": ("if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); }",
-                        "if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); manual_acquisition.reset(); }"),
-        "producer_revoke": ("if (manual_acquisition.observe_native(now,frame)) arcade_input.cancel_manuals();", ""),
+        "model_reset": ("const bool episode_live=episode.established() || episode.airborne();",
+                        "const bool episode_live=(episode.established() || episode.airborne()) && physical.valid;"),
+        "producer_revoke": ("const bool manual_boundary=manual_episode.observe(frame,arcade_input.pending_manual_revert(now,frame),wipeout);",
+                            "const bool manual_boundary=false;"),
         "buffered_release": ("manual_release.retire_observed(now,manual_completion);", "(void)manual_completion;"),
     }
     for name, (old, new) in controls.items():
@@ -115,18 +116,17 @@ def generated(root):
         "point(view.cursor_x, 0)")
     outputs["hud_clear.cpp"] = replace_once(source,
         "    publish_balance_hud({}, 0, {});", "    // HUD clear removed by this control.")
+    episode = (root / "Extension/ArcadeMode/arcade_manual_episode.h").read_text(encoding="utf-8")
     outputs["bail.cpp"] = replace_once(source,
-        '#include "Extension/ArcadeMode/arcade_manual_acquisition.h"',
-        '#include "Extension/ArcadeMode/arcade_manual_acquisition.h"\n#include "acquisition_without_bail.h"')
-    outputs["bail.cpp"] = replace_once(outputs["bail.cpp"],
-        "ManualAcquisition manual_acquisition;", "ManualAcquisitionWithoutBail manual_acquisition;")
-    # All dependencies still resolve to the original repository headers. Only
-    # the existing positive-bail predicate is removed in this negative control.
-    rollback = replace_once(acquisition, "frame.state == 300 || ", "")
-    rollback = rollback.replace("ManualAcquisition", "ManualAcquisitionWithoutBail")
-    rollback = rollback.replace("manual_acquisition_pose", "manual_acquisition_pose_without_bail")
-    rollback = re.sub(r'#include "(arcade_[^"/]+\.h)"',
-                      r'#include "Extension/ArcadeMode/\1"', rollback)
+        '#include "Extension/ArcadeMode/arcade_manual_episode.h"',
+        '#include "Extension/ArcadeMode/arcade_manual_episode.h"\n#include "acquisition_without_bail.h"')
+    outputs["bail.cpp"] = outputs["bail.cpp"].replace("ManualEpisode", "ManualEpisodeWithoutBail")
+    rollback = replace_once(episode, "bail || f.state==300", "bail")
+    # Unknown300 must not be rescued by the generic incompatible-owner branch.
+    rollback = replace_once(rollback,"if(f.state!=100 || f.mode!=1 || (f.stance_and_push&0x40u)){end", "if((f.state!=100 && f.state!=300) || f.mode!=1 || (f.stance_and_push&0x40u)){end")
+    rollback = rollback.replace("if(f.state!=100 && f.state!=300 ||", "if((f.state!=100 && f.state!=300) ||")
+    rollback = rollback.replace("ManualEpisode", "ManualEpisodeWithoutBail")
+    rollback = re.sub(r'#include "(arcade_[^"/]+\.h)"', r'#include "Extension/ArcadeMode/\1"', rollback)
     outputs["acquisition_without_bail.h"] = rollback
     manifest = {
         "source_chunks_sha256": {name: hashlib.sha256(body.encode()).hexdigest()
@@ -146,10 +146,10 @@ FAILURES = {
     "camera_recheck": "changed camera generation cannot continue stale orbit or leave a newly raced lease active",
     "camera_publish": "mode toggle during camera callback must retire ownership before the callback returns",
     "camera_toggle": "deferred camera retirement never acknowledges the toggle before cleanup succeeds",
-    "model_reset": "still-acquired same-owner contact retains original bounded cleanup after model interval loss",
-    "producer_revoke": "hard native exit seen between client callbacks must retire old command and cleanup before original lease expires",
+    "model_reset": "P0: a missing dynamics record must not erase established grounded manual identity or HUD",
+    "producer_revoke": "positive native exit between clients retires episode and actuator without synthetic putdown",
     "buffered_release": "original observed physical completion between clients must retire old pending release before recovery contact",
-    "bail": "old Manual cleanup cannot survive positive native exit into unrelated recovery contact",
+    "bail": "positive native exit between clients retires episode and actuator without synthetic putdown",
     "hud_source": "client publication retains the original native HUD timestamp",
     "hud_axis": "admitted physical position reaches the rendered cursor on the correct axis",
     "hud_clear": "actual OFF callback clears the HUD publication source immediately",

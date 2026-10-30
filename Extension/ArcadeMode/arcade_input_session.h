@@ -55,14 +55,19 @@ public:
     }
     // This is an admitted transition lease, not a revert success or score event.
     bool pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
-        return revert_link_.direction && !revert_link_.confirmed_at && frame.required && frame.fresh(now) &&
+        return revert_link_.direction && frame.required && frame.fresh(now) &&
             frame.generations.owner==revert_link_.owner && now>=revert_link_.started &&
-            now-revert_link_.started<=1500 && !frame.airborne && !frame.rail_family &&
+            (revert_link_.confirmed_at ? now>=revert_link_.confirmed_at && now-revert_link_.confirmed_at<=1100 : now-revert_link_.started<=1500) && !frame.airborne && !frame.rail_family &&
             (frame.flip.state==100 || frame.flip.state==101) && frame.flip.mode<=1;
     }
     std::int32_t authored_air_followup(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
             frame.air_episode()==air_actor_episode_ && (native_followup_ ? native_flip::ordinary_flip(air_followup_id_) : ordinary_ollie_followup(air_followup_id_)) ? air_followup_id_ : 0;
+    }
+    void resume_manual_episode(const ManualInputDiagnostic& command,const InputNativeContext& native) noexcept {
+        if(authored_.busy() || auxiliary_.busy() || rail_ || holding_ || board_active_)return;
+        native_=native;native_required_=native.required;
+        manual_.resume(command);
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
@@ -196,8 +201,15 @@ public:
             (revert_link_.issued && native.required && native.fresh(now) && !native.airborne &&
              native.flip.state==100 && native.flip.mode==1);
         const auto manual_buttons = static_cast<std::uint16_t>(physical.buttons & (ground_balance ? ~0x6000u : 0xffffu));
+        // During the acknowledged handoff the client still publishes the old
+        // episode type. The new actuator waits for successor admission, not
+        // that old presentation type (which would cancel it as opposite input).
+        const auto actuator_pose = revert_link_.issued && native.required && native.fresh(now) &&
+            native.flip.state==100 && native.flip.mode==1 ?
+            (admission.pose==(revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual) ?
+                (revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual) : SkatePose::riding) : admission.pose;
         const bool manual_was_active = manual_.busy();
-        auto manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
+        auto manual = manual_.sample(now, true, admission.manual_safe, actuator_pose,
             authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
@@ -262,7 +274,7 @@ public:
             output.right_x = authored.x; output.right_y = authored.y; output.phase = 1;
             output.authored_playback = true;
         }
-        manual = manual_.sample(now, true, admission.manual_safe, admission.pose,
+        manual = manual_.sample(now, true, admission.manual_safe, actuator_pose,
             authored_.busy() || auxiliary_.busy() || admission.external_owner || triggers, manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
         if (manual.owns_stick) { output.right_x = 0; output.right_y = manual.y; output.phase = 1; }
         const auto& diagnostic = input_.diagnostic();

@@ -55,7 +55,11 @@ struct PadTelemetry {
 struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipSelection flip; };
 struct RevertLinkEvidence { std::uint64_t ms{}, sequence{}, labels{}; bool accepted{}; unsigned remaining_ms{}; };
 struct BalanceFailureEvidence { std::uint64_t ms{}; unsigned kind{}; std::uint64_t request{}; };
-struct BalanceTerminationEvidence { std::uint64_t ms{}; unsigned pose{}, outcome{}; };
+struct BalanceTerminationEvidence {
+    std::uint64_t ms{}; unsigned pose{}, outcome{};
+    std::uint64_t episode{},physics_step{},source_ms{};
+    unsigned reason{};bool native_exit_verified{};
+};
 struct ManualPhysicsEvidence {
     std::uint64_t ms{};
     float step{}, elapsed{}, repeat_pressure{}, position{}, velocity{};

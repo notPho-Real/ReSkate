@@ -47,6 +47,14 @@ public:
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
     void cancel() noexcept { confirmed_ = established_ = balance_established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    // Resume one retained, independently revalidated episode after suspension.
+    // No recognition/controller edge and no new acquisition clock is created.
+    void resume(const ManualInputDiagnostic& d) noexcept {
+        if(busy() || !d.owns || (d.request!=-1 && d.request!=1))return;
+        requested_=d.request;requested_at_=d.request_at;recognized_at_=d.recognized_at;recognition_id_=d.recognition_id;
+        confirmed_=established_=balance_established_=landed_=true;air_prepared_=d.from_air;
+        hard_reset_=clocked_=wrong_contact_=held_air_=false;
+    }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
     bool initial_ground_acquisition(std::uint64_t now) const noexcept {
