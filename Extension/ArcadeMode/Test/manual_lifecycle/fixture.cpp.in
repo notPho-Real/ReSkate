@@ -93,7 +93,9 @@ void prepare_authored_catalog(){}void reset_score_label_occurrences(){}void capt
 namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){}}
 // Nonactuating native service boundary; manual tests do not claim flip playback.
 namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
+namespace dingosdk::arcade_mode::native_grab {void cancel()noexcept{}} // Nonactuating grab boundary.
 NativeFlipRequest normal_flip{};
+NativeGrabRequest normal_grab{};
 namespace dingosdk::logging{
 enum class Level{info};enum class Channel{skater};
 template<class... Args>void log(Level,Channel,const char*,Args&&...){}

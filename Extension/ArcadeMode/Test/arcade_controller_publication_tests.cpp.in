@@ -13,6 +13,7 @@ namespace dingosdk::arcade_mode::native_flip {
 void arm(const NoBailSkater&) noexcept {}
 void cancel() noexcept {}
 }
+namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
     route.observe_unfiltered(slot,pad);route.observe(slot,pad);
 }

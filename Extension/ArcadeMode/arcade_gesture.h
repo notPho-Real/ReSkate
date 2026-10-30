@@ -231,7 +231,7 @@ public:
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false,
-            NativeFlipRequest normal_flip = {}) noexcept {
+            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
@@ -248,6 +248,7 @@ public:
             flip_ready, neutral_ready, action_fresh, inspected_stance, observed, mode, speed, tick, catalog};
         admission.manual_balance_admitted = manual_balance_admitted;
         admission.normal_flip=normal_flip;
+        admission.normal_grab=normal_grab;
         admission.input_policy = policy_;
         admission.export_rail_requests = native_bound_;
         const auto native = native_context(now);

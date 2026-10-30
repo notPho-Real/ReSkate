@@ -5,6 +5,7 @@
 #include "arcade_push.h"
 #include "arcade_board.h"
 #include "arcade_native_flip_entry.h"
+#include "arcade_native_grab_lease.h"
 
 namespace dingosdk::arcade_mode {
 struct InputAdmission {
@@ -32,6 +33,7 @@ struct InputAdmission {
     bool export_rail_requests{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
     NativeFlipRequest normal_flip{};
+    NativeGrabRequest normal_grab{};
     bool manual_contact_only{}; // Physical admission without matching native history.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
@@ -235,6 +237,7 @@ public:
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
         environment.native_pop_transition=admission.normal_flip.submit!=nullptr;
+        environment.named_grabs=environment.named_grabs || admission.normal_grab.submit!=nullptr;
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers
@@ -526,6 +529,22 @@ private:
         if (grab) {
             out.trick = classic && !request.named_binding && request.presses == 1 ? ArcadeTrick::basic_bs_grab :
                 select_named_trick(TrickFamily::grab, direction(request.direction), request.presses);
+            if (classic && admission.normal_grab.submit) {
+                // Pilot mappings are native intent ports and original actor
+                // identities. A callback receipt only acknowledges queuing.
+                const auto& native=admission.native_context;
+                if (!native_grab::pilot(out.trick) || request.nollie || admission.nollie ||
+                    !native.required || !native.fresh(now_) || !native.correlates_action(request.generations) ||
+                    !admission.inspected_stance || admission.external_owner || physical_.lt>30 || physical_.rt>30 ||
+                    (physical_.buttons & (classic_a | 0x8000u | 0x0010u))) {
+                    out.result=DispatchResult::unavailable;current_->unsupported=true;return InputDisposition::unsupported;
+                }
+                const bool held=request.control && (physical_.buttons & request.control);
+                if (!admission.normal_grab.submit(admission.normal_grab.context,request,out.trick,held)) {
+                    out.result=DispatchResult::busy;return InputDisposition::waiting;
+                }
+                out.result=DispatchResult::started;return InputDisposition::started;
+            }
             if (out.trick == ArcadeTrick::basic_bs_grab && request.control && !(physical_.buttons & request.control)) {
                 // Recognition survives release. The native adapter must supply its
                 // minimum initialization/out stage before a released tap can run.

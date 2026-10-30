@@ -50,6 +50,10 @@ struct NativeFlipRequest {
     void* context{};
     bool (*submit)(void*,std::int32_t) noexcept{};
 };
+struct NativeGrabRequest {
+    void* context{};
+    bool (*submit)(void*,const InputRequest&,ArcadeTrick,bool) noexcept{};
+};
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
     struct Output {

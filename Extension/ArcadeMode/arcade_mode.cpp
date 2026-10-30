@@ -21,6 +21,7 @@
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
+#include "arcade_native_grab_transition.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -1671,6 +1672,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
     native_flip::cancel();
+    native_grab::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1701,6 +1703,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 
 void set_enabled(bool value, bool persist) noexcept {
     native_flip::cancel();
+    native_grab::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -1789,6 +1792,8 @@ bool start(std::uintptr_t image_base) noexcept {
     score_probe_base = image_base;
     logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip::start(image_base));
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GRAB BRIDGE: available={} gameplay_acceptance=unverified.",native_grab::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -1902,6 +1907,7 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         native_flip::tick(gameplay && focus_available);
+        native_grab::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
@@ -2209,6 +2215,18 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
             return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
         }};
+        struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode;};
+        GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode};
+        const bool grab_permitted=game_input && action_safe && action_experiment==ActionExperiment::classic &&
+            !offboard && observed==SkatePose::air && left_trigger<=30 && right_trigger<=30 &&
+            !(physical_buttons & (classic_a | 0x8000u | 0x0030u));
+        native_grab::refresh(grab_context.owner,grab_context.episode,(physical_buttons&0x2000u)!=0,grab_permitted);
+        NativeGrabRequest normal_grab{};
+        if (grab_permitted && native_grab::available()) normal_grab={&grab_context,
+            [](void* context,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::request(grab.owner,grab.episode,request,trick,held);
+            }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2217,7 +2235,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip);
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab);
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){

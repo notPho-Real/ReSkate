@@ -1,0 +1,294 @@
+#include "arcade_native_grab_transition.h"
+#include "arcade_native_grab_lease.h"
+#include "Engine/Core/Hooks/hooks.h"
+#include "Engine/Core/Platform/memory.h"
+#include "Engine/Core/Log/logging.h"
+#include "Engine/Game/Abi/native_data.h"
+#include "Engine/Game/Build/image_identity.h"
+#include "Engine/Game/Build/20260929/arcade_grab_transition.h"
+#include "Engine/Game/Build/20260929/arcade_flip_transition.h"
+#include <atomic>
+#include <bit>
+#include <mutex>
+#include <Windows.h>
+
+namespace dingosdk::arcade_mode::native_grab {
+namespace {
+namespace contract=game::build::v20260929::arcade_grab_transition;
+using Guid=std::array<std::uint8_t,16>;
+std::uintptr_t image{};
+contract::Initialize original_initialize{};
+contract::Evaluate original_evaluate{};
+std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
+std::mutex mutex;
+struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
+std::array<Asset,6> assets{{
+    {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
+    {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
+    {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
+    {"Animation/Dingo/Float.Intent.TweakFrontBack",contract::tweak_y},
+    {"Animation/Dingo/Bool.Anim.IsGrabbing",contract::grabbing},
+    {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail}
+}};
+const std::array<Guid,3> actor_guids{contract::actor_bs,contract::actor_melon,contract::actor_method};
+struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
+struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
+struct Session {
+    Lease lease{};NoBailSkater owner{};std::uintptr_t block{};
+    std::uint64_t episode{},serial{};
+    std::array<Written,4> writes{};
+    std::array<Actor,3> actors{};
+    bool reported{};
+} session;
+std::uint64_t serial{},retry_at{};
+// Input producers only copy bounded evidence; the client tick formats logs.
+struct Event {
+    bool ending{},held{},acknowledged{},airborne{};
+    std::uint64_t serial{},episode{};
+    ArcadeTrick trick{};std::int32_t detail{};InputRequest physical{};
+};
+std::array<Event,32> events{};
+unsigned event_count{},lost_events{};
+void enqueue(Event event) noexcept {
+    if (event_count<events.size()) events[event_count++]=event;
+    else ++lost_events;
+}
+void flush_events() noexcept {
+    std::array<Event,32> pending{};unsigned count{},lost{};
+    {std::lock_guard lock(mutex);pending=events;count=event_count;lost=lost_events;event_count=lost_events=0;}
+    for (unsigned i=0;i<count;++i) {
+        const auto& e=pending[i];
+        if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified.",
+            e.serial,e.episode,e.acknowledged,e.airborne);
+        else logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE GRAB REQUEST: serial={} episode={} semantic={} expected_detail={} held={} pressed_at={} released_at={} recognized_at={} direction={} presses={} acknowledged=false.",
+            e.serial,e.episode,static_cast<unsigned>(e.trick),e.detail,e.held,e.physical.physical_pressed_at,
+            e.physical.physical_released_at,e.physical.recognized_at,e.physical.direction,e.physical.presses);
+    }
+    if (lost) logging::log(logging::Level::warning,logging::Channel::skater,"ARCADE NATIVE GRAB EVIDENCE LOST: count={}.",lost);
+}
+template<class T> bool read(std::uintptr_t at,T& value) noexcept {return memory::peek(at,value);}
+std::uintptr_t pointer(std::uintptr_t at) noexcept {std::uintptr_t p{};return read(at,p)?p:0;}
+bool guid_is(std::uintptr_t object,const Guid& expected) noexcept {
+    Guid value{};return object>=0x10010 && read(object-16,value) && value==expected;
+}
+// Same qualified local component path as the verified flip bridge. No shared
+// flip lease or flip state is used by this separate grab owner.
+std::uintptr_t state_block(const NoBailSkater& owner) noexcept {
+    const auto collection=pointer(owner.entity+0x70);std::uint8_t count{};
+    if (!collection || pointer(collection)!=owner.entity || !read(collection+8,count) || count>128) return 0;
+    for (unsigned i=0;i<count;++i) {
+        const auto component=pointer(collection+0x20+i*0x20);
+        if (component && pointer(component)==image+0x63aaee8) {
+            const auto block=pointer(pointer(pointer(component+0x68)+0xe8)+8);
+            return pointer(block)==image+0x61a8bd8?block:0;
+        }
+    }
+    return 0;
+}
+bool same_owner() noexcept {
+    NoBailSkater owner{};
+    return session.serial && no_bail_skater(owner) && owner==session.owner && state_block(owner)==session.block;
+}
+bool airborne() noexcept {
+    std::uint32_t state{};
+    return read(session.owner.context+0x1414,state) && (state==200 || state==201);
+}
+std::uintptr_t address_at(std::uintptr_t block,unsigned index) noexcept {
+    const auto& a=assets[index];std::uint32_t handle{},valid{};
+    if (!guid_is(a.object,a.guid) || !read(a.object+0x28,handle)) return 0;
+    const auto page=pointer(block+0x60+8*(handle&4095));const auto offset=(handle>>12)&2047;
+    if (!page || !read(page+0x71c+4*(offset>>5),valid) || !(valid&(1u<<(offset&31)))) return 0;
+    return page+offset;
+}
+std::uintptr_t address(unsigned index) noexcept {return address_at(session.block,index);}
+bool write(std::uintptr_t at,std::uint32_t value,unsigned size) noexcept {
+    if (!at || (size==4 && at%4)) return false;
+    __try {
+        if (size==1) *reinterpret_cast<std::uint8_t*>(at)=static_cast<std::uint8_t>(value);
+        else *reinterpret_cast<std::uint32_t*>(at)=value;
+        return true;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {return false;}
+}
+bool bits(std::uintptr_t at,unsigned size,std::uint32_t& value) noexcept {
+    if (size==4) return read(at,value);
+    std::uint8_t b{};if (!read(at,b)) return false;value=b;return true;
+}
+void restore() noexcept {
+    if (same_owner()) for (unsigned i=0;i<session.writes.size();++i) {
+        auto& w=session.writes[i];std::uint32_t value{};
+        if (w.at && address(i)==w.at && bits(w.at,w.size,value) && value==w.value) write(w.at,w.previous,w.size);
+    }
+    session.writes={};
+}
+void retire() noexcept {
+    if (session.serial) enqueue({true,false,session.reported,same_owner() && airborne(),session.serial,session.episode});
+    restore();session={};active.store(false);
+}
+bool valid() noexcept {return gameplay_allowed.load() && assets_ready.load() && same_owner() && airborne();}
+int actor_index(std::uintptr_t actor) noexcept {
+    const auto asset=pointer(actor+0x60);
+    if (pointer(asset)!=image+0x61ba838) return -1;
+    for (unsigned i=0;i<actor_guids.size();++i) if (guid_is(asset,actor_guids[i])) return static_cast<int>(i);
+    return -1;
+}
+void acknowledge(std::uint64_t now) noexcept {
+    const auto* selected=session.lease.selected();if (!selected || session.lease.acknowledged()) return;
+    std::int32_t detail{};bool grabbing{};
+    const auto detail_at=address(5),grabbing_at=address(4);
+    if (!detail_at || !grabbing_at || !read(detail_at,detail) || !read(grabbing_at,grabbing)) return;
+    for (unsigned i=0;i<3;++i) {
+        const auto& a=session.actors[i];
+        if (pilots[i].trick!=selected->trick || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms) continue;
+        if (session.lease.acknowledge(detail,a.delta,a.before,a.after,a.initialized,
+                                    a.object && actor_index(a.object)==static_cast<int>(i),grabbing) && !session.reported) {
+            session.reported=true;
+            const auto board=pointer(pointer(session.owner.core+0x430)+0x18);
+            const auto bodies=pointer(board+0x20);std::uint32_t count{};float vy{};
+            const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
+                read(bodies,count) && count==9 && read(bodies+0x74,vy) && std::isfinite(vy);
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE GRAB: serial={} episode={} detail={} actor={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
+                session.serial,session.episode,detail,a.object,a.before,a.after,a.delta,velocity_known,vy);
+        }
+    }
+}
+void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t parameters) {
+    std::uint64_t occurrence{};int index=-1;
+    if (active.load()) {
+        std::lock_guard lock(mutex);
+        if (valid() && context==session.block+0x48) {occurrence=session.serial;index=actor_index(actor);}
+    }
+    original_initialize(actor,context,parameters);
+    if (index>=0) {
+        std::lock_guard lock(mutex);float duration{};
+        if (session.serial==occurrence && valid() && actor_index(actor)==index &&
+            read(actor+0x20,duration) && std::isfinite(duration) && duration>0 && duration<10000) {
+            session.actors[index]={actor,0,0,0,0,true};
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} duration={}.",
+                occurrence,session.episode,pilots[index].detail,actor,duration);
+        }
+    }
+}
+std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,std::uintptr_t context) {
+    std::uint64_t occurrence{};int index=-1;float before{};
+    if (active.load() && std::isfinite(delta) && delta>0) {
+        std::lock_guard lock(mutex);
+        if (valid() && pointer(context+8)==session.block+0x48 && read(actor+0x1c,before)) {
+            occurrence=session.serial;index=actor_index(actor);
+        }
+    }
+    const auto result=original_evaluate(actor,output,delta,context);
+    if (index>=0) {
+        std::lock_guard lock(mutex);float after{};
+        if (session.serial==occurrence && valid() && read(actor+0x1c,after)) {
+            auto& a=session.actors[index];
+            if (a.initialized && a.object==actor) {
+                a.before=before;a.after=after;a.delta=delta;a.advanced_at=GetTickCount64();
+                acknowledge(a.advanced_at);
+            }
+        }
+    }
+    return result;
+}
+}
+void cancel() noexcept {std::lock_guard lock(mutex);retire();}
+bool available() noexcept {return hooks_ready.load() && assets_ready.load() && gameplay_allowed.load();}
+bool blocks_flip(const NoBailSkater& owner) noexcept {
+    if (!available()) return false;
+    std::lock_guard lock(mutex);
+    if (session.serial && session.owner==owner) return true;
+    const auto block=state_block(owner);if (!block) return false;
+    const auto at=address_at(block,4);bool grabbing{};
+    return at && read(at,grabbing) && grabbing;
+}
+void tick(bool gameplay) noexcept {
+    flush_events();
+    gameplay_allowed.store(gameplay);
+    if (!gameplay) {cancel();return;}
+    if (!hooks_ready.load()) return;
+    if (!assets_ready.load() && GetTickCount64()>=retry_at) {
+        retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
+        if (find) {
+            bool complete=true;
+            for (auto& a:assets) {
+                if (guid_is(a.object,a.guid)) continue;
+                a.object=0;
+                for (std::uint16_t domain=0;domain<0xbbf;++domain) {
+                    if (!pointer(image+game::build::v20260929::arcade_flip_transition::domain_owners+8ULL*domain)) continue;
+                    const auto object=find(domain,a.name);
+                    if (guid_is(object,a.guid)) {a.object=object;break;}
+                }
+                complete=complete && a.object;
+            }
+            assets_ready.store(complete);
+        }
+    }
+    if (active.load()) {
+        std::lock_guard lock(mutex);
+        if (!valid() || !session.lease.intent(GetTickCount64())) retire();
+    }
+}
+void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool permitted) noexcept {
+    if (!active.load()) return;
+    std::lock_guard lock(mutex);
+    session.lease.refresh(GetTickCount64(),held,permitted && owner==session.owner && episode && episode==session.episode && valid());
+    if (!session.lease.selected()) retire();
+}
+bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest& physical,ArcadeTrick trick,bool held) noexcept {
+    if (!available() || !episode || !pilot(trick)) return false;
+    const auto block=state_block(owner);if (!block) return false;
+    std::lock_guard lock(mutex);
+    if (session.serial && (owner!=session.owner || episode!=session.episode)) retire();
+    if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
+    session.serial=++serial;session.reported=false;
+    if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire();return false;}
+    active.store(true);
+    enqueue({false,held,false,false,session.serial,episode,trick,pilot(trick)->detail,physical});
+    return true;
+}
+void before_transition(std::uintptr_t view,float delta) noexcept {
+    if (!active.load() || !std::isfinite(delta) || delta<=0) return;
+    std::lock_guard lock(mutex);
+    if (!valid()) {retire();return;}
+    if (view!=session.block+0x48) return;
+    const auto now=GetTickCount64();acknowledge(now);
+    if (session.lease.acknowledged()) {
+        bool grabbing{};const auto at=address(4);
+        if (!at || !read(at,grabbing) || !grabbing) {retire();return;}
+    }
+    if (!session.lease.intent(now)) {retire();return;}
+    const auto& p=*session.lease.selected();
+    const std::array<std::uint32_t,4> values{0,1,std::bit_cast<std::uint32_t>(p.x),std::bit_cast<std::uint32_t>(p.y)};
+    // Only request ports are written. CanGrab, GrabType, detailed identity,
+    // animation clocks, native branch guards and physics are never overridden.
+    for (unsigned i=0;i<4;++i) {
+        const auto at=address(i);const unsigned size=i<2?1:4;auto& w=session.writes[i];
+        if (!at || (w.at && w.at!=at)) {retire();return;}
+        if (!w.at) {
+            std::uint32_t previous{};if (!bits(at,size,previous)) {retire();return;}
+            w={at,previous,values[i],size};
+        }
+        w.value=values[i];if (!write(at,w.value,size)) {retire();return;}
+    }
+}
+bool start(std::uintptr_t base) noexcept {
+    if (hooks_ready.load()) return true;
+    if (!supported_build::running_image_matches(base)) return false;
+    for (const auto& fp:contract::functions) {std::array<unsigned char,32> bytes{};if (!read(base+fp.rva,bytes) || bytes!=fp.bytes) return false;}
+    image=base;std::array<void*,2> targets{},originals{};
+    const std::array<void*,2> replacements{reinterpret_cast<void*>(&initialize),reinterpret_cast<void*>(&evaluate)};
+    auto rollback=[&]{for (auto target:targets) if(target){hook_disable(target);hook_remove(target);}};
+    for (unsigned i=0;i<2;++i) {
+        targets[i]=reinterpret_cast<void*>(base+contract::functions[i].rva);
+        if (hook_prepare(targets[i],replacements[i],&originals[i])!=HookOk) {rollback();return false;}
+    }
+    original_initialize=reinterpret_cast<contract::Initialize>(originals[0]);
+    original_evaluate=reinterpret_cast<contract::Evaluate>(originals[1]);
+    for (auto target:targets) if (hook_queue_enable(target)!=HookOk) {rollback();return false;}
+    if (hook_apply_queued()!=HookOk) {rollback();return false;}
+    hooks_ready.store(true);return true;
+}
+}

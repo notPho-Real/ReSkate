@@ -895,6 +895,10 @@ private:
             if (!environment.deferred_grabs && (selected || environment.named_grabs)) {
                 const auto binding = match_air_direction(events_,TrickFamily::grab,now,ordinary_reject);
                 match = binding.match; selected = binding.direction;
+                if (!match && !selected) {
+                    const std::array tokens{face};
+                    match=events_.history().match({tokens,500,ordinary_reject},now);
+                }
             } else { const std::array tokens{face}; match = events_.history().match({tokens,500,ordinary_reject},now); }
         }
         if (!match || !air_face_eligible(match,13)) return;

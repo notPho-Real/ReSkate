@@ -1,4 +1,5 @@
 #include "arcade_native_flip_transition.h"
+#include "arcade_native_grab_transition.h"
 #include "arcade_native_flip_entry.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
@@ -90,6 +91,7 @@ bool rising(const Lease& l) noexcept {
 }
 Lease snapshot() noexcept { std::lock_guard lock(mutex);return lease; }
 std::uint32_t candidate(std::uintptr_t context,std::uint32_t index,std::uintptr_t view,float delta,std::uint32_t flags,float limit) {
+    native_grab::before_transition(view,delta);
     auto l=snapshot();
     if (valid(l) && view==l.block+0x48 && in_air(l)) {
         std::int32_t current{}, intent{}; bool changed{},allowed{};
@@ -213,6 +215,7 @@ void arm(const NoBailSkater& owner) noexcept {
 }
 bool request(const NoBailSkater& owner,std::int32_t id) noexcept {
     if (!available() || !ordinary_flip(id)) return false;
+    if (native_grab::blocks_flip(owner)) return false;
     auto l=snapshot();
     if (!valid(l) || owner!=l.owner || !in_air(l) || !rising(l)) return false;
     std::lock_guard lock(mutex);

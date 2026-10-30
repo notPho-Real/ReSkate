@@ -1,11 +1,68 @@
-# Native grab transition investigation — Stage A incomplete
+# Native grab transition investigation — Stage A source pilot
+
+## Current implementation checkpoint
+
+The source now includes a native request adapter for BS Grab, Melon and Method.
+This supersedes the historical investigation below; **native gameplay acceptance
+is still unverified**. Source/build work remains the authorized scope. Broad
+catalog expansion and accepted chains remain gated on Stage A native tests.
+
+The missing intent and observation definitions were recovered from the original
+`dingolevel_root` shared bundle. The adapter writes only the native left/right
+hand intents and the two native tweak signals. It leaves CanGrab, native grab
+selection, detailed identity, animation clocks, blending, flight and scoring to
+the game. The normal entry edge is level EBX 19856; the earlier edge 27611 is a
+separate held-flip entry and must not be used as the ordinary Ollie route.
+
+Delivery is additive at the existing local-state-qualified candidate entry.
+The original SceneOpMatrix places ControllerUpdate at index 7 and SkaterPhysics
+at index 13. This establishes source ordering for the request to reach native
+physics eligibility on the next evaluation; it is not measured gameplay timing.
+The flip StateFlow/PTM transition code is unchanged apart from a grab-delivery
+call and a veto while the native grab owner remains active.
+
+The source pilot bindings are B = BS Grab, Left+B = Melon, and Left+double B =
+Method. They retain physical press timestamps and the existing repeat window.
+Only the inspected stance is admitted; switch and nollie remain unsupported by
+this pilot. LB/RB remain available for airborne rotation. Other named grabs do
+not alias these three animations.
+
+A released tap retains its request until the exact original actor has been
+initialized, advanced with positive delta, and agreed with the game's detailed
+grab tag and IsGrabbing state. Held B retains the intent after that acknowledgment;
+release withdraws it. Missing evidence expires after a bounded 1500 ms ceiling;
+this is not a minimum hold duration. Owner/episode loss, missing input heartbeat,
+mode-off, landing or legitimate native exit withdraw the request. Restore writes
+are conditional on unchanged owner, storage address and last owned value.
+
+Two fingerprinted read-only observation detours retain the original native calls:
+ActorController initialize at RVA 0x1277480 and evaluation at 0x1278770. Initialize
+receives the state view directly; evaluation receives a context whose +8 field is
+that view. The adapter never calls initialize itself or changes an animation ID.
+Physical request/end records are queued for client-thread logging. Initialization
+and advancement records include serial, episode and actual actor identity.
+
+Local validation: 206 production-composed grab source/contract checks at
+30/60/120 Hz; input-session, neutral-flip-release, air-motion-proof and action
+dispatch suites; 58,213 existing extracted manual lifecycle checks. Those tests
+use explicit native observation fixtures and do not prove native animation,
+landing, scoring or legal chains. The full lab suite initially caught synchronous
+input-path logging; the adapter now queues that evidence and the focused telemetry
+contract passes. Current CI and DLL identity must be taken from the build receipt.
+
+See `native-grab-source-pilot.json` for exact original identities and asset
+receipts. Required gameplay acceptance remains A→B, A→Left+B, A→Left+double B,
+tap/hold/release, flight continuity, native landing/scoring, and negative controls
+at measured 30/60/120 Hz. No installation or live-channel publication is authorized.
+
+## Historical investigation checkpoint
 
 Source-only checkpoint, 2026-10-30. Baseline:
 `65d34a0bc06034125b28779d10490e479df37fba`.
 Game executable SHA-256:
 `fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9`.
 
-**No new grab is implemented or accepted by this checkpoint.** The user selected
+**No new grab was implemented or accepted at the historical checkpoint.** The user selected
 source/build work only. Native animation acceptance requires a separately
 authorized non-Deck test installation. Stages B/C/D remain gated on Stage A;
 the recovered enum inventory is not an executable trick catalog.

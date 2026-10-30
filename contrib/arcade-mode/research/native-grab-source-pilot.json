@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "stage": "A source pilot; gameplay acceptance pending",
+  "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
+  "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
+  "complete_catalog": false,
+  "catalog_expansion_gate": "Stage A native animation, hold/release, landing and scoring acceptance",
+  "pilots": [
+    {
+      "native_name": "BS",
+      "native_id": 1,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "arcade_binding": "B",
+      "tweak": [
+        0,
+        0
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "passed at 30/60/120 Hz",
+        "native_action": "unverified",
+        "native_animation": "unverified",
+        "hold_release": "unverified in gameplay",
+        "landing_scoring": "unverified"
+      }
+    },
+    {
+      "native_name": "BS_Melon",
+      "native_id": 4,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "arcade_binding": "Left+B",
+      "tweak": [
+        0,
+        1
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "passed at 30/60/120 Hz",
+        "native_action": "unverified",
+        "native_animation": "unverified",
+        "hold_release": "unverified in gameplay",
+        "landing_scoring": "unverified"
+      }
+    },
+    {
+      "native_name": "BS_Method",
+      "native_id": 2,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "arcade_binding": "Left+double B",
+      "tweak": [
+        1,
+        0
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "passed at 30/60/120 Hz",
+        "native_action": "unverified",
+        "native_animation": "unverified",
+        "hold_release": "unverified in gameplay",
+        "landing_scoring": "unverified"
+      }
+    }
+  ],
+  "source_receipts": [
+    {
+      "id": "shared-2609",
+      "name": "animation/dingo/ebool.intent.hasgrabintent",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 814677742,
+      "size": 1259,
+      "decoded_size": 2288,
+      "sha1": "0a23055526293ce910a63a762bc64d068fb78b46",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3178",
+      "name": "animation/dingo/enum.gs.detailedgrabtype",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815387657,
+      "size": 909,
+      "decoded_size": 1366,
+      "sha1": "80e225c5a3a74b525d8595a49d3629dd79b80a3a",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3350",
+      "name": "animation/dingo/float.intent.tweakleftright",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815596725,
+      "size": 836,
+      "decoded_size": 1266,
+      "sha1": "7fe7f657b4d354f36e091956ef675512f91d19fb",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3521",
+      "name": "animation/dingo/bool.anim.isgrabbing",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815793094,
+      "size": 916,
+      "decoded_size": 1424,
+      "sha1": "6a39ba03aa7f76d3b07dbb01ea111afaaf4a9717",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3870",
+      "name": "animation/dingo/float.intent.tweakfrontback",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 816362913,
+      "size": 836,
+      "decoded_size": 1266,
+      "sha1": "fb26004b97704239a7eaa5a9f36931ad7a1031b4",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-4346",
+      "name": "animation/dingo/enum.detailedgrabtype",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 816908251,
+      "size": 2186,
+      "decoded_size": 5720,
+      "sha1": "760f0c93d809f02860bbba9b932140a858b15925",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-1178",
+      "name": "animation/dingo/skaterphysics_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 840533555,
+      "size": 675,
+      "decoded_size": 1012,
+      "sha1": "d77bd9fa63943b7675fb716abe1d66f00f3cab56",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-1693",
+      "name": "animation/dingo/skatersharegamestates_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 841205535,
+      "size": 563,
+      "decoded_size": 876,
+      "sha1": "ad237564e26a9d4a3a2a36acc794d5ddeb5361bc",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-2444",
+      "name": "animation/dingo/default_sceneopmatrix",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 841958475,
+      "size": 1727,
+      "decoded_size": 4238,
+      "sha1": "27c7d50d7eb6262c6ea89eb346b3c6d886fef1d0",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-3180",
+      "name": "animation/dingo/skaterexpressionactiontree_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 843319871,
+      "size": 487,
+      "decoded_size": 738,
+      "sha1": "d8babb8e46e8a1fc8ec3d2477e6f0fa68e576f35",
+      "kind": "EBX"
+    }
+  ],
+  "observation_hooks": {
+    "initialize_rva": "0x1277480",
+    "evaluate_rva": "0x1278770",
+    "actor_asset_offset": "0x60",
+    "actor_ticks_offset": "0x1c",
+    "actor_duration_offset": "0x20",
+    "initialization_state_view": "RDX",
+    "evaluation_state_view": "[R9+8]"
+  },
+  "unverified_chains": [
+    "Ollie -> Grab",
+    "Flip -> Grab",
+    "Grab -> Flip",
+    "Grab -> different Grab",
+    "Flip -> additional Flip"
+  ],
+  "prohibited_substitutions": [
+    "animation ID writes",
+    "fake detailed tag",
+    "extra pop",
+    "synthetic score",
+    "named-grab trigger recipe as success"
+  ]
+}
