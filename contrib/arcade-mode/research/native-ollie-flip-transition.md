@@ -138,3 +138,32 @@ The other two signatures were audited: PTM evaluation 106a2f0 uses RCX/RDX,
 XMM2 and R9, returning the output pointer in RAX at 106d2d2. Motion commit
 ed6da0..ed6e1e uses RCX/RDX/R8/R9b, has no incoming stack arguments, and
 returns AL. A new compiled-DLL native acceptance run is still required.
+
+## Compiled-DLL admission failure and retired-selector correction
+
+The 911c82b DLL passed native mounting and the original Ollie launch, but failed
+an isolated A-release-to-X-at-500-ms trial even with no debugger attached.
+Read-only samples showed all bridge readiness flags true, the same armed launch
+lease progressing to airborne, and requested ID remaining zero. Native late
+flags and a second Pop subsequently appeared. This is failed production evidence,
+not acceptance of that candidate.
+
+The existing released-jump input continuity predicate accepted selector 1 to -1
+in AIR, but rejected the next -1 to -1 sample. A read-only Ollie control confirmed
+that core+0x3c8 -> +0x28 returns to -1 roughly 123 ms after entering state 201,
+while EnumGS.Anim.CurrentFlipTrick remains 1 for another roughly 640 ms. The input
+selector's retirement is not the end of native Ollie animation ownership. Losing
+this continuity made dispatch bypass the installed native transition callback
+and fall back to the airborne gesture.
+
+The correction retains consecutive retired-selector samples in the same verified
+released-jump AIR episode. Existing owner, freshness, selection-object, phase,
+mode, generation and departure checks remain in force. It does not authorize an
+animation from an ID: the bridge still requires its independently armed A-release
+lease, the current owner, native AIR and upward velocity, then uses the native
+StateFlow/PTM transition described above.
+
+The production input test now includes selector retirement before the 500 ms
+press for Kickflip, Heelflip, Pop Shove-it and Hardflip, alongside 0 and 100 ms.
+It failed on 911c82b and passes with the continuity correction (1,418 checks).
+Compiled-DLL animation acceptance must still be repeated for this correction.

@@ -289,6 +289,7 @@ void native_transition_requests() {
         }
     };
     struct Choice {std::uint16_t direction;int id;};
+    for(bool retired_selection:{false,true})
     for(unsigned delay:{0u,100u,500u}) for(auto choice:{Choice{0,2},Choice{2,4},Choice{8,3},Choice{5,9}}) {
         auto h=std::make_unique<Route>();Sink sink;h->normal_flip={&sink,Sink::submit};
         h->poll(1000,{},100,-1,1);h->poll(1020,{0x1000},100,-1,1);
@@ -297,7 +298,7 @@ void native_transition_requests() {
         for(unsigned elapsed=0;elapsed<=800;elapsed+=20) {
             const bool held=elapsed>=delay && elapsed<delay+80;
             const auto out=h->poll(release+elapsed,{static_cast<std::uint16_t>((held?0x4000u:0u)|choice.direction)},
-                elapsed<100?103u:elapsed<140?200u:201u,1,elapsed<100?0u:2u);
+                elapsed<100?103u:elapsed<140?200u:201u,retired_selection && elapsed>=200?-1:1,elapsed<100?0u:2u);
             if(out.native_flip_request) {
                 ++issued;check(out.native_flip_request==choice.id && !out.authored_playback,
                     "owned A-to-X submits its selected native transition without a second RS gesture");

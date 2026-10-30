@@ -85,10 +85,14 @@ struct InputNativeContext {
         const bool awaiting_jump=!before.airborne && before.flip.id==-1 &&
             (flip.id==1 || (!airborne && flip.id==-1));
         const bool observed_jump=before.flip.id==1 && (flip.id==1 || (airborne && flip.id==-1));
+        // The native input selector retires before the Ollie animation. Keep
+        // this released jump's already observed AIR continuity on later idle
+        // samples; native ownership/animation admission remains independent.
+        const bool retired_jump=before.airborne && airborne && before.flip.id==-1 && flip.id==-1;
         if (!required || !before.required || !fresh(now) || !before.fresh(now) || !follows(before) ||
             generations.owner!=before.generations.owner || !flip.valid || !before.flip.valid ||
             !flip.object || flip.object!=before.flip.object || flip.stance!=before.flip.stance ||
-            (!awaiting_jump && !observed_jump) ||
+            (!awaiting_jump && !observed_jump && !retired_jump) ||
             phase(before.flip.state)<0 || phase(flip.state)<phase(before.flip.state) ||
             flip.mode>2 || before.flip.mode>2 || !flip.mode_generation || !before.flip.mode_generation) return false;
         const unsigned action_change=flip.state!=before.flip.state || flip.id!=before.flip.id;
