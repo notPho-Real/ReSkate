@@ -9,6 +9,15 @@ StateFlow/PTM flip implementation, balance model, or scoring changes.
 and corrected offline. Neither a live pop on this revision nor grind-to-grind
 execution is accepted. No named two-button combination is confirmed working.
 
+**User build hold:** do not start another DLL/CI build or offer a test handoff
+until named grind changes and early flips after rail exit are implemented and
+ready for testing. Keep further work local: pushing this staging branch starts
+CI automatically. Commit `87ee71c3e60e565a83d4df52007f0a76055d15ec` was
+already uploaded before this instruction, starting development run
+`41109697293` and targeted run `41109697352`. Cancellation was unavailable in
+the connector and the browser was not authenticated. No artifact from these
+runs was downloaded, staged, installed or offered for acceptance.
+
 ## Source review
 
 Searched Arcade code and the complete tracked official source at local
@@ -72,12 +81,13 @@ that evidence is not acceptance of this revision. The fixed-rail
 403-to-701-to-200/201 corridor already has combo continuity handling; 701
 alone is neither an Ollie acknowledgment nor permission to launch.
 
-**Rail pop to early flip remains unverified and incomplete.** The current
-ordinary-Ollie recognition lease and `native_flip::arm` integration explicitly
-exclude rail releases. The rail `TrickFromGrind` filter is distinct from the
-verified ordinary `TrickLaunch` path. This patch does not relax those protected
-checks or assume equivalent actor/tag initialization. Trace that native rail
-filter and verify its ownership before integrating early flip reselection.
+**Rail pop to early flip is implemented locally, not gameplay accepted.** The
+follow-up below establishes that the distinct rail filters select samples in
+the same native TrickLaunch PTM and Kickflip sequence. A separate rail release
+lease now connects the input session to the unchanged native animation bridge.
+The ordinary recognition-continuity predicate, ground launch eligibility and
+velocity writer remain unchanged. No DLL is offered while named transitions
+are incomplete.
 
 ## Two-button failure and exact blocker
 
@@ -197,6 +207,62 @@ front/back context, admissible starting grinds and rollback. The animation path
 cannot safely substitute for that physical transition. No production named
 executor is enabled. The user declined a live native-control trial, so work
 continued offline and no gameplay acceptance is claimed.
+
+## Local follow-up: early flip after native rail exit
+
+Cached original assets close the animation-ownership question without hardware:
+
+- `PTM_Trick_OnBoard_GroundTricks` (2987, GUID
+  `cb61fbfa-59db-ec3c-cb61-fbfa59dbec3c`) is the exact PTM already guarded by
+  the native bridge. Its motion filter points to `CDB_PTM_Filter_Tricks`
+  (13595, GUID `4ee3f36c-b986-a6e6-4ee3-f36cb986a6e6`). That database reads
+  `Bool.Anim.TrickFromGrind` and `Bool.Anim.WasFlipTrickChanged`, and references
+  both previously decoded rail filters (24039 and 9545).
+- The original Kickflip-high sequence (28986) contains a `TrickFromGrind`
+  motion tag at tick 7 with duration 1, and `TrickFromGrind_Reselect` at tick 7
+  with duration 5. The original motion enum (18539) resolves those tag GUIDs
+  to values 9 and 14. The same sequence's Pop and Jump tags both start at 12
+  with duration 2. Thus rail reselection samples precede the same Pop/Jump
+  interval already handled by the existing post-pop initialization code.
+
+The input session admits a rail follow-up lease only after a successful,
+released, non-Nollie rail setup with a known native selection object and an
+available native flip callback. Every native physics publication validates
+401–404 → optional 701 → 200/201 continuity, owner, selection object, stance,
+mode/contact/action generations and flight episode. Input polls cannot hide an
+intermediate landing/bail or renew that native evidence. This lease observes
+an actual native Ollie before allowing the existing X request path to submit.
+
+The runtime arms the existing bridge from that rail-specific release lease,
+without using a `NativeCharge` ticket. Losing the lease cancels only a bridge
+armed by this rail path. Once a flip request is submitted, ownership survives
+its native motion initialization and ends on flight/owner loss. A missing
+callback cannot fall back to another authored rail flick. Native ascent checks,
+StateFlow transition evaluation, clip selection, post-pop actor initialization,
+blending and cleanup remain in the unchanged working bridge.
+
+Shared-component dependency: `arcade_gesture.h` publishes each native frame to
+the rail lease; `arcade_input_session.h` distinguishes its continuity from the
+unchanged ordinary lease; `arcade_mode.cpp` adds rail-only arm/withdraw routing.
+The native flip implementation and its ABI contract are byte-identical to the
+baseline. No scoring, balance/HUD or manual lifecycle policy is changed.
+
+Local verification: all ten focused suites pass, including 660 rail-pop checks
+at 30/60/120 Hz, 2,486 existing ordinary flip checks, 5,645 input-session checks,
+326 jump-idle checks, 1,736 combo trace checks and the existing rail/control
+suites. The offline lab passes 459 tests with one skip. These are routing,
+ownership and motion-entry checks, not an observed native animation or launch.
+
+Named-grind execution remains blocked on original control-program data absent
+from the offline cache. For example, `GrindStates_Trick_CG_B2DAA3F` references
+resource `49c453ebf6363dbd` (RES 16986), whose 1,209 compressed bytes start at
+offset 952121425 in `Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas`
+(manifest SHA-1 `cd8ba60df76ce4b5b96250e3cbe1116737c7daa2`). Related
+`AirGround_Grinding` input/control actions also require their resource kernels.
+The available EBX files contain references and patch metadata, not those
+instructions. A local game-data path was requested; no Deck access or new CI
+build was started. The missing bytes may establish additional prerequisites;
+their availability alone is not a claim that native named execution works.
 
 Follow-up local verification: 40,089 observer checks (including selector/animation
 lag at 30/60/120 Hz), 771 existing selector checks, 504 rail-pop checks, 5,645

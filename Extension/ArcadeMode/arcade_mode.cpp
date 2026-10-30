@@ -106,6 +106,13 @@ NativeInputReadiness native_readiness; // Protected by ollie_mutex.
 // Preserve the named production Manual sampling allowance. Canonical strict
 // normalization remains an explicit policy rather than an implicit migration.
 ArcadeInput arcade_input(true, InputPolicy::production());
+bool native_rail_flip_armed{}; // Protected by ollie_mutex, like arcade_input.
+void publish_input_context(const NativeInputFrame& frame) noexcept {
+    arcade_input.publish_native_context(frame);
+    if (native_rail_flip_armed && !arcade_input.rail_followup_active(frame.sampled_at,frame)) {
+        native_flip::cancel(); native_rail_flip_armed=false;
+    }
+}
 NativeControllerRoute controller_route;
 ControllerRouteReporting controller_route_reporting; // Existing input mutex; diagnostic rate limit only.
 std::mutex ollie_mutex;
@@ -1096,7 +1103,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
         capture_native_frame.valid=false;
-        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
@@ -1114,7 +1121,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
         capture_native_frame.valid=false;
-        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
@@ -1130,7 +1137,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
-            arcade_input.publish_native_context(frame);
+            publish_input_context(frame);
             if (manual_acquisition.observe_native(now,frame)) arcade_input.cancel_manuals();
             if (enabled()) physical_manual_steps.observe(frame,seconds,arcade_input.digital_state(now));
             else physical_manual_steps.reset();
@@ -1141,7 +1148,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             else arcade_input.invalidate_authority();
         } else {
             capture_native_frame.valid=false;
-            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
             input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
@@ -1722,7 +1729,7 @@ void set_enabled(bool value, bool persist) noexcept {
             arcade_input.set_recognition_capture(0,false);
         }
         // Controller capture off publication end.
-        native_input_state.invalidate(); physical_manual_steps.reset(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+        native_input_state.invalidate(); physical_manual_steps.reset(); native_readiness.reset(); publish_input_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
         // Controller route packet_mode_reset publication begin.
         controller_route.reset();
         retire_playback_packets();
@@ -1928,7 +1935,7 @@ void on_client_tick() noexcept {
             gameplay = gameplay && frame.valid;
             if (!deferred_phase) {
                 gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
-                arcade_input.publish_native_context(frame);
+                publish_input_context(frame);
                 // Source1 names the logical session, not physical slot0. The
                 // exclusive route generation/source were checked above.
                 if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
@@ -2082,7 +2089,7 @@ void on_client_tick() noexcept {
         {
             std::lock_guard lock(ollie_mutex);
             capture_native_frame.valid=false;
-            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& prewind : prewinds) prewind.reset();
@@ -2323,7 +2330,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
             if (result.jump.released && release.sequence && !result.jump.from_rail && !reference &&
-                rotation_enabled && result.jump.launch.ordinary_writer()) native_flip::arm(native_flip_owner);
+                rotation_enabled && result.jump.launch.ordinary_writer()) {
+                native_flip::arm(native_flip_owner); native_rail_flip_armed=false;
+            }
+            // Rail release has its own admitted input lease and native pop;
+            // it never receives a NativeCharge/ordinary velocity ticket. The
+            // original TrickLaunch PTM selects its rail filter and actor tags.
+            if (result.jump.released && result.jump.from_rail && !reference && rotation_enabled &&
+                arcade_input.rail_followup_active(now,rotation_native)) {
+                native_flip::arm(native_flip_owner); native_rail_flip_armed=true;
+            }
+            if (native_rail_flip_armed && !arcade_input.rail_followup_active(now,rotation_native)) {
+                native_flip::cancel(); native_rail_flip_armed=false;
+            }
             const bool angular_allowed = !reference && !action.owned &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};

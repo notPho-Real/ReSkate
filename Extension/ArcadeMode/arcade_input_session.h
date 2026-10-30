@@ -45,7 +45,7 @@ public:
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
         ground_turn_ = {}; // Keep the serial watermark across resets.
-        takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false;
+        takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false; takeoff_from_rail_=false;
         revert_link_={}; revert_trigger_owned_=false;
     }
     // Called only for the existing independently observed native revert event.
@@ -66,6 +66,17 @@ public:
             frame.air_episode()==air_actor_episode_ && (native_followup_ ? native_flip::ordinary_flip(air_followup_id_) : ordinary_ollie_followup(air_followup_id_)) ? air_followup_id_ : 0;
     }
     void cancel_manual() noexcept { manual_.cancel(); input_.reset_manual_continuity(); }
+    void observe_rail_followup(const InputNativeContext& frame) noexcept {
+        if (!takeoff_from_rail_ || !takeoff_release_at_) return;
+        if (!rail_pop_followup_continues(frame,takeoff_native_,frame.sampled_at)) takeoff_release_at_=0;
+        else { takeoff_native_=frame; takeoff_jump_observed_=takeoff_jump_observed_ || frame.flip.id==1; }
+    }
+    bool rail_followup_active(std::uint64_t now,const InputNativeContext& frame) const noexcept {
+        return takeoff_from_rail_ && frame.required && frame.fresh(now) &&
+            frame.generations.owner==takeoff_native_.generations.owner &&
+            ((takeoff_release_at_ && now>=takeoff_release_at_ && now-takeoff_release_at_<=2500) ||
+             (native_followup_ && air_action_ && frame.airborne && frame.air_episode()==air_actor_episode_));
+    }
     bool initial_ground_acquisition(std::uint64_t now,const InputNativeContext& current) const noexcept {
         return native_.required && current.required && native_.fresh(now) && current.fresh(now) &&
             native_.generations.owner == current.generations.owner &&
@@ -148,8 +159,11 @@ public:
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
         if (takeoff_release_at_) {
-            if (admission.external_owner || (physical.buttons & 0xa000u) || physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || (!native.airborne && now-takeoff_release_at_>=InputTiming::direction_ms) ||
-                !native.released_jump_continues(takeoff_native_,now)) takeoff_release_at_=0;
+            if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0x2000u:0xa000u)) ||
+                (takeoff_from_rail_ && (rail_ || now-takeoff_release_at_>2500)) ||
+                physical.lt>30 || physical.rt>30 || now<takeoff_release_at_ || (!native.airborne && now-takeoff_release_at_>=InputTiming::direction_ms) ||
+                !(takeoff_from_rail_ ? rail_pop_followup_continues(native,takeoff_native_,now) :
+                  native.released_jump_continues(takeoff_native_,now))) takeoff_release_at_=0;
             else {takeoff_native_=native;takeoff_jump_observed_=takeoff_jump_observed_ || native.flip.id==1;}
         }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
@@ -266,7 +280,13 @@ public:
         if (output.jump.released && output.jump.setup_admitted && !output.jump.from_rail &&
             native.required && native.fresh(now) && native.flip.valid && (native.flip.id==1 || native.flip.id==-1) && native.flip.object &&
             !native.airborne && (native.flip.state==100 || native.flip.state==103)) {
-            takeoff_release_at_=output.jump.released_at; takeoff_native_=native;takeoff_jump_observed_=native.flip.id==1;
+            takeoff_release_at_=output.jump.released_at; takeoff_native_=native;takeoff_jump_observed_=native.flip.id==1;takeoff_from_rail_=false;
+        }
+        if (output.jump.released && output.jump.setup_admitted && output.jump.from_rail && !output.jump.nollie &&
+            output.jump.launch.rail_input() && admission.normal_flip.submit && rail_pop_input_continues(native,now) &&
+            native.flip.valid && native.flip.object && (native.flip.id==1 || native.flip.id==-1)) {
+            takeoff_release_at_=output.jump.released_at;takeoff_native_=native;
+            takeoff_jump_observed_=native.flip.id==1;takeoff_from_rail_=true;
         }
         const auto authored = authored_.sample(admission.tick, now);
         if (authored.owns_stick) {
@@ -396,7 +416,7 @@ private:
             if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
                 out.unsupported = true; return InputDisposition::unsupported;
             }
-            // A released, independently observed ordinary Ollie may hand its
+            // A released, independently observed Ollie may hand its
             // completed RS flick to another native gesture during ascent. The
             // selection ID describes the current trick, not a pad-input lock.
             // Keep generic/late requests on their existing idle readiness gate.
@@ -404,6 +424,9 @@ private:
                 admission.action_fresh && admission.native_context.fresh(now_) &&
                 admission.native_context.airborne && admission.native_context.flip.valid &&
                 (admission.native_context.flip.id == 1 || admission.native_context.flip.id == -1);
+            if (own_ollie && takeoff_from_rail_ && !admission.normal_flip.submit) {
+                out.unsupported=true; return InputDisposition::unsupported;
+            }
             // Recognition already selected this request from the physical X
             // edge. Retire only this released pop's delivered actuator, never
             // a held setup or an airborne flip. Native AIR/Ollie continuity is
@@ -618,7 +641,7 @@ private:
     InputNativeContext native_{};
     InputNativeContext takeoff_native_{};
     std::uint64_t takeoff_release_at_{};
-    bool takeoff_jump_observed_{};
+    bool takeoff_jump_observed_{}, takeoff_from_rail_{};
     InputAirEpisode air_actor_episode_{}, grab_actor_episode_{}, manual_air_episode_{};
     bool grab_actor_{};
     bool native_required_{};

@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "arcade_native_flip_entry_tests.h"
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
@@ -15,6 +16,7 @@ struct Pipeline {
     ArcadeInput input{true};
     NativeInputFrame frame{};
     RailAdapterPad rail_pad{};
+    NativeFlipRequest bridge{};
     AuthoredTickClock clock;
     std::uint64_t tick{};
     // Distinct ground/rail vectors expose any accidental ground fallback.
@@ -22,22 +24,32 @@ struct Pipeline {
         {1,false,GestureContext::ground,{{0,0,-31000},{18,0,31000},{21,0,0},{24,0,0}}},
         {1,false,GestureContext::from_grind,{{0,0,-28000},{18,0,28000},{21,0,0},{24,0,0}}}};
     Pipeline() { input.enable(true); }
-    void step(std::uint64_t now, unsigned state, unsigned hz) {
-        NativeRequestSample sample{}; sample.valid=true; sample.state=state; sample.crouch_mode=1;
-        frame=physics.observe(now,owner,sample,{true,-1});
+    void step(std::uint64_t now, unsigned state, unsigned hz, int selected=-1, std::uintptr_t object=16, unsigned mode=1) {
+        NativeRequestSample sample{}; sample.valid=true; sample.state=state; sample.crouch_mode=mode;
+        frame=physics.observe(now,owner,sample,{true,selected,object});
         input.publish_native_context(frame);
         input.publish_authority(now,frame.owner_generation,1,true);
         tick=clock.advance(hz);
     }
     NativeGesture::Output poll(std::uint64_t now, std::uint16_t buttons, bool gameplay=true, bool may_start=true) {
         auto out=input.poll(0,now,buttons,0,0,0,0,gameplay,may_start,false,0,false,false,true,tick,false,catalog,
-            false,false,SkatePose::grind);
+            false,false,SkatePose::grind,false,false,false,false,false,false,0,0,ActionExperiment::classic,true,true,false,bridge);
         rail_pad=input.sample_native_rail(out.rail,now,gameplay && !out.action.owned);
         return out;
     }
 };
 }
 int main() {
+    // The original Kickflip high clip's rail reselection interval is [7,12].
+    // Its native Pop and Jump tags both span [12,14]; the unchanged bridge
+    // must initialize after that interval while preserving the selected clip.
+    for(unsigned selected:{4u,5u,6u}) {
+        native_entry_tests::Memory memory;
+        memory.put(0x10000,0x8400000du|(selected<<12));
+        const auto entry=memory.entry();
+        check(entry && entry->tick==16 && entry->key==0x8400800d,
+            "native rail reselection samples use the existing post-pop actor initialization");
+    }
     for (unsigned hz : {30u,60u,120u}) for (unsigned state : {401u,403u}) {
         Pipeline p; p.step(1000,state,hz); p.poll(1000,0);
         const auto press=1000+1000/hz;
@@ -68,6 +80,51 @@ int main() {
         check(flick,"release delivers the authored native rail flick");
     }
     for (unsigned hz : {30u,60u,120u}) {
+        for(unsigned fault=0;fault<10;++fault) {
+            Pipeline p; unsigned submissions{};
+            p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
+                if(id!=2)return false;
+                ++*static_cast<unsigned*>(context);return true;
+            }};
+            p.step(1000,401,hz);p.poll(1000,0);
+            p.step(1000+1000/hz,401,hz);p.poll(1000+1000/hz,classic_a);
+            for(unsigned i=2;i<26;++i) {
+                const auto now=1000+i*1000/hz;p.step(now,401,hz,1);p.poll(now,classic_a);
+            }
+            const auto release=1000+26*1000/hz;
+            p.step(release,403,hz,1);p.poll(release,0);
+            check(p.input.rail_followup_active(release,p.frame),"admitted rail release exposes its own native follow-up lease");
+            for(unsigned i=27;i<34;++i) {
+                const auto now=1000+i*1000/hz;
+                if(i==27 && fault==1)++p.owner.entity;
+                p.step(now,i==27?(fault==2?100:fault==3?300:701):i<30?200:201,hz,1,
+                    fault==4?17:16,i<28?1:2);
+                // Physics-only samples expose an intermediate forbidden state,
+                // even when no game-facing input poll observes that state.
+                if(i>=28)p.poll(now,0,fault!=5);
+            }
+            const auto press=1000+34*1000/hz;
+            if(fault==6)p.input.enable(false);
+            p.step(press,201,hz,fault==7?2:1,16,2);
+            if(fault==8)p.input.publish_native_context({});
+            if(fault==9) {
+                p.bridge={};
+                // A real catalog contains rail flip recipes. Missing native
+                // bridge permission must not silently select one as fallback.
+                p.catalog.emplace_back(2,false,GestureContext::from_grind,
+                    std::vector<AuthoredStickStep>{{0,0,-27000},{18,27000,27000},{24,0,0}});
+            }
+            auto out=p.poll(press,classic_x,fault!=5);
+            check((out.native_flip_request==2)==(fault==0),"only continuous rail release to AIR submits the early native flip");
+            check(!out.requested_id && !out.authored_playback,"early native follow-up does not emit another rail flick");
+            p.poll(press,classic_x,fault!=5);
+            check(submissions==(fault==0?1u:0u),"one physical X cannot repeat native submission; invalid owners never submit");
+            p.step(press+1000/hz,201,hz,2,16,2);p.poll(press+1000/hz,0,fault!=5);
+            if(!fault)check(p.input.rail_followup_active(press+1000/hz,p.frame),
+                "submitted native selection retains ownership during motion initialization");
+            p.step(press+2*1000/hz,100,hz);
+            check(!p.input.rail_followup_active(press+2*1000/hz,p.frame),"landing retires rail native follow-up ownership");
+        }
         for (bool recipe_available : {false,true}) {
             Pipeline p; p.step(1000,200,hz); p.poll(1000,0);
             const auto press=1000+1000/hz;

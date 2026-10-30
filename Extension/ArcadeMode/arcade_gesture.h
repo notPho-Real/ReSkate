@@ -64,6 +64,7 @@ public:
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
     void publish_native_context(NativeInputFrame frame) noexcept {
         native_ = frame;
+        sessions_[0].observe_rail_followup(InputNativeContext::from_frame(frame));
         if (!frame.valid) native_lip_ = {};
         // Existing physics production calls this for every validated step;
         // client rereads retain the original timestamp and step identity.
@@ -199,6 +200,9 @@ public:
     }
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
+    }
+    bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
+        return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));
     }
     bool pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame));
