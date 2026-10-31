@@ -1,6 +1,8 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_native_grab_lease.h"
+#include "Extension/ArcadeMode/arcade_rotation.h"
+#include "Extension/ArcadeMode/arcade_air_motion.h"
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -26,7 +28,8 @@ struct Route {
     }
     static bool right_hand_input(void* p) noexcept {
         auto& self=*static_cast<Route*>(p);
-        return self.frame.airborne && self.lease.intent(self.now);
+        return self.frame.valid && self.frame.airborne && self.owner==self.grab_owner &&
+            self.frame.airborne_episode==self.grab_air.number && self.lease.intent(self.now);
     }
     static bool continues(void* p,InputGenerations origin,InputAirEpisode air) noexcept {
         auto& self=*static_cast<Route*>(p);
@@ -50,6 +53,88 @@ struct Route {
             admission.mirror_x,false,{}, {this,submit,right_hand_input,continues});
     }
 };
+AirRotation::Output rotate(Route& route,AirRotation& rotation,const NativeGesture::Output& output,
+        std::uint16_t buttons,SpinMode mode=SpinMode::held,SpinFacts facts={},bool reference=false) {
+    const auto held=buttons&BoardChord::pair;
+    const bool conflict=output.action.blocks_air_rotation(mode==SpinMode::held &&
+        (held==BoardChord::lb || held==BoardChord::rb));
+    auto result=rotation.poll_qualified(route.now,buttons,false,false,true,
+        native_rotation_pose(route.frame,SkatePose::air,false),false,
+        reference||conflict||output.phase==3,mode,facts,&route.frame);
+    return AirRotation::native_shoulder_output(result,mode,buttons,!reference&&!conflict&&output.phase!=3&&
+        route.input.allows_air_rotation(0,output.authored_playback));
+}
+void grab_and_native_shoulders() {
+    for(unsigned hz:{30u,60u,120u}) for(auto shoulder:{BoardChord::lb,BoardChord::rb}) {
+        auto r=std::make_unique<Route>();AirRotation rotation;AirMotion motion;
+        auto at=[&](unsigned n){return 1000+std::uint64_t{n}*1000/hz;};
+        r->poll(900,0,100); // Establish the independently observed departure.
+        auto out=r->poll(at(0));rotate(*r,rotation,out,0);
+        const auto buttons=static_cast<std::uint16_t>(0x2004|shoulder);
+        out=r->poll(at(1),buttons);
+        auto spin=rotate(*r,rotation,out,buttons);
+        check(out.action.owned && out.action.native_grab_triggers && out.action.pad.right_trigger==255,
+            "production B delivery retains trigger ownership while allowing an independent native shoulder");
+        check(r->tricks.size()==1 && r->tricks[0]==ArcadeTrick::melon && !out.authored_playback,
+            "shoulder composition preserves the selected named grab without pop playback");
+        check(spin.owns_left && spin.x==(shoulder==BoardChord::lb?-31783:31783) && !spin.y && !spin.yaw_rate,
+            "actual grab output reaches the existing native LS spin actuator with no SDK body rate");
+        check(r->lease.acknowledge(4,1,0,1,true,true,true),
+            "fixture supplies independent native grab acknowledgment before testing held release");
+        const auto episode=r->frame.airborne_episode;
+        for(unsigned n=2;n<8;++n) {
+            out=r->poll(at(n),buttons);spin=rotate(*r,rotation,out,buttons);
+            check(spin.x!=0 && out.action.pad.right_trigger==255 && r->requests.size()==1 &&
+                r->frame.airborne_episode==episode,"held grab and held shoulder retain independent channels in the same flight");
+            AirMotionIntent intent{};intent.enabled=true;intent.angular_allowed=true;intent.sampled_at=r->now;
+            intent.yaw_rate=spin.yaw_rate;intent.spin=spin.spin;intent.angular_proof=NativeAirSpinProof::from_frame(r->frame);
+            const auto physical=motion.step(intent,{r->now,r->owner.core,201,1.f/hz,5,0,0,true,0,0,true,
+                NativeAirSpinProof::from_frame(r->frame)});
+            check(!physical.angular && !physical.spin_y,"native grab/shoulder composition never adds custom angular motion");
+        }
+        out=r->poll(at(8),0x2004);spin=rotate(*r,rotation,out,0x2004);
+        check(!spin.owns_left && !spin.x && out.action.pad.right_trigger==255,
+            "shoulder release stops native LS without releasing the held grab");
+        out=r->poll(at(9),static_cast<std::uint16_t>(0x2004|BoardChord::pair));
+        spin=rotate(*r,rotation,out,static_cast<std::uint16_t>(0x2004|BoardChord::pair));
+        check(!spin.x && !spin.yaw_rate && out.action.pad.right_trigger==255,
+            "opposed shoulders cannot create spin or steal the grab trigger");
+        out=r->poll(at(10),buttons);spin=rotate(*r,rotation,out,buttons,
+            SpinMode::held,{SpinFact::set,SpinFact::unknown,SpinFact::unknown});
+        check(!spin.owns_left && !spin.x,"native spin prohibition still wins during a trigger-only grab");
+        check(!rotate(*r,rotation,out,buttons,SpinMode::held,{},true).owns_left,
+            "reference action ownership still blocks native shoulder sharing");
+        check(!rotate(*r,rotation,out,buttons,SpinMode::tap).owns_left,
+            "grab sharing never enables a tap body-rate writer");
+        auto stale_rotation=rotation;const auto sampled_now=r->now;r->now+=151;
+        check(!rotate(*r,stale_rotation,out,buttons).owns_left,"stale native AIR proof still rejects rotation");
+        r->now=sampled_now;
+        out=r->poll(at(11),shoulder);
+        check(!out.action.native_grab_triggers && !out.action.pad.owns_triggers,
+            "B release withdraws the acknowledged grab channel even while a shoulder remains held");
+        out=r->poll(at(20),shoulder,100);spin=rotate(*r,rotation,out,shoulder);
+        check(!out.action.native_grab_triggers && !out.action.pad.owns_triggers && !spin.owns_left,
+            "landing removes the sharing receipt and cannot turn into ground steering");
+        out=r->poll(at(21),buttons,201,-1,false);
+        check(!out.action.native_grab_triggers,"Arcade OFF cannot publish a sharing receipt");
+    }
+    for(unsigned fault=0;fault<7;++fault) {
+        auto r=std::make_unique<Route>();r->poll(1000);auto out=r->poll(1017,0x2000);
+        check(!out.action.blocks_air_rotation(true),"only a current native trigger-only grab qualifies");
+        if(fault==0)out.action.native_grab_triggers=false;
+        if(fault==1)out.action.pad.owns_triggers=false;
+        if(fault==2)out.action.pad.owns_left_stick=true;
+        if(fault==3)out.action.pad.owns_right_stick=true;
+        if(fault==4)out.action.pad.owns_face_buttons=true;
+        if(fault==5)out.action.pad.left_trigger=255;
+        if(fault==6)out.action.pad.right_trigger=0;
+        check(out.action.blocks_air_rotation(true),"another channel owner or invalid grab receipt remains exclusive");
+    }
+    auto owner=std::make_unique<Route>();owner->poll(1000);owner->poll(1017,0x2000);
+    ++owner->owner.entity;
+    check(!owner->poll(1034,0x2000).action.native_grab_triggers,
+        "a replaced local skater cannot inherit native grab channel sharing");
+}
 void requests() {
     for(unsigned hz:{30u,60u,120u}) for(unsigned variant:{0u,1u,2u}) {
         auto r=std::make_unique<Route>();auto at=[&](unsigned n){return 1000+std::uint64_t{n}*1000/hz;};
@@ -201,4 +286,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

@@ -316,6 +316,7 @@ public:
             output.action.pad.owns_triggers=true;
             output.action.pad.left_trigger=0;
             output.action.pad.right_trigger=255;
+            output.action.native_grab_triggers=true;
         }
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;

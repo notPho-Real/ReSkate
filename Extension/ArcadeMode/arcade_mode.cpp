@@ -2331,11 +2331,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
+        const auto air_spin_mode = spin_mode();
+        const auto held_shoulders = physical_buttons & BoardChord::pair;
+        const bool rotation_action_conflict = action.blocks_air_rotation(air_spin_mode==SpinMode::held &&
+            (held_shoulders==BoardChord::lb || held_shoulders==BoardChord::rb));
         // Ordinary native AIR alone admits this writer. Unknown orientation,
         // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[NativeControllerRoute::session].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
-            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
+            rotation_enabled,rotation_pose,native_rate_ready,reference || rotation_action_conflict || result.phase==3,air_spin_mode,{},&rotation_native);
         // Controller route preparation publication begin.
         const auto prewind = prewinds[NativeControllerRoute::session].poll_preparation(now,physical_buttons,
             rotation_enabled,rotation_native,crouched || ((physical_buttons&classic_a) && result.authored_playback &&
@@ -2352,10 +2356,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
             if (result.jump.released && release.sequence && !result.jump.from_rail && !reference &&
                 rotation_enabled && result.jump.launch.ordinary_writer()) native_flip::arm(native_flip_owner);
-            const bool angular_allowed = !reference && !action.owned &&
+            const bool angular_allowed = !reference && !rotation_action_conflict &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};
-            rotation = AirRotation::native_shoulder_output(rotation,spin_mode(),physical_buttons,angular_allowed);
+            rotation = AirRotation::native_shoulder_output(rotation,air_spin_mode,physical_buttons,angular_allowed);
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
                 (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
@@ -2369,7 +2373,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
                 release.sequence ? (release.nollie ? 16 : 1) : 0,arcade_input.authored_air_followup(now,rotation_native));
             observe_angular_controller(now,rotation_native,physical_buttons,static_cast<unsigned>(result.phase),rotation_enabled,
-                native_rate_ready,reference || action.owned || result.phase==3,angular_allowed,rotation);
+                native_rate_ready,reference || rotation_action_conflict || result.phase==3,angular_allowed,rotation);
         }
         // Controller route air publication end.
         // BoardChord has already consumed a valid pair and emitted native Y.

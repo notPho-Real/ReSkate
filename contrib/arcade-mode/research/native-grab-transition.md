@@ -10,6 +10,56 @@ trial. Release behavior and full scoring acceptance remain open.
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
 
+### Trigger-only grab ownership and held shoulder rotation
+
+The native grab adapter sets `ActionDispatch::Output::owns_triggers`, which
+contributes to `ActionInputOutput::owned`. The final controller composition
+previously passed that aggregate flag to both `AirRotation::poll_qualified`
+and the angular permission gate. Consequently a held native grab suppressed
+LB/RB rotation even though its adapter reserved neither stick. This is a
+source-confirmed routing defect, not evidence that native grabs prohibit spin.
+
+The existing native LS shoulder actuator is reused. A current-poll
+`native_grab_triggers` receipt is set only when the qualified grab lease delivers
+right-trigger input. `blocks_air_rotation` allows that trigger-only receipt to
+coexist with one held shoulder in the existing held-spin mode. Other action
+owners remain exclusive. Missing trigger ownership, either reserved stick,
+reserved face buttons, or a different trigger pair cannot use the exception.
+The AIR spin mode is sampled once for its ownership decision and actuator so a
+concurrent setting change cannot turn this exception into a tap body-rate command.
+The native airborne proof, freshness, spin prohibition, reference owner and
+board-transition gates still apply. Classic `consume_rt` is an input mask, not
+an action owner; the qualified grab output still supplies RT after that mask.
+
+Prewind, ground/manual/grind controls, the flip transition bridge, native grab
+selection/hold/release, animation assets and physics are unchanged. This does
+not enable tap-spin or direction-only custom angular motion during a grab.
+It adds no action owner, pop, animation or native state write.
+
+Source-first comparison used the recorded full upstream/fork survey and the
+pinned GoalTrains `src/translate.h` native LS/trigger separation already cited
+by `arcade_rotation.h`. SessionSticks 0.6.1 likewise separates stick movement
+from trigger grabs; neither source supplies native acceptance for this adapter.
+
+The production-composed grab suite now passes 470 checks at 30/60/120 Hz.
+It exercises both shoulders with a real recognized Melon request and the
+existing native input/rotation classes, retaining RT while delivering native
+LS, preserving the airborne episode and issuing no custom angular body rate.
+It covers shoulder release, opposed shoulders, spin prohibition, stale AIR,
+owner replacement, landing, OFF, reference ownership and incompatible channels.
+The native callback/animation evidence in these tests is a contract fixture,
+not a live observation. Existing input (326+5645), neutral flip (9014), flight
+(2749), spin (323), dispatch (124) and control-state (67042) checks also pass.
+The lab suite passes 458 tests with one skip.
+
+Before gameplay acceptance, capture each shoulder during the same original
+BS/Melon/Method actor episode, independently observe actor advancement, body
+yaw, uninterrupted flight and release/landing, and compare against the same
+grab without a shoulder. Verify that releasing the shoulder stops LS delivery
+while B keeps the grab active; test opposed shoulders and native ineligibility.
+The broader Stage A release/scoring and rate gates remain open. No new Deck
+trial or accepted grab/rotation combination is claimed by this source change.
+
 ### Method native acceptance on c69dd24
 
 Commit `c69dd24af196e2a43eb3b290ad92232d132b45d2`, DLL
