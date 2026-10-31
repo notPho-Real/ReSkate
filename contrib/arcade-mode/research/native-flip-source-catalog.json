@@ -16,7 +16,12 @@
     "ordinary_flip_identities": 32,
     "underflip_identities": 16,
     "mapped_ordinary_flip_identities": 26,
-    "native_selection_rows": 318
+    "native_selection_rows": 318,
+    "sequence_controller_breakdown": {
+      "SequenceContainerAsset": 351,
+      "LoopingControllerAsset": 18
+    },
+    "additional_held_freestyle_source_resources": 47
   },
   "method": "Read original hash-pinned EBX. Join gesture AnimationEnum and CDB CurrentFlipTrick selection rows to original sequence references. Preserve contexts. Asset presence is not execution proof.",
   "databases": [
@@ -10281,6 +10286,96 @@
         "landing_scoring": "unverified"
       },
       "implementation_gap": "Separate native owner, transition and physical binding require verification"
+    },
+    {
+      "native_name": "CasperHeelflipOut",
+      "native_id": 1,
+      "id_namespace": "Enum.FreestyleFlipTrickExitType",
+      "family": "flip",
+      "animation_assets": [
+        {
+          "name": null,
+          "guid": "0adc710c-5e31-225f-0adc-710c5e31225f",
+          "native_contexts": [
+            "native Casper exit"
+          ],
+          "asset_definition_decoded": false
+        }
+      ],
+      "context": {
+        "owner": "native Casper freestyle exit",
+        "nollie": null,
+        "stance": "native owner restrictions unresolved"
+      },
+      "native_transition": "Native Casper Loop/Into -> Casper.FlipTrickExit -> CDB_OnBoard_FreeStyleCasperFlipTrick; no ordinary airborne bridge admission",
+      "arcade_binding": null,
+      "arcade_semantic": null,
+      "bridge_admitted": false,
+      "gesture_resources": [],
+      "native_selection_rows": [
+        {
+          "database_resource": 7995,
+          "row": 0,
+          "encoded_fields": [
+            1,
+            255
+          ],
+          "sequence_guid": "0adc710c-5e31-225f-0adc-710c5e31225f",
+          "asset_type_unverified": true
+        }
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "native_action": "unverified",
+        "native_animation": "unverified",
+        "landing_scoring": "unverified"
+      },
+      "implementation_gap": "Native freestyle owner and asset definition unresolved; no binding"
+    },
+    {
+      "native_name": "Casper360FlipOut",
+      "native_id": 2,
+      "id_namespace": "Enum.FreestyleFlipTrickExitType",
+      "family": "flip",
+      "animation_assets": [
+        {
+          "name": null,
+          "guid": "521cfb44-e697-b800-521c-fb44e697b800",
+          "native_contexts": [
+            "native Casper exit"
+          ],
+          "asset_definition_decoded": false
+        }
+      ],
+      "context": {
+        "owner": "native Casper freestyle exit",
+        "nollie": null,
+        "stance": "native owner restrictions unresolved"
+      },
+      "native_transition": "Native Casper Loop/Into -> Casper.FlipTrickExit -> CDB_OnBoard_FreeStyleCasperFlipTrick; no ordinary airborne bridge admission",
+      "arcade_binding": null,
+      "arcade_semantic": null,
+      "bridge_admitted": false,
+      "gesture_resources": [],
+      "native_selection_rows": [
+        {
+          "database_resource": 7995,
+          "row": 1,
+          "encoded_fields": [
+            2,
+            255
+          ],
+          "sequence_guid": "521cfb44-e697-b800-521c-fb44e697b800",
+          "asset_type_unverified": true
+        }
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "native_action": "unverified",
+        "native_animation": "unverified",
+        "landing_scoring": "unverified"
+      },
+      "implementation_gap": "Native freestyle owner and asset definition unresolved; no binding"
     }
   ],
   "wildcard_selection_rows": [
@@ -10402,8 +10497,10 @@
         "display_name": "Double Kickflip"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "double_impossible",
@@ -10415,8 +10512,10 @@
         "display_name": "Double Impossible"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "double_heelflip",
@@ -10428,8 +10527,10 @@
         "display_name": "Double Heelflip"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "triple_kickflip",
@@ -10441,8 +10542,10 @@
         "display_name": "Triple Kickflip"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "triple_impossible",
@@ -10454,8 +10557,10 @@
         "display_name": "Triple Impossible"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "triple_heelflip",
@@ -10467,8 +10572,10 @@
         "display_name": "Triple Heelflip"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     },
     {
       "semantic": "shove_it_540",
@@ -10480,8 +10587,10 @@
         "display_name": "540 Shove-It"
       },
       "native_id": null,
-      "evidence_status": "unsupported",
-      "reason": "No corresponding ordinary native enum, authored gesture, or selected sequence established in audited resources. Do not alias another animation; other native namespaces are not substitutes."
+      "evidence_status": "partially verified",
+      "reason": "No separate ordinary enum counterpart. Original held-flip Into/Loop/Exit assets and native counter exist for the base trick; exact requested double/triple/540 identity, count units, release and scoring are unverified. Current Arcade repeat binding remains unsupported.",
+      "arcade_support": "unsupported",
+      "native_mechanism_report": "native-held-flip-source.json"
     }
   ],
   "caveats": [
@@ -10498,5 +10607,27 @@
       "sha1": "e995cc5b3fbe2fe5ecf880699b382cfcad3e4ff0"
     },
     "archive_capture_sha256": "a3d634b25d61de81d4eece8f81d8dda948512829597105725473d67aeeed7fb7"
+  },
+  "native_held_flip_mechanism": {
+    "report": "native-held-flip-source.json",
+    "base_ids": [
+      2,
+      3,
+      4,
+      7,
+      11,
+      14,
+      17,
+      18,
+      19,
+      22,
+      27,
+      29,
+      36,
+      37,
+      38,
+      39
+    ],
+    "status": "authored native mechanism established; exact count, entry and scoring acceptance unverified"
   }
 }

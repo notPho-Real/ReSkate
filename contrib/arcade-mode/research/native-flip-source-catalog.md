@@ -18,7 +18,7 @@ selector IDs.
 
 The installed executable is pinned to SHA-256
 `fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9`.
-The read-only archive audit extracted 96 authored gestures, 369 sequence assets,
+The read-only archive audit extracted 96 authored gestures, 369 sequence/controller assets,
 and 31 relevant motion/selection database assets. Each compressed record was
 verified against its original manifest SHA-1 before decoding. Original binary
 assets remain local and are not included in the repository.
@@ -61,11 +61,34 @@ permission to use those routes in Arcade Mode.
 | Sixteen underflips, including Hospitalflip and Flowerflip | Original gestures and three sequences each | Separate native owner/transition and nonconflicting bindings need verification |
 
 Double/triple Kickflip, Heelflip and Impossible, and 540 Shove-It remain
-unsupported in the current ordinary mapping: this audit establishes no exact
-ordinary enum/gesture/sequence counterpart. This is a scoped finding, not a claim
-that no other native mechanism can exist. In particular, `DoubleKickflip` in
+unsupported in the current ordinary mapping. They have no separate ordinary
+enum counterparts, but the native held-flip mechanism is present and must be
+investigated before deciding their actual support. `TRICK_FINDINGS.md` already
+identified this distinction from the native guide and composite scoring data.
+In particular, `DoubleKickflip` in
 `Enum.FingerflipType` belongs to Double Grab fingerflips; its name does not prove
 an ordinary two-rotation Kickflip.
+
+## Native held rotations and freestyle exits
+
+An additional 47 original resources establish native held-flip Into/Loop/Exit
+selection for 16 base IDs: 2, 3, 4, 7, 11, 14, 17, 18, 19, 22, 27, 29, 36, 37,
+38 and 39. All three databases resolve to original assets in the sequence audit.
+`native-held-flip-source.json` preserves these selection rows and 27 original
+sequences with tags for `Float.Anim.TrickHeldFlipCount`.
+
+The Kickflip wrapper (1705) loops its original subject (35099) from tick 16 to
+170. Original StateFlow transitions and the EAT HeldTrick action own entry and
+exit. The composite native trick record separately stores held-flip amount and
+category. This is an existing native mechanism, not permission to increment a
+counter, invent rotations, stretch an animation or bypass the EAT owner. Exact
+counter units, physical repeat selection, native entry from a bridge-started
+flip, catch timing and scoring still require verification.
+
+The source also declares `CasperHeelflipOut` and `Casper360FlipOut` in
+`Enum.FreestyleFlipTrickExitType`. Their original Casper exit database references
+are catalogued with unresolved asset definitions and explicit freestyle context.
+They cannot be treated as ordinary airborne flips.
 
 Runtime expansion must follow the Stage A gate. It must preserve the existing
 Ollie bridge, retain original physical press timing and avoid assigning a new

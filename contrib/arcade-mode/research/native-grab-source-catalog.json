@@ -10,7 +10,11 @@
     "detailed_pose_declarations": 38,
     "one_footer_declarations": 13,
     "fingerflip_declarations": 30,
-    "not_unique_trick_count": true
+    "not_unique_trick_count": true,
+    "sequence_controller_breakdown": {
+      "SequenceContainerAsset": 284,
+      "LoopingControllerAsset": 16
+    }
   },
   "entries": [
     {
