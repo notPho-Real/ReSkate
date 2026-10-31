@@ -72,7 +72,9 @@ NativeGrindCompletion observe_grind_transition_completion(const GrindOrientation
         !read(scope.actor+1040,result.source) || !read(scope.actor+1044,result.target) ||
         !read(scope.actor+1424,result.phase) || !read(scope.actor+72,result.orientation) ||
         result.source<400 || result.source>405 || result.target<400 || result.target>405 ||
-        !std::isfinite(result.phase) || result.phase<.99f || result.phase>1.f) return {};
+        // 0x48265c4 clamps to exactly 1; 0x48268e6 excludes every smaller
+        // phase from the native completion branch. Do not approximate it.
+        result.phase!=1.f) return {};
     for(const auto angle:result.orientation)if(!std::isfinite(angle))return {};
     result.valid=valid() && grind_orientation_scope(read,scope,c::update_return);
     return result.valid?result:NativeGrindCompletion{};

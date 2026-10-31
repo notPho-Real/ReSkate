@@ -1461,6 +1461,44 @@ rate, persistent setting, DLL installation or new build occurred. This narrows
 the next setup requirement to a freshly collision-qualified lane; it supplies
 no 406 completion, named identity change or Ollie-out acceptance.
 
+### Native completion boundary and target-dependent heading margin
+
+Further offline inspection of the hash-verified executable identifies an
+over-permissive completion observation in the local candidate. The original
+406 update loads exactly 1.0 from `0x606e4e8`, clamps phase to it at
+`0x48265c4`, and at `0x48268e6..0x4826900` skips the completion branch when
+phase is below 1. The observer previously accepted phase >=0.99. A focused
+regression failed against that implementation for 0.99 with an active 1->0
+edge. The observer now requires exactly 1.0; it still forwards the original
+update and never changes its result or lifetime byte. The next representable
+float below/above 1 and NaN are also rejected. All 637 strict C++20 sanitizer
+checks pass, including the existing 30/60/120 Hz completion/lifetime cases.
+This tightens completion evidence only; it does not turn completion into named
+identity or animation acknowledgment.
+
+The heading-margin helper `0x48281b0` is also now resolved. It reads the
+transition's target class at +1044, returning +5 degrees for target403 and
+-5 otherwise. During initial target701 it instead reads source +1040,
+returning -5 for source403 and +5 otherwise. The pinned constants are +5 at
+`0x606f8c0` and -5 at `0x61964c8`. This is a target-dependent angular margin,
+not a measurement of rail geometry as the earlier shorthand suggested.
+`0x48140e0` adds/subtracts it from its 55/125-degree bounds, yielding strict
+60..120 or 50..130-degree bands on the affected source branches. Separate
+pitch, side-vector and contact conditions still select the physical class.
+No named stick mapping is inferred from these thresholds alone.
+
+Manual supplied the next candidate's source/DLL/size for offline preparation:
+`56f6c7b4caad7da15d0ce672aebca07021c42a0f`,
+`fbf20e96ac392abc4f496e5d8c09ea3344aff8a1cd6e6982aa4bd6653de7ed0c`,
+26604032 bytes; later reported mapped PID70570 and receipt
+`fc68fb0fa0564d9a985ba19218b10f75`. These are coordination evidence, not an
+independent Grind check or hardware release. Identity/status/fixture runners
+are prepared locally against the new pins and remain unstaged/unexecuted.
+Manual retains the Deck and is moving to skate3_megapark. No hardware access
+or DLL/CI build occurred in this follow-up. The blocker remains a qualified
+native control sequence producing the requested identity and animation during
+sustained contact; the production named dispatcher remains unwired.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence

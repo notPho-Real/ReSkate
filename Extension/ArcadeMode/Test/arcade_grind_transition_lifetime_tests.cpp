@@ -210,5 +210,20 @@ int main() {
         });
         check(calls==1 && !result.valid && !f.active(),"invalid scope/field/owner or cleanup supplies no completion and original remains authoritative");
     }
+    // Native update 0x48268e6 compares its clamped phase against exactly 1
+    // before entering the sole completion-clear branch. A near-complete
+    // sample cannot establish that branch, even if the active byte changed.
+    for(const float phase:{.99f,std::nextafter(1.f,0.f),std::nextafter(1.f,2.f),
+            std::numeric_limits<float>::quiet_NaN()}) {
+        Fixture f;f.scope.caller=f.scope.base+c::update_return;
+        f.memory.put(f.scope.actor+1040,std::uint32_t{401});
+        f.memory.put(f.scope.actor+1044,std::uint32_t{403});
+        f.memory.put(f.scope.actor+1424,phase);
+        f.memory.put(f.scope.actor+72,std::array<float,3>{0,.35557747f,0});
+        unsigned calls{};
+        const auto result=observe_grind_transition_completion(f.scope,f.memory,[&]{return f.valid;},
+            [&]{++calls;f.active(false);});
+        check(calls==1 && !result.valid && !f.active(),"only the native clamped terminal phase can prove completion");
+    }
     std::cout<<checks<<" native grind lifetime checks passed\n";
 }
