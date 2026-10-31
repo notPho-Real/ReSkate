@@ -895,6 +895,87 @@ returning to the source with no rotation is the failure to explain.
 
 No named executor or new DLL/CI build is claimed on this evidence.
 
+### Native transition lifetime defect reproduced (2026-10-31 UTC)
+
+The c8f7971 diagnostic window independently verified the installed/mapped DLL
+`09942bc8c76ed4a9ed4145cc7735f15cd011954274ced9deb2c3742b7b2a5f6b`,
+PID 56286. A fresh Gamescope capture showed the native Hub, which was dismissed
+before restoring/adopting the saved authored fixture in current `bam`, generation
+5/revision 9. The trial again required completed current geometry and delivered
+native controls. Receipt: `grind-native-control-c8f7971-v1/results/1793417123069659000-enabled_right.json`
+under the external lab root.
+
+Read-only hardware breakpoints captured state 406's completed initialization
+and cleanup. The first entry had source 401, target 400, requested heading
+1.5707963 radians, native active byte 1 and phase 0. Cleanup followed 33.4 ms
+later with active byte 0, phase still 0, elapsed 0.03333333 and computed duration
+0.39234048. Contact remained true and fine identity remained 20. The separate
+native completion-clear breakpoint at 0x48269e9 was never reached. This rules
+out legitimate native completion as the reason for the immediate return.
+
+Original executable disassembly explains the loss: state setter 0x47d3fa0
+resets context +6200's elapsed-state timer. Transition entry 0x4817b50 sets
+actor +766 true. Shared orientation helper 0x4815790 subsequently overwrites
+that byte at 0x48158e9 using a predicate and elapsed-state timer. Transition
+406's predicate at 0x3b8830 returns **true**, which takes the unconditional-clear
+branch. Ordinary actors with a false predicate use the 0.083333-second gate.
+The common caller 0x4825525 runs this helper before transition-specific update
+0x48264d0. Native output 0x4818b7d copies the cleared byte to output +419 and
+the selector abandons 406. Native completion is a distinct later writer.
+
+The next bounded experiment will preserve the actor's already initialized
+flag only at this shared writer, leaving native completion, contact/geometry
+admission and cleanup untouched. It must not force true after completion or
+write an identity, target, state, position or velocity. A successful experiment
+still needs actual orientation and independent changed identity before a
+production executor can be claimed. Function-level integration must validate
+the exact actor, current owner, caller, executable and request lifetime.
+
+The trial restored the setting false, exited GDB cleanly, detached, neutralized
+controls and restored Arcade ON. The Deck was explicitly released to the manual
+chat. No installation, DLL/CI build or named-executor acceptance occurred.
+
+The subsequent c8 experiment supplied the already initialized flag as the
+argument to that one native store. Receipt:
+`grind-preserve-control-c8-v1/results/1793417309470490000-enabled_right.json`.
+It kept 406 active for approximately 0.33 seconds, advanced the native phase
+to 0.67968, and produced actual heading/pitch changes through the original
+curves. Ten observations found an existing true flag and a proposed false
+shared-writer argument, including after 0.083333 seconds; the predicate
+disassembly above explains why timer expiry does not repair this.
+
+The experimental observer then stopped at its strict instantaneous-contact
+guard before native completion. This is not evidence of a named transition.
+The setting-return experiment also required instantaneous contact even in
+406, whereas the original selector explicitly accepts current state 406
+without context +4016 contact. The next probe must distinguish initial contact
+admission from the native transition actor's ownership during its brief lift:
+retain the scoped feature while the verified initialized 406 actor owns the
+request, leaving the original selector's geometry/exit checks and bounded
+deadline intact. Do not infer rail-exit solely from a transient contact bit.
+This trial restored false, detached GDB, neutralized controls and explicitly
+released the Deck to the manual chat again. No further hardware action started.
+
+The isolated source now contains a native lifetime/admission integration:
+`arcade_native_grind_transition.cpp` uses the existing Detours service at the
+verified three-argument orientation function, and the portable preservation
+wrapper validates its exact caller, core, active actor, vtable, context and
+selected 406 state before and after forwarding. It preserves the existing
+boolean only; native completion remains outside the wrapper. Activation needs
+a bounded request scope and fresh local gameplay owner. The applied-settings
+hook can return true only for the exact exported setting GUID and the two
+verified local expression layouts/owners. It never persists a setting. OFF,
+controller withdrawal, stale tick, owner loss, timeout and native exit cancel
+the scope. With no request, the original function/getter behavior is retained.
+
+This is production support for the executor, **not the named executor itself**:
+no input dispatch currently arms the scope, and no named control recipe or
+identity acknowledgment is claimed. That wiring remains gated on the corrected
+native completion experiment and target control contract. The focused native
+lifetime tests pass 464 checks at 30/60/120 Hz under address/undefined behavior
+sanitizers; existing settings-source checks (7) and runtime reset composition
+(69) pass. Windows compilation and gameplay acceptance remain outstanding.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence

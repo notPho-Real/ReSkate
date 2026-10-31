@@ -1,0 +1,16 @@
+#pragma once
+#include "Extension/Skater/no_bail.h"
+#include <cstdint>
+
+namespace dingosdk::arcade_mode::native_grind {
+// Native actor lifetime/admission support. Arming this scope does not supply a
+// named control recipe or acknowledge a grind; those require independent input
+// delivery and physics/animation evidence from the request executor.
+bool start(std::uintptr_t base) noexcept;
+void tick(bool gameplay) noexcept;
+void cancel() noexcept;
+bool available() noexcept;
+bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept;
+bool pending() noexcept;
+bool setting_override(const void* reference,std::uintptr_t expression) noexcept;
+}

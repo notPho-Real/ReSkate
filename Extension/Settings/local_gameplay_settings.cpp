@@ -3,6 +3,7 @@
 #include "Extension/Progression/local_entitlement_trigger_runtime.h"
 #include "local_gameplay_settings.h"
 #include "local_user_settings.h"
+#include "Extension/ArcadeMode/arcade_native_grind_transition.h"
 #include <optional>
 #include <string_view>
 #include <array>
@@ -97,6 +98,15 @@ void save_gameplay_setting(const void* reference, const dingosdk::Json& value) {
 }
 
 bool gameplay_get_bool(std::uintptr_t m, const void* a) {
+    // A bounded Arcade request can use the original experimental transition
+    // path for its verified local expressions. This never saves a user value.
+    // All other assets, owners and callers retain the original profile policy.
+    if (arcade_mode::native_grind::pending()) {
+        if (arcade_mode::native_grind::setting_override(a,executing_expression)) return true;
+        auto* scope=expression_scope;
+        for(unsigned depth=0;scope && depth<32;++depth,scope=scope->parent)
+            if(scope->vm!=executing_expression && arcade_mode::native_grind::setting_override(a,scope->vm))return true;
+    }
     if (const auto value = saved_gameplay_setting<bool>(a)) return *value;
     return gameplay_settings().get_bool(m, a);
 }

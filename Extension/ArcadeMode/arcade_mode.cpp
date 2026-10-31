@@ -21,6 +21,7 @@
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
+#include "arcade_native_grind_transition.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -1677,6 +1678,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    native_grind::cancel();
     native_flip::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
@@ -1707,6 +1709,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    native_grind::cancel();
     native_flip::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
@@ -1796,6 +1799,8 @@ bool start(std::uintptr_t image_base) noexcept {
     score_probe_base = image_base;
     logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip::start(image_base));
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GRIND LIFETIME: available={}.",native_grind::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -1909,6 +1914,7 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         native_flip::tick(gameplay && focus_available);
+        native_grind::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
