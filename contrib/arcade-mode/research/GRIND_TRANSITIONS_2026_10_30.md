@@ -1542,3 +1542,102 @@ geometry. Grind changes additionally require actual changed native identity
 and animation, contact/momentum evidence, uninterrupted HUD owner/model, and
 one acknowledgment per physical pattern. No Deck installation or trial is
 authorized by this document; the user explicitly prohibited deployment.
+
+
+### Follow-up: exact geometry admission and owned redo plan
+
+The prior geometry probe also failed a definite source requirement: heading
+must be within three degrees of zero, but the observed heading was198.037842.
+Controller availability alone cannot repair that. The next candidate uses the
+existing native fixture reset and checks the resulting alignment before geometry.
+
+Prepared immutable runner grind-native-long-56f6c7b-v1/trial.py SHA-256
+`d3414eb32066e765e294ef3608629b14025f1be20658c3b7e11eba0ab2bff9c7`
+permits baseline/enabled_up only. It requires exact PID70570, bam generation8/
+revision12 and the original fixture metadata before redoing its own placement.
+The original native history independently compares the entire layout. Redo,
+short deletion and long placement are undone in reverse; changed ownership
+prevents unrelated undo. Thirteen inert cases cover admission, interrupted edit
+acknowledgment and cleanup. Forward edits stop after95s to reserve cleanup time
+inside the160s session. This is an investigative control trial, not a named
+production executor.
+
+Host ENOSPC temporarily blocked coordination review and even document appends.
+Only4,407,240 bytes of reproducible local test executables were removed, with
+source and result logs retained. At23:37UTC a4MiB durable write and coordination
+message succeeded. Manual released the Deck; Grind acknowledged ownership.
+The first trial verified installed identity but stopped before edits/gameplay
+at native_in_menu=true. Receipt1793489921974898000-enabled_up.json has zero
+native action samples. A separately reviewed single-Escape runner then verified
+menu closed at the same bam generation8/revision12; skater position was now
+(201.708847,1.028667,-119.683701). Native redo/reset must revalidate the original
+fixture lane; no previous position is promoted to current collision evidence.
+
+### Long-rail native completion reproduced; named publication stalls
+
+The aligned retry completed all 129 original geometry samples, measuring the
+short rail at height0.499924 with sampled Z bounds -1.75..2.0. It then correctly
+failed at `editor delete`: the command layer, unlike undo/redo, requires the
+editor UI open (`park_editor_commands.cpp`, object-command inspection). Its
+own redo was undone, ending revision16 with the fixture absent. The next
+immutable runner opened and verified the editor only during replacement,
+closed it before input, and retained all owner/revision/undo checks.
+
+Two actual native control trials then ran on the original long round rail:
+
+* v2 runner SHA-256
+  `41586f4866fc23579d31bfa7f8befa53e91bebf1205d82c1d5a5b9c8154f6336`,
+  receipt `grind-native-long-56f6c7b-v2/results/1793490167088765000-enabled_up.json`,
+  receipt SHA-256
+  `24f1dfe84b4e0c68833c7191094f02649fd26f7dfcc76bd292a989d7ad288e8b`.
+* v3 runner SHA-256
+  `b6a6403fc724f8d3b83372abe9402df2109202d45e6cc2d70e58a7750a1c649f`,
+  receipt `grind-native-long-56f6c7b-v3/results/1793490345418881000-enabled_up.json`,
+  receipt SHA-256
+  `41e8a2972bac71eb357c52b4bffeb70c622d65e762bd66dc5f015d339f5b629c`.
+
+Both independently acquired native401 contact on the six-metre segment from
+(133.627930,0.490000,-121.388672) to (133.627930,0.490000,-127.388672), with
+missing-segment=false and a stable opaque segment identity before control.
+Both original physics dt and cached skater dt were0.0333333313; these are
+30Hz trials, not 60/120Hz acceptance. The native action ran401 ->406 ->403,
+requested pitch0.4, completed at phase1/elapsed0.29999998, and cleaned up with
+active=false. The original native completion writer remained untouched.
+The successor retained contact for approximately0.7s (58 samples spanning
+688ms/681ms), substantially longer than the prior short-rail observation.
+
+This finally locates the named-publication failure in the captured path.
+Output coarse +180 changes to1 and the new candidate has coarse tuple element1,
+but its orientation element alternates0/1 each native frame. Candidates
+`[1,0,1,0,0,1]` and `[1,0,1,0,1,1]` both map to native identity23 in the original
+lookup. Nevertheless, the original exact six-word comparator at0x47e0c40 rejects
+every alternating pair. The0x47dd26b branch repeatedly resets the publication
+counter and retains the old accepted tuple, so actual fine identity stays20
+through sustained403 contact. Native identity26 appears only after701 exit and
+brief re-entry; it is explicitly excluded from transition success.
+
+v3 supplied X=2048 alongside Up as a diagnostic angle bias. It reproduced the
+same stall. The native406 request heading remained approximately-0.000345;
+the trace does not demonstrate a useful native heading bias. A uinput write
+receipt is not proof of game-side X consumption, and the retained capture did
+not contain the corresponding raw-X row. Do not infer either dead-zone loss or
+a working named recipe from this negative control. The previously traced
+captured-reference/held-sweep input path still needs direct native evidence.
+The classifier's0/1 orientation branch is a native dot-product sign test
+(0x47c8425..0x47c8465), but its exact input-vector cause remains unmeasured.
+No comparator override, identity write or synthetic acknowledgment was added.
+
+Both debuggers exited0, the transient native feature restored to false, and
+all three owned native transactions were undone per trial. The final state was
+ArcadeON, editor/menu closed, bam generation8/revision40, fixture absent with
+configured metadata retained, state100, position
+(131.685287,1.028672,-41.105190), heading358.553558, speed0.193049.
+Manual reclaimed the Deck during v3; Grind finished its bounded cleanup and
+explicitly handed hardware back with no pending job. No further hardware
+operation is authorized by that concluded window.
+
+These trials establish actual actor execution and a concrete classification
+publication blocker, not named-grind gameplay acceptance. Animation/HUD/combo
+continuity was not established in these ArcadeOFF native controls. The named
+production dispatcher is still unwired; the Ollie/early-flip candidate remains
+offline-only. No DLL/CI build, installation, merge or release occurred.
