@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <map>
 
 using namespace dingosdk::arcade_mode;
@@ -84,5 +85,49 @@ int main() {
         f.step();check(!f.writes && !f.active(),"ineligible or changed owner must retain original behavior");
     }
     Fixture unchanged;unchanged.step();check(!unchanged.writes,"no redundant native write");
+
+    // Native c69 receipt: 401 -> 406 -> 403, phase=1, original completion
+    // clears active before cleanup. Neither an admission clear nor cleanup
+    // at a different state/caller can impersonate that update boundary.
+    for(unsigned hz:{30u,60u,120u}) {
+        Fixture f;f.scope.caller=f.scope.base+c::update_return;
+        f.memory.put(f.scope.actor+1040,std::uint32_t{401});
+        f.memory.put(f.scope.actor+1044,std::uint32_t{403});
+        f.memory.put(f.scope.actor+1424,1.f);
+        f.memory.put(f.scope.actor+72,std::array<float,3>{0,.35557747f,0});
+        for(unsigned i=0;i<hz/4;++i) {
+            unsigned calls{};
+            const auto result=observe_grind_transition_completion(f.scope,f.memory,[&]{return f.valid;},[&]{++calls;});
+            check(calls==1 && !result.valid && f.active(),"ongoing native update is not completion");
+        }
+        unsigned calls{};
+        const auto done=observe_grind_transition_completion(f.scope,f.memory,[&]{return f.valid;},[&]{++calls;f.active(false);});
+        check(calls==1 && done.valid && done.source==401 && done.target==403 &&
+            done.phase==1 && done.orientation[1]==.35557747f && !f.active(),"capture-matched original completion is observed without restoring active");
+        const auto repeat=observe_grind_transition_completion(f.scope,f.memory,[&]{return f.valid;},[]{});
+        check(!repeat.valid,"completed level cannot produce another completion edge");
+    }
+    for(unsigned reject=0;reject<10;++reject) {
+        Fixture f;f.scope.caller=f.scope.base+c::update_return;
+        f.memory.put(f.scope.actor+1040,std::uint32_t{401});
+        f.memory.put(f.scope.actor+1044,std::uint32_t{403});
+        f.memory.put(f.scope.actor+1424,1.f);
+        f.memory.put(f.scope.actor+72,std::array<float,3>{0,.35557747f,0});
+        if(reject==0)f.scope.caller=f.scope.base+c::orientation_return;
+        if(reject==1)f.valid=false;
+        if(reject==2)f.active(false);
+        if(reject==3)f.memory.put(f.scope.actor+1424,.5f);
+        if(reject==4)f.memory.put(f.scope.actor+1044,std::uint32_t{200});
+        if(reject==5)f.memory.put(f.scope.actor+72,std::array<float,3>{0,std::numeric_limits<float>::quiet_NaN(),0});
+        if(reject==6)f.memory.bytes.erase(f.scope.actor+1424);
+        unsigned calls{};
+        const auto result=observe_grind_transition_completion(f.scope,f.memory,[&]{return f.valid;},[&]{
+            ++calls;f.active(false);
+            if(reject==7)f.valid=false;
+            if(reject==8)f.memory.put(f.scope.context+c::selected_state,std::uint32_t{200});
+            if(reject==9)f.memory.put(f.scope.core+c::active_actor,std::uintptr_t{0x700000});
+        });
+        check(calls==1 && !result.valid && !f.active(),"invalid scope/field/owner or cleanup supplies no completion and original remains authoritative");
+    }
     std::cout<<checks<<" native grind lifetime checks passed\n";
 }

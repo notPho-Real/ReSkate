@@ -12,6 +12,7 @@ namespace dingosdk::arcade_mode::native_grind {
 namespace {
 namespace c=game::build::v20260929::arcade_grind_transition;
 c::Orientation original_orientation{};
+c::Update original_update{};
 std::uintptr_t image{};
 std::atomic<bool> ready{},gameplay_allowed{},request_pending{};
 std::atomic<std::uint64_t> tick_expires{};
@@ -22,6 +23,7 @@ struct Lease {
     bool entered{};
 };
 Lease lease;
+struct Completed { NoBailSkater owner{}; Completion result{}; } completed;
 template<class T> bool read(std::uintptr_t p,T& v) noexcept { return memory::peek(p,v); }
 std::uintptr_t pointer(std::uintptr_t p) noexcept { std::uintptr_t v{};return read(p,v)?v:0; }
 Lease snapshot() noexcept { std::lock_guard lock(mutex);return lease; }
@@ -62,6 +64,18 @@ std::uintptr_t orientation(std::uintptr_t actor,std::uintptr_t output,std::uintp
         [](auto p,auto& v){return read(p,v);},write_flag,[&]{return valid(l);},
         [&]{return original_orientation(actor,output,input);});
 }
+void update(std::uintptr_t actor) {
+    const auto caller=reinterpret_cast<std::uintptr_t>(_ReturnAddress());
+    if (!pending() || caller!=image+c::update_return) { original_update(actor);return; }
+    const auto l=snapshot();
+    const auto result=observe_grind_transition_completion({image,l.owner.core,l.owner.context,actor,caller},
+        [](auto p,auto& v){return read(p,v);},[&]{return valid(l);},[&]{original_update(actor);});
+    if(result.valid && valid(l)) {
+        std::lock_guard lock(mutex);
+        if(lease.serial==l.serial && lease.owner==l.owner && !completed.result.serial)
+            completed={l.owner,{result,l.serial,GetTickCount64()}};
+    }
+}
 bool expression_owner(std::uintptr_t vm,const Lease& l) noexcept {
     const auto resource=pointer(vm+56),instance=pointer(vm+48);
     std::uint32_t key{};std::array<std::uint32_t,10> layout{};
@@ -80,7 +94,7 @@ bool expression_owner(std::uintptr_t vm,const Lease& l) noexcept {
 }
 void cancel() noexcept {
     request_pending.store(false,std::memory_order_release);
-    std::lock_guard lock(mutex);lease={};
+    std::lock_guard lock(mutex);lease={};completed={};
     // No global setting/profile edit needs rollback. Subsequent native reads
     // use their original result; native selection and cleanup own actor exit.
 }
@@ -92,8 +106,26 @@ void tick(bool gameplay) noexcept {
     if (!gameplay) { cancel();return; }
     const auto l=snapshot();if(!l.serial)return;
     std::uint32_t state{};
-    if (!valid(l) || !read(l.owner.context+c::selected_state,state) ||
-        state<400 || state>406 || (l.entered && state!=406)) cancel();
+    if (!valid(l) || !read(l.owner.context+c::selected_state,state)) { cancel();return; }
+    if(state<400 || state>406 || (l.entered && state!=406)) {
+        // Retire actuation immediately. Preserve only a completion already
+        // observed in the original native update for independent destination
+        // checking; an exit/cleanup alone cannot create one.
+        request_pending.store(false,std::memory_order_release);
+        std::lock_guard lock(mutex);
+        if(lease.serial==l.serial)lease={};
+    }
+}
+Completion completion(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now) noexcept {
+    const auto current_time=GetTickCount64();
+    if(!serial || !available() || current_time>tick_expires.load() || now>current_time || current_time-now>150)return {};
+    Completed result{};
+    { std::lock_guard lock(mutex);result=completed; }
+    NoBailSkater current{};
+    if(result.owner!=owner || result.result.serial!=serial || !result.result.native.valid ||
+        now<result.result.completed_at || now-result.result.completed_at>1500 ||
+        !no_bail_skater(current) || current!=owner || current.base!=image)return {};
+    return result.result;
 }
 bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept {
     const auto current_time=GetTickCount64();
@@ -110,7 +142,7 @@ bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::u
         !read(output+192,identity) || !identity || identity>68) return false;
     std::lock_guard lock(mutex);
     if (lease.serial) return false;
-    lease=candidate;request_pending.store(true,std::memory_order_release);return true;
+    lease=candidate;completed={};request_pending.store(true,std::memory_order_release);return true;
 }
 bool setting_override(const void* reference,std::uintptr_t expression) noexcept {
     if (!pending())return false;
@@ -135,11 +167,17 @@ bool start(std::uintptr_t base) noexcept {
     }
     image=base;
     const auto target=reinterpret_cast<void*>(base+c::orientation);
+    const auto update_target=reinterpret_cast<void*>(base+c::update);
     void* original{};
     if(hook_prepare(target,reinterpret_cast<void*>(&orientation),&original)!=HookOk)return false;
     original_orientation=reinterpret_cast<c::Orientation>(original);
-    if(hook_queue_enable(target)!=HookOk || hook_apply_queued()!=HookOk) {
-        hook_disable(target);hook_remove(target);return false;
+    if(hook_prepare(update_target,reinterpret_cast<void*>(&update),&original)!=HookOk) {
+        hook_remove(target);return false;
+    }
+    original_update=reinterpret_cast<c::Update>(original);
+    if(hook_queue_enable(target)!=HookOk || hook_queue_enable(update_target)!=HookOk || hook_apply_queued()!=HookOk) {
+        hook_disable(target);hook_disable(update_target);
+        hook_remove(target);hook_remove(update_target);return false;
     }
     ready.store(true);return true;
 }

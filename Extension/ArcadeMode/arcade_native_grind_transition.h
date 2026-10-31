@@ -1,5 +1,6 @@
 #pragma once
 #include "Extension/Skater/no_bail.h"
+#include "arcade_grind_transition_lifetime.h"
 #include <cstdint>
 
 namespace dingosdk::arcade_mode::native_grind {
@@ -13,4 +14,11 @@ bool available() noexcept;
 bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept;
 bool pending() noexcept;
 bool setting_override(const void* reference,std::uintptr_t expression) noexcept;
+struct Completion {
+    NativeGrindCompletion native{};
+    std::uint64_t serial{},completed_at{};
+};
+// Fresh original-actor completion, separate from destination identity/contact.
+// An executor must verify those independently before acknowledging a name.
+Completion completion(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now) noexcept;
 }

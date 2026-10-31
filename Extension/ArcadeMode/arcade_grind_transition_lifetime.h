@@ -1,5 +1,6 @@
 #pragma once
 #include "Engine/Game/Build/20260929/arcade_grind_transition.h"
+#include <cmath>
 
 namespace dingosdk::arcade_mode {
 // An internal callback scope, never an input request or a grind acknowledgment.
@@ -8,12 +9,13 @@ namespace dingosdk::arcade_mode {
 struct GrindOrientationScope {
     std::uintptr_t base{}, core{}, context{}, actor{}, caller{};
 };
-template<class Read> bool grind_orientation_scope(Read& read,const GrindOrientationScope& s) noexcept {
+template<class Read> bool grind_orientation_scope(Read& read,const GrindOrientationScope& s,
+    std::uintptr_t expected_return=game::build::v20260929::arcade_grind_transition::orientation_return) noexcept {
     namespace c=game::build::v20260929::arcade_grind_transition;
     constexpr std::uintptr_t highest=0x00007fffffffffffULL;
     const auto safe=[](std::uintptr_t p) { return p>0x10000 && p<highest-0x8000 && !(p&7); };
     if (!safe(s.base) || !safe(s.core) || !safe(s.context) || !safe(s.actor) ||
-        s.base>highest-c::transition_vtable || s.caller!=s.base+c::orientation_return) return false;
+        s.base>highest-c::transition_vtable || s.caller!=s.base+expected_return) return false;
     std::uintptr_t value{};std::uint32_t state{};
     return read(s.core,value) && value==s.base+c::core_vtable &&
         read(s.core+c::core_context,value) && value==s.context &&
@@ -44,5 +46,35 @@ std::uintptr_t preserve_grind_transition_lifetime(const GrindOrientationScope& s
         read(scope.actor+c::actor_active,after) && after<=1 && after!=before)
         write(scope.actor+c::actor_active,before);
     return result;
+}
+
+struct NativeGrindCompletion {
+    bool valid{};
+    std::uint32_t source{},target{};
+    float phase{};
+    std::array<float,3> orientation{};
+};
+// Observe the original transition update's active 1->0 edge, independently of
+// the orientation repair. The pinned update contains the native completion
+// writer; cleanup and a shared admission clear cannot supply this evidence.
+// This proves actor completion only, never a named grind or score occurrence.
+template<class Read,class Valid,class Invoke>
+NativeGrindCompletion observe_grind_transition_completion(const GrindOrientationScope& scope,
+    Read&& read,Valid&& valid,Invoke&& original) {
+    namespace c=game::build::v20260929::arcade_grind_transition;
+    std::uint8_t before{},after{};
+    const bool eligible=valid() && grind_orientation_scope(read,scope,c::update_return) &&
+        read(scope.actor+c::actor_active,before) && before==1;
+    original();
+    NativeGrindCompletion result{};
+    if (!eligible || !valid() || !grind_orientation_scope(read,scope,c::update_return) ||
+        !read(scope.actor+c::actor_active,after) || after!=0 ||
+        !read(scope.actor+1040,result.source) || !read(scope.actor+1044,result.target) ||
+        !read(scope.actor+1424,result.phase) || !read(scope.actor+72,result.orientation) ||
+        result.source<400 || result.source>405 || result.target<400 || result.target>405 ||
+        !std::isfinite(result.phase) || result.phase<.99f || result.phase>1.f) return {};
+    for(const auto angle:result.orientation)if(!std::isfinite(angle))return {};
+    result.valid=valid() && grind_orientation_scope(read,scope,c::update_return);
+    return result.valid?result:NativeGrindCompletion{};
 }
 }

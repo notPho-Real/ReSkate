@@ -976,6 +976,114 @@ lifetime tests pass 464 checks at 30/60/120 Hz under address/undefined behavior
 sanitizers; existing settings-source checks (7) and runtime reset composition
 (69) pass. Windows compilation and gameplay acceptance remain outstanding.
 
+### Native target selection constraints (continued source trace)
+
+The original jump table at 0x481436c resolves source states 400..405 to
+0x481432e, 0x4814187, 0x48141d3, 0x48142a5, 0x48141d3 and
+0x4814333. Consequently a source boardslide (400) selects 401 through
+this transition, while source 401 selects 400 for a requested absolute
+heading strictly inside the native 55–125 degree band and 403 otherwise.
+Source 403 can select a tip/backslash class only with the additional native
+pitch and geometry conditions. Thus a single arbitrary cardinal stick request
+cannot be claimed to implement every named destination from every origin.
+The original class selector and its geometry choices must remain authoritative.
+
+The fine-identity lookup adds another constraint: holding the baseline
+backwards-orientation tuple fixed does not admit all nine requested names.
+For example, baseline side=1/orientation=1 contains native identity 23
+(nosegrind), but not 21 (noseslide), 31 (bluntslide), or 32 (crooked).
+A request must account for the actual orientation/contact tuple; a fixed
+numeric offset from the starting identity is not sufficient execution proof.
+No control recipe is inferred solely from those enum values.
+
+The function-level lifetime wrapper was checked against the intervening
+original orientation calculation: the post-store calls at 0x48158f9 and
+0x481591e perform geometry/curve calculation, and transition completion
+remains in the later actor update at 0x48269e9. The live shared-store probe
+and production whole-function preservation still require comparison in the
+finished candidate; their tests are not interchangeable gameplay acceptance.
+
+Manual released the Deck to the grab chat for its bounded c69dd24 Method
+trial. Grind remains offline until that chat explicitly releases it. Reviewed
+identity/fixture/control runners were staged for source
+c69dd24af196e2a43eb3b290ad92232d132b45d2 and DLL
+6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc;
+staging did not execute a Deck action or install a grind build.
+
+### Corrected brief-lift experiment and geometry exit
+
+The c69dd24 window verified PID 58428 and the installed/mapped hash above.
+The authored fixture was restored in current bam generation 5/revision 9;
+fresh native collision sampling completed all 129 samples at height
+0.499374 m. Identity receipt: `grind-identity-c69dd24-v1/results/1793419042096040000.json`.
+Fixture receipt: `grind-fixture-c69dd24-v1/results/1793419073274770000-restore_one.json`.
+
+An immediate-contact conditioned request produced no 406 entry and no input
+heading change. It delivered right stick at first native 401/contact/identity20
+(2.023 s), showing that first contact alone is too early to assume the native
+control reference is established. Receipt:
+`grind-preserve-contact-c69dd24-v1/results/1793419136940239000-enabled_right.json`.
+No named change is credited to the later ordinary rail-end 403/identity24.
+
+Repeating the previously reproduced 2.1 s right-stick request with the fixed
+brief-lift guard did enter 406 at 2.202 s and retained it for 0.4 seconds.
+The native curves reached phase 0.93476 and actual heading 1.062394 radians,
+with requested heading 1.570451. The separate native completion writer was
+never reached. The original selector chose AIR200 at 2.605 s; cleanup found
+active=1, source401, target400, and identity still20. Receipt:
+`grind-preserve-control-c69dd24-v1/results/1793419209645540000-enabled_right.json`.
+Both physics cadence and cached step were 0.0333333313 seconds.
+
+The observed output+417 rose before exit. Source establishes that this field
+copies actor+912 (0x4818b59..0x4818b65), which transition update sets when the
+native segment lookup 0x481f350 returns null (0x4826632..0x4826643). That
+lookup enumerates the original rail segments and checks the local body's
+longitudinal position between segment endpoints. The selector can then take
+0x47468d8 to AIR200. The short rail is a plausible cause, but the next probe
+adds the actor endpoints, correction vector and native contact point to
+separate an actual rail end from another missing-segment condition. No exit
+condition was suppressed and no named execution success is claimed.
+
+The second trial's optional log collector encountered automatic log rotation;
+its direct native samples and debugger receipt remained intact, and final
+fresh console status succeeded. Both trials returned GDB0, explicitly
+detached, restored the feature false, neutralized/detached controls and
+restored Arcade ON. The Deck was explicitly released back to the manual chat.
+No new DLL/CI build, installation, source upload or merge occurred.
+
+### Original native completion observed
+
+The subsequent up-control trial reached the original completion writer:
+`grind-preserve-geometry-c69dd24-v1/results/1793419918078273000-enabled_up.json`.
+It entered 401 at 1.938 s, 406 at 2.169 s and successor 403 at 2.466 s.
+Native source/target were 401/403, requested pitch was 0.400000095 radians,
+computed duration 0.100000024 s and settle time 0.25 s. At the original
+0x48269e9 completion writer, phase was 1, elapsed 0.29999998 s, actual pitch
+0.35557747 radians and native contact class 1. Cleanup observed active=0.
+This establishes original actor execution and completion with the scoped
+admission/lifetime correction; no target, identity, position or velocity was
+written. Physics cadence and cached step were both 0.0333333313 s.
+
+The original actor reported endpoints at Z1080.58496 and Z1084.58496,
+entry contact point Z1082.6973 and forward velocity 4.708291 m/s. The
+successor had only about 65 ms before state 701 at the rail end. Fine identity
+remained 20 during that successor contact. A subsequent brief re-entry with
+identity 26 is not credited as the requested named transition. Longer settled
+contact remains necessary for independent named identity and animation proof.
+
+The production integration now separately observes the original actor update
+at 0x48264d0, from exact caller return 0x4825590. It publishes a bounded
+owner/request-scoped completion only for an original active 1-to-0 edge with
+phase 1 and finite orientation, revalidating actor ownership before and after.
+Cleanup, shared-helper clearing, stale owners and repeated polls cannot create
+completion. This read-only evidence is distinct from named grind acknowledgment;
+the named executor is still unwired. The strict sanitizer test passes 597
+checks, including completion and cancellation cases at 30/60/120 Hz.
+
+The successful trial returned GDB0, explicitly detached, restored the feature
+false, restored Arcade ON and neutralized/detached controls. The Deck was
+explicitly released to the grab chat. No DLL/CI build or installation occurred.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence
