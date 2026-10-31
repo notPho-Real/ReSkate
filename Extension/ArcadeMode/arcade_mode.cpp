@@ -2254,7 +2254,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 row.first_event=row.last_event=event.sequence;row.first_ms=row.last_ms=event.at;row.events_known=true;
                 input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
             }
-            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session))capture_recognitions(*diagnostic,now,capture_proof);
+            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session)) {
+                capture_recognitions(*diagnostic,now,capture_proof);
+                native_grab::trace_input(now,*diagnostic,result.action);
+            }
         }
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the

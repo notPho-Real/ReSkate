@@ -13,7 +13,7 @@ struct Route {
     ArcadeInput input{true};NativeInputState producer;NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5};NativeInputFrame frame{};
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
-    bool accept{true};std::uint64_t now{};
+    bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
     static bool submit(void* p,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
@@ -29,7 +29,7 @@ struct Route {
                               std::int32_t selection=-1,bool enabled=true) {
         now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
         sample.words[1]=state==100?0xc000u:0;
-        frame=producer.observe(at,owner,sample,{true,selection,16});
+        frame=producer.observe(at,owner,sample,{true,selection,selection_object});
         readiness.publish(frame,{true,state==100,false,false,false,false,false,false,true,0});
         input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
         const auto admission=readiness.sample(at,frame);
@@ -136,6 +136,10 @@ void repeated_grab_after_native_jump_retirement() {
         check(r->requests.back().generations.action==r->frame.action_generation &&
               first.generations.action!=r->requests.back().generations.action,
               "new physical repeat uses the independently qualified current action generation");
+        const auto& proof=r->input.input_diagnostic(0)->grab_repeat;
+        check(proof.observed && proof.extra && proof.native_adapter && proof.retired &&
+              proof.before.flip.object==proof.current.flip.object && proof.origin.action==first.generations.action,
+              "capture retains the actual repeat qualification without treating it as animation evidence");
         for (unsigned invalid=0;invalid<3;++invalid) {
             auto bad=std::make_unique<Route>();bad->poll(1000,0,201,1);
             bad->poll(1000+dt,0x2004,201,1);
@@ -146,6 +150,16 @@ void repeated_grab_after_native_jump_retirement() {
             check(bad->tricks.back()!=ArcadeTrick::method,
                   "different action, owner replacement or landing never inherit the prior grab repeat");
         }
+        auto replacement=std::make_unique<Route>();replacement->poll(1000,0,201,1);
+        replacement->poll(1000+dt,0x2004,201,1);replacement->selection_object=32;
+        replacement->poll(1000+2*dt,4,201,-1);
+        const auto rejected=replacement->poll(1000+3*dt,0x2004,201,-1);
+        const auto* diagnostic=replacement->input.input_diagnostic(0);
+        check(diagnostic->grab_repeat.observed && !diagnostic->grab_repeat.retired &&
+              diagnostic->grab_repeat.before.flip.object!=diagnostic->grab_repeat.current.flip.object &&
+              diagnostic->dispatched==1 && diagnostic->dispatch[0].disposition==InputDisposition::cancelled &&
+              rejected.action.grab_gate==0 && replacement->requests.size()==1,
+              "replacement selection identity is observable and still rejected before the adapter");
     }
 }
 }

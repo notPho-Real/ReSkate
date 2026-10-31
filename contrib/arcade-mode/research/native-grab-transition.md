@@ -5,9 +5,49 @@
 The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
 is still incomplete**. BS Grab and Melon now have native animation evidence at
-measured 30 Hz; Method still requires the repeated-input correction below.
+measured 30 Hz; Method still fails gameplay after the repeated-input correction.
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
+
+### Repeat correction hardware result
+
+Commit `dd3e8ebaac4a99102e26296b9c6c373744b28660`, DLL SHA-256
+`390e1db09244a62ae8268f1d3f132655fb638a5a05967f28adfda8a2784f7918`,
+passed Windows/Linux/macOS CI (run 41158925576) and was verified loaded before
+the next Method trial. The capture SHA-256 is
+`df8f53fddc2d82783358b09ba7f882bcd9f32e2ac5e07b661d513f1a0b29e333`.
+It contains 474 independent samples at measured/cached 30 Hz, with no sampler
+errors or reported log gaps. The overall correlation footer is incomplete;
+do not treat this as complete coverage of every requested evidence source.
+
+The two physical B presses were recognized. Only Melon reached the native
+adapter: its exact actor initialized and advanced by 1.8027897 ticks in the
+same airborne episode. No Method request or Method animation was acknowledged.
+Native flight returned to state 100. Numeric scoring remains unverified.
+The inherited action generation was a reproduced source defect, but correcting
+it did not resolve the live failure. Its sufficiency is disproved by this trial.
+
+An offline replay of the captured physical polls, native state/selection IDs,
+physics cadence and action-readiness delay reaches Method in production input
+code. Selection-object lifetime and mode-generation provenance were not in the
+capture; the replay supplies those and cannot prove live equivalence. The next
+build adds capture-only `ARCADE GRAB INPUT` records without changing admission:
+requested semantic identity, request/origin/current action generations, repeat
+qualification, queue disposition, and the adapter's competing-owner gate.
+No native address is logged. Records use the existing bounded grab event queue.
+
+`failed_proofs` bits describe the existing retirement predicate: 1 valid AIR,
+2 same episode, 4 same owner, 8 exactly one action change, 16 valid selections,
+32 Ollie-to-idle IDs, 64 same nonzero selection object, 128 state 201,
+256 mode 2, 512 same stance, 1024 advancing physics step, 2048 same nonzero
+mode generation. These are failed conditions, not execution permissions.
+`gate` is 0 before the adapter, otherwise entered=1, unavailable=2,
+authored owner=4, manual owner=8, auxiliary owner=16, rail owner=32,
+extension form=64. `disposition` uses InputDisposition (waiting=0, started=1,
+unsupported=2, cancelled=3, expired=4). Neither row acknowledges animation.
+
+Source validation now has 248 grab checks at 30/60/120 Hz, including a replaced
+selection object that must remain rejected and observable. Stage A is incomplete.
 
 The missing intent and observation definitions were recovered from the original
 `dingolevel_root` shared bundle. The revised adapter delivers the original right

@@ -48,6 +48,9 @@ struct Event {
     bool ending{},held{},acknowledged{},airborne{};
     std::uint64_t serial{},episode{};
     ArcadeTrick trick{};std::int32_t detail{};InputRequest physical{};
+    bool input_trace{},extra{},native_adapter{},retired{};
+    std::uint64_t ms{},origin_action{},current_action{};
+    unsigned failed_proofs{},gate{},disposition{},result{};
 };
 std::array<Event,32> events{};
 unsigned event_count{},lost_events{};
@@ -60,7 +63,12 @@ void flush_events() noexcept {
     {std::lock_guard lock(mutex);pending=events;count=event_count;lost=lost_events;event_count=lost_events=0;}
     for (unsigned i=0;i<count;++i) {
         const auto& e=pending[i];
-        if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
+        if (e.input_trace) logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE GRAB INPUT: ms={} recognized_at={} pressed_at={} direction={} presses={} form={} semantic={} request_action={} origin_action={} current_action={} extra={} native_adapter={} retired={} failed_proofs={} gate={} disposition={} result={} animation_acknowledged=false.",
+            e.ms,e.physical.recognized_at,e.physical.physical_pressed_at,e.physical.direction,e.physical.presses,
+            static_cast<unsigned>(e.physical.form),static_cast<unsigned>(e.physical.air.trick),e.physical.generations.action,
+            e.origin_action,e.current_action,e.extra,e.native_adapter,e.retired,e.failed_proofs,e.gate,e.disposition,e.result);
+        else if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified.",
             e.serial,e.episode,e.acknowledged,e.airborne);
         else logging::log(logging::Level::info,logging::Channel::skater,
@@ -256,6 +264,39 @@ bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept 
     std::lock_guard lock(mutex);
     return valid() && owner==session.owner && episode==session.episode &&
         session.lease.intent(GetTickCount64());
+}
+void trace_input(std::uint64_t now,const UnifiedInput::Diagnostic& diagnostic,const ActionInputOutput& output) noexcept {
+    const auto& proof=diagnostic.grab_repeat;
+    if (!proof.observed) return;
+    const auto& current=proof.current;const auto& before=proof.before.flip;
+    const auto& flip=current.flip;
+    unsigned failed{};
+    if (!current.valid || !current.airborne || !current.airborne_episode) failed|=1u;
+    if (current.air_episode()!=proof.before.air_episode()) failed|=2u;
+    if (current.generations.owner!=proof.origin.owner) failed|=4u;
+    if (current.generations.action<=proof.origin.action || current.generations.action-proof.origin.action!=1) failed|=8u;
+    if (!before.valid || !flip.valid) failed|=16u;
+    if (before.id!=1 || flip.id!=-1) failed|=32u;
+    if (!before.object || before.object!=flip.object) failed|=64u;
+    if (before.state!=201 || before.state!=flip.state) failed|=128u;
+    if (before.mode!=2 || before.mode!=flip.mode) failed|=256u;
+    if (before.stance!=flip.stance) failed|=512u;
+    if (!before.step || flip.step<=before.step) failed|=1024u;
+    if (!before.mode_generation || before.mode_generation!=flip.mode_generation) failed|=2048u;
+    for (std::size_t i=0;i<diagnostic.recognition_count;++i) {
+        const auto& request=diagnostic.recognition[i].request;
+        if (request.action!=InputAction::grab) continue;
+        Event e{};e.input_trace=true;e.ms=now;e.physical=request;
+        e.extra=proof.extra;e.native_adapter=proof.native_adapter;e.retired=proof.retired;
+        e.origin_action=proof.origin.action;e.current_action=current.generations.action;
+        e.failed_proofs=failed;e.gate=output.grab_gate;e.result=static_cast<unsigned>(output.result);
+        for (std::size_t j=0;j<diagnostic.dispatched;++j) {
+            const auto& dispatch=diagnostic.dispatch[j];
+            if (dispatch.request.recognition==request.recognition)
+                e.disposition=static_cast<unsigned>(dispatch.disposition);
+        }
+        std::lock_guard lock(mutex);enqueue(e);
+    }
 }
 void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!active.load() || !std::isfinite(delta) || delta<=0) return;

@@ -318,6 +318,11 @@ private:
 class UnifiedInput {
 public:
     struct Diagnostic {
+        struct GrabRepeat {
+            bool observed{}, extra{}, native_adapter{}, retired{};
+            InputGenerations origin{};
+            InputNativeContext before{}, current{};
+        } grab_repeat{};
         std::uint64_t session{}, samples{}, recognized{}, queue_full{}, journal_overflows{}, dispatch_dropped{};
         int stick{}, pad{}, stick_first{}, pad_first{};
         std::uint64_t stick_at{}, pad_at{}, flip_table_at{}, grab_table_at{};
@@ -392,6 +397,7 @@ public:
     void poll(std::uint64_t now, PhysicalInputSample physical, InputEnvironment environment,
               InputAdapter adapter = {}) noexcept {
         diagnostic_.recognition_count = 0; diagnostic_.recognition_omitted = 0;
+        diagnostic_.grab_repeat = {};
         const auto native = environment.native_context;
         const auto takeoff = environment.takeoff_release_at && now>=environment.takeoff_release_at &&
             (native.airborne || now-environment.takeoff_release_at<InputTiming::direction_ms) ? environment.takeoff_release_at : 0;
@@ -923,8 +929,11 @@ private:
         // 201/mode2 Ollie-to-idle transition in the same owner/air episode.
         // Other action changes keep the original lineage and fail the queue gate.
         const auto* lineage = extra ? &grab_generations_ : nullptr;
-        if (extra && environment.native_grab_transition &&
-            environment.native_context.jump_selection_retired(grab_generations_,grab_native_.air_episode(),grab_native_.flip))
+        const bool retired = environment.native_context.jump_selection_retired(
+            grab_generations_,grab_native_.air_episode(),grab_native_.flip);
+        if (recognition_capture_) diagnostic_.grab_repeat = {true,extra,environment.native_grab_transition,
+            retired,grab_generations_,grab_native_,environment.native_context};
+        if (extra && environment.native_grab_transition && retired)
             lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,

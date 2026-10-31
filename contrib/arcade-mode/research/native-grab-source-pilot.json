@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "A: BS and Melon native animation observed; Method repeat correction awaiting build acceptance",
+  "stage": "A: BS and Melon native animation observed; Method repeat still fails after dd3e8eb correction",
   "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
   "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
   "complete_catalog": false,
@@ -21,7 +21,7 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "242 checks passed at 30/60/120 Hz",
+        "source_contract": "248 checks passed at 30/60/120 Hz",
         "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
         "native_animation": "exact original actor initialized and advanced with positive delta",
         "hold_release": "release observed; BS additionally tested with held B and100ms tap",
@@ -43,7 +43,7 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "242 checks passed at 30/60/120 Hz",
+        "source_contract": "248 checks passed at 30/60/120 Hz",
         "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
         "native_animation": "exact original actor initialized and advanced with positive delta",
         "hold_release": "release observed; BS additionally tested with held B and100ms tap",
@@ -66,12 +66,12 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "242 checks passed at 30/60/120 Hz",
-        "native_action": "ec35a8e: Method repeat canceled before adapter by inherited action generation",
+        "source_contract": "248 checks passed at 30/60/120 Hz",
+        "native_action": "dd3e8eb: second physical B recognized; no Method request reached native adapter",
         "native_animation": "unverified; Melon advancement does not count as Method",
         "hold_release": "unverified in gameplay",
         "landing_scoring": "unverified",
-        "followup": "narrow native Ollie-selection-retirement continuity fix passes regression; gameplay pending"
+        "followup": "captured-poll source replay succeeds with supplied selection lifetime; live provenance and rejection gate need capture-only diagnostics"
       }
     }
   ],
@@ -203,5 +203,27 @@
   "hardware_evidence": [
     "native-grab-hardware-pilot.json",
     "native-grab-ec35a8e-acceptance.json"
-  ]
+  ],
+  "latest_method_trial": {
+    "source_commit": "dd3e8ebaac4a99102e26296b9c6c373744b28660",
+    "dll_sha256": "390e1db09244a62ae8268f1d3f132655fb638a5a05967f28adfda8a2784f7918",
+    "capture_sha256": "df8f53fddc2d82783358b09ba7f882bcd9f32e2ac5e07b661d513f1a0b29e333",
+    "sample_count": 474,
+    "physics_hz": 30,
+    "cached_step_hz": 30,
+    "sample_errors": 0,
+    "log_gaps": 0,
+    "correlation_complete": false,
+    "physical_b_presses": 2,
+    "requested_native_details": [
+      4
+    ],
+    "intended_native_detail": 2,
+    "actual_advanced_actor": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+    "native_animation_delta": 1.8027897,
+    "method_acknowledged": false,
+    "landing_state": 100,
+    "scoring": "unverified",
+    "result": "failed"
+  }
 }

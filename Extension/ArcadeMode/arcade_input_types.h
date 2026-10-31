@@ -19,6 +19,9 @@ struct ActionInputOutput {
     ArcadeTrick trick{ArcadeTrick::none};
     unsigned request_kind{};
     DispatchResult result{DispatchResult::disabled};
+    // Observation only: entered=1, unavailable=2, authored=4, manual=8,
+    // auxiliary=16, rail=32, extension=64. Never grants native admission.
+    unsigned grab_gate{};
 };
 struct InputJumpEdge {
     bool released{}, setup_admitted{}, nollie{}, from_rail{};

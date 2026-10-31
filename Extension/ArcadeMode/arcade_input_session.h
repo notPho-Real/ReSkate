@@ -528,6 +528,11 @@ private:
         const auto& admission = admission_;
         const bool grab = request.action == InputAction::grab;
         const bool classic = admission.action_mode == ActionExperiment::classic;
+        if (grab) out.grab_gate = 1u |
+            ((!admission.action_fresh || admission.action_mode == ActionExperiment::off) ? 2u : 0u) |
+            (authored_.busy() ? 4u : 0u) | (manual_.busy() ? 8u : 0u) |
+            (auxiliary_.busy() ? 16u : 0u) | (rail_ ? 32u : 0u) |
+            (request.form != InputForm::ordinary ? 64u : 0u);
         if (!admission.action_fresh || admission.action_mode == ActionExperiment::off) return InputDisposition::cancelled;
         if (authored_.busy() || (manual_.busy() && (grab || !verified_manual(admission,now_))) || auxiliary_.busy() || rail_) return InputDisposition::waiting;
         if (request.form != InputForm::ordinary) return request_extension(request);
