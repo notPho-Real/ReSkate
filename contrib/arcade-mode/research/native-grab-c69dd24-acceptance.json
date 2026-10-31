@@ -192,7 +192,8 @@
       "owner_verified": false,
       "authoritative": false
     },
-    "inference": "Immediate tweak restoration may allow the still-active native blendspace to return to BS during release. Not yet compared against original-game release semantics; do not call this a confirmed defect or change native exit timing."
+    "inference": "Immediate tweak restoration may allow the still-active native blendspace to return to BS during release. Not yet compared against original-game release semantics; do not call this a confirmed defect or change native exit timing.",
+    "original_control_comparison": "native-grab-c69dd24-regressions.json; two trials bailed, so release causality and landing acceptance remain unverified."
   },
   "acceptance": {
     "method_native_animation": true,
@@ -203,7 +204,7 @@
       60,
       120
     ],
-    "bs_and_melon_regression_on_this_dll": "not rerun; prior ec35 actor evidence retained"
+    "bs_and_melon_regression_on_this_dll": "Both exact actors initialized and advanced at measured30Hz; see native-grab-c69dd24-regressions.json. Landing/scoring caveats remain."
   },
   "ci": {
     "run": 41164301643,

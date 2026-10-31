@@ -39,8 +39,23 @@ supporting evidence only: the existing score observer remains owner-unverified.
 
 See `native-grab-c69dd24-acceptance.json` for sanitized request, actor, timing and
 release evidence. The capture footer still lacks complete source coverage.
-BS/Melon regression on this DLL, 60/120 Hz, full hold/release, scoring and chain
-acceptance remain outstanding. The Deck was returned neutral with capture stopped,
+BS and Melon were subsequently rerun on this same DLL. Both original actors
+initialized with duration 305 and advanced from 0 to 0.20186043 ticks, with
+matching native detail and IsGrabbing. Basic has 475 independent samples and
+Melon 474; both measured/cached steps are 30 Hz with no read errors or log gaps.
+Basic returned 201→100; Melon briefly reported state 0 between 201 and 100.
+That transient is retained in the evidence and is not treated as a clean scored
+landing. See `native-grab-c69dd24-regressions.json`.
+
+Two original-control comparisons (Arcade OFF, native stick/trigger inputs)
+reached native Method detail, but both bailed. One retained native grabbing after
+RT release while the tweak was held. The animation observer is inactive in those
+controls, so a detail tag is not counted as exact actor proof. These comparisons
+do not settle release causality or justify forcing native cleanup. No release
+code was changed in response.
+
+60/120 Hz, full hold/release, scoring and chain acceptance remain outstanding.
+The Deck was returned neutral with capture stopped,
 Arcade ON and automatic routing restored; the prior manual DLL was preserved.
 
 ### Native grab-owner continuity correction

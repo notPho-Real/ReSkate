@@ -22,8 +22,8 @@
       "evidence_status": "partially verified",
       "test_result": {
         "source_contract": "305 checks passed at 30/60/120 Hz",
-        "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
-        "native_animation": "exact original actor initialized and advanced with positive delta",
+        "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
+        "native_animation": "c69dd24: exact original actor initialized with duration305 and advanced0 to0.20186043 at positive delta",
         "hold_release": "release observed; BS additionally tested with held B and100ms tap",
         "landing_scoring": "ground state100 observed; numeric scoring owner unverified"
       }
@@ -44,10 +44,10 @@
       "evidence_status": "partially verified",
       "test_result": {
         "source_contract": "305 checks passed at 30/60/120 Hz",
-        "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
-        "native_animation": "exact original actor initialized and advanced with positive delta",
+        "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
+        "native_animation": "c69dd24: exact original actor initialized with duration305 and advanced0 to0.20186043 at positive delta",
         "hold_release": "release observed; BS additionally tested with held B and100ms tap",
-        "landing_scoring": "ground state100 observed; numeric scoring owner unverified",
+        "landing_scoring": "Native201 ->0 ->100 observed; numeric scoring owner unverified",
         "prior_gameplay_build": "fbcc0e9: request delivered but CanGrab false, no actor initialization or advancement acknowledgment"
       }
     },
@@ -203,7 +203,8 @@
   "hardware_evidence": [
     "native-grab-hardware-pilot.json",
     "native-grab-ec35a8e-acceptance.json",
-    "native-grab-c69dd24-acceptance.json"
+    "native-grab-c69dd24-acceptance.json",
+    "native-grab-c69dd24-regressions.json"
   ],
   "latest_method_trial": {
     "source_commit": "c69dd24af196e2a43eb3b290ad92232d132b45d2",

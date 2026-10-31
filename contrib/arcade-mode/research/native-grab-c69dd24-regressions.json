@@ -1,0 +1,324 @@
+{
+  "source": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+  "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+  "trials": [
+    {
+      "source": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+      "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+      "trial": "basic",
+      "capture_sha256": "00de7cf2806778228684d499e3968abbc7310014e614138d6e698a891292c06f",
+      "sample_count": 475,
+      "sample_errors": [],
+      "log_gaps": [],
+      "physical_buttons": {
+        "0": 2061,
+        "4096": 125,
+        "8192": 87
+      },
+      "native_states": [
+        100,
+        103,
+        200,
+        201,
+        100
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 406,
+          "True": 69
+        },
+        "Bool.Anim.IsGrabbing": {
+          "None": 80,
+          "True": 70,
+          "False": 325
+        },
+        "EnumGS.GrabType": {
+          "None": 80,
+          "2": 395
+        },
+        "Enum.GS.DetailedGrabType": {
+          "None": 108,
+          "1": 42,
+          "0": 325
+        }
+      },
+      "occurrences": [
+        {
+          "request": {
+            "serial": "1",
+            "episode": "2",
+            "semantic": "54",
+            "expected_detail": "1",
+            "held": "true",
+            "pressed_at": "165358266",
+            "released_at": "0",
+            "recognized_at": "165358266",
+            "direction": "0",
+            "presses": "1",
+            "acknowledged": "false"
+          },
+          "exact_asset_initialization": [
+            {
+              "serial": "1",
+              "episode": "2",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "duration": "305"
+            }
+          ],
+          "exact_asset_advancement": [
+            {
+              "serial": "1",
+              "episode": "2",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "before": "0",
+              "after": "0.20186043",
+              "delta": "0.20186043",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.3144233"
+            }
+          ],
+          "end": [
+            {
+              "serial": "1",
+              "episode": "2",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ],
+          "native_animation_evidence": true,
+          "initialization_logged_in_this_occurrence": true
+        }
+      ],
+      "measured_steps": {
+        "(0.03333333134651184, 0.03333333134651184)": 475
+      },
+      "landing_observed": true,
+      "native_scoring": "unverified: numeric score owner not established",
+      "intended_native_detail": "1",
+      "intended_trick_animation_acknowledged": true,
+      "input_admission": [
+        {
+          "ms": "165358266",
+          "recognized_at": "165358266",
+          "pressed_at": "165358266",
+          "direction": "0",
+          "presses": "1",
+          "form": "0",
+          "semantic": "54",
+          "request_action": "4657",
+          "origin_action": "0",
+          "current_action": "4657",
+          "extra": "false",
+          "native_adapter": "true",
+          "retired": "false",
+          "failed_proofs": "3582",
+          "native_owner": "false",
+          "gate": "1",
+          "disposition": "1",
+          "result": "0",
+          "animation_acknowledged": "false"
+        }
+      ],
+      "coverage": {
+        "sampler_errors": 0,
+        "log_gaps": 0,
+        "input_capture_complete": false,
+        "interpretation": "Exact actor evidence present; missing correlation sources prevent a full-coverage claim."
+      },
+      "binding": "A, B, release B",
+      "physical_timing_ms": {
+        "A_down": 0,
+        "A_up": 500,
+        "B_down": 850,
+        "B_up": 1200
+      },
+      "acceptance": {
+        "native_animation": true,
+        "native_landing_observed": true,
+        "full_hold_release_and_scoring": false,
+        "remaining_rates": [
+          60,
+          120
+        ]
+      }
+    },
+    {
+      "source": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+      "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+      "trial": "melon",
+      "capture_sha256": "8903c0d5cc152a9828d10d0aa72ead8f3859bd15d42cbb2421ede205661353e3",
+      "sample_count": 474,
+      "sample_errors": [],
+      "log_gaps": [],
+      "physical_buttons": {
+        "0": 2166,
+        "4096": 125,
+        "8196": 75
+      },
+      "native_states": [
+        100,
+        103,
+        200,
+        201,
+        0,
+        100
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 439,
+          "True": 35
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 439,
+          "True": 35
+        },
+        "EnumGS.GrabType": {
+          "2": 111,
+          "0": 363
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 467,
+          "4": 7
+        }
+      },
+      "occurrences": [
+        {
+          "request": {
+            "serial": "2",
+            "episode": "3",
+            "semantic": "21",
+            "expected_detail": "4",
+            "held": "true",
+            "pressed_at": "165401423",
+            "released_at": "0",
+            "recognized_at": "165401423",
+            "direction": "4",
+            "presses": "1",
+            "acknowledged": "false"
+          },
+          "exact_asset_initialization": [
+            {
+              "serial": "2",
+              "episode": "3",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "duration": "305"
+            }
+          ],
+          "exact_asset_advancement": [
+            {
+              "serial": "2",
+              "episode": "3",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "before": "0",
+              "after": "0.20186043",
+              "delta": "0.20186043",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.2679524"
+            }
+          ],
+          "end": [
+            {
+              "serial": "2",
+              "episode": "3",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ],
+          "native_animation_evidence": true,
+          "initialization_logged_in_this_occurrence": true
+        }
+      ],
+      "measured_steps": {
+        "(0.03333333134651184, 0.03333333134651184)": 474
+      },
+      "landing_observed": true,
+      "native_scoring": "unverified: numeric score owner not established",
+      "intended_native_detail": "4",
+      "intended_trick_animation_acknowledged": true,
+      "input_admission": [
+        {
+          "ms": "165401423",
+          "recognized_at": "165401423",
+          "pressed_at": "165401423",
+          "direction": "4",
+          "presses": "1",
+          "form": "0",
+          "semantic": "21",
+          "request_action": "5782",
+          "origin_action": "4657",
+          "current_action": "5782",
+          "extra": "false",
+          "native_adapter": "true",
+          "retired": "false",
+          "failed_proofs": "2094",
+          "native_owner": "false",
+          "gate": "1",
+          "disposition": "1",
+          "result": "0",
+          "animation_acknowledged": "false"
+        }
+      ],
+      "coverage": {
+        "sampler_errors": 0,
+        "log_gaps": 0,
+        "input_capture_complete": false,
+        "interpretation": "Exact actor evidence present; missing correlation sources prevent a full-coverage claim."
+      },
+      "binding": "A, Left+B, release B",
+      "physical_timing_ms": {
+        "A_down": 0,
+        "A_up": 500,
+        "B_down": 850,
+        "B_up": 1200
+      },
+      "acceptance": {
+        "native_animation": true,
+        "native_landing_observed": true,
+        "full_hold_release_and_scoring": false,
+        "remaining_rates": [
+          60,
+          120
+        ]
+      },
+      "landing_limitation": "Native state0 briefly observed between201 and100; retain this transition, do not infer a clean scored landing."
+    }
+  ],
+  "original_control_comparisons": [
+    {
+      "capture": "1793420018211376000-native-control.json",
+      "sha256": "5e9b18148f014fe914cf4dee8d5d12158ba9eea5bcd5f37e83c9a0007afbff30",
+      "sample_count": 487,
+      "sample_errors": 0,
+      "log_gaps": [],
+      "method_detail_observed": true,
+      "final_state": 504,
+      "animation_observer": "inactive because ArcadeOFF; native detail alone is not exact actor advancement proof",
+      "acceptance": "NOT accepted for landing/release; original-control trial bailed; no release-code changes made"
+    },
+    {
+      "capture": "1793420392469519000-native-control.json",
+      "sha256": "73973291c9e36c5b3027c1a5f1f835b70a6cd13d26c9c6d373fc1e30c307afaf",
+      "sample_count": 479,
+      "sample_errors": 0,
+      "log_gaps": [],
+      "method_detail_observed": true,
+      "final_state": 504,
+      "animation_observer": "inactive because ArcadeOFF; native detail alone is not exact actor advancement proof",
+      "acceptance": "NOT accepted for landing/release; original-control trial bailed; no release-code changes made"
+    }
+  ],
+  "release_conclusion": "Original-control Method detail was observed but both comparisons bailed. One retained native grabbing after RT release while the tweak remained held. These trials do not establish release or landing acceptance and do not justify forcing a native exit.",
+  "runtime_changes": "None after c69dd24; evidence only."
+}
