@@ -178,8 +178,34 @@ completion of one link cannot suppress the next link in the same episode.
 Both regressions fail on their prior production behavior. The publication-gap
 case covers both directions at30/60/120Hz through a ten-second successor hold,
 plus owner loss, offboard, bail, true putdown and stale-evidence rejection.
-These corrections still require a new verified DLL and live chain retesting;
-the installed c45 build does not contain them.
+These corrections were built as2ad20da and tested live. They do not by
+themselves establish complete manual acceptance; the settling failure below
+remained reproducible.
+
+### Provisional opposite contact during revert settling
+
+The2ad20da Mega Park trial at measured30Hz reached one original Nose contact,
+then returned to both trucks. The first contact completed the episode handoff
+and cleared the link. About133ms later the producer's consecutive two-truck
+putdown policy ended the episode and cancelled RS. The balance was near center,
+so this was not a balance endpoint. The diagnostic's verified-putdown flag was
+that policy's classification, not independent proof of intentional termination.
+
+A linked successor's first opposite contact is now provisional. Another
+consecutive original physics observation must confirm it before the transition
+completes. A contact change, missing original step or new transition invalidates
+the provisional pair; repeated client/input polls cannot supply the second
+observation. The original episode, combo and HUD continue while pressure settles.
+No acquisition/transition timeout was extended and no physics is integrated over
+the two-truck interval. Owner loss, incompatible native owners, existing finite
+transfer limits and real balance endpoints retain their cleanup behavior.
+
+The production-composed regression covers both directions at30/60/120Hz: one
+opposite contact, repeated consumers,165ms of both-truck settling, a fresh
+consecutive contact pair, then a ten-second successor hold. Restoring the prior
+episode policy fails at the first provisional-contact assertion. Native live
+acceptance of this correction remains pending; two observations in a supplied
+fixture cannot prove that the actual board finishes settling.
 
 The composition generator extracts actual native-observer, input/remap,
 update_combo, mode-toggle and HUD bodies. The focused tests include ten-second

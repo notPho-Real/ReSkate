@@ -882,9 +882,10 @@ void manual_revert_production(){
     previous=crossing.right_y;
    }
    check(previous==(nose?-20000:20000),"200ms of consecutive native observations completes successor pressure");
-   nose=!nose;advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
+   nose=!nose;
+   for(unsigned proof=0;proof<2;++proof){advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));}
    check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
-      "delivered successor owns opposite balance and HUD on the next original step while native LS may still run");
+      "delivered successor owns opposite balance and HUD after consecutive original contact while native LS may still run");
    if(rapid&&link==0){
     remap(); // Real RT release then press before the next original physics step.
     continue;
@@ -949,6 +950,43 @@ void manual_revert_contact_publication_gap(){
   const auto refused=remap(0,0,0,255);
   check(!refused.manual.owns&&!refused.action.owned,
       "queued RT across owner loss, offboard, bail, real putdown or stale evidence cannot retain or recreate authority");
+ }
+}
+void manual_revert_successor_contact_bounce(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const auto episode=manual_episode.serial();
+  check(remap(0,0,0,255).action.owned,"settling regression starts independently admitted manual RT");
+  const auto began=clock_ms;
+  while(clock_ms-began<433){tick(dt,101,nose?0x8000u:0x4000u);remap();}
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  const auto returned=clock_ms;
+  while(clock_ms-returned<533){tick(dt,100,clock_ms-returned<233?(nose?0x8000u:0x4000u):0xc000u);remap();}
+  tick(dt,100,nose?0x4000u:0x8000u);remap();
+  check(manual_episode.transitioning(),"first opposite wheel contact is provisional, not completed handoff");
+  for(unsigned poll=0;poll<4;++poll){client(dt/1000.f,history());remap();}
+  check(manual_episode.transitioning(),"repeated consumers cannot confirm one native contact as settled");
+  const auto elapsed=snapshot().elapsed;
+  const auto bounce=clock_ms;
+  while(clock_ms-bounce<165){
+   tick(dt,100,0xc000u);const auto output=remap();
+   check(manual_episode.transitioning()&&manual_episode.serial()==episode&&output.manual.owns&&
+       output.right_y==(nose?-20000:20000)&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "post-revert native settling cannot cancel successor pressure or bank the original combo");
+   check(snapshot().elapsed==elapsed,"two-truck settling does not fabricate manual physics integration");
+  }
+  tick(dt,100,nose?0x4000u:0x8000u);remap();
+  check(manual_episode.transitioning(),"a rebound must establish a new consecutive contact pair");
+  tick(dt,100,nose?0x4000u:0x8000u);remap();
+  check(manual_episode.pose()==(nose?SkatePose::manual:SkatePose::nose_manual)&&!manual_episode.transitioning(),
+      "second consecutive original contact completes the same linked manual episode");
+  const auto acquired=clock_ms;
+  while(clock_ms-acquired<10000){
+   const auto balance=snapshot();tick(dt,100,nose?0x4000u:0x8000u);
+   const auto output=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(manual_episode.serial()==episode&&output.manual.owns&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "settled successor retains the episode, balance and HUD for ten seconds");
+  }
  }
 }
 void manual_revert_without_native_transition(){
@@ -1163,6 +1201,7 @@ int main(){
  episode_ten_seconds();
  analog_manual_entry_tolerance();
  manual_handoff_native_boundaries();
+ manual_revert_successor_contact_bounce();
  manual_revert_production();
  manual_revert_contact_publication_gap();
  manual_revert_without_native_transition();

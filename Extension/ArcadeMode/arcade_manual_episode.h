@@ -9,7 +9,7 @@ class ManualEpisode {
 public:
     enum class Phase { inactive, acquiring, active, transitioning, airborne_suspended, combo_airborne, ended };
     enum class Exit { none, disabled, owner, offboard, grind, bail, putdown, incompatible, endpoint };
-    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
+    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=successor_contact_step_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
     Phase phase() const noexcept { return phase_; }
     Exit exit() const noexcept { return exit_; }
     std::uint64_t serial() const noexcept { return serial_; }
@@ -80,17 +80,25 @@ public:
         if(f.airborne){
             if(!airborne()){air_at_=f.sampled_at;phase_=Phase::airborne_suspended;}
             if(f.sampled_at>=air_at_ && f.sampled_at-air_at_>=500)phase_=Phase::combo_airborne;
-            two_at_=0;successor_={};return false;
+            two_at_=successor_contact_step_=0;successor_={};return false;
         }
         if(phase_==Phase::combo_airborne){phase_=Phase::inactive;owned_=false;return false;}
-        if(transition!=transition_id_){transition_id_=transition;transition_completed_=false;}
+        if(transition!=transition_id_){transition_id_=transition;transition_completed_=false;successor_contact_step_=0;}
         if(transition && !transition_completed_){phase_=Phase::transitioning;two_at_=0;}
         if(transitioning()){
             const bool linked=successor_.owner==generation_ && successor_.ack_at && f.sampled_at>=successor_.ack_at &&
                 f.sampled_at-successor_.ack_at<=1100 && f.physics_step>successor_step_ && f.physics_step>successor_.step &&
                 f.contact_generation>successor_.contact &&
                 f.state==100 && f.mode==1 && f.contacts==(successor_direction_<0?0x4000u:0x8000u);
-            if(linked){integration_step_=f.physics_step;pose_=successor_direction_<0?SkatePose::manual:SkatePose::nose_manual;phase_=Phase::active;successor_={};transition_completed_=true;return false;}
+            // A first opposite-wheel touch is provisional: the native board
+            // can rebound to both trucks while the delivered pressure settles.
+            // Complete only when another consecutive ORIGINAL observation
+            // confirms that contact. Client/input duplicates cannot establish
+            // continuity, and a contact/read gap restarts this evidence pair.
+            const bool settled=linked && consecutive && successor_contact_step_ &&
+                f.physics_step==successor_contact_step_+1;
+            successor_contact_step_=linked?f.physics_step:0;
+            if(settled){integration_step_=f.physics_step;pose_=successor_direction_<0?SkatePose::manual:SkatePose::nose_manual;phase_=Phase::active;successor_={};successor_contact_step_=0;transition_completed_=true;return false;}
             if(transition)return false;
             // An expired link is not a physical exit. Fresh incompatible state
             // or a sustained two-truck observation below must establish it.
@@ -111,7 +119,7 @@ public:
 private:
     Phase phase_{Phase::inactive};Exit exit_{Exit::none};SkatePose pose_{SkatePose::unknown};
     NativeInputOwner owner_{};NativeInputFrame last_{};ManualRevertContact successor_{};
-    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{};
+    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{},successor_contact_step_{};
     int successor_direction_{};bool owned_{},transition_completed_{},resume_pending_{},uncertain_{},reported_{};
     NativeInputFrame terminal_{};
     ManualInputDiagnostic command_{};
