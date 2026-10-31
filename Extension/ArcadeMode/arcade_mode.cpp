@@ -2331,10 +2331,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
+        // Controller route air_ownership publication begin.
         const auto air_spin_mode = spin_mode();
         const auto held_shoulders = physical_buttons & BoardChord::pair;
         const bool rotation_action_conflict = action.blocks_air_rotation(air_spin_mode==SpinMode::held &&
             (held_shoulders==BoardChord::lb || held_shoulders==BoardChord::rb));
+        // Controller route air_ownership publication end.
         // Ordinary native AIR alone admits this writer. Unknown orientation,
         // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
         // equivalence is claimed for this selected ordinary-air policy.

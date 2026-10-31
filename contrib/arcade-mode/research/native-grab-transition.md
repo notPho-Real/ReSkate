@@ -51,6 +51,11 @@ The native callback/animation evidence in these tests is a contract fixture,
 not a live observation. Existing input (326+5645), neutral flip (9014), flight
 (2749), spin (323), dispatch (124) and control-state (67042) checks also pass.
 The lab suite passes 458 tests with one skip.
+Windows CI on the first correction found missing ownership-variable bindings in
+the generated controller-publication fixture. Its CMake extraction now includes
+the exact production ownership statements. The locally compiled composition
+passes 216 native-publication checks plus its existing routing, packet and
+binding checks; both shoulders and competing-owner negatives are included.
 
 Before gameplay acceptance, capture each shoulder during the same original
 BS/Melon/Method actor episode, independently observe actor advancement, body
