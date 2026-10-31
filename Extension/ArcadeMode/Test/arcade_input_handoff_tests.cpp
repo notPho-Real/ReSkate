@@ -31,7 +31,7 @@ void effective_direction_pairs(){
             }
             if(now>=400+phase+2*cadence&&!last){
                 if(travel==1){physical.y=0;last=now+cadence;}
-                else if(travel==2){physical.x=20000;last=now+cadence;}
+                else if(travel==2){physical.x=20000;last=now;}
                 else last=now;
             }
             input.poll(now,physical,env,sink.adapter());
@@ -100,8 +100,8 @@ void used_prefix_and_diagonal(){
         input.poll(460,sample(sign),env,sink.adapter());
         check(sink.requests.size()==2,"a later complete fresh pair can rearm without clearing category ownership");
         UnifiedInput diagonal;Sink other;diagonal.poll(0,{},env,other.adapter());
-        diagonal.poll(400,sample(-sign,0,20000),env,other.adapter());diagonal.poll(420,sample(sign),env,other.adapter());
-        check(other.requests.empty(),"diagonal-first remains a non-cardinal prefix after handoff correction");
+        diagonal.poll(400,sample(-sign,0,31000),env,other.adapter());diagonal.poll(420,sample(sign),env,other.adapter());
+        check(other.requests.empty(),"steering-dominant diagonal cannot supply a Manual prefix");
     }
 }
 }

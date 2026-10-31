@@ -34,6 +34,9 @@ struct InputEvent {
     InputToken token{};
     std::uint64_t at{}, sequence{};
     std::uint32_t owners{};
+    // Manual-only interpretation of this actual direction edge. The shared
+    // eight-way token and its sequence remain unchanged for every other trick.
+    std::int16_t manual_vertical{};
 };
 struct InputPattern {
     std::span<const InputToken> steps;
@@ -67,10 +70,10 @@ public:
         now_ = now; clocked_ = true;
         return true;
     }
-    void record(InputToken token, std::uint64_t now) noexcept {
+    void record(InputToken token, std::uint64_t now, std::int16_t manual_vertical = 0) noexcept {
         if (!advance(now)) return;
         if (size_ == capacity) { erase_front(); ++overflows_; }
-        at(size_++) = {token, now, ++sequence_, 0};
+        at(size_++) = {token, now, ++sequence_, 0, manual_vertical};
     }
     struct EventView {
         const InputHistory* journal;
@@ -444,6 +447,7 @@ public:
         if (policy != policy_) { reset(); policy_ = policy; }
         const auto state=normalize(input,now,true,policy_);
         digital_=state;
+        physical_=input;
         if (policy_.normalization == InputNormalization::analog) { sample_analog(now, input, controls); return; }
         exclusions_ = controls;
         const bool continuous = history_.advance(now);
@@ -479,6 +483,14 @@ public:
         const int h = x < 0 ? -static_cast<int>(x) : x;
         const auto sign = static_cast<std::int16_t>(y > 0 ? 1 : y < 0 ? -1 : 0);
         return v >= (sign == previous ? 8000 : 11000) && v * 4 >= h * 3 ? sign : std::int16_t{0};
+    }
+    static std::int16_t manual_vertical(PhysicalInputSample input) noexcept {
+        // D-pad remains exact. Analog manuals accept the vertical half of each
+        // quadrant; steering-dominant throws remain horizontal intent.
+        if(input.buttons&15u)return (input.buttons&15u)==1?1:(input.buttons&15u)==2?-1:0;
+        const int x=input.x<0?-static_cast<int>(input.x):input.x;
+        const int y=input.y<0?-static_cast<int>(input.y):input.y;
+        return y>=x && (input.y>=12800 || input.y<=-13057) ? (input.y>0?1:-1) : 0;
     }
     std::int16_t vertical_direction(bool pad) const noexcept {
         if (policy_.normalization == InputNormalization::analog) {
@@ -590,10 +602,11 @@ private:
         };
         if (exclusions_.admitted && exclusions_.kind != InputBalanceKind::none &&
             (logical(token) == logical(exclusions_.first) || logical(token) == logical(exclusions_.second))) return;
-        history_.record(token,now);
+        history_.record(token,now,token.source==InputSource::direction ? manual_vertical(physical_) : 0);
     }
     InputHistory history_{};
     PhysicalInputSample previous_{};
+    PhysicalInputSample physical_{};
     InputDigitalState digital_{};
     std::int16_t stick_{}, pad_{}, vertical_stick_{}, vertical_pad_{}, canonical_{};
     InputPolicy policy_{};

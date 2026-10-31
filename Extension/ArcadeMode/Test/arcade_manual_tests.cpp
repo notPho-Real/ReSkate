@@ -253,8 +253,8 @@ int run_arcade_manual_tests() {
             for (unsigned ms = frame * 2; ms < 180; ms += frame)
                 poll(manual, ms, ms < 100 ? first : 0, SkatePose::riding, 0, ms < 100 ? 16000 : 0);
             const auto out = poll(manual, 180 + frame, -first, SkatePose::riding, 0, -16000);
-            check(!out.owns_stick,
-                "canonical diagonal thumb travel cannot fabricate vertical-only Manual presses at30/60Hz");
+            check(out.owns_stick,
+                "vertical-dominant diagonal thumb travel enters Manual at30/60Hz without exact cardinal alignment");
             manual.cancel(); poll(manual, 1000);
             poll(manual, 1010, first);
             poll(manual, 1800, first);

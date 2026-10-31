@@ -68,6 +68,7 @@ public:
         // Existing physics production calls this for every validated step;
         // client rereads retain the original timestamp and step identity.
         native_rail_.observe(frame);
+        sessions_[0].observe_manual_transition(InputNativeContext::from_frame(frame));
         // Central admission deliberately limits the candidate catch to verified
         // AIR. Rail contact is not a mapped darkslide or catch-setting proof.
         if (native_rail_method_ == RailAdapterMethod::dark_catch && (!frame.valid || !frame.airborne)) native_rail_.cancel();
@@ -202,9 +203,6 @@ public:
     }
     bool pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame));
-    }
-    void observe_native_revert(std::uint64_t now,const NativeInputFrame& frame) noexcept {
-        sessions_[0].observe_native_revert(now,InputNativeContext::from_frame(frame));
     }
     void cancel_commands() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
     // Ordinary jump and basic-flip recipes own RS, not the independent AIR

@@ -1253,25 +1253,43 @@ private:
         diagnostic_.stick_first = diagnostic_.pad_first = 0;
         diagnostic_.stick_at = diagnostic_.pad_at = 0;
         const InputEvent* latest{}; const InputEvent* prior{};
-        for (const auto& event : events_.history().events())
-            if (event.sequence > manual_after_ && event.token.source == InputSource::direction &&
-                event.token.edge == InputEdge::press && !(event.owners & reject) &&
-                (event.token.code == 2 || event.token.code == 8)) { prior=latest;latest=&event; }
+        const auto sign=[&](const InputEvent* event){
+            if(!event)return 0;
+            if(event->token.code==8)return 1;
+            if(event->token.code==2)return -1;
+            return environment.policy.manual_axis_projection?static_cast<int>(event->manual_vertical):0;
+        };
+        bool separate_throw=true;
+        for (const auto& event : events_.history().events()) {
+            if(event.sequence<=manual_after_ || event.token.source!=InputSource::direction)continue;
+            if(!event.manual_vertical)separate_throw=true;
+            if (event.token.edge == InputEdge::press && !(event.owners & reject) && sign(&event)) {
+                // Crossing an eight-way boundary within the same vertical
+                // throw must not restart its clock or impersonate a new flick.
+                if(!environment.policy.manual_axis_projection || separate_throw || sign(&event)!=sign(latest)){
+                    prior=latest;latest=&event;
+                }
+                separate_throw=false;
+            }
+        }
         const bool fresh = latest && (inclusive ? now-latest->at<=window : now-latest->at<window);
         auto& first=pad?diagnostic_.pad_first:diagnostic_.stick_first;
         auto& at=pad?diagnostic_.pad_at:diagnostic_.stick_at;
-        const auto sign=[](const InputEvent* event){return event?(event->token.code==8?1:-1):0;};
         first=fresh?sign(latest):0;at=latest?latest->at:0;
         if(fresh && latest->at==now && prior && sign(prior)==-sign(latest) &&
             (inclusive?now-prior->at<=window:now-prior->at<window)) {
-            const std::array steps{prior->token,latest->token};
-            const auto match=events_.history().match({steps,window,reject,true,false,inclusive},now);
+            // Consume the selected physical edges themselves. Searching their
+            // token names again would select later sideways jitter and backdate
+            // the pair's recognition to a different throw.
+            auto match=InputMatch::single(*prior);
+            match.events[match.count++]=latest->sequence;match.last_at=latest->at;
             if(match && events_.history().consume(match,manual_owner,reject))
                 enqueue(sign(latest)>0?InputAction::nose_manual:InputAction::manual,now,
                     environment.context==InputContext::air?InputTiming::air_request_ms:0,environment,1,0,0,0,{},&match);
         }
         diagnostic_.suppress_reverse = environment.context == InputContext::ground && physical.y < -11000 &&
-            diagnostic_.stick_first == -1 && events_.vertical_direction(false) == -1;
+            diagnostic_.stick_first == -1 && (environment.policy.manual_axis_projection ?
+                InputEvents::manual_vertical(physical)==-1 : events_.vertical_direction(false)==-1);
     }
     InputPolicy policy_{InputPolicy::production()};
     std::uint64_t takeoff_release_at_{};

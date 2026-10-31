@@ -697,7 +697,6 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         // An admitted endpoint already owns its safe-putdown or bail path.
         // Unadmitted cleanup must never substitute a putdown for a failed bail.
         if (combo_session.failed_section() || combo_session.manual_putdown()) manual_acquisition.reset();
-        if(native_revert)arcade_input.observe_native_revert(now,native_frame);
         const bool balance_admitted = manual_observation.confirmed &&
             combo_session.model().state().balance_kind == BalanceKind::manual && !manual_closed;
         manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);
@@ -1063,10 +1062,11 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
             if (p.manual_sample) {
                 const auto& m = p.manual;
                 logging::log(logging::Level::info, logging::Channel::skater,
-                    "ARCADE MANUAL INPUT: seq={} ms={} user={} lx={} ly={} buttons={} pose={} safe={} prepare={} rejected={} stick={} pad={} stick_first={} pad_first={} stick_at={} pad_at={} request={} request_at={} owned={} confirmed={} output_y={}.",
+                    "ARCADE MANUAL INPUT: seq={} ms={} user={} lx={} ly={} buttons={} pose={} safe={} prepare={} rejected={} stick={} pad={} stick_first={} pad_first={} stick_at={} pad_at={} request={} request_at={} owned={} confirmed={} handoff_at={} handoff_owner={} handoff_origin_step={} handoff_origin_contact={} handoff_origin_stance={} output_y={}.",
                     p.sequence, p.ms, p.user, p.manual_x, p.manual_y, p.buttons, p.manual_pose,
                     m.safe, m.preparation, m.rejected, m.stick, m.pad, m.stick_first, m.pad_first,
-                    m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed, p.right_y);
+                    m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed,
+                    m.revert.ack_at, m.revert.owner, m.revert.step, m.revert.contact, m.revert.previous_stance, p.right_y);
             }
         }
         std::array<ComboSample, input_telemetry_worker_batch_size> samples{};

@@ -1025,6 +1025,7 @@ void native_manual_revert_links() {
    h.admission.manual_balance_admitted=state==100&&now<1300&&fault!=1;
    h.admission.pose=state==100&&now<1300?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
    h.admission.action_fresh=state==100;h.admission.manual_safe=state==100;
+   if(fault!=2)h.session.observe_manual_transition(h.admission.native_context);
    return h.poll(now,{0,0,0,0,static_cast<std::uint8_t>(rt)});
   };
   poll(1000,100,0,false);auto out=poll(1017,100,255,false);
@@ -1034,7 +1035,6 @@ void native_manual_revert_links() {
   if(fault==6)h.admission.action_mode=ActionExperiment::off;
   poll(1100,101,0,false);poll(1200,101,0,false);poll(1300,101,0,false);
   if(fault==6)check(!h.session.pending_manual_revert(1300,h.admission.native_context),"action-mode cancellation cannot retain pending combo authority");
-  if(fault!=2)h.session.observe_native_revert(1300,h.admission.native_context);
   if(fault==4)++owner.core;
   for(unsigned t=1317;t<1800;t+=17)poll(t,101,0,false);
   out=poll(fault==5?2600u:1834u,100,0,fault!=3);
