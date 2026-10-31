@@ -74,6 +74,8 @@ struct ContactFixture {
         // establishes a current segment, not whether enough travel remains.
         memory.put(actor+c::segment_begin,std::array<float,3>{633.076416f,199.243103f,1080.58496f});
         memory.put(actor+c::segment_end,std::array<float,3>{633.076416f,199.243103f,1084.58496f});
+        // Synthetic opaque words exercise native equality, not pointer validity.
+        memory.put(actor+c::segment_identity,std::array<std::uint64_t,2>{17,29});
     }
     NativeGrindContact sample(){return read_grind_contact(base,core,context,memory,[]{return true;});}
 };
@@ -83,10 +85,11 @@ int main() {
         ContactFixture f(state);
         const auto sample=f.sample();
         check(sample.valid && sample.actor==f.actor && sample.output==f.output && sample.state==state &&
-            sample.identity==20 && sample.end[2]-sample.begin[2]==4.f,
+            sample.identity==20 && sample.end[2]-sample.begin[2]==4.f &&
+            sample.segment_identity==std::array<std::uint64_t,2>{17,29},
             "original contact actors expose the current native segment without a minimum-length policy");
     }
-    for(unsigned reject=0;reject<14;++reject) {
+    for(unsigned reject=0;reject<15;++reject) {
         ContactFixture f;
         switch(reject) {
         case 0:f.memory.put(f.context+c::selected_state,std::uint32_t{406});break;
@@ -103,15 +106,16 @@ int main() {
         case 11:f.memory.put(f.output+192,std::uint32_t{77});break;
         case 12:f.memory.put(f.pages+32,std::uintptr_t{0});break;
         case 13:f.memory.put(f.core+c::core_context,std::uintptr_t{0x800000});break;
+        case 14:f.memory.bytes.erase(f.actor+c::segment_identity+8);break;
         }
         check(!f.sample().valid,"missing contact/segment, invalid owner or rail exit cannot admit a new request");
     }
-    for(unsigned changed=0;changed<8;++changed) {
+    for(unsigned changed=0;changed<10;++changed) {
         ContactFixture f;unsigned reads{},resolves{};
         const auto sample=read_grind_contact(f.base,f.core,f.context,[&](auto address,auto& value) {
             const bool ok=f.memory(address,value);
             // Change between reading the candidate fields and validating them.
-            if(address==f.actor+c::segment_end && ++reads==1) {
+            if(address==f.actor+c::segment_identity && ++reads==1) {
                 switch(changed) {
                 case 0:f.memory.put(f.core+c::active_actor,std::uintptr_t{0x800000});break;
                 case 1:f.memory.put(f.pages+32,std::uintptr_t{0x800000});break;
@@ -120,12 +124,19 @@ int main() {
                 case 4:f.memory.put(f.actor+c::segment_end,std::array<float,3>{633.076416f,199.243103f,1088.58496f});break;
                 case 5:f.memory.put(f.context+c::selected_state,std::uint32_t{403});break;
                 case 6:f.memory.put(f.selector,std::uintptr_t{0x800000});break;
+                case 8:f.memory.put(f.actor+c::segment_identity,std::array<std::uint64_t,2>{18,29});break;
+                case 9:f.memory.put(f.actor+c::segment_identity,std::array<std::uint64_t,2>{17,30});break;
                 default:break;
                 }
             }
             return ok;
         },[&]{return ++resolves==1 || changed!=7;});
         check(!sample.valid,"changed native ownership, identity or geometry invalidates the entire contact sample");
+    }
+    {
+        ContactFixture f;
+        f.memory.put(f.actor+c::segment_identity,std::array<std::uint64_t,2>{});
+        check(f.sample().valid,"opaque native segment words have no invented nonzero requirement");
     }
     // Captured native entry: initialized active=1; shared helper proposes 0.
     // The repair applies across the native actor's own update cadence, including

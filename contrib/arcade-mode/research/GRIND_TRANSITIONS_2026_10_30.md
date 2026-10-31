@@ -1265,6 +1265,84 @@ missing/stale echo, wrong echo, native error and partial batch delivery are
 rejected, with console-close cleanup retained. These validate runner delivery
 checks only and send no network or hardware input.
 
+### Offline classification publication trace (2026-10-31 16 UTC)
+
+While Manual retains Deck ownership for its next candidate, further tracing of
+the original classifier separates three different observations that the next
+trial must not conflate. In `0x47dd090`, the six-word candidate at classifier
++208 is published to physics output +328; accepted +160 is published to +352;
+settled +184 is published to +376. The exact tuple comparator `0x47e0c40`
+compares all six words. When the classifier's previous state word at +16 is
+400, a changed candidate resets counter +264 to zero and leaves the accepted
+tuple unchanged. A subsequent equal candidate increments that counter and can
+publish the accepted tuple; only a counter greater than 12 also publishes the
+settled tuple. The alternate previous-state branch sets the counter to 13 and
+copies immediately. This state word comes from the selector's page +56, offset
++24; it must not be assumed identical to the active 400..405 actor class.
+
+The consumer `0x47db980` calls that classifier first. At `0x47db9c7` it selects
+output +352, and the lookup at `0x47dba04..0x47dba4f` indexes that accepted
+tuple and writes fine identity +192. Output +376 also supplies a separate
+formatted classification string, but does not supply this identity lookup.
+Thus neither a pending candidate tuple nor the later settled tuple is a
+substitute for the independent fine identity. Nor should an executor add a
+fixed 13-frame delay to every acknowledgment. The native publication behavior
+must be observed together with animation, original completion and contact.
+This trace does not establish why the earlier short-rail trial retained
+identity 20; that receipt did not capture all three stages.
+
+The locally prepared v4 long-rail observer adds a bounded read of these three
+tuples and both selector state words, bracketing owner, output/page pointers,
+contact, physics state, identity and tuple bytes. Changed reads are marked
+unstable, not accepted as a new action. Stable repeated reads still do not
+prove an atomic physics frame. Five inert checks pass for stable data, a state
+change, a tuple change, owner loss and an out-of-range tuple. No process or
+hardware access occurred. Candidate
+`build/grind-investigation/grind-native-long-c45-v4.py` has SHA-256
+`2188b78f5c9b526079d83f91baaa78a0e669d6b9666bf6a9c40d7faaa41a6021`.
+It remains unstaged, unexecuted and pinned to the obsolete c45 candidate;
+fresh pins and review are required after Manual's restart. No named recipe,
+production execution, gameplay acceptance or build readiness is claimed.
+
+### Native control-reference reset provenance (2026-10-31 22 UTC)
+
+The previously unresolved +0xc4 flag in the control-reference capture condition
+now has an original producer chain. Type GUID
+`b4bf4485-b964-948e-eeed-101f95da4762` resolves in the pinned executable to
+`AnimationSkaterShared` (descriptor 0x7fb3600, size 0xd0). Its native field
+table at 0x8320cd0 has 27 entries; field hash 0x2602a1a5 is the bool at +196.
+The distinct GUID `7110f29d-629e-e036-b6e4-5347dafa899b` names
+`SkatePhysicsShared`. They are not interchangeable component owners.
+
+At 0x102f284/0x102f28b the original publisher copies physics output byte +420
+to `AnimationSkaterShared` +196. The grind output writer at 0x4818b8f..0x4818b9b
+copies active grind actor +768 to that output byte. Shared update 0x4821b95
+clears +768 each update. The segment-change handler 0x481dfc0 then compares
+the actor's existing segment at +784 with the incoming segment by calling
+0x47e0da0, inverts the equality result and writes +768 at 0x481dfe8. The native
+equality function compares two opaque 64-bit words at segment +80/+88; it does
+not compare just the endpoints. This establishes a native segment-change
+route into control-reference recapture. It does not justify writing the flag
+or treating it as a requested grind identity.
+
+The production admission reader now includes those two opaque segment identity
+words (actor +864/+872) in its bracketed sample. A changed word invalidates the
+sample even if endpoints, active actor and selected grind remain equal. Failed
+reads reject admission. No invented nonzero/pointer requirement is applied to
+the words; original native equality supplies the contract. This only strengthens
+the existing transition support's contact admission; it does not activate a
+named executor or change first-grind balance, input routing or physics.
+
+The focused strict C++20 test passed 629 assertions with address and undefined
+behavior sanitizers, including the existing 30/60/120 Hz lifetime/completion
+checks and added equal-endpoint segment replacement cases. DLL/CI builds remain
+withheld. An unstaged local v5 observer also records these segment words, the
+actor's change flag and output +420 for the next native trace. Its SHA-256 is
+`7e1c9c26a687491e75ce8f65a943aab641f4354d268b58ff20209a1daebcb11a`;
+it still has obsolete c45 pins and must be repinned/reviewed before use. Manual
+continues to own the Deck and is moving to another park, so earlier fixture
+coordinates cannot authorize the next trial. No hardware access occurred.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence

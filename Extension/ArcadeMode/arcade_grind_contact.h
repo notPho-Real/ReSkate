@@ -10,6 +10,7 @@ struct NativeGrindContact {
     std::uintptr_t actor{},output{};
     std::uint32_t state{},identity{};
     std::array<float,3> begin{},end{};
+    std::array<std::uint64_t,2> segment_identity{};
 };
 
 // Valid freshly resolves the complete local owner and its gameplay lease.
@@ -39,7 +40,8 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
             read(result.actor+c::missing_segment,missing) && missing==0;
     };
     if(!contact() || !read(result.output+192,result.identity) || !result.identity || result.identity>68 ||
-        !read(result.actor+c::segment_begin,result.begin) || !read(result.actor+c::segment_end,result.end))return {};
+        !read(result.actor+c::segment_begin,result.begin) || !read(result.actor+c::segment_end,result.end) ||
+        !read(result.actor+c::segment_identity,result.segment_identity))return {};
     double length_squared{};
     for(std::size_t i=0;i<3;++i) {
         if(!std::isfinite(result.begin[i]) || !std::isfinite(result.end[i]))return {};
@@ -52,6 +54,7 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
     // do not substitute fixture coordinates or invent geometry tolerances.
     std::uint32_t state{},identity{};
     std::array<float,3> begin{},end{};
+    std::array<std::uint64_t,2> segment_identity{};
     if(!read(context+c::selected_state,state) || state!=result.state ||
         !read(core+c::active_actor,owner) || owner!=result.actor ||
         !read(result.actor,type) || type!=base+c::contact_vtables[result.state-400] ||
@@ -62,7 +65,9 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
         !read(pages+32,owner) || owner!=result.output ||
         !read(result.output+192,identity) || identity!=result.identity || !contact() ||
         !read(result.actor+c::segment_begin,begin) || begin!=result.begin ||
-        !read(result.actor+c::segment_end,end) || end!=result.end || !valid())return {};
+        !read(result.actor+c::segment_end,end) || end!=result.end ||
+        !read(result.actor+c::segment_identity,segment_identity) || segment_identity!=result.segment_identity ||
+        !valid())return {};
     result.valid=true;
     return result;
 }
