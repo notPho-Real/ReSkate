@@ -284,7 +284,7 @@ public:
         }
         if (output.jump.released && output.jump.setup_admitted && output.jump.from_rail && !output.jump.nollie &&
             output.jump.launch.rail_input() && admission.normal_flip.submit && rail_pop_input_continues(native,now) &&
-            native.flip.valid && native.flip.object && (native.flip.id==1 || native.flip.id==-1)) {
+            native.flip.valid && native.flip.object) {
             takeoff_release_at_=output.jump.released_at;takeoff_native_=native;
             takeoff_jump_observed_=native.flip.id==1;takeoff_from_rail_=true;
         }

@@ -50,7 +50,7 @@ int main() {
         check(entry && entry->tick==16 && entry->key==0x8400800d,
             "native rail reselection samples use the existing post-pop actor initialization");
     }
-    for (unsigned hz : {30u,60u,120u}) for (unsigned state : {401u,403u}) {
+    for (unsigned hz : {30u,60u,120u}) for (unsigned state : {400u,401u,402u,403u,404u,405u,406u}) {
         Pipeline p; p.step(1000,state,hz); p.poll(1000,0);
         const auto press=1000+1000/hz;
         p.step(press,state,hz); auto out=p.poll(press,classic_a);
@@ -80,6 +80,36 @@ int main() {
         check(flick,"release delivers the authored native rail flick");
     }
     for (unsigned hz : {30u,60u,120u}) {
+        // A retained approach selection is not a new flip and must not discard
+        // the released rail recipe before native Ollie selection catches up.
+        for(unsigned fault=0;fault<4;++fault) {
+            Pipeline p; unsigned submissions{};
+            p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
+                if(id!=2)return false;
+                ++*static_cast<unsigned*>(context);return true;
+            }};
+            p.step(1000,401,hz,4);p.poll(1000,0);
+            p.step(1000+1000/hz,401,hz,4);p.poll(1000+1000/hz,classic_a);
+            for(unsigned i=2;i<26;++i) {
+                const auto now=1000+i*1000/hz;p.step(now,401,hz,4);p.poll(now,classic_a);
+            }
+            const auto release=1000+26*1000/hz;
+            p.step(release,401,hz,4);p.poll(release,0);
+            check(p.input.rail_followup_active(release,p.frame),"unchanged approach selection retains released rail lease");
+            for(unsigned i=27;i<34;++i) {
+                const auto now=1000+i*1000/hz;
+                const int selected=fault==1?4:fault==2?5:fault==3?-1:i==27?4:1;
+                p.step(now,i==27?701:i<30?200:201,hz,selected,16,i<28?1:2);
+                p.poll(now,0);
+            }
+            const auto press=1000+34*1000/hz;
+            p.step(press,201,hz,fault==1?4:fault==2?5:fault==3?-1:1,16,2);
+            const auto out=p.poll(press,classic_x);
+            check((out.native_flip_request==2)==(fault==0),
+                "only observed new native Ollie permits early flip after retained approach selection");
+            p.poll(press,classic_x);
+            check(submissions==(fault==0?1u:0u),"retained approach selection never fabricates or repeats a native flip");
+        }
         for(unsigned fault=0;fault<10;++fault) {
             Pipeline p; unsigned submissions{};
             p.bridge={&submissions,[](void* context,std::int32_t id) noexcept {
@@ -157,15 +187,15 @@ int main() {
             p.step(reenter,200,hz); p.poll(reenter,classic_y);
             check(p.rail_pad.owns_right_stick,"a fresh physical Y edge can prepare the next grind");
         }
-        for (unsigned phase : {402u,404u}) {
+        for (unsigned phase : {400u,402u,403u,404u,405u,406u}) {
             Pipeline p; p.step(1000,401,hz); p.poll(1000,0);
             p.step(1034,401,hz); p.poll(1034,classic_a);
             p.step(1068,phase,hz);
-            check(p.poll(1068,classic_a).right_y==-28000,"brief measured rail phase retains an admitted hold");
+            check(p.poll(1068,classic_a).right_y==-28000,"native grind class change retains an admitted hold");
             p.step(1102,401,hz);
-            check(p.poll(1102,0).jump.setup_admitted,"brief rail identity phase does not discard the release");
+            check(p.poll(1102,0).jump.setup_admitted,"native grind class change does not discard the release");
         }
-        for (unsigned state : {400u,402u,404u,499u,701u,300u,504u}) {
+        for (unsigned state : {399u,407u,499u,701u,300u,504u}) {
             Pipeline p; p.step(1000,state,hz); p.poll(1000,0);
             p.step(1034,state,hz); const auto out=p.poll(1034,classic_a);
             check(!out.jump.setup_started && !out.authored_playback,

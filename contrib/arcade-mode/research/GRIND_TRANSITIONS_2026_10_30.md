@@ -394,6 +394,60 @@ evidence, not a native grind trial. The local diagnostic receipt is
 lab directory. A valid rail approach remains necessary to establish the
 named transition control sequence. No new DLL or CI build was started.
 
+The user then explicitly authorized autonomous game/rail setup. The setup
+runner was reviewed and installed outside the checkout with the current DLL
+pins, shared device lock, bounded lifetime and input cleanup. The initial
+native mount attempt did not immediately leave state 504; the next observation
+already showed stopped riding state 100, so the guarded recovery operation
+correctly sent no teleport. The native editor placed one original flat rail
+without clearing the course. At the user's subsequent request, the same rail
+(persisted editor object 1) was moved to ten metres ahead of the current skater
+and aligned to its measured heading, using `editor move` with current map,
+generation and revision. The first move was rejected after incomplete console
+delivery; no placement was accepted from it. Corrected bounded delivery
+completed the move and closed the editor.
+
+The verified placement receipt is
+`grind-setup-62844b5-v5/results/1793393234162054000-move10.json` in the external
+lab directory. Anchor: approximately (143.6600, 1.0287, -91.2541), heading
+88.6113 degrees; rail centre: (153.6571, -0.0000068, -91.01176), quaternion
+(0, 0.6984856, 0, 0.7156241), scale 1. Read-only object-database verification
+and a fresh display capture agree. The original fixture helper retains its
+old pose and now reports `present=false`; do not use its reset or trajectory
+readiness as authority for this deliberately moved rail. No DLL was installed,
+no gameplay tuning was changed, and rail placement is not grind acceptance.
+A subsequent 45-second read-only observation
+(`grind-watch-62844b5-v1/results/1793393316234404000.json`) recorded 403 native
+state samples, all riding 100, and no grind interval. It sent no input; the
+shared lock was released afterward. The user was invited to try the rail.
+
+The user reported that both requested actions still fail. Installed identity
+remained `62844b58`/`adae9ab4`, which does not contain this branch's fixes. The
+rail setup must not be presented as a candidate-feature test. The existing
+trace and bounded recent logs did not retain those grind attempts.
+
+A subsequent native baseline setup was aborted before any controller trial:
+the world had changed (editor generation 11 versus the placement's generation
+8), while the editor still reported map `bam` and retained the saved object
+row. The original trial runner incorrectly checked that persistent row without
+checking the placement generation before its native Trainer reset. Its
+post-reset approach guard rejected the resulting off-board state. The skater
+was restored through Trainer to the exact pretrial horizontal position and
+heading, (522.381104, 1047.331909), 262.792664 degrees, in Hedgemont. Arcade
+remained ON throughout; the trial never reached its OFF toggle or push/Ollie
+sequence. Retire external `native-rail-62844b5-v1`; the local trial source now
+requires placement generation 8 and revision 12 before reset, and cannot be
+reused in the new world. A persisted editor object is not native in-world
+geometry evidence. No grind transition or feature acceptance was established.
+Restoration completed with a native Y pulse, the actual native action emitted
+by `BoardChord`; the earlier shoulder chord reached game-facing XInput but did
+not mount while Arcade admission was unavailable. Receipt
+`grind-setup-62844b5-v6/results/1793394020129578000-mount.json` confirms riding
+100 near the pretrial position (within 0.11 m horizontally), Arcade ON, editor
+closed, outside native menus, with input released. The capture independently
+reported physics/cached dt 0.03333333 s. These are setup/input-route findings,
+not acceptance of rail exit or named grind execution.
+
 Local macOS checks:
 
 - 360 new production-facade rail routing checks at 30/60/120 Hz, including
@@ -417,6 +471,429 @@ DLL hash must be recorded separately after the isolated CI run.
 The new target is included in both full Windows preflight and targeted CI.
 Branch CI may stage artifacts, but release publishing requires `arcade-mode`;
 the grind branch cannot update that release channel.
+
+## Offline continuation: transition input is also a trick-entry inhibitor
+
+Further inspection of the already cached original resources narrows the role
+of `Input_GrindTransition`. In `GrindStates_Trick_CG_B2DAA3F` (EBX 15051,
+RES 16986), PCs 0x00c0–0x0134 read this input and combine it with
+`!EnableLegacyGrinds`. PCs 0x0670–0x075c additionally require the absence of
+the graph's recognized gesture allowlist result and `!EnableDoubleStickInput`.
+When all four terms are true, PC 0x076c writes false to the trick-entry result
+and skips the subsequent ordinary, simplified, hybrid, double-stick and
+Ollie-button gesture checks. When false, execution continues at PC 0x0780.
+The allowlist's individual gesture names are not all resolved, so no broader
+claim about which gestures bypass this gate is made.
+
+This is instruction-level evidence, not inference from the asset's name:
+native input-presence reader hash `adef306d` resolves to RVA `0x8314c0`;
+boolean AND hash `8eb2196d` resolves through its registration at `0x16e7508`
+to RVA `0x16e7130`; NOT hash `1b74206c` resolves to `0x16eb600`.
+Interpreter opcode 38 at RVA `0x16d1a4c` follows its encoded next PC for true
+and its explicit branch target for false. The constant at resource offset
+0x204 is false. These were checked against the pinned executable above.
+The input's producer at `0x830840` and consumer at `0x8314c0` operate on
+owner-context input collections; neither takes a named grind target.
+
+Consequently, raising this boolean cannot be treated as a standalone named
+grind executor, and leaving it active could suppress the separate rail-exit
+gesture path. Any eventual native integration must establish its intended
+control consumer and clear ownership before Ollie preparation. The blocker
+remains the native control-to-physics-target contract and its geometry/owner
+requirements, not missing button recognition. This continuation performed no
+Deck access, native writes, DLL/CI build, installation or gameplay acceptance.
+
+## Offline continuation: native BoardAdjust control path
+
+The original root intent graph resolves the branch previously hidden behind
+`EATExecuteActionData`. EBX 13508, `gameplay/skaterintenttree`, has root GUID
+`280d5160-4463-11ea-abb6-d30e7db36987`. Its 66,574 compressed bytes matched
+manifest SHA-1 `ef5efab332771abb760f0d1d00ac14428a8b7bb8`; decoding all three
+CAS blocks produced 154,216 bytes with SHA-256
+`b6c90d6c46d142cb931da75f689b2d7f11902a3a93603248726476447f20e778`.
+A further bounded static read retrieved 144 BoardAdjust/raw-input spans
+(268,482 compressed bytes), all matching manifest SHA-1s: 78 EBX assets and
+66 expression kernels. These reads did not inspect or control the game process.
+
+The root graph's grinding subtree (instance 346) contains `Includes` (508)
+and `GrindStates` (259). `Includes` is `DirectQueriesOnly` and contains
+`GrindOrientationCalculation` (65), **BoardAdjust (288)** and instance 51.
+BoardAdjust's instance GUID is `bb29bf65-9074-4c2c-89a2-2fa614737d23`, matching
+the orientation action's referenced branch. It owns `BA_States` (191), whose
+children are Idle, Up, Down, Left and Right. This establishes the queried
+native directional-control branch; it does not establish a standalone
+callable named-grind actor.
+
+- BoardAdjust admission is `!EnableLegacyGrinds` (EBX 27264 / RES 10819).
+  It is not an `Input_GrindTransition` presence check.
+- Its update (EBX 9321 / RES 7348) samples presence of `Input_GrindControl`
+  and writes the grind-control data's boolean at offset 0x58 through the
+  existing native ECS command. This corresponds to the `HasActiveInput`
+  dependency used by the orientation calculations.
+- Up admission (16995 / 6260) reads EAT variable GUID
+  `aab6701f-9575-43e9-94b1-28ace48a542c` and requires value 1. Down requires 2
+  (24837 / 6056), Left 3 (7611 / 6254), Right 4 (29353 / 6251), and Idle 0
+  (33952 / 6557). Raw-input state entry writes these values; these are
+  directional-state values, **not named grind IDs**.
+- Raw Nose entry (14655 / 10444) reads `Input_BoardAdjust`, then captures a
+  scalar through native call hash `6b7bcbbe`. The input reader `f0b94cb2`
+  resolves to RVA 0x831010: it passes the input vector's two components to
+  `atan2f` and returns one float. Thus this capture is an angle, not a vector.
+  The import thunk at RVA 0x546da28 resolves through IAT 0x5feb798 to
+  `api-ms-win-crt-math-l1-1-0.dll!atan2f`. Raw Idle entry (28215 / 13962)
+  writes zero to the directional variable and the scalar capture.
+- In the gamepad kernel (34108 / 7573), PCs 0x2500–0x2534 publish
+  `Input_BoardAdjust`. PCs 0x2560–0x272c derive and publish
+  `Input_GrindControl` from the same two source components, with the legacy
+  setting additionally admitting the body-input component into LR. The
+  separately published `Input_GrindLean` uses the body-input components.
+  A named transition must preserve this distinction to avoid taking over
+  the balance/exit channel.
+
+Up's native update (4105 / 14002) reads `Input_GrindControl` and
+`EATVariable_GrindControlZero`, calculates angular heading and pitch inputs,
+then submits two floats at grind-control data offsets 0x48 and 0x4c through
+the existing ECS command. It does not request an enum ID. The math helpers
+were checked in the pinned executable: `776a1eb2` / RVA 0x16e1be0 computes
+2D magnitude; `5367d052` / 0x16e28c0 normalizes; `7414b0ad` / 0x16ed5c0 is
+the 2D dot product; `4a80cf2b` / 0x16d8ad0 divides scalars; `a5d218c2` /
+0x16d8aa0 divides a vector by a scalar; `0530f8a8` / 0x16e2220 is scalar
+maximum. `4ee80402` / 0x16ece50 calls `acosf`, verified via IAT 0x5feb710.
+These confirmations prevent treating the angular inputs as raw stick axes.
+
+The orientation action (32849 / 11786) also owns **control-reference
+maintenance**. At PCs 0x0550–0x0574 it captures the current grind-control vector
+into `EATVariable_GrindControlZero`; at 0x0188–0x01e0 it records native base
+heading, base pitch and last grind type. On the differing-type path
+0x07bc–0x0ab8, it transforms the saved control reference using the base-heading
+change and stores the transformed vector. At 0x0adc–0x0b58, absent native
+control input clears the saved vector. The initial capture condition also
+depends on input-edge evidence, directional state, and an unresolved native
+component flag at offset 0xc4. Do not bypass this native initialization by
+writing `GrindControlZero`, the heading/pitch fields or grind identities.
+
+Default tuning was decoded from the original schema and schematics assets
+(35573 / 36255), including boxed curve bindings. The 50-50 heading routine
+(8165 / 13453) uses `5_0_HeadingInputCurve` (field hash 0x1233fd42), wrapping
+the input angle, evaluating its absolute degree value, restoring sign,
+converting back to radians and adding base heading. Its default knots are
+(0,0), (90,90), (180,180). Boardslide heading instead has knots (0,0),
+(30,0), (90,90), (150,180), (180,180). These are schema defaults, not proof
+of the currently selected live tuning or of interpolation between knots.
+Other defaults include minimum transition heading change 15 degrees and
+minimum heading velocity 50 degrees/second. Consequently, neither a fixed
+stick vector nor a guessed pulse duration is a verified named transition.
+
+The remaining execution contract is now narrower: relate the native
+directional state, captured angular/control references and geometry-dependent
+physical grind selection to each requested named target. Establish the
+owner-valid control request, its neutralization/cancellation lifecycle, and
+independent physical-selector/animation changes before enabling the production
+extension executor. Source tracing still has not proved that every requested
+pair can maintain contact on every geometry, or whether some pairs require
+a brief native airborne transition. No named executor, synthetic identity
+write, claimed gameplay acceptance, DLL build or CI run was added here.
+
+Local decoded resources, instruction annotations and curve bindings remain
+under ignored `build/grind-investigation/`; proprietary payloads are not
+committed. The implementation HEAD remains
+`2bc0d1e822e044d446bdc0c697127c5f9be81acb`.
+
+### Shared Deck identity update
+
+The manuals chat reported no active Deck job and a newly installed source
+`c2dbaf58a98a5b1ab06cea8b3039f17ef2c6b8ea`, DLL SHA-256
+`d057a7211e1a264bd73210bd2d26aa28acf821c4fcd9f5d673eb7787fa16b186`.
+Its installation is verified there; loading by the running game is still
+unconfirmed. All earlier 62844-pinned grind trial runners are retired. This
+continuation used static CAS reads only and released coordination without
+input, console operations or installation. Any later native trial needs a
+reviewed runner with current identity pins, the shared lock, and fresh loaded
+process, world-generation and in-world rail evidence; previous scene poses
+cannot be reused.
+
+### Physics-output ownership and current readiness (2026-10-31 UTC)
+
+Five additional original assets (EBX 18354, 16420, 3836, 4186 and 25898)
+were retrieved as fixed, hash-checked CAS spans totaling 8,120 bytes. Their
+decoded evidence is in ignored `build/grind-investigation/native-physics-output/`.
+No production input or process mutation was involved.
+
+The binding direction is now independently established:
+
+- `SkaterCorePhysicsConfig` (3836) binds `GrindInputs` to
+  `37904965-8e32-f646-3790-49658e32f646` and `GrindOutputs` to
+  `b5c634a6-9cb9-d803-b5c6-34a69cb9d803`.
+- That output asset (18354) binds `SkateGrindingType` to
+  `0844b155-be0e-9228-0844-b155be0e9228`, the existing independently observed
+  `Enum.GS.SkateGrindType`. Its separate `GrindingType` binding is
+  `c834899c-1ead-9ed8-c834-899c1ead9ed8` (`Enum.GS.GrindType`, the coarse family).
+  Consequently the named selector is a **physics output**, not a target request
+  that Arcade may write to execute a transition.
+- Asset 25898 names the previously opaque directional-state variable
+  `aab6701f-9575-43e9-94b1-28ace48a542c` as
+  `Gameplay/SkaterVariables/EATVariable_RawBoardAdjustInput_State`.
+  This confirms the directional-state interpretation above.
+
+Executable inspection also found `GrindEntryType_StayInGrind`,
+`GrindEntryType_GrindToGrind` and `GrindEntryType_AirToGrind` diagnostic names
+alongside coarse grind-target/contact names. Strings alone do not establish
+enum values, callable entry points, geometry admission or actor ownership.
+Instruction-boundary disassembly rejected several apparent +17/+34/+51
+selector leads: 0x47c8950 is registration work, 0x47e4580 is construction,
+and 0x4766030 contains unrolled vector operations. None is a verified named
+transition executor. The component flag at +0xc4 remains unresolved; its
+type metadata and vtable references do not yet supply a safe actor interface.
+
+A newly reviewed read-only identity probe independently verified installed
+source `c2dbaf58a98a5b1ab06cea8b3039f17ef2c6b8ea` and DLL SHA-256
+`d057a7211e1a264bd73210bd2d26aa28acf821c4fcd9f5d673eb7787fa16b186`.
+The original executable SHA-256 is
+`fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9`.
+At observation time 1793405271, only launcher processes 48177/48184 existed;
+there was no running game process, loaded-DLL evidence or current skater/rail
+sample. Read-only display inspection likewise showed Steam and the ReSkate
+launcher. No input, console command, focus change or installation was made.
+The other chat reported no active Deck job. The external probe receipt is
+`grind-identity-c2dbaf5-v1/results/1793405271792700000.json` under the lab root;
+the reviewed runner digest is
+`8e71cf24825a20c7369c55282529e3fd04dab161ac516e9b215fd95fb4d81dea`.
+
+The exact remaining implementation blocker is the legitimate control/actor
+request that drives a requested named target from current native orientation
+and rail geometry, with reference initialization, cancellation, and independently
+changed physics identity. The existing input-to-orientation and
+physics-identity-to-animation paths are evidence for parts of that mechanism;
+neither supplies the missing target execution contract. The next native trial
+must first launch/inspect the game under the shared input lock, revalidate
+loaded identity and current world/geometry, and observe native control effects.
+No old world pose or retired runner may substitute for those checks. No new
+production executor, DLL build or CI run was added in this continuation.
+
+### Native transition admission resolved (2026-10-31 UTC)
+
+The local Ollie request gate incorrectly treated 401/403 as setup phases and
+401..404 as hold phases. The pinned native state getters identify 400 Boardslide,
+401 5050, 402 Tipslide, 403 5_O, 404 Backslash, 405 Darkslide and 406 Grind
+Transition. All seven enter the selector's rail-exit branch at RVA 0x47466f3.
+The local request/follow-up gate now accepts this exact whitelist; 407 and other
+unknown family values remain rejected. This changes neither native admission
+nor the flat-ground launch writer. The focused rail-pop suite passes 1,326
+checks at 30/60/120 Hz. Freshly compiled input-session (5,645 plus 326 jump-idle),
+native-rail facade (40) and production composition (10) checks also pass.
+These are offline checks, not rail-pop gameplay acceptance.
+
+The actual contact-preserving native transition actor is now identified:
+
+- State 406, vtable RVA 0x65e6f18, entry 0x4817b50, cleanup 0x4818430.
+- Entry first calls native common initialization (0x4817770), captures the
+  current heading/pitch/roll from context +4044/+4048/+4052, and reads requested
+  heading/pitch/roll from GrindInputs +24/+60/+52 (context +5248).
+- It determines the destination physical class through 0x48140e0, initializes
+  the native transition curves and three smoothing objects, and leaves native
+  contact/translation/update/cleanup in control. Target identities are outputs;
+  neither CurrentGrindType nor CurrentSkateGrindType is an execution request.
+- Native selector 0x474687a requires the feature component at context +5280,
+  byte +26, output +419, and existing contact at context +4016 (or current 406).
+  Other native exit/geometry conditions still precede this branch.
+
+During the coordinated Deck window, read-only probes independently verified
+the loaded and installed source `fbcc0e9ef1be8620fab4e2b2fe20adf68a4ebc32`, DLL
+SHA-256 `fbe516a134440e81af03dd557d4e7b9ae46951223b40950a1ee1958183b45f2c`, and
+original executable SHA-256
+`fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9`.
+The on-board state was 100, physics and cached step both 0.0333333313 seconds.
+This installed branch does not contain the isolated rail-pop candidate.
+
+A bounded hardware access watch traced the feature byte's real producer:
+native ECS field command 0x1895730, invoked by interpreter 0x16d2010 from
+expression resource key **0x0542dc73**. The resource is 3,280 bytes with constant
+start 0xb0 and instruction start 0x2c0. Its command at PC 0x04ac supplies
+page 2 offset 0x4b and field descriptor 0x0001001a (one byte at offset 26).
+The value originates from the setting reference at constant offset 0x100:
+`Gameplay/Settings/ExperimentalSettings/EnableExperimentalGrindTransitions`,
+key **exp_grind_transitions**. The script getter 0x5955520 calls 0x837f40,
+which calls the existing applied-settings bool getter 0x804f60. Thus the
+previously unknown admission flag is conclusively this native setting, and it
+was false in the captured running game. The adjacent wallride setting uses
+component byte 31; it must not be confused with the grind flag.
+
+Reviewed external observer receipts under the lab root:
+
+- `grind-flag-watch-fbcc0e9-v3/results/1793410540744026000.json`, runner SHA-256
+  `3a122e7efb9e72c962af800a560dad0c807472517606d4859cc7d9fe65bbcbe2`.
+- `grind-flag-watch-fbcc0e9-v4/results/1793410610476515000.json`, runner SHA-256
+  `3125899950f14365764be5e3f67b835e18ac3f3850816f729467190d33ab8aee`.
+
+Both revalidated native ownership, detached the debugger and released the
+shared lock. No input, console command, process data write or installation
+occurred. The Deck window was subsequently released to the grab chat.
+
+The original native fine-identity lookup is also recovered completely:
+initializer 0x47bd410/registration 0x47c8950 produces all 384 entries at
+0x778a090 from descriptors at 0x778ac90. Native classification 0x47dd090 writes
+the six-element contact tuple; 0x47db980 maps it to physics output +192.
+The index is `(((((a*2+b)*2+c)*2+d)*4+e)*6+f)`. This supplies independent
+destination evidence and illustrates why matching animation labels alone is
+insufficient. The local extractor asserts that every entry was reconstructed.
+
+The remaining executor work is to scope activation to the local pending
+grind request and translate the named target into the native orientation
+control request with valid reference initialization and geometry. The setting
+finding establishes admission, not the nine target control sequences. No
+global setting override, direct grind-identity write, guessed stick mapping,
+named production executor or new DLL/CI build has been added on that evidence.
+The original AI grind action was checked as a possible reusable request path:
+23 hash-checked spans (40,296 compressed bytes) include 11 expression kernels;
+its apparent native command 0x98a93db2 resolves to the empty retail stub at
+0x1f9630 and cannot serve as an executor. Proprietary captures and decoded
+payloads remain in ignored local research files.
+
+### Fresh native control baseline and setting probe correction (2026-10-31 UTC)
+
+The coordinated ec35a8e window produced a fresh native rail baseline in the
+current `bam` world. The old near-origin coordinates were not reused. Native
+lane collision checks rejected two approaches before placement succeeded at
+`[633.076416,198.743729,1082.585815]`, with start
+`[633.076416,199.772415,1074.585815]`. The native geometry observer completed
+129 samples and found a 0.499374 m high rail, with longitudinal extent -2.0 to
+1.75 m (0.25 m uncertainty). These coordinates are historical evidence, not
+permission to reuse them after a world or editor generation change.
+
+Native controls, Arcade OFF, produced state 401 with fine physics identity 20
+(BS 50-50), tuple `[1,0,1,0,1,0]`, independent rail contact and context +4016.
+Both the physics clock and cached local skater step were 0.0333333313 seconds.
+The rail section lasted about 0.6 seconds. Identity 24 at the end of the rail
+was followed by 701 and airborne states; this is not a commanded grind change.
+The receipt is `grind-native-control-ec35a8e-v8/results/1793413288498599000-baseline.json`
+under the external lab root.
+
+A right-stick negative control retained identity 20 during established contact
+(`v9/results/1793413436306041000-right.json`). Temporarily supplying feature
+component byte 26 through its qualified native writer also retained that
+identity (`v10/results/1793413521443073000-enabled_right.json`). The bounded
+experiment recorded 17 qualified writes and restored the original false value.
+Neither experiment showed state 406. The separate orientation expression also
+reads the setting, so the physics feature alone is insufficient.
+
+The orientation expression is resource key `0x3d9f9b54` (EBX 1648, RES 7881),
+`Includes_GrindOrientationCalculation_AG_A6EB92C_EATCommandActionData_13_ss_OnUpdate`.
+It reads the same setting at PC 0x18e8 and gates its additional orientation
+calculation at 0x1930. Interpreter opcode 38 at RVA 0x16d1a4c confirms the
+direction: true follows encoded next PC 0x1b58; false branches to 0x1940 and
+performs the additional calculation/write before returning to 0x1434. Enabling
+the setting therefore skips this extra write, rather than enabling it. The
+native bool getter is already intercepted by
+`Extension/Settings/local_gameplay_settings.cpp::gameplay_get_bool`; any eventual
+Arcade override must be scoped to the pending request and verified local
+expression owner, without saving a profile value.
+
+Two subsequent getter-return experiments did not arm and made zero overrides
+(`v11/results/1793413816566814000-enabled_right.json` and
+`v12/results/1793413939507067000-enabled_right.json`). Offline inspection found
+a probe defect: file GUID `f2e21361-e275-4c24-950e-a2d375dbf98a` was incorrectly
+compared against the native object's exported instance GUID at -16. Decoding
+the original EBX instance independently confirms the correct object GUID is
+`29b0b052-84d4-4fc9-9921-c95ab3ed069b`; both importing assets agree. The probe
+is corrected locally, with explicit asset/owner discovery counters. These
+failed trials are not negative evidence about the native transition itself.
+
+The fresh fixture was saved through native `arcadefixture save` as a new
+`Arcade Rail Fixture` mod (two objects, generation 5/revision 8). Save receipt:
+`grind-fixture-ec35a8e-v6/results/1793414156216837000-save.json`. Despite that
+runner's inherited read-only metadata, its command list records the console
+input and new mod creation; treat it as a mutation receipt. All debugger jobs
+were detached, controls neutralized, feature value restored, Arcade ON and
+the shared lock released before the grab chat's next installation. This chat
+installed nothing. The grab chat subsequently reported installed/loaded source
+`dd3e8ebaac4a99102e26296b9c6c373744b28660`, DLL SHA-256
+`390e1db09244a62ae8268f1d3f132655fb638a5a05967f28adfda8a2784f7918`.
+All ec35a8e-pinned runners are retired. New trials require independent identity
+and current-world geometry validation after the other chat releases control.
+
+The local rail-release lease now tolerates an unchanged approach-trick
+selection during rail setup/701, because the real new Ollie may take ownership
+only on departure. It still rejects an unrelated changed selection, requires
+the new native Ollie identity 1 for early flip admission, and cannot use a
+lingering approach selection to admit an airborne flip. Production-composed
+tests at 30/60/120 Hz cover those cases: 1,362 rail-pop checks pass. Existing
+input-session checks pass (5,645 plus 326 jump-idle). The existing pose adapter
+maps physical state 406 to the same grind pose, and ComboSession changes its
+balance lifecycle only on pose changes; no balance/HUD or combo code changes
+are needed on that source evidence. Native continuity still needs live proof.
+
+The next dd3e8eb window independently verified its loaded mapping and resumed
+the native Hub before console work. The saved folder is actually `Arcade Rail
+Fixture 2`; the first unsuffixed folder has no `bam` park. Read-only inspection
+of the saved JSON found two authored rails: obsolete object 1 near
+`[153.6571,0,-91.0118]` and current object 2 at the fresh lane above. Loading
+the suffixed mod and removing only obsolete authored object 1 through the
+undoable native editor allowed adoption of object 2. Saved mod files and stock
+world objects were unchanged. Restoration receipt:
+`grind-fixture-dd3e8eb-v4/results/1793415242618748000-restore_one.json`.
+
+The corrected getter experiment still did not run: its new mandatory geometry
+preflight timed out while armed, with zero samples (`GeometryStatus::timeout`,
+numeric **4**, not cancelled). Receipt:
+`grind-native-control-dd3e8eb-v2/results/1793415302088816000-enabled_right.json`.
+No GDB was launched or setting value overridden. Reset/remount did qualify
+state 100 within 0.25 m of the adopted start. Source inspection isolates a
+runner ordering defect: geometry activation receives `on_client_tick`'s
+`gameplay`, which requires an admitted controller route (`input.available &&
+pad.valid`). The runner bound that route only *after* geometry completed.
+The next runner binds slot 0 and arms geometry in the same console visit;
+opening another console between them would revoke the route again. It still
+requires a completed current geometry result; no geometry check is bypassed.
+
+The Deck was explicitly released to the manual chat after this attempt,
+mounted and stopped at `[633.193848,199.772415,1074.785645]`, native state 100,
+Arcade ON, console/editor closed, controls neutral and shared lock released.
+No debugger was attached. The manual chat is independently installing its own
+candidate and will return new identity evidence before further grind work.
+
+### Native transition admission reproduced (2026-10-31 UTC)
+
+After the manual chat explicitly released the Deck, an independent identity
+probe verified installed and mapped source
+`0dfa41e284deaf9653eec41ccbb03cff7d354d70`, DLL SHA-256
+`ab585e37f1fbb2f0a5e336c4c017b2ba4deaf38a04e45dffa9777fe5ecb9aff7`,
+PID 54951 and the pinned original executable. The authored saved fixture was
+restored/adopted in current `bam`, generation 5/revision 9; saved files and
+stock objects were unchanged. Binding the controller before arming geometry
+resolved the previous preflight failure: 129 native samples completed with
+current context and rail height 0.499374 m.
+
+The corrected exported-GUID getter probe armed after 54 getter calls and one
+exact asset/owner match. It supplied 36 transient true returns to the two
+verified local expressions, without process-data writes or profile changes.
+Native right-stick input then produced heading request **1.5704 radians** and
+physical transitions **401 → 406 → 401**, twice. Rail contact remained true,
+but fine physics identity stayed **20 (BS 50-50)** and actual heading stayed
+near zero. The ordinary rail-end 403/identity 24 and subsequent 701/AIR are
+not credited as a requested grind change. Physics and cached step remained
+0.0333333313 seconds.
+
+Receipt under the external lab root:
+`grind-native-control-0dfa41e-v1/results/1793416187038838000-enabled_right.json`.
+The runner SHA-256 is
+`558dff16dd1f307279560f453735d8400a8c6ea1b82e666b069d0536ff9a3c77`.
+GDB exited cleanly and explicitly detached; the feature byte returned false,
+controls were neutralized and the shared lock released. Arcade was restored
+ON, console/editor closed, state 100. The Deck was explicitly handed to the
+grab chat for its separately authorized diagnostic deployment.
+
+This proves native transition admission through the original setting and
+control pipeline, **not successful named execution**. The next investigation
+targets the one-step return: read-only hardware observations at completed
+native initialization (0x4817df0), legitimate completion clear (0x48269e9),
+and cleanup (0x4818430), qualified to the local transition actor. Capture its
+source/target, requested/actual angles, phase/timing and native contact class.
+Do not keep the actor alive by writing its active byte or replace its target
+state. Native output 0x4818d50 deliberately publishes the source coarse grind
+while transitioning, so unchanged identity during 406 alone is expected;
+returning to the source with no rotation is the failure to explain.
+
+No named executor or new DLL/CI build is claimed on this evidence.
 
 ## Required live acceptance
 

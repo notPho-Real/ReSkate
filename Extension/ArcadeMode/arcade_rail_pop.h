@@ -2,19 +2,21 @@
 #include "arcade_input_policy.h"
 
 namespace dingosdk::arcade_mode {
-// Admission for the installed game's exact _fromgrind stick recipe, not a
-// velocity writer or a named-grind actor. 401 is the measured held grind;
-// 403 is the independently captured fixed-rail contact/exit phase. Other
-// members of the 400 family are exclusions, not verified launch admission.
+// The pinned native selector routes 400..406 through the same rail-exit
+// admission at RVA 0x47466f3. These are physical grind classes, not successive
+// takeoff phases: Boardslide, 5050, Tipslide, 5_O, Backslash, Darkslide and
+// Transition (vtable state getters 0x47c8830..0x47c8890). Unknown 400-family
+// values are not sufficient evidence. This admits only the _fromgrind input
+// recipe; native contact/geometry checks still decide whether it can pop.
+inline bool rail_pop_physics_state(std::uint32_t state) noexcept {
+    return state>=400 && state<=406;
+}
 inline bool rail_pop_input_ready(const InputNativeContext& native, std::uint64_t now) noexcept {
     return native.required && native.fresh(now) && native.rail_family && !native.airborne &&
-        (native.flip.state==401 || native.flip.state==403) && native.flip.mode<=2;
+        rail_pop_physics_state(native.flip.state) && native.flip.mode<=2;
 }
 inline bool rail_pop_input_continues(const InputNativeContext& native, std::uint64_t now) noexcept {
-    // Native 402/404 are measured brief grind phases. They can retain an
-    // already admitted hold without granting a new setup in an unknown phase.
-    return native.required && native.fresh(now) && native.rail_family && !native.airborne &&
-        native.flip.state>=401 && native.flip.state<=404 && native.flip.mode<=2;
+    return rail_pop_input_ready(native,now);
 }
 // Continuity of a released rail Ollie, observed at every native physics step.
 // This is a request lease only: native StateFlow/PTM still owns selection,
@@ -22,7 +24,7 @@ inline bool rail_pop_input_continues(const InputNativeContext& native, std::uint
 inline bool rail_pop_followup_continues(const InputNativeContext& current,
         const InputNativeContext& before, std::uint64_t now) noexcept {
     const auto phase=[](const InputNativeContext& n) {
-        return n.rail_family && !n.airborne && n.flip.state>=401 && n.flip.state<=404 ? 0 :
+        return n.rail_family && !n.airborne && rail_pop_physics_state(n.flip.state) ? 0 :
             !n.rail_family && !n.airborne && n.flip.state==701 ? 1 :
             !n.rail_family && n.airborne && n.flip.state==200 ? 2 :
             !n.rail_family && n.airborne && n.flip.state==201 ? 3 : -1;
@@ -33,7 +35,11 @@ inline bool rail_pop_followup_continues(const InputNativeContext& current,
         current.flip.object!=before.flip.object || current.flip.stance!=before.flip.stance ||
         current.flip.mode>2 || before.flip.mode>2 || !current.flip.mode_generation ||
         !before.flip.mode_generation || phase(before)<0 || phase(current)<phase(before) ||
-        (current.flip.id!=1 && current.flip.id!=-1) || (before.flip.id!=1 && before.flip.id!=-1) ||
+        // A previous approach trick can remain selected during native rail
+        // setup. Retain only that unchanged selection until the new Ollie
+        // takes over; it never grants airborne flip admission by itself.
+        (current.flip.id!=1 && current.flip.id!=-1 &&
+            (current.airborne || current.flip.id!=before.flip.id)) ||
         (before.flip.id==1 && current.flip.id==-1 && !current.airborne) ||
         current.physics_step-before.physics_step>1) return false;
     const unsigned action_change=current.flip.state!=before.flip.state || current.flip.id!=before.flip.id;
