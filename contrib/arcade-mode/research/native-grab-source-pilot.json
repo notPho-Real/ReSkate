@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "A input-path correction; previous hardware pilot failed native entry",
+  "stage": "A: BS and Melon native animation observed; Method repeat correction awaiting build acceptance",
   "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
   "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
   "complete_catalog": false,
@@ -21,11 +21,11 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "224 checks passed at 30/60/120 Hz",
-        "native_action": "revised input-path candidate unverified",
-        "native_animation": "unverified",
-        "hold_release": "unverified in gameplay",
-        "landing_scoring": "unverified"
+        "source_contract": "242 checks passed at 30/60/120 Hz",
+        "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
+        "native_animation": "exact original actor initialized and advanced with positive delta",
+        "hold_release": "release observed; BS additionally tested with held B and100ms tap",
+        "landing_scoring": "ground state100 observed; numeric scoring owner unverified"
       }
     },
     {
@@ -43,11 +43,11 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "224 checks passed at 30/60/120 Hz",
-        "native_action": "revised input-path candidate unverified",
-        "native_animation": "unverified",
-        "hold_release": "unverified in gameplay",
-        "landing_scoring": "unverified",
+        "source_contract": "242 checks passed at 30/60/120 Hz",
+        "native_action": "ec35a8e: native IsGrabbing and matching DetailedGrabType observed at measured30Hz",
+        "native_animation": "exact original actor initialized and advanced with positive delta",
+        "hold_release": "release observed; BS additionally tested with held B and100ms tap",
+        "landing_scoring": "ground state100 observed; numeric scoring owner unverified",
         "prior_gameplay_build": "fbcc0e9: request delivered but CanGrab false, no actor initialization or advancement acknowledgment"
       }
     },
@@ -66,11 +66,12 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "224 checks passed at 30/60/120 Hz",
-        "native_action": "revised input-path candidate unverified",
-        "native_animation": "unverified",
+        "source_contract": "242 checks passed at 30/60/120 Hz",
+        "native_action": "ec35a8e: Method repeat canceled before adapter by inherited action generation",
+        "native_animation": "unverified; Melon advancement does not count as Method",
         "hold_release": "unverified in gameplay",
-        "landing_scoring": "unverified"
+        "landing_scoring": "unverified",
+        "followup": "narrow native Ollie-selection-retirement continuity fix passes regression; gameplay pending"
       }
     }
   ],
@@ -199,5 +200,8 @@
     "synthetic score",
     "named-grab trigger recipe as success"
   ],
-  "hardware_evidence": "native-grab-hardware-pilot.json"
+  "hardware_evidence": [
+    "native-grab-hardware-pilot.json",
+    "native-grab-ec35a8e-acceptance.json"
+  ]
 }

@@ -119,5 +119,34 @@ void input_order_and_launch() {
         check(episode && jump->frame.airborne_episode==episode,"grab admission preserves the observed airborne episode");
     }
 }
+void repeated_grab_after_native_jump_retirement() {
+    for (unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;
+        auto r=std::make_unique<Route>();
+        r->poll(1000,0,201,1);
+        r->poll(1000+dt,0x2004,201,1);
+        const auto first=r->requests.back();
+        r->poll(1000+2*dt,4,201,-1);
+        r->poll(1000+3*dt,0x2004,201,-1);
+        check(r->requests.size()==2 && r->tricks.back()==ArcadeTrick::method,
+              "second physical B survives native Ollie selection retirement in the same air episode");
+        check(r->requests.back().physical_pressed_at==1000+3*dt &&
+              r->requests.back().air_episode==first.air_episode,
+              "repeat retains the second physical edge and original airborne episode");
+        check(r->requests.back().generations.action==r->frame.action_generation &&
+              first.generations.action!=r->requests.back().generations.action,
+              "new physical repeat uses the independently qualified current action generation");
+        for (unsigned invalid=0;invalid<3;++invalid) {
+            auto bad=std::make_unique<Route>();bad->poll(1000,0,201,1);
+            bad->poll(1000+dt,0x2004,201,1);
+            if (invalid==0) bad->poll(1000+2*dt,4,201,5);
+            if (invalid==1) bad->owner.entity=9;
+            bad->poll(1000+3*dt,4,invalid==2?100:201,-1);
+            bad->poll(1000+4*dt,0x2004,201,-1);
+            check(bad->tricks.back()!=ArcadeTrick::method,
+                  "different action, owner replacement or landing never inherit the prior grab repeat");
+        }
+    }
 }
-int main(){requests();delayed_tap_and_controls();input_order_and_launch();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+}
+int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

@@ -117,6 +117,7 @@ struct InputEnvironment {
     bool native_pop_transition{}; // Validated native bridge owns this pop's pending selection.
     std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
     bool takeoff_actor_busy{};
+    bool native_grab_transition{}; // Qualified grab adapter, separate from flip ownership.
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -596,6 +597,7 @@ public:
                 active_grab_count_ = active_grab_ ? event.request.presses : 0; grab_started_ = now;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
                 grab_generations_ = event.request.generations;
+                grab_native_ = native;
             }
             if (event.disposition == InputDisposition::started && (event.request.action == InputAction::manual ||
                 event.request.action == InputAction::nose_manual || event.request.action == InputAction::flip || event.request.action == InputAction::grab))
@@ -915,10 +917,19 @@ private:
         }
         const bool extra = presses > 1 && !environment.deferred_grabs;
         if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
+        // This is a new physical press, inheriting only the first grab's direction.
+        // Native grab entry retires the Ollie selection. Accept the new press's
+        // current generation only when the existing observer proves that exact
+        // 201/mode2 Ollie-to-idle transition in the same owner/air episode.
+        // Other action changes keep the original lineage and fail the queue gate.
+        const auto* lineage = extra ? &grab_generations_ : nullptr;
+        if (extra && environment.native_grab_transition &&
+            environment.native_context.jump_selection_retired(grab_generations_,grab_native_.air_episode(),grab_native_.flip))
+            lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
             extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
-            InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
+            InputFootprintKind::unknown, lineage);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
         // The session's observed released-Ollie proof carries the physical
@@ -1286,6 +1297,7 @@ private:
     std::array<bool,static_cast<std::size_t>(InputAirTableKind::count)> table_retired_{};
     InputNativeContext native_{};
     InputGenerations flip_generations_{}, grab_generations_{};
+    InputNativeContext grab_native_{};
     bool native_required_{};
     InputBalanceControls balance_controls_{};
     InputRailState previous_rail_{};

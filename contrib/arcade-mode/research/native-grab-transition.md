@@ -4,7 +4,9 @@
 
 The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
-is still unverified**. The user subsequently authorized coordinated Deck trials. Broad
+is still incomplete**. BS Grab and Melon now have native animation evidence at
+measured 30 Hz; Method still requires the repeated-input correction below.
+The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
 
 The missing intent and observation definitions were recovered from the original
@@ -105,6 +107,43 @@ the input-session, neutral-flip-release, air-motion-proof, action-dispatch and
 control-state suites. The lab suite passed 458 tests with one skip. Its new DLL
 still requires the three-pilot hardware acceptance; catalog expansion remains
 gated. Machine-readable evidence is in `native-grab-hardware-pilot.json`.
+
+## Corrected trigger-path hardware evidence and repeated-grab defect
+
+Build `ec35a8ee929ce78a2e655fdac35a402c21efba8d`, DLL SHA-256
+`8a8857f2d09ddf934df35c356a183c17b914756e37e578bb9b664aa2cc0c578e`,
+passed Windows (97/97), Linux and macOS CI and the offline package job. The
+installed and loaded DLL identities were independently checked. At measured
+30 Hz, B produced detailed identity 1 and the exact BS actor initialized and
+advanced. Left+B produced detailed identity 4 and the exact Melon actor
+initialized and advanced. Both retained the same flight and returned to native
+ground state 100. A 100 ms B tap still reached native initialization after
+physical release, then withdrew intent after acknowledgment. Held B produced
+the same native BS actor and exited cleanly. Independent native samples observed
+CanGrab and IsGrabbing; no physical integration or native identity was forced.
+
+These are animation and landing observations, not full scoring acceptance.
+The numeric scoring owner remains unverified, and the capture completeness
+flag remains false because some required correlation sources were absent.
+Read-only native samples and exact actor evidence are recorded separately from
+that incomplete correlation footer. See `native-grab-ec35a8e-acceptance.json`.
+
+Method did not pass: the second B was physically captured and recognized, but
+its request inherited the first grab's action generation. Native grab entry
+retired the Ollie selection from 1 to -1 while remaining in 201/mode2. The queue
+therefore canceled the repeat before it reached the native adapter. Two timing
+comparisons also failed; no Melon acknowledgment is counted as Method success.
+
+A production-composed regression reproduced that cancellation at 30/60/120 Hz.
+The narrow correction stores the first grab's native provenance and uses the
+existing `jump_selection_retired` proof for a new physical repeat. Only the
+qualified grab adapter enables this rule. The repeat inherits its direction
+across exactly one observed Ollie-to-idle action change in the same owner,
+airborne episode, state, mode, stance and animation object. Its physical press
+timestamp remains unchanged. Other action changes, owner replacement and
+landing still reject inheritance. No queued input is renewed and no flip
+transition or native animation mechanism is changed. The revised build still
+requires Method hardware acceptance before Stage A can close.
 
 ## Historical investigation checkpoint
 
