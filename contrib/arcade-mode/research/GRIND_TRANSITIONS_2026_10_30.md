@@ -1197,6 +1197,74 @@ The next acceptance observation must distinguish a completed native actor
 from an actual new fine identity and corresponding animation during sustained
 contact. No new build is ready for testing yet.
 
+### c45 window: setup stopped before native transition input
+
+Manual explicitly released one bounded long-rail window after its revert tests.
+Fresh identity receipt `grind-identity-c45f883-v1/results/1793461619951390000.json`
+verified the c45 source/DLL above, mapped to PID 64185/window 56623105. The first
+status query returned no fresh console response. A fresh Gamescope capture
+showed the native Hub; the reviewed resume/status action dismissed it and
+verified bam generation 5/revision 5, state 504, stationary, native menu closed.
+No compositor setting was changed.
+
+Fixture preparation revealed two distinctions that the previous offline review
+missed. `arcadefixture adopt` explicitly requires an editor project beginning
+with `Arcade Rail Fixture`; `mod-load` preserves the old project and therefore
+cannot satisfy that requirement. The original `mod-open` path then adopted the
+fixture. Neither operation saved a fixture file. Also, the command's UI
+availability predicate mentions an open editor, but `edit_local_park` itself
+admits native transactions through its session/generation/revision/idle guards.
+In this window `parkeditor on` returned `Debug request rejected` while the
+explicit native delete transactions succeeded with the editor closed. Thus the
+prior claim that opening the UI is necessary for these console transactions
+was too broad. No editor-UI requirement was bypassed in production code.
+
+The single long-rail invocation was
+`grind-long-control-c45-v2/results/1793462022118894000-enabled_up.json`.
+It reset/mounted through native controls and measured the current short rail:
+all 129 collision samples completed, height 0.499374 m, generation 5/revision
+13. Its attempted `editor delete bam 5 13 2` produced no fresh console echo or
+revision change. The runner's object-command typing used 20 ms instead of the
+previously working 100 ms; this is a delivery suspect, not proven causation.
+The revision guard rejected the operation before creating the long rail,
+starting the approach, attaching GDB or delivering any named transition input.
+There were no 406/native completion/identity observations to accept.
+
+The runner neutralized/detached and restored Arcade ON. The four preparation
+transactions (two loads and two duplicate deletions) were then each undone
+through original native history, with exact revision acknowledgments
+13 -> 15 -> 17 -> 19 -> 21. The cleanup's final `present == false` assertion was
+incorrect: initial `configured == false` makes fixture status report no bound
+fixture even when the matching rail already exists in the world. It is not an
+inventory assertion. All four undos had completed before that assertion; no
+additional undo was sent. Fresh final receipt
+`grind-fixture-c45f883-v1/results/1793462160817634000-status.json` independently
+confirmed generation 5/revision 21, native state 100/mode 1, speed 0.000919 m/s,
+position (633.198120,199.772415,1074.786621), Arcade ON, closed editor/menu and
+the original matching rail present. The prior layout was restored by native
+history; fixture-adoption metadata/editor project selection now references the
+fixture. This caveat was explicitly handed back to Manual. No rate change,
+saved-fixture write, DLL installation or new build occurred.
+
+Manual acknowledged release and resumed ownership for its next candidate.
+Do not reuse the c45 pin after its forthcoming restart without checking the
+new installed/mapped identity. There is no further hardware window granted.
+
+Offline preparation now restores 100 ms typing, allows a bounded 20-second
+subprocess deadline for the longer text command, requires a fresh exact native
+console echo, rejects native error responses and preserves diagnostic output
+if cleanup raises. Old log lines are captured before a command so they cannot
+supply its acknowledgment. Native revision/contact/geometry gates remain
+required. Candidate `build/grind-investigation/grind-native-long-c45-v3.py`
+has SHA-256 0f13b2b9afaa43b377571e450fa9c7bfc40ee89f15da90bc172424826b84198d.
+It is locally prepared only, not staged or executed, and still needs review
+against the next live identity and window. The named production executor
+remains absent; this failed setup provides no new gameplay acceptance. Five
+inert checks of the actual prepared console helper pass: fresh echo succeeds,
+missing/stale echo, wrong echo, native error and partial batch delivery are
+rejected, with console-close cleanup retained. These validate runner delivery
+checks only and send no network or hardware input.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence
