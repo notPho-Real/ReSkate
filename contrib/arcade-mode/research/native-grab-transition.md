@@ -6,9 +6,49 @@ The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
 is still incomplete**. BS Grab, Melon and Method now have exact native animation
 evidence at measured 30 Hz. Method's repeated-input correction passed its native
-trial. Release behavior and full scoring acceptance remain open.
+trial. The be22b1a follow-up below observes native release at 30 Hz; full
+scoring, capture completeness, body rotation and higher-rate acceptance remain open.
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
+
+### be22b1a coordinated follow-up
+
+Five fresh-qualified 30 Hz trials on the installed and mapped be22b1a DLL
+reached the exact original Basic BS, Method and Melon actors. Each initialized
+with duration305 and advanced by a positive native delta. The Basic100ms tap
+released B before actor initialization and still reached its original actor.
+All five subsequently observed `Bool.State.Is.GrabExit=true`, cleared native
+right-hand and `IsGrabbing` flags, and returned to ground100. A brief state0
+sample after Method's first ground contact is retained in the evidence.
+
+Both held shoulder directions delivered native LS +/-31783 alongside RT255
+and Basic Grab actor advancement. Releasing the shoulder restored LS while B
+kept RT; releasing B then cleared RT. This establishes input/animation
+coexistence, not independent angular body-motion acceptance.
+
+The first Method attempt at750/950ms after A press acknowledged only Melon.
+A subsequent900/1100ms schedule acknowledged Method in the same episode.
+This is evidence for investigating takeoff eligibility, not a production
+delay requirement or a complete explanation of the missed first press.
+
+Observer corrections matter: angular-on is accepted only for mask39, which
+excludes controller-poll source7; `127 on` is rejected. The corrected trials
+used supported127 without angular-on and admitted only a new capture's
+controller rows. Native sample/step cadence measured32--33.5ms, with both
+physics and cached dt=0.03333333. No Windows/Linux clock equivalence was assumed.
+These five captures drained every expected row without new drops, but their
+footers remain incomplete: required manual sources4/5 did not occur. Existing
+scope103 includes the relevant sources1/2/3/6/7 with bounded selected-poll
+compaction and is the next observer configuration to qualify. No footer has
+been rewritten as complete. Native scoring remains owner-unverified.
+
+See [the full follow-up receipt](native-grab-be22b1a-followup.json), including
+raw evidence digests, physical/returned packets, exact actor identities,
+native release transitions, timing and limitations. The earlier failed
+capture setup is retained in [the first-window receipt](native-grab-be22b1a-window.json).
+The Deck was cleaned up and explicitly released to the manual task for its
+next installation; no DLL/world/rate/layout/fixture change occurred in the
+second window.
 
 ### Trigger-only grab ownership and held shoulder rotation
 
@@ -63,7 +103,8 @@ yaw, uninterrupted flight and release/landing, and compare against the same
 grab without a shoulder. Verify that releasing the shoulder stops LS delivery
 while B keeps the grab active; test opposed shoulders and native ineligibility.
 The broader Stage A release/scoring and rate gates remain open. No new Deck
-trial or accepted grab/rotation combination is claimed by this source change.
+trial was claimed at source-change time. The follow-up above adds bounded
+input/animation coexistence evidence while preserving those acceptance limits.
 
 ### Method native acceptance on c69dd24
 
