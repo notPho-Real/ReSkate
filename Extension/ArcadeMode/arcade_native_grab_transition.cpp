@@ -22,13 +22,15 @@ contract::Evaluate original_evaluate{};
 std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
 std::mutex mutex;
 struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
-std::array<Asset,6> assets{{
+std::array<Asset,8> assets{{
     {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
     {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
     {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
     {"Animation/Dingo/Float.Intent.TweakFrontBack",contract::tweak_y},
     {"Animation/Dingo/Bool.Anim.IsGrabbing",contract::grabbing},
-    {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail}
+    {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail},
+    {"Animation/Dingo/EnumGS.GrabType",contract::family},
+    {"Animation/Dingo/Bool.GP.CanGrab",contract::can_grab}
 }};
 const std::array<Guid,3> actor_guids{contract::actor_bs,contract::actor_melon,contract::actor_method};
 constexpr std::array<const char*,3> actor_names{"e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
@@ -38,6 +40,7 @@ struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64
 struct Session {
     Lease lease{};NoBailSkater owner{};std::uintptr_t block{};
     std::uint64_t episode{},serial{};
+    InputGenerations lineage{};InputAirEpisode air{};
     std::array<Written,4> writes{};
     std::array<Actor,3> actors{};
     bool reported{};
@@ -48,7 +51,7 @@ struct Event {
     bool ending{},held{},acknowledged{},airborne{};
     std::uint64_t serial{},episode{};
     ArcadeTrick trick{};std::int32_t detail{};InputRequest physical{};
-    bool input_trace{},extra{},native_adapter{},retired{};
+    bool input_trace{},extra{},native_adapter{},retired{},native_owner{};
     std::uint64_t ms{},origin_action{},current_action{};
     unsigned failed_proofs{},gate{},disposition{},result{};
 };
@@ -64,10 +67,10 @@ void flush_events() noexcept {
     for (unsigned i=0;i<count;++i) {
         const auto& e=pending[i];
         if (e.input_trace) logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE GRAB INPUT: ms={} recognized_at={} pressed_at={} direction={} presses={} form={} semantic={} request_action={} origin_action={} current_action={} extra={} native_adapter={} retired={} failed_proofs={} gate={} disposition={} result={} animation_acknowledged=false.",
+            "ARCADE GRAB INPUT: ms={} recognized_at={} pressed_at={} direction={} presses={} form={} semantic={} request_action={} origin_action={} current_action={} extra={} native_adapter={} retired={} failed_proofs={} native_owner={} gate={} disposition={} result={} animation_acknowledged=false.",
             e.ms,e.physical.recognized_at,e.physical.physical_pressed_at,e.physical.direction,e.physical.presses,
             static_cast<unsigned>(e.physical.form),static_cast<unsigned>(e.physical.air.trick),e.physical.generations.action,
-            e.origin_action,e.current_action,e.extra,e.native_adapter,e.retired,e.failed_proofs,e.gate,e.disposition,e.result);
+            e.origin_action,e.current_action,e.extra,e.native_adapter,e.retired,e.failed_proofs,e.native_owner,e.gate,e.disposition,e.result);
         else if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified.",
             e.serial,e.episode,e.acknowledged,e.airborne);
@@ -137,6 +140,14 @@ void retire() noexcept {
     restore();session={};active.store(false);
 }
 bool valid() noexcept {return gameplay_allowed.load() && assets_ready.load() && same_owner() && airborne();}
+RetargetObservation retarget_observation() noexcept {
+    RetargetObservation out{};
+    const auto left=address(0),right=address(1),grabbing=address(4),family=address(6),can_grab=address(7);
+    out.valid=left && right && grabbing && family && can_grab &&
+        read(left,out.left) && read(right,out.right) && read(grabbing,out.grabbing) &&
+        read(family,out.family) && read(can_grab,out.can_grab);
+    return out;
+}
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);
     if (pointer(asset)!=image+0x61ba838) return -1;
@@ -252,9 +263,14 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
     const auto block=state_block(owner);if (!block) return false;
     std::lock_guard lock(mutex);
     if (session.serial && (owner!=session.owner || episode!=session.episode)) retire();
+    // A changed native action lineage needs the same independent grab-owner
+    // proof at dispatch too. Never borrow a retired flip selector as permission.
+    if (session.serial && physical.generations!=session.lineage &&
+        (!valid() || !session.lease.intent(GetTickCount64()) || !retarget_observation().eligible())) return false;
     if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
     session.serial=++serial;session.reported=false;
     if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire();return false;}
+    session.lineage=physical.generations;session.air=physical.air_episode;
     active.store(true);
     enqueue({false,held,false,false,session.serial,episode,trick,pilot(trick)->detail,physical});
     return true;
@@ -264,6 +280,13 @@ bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept 
     std::lock_guard lock(mutex);
     return valid() && owner==session.owner && episode==session.episode &&
         session.lease.intent(GetTickCount64());
+}
+bool continues(const NoBailSkater& owner,std::uint64_t episode,InputGenerations origin,InputAirEpisode air) noexcept {
+    if (!active.load()) return false;
+    std::lock_guard lock(mutex);
+    return valid() && owner==session.owner && episode && episode==session.episode &&
+        air.number==episode && air==session.air && origin==session.lineage &&
+        session.lease.intent(GetTickCount64()) && retarget_observation().eligible() && valid();
 }
 void trace_input(std::uint64_t now,const UnifiedInput::Diagnostic& diagnostic,const ActionInputOutput& output) noexcept {
     const auto& proof=diagnostic.grab_repeat;
@@ -287,7 +310,7 @@ void trace_input(std::uint64_t now,const UnifiedInput::Diagnostic& diagnostic,co
         const auto& request=diagnostic.recognition[i].request;
         if (request.action!=InputAction::grab) continue;
         Event e{};e.input_trace=true;e.ms=now;e.physical=request;
-        e.extra=proof.extra;e.native_adapter=proof.native_adapter;e.retired=proof.retired;
+        e.extra=proof.extra;e.native_adapter=proof.native_adapter;e.retired=proof.retired;e.native_owner=proof.native_owner;
         e.origin_action=proof.origin.action;e.current_action=current.generations.action;
         e.failed_proofs=failed;e.gate=output.grab_gate;e.result=static_cast<unsigned>(output.result);
         for (std::size_t j=0;j<diagnostic.dispatched;++j) {

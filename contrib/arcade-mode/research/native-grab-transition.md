@@ -5,9 +5,53 @@
 The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
 is still incomplete**. BS Grab and Melon now have native animation evidence at
-measured 30 Hz; Method still fails gameplay after the repeated-input correction.
+measured 30 Hz. Method's repeated-input failure is now diagnosed; the native
+grab-owner correction below still requires gameplay acceptance.
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
+
+### Native grab-owner continuity correction
+
+The `c8f7971eb2f53fe06f8fa152446c5bc7dd75b1b2` diagnostic DLL
+(`09942bc8c76ed4a9ed4145cc7735f15cd011954274ced9deb2c3742b7b2a5f6b`)
+was verified loaded after CI run 41162131670 passed all three platforms,
+including 97 Windows tests. Its Method capture SHA-256 is
+`4afe121d80901bc3b198888d1d56d41dd54543bb5b92f2ca580b19142cbd4ca1`.
+The second physical B selected semantic Method (29), direction 4, presses 2.
+It was cancelled before the native adapter (`gate=0`, `disposition=3`).
+`failed_proofs=80` identifies unavailable flip selection and its absent object.
+The native observer explicitly reported `flip_known=false`; its fallback ID -1
+was **not** an observed idle selection. Previous source fixtures incorrectly
+supplied a valid -1 selection, explaining their passing result.
+
+The independent native sampler has 479 samples, no errors or log gaps, measured
+and cached 30 Hz, and flight 100→103→200→201→100. At the sample 5.46 ms before
+the second kernel B edge, native IsGrabbing, CanGrab, RightHandGrab and InAirState
+were true; LeftHandGrab was false and EnumGS.GrabType was BS (2). DetailedGrabType
+was not allocated yet. Kernel timestamps join this observation to the physical
+edge; Wine input-log milliseconds are a separate clock and are not substituted.
+Only Melon initialized and advanced; Method still has no native acknowledgment.
+
+Grab repeats now use the active grab adapter's exact original request lineage,
+local owner/state block and airborne episode, live input lease, and those native
+BS-grab signals. The dispatch boundary rechecks the native grab state when the
+lineage changed. This selects another original pose within the same BS blendspace;
+it does not admit another family, write a grab identity, force a transition or
+alter a clock. Flip selection/retirement remains diagnostic only for grabs.
+The flip queue and native flip bridge are unchanged.
+
+The existing IsGrabbing/hand assets are joined by read-only assets
+`Animation/Dingo/EnumGS.GrabType` (`387fb01d-9950-ce5d-387f-b01d9950ce5d`)
+and `Animation/Dingo/Bool.GP.CanGrab` (`aa379a76-0ada-6e20-aa37-9a760ada6e20`).
+Missing assets/state, wrong family or hand, failed eligibility, another request,
+owner or airborne episode cannot grant continuation. The capture row's new
+`native_owner` field records this independent proof; `retired` and `failed_proofs`
+still describe the old flip predicate for comparison and never grant admission.
+
+The 305 source checks include the observed invalid-selection case at 30/60/120 Hz
+and each native-proof veto. They are not native animation acceptance. Next is the
+same bounded Method trial against the corrected DLL, followed by hold/release and
+regression acceptance if its exact native animation advances.
 
 ### Repeat correction hardware result
 

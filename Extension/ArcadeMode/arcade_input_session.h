@@ -239,6 +239,8 @@ public:
         environment.native_pop_transition=admission.normal_flip.submit!=nullptr;
         environment.named_grabs=environment.named_grabs || admission.normal_grab.submit!=nullptr;
         environment.native_grab_transition=admission.normal_grab.submit!=nullptr;
+        environment.native_grab_context=admission.normal_grab.context;
+        environment.native_grab_continues=admission.normal_grab.continues;
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers

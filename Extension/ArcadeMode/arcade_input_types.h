@@ -57,6 +57,7 @@ struct NativeGrabRequest {
     void* context{};
     bool (*submit)(void*,const InputRequest&,ArcadeTrick,bool) noexcept{};
     bool (*right_hand_input)(void*) noexcept{};
+    bool (*continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
 };
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;

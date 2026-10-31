@@ -14,6 +14,14 @@ constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {
     return nullptr;
 }
 
+// Original native grab signals, read together from the qualified local state
+// block. BS here is EnumGS.GrabType=2, not DetailedGrabType=2 (Method).
+struct RetargetObservation {
+    bool valid{},grabbing{},can_grab{},left{},right{};
+    std::int32_t family{};
+    bool eligible() const noexcept { return valid && grabbing && can_grab && !left && right && family==2; }
+};
+
 // A physical request remains pending through a brief release until independent
 // native actor advancement AND the native dominant-pose tag agree. The deadline
 // is a failure bound, never a required input pulse or animation setup duration.

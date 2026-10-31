@@ -118,6 +118,8 @@ struct InputEnvironment {
     std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
     bool takeoff_actor_busy{};
     bool native_grab_transition{}; // Qualified grab adapter, separate from flip ownership.
+    void* native_grab_context{};
+    bool (*native_grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -319,7 +321,7 @@ class UnifiedInput {
 public:
     struct Diagnostic {
         struct GrabRepeat {
-            bool observed{}, extra{}, native_adapter{}, retired{};
+            bool observed{}, extra{}, native_adapter{}, retired{}, native_owner{};
             InputGenerations origin{};
             InputNativeContext before{}, current{};
         } grab_repeat{};
@@ -924,16 +926,20 @@ private:
         const bool extra = presses > 1 && !environment.deferred_grabs;
         if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
         // This is a new physical press, inheriting only the first grab's direction.
-        // Native grab entry retires the Ollie selection. Accept the new press's
-        // current generation only when the existing observer proves that exact
-        // 201/mode2 Ollie-to-idle transition in the same owner/air episode.
-        // Other action changes keep the original lineage and fail the queue gate.
+        // Native grab entry can invalidate the flip selector entirely. Rebind
+        // only through the grab adapter's same-request/owner/episode proof and
+        // independently observed native BS-grab state. Flip observations never
+        // grant grab continuity. The unchanged queue still rejects other owners.
         const auto* lineage = extra ? &grab_generations_ : nullptr;
+        const bool native_owner = extra && environment.native_grab_continues &&
+            environment.native_context.air_episode()==grab_native_.air_episode() &&
+            environment.native_context.generations.owner==grab_generations_.owner &&
+            environment.native_grab_continues(environment.native_grab_context,grab_generations_,grab_native_.air_episode());
         const bool retired = environment.native_context.jump_selection_retired(
             grab_generations_,grab_native_.air_episode(),grab_native_.flip);
         if (recognition_capture_) diagnostic_.grab_repeat = {true,extra,environment.native_grab_transition,
-            retired,grab_generations_,grab_native_,environment.native_context};
-        if (extra && environment.native_grab_transition && retired)
+            retired,native_owner,grab_generations_,grab_native_,environment.native_context};
+        if (native_owner)
             lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,

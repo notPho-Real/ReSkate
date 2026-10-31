@@ -14,22 +14,32 @@ struct Route {
     NativeInputOwner owner{1,2,3,4,5};NativeInputFrame frame{};
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
     bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
+    bool selection_valid{true};native_grab::RetargetObservation grab_observation{};
+    InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
     static bool submit(void* p,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
         auto& self=*static_cast<Route*>(p);if(!self.accept)return false;
         self.requests.push_back(request);self.tricks.push_back(trick);
+        self.grab_lineage=request.generations;self.grab_air=request.air_episode;self.grab_owner=self.owner;
         return self.lease.request(trick,self.now,held);
     }
     static bool right_hand_input(void* p) noexcept {
         auto& self=*static_cast<Route*>(p);
         return self.frame.airborne && self.lease.intent(self.now);
     }
+    static bool continues(void* p,InputGenerations origin,InputAirEpisode air) noexcept {
+        auto& self=*static_cast<Route*>(p);
+        return self.frame.valid && self.frame.airborne && self.owner==self.grab_owner &&
+            origin==self.grab_lineage && air==self.grab_air &&
+            InputNativeContext::from_frame(self.frame).air_episode()==air &&
+            self.lease.intent(self.now) && self.grab_observation.eligible();
+    }
     NativeGesture::Output poll(std::uint64_t at,std::uint16_t buttons=0,std::uint32_t state=201,
                               std::int32_t selection=-1,bool enabled=true) {
         now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
         sample.words[1]=state==100?0xc000u:0;
-        frame=producer.observe(at,owner,sample,{true,selection,selection_object});
+        frame=producer.observe(at,owner,sample,{selection_valid,selection,selection_object});
         readiness.publish(frame,{true,state==100,false,false,false,false,false,false,true,0});
         input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
         const auto admission=readiness.sample(at,frame);
@@ -37,7 +47,7 @@ struct Route {
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
             false,recipes,admission.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
             false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action,
-            admission.mirror_x,false,{}, {this,submit,right_hand_input});
+            admission.mirror_x,false,{}, {this,submit,right_hand_input,continues});
     }
 };
 void requests() {
@@ -126,6 +136,7 @@ void repeated_grab_after_native_jump_retirement() {
         r->poll(1000,0,201,1);
         r->poll(1000+dt,0x2004,201,1);
         const auto first=r->requests.back();
+        r->grab_observation={true,true,true,false,true,2};
         r->poll(1000+2*dt,4,201,-1);
         r->poll(1000+3*dt,0x2004,201,-1);
         check(r->requests.size()==2 && r->tricks.back()==ArcadeTrick::method,
@@ -137,7 +148,7 @@ void repeated_grab_after_native_jump_retirement() {
               first.generations.action!=r->requests.back().generations.action,
               "new physical repeat uses the independently qualified current action generation");
         const auto& proof=r->input.input_diagnostic(0)->grab_repeat;
-        check(proof.observed && proof.extra && proof.native_adapter && proof.retired &&
+        check(proof.observed && proof.extra && proof.native_adapter && proof.retired && proof.native_owner &&
               proof.before.flip.object==proof.current.flip.object && proof.origin.action==first.generations.action,
               "capture retains the actual repeat qualification without treating it as animation evidence");
         for (unsigned invalid=0;invalid<3;++invalid) {
@@ -162,5 +173,32 @@ void repeated_grab_after_native_jump_retirement() {
               "replacement selection identity is observable and still rejected before the adapter");
     }
 }
+void repeated_grab_without_flip_selection() {
+    for (unsigned hz:{30u,60u,120u}) for (unsigned failed=0;failed<9;++failed) {
+        auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        r->poll(1000,0,201,1);r->poll(1000+dt,0x2004,201,1);
+        const auto first=r->requests.back();
+        r->selection_valid=false;
+        r->grab_observation={true,true,true,false,true,2};
+        if(failed==1)r->grab_observation.valid=false;
+        if(failed==2)r->grab_observation.grabbing=false;
+        if(failed==3)r->grab_observation.can_grab=false;
+        if(failed==4)r->grab_observation.left=true;
+        if(failed==5)r->grab_observation.right=false;
+        if(failed==6)r->grab_observation.family=3;
+        if(failed==7)++r->grab_lineage.action;
+        if(failed==8)++r->grab_air.number;
+        r->poll(1000+2*dt,4,201,-1);
+        const auto out=r->poll(1000+3*dt,0x2004,201,-1);
+        const auto& proof=r->input.input_diagnostic(0)->grab_repeat;
+        check(!proof.retired && !proof.current.flip.valid,
+              "actual grab-entry loss of flip selection is retained, never relabeled as idle");
+        check(proof.native_owner==!failed && r->requests.size()==(failed?1u:2u),
+              "only the exact native BS-grab owner admits Method through unavailable flip selection");
+        if(!failed)check(r->tricks.back()==ArcadeTrick::method && out.action.grab_gate==1 &&
+            r->requests.back().physical_pressed_at==1000+3*dt && r->requests.back().air_episode==first.air_episode,
+            "native grab continuation preserves the new physical edge and original flight");
+    }
 }
-int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+}
+int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
