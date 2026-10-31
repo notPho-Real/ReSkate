@@ -1429,6 +1429,38 @@ external runner review are still required. This is read-only evidence
 preparation, not a production executor or gameplay acceptance. No additional
 Deck access, DLL/CI build or protected-system change occurred.
 
+### be22b1a window: native fixture admission rejected this lane
+
+After Grab released its hardware window, Manual explicitly granted Grind five
+minutes beginning approximately 23:02:38 UTC. The immutable identity runner
+verified source `be22b1a2f731485f8175c5fc8d8645598bb6a322`, DLL SHA-256
+`98aa97e1c4322b99023d286d0ccdce7bf3be87248e56d9195150147897e5b179`,
+PID69119 mapping the installed inode, and the original executable hash.
+The handoff reported San Vansterdam/Hedgemont Blue Light Beach after restart.
+Fresh native status showed bam generation5/revision5, stopped riding state100,
+position approximately (626.613159,199.972504,1065.305298), heading341.799255,
+ArcadeON, native menu/editor closed, and no configured fixture. Receipt:
+`grind-readiness-be22b1a-v1/results/1793487810169901000-status.json`.
+
+A separately reviewed bounded probe then opened the native editor and checked
+its actual state before requesting placement. This independently confirmed the
+queue-message finding: `parkeditor on` printed `ok: Debug request rejected.`,
+but the next native status reported `editor_open:true`. The subsequent native
+`arcadefixture place` explicitly rejected the lane: `Fixture lane lacks a
+continuous flat native collision surface.` No bypass or fallback placement was
+attempted. No rail was created; generation/revision remained 5/5 throughout,
+and native cleanup restored editor/menu closed. Final state100, speed0.00138,
+position (626.613159,199.972504,1065.305420), ArcadeON. The probe contains bounded
+undo for its own acknowledged placement, but that branch was not needed.
+Receipt: `grind-readiness-be22b1a-v1/results/1793487896287498000-fixture_probe.json`.
+Runner SHA-256: `a1a203c5dd27a6226dba46ece552385c88328b5637103fb69f63541f2d256ed5`.
+
+The Deck was explicitly released to Manual early at approximately 23:05:35 UTC.
+No virtual controller, debugger, gameplay input, teleport, world/layout/save,
+rate, persistent setting, DLL installation or new build occurred. This narrows
+the next setup requirement to a freshly collision-qualified lane; it supplies
+no 406 completion, named identity change or Ollie-out acceptance.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence
