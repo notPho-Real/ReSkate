@@ -570,7 +570,7 @@ def main():
                   'rollback-admitted-only':'new acquisition RS ownership must withdraw ordinary Down brake before balance admission',
                   'rollback-first-down-mask':'actual first-Down return mask ends only after275ms',
                   'rollback-native-axis':'owned manual correction must not also send native locomotion LSY',
-                  'rollback-revert-delivery':'delivered successor owns opposite balance and HUD on the next original step while native LS may still run'}[args.verify_control]
+                  'rollback-revert-delivery':'delivered successor owns opposite balance and HUD after consecutive original contact while native LS may still run'}[args.verify_control]
         result=subprocess.run([str(args.binary.resolve())],capture_output=True,text=True)
         if result.returncode!=1 or result.stderr.strip()!=expected:
             raise ValueError('rollback did not fail at its intended assertion: '+result.stderr)
