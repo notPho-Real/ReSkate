@@ -1499,6 +1499,36 @@ or DLL/CI build occurred in this follow-up. The blocker remains a qualified
 native control sequence producing the requested identity and animation during
 sustained contact; the production named dispatcher remains unwired.
 
+### 56f6c7b megapark window: fresh flat lane admitted
+
+Manual explicitly released a three-minute window at approximately 23:26:29 UTC.
+Independent read-only verification confirmed the supplied 56f6c7b source,
+fbf20e96 DLL hash/26604032-byte size, PID70570 mapped inode and original exe hash.
+Receipt: `grind-readiness-56f6c7b-v1/results/1793489202731653000.json`.
+Native status reported map bam generation8/revision8, state100, ArcadeON,
+closed menu/editor and position (133.628235,1.028666,-134.388840). The handoff
+identified the current world as skate3_megapark; Grind issued no world load.
+
+This position passed the original twelve-ray flat-lane admission. One original
+short rail spawned at (133.628250,-0.0000101,-126.388855), identity rotation and
+scale1, with revision8 -> 10. The separate `arcadefixture geometry` request
+was rejected at admission and recorded zero samples; native placement success
+is not rail-contact/segment evidence. The existing source requires gameplay
+admission for geometry, which this keyboard-only probe did not establish.
+The prepared controller trial must acquire its own fresh route/capture and
+native geometry evidence; it cannot promote this placement into acceptance.
+
+The probe undid exactly its own placement through `editor undo bam 8 10`.
+Native status independently confirmed revision12 and fixture present=false.
+Runtime fixture metadata remains configured=true after undo; no saved park or
+layout modification remains. Final state100, speed0.000193, original position
+and heading198.037842, ArcadeON, menu/editor closed. Receipt:
+`grind-readiness-56f6c7b-v1/results/1793489245345725000-fixture_probe.json`.
+The Deck was explicitly handed back early at approximately 23:27:45 UTC.
+No virtual pad, debugger, gameplay input, teleport, setting/rate change or DLL
+operation occurred. This identifies a fresh candidate lane in the preserved
+world, but proves neither a native grind transition nor rail-exit Ollie.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence
