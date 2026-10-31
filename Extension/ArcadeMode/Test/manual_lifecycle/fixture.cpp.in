@@ -795,14 +795,14 @@ void analog_manual_entry_tolerance(){
 }
 void manual_handoff_native_boundaries(){
  for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned missing=0;missing<9;++missing){
-  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const unsigned dt=1000/hz;raw.words[0]=0;qualified(nose,dt,300);
   const auto id=manual_episode.serial();const auto began=clock_ms;
   check(remap(0,0,0,255).action.owned,"native handoff negative control begins from independently admitted manual and RT");
   while(clock_ms-began<300){
    tick(dt,missing==0?100:101,0xc000);remap();
   }
   // A label may exist even when the physical transition is incomplete. It
-  // cannot stand in for the missing state, stance, owner or original interval.
+  // cannot stand in for the missing state, owner or original interval.
   ScoreLabelOccurrence event{true,score_label_bit(3),1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
   client(dt/1000.f,history(),event);
   if(missing==8){
@@ -812,16 +812,17 @@ void manual_handoff_native_boundaries(){
   }
   if(missing==2){tick(dt,103,0xc000);remap();}
   if(missing==3){owner.rig+=16;}
-  if(missing!=1)raw.words[0]^=0x20u;
+  raw.words[0]^=0x20u;
+  if(missing==1)raw.words[0]|=0x40u;
   const unsigned state=missing==4?300:missing==5?504:missing==6?400:100;
   tick(missing==7?200:dt,state,nose?0x4000u:0x8000u);
-  check(!remap().manual.owns,"physical handoff rejects absent101, unchanged stance, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
+  check(!remap().manual.owns,"physical handoff rejects absent101, pushing owner, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
   check(manual_episode.serial()==id,"failed native handoff never creates a replacement manual episode");
  }
 }
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(bool already:{false,true})for(unsigned ack_delay:{300u,900u}){
-  const unsigned dt=1000/hz;
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u}){
+  const unsigned dt=1000/hz;const bool already=contact_mode==1;
   qualified(nose,dt,300);const bool initial_nose=nose;trial_hz=hz;trial_start=clock_ms;trial_frame=0;
   const auto episode_id=manual_episode.serial();
   const auto multiplier=combo_session.model().state().multiplier;
@@ -850,10 +851,12 @@ void manual_revert_production(){
     client(dt/1000.f,history(),event);
    }
    check(combo_session.model().state().revert_pending==ack,"physical handoff cannot fabricate a missing native score-label acknowledgment");
-   check(!remap(0,0,0,255).manual.owns,"neither a score label nor native101 alone transfers RS before changed stance and grounded return");
-   raw.words[0]^=0x20u;advance_trial(dt);observe(dt/1000.f,already?(nose?0x4000u:0x8000u):0xc000u);client(dt/1000.f,history());
+   check(!remap(0,0,0,255).manual.owns,"neither a score label nor native101 alone transfers RS before original grounded return");
+   // Live Deck trace: foot-leading0x20 stays unchanged through native101->100.
+   // Native return can retain the old one-wheel contact until successor RS arrives.
+   advance_trial(dt);observe(dt/1000.f,already?(nose?0x4000u:0x8000u):contact_mode==2?(nose?0x8000u:0x4000u):0xc000u);client(dt/1000.f,history());
    const auto out=remap(already&&ack_delay==900?0x6000u:0u,0,0,255);
-   check(out.manual.owns&&out.manual.request==(nose?-1:1),"acknowledged stance change transfers manual RS before the native LS revert finishes");
+   check(out.manual.owns&&out.manual.request==(nose?-1:1),"observed native return with unchanged foot stance transfers manual RS before the native LS revert finishes");
    verify_left(out);
    check(!out.action.pad.owns_right_stick&&out.right_y==(nose?-20000:20000),"successor alone owns the correct RS pressure while RT remains held");
    // Client publication can run again before either XInput or the next
@@ -873,7 +876,7 @@ void manual_revert_production(){
        "revert-linked balance survives the acquisition deadline without artificial putdown");}
   }
   trial_hz=0;
-  std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Manual->Nose":"Manual->Nose->Manual")<<" two 10s holds "<<hz<<"Hz preexisting="<<already<<"\n";
+  std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Manual->Nose":"Manual->Nose->Manual")<<" two 10s holds "<<hz<<"Hz contact_mode="<<contact_mode<<"\n";
  }
 }
 void manual_observation_continuity(){

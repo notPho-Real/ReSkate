@@ -88,7 +88,7 @@ public:
         if(transitioning()){
             const bool linked=successor_.owner==generation_ && successor_.ack_at && f.sampled_at>=successor_.ack_at &&
                 f.sampled_at-successor_.ack_at<=1100 && f.physics_step>successor_step_ && f.physics_step>successor_.step &&
-                f.contact_generation>successor_.contact && (f.stance_and_push&0x20u)!=successor_.previous_stance &&
+                f.contact_generation>successor_.contact &&
                 f.state==100 && f.mode==1 && f.contacts==(successor_direction_<0?0x4000u:0x8000u);
             if(linked){integration_step_=f.physics_step;pose_=successor_direction_<0?SkatePose::manual:SkatePose::nose_manual;phase_=Phase::active;successor_={};transition_completed_=true;return false;}
             if(transition)return false;

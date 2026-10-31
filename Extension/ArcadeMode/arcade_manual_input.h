@@ -20,12 +20,12 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
     return valid && !bail && state == 101 && mode == 1 && revert_pending;
 }
 // Internal physical handoff proof: verified original balance, native101 followed
-// by100/1 with changed stance under the same owner. ack_at timestamps that native
+// by100/1 under the same owner. ack_at timestamps that native
 // transition, not a score-label event or an award. Opposite contact must still
 // corroborate successor delivery; this cannot adopt generic one-wheel contact.
 struct ManualRevertContact {
     std::uint64_t owner{},step{},contact{},ack_at{};
-    std::uint32_t previous_stance{};
+    std::uint32_t previous_stance{}; // Origin diagnostic only; leading foot need not change in a180.
     bool operator==(const ManualRevertContact&) const = default;
 };
 struct ManualInputDiagnostic {

@@ -47,8 +47,11 @@ public:
         takeoff_release_at_=0; takeoff_native_={}; takeoff_jump_observed_=false;
         revert_link_={}; revert_trigger_owned_=false;
     }
-    // Original native observations prove the physical handoff independently of
-    // HUD/score labels. This does not report a scored Revert or select FS/BS.
+    // A requested RT from verified manual ownership, followed by original native
+    // 101->100 observations, permits attempted successor pressure. Opposite
+    // contact on a later native step must still establish the successor.
+    // 0x20 identifies the leading foot, not rotation into fakie: it need not
+    // change during a native180 (see grind_exit.h). No score/FS/BS is inferred.
     void observe_manual_transition(const InputNativeContext& frame) noexcept {
         auto& link=revert_link_;
         if(!link.direction || link.confirmed_at)return;
@@ -63,8 +66,8 @@ public:
             frame.sampled_at<link.observed_at || frame.sampled_at-link.observed_at>150))link.transition_step=0;
         link.observed_step=frame.physics_step;link.observed_at=frame.sampled_at;
         if(frame.flip.state==101){link.transition_step=frame.physics_step;return;}
-        if(link.transition_step && frame.physics_step>link.transition_step &&
-            (frame.flip.stance&0x20u)!=link.stance)link.confirmed_at=frame.sampled_at;
+        if(link.transition_step && frame.physics_step>link.transition_step)
+            link.confirmed_at=frame.sampled_at;
     }
     // This is an admitted transition lease, not a revert success or score event.
     bool pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
@@ -192,9 +195,8 @@ public:
                 admission.pose==(revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual)) revert_link_={};
             else if(revert_link_.issued && !manual_.busy()) revert_link_={};
             else if(!revert_link_.issued && revert_link_.confirmed_at && !manual_.busy() && admission.manual_safe &&
-                native.flip.state==100 && native.flip.mode==1 &&
-                (native.flip.stance&0x20u)!=revert_link_.stance) {
-                // Native acknowledgment and changed stance transfer only RS.
+                native.flip.state==100 && native.flip.mode==1) {
+                // The observed native return transfers only RS.
                 // The existing revert keeps its complete LS trajectory. Waiting
                 // for that actor to finish would keep pressing the old manual
                 // through the opposite contact, then emit an unowned neutral poll.
