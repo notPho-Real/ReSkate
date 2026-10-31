@@ -1084,6 +1084,119 @@ The successful trial returned GDB0, explicitly detached, restored the feature
 false, restored Arcade ON and neutralized/detached controls. The Deck was
 explicitly released to the grab chat. No DLL/CI build or installation occurred.
 
+### Slower approach negative controls
+
+After Grab explicitly released the Deck, identity receipt
+`grind-identity-c69dd24-v1/results/1793421077039441000.json` verified the same
+installed/mapped c69 DLL in new PID 60959. The saved fixture was restored in
+the fresh bam generation 5/revision 9, then its native collision was measured
+again. All 129 samples completed at height 0.499374 m; stale coordinates alone
+were not used as eligibility.
+
+Two bounded original-control trials attempted to preserve more contact time
+by applying native B braking before the native stick Ollie. The first receipt,
+`grind-slow-control-c69dd24-v2/results/1793421171886714000-enabled_up.json`,
+measured braking to 3.98 m/s, above its 3.8 m/s approach gate. It withheld the
+jump and named control, then timed out. The second receipt,
+`grind-slow-control-c69dd24-v3/results/1793421321188084000-enabled_up.json`,
+admitted the approach at 3.940675 m/s and Z1078.233887, with the speed ceiling
+adjusted to 4.2 m/s. Preparation began at physical write 1257.795 ms and the
+flick at 1657.887 ms. Native state became 103 at 1.774 s, then 504 at 1.841 s;
+there was no established rail contact, AIR200, 406 entry or setting override.
+Its independent rail gate withheld the later Up request. Neither trial proves
+or disproves named execution; the brake/approach did not provide a valid origin.
+
+Both trials returned GDB0, explicitly detached, restored the experimental
+feature false, neutralized/detached controls and restored Arcade ON. The Deck
+was explicitly returned to Manual after the agreed two trials. Final fresh
+state was 504, speed 0.002888, position (633.757507,198.835953,1083.494019).
+Grind did not install a DLL, change the rate or save a park file.
+
+The next fixture candidate uses the original catalog's long round steel rail
+at native scale 1 and the previously working approach. The old short rail's
+ray sample can establish only the approach, not the replacement's geometry.
+Before delivering any transition input, a new read-only gate must verify the
+active native grind actor, contact bits and actual segment endpoints. Offline
+vtable inspection confirms states 400..405 share update 0x4821b80 and the
+base layout: vtables 0x65e69c8, 0x65e6ad8, 0x65e6be8, 0x65e6cf8,
+0x65e6e08, 0x65e68b8 respectively; virtual +64 returns the exact class.
+Prepared temporary editor operations use native transactions and bounded undo
+with exact generation/revision acknowledgment. This longer fixture runner has
+not run and supplies no new native acceptance.
+
+### Held native control branch source trace
+
+The Raw Nose condition (EBX30997/RES14548) provides the missing distinction
+between a fresh cardinal press and rotating an already held control. Original
+native call registrations resolve `f3918ee3` to 0x16eb250 (scalar less-than),
+`02dd315a` to 0x16eb190 (greater-than), `1b74206c` to 0x16eb600 (not),
+`eabfec6f` to 0x16eb6e0 (or) and `8eb2196d` to 0x16e7130 (and).
+The angular-range helper `ef02c056` is 0x831ee0 and wraps angles before
+the inclusive range comparison, optionally converting degree bounds.
+
+The Raw Nose kernel compares magnitude with 0.5 and uses a +/-60-degree
+acquisition window on the fresh directional path. On the retained-state path,
+it compares the current raw enum with Nose=1; the relevant normalized-axis
+escape comparison uses the out-of-range +/-2 threshold. This supports tracing
+a held angular sweep separately from a release/repress. Up's update computes
+heading from the signed angle to the captured reference and pitch from the
+stick magnitude (scaled by pi, with native sign conditions). Thus a fresh
+Right request's observed pitch=0 does not establish what Up-then-Right while
+held will request. The native raw-state/target-angle sequence and resulting
+named grind still need a live positive control; no nine-target recipe is
+inferred or enabled from this source trace alone.
+
+### Current contact admission and next bounded trial
+
+The production transition support now reads a validated current native segment
+before arming or granting initial feature admission. It brackets the active
+400..405 actor/vtable/context, selector output, fine identity, both contact
+bits, missing-segment flag and finite nondegenerate endpoints with fresh owner
+checks. Replaced actors, selectors, segments or identities invalidate the
+sample. A 406 lift cannot be used as an initial contact, but an already admitted
+406 continues to use its separately verified lifetime scope. Nothing is written
+by this reader; the original native geometry/exit policy remains authoritative.
+
+The original shared initializer at 0x48178d9 copies the context's segment data
+to actor +784, and 0x4817919 clears its missing-segment byte +912. Common update
+0x4821cd1 passes that same segment layout to the original geometry function.
+These supplement the vtable evidence above. Live endpoint readings on active
+400..405 actors, rather than the already observed 406 actor, still need the
+next trial. The reader is admission evidence, not an atomic physics snapshot,
+proof of remaining rail length, or named-grind acknowledgment.
+
+Strict address/undefined-behavior sanitizer checks now pass 625 assertions,
+including native lifetime/completion at 30/60/120 Hz and contact/geometry
+ownership changes. Existing reset/dispatch composition passes 69 checks and
+settings-source checks pass 7. The native lifetime/contact test was added to
+the existing Windows preflight and portable targeted test lists; no workflow
+was dispatched and no DLL was built.
+
+Manual has installed source c45f8832da783c4824b8ca8f31eebcd0a422e241 with DLL
+SHA-256 9081eb1f6231ef87713e016e2778c291faf53aa4b0b24822ef096749f473e31d,
+but has not confirmed it loaded. Manual explicitly retained Deck priority
+while waiting for the user's availability response. Grind remains offline;
+an idle chat is not a hardware release.
+
+The next runner was prepared locally with those exact identity pins. Source
+review caught that native layout edits require the park editor to be open;
+the candidate now opens it around its two bounded transactions, closes it
+before input, and includes failure cleanup. It uses original native undo to
+restore its own edits only after exact generation/revision validation. The
+prepared files remain under build/grind-investigation/prepared-c45-long-rail:
+
+- Identity runner: 8657ec878ca3fe9ad3b011c60d356686b29d65088deb5762f7c67fb6742c9d24.
+- Fixture runner: 59cb3b112c333cd536f33dc06db9259b0a6e188ce87b7958d470e24c3daff3dd.
+- Long-rail runner: 6de529c96575de6dbcc5253027ca3dbcc0935af8d84faf0e3757909b82fb667d.
+
+They have not been staged into the external lab or executed. Execution still
+requires explicit hardware release, review/staging of immutable runners, fresh
+loaded identity and current world/geometry. The missing production piece is
+unchanged: no named control recipe or dispatcher calls native_grind::arm.
+The next acceptance observation must distinguish a completed native actor
+from an actual new fine identity and corresponding animation during sustained
+contact. No new build is ready for testing yet.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence

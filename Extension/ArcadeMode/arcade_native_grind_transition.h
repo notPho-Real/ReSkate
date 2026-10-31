@@ -1,6 +1,7 @@
 #pragma once
 #include "Extension/Skater/no_bail.h"
 #include "arcade_grind_transition_lifetime.h"
+#include "arcade_grind_contact.h"
 #include <cstdint>
 
 namespace dingosdk::arcade_mode::native_grind {
@@ -11,6 +12,7 @@ bool start(std::uintptr_t base) noexcept;
 void tick(bool gameplay) noexcept;
 void cancel() noexcept;
 bool available() noexcept;
+NativeGrindContact contact(const NoBailSkater& owner) noexcept;
 bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept;
 bool pending() noexcept;
 bool setting_override(const void* reference,std::uintptr_t expression) noexcept;

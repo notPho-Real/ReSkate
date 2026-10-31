@@ -36,12 +36,6 @@ bool valid(const Lease& l) noexcept {
     std::lock_guard lock(mutex);
     return lease.serial==l.serial && lease.owner==l.owner;
 }
-bool contact(const Lease& l) noexcept {
-    const auto selector=pointer(l.owner.core+0x440), output=pointer(pointer(selector)+32);
-    std::uint8_t physical{},observed{};
-    return output && read(l.owner.context+4016,physical) && physical==1 &&
-        read(output+400,observed) && observed==1;
-}
 bool active_actor(const Lease& l,std::uintptr_t actor=0) noexcept {
     if (!actor)actor=pointer(l.owner.core+c::core_actor);
     auto reader=[](auto p,auto& v){return read(p,v);};
@@ -99,6 +93,14 @@ void cancel() noexcept {
     // use their original result; native selection and cleanup own actor exit.
 }
 bool available() noexcept { return ready.load() && gameplay_allowed.load(); }
+NativeGrindContact contact(const NoBailSkater& owner) noexcept {
+    return read_grind_contact(owner.base,owner.core,owner.context,
+        [](auto p,auto& v){return read(p,v);},[&] {
+            NoBailSkater current{};
+            return available() && owner.base==image && GetTickCount64()<=tick_expires.load() &&
+                no_bail_skater(current) && current==owner;
+        });
+}
 bool pending() noexcept { return request_pending.load(std::memory_order_acquire); }
 void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
@@ -131,15 +133,8 @@ bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::u
     const auto current_time=GetTickCount64();
     if (!available() || current_time>tick_expires.load() || !serial || now>current_time || current_time-now>150 ||
         deadline<=current_time || deadline-now>1500 || owner.base!=image) return false;
-    NoBailSkater current{};std::uint32_t state{},identity{};
     const Lease candidate{owner,serial,deadline};
-    const auto output=pointer(pointer(pointer(owner.core+0x440))+32);
-    if (!no_bail_skater(current) || current!=owner || !read(owner.context+c::selected_state,state) ||
-        state<400 || state>405 || !contact(candidate) || !output ||
-        // All four native 17-value grind blocks are valid origins, including
-        // intermediate boardslides. Invalid=0, the later special variants and
-        // Exit=77 are outside this initial control contract.
-        !read(output+192,identity) || !identity || identity>68) return false;
+    if (!contact(owner).valid) return false;
     std::lock_guard lock(mutex);
     if (lease.serial) return false;
     lease=candidate;completed={};request_pending.store(true,std::memory_order_release);return true;
@@ -154,7 +149,7 @@ bool setting_override(const void* reference,std::uintptr_t expression) noexcept 
         !expression_owner(expression,l) || !read(l.owner.context+c::selected_state,state))return false;
     // Initial admission needs contact. Native 406 can briefly lift the board;
     // its exact actor and selector remain authoritative during that interval.
-    const bool admitted=(state>=400 && state<=405 && !l.entered && contact(l)) ||
+    const bool admitted=(state>=400 && state<=405 && !l.entered && contact(l.owner).valid) ||
         (state==406 && active_actor(l));
     return admitted && valid(l);
 }

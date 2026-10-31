@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_grind_transition_lifetime.h"
+#include "Extension/ArcadeMode/arcade_grind_contact.h"
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -55,8 +56,77 @@ struct Fixture {
         check(result==0x600000 && calls==1,"original runs once and its output pointer is preserved");
     }
 };
+struct ContactFixture {
+    static constexpr std::uintptr_t base=0x140000000,core=0x200000,context=0x300000,
+        actor=0x400000,selector=0x500000,pages=0x600000,output=0x700000;
+    Memory memory;
+    ContactFixture(std::uint32_t state=401) {
+        memory.put(core,base+c::core_vtable);
+        memory.put(core+c::core_context,context);
+        memory.put(core+c::active_actor,actor);
+        memory.put(actor,base+c::contact_vtables[state-400]);
+        memory.put(actor+c::actor_context,context);
+        memory.put(context+c::selected_state,state);
+        memory.put(core+0x440,selector);memory.put(selector,pages);memory.put(pages+32,output);
+        memory.put(context+4016,std::uint8_t{1});memory.put(output+400,std::uint8_t{1});
+        memory.put(output+192,std::uint32_t{20});memory.put(actor+c::missing_segment,std::uint8_t{0});
+        // Original c69 completion receipt's four-metre rail. This reader
+        // establishes a current segment, not whether enough travel remains.
+        memory.put(actor+c::segment_begin,std::array<float,3>{633.076416f,199.243103f,1080.58496f});
+        memory.put(actor+c::segment_end,std::array<float,3>{633.076416f,199.243103f,1084.58496f});
+    }
+    NativeGrindContact sample(){return read_grind_contact(base,core,context,memory,[]{return true;});}
+};
 }
 int main() {
+    for(std::uint32_t state=400;state<=405;++state) {
+        ContactFixture f(state);
+        const auto sample=f.sample();
+        check(sample.valid && sample.actor==f.actor && sample.output==f.output && sample.state==state &&
+            sample.identity==20 && sample.end[2]-sample.begin[2]==4.f,
+            "original contact actors expose the current native segment without a minimum-length policy");
+    }
+    for(unsigned reject=0;reject<14;++reject) {
+        ContactFixture f;
+        switch(reject) {
+        case 0:f.memory.put(f.context+c::selected_state,std::uint32_t{406});break;
+        case 1:f.memory.put(f.context+c::selected_state,std::uint32_t{701});break;
+        case 2:f.memory.put(f.context+4016,std::uint8_t{0});break;
+        case 3:f.memory.put(f.output+400,std::uint8_t{0});break;
+        case 4:f.memory.put(f.actor+c::missing_segment,std::uint8_t{1});break;
+        case 5:f.memory.put(f.actor+c::missing_segment,std::uint8_t{2});break;
+        case 6:f.memory.put(f.actor+c::actor_context,std::uintptr_t{0x800000});break;
+        case 7:f.memory.put(f.actor,f.base+c::contact_vtables[0]);break;
+        case 8:f.memory.bytes.erase(f.actor+c::segment_end);break;
+        case 9:f.memory.put(f.actor+c::segment_end,std::array<float,3>{633.076416f,199.243103f,1080.58496f});break;
+        case 10:f.memory.put(f.actor+c::segment_begin,std::array<float,3>{0,std::numeric_limits<float>::infinity(),0});break;
+        case 11:f.memory.put(f.output+192,std::uint32_t{77});break;
+        case 12:f.memory.put(f.pages+32,std::uintptr_t{0});break;
+        case 13:f.memory.put(f.core+c::core_context,std::uintptr_t{0x800000});break;
+        }
+        check(!f.sample().valid,"missing contact/segment, invalid owner or rail exit cannot admit a new request");
+    }
+    for(unsigned changed=0;changed<8;++changed) {
+        ContactFixture f;unsigned reads{},resolves{};
+        const auto sample=read_grind_contact(f.base,f.core,f.context,[&](auto address,auto& value) {
+            const bool ok=f.memory(address,value);
+            // Change between reading the candidate fields and validating them.
+            if(address==f.actor+c::segment_end && ++reads==1) {
+                switch(changed) {
+                case 0:f.memory.put(f.core+c::active_actor,std::uintptr_t{0x800000});break;
+                case 1:f.memory.put(f.pages+32,std::uintptr_t{0x800000});break;
+                case 2:f.memory.put(f.output+192,std::uint32_t{23});break;
+                case 3:f.memory.put(f.context+4016,std::uint8_t{0});break;
+                case 4:f.memory.put(f.actor+c::segment_end,std::array<float,3>{633.076416f,199.243103f,1088.58496f});break;
+                case 5:f.memory.put(f.context+c::selected_state,std::uint32_t{403});break;
+                case 6:f.memory.put(f.selector,std::uintptr_t{0x800000});break;
+                default:break;
+                }
+            }
+            return ok;
+        },[&]{return ++resolves==1 || changed!=7;});
+        check(!sample.valid,"changed native ownership, identity or geometry invalidates the entire contact sample");
+    }
     // Captured native entry: initialized active=1; shared helper proposes 0.
     // The repair applies across the native actor's own update cadence, including
     // its temporary lift. Native completion executes outside this helper.
