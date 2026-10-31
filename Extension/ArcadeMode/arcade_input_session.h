@@ -70,11 +70,14 @@ public:
             link.confirmed_at=frame.sampled_at;
     }
     // This is an admitted transition lease, not a revert success or score event.
-    bool pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
-        return revert_link_.direction && frame.required && frame.fresh(now) &&
+    std::uint64_t pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
+        const bool pending=revert_link_.direction && frame.required && frame.fresh(now) &&
             frame.generations.owner==revert_link_.owner && now>=revert_link_.started &&
             (revert_link_.confirmed_at ? now>=revert_link_.confirmed_at && now-revert_link_.confirmed_at<=1100 : now-revert_link_.started<=1500) && !frame.airborne && !frame.rail_family &&
             (frame.flip.state==100 || frame.flip.state==101) && frame.flip.mode<=1 && !(frame.flip.stance&0x40u);
+        // The admitted request clock identifies this link. A later RT can
+        // replace a completed link before any native step observes no link.
+        return pending ? revert_link_.started : 0;
     }
     std::int32_t authored_air_followup(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&

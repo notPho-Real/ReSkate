@@ -824,7 +824,8 @@ void manual_handoff_native_boundaries(){
  }
 }
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u}){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u})for(bool rapid:{false,true}){
+  if(rapid&&(ack||contact_mode!=2||ack_delay!=900))continue;
   const unsigned dt=1000/hz;const bool already=contact_mode==1;
   qualified(nose,dt,300);const bool initial_nose=nose;trial_hz=hz;trial_start=clock_ms;trial_frame=0;
   const auto episode_id=manual_episode.serial();
@@ -884,6 +885,10 @@ void manual_revert_production(){
    nose=!nose;advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
    check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
       "delivered successor owns opposite balance and HUD on the next original step while native LS may still run");
+   if(rapid&&link==0){
+    remap(); // Real RT release then press before the next original physics step.
+    continue;
+   }
    const auto acquired=clock_ms;
    while(clock_ms-acquired<10000){const auto state=snapshot();tick(dt,100,nose?0x8000u:0x4000u);const auto held=remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0);
     if(clock_ms-began<1200)verify_left(held);
@@ -894,7 +899,56 @@ void manual_revert_production(){
        "revert-linked balance survives the acquisition deadline without artificial putdown");}
   }
   trial_hz=0;
-  std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Manual->Nose":"Manual->Nose->Manual")<<" two 10s holds "<<hz<<"Hz contact_mode="<<contact_mode<<"\n";
+  std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Manual->Nose":"Manual->Nose->Manual")<<(rapid?" immediate chain and 10s hold ":" two 10s holds ")<<hz<<"Hz contact_mode="<<contact_mode<<"\n";
+ }
+}
+void manual_revert_contact_publication_gap(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const auto id=manual_episode.serial(),request_at=remap().manual.request_at;
+  // Live c45 chain: original contact changes to both trucks before the next
+  // client publication, in the same interval as the second physical RT edge.
+  clock_ms+=dt;observe(dt/1000.f,0xc000u);
+  const auto waiting=remap(0,0,0,255);
+  if(!waiting.manual.owns)std::cerr<<"gap nose="<<nose<<" hz="<<hz<<" safe="<<waiting.manual.safe<<" request="<<waiting.manual.request<<" output="<<waiting.right_y<<" action="<<waiting.action.owned<<" admitted="<<manual_balance_admitted.load()<<" observed="<<static_cast<unsigned>(manual_observed.load())<<" episode="<<static_cast<unsigned>(manual_episode.phase())<<"\n";
+  check(waiting.manual.owns&&waiting.manual.request==(nose?1:-1)&&waiting.right_y==(nose?20000:-20000)&&waiting.manual.request_at==request_at,
+      "RT during a contact-publication gap retains established manual RS instead of falling through to a ground revert");
+  check(!waiting.action.owned&&!waiting.manual.revert.ack_at,
+      "missing current balance correlation waits without fabricating revert admission or acknowledgment");
+  client(dt/1000.f,history());const auto admitted=remap(0,0,0,255);
+  check(admitted.action.owned&&admitted.manual.owns&&admitted.right_y==(nose?20000:-20000)&&!admitted.action.pad.owns_right_stick,
+      "fresh authoritative episode publication admits the pending RT while preserving original RS");
+  check(manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "contact-publication race cannot bank or replace the established manual episode");
+  tick(dt,101,0xc000u);const auto turning=remap();
+  check(turning.manual.owns&&turning.right_y==(nose?20000:-20000)&&manual_episode.transitioning(),
+      "new native revert is linked to the retained manual rather than ordinary riding");
+  const auto began=clock_ms;
+  while(clock_ms-began<300){tick(dt,101,0xc000u);remap();}
+  tick(dt,100,0xc000u);const auto transfer=remap();
+  check(transfer.manual.revert.ack_at&&transfer.right_y==(nose?20000:-20000),
+      "publication-gap recovery still requires native return before starting opposite pressure");
+  const auto crossing=clock_ms;
+  while(clock_ms-crossing<220){tick(dt,100,0xc000u);remap();}
+  tick(dt,100,nose?0x4000u:0x8000u);remap();
+  const auto acquired=clock_ms;
+  while(clock_ms-acquired<10000){
+   const auto balance=snapshot();tick(dt,100,nose?0x4000u:0x8000u);
+   const auto held=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(held.manual.owns&&held.right_y==(nose?-20000:20000)&&manual_episode.serial()==id&&
+       balance_hud_pending()&&combo_session.model().state().combo_active&&!manual_release.pending(),
+       "contact-publication RT race recovers into ten seconds of opposite balance in the same episode");
+  }
+ }
+ for(bool nose:{false,true})for(unsigned loss:{0u,1u,2u,3u,4u}){
+  constexpr unsigned dt=17;qualified(nose,dt,300);
+  clock_ms+=dt;observe(dt/1000.f,0xc000u);remap(0,0,0,255);
+  if(loss==0)++owner.rig;
+  if(loss==4){clock_ms+=200;}
+  else {tick(loss==3?120:dt,loss==1?504:loss==2?300:100,0xc000u);}
+  const auto refused=remap(0,0,0,255);
+  check(!refused.manual.owns&&!refused.action.owned,
+      "queued RT across owner loss, offboard, bail, real putdown or stale evidence cannot retain or recreate authority");
  }
 }
 void manual_revert_without_native_transition(){
@@ -1110,6 +1164,7 @@ int main(){
  analog_manual_entry_tolerance();
  manual_handoff_native_boundaries();
  manual_revert_production();
+ manual_revert_contact_publication_gap();
  manual_revert_without_native_transition();
  manual_pressure_observation_gaps();
  manual_observation_continuity();

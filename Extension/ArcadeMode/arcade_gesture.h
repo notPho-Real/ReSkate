@@ -201,8 +201,8 @@ public:
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
     }
-    bool pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
-        return enabled_ && admitted(0,now) && sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame));
+    std::uint64_t pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
+        return enabled_ && admitted(0,now) ? sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame)) : 0;
     }
     void cancel_commands() noexcept { manual_correction_known_=false; for (auto& session : sessions_) session.reset(); ordinary_jump_playback_ = {}; native_rail_.cancel(); }
     // Ordinary jump and basic-flip recipes own RS, not the independent AIR
@@ -264,6 +264,17 @@ public:
             admission.offboard = native.state == game::build::v20260929::arcade_native_probe::offboard_state;
             const bool manual_phase = manual_balance_admitted &&
                 (balance_admission(now,InputBalanceKind::manual).valid || balance_admission(now,InputBalanceKind::nose).valid);
+            // Episode identity and current correction admission are different.
+            // A contact-only generation advance can precede client publication;
+            // retain the published episode pose while withholding new actions
+            // and correction until their exact contact correlation returns.
+            const bool retained_manual_pose = manual_balance_admitted && balance_owner_current(now,native) &&
+                balance_frame_.action_generation == native.action_generation &&
+                ((observed == SkatePose::manual && balance_controls_.kind == InputBalanceKind::manual &&
+                    (native.contacts == 0x4000u || native.contacts == 0xc000u)) ||
+                 (observed == SkatePose::nose_manual && balance_controls_.kind == InputBalanceKind::nose &&
+                    (native.contacts == 0x8000u || native.contacts == 0xc000u))) &&
+                native.mode == 1 && !(native.stance_and_push & 0x40u);
             // An admitted basic balance selects its own jump family. Physical
             // LT is an ordinary-ground modifier, not a replacement balance identity.
             if (native.state == 100 && (buttons & classic_a)) {
@@ -278,7 +289,7 @@ public:
                     admission.pose = SkatePose::air;
                     admission.may_start = admission.may_push = admission.may_toggle_board = false;
                 } else if (native.state == 100 || native.state == 103) {
-                    admission.pose = native.state == 100 && manual_phase ?
+                    admission.pose = native.state == 100 && (manual_phase || retained_manual_pose) ?
                         (balance_controls_.kind == InputBalanceKind::nose ? SkatePose::nose_manual : SkatePose::manual) : SkatePose::riding;
                     admission.may_push = admission.may_push && native.state == 100 && native.mode == 1 && native.contacts == 0xc000u;
                     admission.manual_safe = admission.manual_safe && native.state == 100 && native.mode == 1;
@@ -339,7 +350,7 @@ private:
         const auto observation = native_lip_observation(now);
         return observation.valid && (observation.fields & 2u) && observation.lip;
     }
-    bool balance_controls_current(std::uint64_t now,const NativeInputFrame& native) const noexcept {
+    bool balance_owner_current(std::uint64_t now,const NativeInputFrame& native) const noexcept {
         // A generation is an invalidation counter, not sufficient owner proof.
         // Retain the component's original lease and physical observation order.
         return native.valid && balance_controls_.admitted && balance_frame_.valid &&
@@ -347,8 +358,10 @@ private:
             balance_frame_.physics_step && balance_frame_.physics_step <= native.physics_step &&
             balance_frame_.sampled_at <= native.sampled_at && now >= balance_frame_.sampled_at &&
             now-balance_frame_.sampled_at <= 150 &&
-            balance_frame_.owner_generation == native.owner_generation &&
-            balance_frame_.contact_generation == native.contact_generation;
+            balance_frame_.owner_generation == native.owner_generation;
+    }
+    bool balance_controls_current(std::uint64_t now,const NativeInputFrame& native) const noexcept {
+        return balance_owner_current(now,native) && balance_frame_.contact_generation == native.contact_generation;
     }
     bool enabled_{}, native_bound_{}, focused_{};
     InputPolicy policy_;

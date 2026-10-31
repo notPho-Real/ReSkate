@@ -92,8 +92,15 @@ public:
         // it must not drop the established native RS balance hold.
         const auto wanted=requested_<0 ? SkatePose::manual : SkatePose::nose_manual;
         const bool vertical_balance=balance_admitted && requested_ && confirmed_ && observed==wanted;
+        // A newer native contact generation can precede the client balance
+        // publication. Retain an already-established RS hold for trigger-only
+        // input while the queued revert waits for current admission. Cancelling
+        // here would turn the same RT edge into an unrelated ground revert.
+        // This grants no revert admission, contact evidence or balance control.
+        const bool retained_trigger_hold=trigger_only_conflict && requested_ && confirmed_ &&
+            balance_established_ && observed==wanted;
         const bool opposed_vertical=(buttons&3u)==3u && !vertical_balance;
-        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict)) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
+        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict) && !retained_trigger_hold) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
             opposed_vertical || (buttons & 12u) == 12u || observed == SkatePose::bail ||
             observed == SkatePose::grind || (clocked_ && now < last_)) {
             const bool hard = !gameplay || (buttons & 0x0030u) || opposed_vertical || (buttons & 12u) == 12u ||

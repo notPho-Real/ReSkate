@@ -509,7 +509,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     const auto score = score_activity();
     NativeInputFrame native_frame{}, manual_completion{};
-    bool manual_continuity{}, pending_manual_revert{};
+    bool manual_continuity{};
+    std::uint64_t pending_manual_revert{};
     {
         std::lock_guard lock(ollie_mutex);
         native_frame = native_input_state.correlate(GetTickCount64(),input_owner(owner),native);

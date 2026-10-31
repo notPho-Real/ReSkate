@@ -9,7 +9,7 @@ class ManualEpisode {
 public:
     enum class Phase { inactive, acquiring, active, transitioning, airborne_suspended, combo_airborne, ended };
     enum class Exit { none, disabled, owner, offboard, grind, bail, putdown, incompatible, endpoint };
-    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
+    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
     Phase phase() const noexcept { return phase_; }
     Exit exit() const noexcept { return exit_; }
     std::uint64_t serial() const noexcept { return serial_; }
@@ -57,7 +57,7 @@ public:
     }
     // Return true only for a positive terminal boundary, including boundaries
     // observed between client ticks. Never infer a putdown from time alone.
-    bool observe(const NativeInputFrame& f,bool transition,bool bail=false) noexcept {
+    bool observe(const NativeInputFrame& f,std::uint64_t transition,bool bail=false) noexcept {
         if(!f.valid)return false;
         if(!established() && phase_!=Phase::combo_airborne)return false;
         const auto finish=[&](Exit reason){last_=f;end(reason);return true;};
@@ -83,7 +83,7 @@ public:
             two_at_=0;successor_={};return false;
         }
         if(phase_==Phase::combo_airborne){phase_=Phase::inactive;owned_=false;return false;}
-        if(!transition)transition_completed_=false;
+        if(transition!=transition_id_){transition_id_=transition;transition_completed_=false;}
         if(transition && !transition_completed_){phase_=Phase::transitioning;two_at_=0;}
         if(transitioning()){
             const bool linked=successor_.owner==generation_ && successor_.ack_at && f.sampled_at>=successor_.ack_at &&
@@ -111,7 +111,7 @@ public:
 private:
     Phase phase_{Phase::inactive};Exit exit_{Exit::none};SkatePose pose_{SkatePose::unknown};
     NativeInputOwner owner_{};NativeInputFrame last_{};ManualRevertContact successor_{};
-    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{};
+    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{};
     int successor_direction_{};bool owned_{},transition_completed_{},resume_pending_{},uncertain_{},reported_{};
     NativeInputFrame terminal_{};
     ManualInputDiagnostic command_{};

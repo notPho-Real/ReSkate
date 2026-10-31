@@ -149,6 +149,38 @@ pressure, no advancement across missing delivery intervals, owner-loss cleanup,
 and preservation through the final native packet writers. These tests establish
 software composition, not live acceptance of the complete revert chain.
 
+### Contact-publication race and immediate chained RT
+
+Live c45f883 trials at measured30Hz established both single RT directions and
+held the successor for more than13 seconds, with opposite original wheel
+contact and a continuous combo. The quick second RT failed: source step7206
+changed Nose contact to both trucks before the client balance publication.
+The returned RS became zero at205601182ms, before the second native101 at
+205601326ms. No balance endpoint caused that loss. This is failed chain
+acceptance, not a successful native termination. The first trial's later real
+balance endpoint after feedback stopped is recorded separately.
+
+The input facade was replacing the retained episode pose with riding whenever
+exact contact-generation admission lagged. RT then cancelled the original
+manual and ran as an unrelated ground revert. Retained pose now uses the
+existing fresh, same-owner episode publication during contact-only changes;
+correction and new action admission still require their exact current proof.
+An established actuator retains RS under trigger-only input while the actual
+RT edge waits in the existing request queue for fresh admission. No RT edge,
+contact, elapsed physics interval or acknowledgment is synthesized.
+
+A second production regression exercises two acknowledged links without an
+intervening native step that observes the pending flag clear. A boolean cannot
+distinguish that new RT from the completed link. The admitted request timestamp
+now identifies each transition throughout producer and client observation, so
+completion of one link cannot suppress the next link in the same episode.
+
+Both regressions fail on their prior production behavior. The publication-gap
+case covers both directions at30/60/120Hz through a ten-second successor hold,
+plus owner loss, offboard, bail, true putdown and stale-evidence rejection.
+These corrections still require a new verified DLL and live chain retesting;
+the installed c45 build does not contain them.
+
 The composition generator extracts actual native-observer, input/remap,
 update_combo, mode-toggle and HUD bodies. The focused tests include ten-second
 ground holds (both types; early/late history) at30/60/120 Hz, both revert
