@@ -1343,6 +1343,92 @@ it still has obsolete c45 pins and must be repinned/reviewed before use. Manual
 continues to own the Deck and is moving to another park, so earlier fixture
 coordinates cannot authorize the next trial. No hardware access occurred.
 
+### Short 2ad20da handoff: fresh scene readiness only
+
+Manual explicitly granted a maximum six-minute window, with reclaim priority,
+while its next CI run was building. The handoff reported the custom
+`skate3_megapark` loaded and the skater offboard near its spawn wall. The reviewed
+read-only identity runner confirmed source
+`2ad20da1d5696d69a7fcfc58637a8f0808afb07d`, DLL SHA-256
+`855c5b691c5d313b26290770b2c88ab53c2271f5a9e82bf44df7fc857ce72383`,
+and PID68008 mapping the installed DLL inode. Original executable hash matched.
+Receipt: `grind-readiness-2ad20da-v1/results/1793487084338357000.json`.
+
+Fresh Gamescope capture showed Steam idle artwork. The first status query
+received no fresh response. A reviewed single Shift press/release on the
+identity-checked Skate window dismissed the idle artwork; a subsequent capture
+showed the native Hub. The restricted resume/status runner dismissed the Hub
+and obtained two consistent native responses. Final receipt
+`grind-readiness-2ad20da-v1/results/1793487228023698000-resume_status.json`
+reported native map key bam, generation8/revision8, unconfigured fixture,
+position (130.811523,0.949989,-135.971436), heading226.238358, state504,
+speed0, ArcadeON, closed editor/menu. The native map key alone does not prove
+which custom park is loaded; no world/mod load command was issued.
+
+The Deck was explicitly released before the six-minute deadline, and Manual
+acknowledged release before assigning its next window to Grab. All operations
+completed and locks/keyboard keys were released; no controller device was
+created, debugger attached, fixture edited, gameplay input sent, setting/rate
+changed, or DLL built/installed. No native grind trial occurred. The old saved
+fixture and approach coordinates remain ineligible in this scene.
+
+Follow-up source review also corrects an earlier diagnostic interpretation:
+`ok: Debug request rejected.` does **not** prove that `parkeditor on` was
+rejected. `Runtime/console_bridge.cpp::queue_console_debug` passes that text
+as a fallback to `console_callback_result`; when the queue succeeds without
+result text, it still prints the fallback with an `ok:` prefix. Execution is
+asynchronous. Actual editor admission requires the subsequent native editor
+state; `debug_action` also requires local camera/control phase and host object
+placement permission. Unlike generic native editor transactions,
+`arcadefixture place` itself explicitly requires editor-open, stopped riding
+state100 and its twelve native ground-ray lane checks. No fixture runner should
+treat queue text as proof of execution or bypass these requirements. This
+clarification changes no production editor/camera behavior.
+
+### Successor publication and classifier family (offline follow-up)
+
+The original output publisher now resolves the previously ambiguous selector
+state words. In core output function `0x47da450`, the active actor's virtual
+`+64` return is written to state page `+28` at `0x47da93b`. The same return is
+passed to `0x481bec0` at `0x47daaa9`, and the resulting family is written to
+state page `+24` at `0x47dab1a`. The original family function maps every state
+400..499 to 400. Consequently the classifier's previous-family-400 branch
+also applies to 401, 403 and 406 during uninterrupted grind publication; its
+comparison is not limited to the boardslide actor 400. A changed six-word
+candidate must survive a subsequent identical classifier update before the
+accepted tuple changes. A changed component resets that progress again.
+This is a native update condition, not a fixed wall-time acknowledgment delay.
+
+The actor output call is virtual `+80` at `0x47db0ff`. Vtable inspection and
+the original callees independently establish the coarse-family publisher:
+401 uses `0x4818880` and writes output `+180 = 0`; 403 uses `0x48188b0` and
+writes `+180 = 1`. During 406, `0x4818d50` deliberately maps the source actor
+at `+1040` instead. Thus a 401 -> 406 -> 403 request has distinct milestones:
+original completion, successor selection, successor coarse publication,
+candidate tuple, accepted tuple/fine identity, and animation. Neither the
+selected state nor the completion hook substitutes for the later observations.
+
+The static lookup's runtime provenance was also checked: initializer
+`0x47bd410` calls `0x47c8950`, then `0x47bd527..0x47bd539` copies each 64-byte
+descriptor's integer from table `0x778ac90` into the compact table `0x778a090`
+used by `0x47dba47`. All reconstructed rows that yield fine identity 20 have
+coarse tuple element zero. None of the coarse-one rows yields 20. Therefore
+the earlier short-rail successor's lingering identity 20 is not an alternative
+name for the completed 403 action. That old trace lacks the necessary coarse
+and candidate/accepted observations to determine where publication stopped;
+it still cannot qualify a named control recipe.
+
+The locally prepared v6 reader records coarse output `+180` with the existing
+bracketed tuple sample and labels the two published state words separately.
+Seven inert memory cases pass, including changed coarse output and changed
+published actor state. Candidate
+`build/grind-investigation/grind-native-long-c45-v6.py` has SHA-256
+`4b499fe0e488819db92e0e4cf64b227e0ada2bd26937919406c93a734c3eb9ad`.
+It remains unexecuted with obsolete c45 pins; fresh identity, geometry and
+external runner review are still required. This is read-only evidence
+preparation, not a production executor or gameplay acceptance. No additional
+Deck access, DLL/CI build or protected-system change occurred.
+
 ## Required live acceptance
 
 Before accepting: validate executable/DLL identity and original physics cadence
