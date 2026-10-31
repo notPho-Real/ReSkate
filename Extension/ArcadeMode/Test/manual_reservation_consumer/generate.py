@@ -120,6 +120,8 @@ def generate(root,variant='current'):
         once('remap(already&&ack_delay==900?0x6000u:0u,0,0,255)','remap(already&&ack_delay==900?0x6000u:0u,0,0,0,255)')
         once('remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
              'remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
+        once('remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
+             'remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
     once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
@@ -137,6 +139,7 @@ def generate(root,variant='current'):
     new=r'''
      if(releasing_manual&&!result.authored_playback&&!action.owned)result.right_x=result.right_y=0;
      struct RotationBoundary{bool owns_left;short x{1111},y{2222};}rotation{competing_left_owner};
+     const auto manual_pressure=result.right_y;
      const auto rail_pad=arcade_input.sample_native_rail(result.rail,now,game_input&&!offboard&&!releasing_manual&&!reference&&!action.owned);
      movement_eligible_until.store(now+150);
      ACTION_DELIVERY
@@ -151,8 +154,8 @@ def generate(root,variant='current'):
      FINAL_CONTROLS
      last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive,left_trigger,right_trigger,physical_buttons};
      if(result.manual.owns&&result.manual.revert.ack_at&&action.pad.owns_left_stick){
-      check(last_pad.ry==result.manual.request*20000&&!action.pad.owns_right_stick,
-         "final native packet retains the successor RS owner during LS revert playback");
+      check(last_pad.ry==manual_pressure&&std::abs(static_cast<int>(last_pad.ry))<=20000&&!action.pad.owns_right_stick,
+         "final native packet retains the measured successor pressure trajectory during LS revert playback");
       check(last_pad.x==action.pad.left_x&&last_pad.y==action.pad.left_y,
          "final native packet preserves the original LS revert recipe during manual handoff");
      }

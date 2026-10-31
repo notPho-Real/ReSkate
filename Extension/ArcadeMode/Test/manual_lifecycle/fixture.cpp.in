@@ -807,7 +807,8 @@ void manual_handoff_native_boundaries(){
   client(dt/1000.f,history(),event);
   if(missing==8){
    raw.state=100;raw.words[0]^=0x20u;client(dt/1000.f,history());
-   check(!remap().manual.owns,"client-ahead stance publication cannot substitute for a new original native transition step");
+   const auto retained=remap();
+   check(!retained.manual.owns || retained.manual.request==(nose?1:-1),"client-ahead stance publication cannot substitute for a new original native transition step");
    check(manual_episode.serial()==id,"client-only publication retains original episode identity");continue;
   }
   if(missing==2){tick(dt,103,0xc000);remap();}
@@ -816,7 +817,9 @@ void manual_handoff_native_boundaries(){
   if(missing==1)raw.words[0]|=0x40u;
   const unsigned state=missing==4?300:missing==5?504:missing==6?400:100;
   tick(missing==7?200:dt,state,nose?0x4000u:0x8000u);
-  check(!remap().manual.owns,"physical handoff rejects absent101, pushing owner, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
+  const auto refused=remap();
+  check((!refused.manual.owns || refused.manual.request==(nose?1:-1))&&!refused.manual.revert.ack_at,
+      "physical handoff rejects absent101, pushing owner, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
   check(manual_episode.serial()==id,"failed native handoff never creates a replacement manual episode");
  }
 }
@@ -851,18 +854,33 @@ void manual_revert_production(){
     client(dt/1000.f,history(),event);
    }
    check(combo_session.model().state().revert_pending==ack,"physical handoff cannot fabricate a missing native score-label acknowledgment");
-   check(!remap(0,0,0,255).manual.owns,"neither a score label nor native101 alone transfers RS before original grounded return");
+   const auto retained=remap(0,0,0,255);
+   check(!retained.manual.owns || retained.manual.request==(nose?1:-1),"neither a score label nor native101 alone transfers RS before original grounded return");
    // Live Deck trace: foot-leading0x20 stays unchanged through native101->100.
    // Native return can retain the old one-wheel contact until successor RS arrives.
    advance_trial(dt);observe(dt/1000.f,already?(nose?0x4000u:0x8000u):contact_mode==2?(nose?0x8000u:0x4000u):0xc000u);client(dt/1000.f,history());
    const auto out=remap(already&&ack_delay==900?0x6000u:0u,0,0,255);
    check(out.manual.owns&&out.manual.request==(nose?-1:1),"observed native return with unchanged foot stance transfers manual RS before the native LS revert finishes");
    verify_left(out);
-   check(!out.action.pad.owns_right_stick&&out.right_y==(nose?-20000:20000),"successor alone owns the correct RS pressure while RT remains held");
+   check(!out.action.pad.owns_right_stick&&out.right_y==(nose?20000:-20000),"successor takes RS at original pressure without a native flick while RT remains held");
    // Client publication can run again before either XInput or the next
    // original physics callback. It must not erase the delivered acquisition.
    client(dt/1000.f,history());
    remap(0,0,0,255);client(dt/1000.f,history());remap(0,0,0,255);
+   const auto pressure_began=clock_ms;short previous=out.right_y;
+   while(clock_ms-pressure_began<200){
+    const auto duplicate=remap(0,0,0,255);
+    check(duplicate.right_y==previous,"duplicate client/input polls cannot advance the native-step pressure trajectory");
+    advance_trial(dt);observe(dt/1000.f,already?(nose?0x4000u:0x8000u):0xc000u);client(dt/1000.f,history());
+    const auto crossing=remap(0,0,0,255);verify_left(crossing);
+    const int delta=(nose?-1:1)*(crossing.right_y-previous);
+    check(crossing.manual.owns&&!crossing.action.pad.owns_right_stick&&delta>=0&&delta<=static_cast<int>(((1000+hz-1)/hz)*200),
+        "native-step transfer owns RS and crosses monotonically without an instantaneous opposite flick");
+    check(manual_episode.serial()==episode_id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+        "measured two-truck pressure crossing preserves original episode and HUD without a false physical exit");
+    previous=crossing.right_y;
+   }
+   check(previous==(nose?-20000:20000),"200ms of consecutive native observations completes successor pressure");
    nose=!nose;advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
    check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
       "delivered successor owns opposite balance and HUD on the next original step while native LS may still run");
@@ -877,6 +895,56 @@ void manual_revert_production(){
   }
   trial_hz=0;
   std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Manual->Nose":"Manual->Nose->Manual")<<" two 10s holds "<<hz<<"Hz contact_mode="<<contact_mode<<"\n";
+ }
+}
+void manual_revert_without_native_transition(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);
+  const auto episode=manual_episode.serial(),began=clock_ms;
+  const auto request_at=remap().manual.request_at;
+  check(remap(0,0,0,255).action.owned,"failed-revert regression starts the existing RT recipe from real admitted manual");
+  while(clock_ms-began<10000){
+   // Recorded inverse failure: native100 and the original nose contact,
+   // without101 or any opposite contact. Finishing LS must not release RS.
+   const auto feedback=snapshot();
+   const auto age=clock_ms-began;
+   tick(dt,100,age>=50&&age<215?0xc000u:wanted);
+   const auto out=remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,clock_ms-began<1200?255:0);
+   check(out.manual.owns&&out.manual.request==(nose?1:-1)&&out.manual.request_at==request_at&&
+       out.right_y==(nose?20000:-20000)&&!out.manual.revert.ack_at,
+       "unacknowledged RT retains original manual actuator and request clock without a false opposite handoff");
+   check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "finite revert recipe cannot end an independently continuing original manual or combo");
+  }
+  tick(dt,100,0xc000);remap();
+  for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
+  check(!remap().manual.owns&&!balance_hud_pending(),"retained original still exits on a verified native putdown");
+ }
+}
+void manual_pressure_observation_gaps(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool owner_loss:{false,true}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);const auto episode=manual_episode.serial();
+  check(remap(0,0,0,255).action.owned,"pressure-gap case starts the real manual revert actor");
+  for(unsigned i=0;i<5;++i){tick(dt,101,wanted);remap();}
+  tick(dt,100,wanted);const auto start=remap();
+  check(start.manual.revert.ack_at&&start.right_y==(nose?20000:-20000),"acknowledged transfer begins at actual original pressure");
+  tick(dt,100,wanted);const auto first=remap();
+  check(first.right_y!=start.right_y,"one new original step advances pressure");
+  for(unsigned i=0;i<3;++i)tick(dt,100,wanted); // no consumer/delivery
+  const auto resumed=remap();
+  check(resumed.right_y==first.right_y&&resumed.manual.request_at==first.manual.request_at,
+      "missed delivery steps do not jump pressure or restart acquisition");
+  for(unsigned i=0;i<5;++i)check(remap().right_y==resumed.right_y,"repeated reads of one native sample leave pressure fixed");
+  tick(dt,100,wanted);const auto next=remap();
+  check((nose?-1:1)*(next.right_y-resumed.right_y)==static_cast<int>(dt*200),
+      "resumed pressure advances only the next consecutive native interval");
+  if(owner_loss)owner.rig+=16;else clock_ms+=1200;
+  tick(dt,100,wanted);
+  const auto lost=remap();
+  check(!lost.manual.owns&&!manual_release.pending()&&manual_episode.serial()==episode&&(!owner_loss||!balance_hud_pending()),
+      "owner loss or expired unfinished transfer revokes actuation without a pressure snap or synthetic putdown");
  }
 }
 void manual_observation_continuity(){
@@ -1042,6 +1110,8 @@ int main(){
  analog_manual_entry_tolerance();
  manual_handoff_native_boundaries();
  manual_revert_production();
+ manual_revert_without_native_transition();
+ manual_pressure_observation_gaps();
  manual_observation_continuity();
  analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();

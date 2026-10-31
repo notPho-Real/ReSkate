@@ -97,6 +97,58 @@ no actuator authority.
 
 ## Tests, diagnostics and remaining acceptance
 
+### Native handoff follow-up
+
+The live leading-foot candidate exposed two separate boundaries. In a qualified
+Manual RT trial, original native101 returned to100 with the leading-foot bit
+unchanged. The opposite RS request was delivered, but changing directly from
+-20000 to+20000 was followed by native103,200,201 and an Ollie. The successor
+manual was not acquired. This is failed live acceptance, despite the composed
+successor-observation fixtures passing. The native pop/flip implementation must
+not be changed to conceal this failure.
+
+Bounded native-input controls subsequently isolated this behavior with Arcade
+OFF and original-step/returned-packet capture at an observed30Hz. Abrupt
+-20000 to+20000 reproduced103,200,201. A200ms physical RS crossing stayed100
+and reached the opposite wheel in both directions; the two-truck transfer
+interval was approximately234ms and201ms respectively. Neither result proves
+the complete Arcade RT chain or ten-second successor hold. The first two
+diagnostic attempts only held Manual (capture/parser issues prevented any
+transfer), and receive no transfer-success credit.
+
+The handoff now starts from the original pressure and crosses over200ms.
+Consecutive original native observations advance the input trajectory; duplicate
+client polls and skipped native intervals cannot accelerate it. The complete
+opposite pressure must actually be delivered before the existing contact join
+can admit the successor. An expired or invalid unfinished transfer withdraws
+its actuator instead of falling through to full opposite pressure. This is
+input actuation, not invented balance integration or a native acknowledgment.
+The existing RT LS recipe, native launch physics and flip paths are unchanged.
+
+In the inverse trial the LS recipe ran, but native101 and a completed revert
+were not observed. Original nose contact returned after a brief two-truck
+fluctuation. At recipe completion the canceled original actuator had no owner
+to resume its RS hold; pressure became zero, followed by a genuine putdown.
+This is not evidence that the native revert recipe needs modification.
+
+The original manual actuator now remains the RS owner during its admitted RT
+transition. The existing finite revert actor retains its LS trajectory. Only
+verified native return transfers RS to the successor request. If no return is
+verified, completion of the LS actor leaves the original held manual intact;
+its request timestamp, balance episode and combo remain unchanged. Native
+owner loss, incompatible gameplay transitions and observation freshness still
+bound this authority. The pending transition does not become an acknowledgment.
+
+A production-composed regression replays the inverse trial's missing native
+transition and short contact fluctuation, then holds the original manual for
+ten seconds at30/60/120Hz in both directions. It checks RS ownership, unchanged
+request timestamp, absence of a false successor, continuous episode/HUD/combo,
+and subsequent real putdown. Restoring cancellation at RT start fails this
+regression. Additional production-composed cases require monotonic native-step
+pressure, no advancement across missing delivery intervals, owner-loss cleanup,
+and preservation through the final native packet writers. These tests establish
+software composition, not live acceptance of the complete revert chain.
+
 The composition generator extracts actual native-observer, input/remap,
 update_combo, mode-toggle and HUD bodies. The focused tests include ten-second
 ground holds (both types; early/late history) at30/60/120 Hz, both revert
