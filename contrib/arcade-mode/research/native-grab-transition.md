@@ -4,12 +4,14 @@
 
 The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
-is still unverified**. Source/build work remains the authorized scope. Broad
+is still unverified**. The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
 
 The missing intent and observation definitions were recovered from the original
-`dingolevel_root` shared bundle. The adapter writes only the native left/right
-hand intents and the two native tweak signals. It leaves CanGrab, native grab
+`dingolevel_root` shared bundle. The revised adapter delivers the original right
+trigger through the existing bounded input output and writes the two inspected
+native tweak request signals. The original input producer owns left/right hand
+intent and eligibility. It leaves CanGrab, native grab
 selection, detailed identity, animation clocks, blending, flight and scoring to
 the game. The normal entry edge is level EBX 19856; the earlier edge 27611 is a
 separate held-flip entry and must not be used as the ordinary Ollie route.
@@ -61,7 +63,48 @@ production input-session checks and neutral-flip checks also pass after the fix.
 See `native-grab-source-pilot.json` for exact original identities and asset
 receipts. Required gameplay acceptance remains A→B, A→Left+B, A→Left+double B,
 tap/hold/release, flight continuity, native landing/scoring, and negative controls
-at measured 30/60/120 Hz. No installation or live-channel publication is authorized.
+at measured 30/60/120 Hz. Coordinated Deck installation/testing is now authorized;
+live-channel publication remains prohibited.
+
+## First hardware trial and input-path correction
+
+The exact `fbcc0e9ef1be8620fab4e2b2fe20adf68a4ebc32` DLL was installed and
+its loaded file mapping verified after an exclusive handoff from the manual task.
+The previous build, receipt, settings and log were preserved separately; the
+original rollback was unchanged. The tested DLL SHA-256 was
+`fbe516a134440e81af03dd557d4e7b9ae46951223b40950a1ee1958183b45f2c`.
+
+At measured 30 Hz, A then Left+B produced semantic Melon, expected detailed
+identity 4, in the original airborne episode. Neither native actor initialization
+nor advancement acknowledged the request. An independent read-only sampler then
+captured 488 samples: RightHandGrab and TweakFrontBack=1 were present together in
+61 samples, but valid native CanGrab stayed false in all 488. GrabType stayed 0.
+Flight rose and fell through native states 200/201 and returned to state 100.
+IsGrabbing and DetailedGrabType storage remained unallocated; absence was recorded
+as unknown, not a false or zero observation.
+
+An original-game comparison with Arcade OFF used a native stick Ollie and RT.
+CanGrab and RightHandGrab became true in 54 samples, GrabType became 2, and
+DetailedGrabType became 1. The HUD showed BS Grab. This qualifies the input route
+for the correction, not an independent clip-advancement acceptance of our pilot.
+Arcade was restored ON after every comparison. A bounded hardware watchpoint
+observed the CanGrab write in the existing Bool setter at RVA 0x11dd7a0;
+the verified return address was 0x16d16f0 in expression interpreter 0x16d1190.
+Generic debugger stack unwinding was invalid and was not used as caller evidence.
+
+The failure is therefore beyond semantic recognition: directly setting the hand
+intent bypassed the original input path that establishes grab eligibility. The
+follow-up supplies that native input under the existing owner/episode/heartbeat
+lease. It has no fixed setup pulse: taps retain input until exact native actor
+acknowledgment, and held input follows physical B until release or native exit.
+Only tweak requests are written at candidate evaluation. No eligibility flag,
+animation identity, animation clock, native physics or scoring is forced.
+
+The correction passed 224 production-composed grab checks at 30/60/120 Hz and
+the input-session, neutral-flip-release, air-motion-proof, action-dispatch and
+control-state suites. The lab suite passed 458 tests with one skip. Its new DLL
+still requires the three-pilot hardware acceptance; catalog expansion remains
+gated. Machine-readable evidence is in `native-grab-hardware-pilot.json`.
 
 ## Historical investigation checkpoint
 

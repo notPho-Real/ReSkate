@@ -2227,6 +2227,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             [](void* context,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
                 return native_grab::request(grab.owner,grab.episode,request,trick,held);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::right_hand_input(grab.owner,grab.episode);
             }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,

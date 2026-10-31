@@ -251,6 +251,12 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
     enqueue({false,held,false,false,session.serial,episode,trick,pilot(trick)->detail,physical});
     return true;
 }
+bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept {
+    if (!active.load()) return false;
+    std::lock_guard lock(mutex);
+    return valid() && owner==session.owner && episode==session.episode &&
+        session.lease.intent(GetTickCount64());
+}
 void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!active.load() || !std::isfinite(delta) || delta<=0) return;
     std::lock_guard lock(mutex);
@@ -264,9 +270,11 @@ void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!session.lease.intent(now)) {retire();return;}
     const auto& p=*session.lease.selected();
     const std::array<std::uint32_t,4> values{0,1,std::bit_cast<std::uint32_t>(p.x),std::bit_cast<std::uint32_t>(p.y)};
-    // Only request ports are written. CanGrab, GrabType, detailed identity,
-    // animation clocks, native branch guards and physics are never overridden.
-    for (unsigned i=0;i<4;++i) {
+    // The original trigger-input path owns hand intent and CanGrab. HIL proved
+    // hand-state writes alone bypass that eligibility producer. Only the two
+    // inspected pose-request signals are supplied here; native eligibility,
+    // identities, animation clocks, blending and physics remain game-owned.
+    for (unsigned i=2;i<4;++i) {
         const auto at=address(i);const unsigned size=i<2?1:4;auto& w=session.writes[i];
         if (!at || (w.at && w.at!=at)) {retire();return;}
         if (!w.at) {

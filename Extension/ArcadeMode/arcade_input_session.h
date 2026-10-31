@@ -302,6 +302,18 @@ public:
         if ((grab_actor_ ? !admission.inspected_stance : !revert_context(admission,now)) ||
             (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
+        // Use the original grab input producer, not a fixed-duration recipe.
+        // The native lease retains taps until exact actor acknowledgment and
+        // withdraws on release/exit; this never requests another pop or stick flick.
+        if (admission.action_mode==ActionExperiment::classic && admission.normal_grab.right_hand_input &&
+            context==InputContext::air && admission.action_fresh && admission.inspected_stance &&
+            !admission.nollie && !busy && !board_active_ && !admission.external_owner &&
+            physical.lt<=30 && physical.rt<=30 && !auxiliary_.busy() &&
+            admission.normal_grab.right_hand_input(admission.normal_grab.context)) {
+            output.action.pad.owns_triggers=true;
+            output.action.pad.left_trigger=0;
+            output.action.pad.right_trigger=255;
+        }
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
         output.action.owned = action.owns_right_stick || action.owns_left_stick || action.owns_triggers || action.owns_face_buttons;

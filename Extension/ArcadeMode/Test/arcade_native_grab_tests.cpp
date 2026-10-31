@@ -21,6 +21,10 @@ struct Route {
         self.requests.push_back(request);self.tricks.push_back(trick);
         return self.lease.request(trick,self.now,held);
     }
+    static bool right_hand_input(void* p) noexcept {
+        auto& self=*static_cast<Route*>(p);
+        return self.frame.airborne && self.lease.intent(self.now);
+    }
     NativeGesture::Output poll(std::uint64_t at,std::uint16_t buttons=0,std::uint32_t state=201,
                               std::int32_t selection=-1,bool enabled=true) {
         now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
@@ -33,7 +37,7 @@ struct Route {
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
             false,recipes,admission.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
             false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action,
-            admission.mirror_x,false,{}, {this,submit});
+            admission.mirror_x,false,{}, {this,submit,right_hand_input});
     }
 };
 void requests() {
@@ -42,7 +46,9 @@ void requests() {
         r->poll(at(0));const std::uint16_t direction=variant?4:0;
         auto out=r->poll(at(1),static_cast<std::uint16_t>(0x2000|direction));
         check(r->requests.size()==1,"physical B reaches the production native callback in its press poll");
-        check(!out.action.pad.owns_triggers && !out.authored_playback,"native grab request emits no trigger recipe or flip playback");
+        check(out.action.pad.owns_triggers && out.action.pad.right_trigger==255 && !out.action.pad.left_trigger,
+              "B reaches the native trigger input that establishes grab eligibility in the same poll");
+        check(!out.action.pad.owns_right_stick && !out.authored_playback,"grab delivery never emits a flip flick or replays the pop");
         check(r->requests[0].physical_pressed_at==at(1),"original physical press timestamp survives native handoff");
         check(r->lease.intent(at(1)) && !r->lease.acknowledged(),"queueing is not native animation acknowledgment");
         if(variant==2) {r->poll(at(2),direction);r->poll(at(3),static_cast<std::uint16_t>(0x2000|direction));}
@@ -51,7 +57,8 @@ void requests() {
         const auto count=r->requests.size();
         for(unsigned n=4;n<10;++n)r->poll(at(n),static_cast<std::uint16_t>(0x2000|direction));
         check(r->requests.size()==count,"one held physical input never repeats native requests");
-        r->poll(at(10));check(r->lease.intent(at(10)),"brief release awaits native evidence without a fixed hold interval");
+        out=r->poll(at(10));check(r->lease.intent(at(10)) && out.action.pad.right_trigger==255,
+              "brief release retains native input until evidence without a fixed setup interval");
         const auto detail=native_grab::pilot(expected)->detail;
         check(!r->lease.acknowledge(detail+20,1,0,1,true,true,true),"wrong actual native identity cannot acknowledge the semantic request");
         check(!r->lease.acknowledge(detail,0,0,1,true,true,true),"prediction cannot acknowledge a grab");
@@ -60,7 +67,8 @@ void requests() {
         check(!r->lease.acknowledge(detail,1,0,1,true,false,true),"another actor cannot acknowledge a grab");
         check(r->lease.acknowledge(detail,1,0,1,true,true,true),"independent exact actor advancement and native tag complete delivery");
         check(!r->lease.intent(at(10)),"released tap withdraws intent immediately upon native acknowledgment");
-        r->poll(at(11),0,100);check(!r->lease.selected(),"landing clears the native request owner");
+        out=r->poll(at(11));check(!out.action.pad.owns_triggers,"acknowledged released tap stops native trigger delivery");
+        out=r->poll(at(12),0,100);check(!r->lease.selected() && !out.action.pad.owns_triggers,"landing clears the native request owner and trigger");
     }
 }
 void delayed_tap_and_controls() {

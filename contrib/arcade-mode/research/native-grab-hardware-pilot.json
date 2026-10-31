@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "tested_source": "fbcc0e9ef1be8620fab4e2b2fe20adf68a4ebc32",
+  "tested_dll_sha256": "fbe516a134440e81af03dd557d4e7b9ae46951223b40950a1ee1958183b45f2c",
+  "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
+  "loaded_dll_mapping_matches_installed": true,
+  "measured_physics_dt": 0.03333333,
+  "measured_cached_dt": 0.03333333,
+  "catalog_expansion_gate_passed": false,
+  "arcade_pilot": {
+    "binding": "A then Left+B, hold 350 ms, release, land",
+    "semantic": "Melon",
+    "expected_detailed_grab_type": 4,
+    "expected_actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+    "physical_press_recognized": true,
+    "native_request_received": true,
+    "native_actor_initialized": false,
+    "native_actor_advancement_acknowledged": false,
+    "request_retired_at_landing": true,
+    "independent_native_samples": 488,
+    "right_hand_and_melon_tweak_samples": 61,
+    "can_grab_true_samples": 0,
+    "native_grab_type_values": [0],
+    "unallocated_observation_fields": ["Bool.Anim.IsGrabbing", "Enum.GS.DetailedGrabType"],
+    "airborne_states": [200, 201],
+    "landing_state": 100,
+    "native_scoring": "unverified",
+    "test_result": "failed native entry despite delivered request ports"
+  },
+  "original_game_comparison": {
+    "arcade_enabled_during_trial": false,
+    "input": "native right-stick Ollie followed by RT",
+    "independent_native_samples": 494,
+    "can_grab_true_samples": 54,
+    "native_grab_type": 2,
+    "native_detailed_grab_type": 1,
+    "native_is_grabbing_observed": true,
+    "hud_name": "BS Grab",
+    "exact_actor_advancement": "not independently captured by the active-pilot-only actor observer",
+    "numeric_score_owner_verified": false,
+    "arcade_restored_on": true
+  },
+  "native_writer_observation": {
+    "method": "bounded hardware write watchpoint; no native memory or register writes",
+    "bool_setter_rva": "0x11dd7a0",
+    "observed_pc_after_write_rva": "0x11dd7be",
+    "verified_return_address_rva": "0x16d16f0",
+    "expression_interpreter_rva": "0x16d1190",
+    "generic_debugger_backtrace": "invalid; replaced by return-address read from verified function stack layout",
+    "debugger_detached": true
+  },
+  "private_evidence_digests": {
+    "melons_first_trial": "d7df7e536f8a4894703a2604641f9c7ab6b3253a9258a2f666d42cfeaa2e2bc9",
+    "melons_independent_state_trace": "09fce4de7259e84e8400461a09a5ed68a36d2beb447040aa59805b83bf037b6e",
+    "original_game_control": "d5131f338718544c410742bff68f15ebc8c0fcce3e1c32b04c942335ecda42a9"
+  },
+  "followup_source_change": {
+    "delivery": "existing native right-trigger output under the grab acknowledgment lease",
+    "state_writes": ["Float.Intent.TweakLeftRight", "Float.Intent.TweakFrontBack"],
+    "native_owned": ["hand intents", "CanGrab", "GrabType", "DetailedGrabType", "animation initialization", "animation clocks", "blending", "physics", "scoring"],
+    "source_checks": "224 grab checks at 30/60/120 Hz; five adjacent input/motion suites passed; 458 lab tests passed with one skip",
+    "gameplay_status": "unverified until the revised DLL is built and tested"
+  }
+}

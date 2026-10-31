@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "A source pilot; gameplay acceptance pending",
+  "stage": "A input-path correction; previous hardware pilot failed native entry",
   "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
   "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
   "complete_catalog": false,
@@ -13,7 +13,7 @@
       "family": "grab",
       "animation_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
       "context": "airborne, inspected stance only; no nollie",
-      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
       "arcade_binding": "B",
       "tweak": [
         0,
@@ -21,8 +21,8 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "passed at 30/60/120 Hz",
-        "native_action": "unverified",
+        "source_contract": "224 checks passed at 30/60/120 Hz",
+        "native_action": "revised input-path candidate unverified",
         "native_animation": "unverified",
         "hold_release": "unverified in gameplay",
         "landing_scoring": "unverified"
@@ -35,7 +35,7 @@
       "family": "grab",
       "animation_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
       "context": "airborne, inspected stance only; no nollie",
-      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
       "arcade_binding": "Left+B",
       "tweak": [
         0,
@@ -43,11 +43,12 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "passed at 30/60/120 Hz",
-        "native_action": "unverified",
+        "source_contract": "224 checks passed at 30/60/120 Hz",
+        "native_action": "revised input-path candidate unverified",
         "native_animation": "unverified",
         "hold_release": "unverified in gameplay",
-        "landing_scoring": "unverified"
+        "landing_scoring": "unverified",
+        "prior_gameplay_build": "fbcc0e9: request delivered but CanGrab false, no actor initialization or advancement acknowledgment"
       }
     },
     {
@@ -57,7 +58,7 @@
       "family": "grab",
       "animation_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
       "context": "airborne, inspected stance only; no nollie",
-      "native_transition": "native hand intents and BS tweak blendspace through CanGrab/Grab.Into/Grab.Loop",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
       "arcade_binding": "Left+double B",
       "tweak": [
         1,
@@ -65,8 +66,8 @@
       ],
       "evidence_status": "partially verified",
       "test_result": {
-        "source_contract": "passed at 30/60/120 Hz",
-        "native_action": "unverified",
+        "source_contract": "224 checks passed at 30/60/120 Hz",
+        "native_action": "revised input-path candidate unverified",
         "native_animation": "unverified",
         "hold_release": "unverified in gameplay",
         "landing_scoring": "unverified"
@@ -197,5 +198,6 @@
     "extra pop",
     "synthetic score",
     "named-grab trigger recipe as success"
-  ]
+  ],
+  "hardware_evidence": "native-grab-hardware-pilot.json"
 }

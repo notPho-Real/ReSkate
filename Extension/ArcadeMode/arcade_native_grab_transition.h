@@ -11,6 +11,7 @@ bool blocks_flip(const NoBailSkater&) noexcept;
 void cancel() noexcept;
 void refresh(const NoBailSkater&,std::uint64_t episode,bool held,bool permitted) noexcept;
 bool request(const NoBailSkater&,std::uint64_t episode,const InputRequest&,ArcadeTrick,bool held) noexcept;
+bool right_hand_input(const NoBailSkater&,std::uint64_t episode) noexcept;
 // Additive call from the already-qualified StateFlow candidate entry. It does
 // not change candidates, PTM selection, animation IDs, or native eligibility.
 void before_transition(std::uintptr_t view,float delta) noexcept;
