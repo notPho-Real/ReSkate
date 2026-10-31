@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "stage": "A: Method failure diagnosed; native grab-owner continuity correction awaiting gameplay",
+  "stage": "A: BS, Melon and Method exact native actors verified at30Hz; release/scoring followup remains",
   "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
   "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
   "complete_catalog": false,
@@ -67,11 +67,11 @@
       "evidence_status": "partially verified",
       "test_result": {
         "source_contract": "305 checks passed at 30/60/120 Hz",
-        "native_action": "c8f7971: Method29/presses2 recognized; unavailable flip selection caused queue cancellation before adapter",
-        "native_animation": "unverified; Melon advancement does not count as Method",
-        "hold_release": "unverified in gameplay",
-        "landing_scoring": "unverified",
-        "followup": "use exact active request/owner/episode and independently observed BS grab state; gameplay pending"
+        "native_action": "c69dd24: second B admitted through native_owner=true; IsGrabbing and DetailedGrabType2 observed",
+        "native_animation": "exact original Method actor initialized with duration305 and advanced0 to1.8027897 at positive delta",
+        "hold_release": "intent withdrawn airborne on release; native BS tag during exit requires investigation",
+        "landing_scoring": "native100 observed; HUD Method then BS Grab/Sketchy; numeric scoring owner unverified",
+        "followup": "compare original-game release semantics before changing tweak restoration"
       }
     }
   ],
@@ -202,9 +202,95 @@
   ],
   "hardware_evidence": [
     "native-grab-hardware-pilot.json",
-    "native-grab-ec35a8e-acceptance.json"
+    "native-grab-ec35a8e-acceptance.json",
+    "native-grab-c69dd24-acceptance.json"
   ],
   "latest_method_trial": {
+    "source_commit": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+    "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+    "capture_sha256": "e8bf5b2a557e53ac9071c17d1d420389a2a7c8c98cd6f9f9b8b1a32f459a431d",
+    "sample_count": 486,
+    "sample_errors": 0,
+    "log_gaps": 0,
+    "physics_hz": 30,
+    "cached_step_hz": 30,
+    "correlation_complete": false,
+    "intended_native_detail": 2,
+    "method_acknowledged": true,
+    "input_admission": [
+      {
+        "ms": "163285535",
+        "recognized_at": "163285535",
+        "pressed_at": "163285506",
+        "direction": "4",
+        "presses": "1",
+        "form": "0",
+        "semantic": "21",
+        "request_action": "2591",
+        "origin_action": "0",
+        "current_action": "2591",
+        "extra": "false",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "3582",
+        "native_owner": "false",
+        "gate": "1",
+        "disposition": "1",
+        "result": "0",
+        "animation_acknowledged": "false"
+      },
+      {
+        "ms": "163285706",
+        "recognized_at": "163285706",
+        "pressed_at": "163285706",
+        "direction": "4",
+        "presses": "2",
+        "form": "0",
+        "semantic": "29",
+        "request_action": "2592",
+        "origin_action": "2591",
+        "current_action": "2592",
+        "extra": "true",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "80",
+        "native_owner": "true",
+        "gate": "1",
+        "disposition": "1",
+        "result": "0",
+        "animation_acknowledged": "false"
+      }
+    ],
+    "landing_state": 100,
+    "scoring": "unverified",
+    "result": "native animation passed; release/scoring acceptance incomplete",
+    "report": "native-grab-c69dd24-acceptance.json"
+  },
+  "native_continuation_assets": [
+    {
+      "name": "animation/dingo/bool.gp.cangrab",
+      "size": 914,
+      "decoded_size": 1418,
+      "sha1": "b83df3cc6247dc54931dc8edaf81962d16199f15",
+      "bundle": "gameconfig",
+      "resource_index": 1232,
+      "root_type": "BoolAsset",
+      "guid": "aa379a76-0ada-6e20-aa37-9a760ada6e20",
+      "decoded_sha256": "f7c190db81b97bb571adcfc8728b5697e9c6e97c291c90e605030a3f178ec28b"
+    },
+    {
+      "name": "animation/dingo/enumgs.grabtype",
+      "size": 895,
+      "decoded_size": 1356,
+      "sha1": "1d4bf9c2a85e9aa3b64883e96dbcc52669f2e635",
+      "bundle": "gameconfig",
+      "resource_index": 3401,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "387fb01d-9950-ce5d-387f-b01d9950ce5d",
+      "decoded_sha256": "187422ef30dc92564f896ce014c39a8856de8d1973986fb4606e021d2e95a6d4"
+    }
+  ],
+  "previous_method_trial": {
     "source_commit": "c8f7971eb2f53fe06f8fa152446c5bc7dd75b1b2",
     "dll_sha256": "09942bc8c76ed4a9ed4145cc7735f15cd011954274ced9deb2c3742b7b2a5f6b",
     "capture_sha256": "4afe121d80901bc3b198888d1d56d41dd54543bb5b92f2ca580b19142cbd4ca1",
@@ -271,29 +357,5 @@
       "GrabType": 2,
       "DetailedGrabType": null
     }
-  },
-  "native_continuation_assets": [
-    {
-      "name": "animation/dingo/bool.gp.cangrab",
-      "size": 914,
-      "decoded_size": 1418,
-      "sha1": "b83df3cc6247dc54931dc8edaf81962d16199f15",
-      "bundle": "gameconfig",
-      "resource_index": 1232,
-      "root_type": "BoolAsset",
-      "guid": "aa379a76-0ada-6e20-aa37-9a760ada6e20",
-      "decoded_sha256": "f7c190db81b97bb571adcfc8728b5697e9c6e97c291c90e605030a3f178ec28b"
-    },
-    {
-      "name": "animation/dingo/enumgs.grabtype",
-      "size": 895,
-      "decoded_size": 1356,
-      "sha1": "1d4bf9c2a85e9aa3b64883e96dbcc52669f2e635",
-      "bundle": "gameconfig",
-      "resource_index": 3401,
-      "root_type": "GameStateEnumerationAsset",
-      "guid": "387fb01d-9950-ce5d-387f-b01d9950ce5d",
-      "decoded_sha256": "187422ef30dc92564f896ce014c39a8856de8d1973986fb4606e021d2e95a6d4"
-    }
-  ]
+  }
 }

@@ -1,0 +1,216 @@
+{
+  "source": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+  "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+  "trial": "method",
+  "capture_sha256": "e8bf5b2a557e53ac9071c17d1d420389a2a7c8c98cd6f9f9b8b1a32f459a431d",
+  "sample_count": 486,
+  "sample_errors": [],
+  "log_gaps": [],
+  "physical_buttons": {
+    "0": 1794,
+    "4096": 125,
+    "8196": 113,
+    "4": 20
+  },
+  "native_states": [
+    100,
+    103,
+    200,
+    201,
+    100
+  ],
+  "native_values": {
+    "Bool.GP.CanGrab": {
+      "False": 413,
+      "True": 73
+    },
+    "Bool.Anim.IsGrabbing": {
+      "None": 77,
+      "True": 73,
+      "False": 336
+    },
+    "EnumGS.GrabType": {
+      "None": 77,
+      "2": 409
+    },
+    "Enum.GS.DetailedGrabType": {
+      "None": 108,
+      "2": 31,
+      "1": 11,
+      "0": 336
+    }
+  },
+  "occurrences": [
+    {
+      "request": {
+        "serial": "1",
+        "episode": "1",
+        "semantic": "21",
+        "expected_detail": "4",
+        "held": "true",
+        "pressed_at": "163285506",
+        "released_at": "0",
+        "recognized_at": "163285535",
+        "direction": "4",
+        "presses": "1",
+        "acknowledged": "false"
+      },
+      "exact_asset_initialization": [],
+      "exact_asset_advancement": [],
+      "end": [],
+      "native_animation_evidence": false,
+      "initialization_logged_in_this_occurrence": false
+    },
+    {
+      "request": {
+        "serial": "2",
+        "episode": "1",
+        "semantic": "29",
+        "expected_detail": "2",
+        "held": "true",
+        "pressed_at": "163285706",
+        "released_at": "0",
+        "recognized_at": "163285706",
+        "direction": "4",
+        "presses": "2",
+        "acknowledged": "false"
+      },
+      "exact_asset_initialization": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "duration": "305"
+        }
+      ],
+      "exact_asset_advancement": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "before": "0",
+          "after": "1.8027897",
+          "delta": "1.8027897",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-0.90876573"
+        }
+      ],
+      "end": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified"
+        }
+      ],
+      "native_animation_evidence": true,
+      "initialization_logged_in_this_occurrence": true
+    }
+  ],
+  "measured_steps": {
+    "(0.03333333134651184, 0.03333333134651184)": 486
+  },
+  "landing_observed": true,
+  "native_scoring": "unverified: numeric score owner not established",
+  "intended_native_detail": "2",
+  "intended_trick_animation_acknowledged": true,
+  "input_admission": [
+    {
+      "ms": "163285535",
+      "recognized_at": "163285535",
+      "pressed_at": "163285506",
+      "direction": "4",
+      "presses": "1",
+      "form": "0",
+      "semantic": "21",
+      "request_action": "2591",
+      "origin_action": "0",
+      "current_action": "2591",
+      "extra": "false",
+      "native_adapter": "true",
+      "retired": "false",
+      "failed_proofs": "3582",
+      "native_owner": "false",
+      "gate": "1",
+      "disposition": "1",
+      "result": "0",
+      "animation_acknowledged": "false"
+    },
+    {
+      "ms": "163285706",
+      "recognized_at": "163285706",
+      "pressed_at": "163285706",
+      "direction": "4",
+      "presses": "2",
+      "form": "0",
+      "semantic": "29",
+      "request_action": "2592",
+      "origin_action": "2591",
+      "current_action": "2592",
+      "extra": "true",
+      "native_adapter": "true",
+      "retired": "false",
+      "failed_proofs": "80",
+      "native_owner": "true",
+      "gate": "1",
+      "disposition": "1",
+      "result": "0",
+      "animation_acknowledged": "false"
+    }
+  ],
+  "coverage": {
+    "sampler_errors": 0,
+    "log_gaps": 0,
+    "input_capture_complete": false,
+    "interpretation": "Exact animation evidence is present; missing correlation sources prevent a full-coverage claim."
+  },
+  "binding": "A, Left+B, release B, Left+B again within250ms; release all",
+  "physical_timing_ms": [
+    0,
+    500.15,
+    750.12,
+    850.12,
+    950.1,
+    1300.06
+  ],
+  "release_followup": {
+    "status": "unverified; source investigation required",
+    "observations": "Returned RT becomes0 on B release; native RightHandGrab and IsGrabbing remain true during native exit. Tweak becomes0,0 at1321.90ms; native detail changes Method2 to BS1 at1494.30ms; native100/handfalse/grabbingfalse at1621.64ms. HUD shows Ollie, Method, BS Grab and Sketchy landing.",
+    "native_score": {
+      "route": 4,
+      "score": 58,
+      "success": true,
+      "action_score": 63,
+      "base_score": 35,
+      "landing": 0.9,
+      "owner_verified": false,
+      "authoritative": false
+    },
+    "inference": "Immediate tweak restoration may allow the still-active native blendspace to return to BS during release. Not yet compared against original-game release semantics; do not call this a confirmed defect or change native exit timing."
+  },
+  "acceptance": {
+    "method_native_animation": true,
+    "single_airborne_episode": true,
+    "native_landing_observed": true,
+    "full_hold_release_and_scoring": false,
+    "remaining_rates": [
+      60,
+      120
+    ],
+    "bs_and_melon_regression_on_this_dll": "not rerun; prior ec35 actor evidence retained"
+  },
+  "ci": {
+    "run": 41164301643,
+    "status": "success",
+    "windows": "97/97",
+    "linux": "success",
+    "macos": "success",
+    "live_release": "skipped"
+  }
+}

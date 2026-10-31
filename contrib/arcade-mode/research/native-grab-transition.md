@@ -4,11 +4,44 @@
 
 The source now includes a native request adapter for BS Grab, Melon and Method.
 This supersedes the historical investigation below; **native gameplay acceptance
-is still incomplete**. BS Grab and Melon now have native animation evidence at
-measured 30 Hz. Method's repeated-input failure is now diagnosed; the native
-grab-owner correction below still requires gameplay acceptance.
+is still incomplete**. BS Grab, Melon and Method now have exact native animation
+evidence at measured 30 Hz. Method's repeated-input correction passed its native
+trial. Release behavior and full scoring acceptance remain open.
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
+
+### Method native acceptance on c69dd24
+
+Commit `c69dd24af196e2a43eb3b290ad92232d132b45d2`, DLL
+`6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc`,
+passed Windows (97/97), Linux and macOS CI run 41164301643. The DLL's installed
+and loaded mapping identities were verified before the coordinated trial.
+Capture SHA-256: `e8bf5b2a557e53ac9071c17d1d420389a2a7c8c98cd6f9f9b8b1a32f459a431d`.
+
+The identical physical double-B schedule now admits Method with
+`native_owner=true`, despite unchanged failed flip proofs 80. Serial 2 stays
+in airborne episode 1. Original Method actor
+`12d1f15d-c040-6fd0-12d1-f15dc0406fd0` initializes with native duration 305,
+then advances 0 to 1.8027897 ticks at positive delta 1.8027897. Native detailed
+identity 2 agrees with IsGrabbing. Independent sampling reports 486 samples,
+no read errors or log gaps, measured and cached step 0.033333331 seconds, and
+100→103→200→201→100 without another pop. The earlier Melon request is superseded
+before its actor initializes; it is not counted as an executed Melon in this trial.
+
+B release withdraws returned RT and the request ends acknowledged while airborne.
+However, native hand/grab state remains active through exit, and restoring the
+tweak request to neutral precedes a brief native BS detail tag. The HUD records
+Method followed by BS Grab and a Sketchy landing. This may be the still-active
+native blendspace returning to neutral during exit; comparison with original
+release semantics is required before changing it. Do not claim clean named-only
+release or full scoring acceptance. Native score 58/landing factor 0.9 is
+supporting evidence only: the existing score observer remains owner-unverified.
+
+See `native-grab-c69dd24-acceptance.json` for sanitized request, actor, timing and
+release evidence. The capture footer still lacks complete source coverage.
+BS/Melon regression on this DLL, 60/120 Hz, full hold/release, scoring and chain
+acceptance remain outstanding. The Deck was returned neutral with capture stopped,
+Arcade ON and automatic routing restored; the prior manual DLL was preserved.
 
 ### Native grab-owner continuity correction
 
