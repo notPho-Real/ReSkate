@@ -220,20 +220,20 @@ int main() {
         }
         check(!p.change.active() && !p.change.sample(p.now).owns,"return neutral cancels on A, OFF, owner loss, exit or expiry");
     }
-    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true})for(unsigned recipe:{0u,1u,2u}) {
-        const bool nose=recipe!=0,reverse=recipe==2;
-        // Simultaneous B+Y retains the existing Y->B Nosegrind priority.
+    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true})for(unsigned recipe:{0u,1u,2u,3u}) {
+        const bool nose=recipe==1 || recipe==2,reverse=recipe>=2,tail_release=recipe==3;
+        // Simultaneous B+Y/Y+X retain Nosegrind/Noseslide priority respectively.
         if(reverse && together)continue;
-        const auto source_identity=nose?23u:24u,target_identity=reverse?30u:nose?21u:31u,intermediate=reverse?26u:nose?66u:59u;
-        const std::uint16_t held=reverse?0xa000u:nose?0xc000u:0x6000u;
+        const auto source_identity=nose?23u:24u,target_identity=tail_release?22u:reverse?30u:nose?21u:31u,intermediate=tail_release?71u:reverse?26u:nose?66u:59u;
+        const std::uint16_t held=tail_release?0xc000u:reverse?0xa000u:nose?0xc000u:0x6000u;
         Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
-        p.step(1200,403);p.poll(together?held:reverse?0x2000:nose?0x8000:0x2000);
+        p.step(1200,403);p.poll(together?held:tail_release?0x4000:reverse?0x2000:nose?0x8000:0x2000);
         if(!together){p.step(1230,403);p.poll(held);}
         const auto start=p.now;
-        check(p.change.active() && p.arms==1 && p.control==(reverse?GrindAdmissionControl::lateral_nose_reverse:nose?GrindAdmissionControl::lateral_nose:GrindAdmissionControl::lateral_tail),
+        check(p.change.active() && p.arms==1 && p.control==(tail_release?GrindAdmissionControl::lateral_tail_reverse:reverse?GrindAdmissionControl::lateral_nose_reverse:nose?GrindAdmissionControl::lateral_nose:GrindAdmissionControl::lateral_tail),
             "sequential and simultaneous Y-X/B-X dispatch the measured lateral lease only from its qualified source");
-        check(p.dispatched.grind_target()==(reverse?GrindChangeTarget::nosebluntslide:nose?GrindChangeTarget::noseslide:GrindChangeTarget::bluntslide) && p.dispatched.first_input_at==1200 &&
+        check(p.dispatched.grind_target()==(tail_release?GrindChangeTarget::tailslide:reverse?GrindChangeTarget::nosebluntslide:nose?GrindChangeTarget::noseslide:GrindChangeTarget::bluntslide) && p.dispatched.first_input_at==1200 &&
             p.dispatched.last_input_at==start,"lateral dispatch preserves physical event timestamps");
         for(unsigned i=0;i<=1100*hz/1000;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
@@ -241,13 +241,14 @@ int main() {
             p.step(start+elapsed,elapsed<100?403:elapsed<700?406:402);p.poll(held);p.poll(held);
             const auto pad=p.change.sample(p.now);
             check(p.arms==1 && pad.owns,"lateral controls remain bounded and held/repeated polls cannot replay");
-            check(pad.x==(elapsed<50?0:reverse?-32767:32767) && pad.y==(elapsed<50?0:nose?8192:-8192),
+            const bool neutral=elapsed<50 || (tail_release && elapsed>=1050);
+            check(pad.x==(neutral?0:reverse?-32767:32767) && pad.y==(neutral?0:nose?8192:-8192),
                 "lateral recipe owns neutral then the measured native axes at every cadence");
             check(!p.change.evidence().physics_changed,"neither input delivery nor raw identity manufactures completion");
         }
         auto wrong=p.contact;wrong.identity=intermediate;
         p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
-        check(!p.change.evidence().physics_changed,"transient native identity59/66/26 cannot satisfy the requested destination");
+        check(!p.change.evidence().physics_changed,"transient native identity59/66/26/71 cannot satisfy the requested destination");
         wrong.identity=reverse?21u:nose?30u:21u;p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
         check(!p.change.evidence().physics_changed,"Nosebluntslide or another native slide cannot substitute for the measured name");
         wrong=p.contact;wrong.segment_identity[0]++;
@@ -258,14 +259,20 @@ int main() {
         check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
             "lateral physics identity requires separate changed animation evidence");
         p.change.verify(p.now,{true,403,402,1,{}},p.contact,p.animation);
-        check(p.change.evidence().animation_changed && !p.change.active(),"matching independently changed native slide animation retires its bounded lease");
+        check(p.change.evidence().animation_changed && p.change.active()==tail_release,"independent animation retires the request only after its measured control trajectory");
+        if(tail_release) {
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && pad.x==0 && pad.y==0,"Tailslide owns the measured neutral tail after animation acknowledgment");
+            p.step(start+1500,402);p.poll(held);
+            check(!p.change.active() && !p.change.sample(p.now).owns && p.arms==1,"Tailslide releases at deadline without another action from held input");
+        }
     }
-    for(unsigned fault=0;fault<9;++fault)for(unsigned recipe:{0u,1u,2u}) {
-        const bool nose=recipe!=0,reverse=recipe==2;
+    for(unsigned fault=0;fault<9;++fault)for(unsigned recipe:{0u,1u,2u,3u}) {
+        const bool nose=recipe==1 || recipe==2,reverse=recipe>=2,tail_release=recipe==3;
         Pipeline p;p.contact.identity=nose?23u:24u;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
-        if(reverse){p.step(1170,403);p.poll(0x2000);}
-        p.step(1200,403);p.poll(reverse?0xa000:nose?0xc000:0x6000);
+        if(reverse){p.step(1170,403);p.poll(tail_release?0x4000:0x2000);}
+        p.step(1200,403);p.poll(tail_release?0xc000:reverse?0xa000:nose?0xc000:0x6000);
         check(p.change.active(),"negative lateral case has a qualified source");
         p.step(1220,403);
         switch(fault) {
@@ -283,8 +290,9 @@ int main() {
     }
     // Exercise the same native request guard used by the production feature
     // override. Neutral wait must never select an unintended 50-50 return.
-    for(unsigned fault=0;fault<20;++fault)for(auto policy:{GrindAdmissionControl::lateral_tail,GrindAdmissionControl::lateral_nose,GrindAdmissionControl::lateral_nose_reverse}) {
-        const bool nose=policy!=GrindAdmissionControl::lateral_tail,reverse=policy==GrindAdmissionControl::lateral_nose_reverse;
+    for(unsigned fault=0;fault<20;++fault)for(auto policy:{GrindAdmissionControl::lateral_tail,GrindAdmissionControl::lateral_nose,GrindAdmissionControl::lateral_nose_reverse,GrindAdmissionControl::lateral_tail_reverse}) {
+        const bool nose=policy==GrindAdmissionControl::lateral_nose || policy==GrindAdmissionControl::lateral_nose_reverse;
+        const bool reverse=policy==GrindAdmissionControl::lateral_nose_reverse || policy==GrindAdmissionControl::lateral_tail_reverse;
         std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{},pointer_reads{};
         if(fault==1)raw[0]=-raw[0];
         if(fault==2)raw[0]=0;
@@ -329,6 +337,37 @@ int main() {
         if(fault==3)p.contact.begin[1]=1;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
         check(p.arms==0,"Noseslide requires actual Nosegrind source and measured horizontal twelve-metre geometry");
+    }
+    for(unsigned fault=0;fault<4;++fault) {
+        Pipeline p;p.contact.identity=fault==1?23u:24u;p.contact.end[2]=fault==0?-6.f:-12.f;
+        if(fault==2)p.contact.geometry=2;
+        if(fault==3)p.contact.begin[1]=1;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x4000);
+        p.step(1230,403);p.poll(0xc000);
+        check(p.arms==0,"Tailslide requires actual5-0 source and measured horizontal twelve-metre geometry");
+    }
+    {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
+        check(p.dispatched.grind_target()==GrindChangeTarget::noseslide && p.arms==0,
+            "simultaneous X+Y retains Noseslide priority instead of inventing an ordered Tailslide alias");
+    }
+    {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x4000);
+        p.step(1230,403);p.poll(0xc000);const auto start=p.now;
+        for(std::uint64_t elapsed=0;elapsed<1500;elapsed+=50) {
+            p.contact.identity=elapsed<700?24u:22u;
+            p.step(start+elapsed,elapsed<100?403:elapsed<700?406:402);p.poll(0xc000);
+            if(elapsed>=700)p.change.verify(p.now,{true,403,402,1,{}},p.contact,p.animation);
+            const auto pad=p.change.sample(p.now);
+            check(p.change.active() && pad.owns,"early independent animation evidence cannot skip Tailslide control withdrawal");
+            const bool neutral=elapsed<50 || elapsed>=1050;
+            check(pad.x==(neutral?0:-32767) && pad.y==(neutral?0:-8192),"Tailslide switches to owned neutral at1050ms from request regardless of acknowledgment time");
+        }
+        p.step(start+1500,402);p.poll(0xc000);
+        check(!p.change.active() && !p.change.sample(p.now).owns && p.change.evidence().animation_changed,
+            "Tailslide expires cleanly while retaining only independently observed evidence");
     }
     {
         Pipeline p;p.contact.identity=23;p.contact.end[2]=-12;

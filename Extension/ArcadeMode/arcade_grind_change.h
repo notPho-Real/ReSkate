@@ -11,7 +11,9 @@ namespace dingosdk::arcade_mode {
 // held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0), and
 // the measured neutral 403/24 ->406 ->401/20 return and lateral tail
 // 403/24 ->406 ->402/31 Bluntslide and 403/23 ->406 ->402/21 Noseslide
-// or opposite-heading 402/30 Nosebluntslide. Other named bindings
+// or opposite-heading 402/30 Nosebluntslide and 403/24 ->402/22 Tailslide.
+// The Tailslide pulse must return to neutral before held-input drift.
+// Other named bindings
 // and source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -67,11 +69,13 @@ public:
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool lateral_tail=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::bluntslide;
+        const bool lateral_tail_reverse=source_.state==403 && source_.identity==24 &&
+            request.grind_target()==GrindChangeTarget::tailslide;
         const bool lateral_nose=source_.state==403 && source_.identity==23 &&
             request.grind_target()==GrindChangeTarget::noseslide;
         const bool lateral_nose_reverse=source_.state==403 && source_.identity==23 &&
             request.grind_target()==GrindChangeTarget::nosebluntslide;
-        const bool lateral=lateral_tail || lateral_nose || lateral_nose_reverse;
+        const bool lateral=lateral_tail || lateral_tail_reverse || lateral_nose || lateral_nose_reverse;
         const bool sweep=source_.state==401 && source_.identity==20 &&
             (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked ||
              request.grind_target()==GrindChangeTarget::grind_5_0);
@@ -84,7 +88,8 @@ public:
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
             serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
         const auto next=serial_+1;
-        if(!arm(next,now+1500,lateral_nose_reverse?GrindAdmissionControl::lateral_nose_reverse:
+        if(!arm(next,now+1500,lateral_tail_reverse?GrindAdmissionControl::lateral_tail_reverse:
+            lateral_nose_reverse?GrindAdmissionControl::lateral_nose_reverse:
             lateral_nose?GrindAdmissionControl::lateral_nose:
             lateral_tail?GrindAdmissionControl::lateral_tail:GrindAdmissionControl::ordinary))
             return InputDisposition::unsupported;
@@ -94,11 +99,11 @@ public:
         const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0;
         // Neutral is an owned control sample, not a fabricated 50-50 result.
         // The original 403 admission and 406 initialization select the return.
-        sweep_x_=lateral_nose_reverse?-32767:lateral?32767:returning?0:crooked?24000:12000;
-        held_y_=(lateral_nose || lateral_nose_reverse)?8192:lateral_tail?-8192:returning?0:tail?-32767:32767;
-        target_identity_=lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
+        sweep_x_=(lateral_nose_reverse || lateral_tail_reverse)?-32767:lateral?32767:returning?0:crooked?24000:12000;
+        held_y_=(lateral_nose || lateral_nose_reverse)?8192:(lateral_tail || lateral_tail_reverse)?-8192:returning?0:tail?-32767:32767;
+        target_identity_=lateral_tail_reverse?22u:lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
         target_state_=lateral?402u:returning?401u:403u;
-        hold_ms_=(returning || lateral)?1500u:1000u;lateral_=lateral;
+        hold_ms_=(returning || lateral)?1500u:1000u;lateral_=lateral;tail_release_=lateral_tail_reverse;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -109,7 +114,15 @@ public:
         // The measured lateral leg starts with neutral. Its lease remains
         // disabled until the actual native request enters the lateral band;
         // enabling it during neutral would execute the 50-50 return instead.
-        if(lateral_)return now-evidence_.started_at<grind_lateral_neutral_ms?Pad{true,0,0}:Pad{true,sweep_x_,held_y_};
+        if(lateral_) {
+            const auto elapsed=now-evidence_.started_at;
+            // Actual native22 remained in contact after a1000ms lateral pulse;
+            // keeping that pulse held instead drifted into Suski71. Own the
+            // neutral tail even when animation evidence has already arrived.
+            if(elapsed<grind_lateral_neutral_ms ||
+                (tail_release_ && elapsed>=grind_lateral_neutral_ms+1000))return {true,0,0};
+            return {true,sweep_x_,held_y_};
+        }
         // Native XInput Y is opposite to evdev ABS_RY used in the control trial.
         // Keep the vertical input held across the 200ms heading change; neutral between the two
         // samples loses the native captured-reference path.
@@ -132,7 +145,7 @@ public:
             animation.grind_type_valid && animation.grind_type==target_identity_) evidence_.animation_changed=true;
         // Preserve the measured held input through its bounded duration even
         // after identity publication; do not cut the control trajectory short.
-        if(evidence_.animation_changed && now-evidence_.started_at>=1000)cancel();
+        if(evidence_.animation_changed && now-evidence_.started_at>=(tail_release_?1500u:1000u))cancel();
     }
 private:
     static bool fresh(std::uint64_t now,const NativeInputFrame& f) noexcept {
@@ -165,6 +178,6 @@ private:
     std::int16_t sweep_x_{},held_y_{};
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
-    bool active_{},stable_{},source_animation_known_{},lateral_{};
+    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{};
 };
 }

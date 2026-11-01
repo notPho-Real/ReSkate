@@ -138,7 +138,7 @@ bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint6
     if (!available() || current_time>tick_expires.load() || !serial || now>current_time || current_time-now>150 ||
         deadline<=current_time || deadline-now>1500 || owner.base!=image) return false;
     if(control!=GrindAdmissionControl::ordinary && (expected.state!=403 ||
-        !((control==GrindAdmissionControl::lateral_tail && expected.identity==24) ||
+        !(((control==GrindAdmissionControl::lateral_tail || control==GrindAdmissionControl::lateral_tail_reverse) && expected.identity==24) ||
           ((control==GrindAdmissionControl::lateral_nose || control==GrindAdmissionControl::lateral_nose_reverse) &&
            expected.identity==23))))return false;
     const Lease candidate{owner,serial,deadline,false,expected,control,now};

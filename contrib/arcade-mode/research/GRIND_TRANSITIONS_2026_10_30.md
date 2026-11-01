@@ -2954,3 +2954,74 @@ no job or reservation remains. This reset/trial slot is consumed. Seven narrow
 recipes remain implemented; Tailslide stability, Smith, broader source contexts,
 arbitrary repeated changes and live Ollie/early-flip acceptance remain open.
 No DLL/CI build, installation, merge or release occurred.
+
+### Eighth qualified recipe: bounded opposite-tail pulse retains Tailslide
+
+Both peers released another short window. Fresh identity-pinned capture showed
+Steam idle artwork; the reviewed single-Shift wake restored visible gameplay.
+The exact native approach reset222→226 succeeded, runner SHA-256
+00372c5cc426f1307299f9830fdd01ddb7c47a465e4ebb98bf4b9db24affda3e,
+receipt `grind-native-approach-reset-tail-release-c048914-v1/results/1793537743803919000-status.json`.
+
+The new trial preserves the previous opposite-tail controls but explicitly
+sends neutral1000ms after the second lateral event. This is a fixed bounded
+pulse; it does not add a conditioned phase, which would cause the existing
+worker to neutralize before its evidence wait. Three inert shifted writer
+timelines preserve that1000ms spacing, plus20 lease/geometry and80 real-enum
+destination checks. The gate admits no third transition, tolerates genuine
+intermediate1–76 identities, and ends only after original403→402 completion
+and actual402/fine22 with the original contact/segment. It never assigns22.
+
+Immutable runner SHA-256
+9bfc1528c0edf9166b38a9f8190e3bf86f9047bdbff51be7a34273c0efc5b200;
+receipt `grind-native-tail-release-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-25622d17f6ec2af2d21364e8a7099c1b27a53639255c7631e36ab111e76a3692743.
+There are504 independent samples, both clocks.03333333135 seconds. First406
+at2158.586ms completed401→403; actual5-0 appeared2561.805ms. After45.244ms
+conditional neutral, opposite lateral input produced raw heading-2.127533
+and pitch-.4 at2730.427ms. Second406 started2792.056ms, and original403→402
+completed at phase1 after.533333302 seconds. Initial402/fine71 at3333.293ms
+was correctly treated as a real intermediate contact, not destination success.
+
+Actual **BS_Tailslide22 appeared3368.459ms**. The physical writer sent its
+lateral event2640.789ms and neutral3640.933ms on its own clock, a1000.144ms
+interval. Independent raw controls reflected neutral's native heading target
+-pi/2 at3688.480ms, with native pitch settling near-.349066. There are116
+402/fine22 samples through4748.106ms, all physical/published contact1,
+missing0, same segment[2568390443047,0] and measured12m endpoints
+(143.9140625,.500742197,-45.99609375) and
+(143.9140625,.500742197,-57.99609375). Natural701 begins4759.304ms.
+Unlike the held-input negative control, there was no403/Suski drift before
+the rail ended. Gate reason is second_native_tailslide_observed, exactly two
+original completions; native initialization and cleanup remain original.
+
+Production now executes ordered **X→Y Tailslide from403/fine24**, horizontal
+geometry1 at least12m, using its own negative-heading/negative-pitch admission
+policy. It owns neutral50ms, native RS(-32767,-8192) for1000ms, then neutral
+through the existing1500ms request bound. Early animation acknowledgment
+cannot skip this neutral tail. Only original403→402 completion, actual
+same-segment22 and independently changed matching animation acknowledge the
+request. Intermediate71 is not accepted. Simultaneous X+Y retains the existing
+Noseslide priority, not an invented ordered Tailslide alias. The other seven
+recipes keep their original controls, admission and completion timing.
+
+Strict warnings and ASan/UBSan pass **9124 production-composed checks** at
+30/60/120Hz, including physical timestamps, ordered-versus-simultaneous
+priority, held polls, source/geometry/owner rejection, admission polarity,
+the exact neutral boundary, early animation evidence and bounded cleanup.
+Contact/lifetime remains651 checks. This is implementation plus ArcadeOFF
+native physics evidence, not live production/animation/HUD/balance/combo
+acceptance. Smith remains the ninth unqualified binding; broader source
+contexts and arbitrary repeated changes remain incomplete. The local
+Ollie/early-flip candidate is still unaccepted live. The known unchanged-baseline
+contextual-air press-age assertion remains; no complete-green claim or new
+DLL/CI build is made.
+
+Cleanup verified GDB0/native feature restored, destroyed pad, ArcadeON and
+automatic routing, closed menus/editor and all owned edits undone to
+bam23/rev246. Fixture configured/object absent. Final native100 speed.000003915
+at(141.996872,1.028673,-43.620945), heading113.796249. Identity remains
+c048914/PID85401. Both Manual and Grab received clean handback; no job or
+reservation remains. These reset/trial slots are consumed. Any next trial
+requires new peer coordination, fresh identity/world pins and a new immutable
+runner; old coordinates and receipts may not be replayed.
