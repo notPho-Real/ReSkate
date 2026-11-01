@@ -2301,6 +2301,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             result.right_y == result.manual.request * 20000;
         ground_manual_balance.observe(now,manual_delivery_frame,result.manual,manual_pad_delivery);
         manual_episode.delivery(manual_delivery_frame,result.manual,manual_pad_delivery);
+        manual_episode.release_delivery(manual_delivery_frame,manual_delivery && result.manual.safe &&
+            result.manual.release_requested && !result.manual.owns && !result.rail.held &&
+            result.right_x==0 && result.right_y==0);
         result.buttons &= ~action.consume_buttons;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }

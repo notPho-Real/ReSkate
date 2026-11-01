@@ -49,9 +49,12 @@ it does not fabricate physical exit. Actual owner replacement revokes it.
 
 Positive exit evidence is native 300 / observed wipeout, offboard 504, rail
 family / 701, native push or an incompatible native owner/state/type without
-revert provenance. A normal putdown requires at least 100 ms of consecutive
-original state100/mode1/two-truck physics observations outside revert/launch;
-a single row, an observation gap, or elapsed client time cannot establish it.
+revert provenance. Putdown of an Arcade-owned section requires explicit physical
+cancellation and attributable neutral RS delivery, followed by at least100 ms
+of consecutive original state100/mode1/two-truck observations. Continued owned
+pressure makes two-truck contact a suspension of balance integration, not an
+exit. Unactuated native sections retain their contact-completion route. A single
+row, observation gap, or elapsed client time cannot establish putdown.
 An integrated balance endpoint requests the existing putdown/bail adapter.
 That request remains distinct from native completion. Arcade OFF clears all
 manual authority and HUD ownership.
@@ -206,6 +209,41 @@ consecutive contact pair, then a ten-second successor hold. Restoring the prior
 episode policy fails at the first provisional-contact assertion. Native live
 acceptance of this correction remains pending; two observations in a supplied
 fixture cannot prove that the actual board finishes settling.
+
+### Grounded settling versus actual release
+
+The successor-settling build produced one live Manual-to-Nose revert with a
+13.399-second successor hold at measured30Hz. The inverse attempt never sent
+RT: initial Nose contact lasted three original steps, then both trucks touched
+for about133ms. The episode's contact-only putdown policy cancelled RS; Nose
+contact returned on the next original step. Balance was near center and there
+was no endpoint or intentional release. This is failed initial entry acceptance,
+not a verified inverse revert. Requiring two entry contacts would not fix it.
+
+Owned manual continuation now separates wheel contact from release provenance.
+The existing input actor reports physical cancellation only when that
+cancellation actually relinquishes RS. The production delivery join records
+the same-owner, safe, neutral packet; a stale/unsafe poll, missing delivery,
+unrequested neutral packet or mere contact change cannot create this evidence.
+Only subsequent original physical contact can complete that release. Model
+endpoints and native bail/grind/offboard/incompatible-owner exits retain their
+existing paths. No native revert, launch or flip recipe changes are involved.
+
+Held pressure therefore survives a ground-entry or established-contact bounce
+without restarting acquisition, banking, or integrating a fictional manual
+interval. Balance integration also requires a recent owned delivery; missing
+delivery suspends integration without synthesizing a release. This does not
+claim manual physics while both trucks are touching. Live tests must still
+verify that physical contact recovers under retained pressure.
+
+The production-composed regression supplies the recorded three-contact entry
+and rebound ordering in both directions at30/60/120Hz, then verifies ten-second
+recovery holds. Explicit physical cancellation is exercised through the final
+native packet writers before testing putdown completion. Separate negative
+controls restore contact-only cancellation or remove release delivery; each
+must fail its specific assertion. Missing delivery and unrequested neutral
+packets cannot fabricate a release. Offline success remains distinct from
+native gameplay acceptance.
 
 The composition generator extracts actual native-observer, input/remap,
 update_combo, mode-toggle and HUD bodies. The focused tests include ten-second

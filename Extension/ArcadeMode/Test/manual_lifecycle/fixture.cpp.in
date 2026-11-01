@@ -952,6 +952,46 @@ void manual_revert_contact_publication_gap(){
       "queued RT across owner loss, offboard, bail, real putdown or stale evidence cannot retain or recreate authority");
  }
 }
+void manual_ground_contact_bounce(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  reset_case();native_score_active=false;
+  observe(1.f/hz,0xc000);client(1.f/hz,history());remap();
+  tick(dt,100,0xc000);remap(nose?2u:1u);
+  tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"ground bounce delivers attributable pressure");
+  for(unsigned i=0;i<3;++i){tick(dt,100,wanted);remap();}
+  const auto id=manual_episode.serial(),request=remap().manual.request_at;
+  const auto before=snapshot().elapsed;
+  for(unsigned i=0;i<hz/5+1;++i){
+   tick(dt,100,0xc000);const auto held=remap();
+   check(held.manual.owns&&held.right_y==(nose?20000:-20000)&&held.manual.request_at==request&&
+       manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "owned ground settling cannot infer a putdown and cancel the pressure needed for recovery");
+   check(snapshot().elapsed==before&&!manual_release.pending(),
+       "both-truck settling suspends integration without a synthetic release");
+  }
+  const auto resumed=clock_ms;
+  while(clock_ms-resumed<10000){
+   const auto balance=snapshot();tick(dt,100,wanted);
+   const auto held=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(held.manual.owns&&manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "recovered ground entry preserves its original episode and balance for ten seconds");
+  }
+  // No fresh controller delivery is an integration suspension, not a new
+  // release edge. This must also hold while native contact remains available.
+  for(unsigned i=0;i<hz/4+1;++i)tick(dt,100,wanted);
+  const auto suspended=snapshot().elapsed;
+  tick(dt,100,wanted);
+  check(snapshot().elapsed==suspended&&!manual_episode.ended()&&!manual_release.pending(),
+      "missing delivery suspends physics without fabricating release or physical exit");
+  corrupt_manual_delivery=true;
+  const auto missing=remap();corrupt_manual_delivery=false;
+  check(!missing.manual.release_requested,"neutral delivery without a physical cancel is not release evidence");
+  for(unsigned i=0;i<hz/5+1;++i){tick(dt,100,0xc000);remap();}
+  check(manual_episode.serial()==id&&!manual_episode.ended(),
+      "an unrequested neutral packet cannot turn contact uncertainty into putdown");
+ }
+}
 void manual_revert_successor_contact_bounce(){
  for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
   const unsigned dt=1000/hz;qualified(nose,dt,300);
@@ -1009,6 +1049,9 @@ void manual_revert_without_native_transition(){
    check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
        "finite revert recipe cannot end an independently continuing original manual or combo");
   }
+  const auto released=remap(12u);
+  check(released.manual.release_requested&&!released.manual.owns&&released.right_y==0,
+      "physical cancellation delivers neutral before putdown completion");
   tick(dt,100,0xc000);remap();
   for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
   check(!remap().manual.owns&&!balance_hud_pending(),"retained original still exits on a verified native putdown");
@@ -1063,7 +1106,10 @@ void manual_observation_continuity(){
   }
   tick(dt,100,0xc000);remap();
   for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
-  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"real completed contact exit still ends retained manual");
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"continued owned pressure keeps two-truck uncertainty separate from a release");
+  check(remap(12u).manual.release_requested,"contact exit follows an explicit physical cancellation");
+  for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"real completed contact exit after release ends retained manual");
  }
 }
 void episode_ground_gap_regression(){
@@ -1122,9 +1168,12 @@ void episode_real_exits(){
        "positive native exit between clients retires episode and actuator without synthetic putdown");
   }
   qualified(nose,dt,300);
+  const auto released=remap(12u);
+  check(released.manual.release_requested&&!released.manual.owns&&released.right_y==0,
+      "real putdown fixture includes physical release and delivered neutral");
   for(unsigned i=0;i<hz/4;++i){tick(dt,100,0xc000);remap();}
   check(manual_episode.ended()&&!balance_hud_pending()&&!remap().manual.owns,
-      "consecutive original two-truck samples confirm actual physical putdown");
+      "consecutive original two-truck samples after release confirm physical putdown");
   qualified(nose,dt,300);++owner.rig;tick(dt,100,wanted);
   check(!remap().manual.owns&&!balance_hud_pending(),"changed native owner cannot inherit stale manual authority");
   qualified(nose,dt,300);set_enabled(false,false);
@@ -1201,6 +1250,7 @@ int main(){
  episode_ten_seconds();
  analog_manual_entry_tolerance();
  manual_handoff_native_boundaries();
+ manual_ground_contact_bounce();
  manual_revert_successor_contact_bounce();
  manual_revert_production();
  manual_revert_contact_publication_gap();

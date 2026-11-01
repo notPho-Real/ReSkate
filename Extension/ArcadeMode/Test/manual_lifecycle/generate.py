@@ -105,6 +105,7 @@ def generated(root):
         "producer_revoke": ("const bool manual_boundary=manual_episode.observe(frame,arcade_input.pending_manual_revert(now,frame),wipeout);",
                             "const bool manual_boundary=false;"),
         "buffered_release": ("manual_release.retire_observed(now,manual_completion);", "(void)manual_completion;"),
+        "release_delivery": ("manual_episode.release_delivery(manual_delivery_frame,", "if(false)manual_episode.release_delivery(manual_delivery_frame,"),
     }
     for name, (old, new) in controls.items():
         outputs[name + ".cpp"] = replace_once(source, old, new)
@@ -128,6 +129,14 @@ def generated(root):
     rollback = rollback.replace("ManualEpisode", "ManualEpisodeWithoutBail")
     rollback = re.sub(r'#include "(arcade_[^"/]+\.h)"', r'#include "Extension/ArcadeMode/\1"', rollback)
     outputs["acquisition_without_bail.h"] = rollback
+    outputs["contact_putdown.cpp"] = replace_once(source,
+        '#include "Extension/ArcadeMode/arcade_manual_episode.h"',
+        '#include "Extension/ArcadeMode/arcade_manual_episode.h"\n#include "episode_without_held_pressure.h"')
+    outputs["contact_putdown.cpp"] = outputs["contact_putdown.cpp"].replace("ManualEpisode", "ManualEpisodeWithoutHeldPressure")
+    rollback = replace_once(episode,"if(owned_ || uncertain_)","if(uncertain_)")
+    rollback = rollback.replace("ManualEpisode", "ManualEpisodeWithoutHeldPressure")
+    rollback = re.sub(r'#include "(arcade_[^"/]+\.h)"', r'#include "Extension/ArcadeMode/\1"', rollback)
+    outputs["episode_without_held_pressure.h"] = rollback
     manifest = {
         "source_chunks_sha256": {name: hashlib.sha256(body.encode()).hexdigest()
                                  for name, body in parts.items()},
@@ -149,6 +158,8 @@ FAILURES = {
     "model_reset": "P0: a missing dynamics record must not erase established grounded manual identity or HUD",
     "producer_revoke": "positive native exit between clients retires episode and actuator without synthetic putdown",
     "buffered_release": "original observed physical completion between clients must retire old pending release before recovery contact",
+    "release_delivery": "retained original still exits on a verified native putdown",
+    "contact_putdown": "owned ground settling cannot infer a putdown and cancel the pressure needed for recovery",
     "bail": "positive native exit between clients retires episode and actuator without synthetic putdown",
     "hud_source": "client publication retains the original native HUD timestamp",
     "hud_axis": "admitted physical position reaches the rendered cursor on the correct axis",

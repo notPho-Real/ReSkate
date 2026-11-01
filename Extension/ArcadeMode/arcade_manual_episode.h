@@ -9,7 +9,7 @@ class ManualEpisode {
 public:
     enum class Phase { inactive, acquiring, active, transitioning, airborne_suspended, combo_airborne, ended };
     enum class Exit { none, disabled, owner, offboard, grind, bail, putdown, incompatible, endpoint };
-    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=successor_contact_step_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
+    void reset() noexcept { phase_=Phase::inactive; exit_=Exit::none; pose_=SkatePose::unknown; last_={}; two_at_=transition_id_=successor_contact_step_=release_step_=delivery_at_=0; successor_={}; owned_=transition_completed_=resume_pending_=uncertain_=reported_=false;command_={}; }
     Phase phase() const noexcept { return phase_; }
     Exit exit() const noexcept { return exit_; }
     std::uint64_t serial() const noexcept { return serial_; }
@@ -22,7 +22,8 @@ public:
     SkatePose pose() const noexcept { return airborne()?SkatePose::air:last_.state==103?SkatePose::riding:pose_; }
     bool fresh(std::uint64_t now) const noexcept { return last_.valid && now>=last_.sampled_at && now-last_.sampled_at<=150; }
     bool actuatable(std::uint64_t now) const noexcept {
-        return !uncertain_ && phase_==Phase::active && fresh(now) && last_.state==100 && last_.mode==1 &&
+        return !uncertain_ && !release_step_ && (!owned_ || (now>=delivery_at_ && now-delivery_at_<=150)) &&
+            phase_==Phase::active && fresh(now) && last_.state==100 && last_.mode==1 &&
             last_.contacts==(pose_==SkatePose::manual?0x4000u:0x8000u);
     }
     bool owned() const noexcept { return owned_; }
@@ -34,12 +35,20 @@ public:
     NativeInputFrame termination_frame() const noexcept { return terminal_; }
     bool take_termination() noexcept { if(!ended() || reported_)return false;reported_=true;return true; }
     void end(Exit reason) noexcept { if(phase_!=Phase::inactive && phase_!=Phase::ended){phase_=Phase::ended;exit_=reason;terminal_=last_;reported_=false;successor_={};owned_=resume_pending_=false;} }
+    void release_delivery(const NativeInputFrame& f,bool physical_release) noexcept {
+        if(!physical_release || !established() || !f.valid || f.owner!=owner_ ||
+            f.owner_generation!=generation_ || f.state!=100 || f.mode!=1 || !f.physics_step)return;
+        // A real neutral packet following physical cancellation precedes the
+        // physical completion. Missing delivery or an unsafe poll is not release.
+        release_step_=f.physics_step;two_at_=0;owned_=resume_pending_=false;
+    }
     void delivery(const NativeInputFrame& f,const ManualInputDiagnostic& d,bool eligible) noexcept {
         if(!eligible || !f.valid || !d.owns || !d.safe || (d.request!=-1 && d.request!=1))return;
         if(uncertain_ && d.request_at>command_.request_at){phase_=Phase::acquiring;uncertain_=false;owner_=f.owner;generation_=f.owner_generation;}
         if(!established() && phase_!=Phase::combo_airborne){phase_=Phase::acquiring;exit_=Exit::none;owner_=f.owner;generation_=f.owner_generation;}
         if(owner_!=f.owner || generation_!=f.owner_generation)return;
-        owned_=true;command_=d;
+        if(release_step_ && d.request_at<=command_.request_at)return;
+        release_step_=0;owned_=true;delivery_at_=f.sampled_at;command_=d;
         if(transitioning() && d.revert.owner==generation_ && d.revert.ack_at &&
             d.revert.step>=entry_step_ && d.request==(pose_==SkatePose::manual?1:-1)) {
             successor_=d.revert; successor_step_=f.physics_step; successor_direction_=d.request;
@@ -109,9 +118,15 @@ public:
         const auto wanted=pose_==SkatePose::manual?0x4000u:0x8000u;
         if(f.contacts==wanted){phase_=Phase::active;two_at_=0;return false;}
         if(f.contacts==0xc000u){
+            // Held native pressure and wheel contact are separate evidence.
+            // Ground entry and established manuals can rebound onto both
+            // trucks. Cancelling pressure here creates the putdown it claims
+            // to observe. No balance interval is integrated on these contacts.
+            if(owned_ || uncertain_){two_at_=0;return false;}
+            if(release_step_ && f.physics_step<=release_step_)return false;
             if(!two_at_ || !consecutive)two_at_=f.sampled_at;
-            // Multiple consecutive ORIGINAL physics observations, no observer
-            // gaps and no revert/hop, establish a physical two-truck putdown.
+            // Unactuated native sections, or an explicitly released owned
+            // section, still require consecutive original physical completion.
             if(f.sampled_at-two_at_>=100){end(Exit::putdown);return true;}
         }else {two_at_=0;if(f.contacts==0x4000u || f.contacts==0x8000u){end(Exit::incompatible);return true;}}
         return false;
@@ -119,7 +134,7 @@ public:
 private:
     Phase phase_{Phase::inactive};Exit exit_{Exit::none};SkatePose pose_{SkatePose::unknown};
     NativeInputOwner owner_{};NativeInputFrame last_{};ManualRevertContact successor_{};
-    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{},successor_contact_step_{};
+    std::uint64_t serial_{},generation_{},entry_step_{},integration_step_{},two_at_{},air_at_{},successor_step_{},transition_id_{},successor_contact_step_{},release_step_{},delivery_at_{};
     int successor_direction_{};bool owned_{},transition_completed_{},resume_pending_{},uncertain_{},reported_{};
     NativeInputFrame terminal_{};
     ManualInputDiagnostic command_{};

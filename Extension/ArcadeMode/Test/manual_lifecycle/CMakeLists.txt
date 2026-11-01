@@ -11,14 +11,14 @@ find_package(Threads REQUIRED)
 get_filename_component(lifecycle_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." ABSOLUTE)
 set(lifecycle_output "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(lifecycle_generator "${CMAKE_CURRENT_SOURCE_DIR}/generate.py")
-set(lifecycle_variants current model_reset producer_revoke buffered_release bail camera_toggle camera_recheck camera_publish camera_contention camera_snapshot_clock camera_client_phase)
+set(lifecycle_variants current model_reset producer_revoke buffered_release release_delivery contact_putdown bail camera_toggle camera_recheck camera_publish camera_contention camera_snapshot_clock camera_client_phase)
 set(lifecycle_sources)
 foreach(variant IN LISTS lifecycle_variants)
     list(APPEND lifecycle_sources "${lifecycle_output}/${variant}.cpp")
 endforeach()
 set(lifecycle_outputs ${lifecycle_sources}
     "${lifecycle_output}/hud_source.cpp" "${lifecycle_output}/hud_axis.cpp" "${lifecycle_output}/hud_clear.cpp"
-    "${lifecycle_output}/acquisition_without_bail.h" "${lifecycle_output}/correspondence.json")
+    "${lifecycle_output}/acquisition_without_bail.h" "${lifecycle_output}/episode_without_held_pressure.h" "${lifecycle_output}/correspondence.json")
 add_custom_command(
     OUTPUT ${lifecycle_outputs}
     COMMAND "${Python3_EXECUTABLE}" "${lifecycle_generator}" --root "${lifecycle_root}" --output "${lifecycle_output}"

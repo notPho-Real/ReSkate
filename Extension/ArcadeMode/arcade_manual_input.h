@@ -38,6 +38,7 @@ struct ManualInputDiagnostic {
         std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
         bool held_air{}; // Continuously held final direction, owned by this actor.
         ManualRevertContact revert{};
+        bool release_requested{}; // Explicit physical cancellation, never an observation timeout.
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the

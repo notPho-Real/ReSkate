@@ -496,6 +496,9 @@ def generate(root,variant='current'):
       // Sustained original two-truck evidence must retire its input reservation;
       // it must not demote that established episode into provisional authority.
       enter_ground(nose,hz);
+      const auto release=remap(12u);
+      expect(release.manual.release_requested&&!release.manual.owns&&last_pad.ry==0,
+             "historyless release is a physical cancellation delivered through final native packet writers");
       const auto episode=manual_episode.serial();const auto loss_at=clock_ms;
       while(clock_ms-loss_at<200){physical_step(hz,0xc000);remap(0,-20000);}
       expect(rows.empty()&&manual_episode.serial()==episode&&manual_episode.ended()&&

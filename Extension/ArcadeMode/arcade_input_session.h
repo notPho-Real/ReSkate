@@ -342,6 +342,8 @@ public:
         if(revert_link_.issued && manual.owns_stick && manual_.requested()==revert_link_.direction)
             output.manual.revert={revert_link_.owner,revert_link_.step,revert_link_.contact,
                 revert_link_.confirmed_at,revert_link_.stance};
+        output.manual.release_requested=manual_was_active && !manual.owns_stick && manual_.hard_reset() &&
+            ((manual_buttons&0x0030u) || (manual_buttons&3u)==3u || (manual_buttons&12u)==12u);
         bool busy = authored_.busy() || manual_.busy() || input_.pending_stick() || extension_started_;
         if (rail_ && !export_rail_ && !busy && !triggers && !auxiliary_.busy() &&
             (context == InputContext::air || context == InputContext::rail)) {
