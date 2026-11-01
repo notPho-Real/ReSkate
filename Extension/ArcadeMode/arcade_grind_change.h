@@ -10,7 +10,8 @@ namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
 // held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0), and
 // the measured neutral 403/24 ->406 ->401/20 return and lateral tail
-// 403/24 ->406 ->402/31 Bluntslide and 403/23 ->406 ->402/21 Noseslide. Other named bindings
+// 403/24 ->406 ->402/31 Bluntslide and 403/23 ->406 ->402/21 Noseslide
+// or opposite-heading 402/30 Nosebluntslide. Other named bindings
 // and source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -68,7 +69,9 @@ public:
             request.grind_target()==GrindChangeTarget::bluntslide;
         const bool lateral_nose=source_.state==403 && source_.identity==23 &&
             request.grind_target()==GrindChangeTarget::noseslide;
-        const bool lateral=lateral_tail || lateral_nose;
+        const bool lateral_nose_reverse=source_.state==403 && source_.identity==23 &&
+            request.grind_target()==GrindChangeTarget::nosebluntslide;
+        const bool lateral=lateral_tail || lateral_nose || lateral_nose_reverse;
         const bool sweep=source_.state==401 && source_.identity==20 &&
             (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked ||
              request.grind_target()==GrindChangeTarget::grind_5_0);
@@ -81,7 +84,8 @@ public:
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
             serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
         const auto next=serial_+1;
-        if(!arm(next,now+1500,lateral_nose?GrindAdmissionControl::lateral_nose:
+        if(!arm(next,now+1500,lateral_nose_reverse?GrindAdmissionControl::lateral_nose_reverse:
+            lateral_nose?GrindAdmissionControl::lateral_nose:
             lateral_tail?GrindAdmissionControl::lateral_tail:GrindAdmissionControl::ordinary))
             return InputDisposition::unsupported;
         // The measured 5-0 recipe retains Down; the other two retain Up.
@@ -90,9 +94,9 @@ public:
         const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0;
         // Neutral is an owned control sample, not a fabricated 50-50 result.
         // The original 403 admission and 406 initialization select the return.
-        sweep_x_=lateral?32767:returning?0:crooked?24000:12000;
-        held_y_=lateral_nose?8192:lateral_tail?-8192:returning?0:tail?-32767:32767;
-        target_identity_=lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
+        sweep_x_=lateral_nose_reverse?-32767:lateral?32767:returning?0:crooked?24000:12000;
+        held_y_=(lateral_nose || lateral_nose_reverse)?8192:lateral_tail?-8192:returning?0:tail?-32767:32767;
+        target_identity_=lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
         target_state_=lateral?402u:returning?401u:403u;
         hold_ms_=(returning || lateral)?1500u:1000u;lateral_=lateral;
         serial_=next;active_=true;stable_=false;

@@ -5,7 +5,7 @@
 #include <numbers>
 
 namespace dingosdk::arcade_mode {
-enum class GrindAdmissionControl { ordinary, lateral_tail, lateral_nose };
+enum class GrindAdmissionControl { ordinary, lateral_tail, lateral_nose, lateral_nose_reverse };
 inline constexpr std::uint64_t grind_lateral_neutral_ms=50;
 
 // Read the original GrindInputs request, not the smoothed actor orientation.
@@ -16,7 +16,8 @@ template<class Read,class Valid>
 bool grind_control_admitted(GrindAdmissionControl control,std::uintptr_t context,
                             std::uint64_t elapsed,Read&& read,Valid&& valid) noexcept {
     if(control==GrindAdmissionControl::ordinary)return valid();
-    if((control!=GrindAdmissionControl::lateral_tail && control!=GrindAdmissionControl::lateral_nose) ||
+    const bool nose=control==GrindAdmissionControl::lateral_nose || control==GrindAdmissionControl::lateral_nose_reverse;
+    if((control!=GrindAdmissionControl::lateral_tail && !nose) ||
         elapsed<grind_lateral_neutral_ms || !context || !valid())return false;
     // Context+5248 is a pointer, not inline angle storage. Re-read it after
     // sampling so replacing the original GrindInputs object rejects the lease.
@@ -28,8 +29,10 @@ bool grind_control_admitted(GrindAdmissionControl control,std::uintptr_t context
     for(unsigned i=0;i<3;++i)if(!read(inputs+offsets[i],after[i]))return false;
     if(before!=after || !read(context+5248,again) || again!=inputs || !valid())return false;
     constexpr float pi=std::numbers::pi_v<float>;
-    const auto heading=std::abs(std::remainder(before[0],2*pi));
-    const auto pitch=control==GrindAdmissionControl::lateral_nose?before[1]:-before[1];
+    const auto wrapped=std::remainder(before[0],2*pi);
+    if(control==GrindAdmissionControl::lateral_nose_reverse && wrapped>=0)return false;
+    const auto heading=std::abs(wrapped);
+    const auto pitch=nose?before[1]:-before[1];
     return heading>55*pi/180 && heading<125*pi/180 &&
         pitch>.1745329201f && pitch<.45f && std::abs(before[2])<.001f;
 }

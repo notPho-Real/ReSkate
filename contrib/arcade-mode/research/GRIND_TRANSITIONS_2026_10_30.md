@@ -2843,3 +2843,58 @@ native100 speed.0000684065 at(143.825363,1.028673,-45.094643), heading277.297485
 Both peers received clean handback, no job/reservation remaining. A subsequent
 opposite-heading candidate requires a newly coordinated window and fresh pins;
 none of the consumed reset/trial slots may be replayed.
+
+### Seventh qualified recipe: opposite heading produces Nosebluntslide
+
+After a new release from both peers and a fresh identity-pinned UI capture,
+the native approach reset succeeded174→178. Reset runner SHA-256
+b50f44fac3fbd1ff0fcac65a0adb5c5419d5785599d949e136e3593126ec0b64,
+receipt `grind-native-approach-reset-nose-opposite-c048914-v1/results/1793536540959874000-status.json`.
+Only the second lateral X sign and fresh pins changed from the successful
+Noseslide experiment; no destination class or identity was assigned.
+
+Immutable opposite-heading runner SHA-256
+71542dfcbe10bf07a742c65789dcd5fa5def19d642d75d3be8cc312b93598da6
+produced receipt `grind-native-nose-opposite-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-256 eb8fdaa09ee61f5a126c129c7ea6e3920382dddd8d77dc8acf24c3f62a3629da.
+It contains505 independent samples with both clocks30Hz. Original first406
+at2158.724ms completed401→403, then fine23 appeared2559.451ms. After the
+47.762ms conditional neutral wait, the second physical event was
+evdev(-32767,-8192), native XInput(-32767,8192). Raw native heading was
+-1.014080 radians, pitch+.400000006 and roll0 at2725.532ms. Original second406
+started2797.099ms and completed403→402 at phase1 after.699999809 seconds.
+Its original initialized request heading was-1.308997 radians; the running
+retarget was-1.014080 and completed orientation approximately(-1.310732,.335029,0).
+
+Independent native physics initially published402/fine26 at3493.008ms,
+then **BS_Nosebluntslide30 at3540.360ms**. There are85 matching retained
+destination samples through4545.499ms before natural701 at4556.814ms.
+All have physical/published contact1, missing0 and the original segment
+[2276332666919,0], endpoints(143.6982421875,.500742197,-46.4052734375) and
+(143.6982421875,.500742197,-58.4052734375). Native segment_changed was1 at
+first402 while actual endpoints/identity were unchanged, demonstrating why
+that initialization flag alone is not evidence of a real rail exit.
+Intermediate33/26 and the temporary physical lift during406 are recorded.
+**This does not qualify Smith26:** that identity was transient during the
+other requested action and did not persist as the requested destination.
+
+Production now executes ordered **B→Y Nosebluntslide from403/fine23**,
+horizontal geometry1 at least12m, through its own negative-heading/positive-
+pitch admission policy and the measured opposite RS input. It requires
+original403→402 completion, actual same-segment30 and independent changed
+animation. Noseslide21 and transient26 cannot satisfy it. Simultaneous B+Y
+retains the existing table's Y→B Nosegrind priority and is not an invented
+ordered Nosebluntslide alias. Strict warnings and ASan/UBSan pass8283
+production-composed checks at30/60/120Hz, including wrong-polarity rejection,
+control cancellation, held/repeated polls and separate animation evidence.
+The native receipt is still ArcadeOFF physics evidence; HUD/balance/combo
+and live production/Ollie acceptance remain outstanding. Smith and Tailslide
+are the remaining two unqualified bindings; broader sources/repeated changes
+remain incomplete. No DLL/CI build or deployment occurred.
+
+Cleanup verified GDB0/native feature restored, destroyed pad, ArcadeON and
+automatic routing, menus/editor closed, and all owned edits undone to
+bam23/rev198. Configured metadata/object absent, native100 speed.0000309014
+at(148.036606,1.028673,-40.816639), heading78.319359; c048914/PID85401 unchanged.
+Both peers received clean handback before any further bounded window request.
+This reset and trial slot are consumed.
