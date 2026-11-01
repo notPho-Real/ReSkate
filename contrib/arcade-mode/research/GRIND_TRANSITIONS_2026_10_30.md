@@ -6,12 +6,13 @@ Baseline: `65d34a0bc06034125b28779d10490e479df37fba`, the user-verified
 StateFlow/PTM flip implementation, balance model, or scoring changes.
 
 **Status: incomplete gameplay feature.** The rail A routing and early-flip
-handoff candidates are implemented locally but lack live acceptance. Three
-narrowly qualified named executors exist from native401/fine20: Y->B
-Nosegrind23, B->B Crooked32 and ordered X->B5-0 24. Independent native trials
-verify their physics identity changes and retained segments; animation/HUD/
-combo acceptance remains outstanding. Six bindings, additional source
-contexts and repeated changes are missing. The sections below record the
+handoff candidates are implemented locally but lack live acceptance. Four
+narrowly qualified named executors exist: from native401/fine20, Y->B
+Nosegrind23, B->B Crooked32 and ordered X->B5-0 24; from403/fine24,
+Y->Y returns to401/fine20 on twelve-metre horizontal geometry. Independent
+native trials verify their physics identity changes and retained segments;
+animation/HUD/combo acceptance remains outstanding. Five bindings, additional
+source contexts and arbitrary repeated sequences are missing. The sections below record the
 initial failures and subsequent findings chronologically; later qualification
 does not establish acceptance of the whole requested feature set.
 
@@ -2537,3 +2538,116 @@ four-metre travel guard will correctly reject it. Prepare a new source-checked
 setup for the current stopped position instead of weakening ownership checks
 or replaying the consumed v4 slot. Five bindings, broader source contexts,
 all-feature gameplay acceptance and the isolated build remain outstanding.
+
+### Lateral continuation: neutral evidence wait exposed an external-runner defect
+
+The fresh-position lateral trial used the same measured twelve-metre native
+setup after both peers released hardware. The immutable runner
+`grind-native-two-leg-lateral-c048914-v1/trial.py`, SHA-256
+198452e4bb5d8009029b8b03768e1254f194d1979f3573cd6e1d6f4e602658ec,
+completed the original401→403 leg and independently read fine24/contact on
+the same segment. It did **not** send the intended second lateral controls.
+Receipt `results/two-leg-lateral.json.gz`, SHA-256
+f4728bac4d3ecc16794a68aa05a767e382a9d12a92ea0dd7648200423a0c4649,
+contains225 reader samples with both clocks.03333333135 seconds. Fine24
+appeared2582.118ms; neutral pitch0 appeared2649.091ms; an unintended second406
+began2688.647ms. The gate rejected its non-lateral target and detached.
+
+Source identifies the exact cause: the trusted worker's `replay` always calls
+`pad.neutral()` before a conditioned phase. The external two-leg gate still
+enabled admission during that wait. Neutral therefore triggered the already
+qualified return path before the requested lateral event could be delivered.
+The waiter then raised `Native gate ended before second input`. This receipt
+is not evidence that the proposed lateral control fails native admission;
+that control never ran. No fifth named recipe follows from it.
+
+A second external cleanup defect was exposed: `ExperimentSession.run` closes
+and clears its pad on infrastructure failure, but the trial's first `finally`
+statement unconditionally dereferenced `session.pad`. Its resulting None
+exception skipped Arcade restoration and owned fixture undo. The worker had
+neutralized/destroyed its pad; the native gate's log showed GDB detachment.
+Independent status nevertheless confirmed ArcadeOFF and the owned long rail
+remaining at bam23/rev84. No clean handback was claimed at that point.
+
+Separately reviewed immutable cleanup
+`grind-lateral-cleanup-c048914-v1/cleanup.py`, SHA-256
+ad2dd5d5b781cad615ea61ae43d7d351c9273ff3c637dd7f1be9f4d2d4ec5d71,
+rechecked installed identity, exact ownedID10/item/pose in read-only SQLite,
+world revision and stopped rail state. It reversed exactly five owned native
+transactions84→94, restored ArcadeON, closed the editor and verified IDs9/10
+absent, TracerPid0 and the original native feature byte0. StockID2 was untouched.
+Receipt `grind-lateral-cleanup-c048914-v1/results/1793528935478529000-status.json`
+records native100 speed.000148 at(143.424789,1.028672,-51.628483), heading
+14.997158, fixture metadata configured but actual object absent. Both peers
+received explicit clean release.
+
+The next external candidate leaves the trusted worker's neutral-on-wait
+behavior intact. Instead, the second native lease stays disabled until fresh
+raw GrindInputs show the intended negative lateral heading band and negative
+pitch above the native destination-class threshold. First completion and
+fine24/contact/segment evidence remain prerequisites. The gate observes these
+inputs; it never writes target, contact, identity or animation. Original native
+admission and initialization must still choose402/404 and complete normally.
+Destroyed-pad cleanup now preserves the failure's partial delivery receipt,
+detaches its gate, reacquires the shared lock before console/undo operations,
+and continues even if no pad remains. Thirty-five inert control/neutral-wait/
+cleanup cases and52 existing lease/setup cases pass. These changes affect only
+the external experiment; production remains the four narrow recipes above.
+
+The corrected immutable lateral v2 runner (SHA-256
+28cd12dd851cf14f4c333f91ca95200559364d63ddda2baba510f1ce23918d1b)
+was reviewed and executed after both peers released hardware again. Native
+relocation rejected the current forward lane with `Fixture lane lacks a
+continuous flat native collision surface.` It stopped before debugger/grind
+input with zero native samples, and successfully undid its only owned short
+placement96→98. Receipt
+`grind-native-two-leg-lateral-c048914-v2/results/two-leg-lateral.json.gz`,
+SHA-256 f294bff18c641f4697401961b562398f5ed2ffca2b07dd5c61b65d6ebff92336,
+therefore does not validate the lateral gate correction in the game. Both
+lateral receipt slots are consumed; never replay them.
+
+Source-checked approach recovery is available through the existing fixture
+reset, not a new mechanic: restore the exact current fixture metadata, close
+the editor, let `flat_start(fixture.start,...,false)` recheck native ground,
+then use the existing trainer/native teleport manager. Independently verify
+the resulting approach, undo the owned restore and run full-lane validation
+again before any trial. The fixture implementation is identical at installed
+c048914 and this branch. This is setup recovery only, never rail-exit evidence.
+
+Two bounded recovery attempts did not reach reset. The first's four-second
+typing timeout stopped before Return; fresh status confirmed revision98 and
+no new object. The corrected typing timeout allowed a placement, but exact
+fixture matching failed at revision100. The read-only command log establishes
+an input-delivery error: requested height `-5.00679016e-06` arrived in the
+console as `-5.0079016e-06`. Persisted owned rail12 had height
+-0.000005007901563658379, so it correctly did not match fixture metadata.
+This is not evidence of a native float parser or editor reconciliation bug.
+The standalone recovery helper lacked the main trial's exact echo guard and
+its cleanup incorrectly required fixture presence before undoing its owned
+create. It must be corrected before reuse, with a new reviewed immutable slot.
+
+Separately reviewed cleanup `grind-reset-cleanup-c048914-v1/cleanup.py`
+(SHA-2566cd62f19b550f4bc72c69a71b0ab987453602f7147637639ea5f854e96313680)
+verified exactID12/item/persisted pose and reversed only transaction100→102,
+then closed the editor. Receipt
+`results/1793529576361022000-status.json` verifies ArcadeON, TracerPid0,
+native feature0, absent fixture and stopped100 speed.000099 at
+(143.424805,1.028672,-51.555122), heading14.997146. A final read-only database
+and echo receipt `grind-reset-log-read-c048914-v1/results/1793529603661888000.json`
+confirmed only preexisting stock rail2 remained. Both peers received clean
+handback; no job or reservation remains. Revalidate c048914/PID85401 and
+bam23/rev102 before further setup. No fifth recipe, new production behavior,
+native lateral acceptance, DLL or CI build was added in this continuation.
+
+Offline recovery v3 draft
+`build/grind-investigation/grind-native-approach-reset-c048914-v3.py`
+has SHA-256243173d1fb881eb1c60fe0f8c6c4970dbdb663e8abdf7ff6ce8d2a93fdfa552a.
+It uses a slower bounded placement typing interval, requires exact command
+echoes, retains structured errors, closes its own editor even on failure and
+allows undo of the single acknowledged create even when its pose fails exact
+fixture matching. Twelve positive/negative ownership cases pass, including
+wrong generation/revision and busy/failed editor. It remains unstaged and
+unexecuted; exact typing is not proven by these checks. Revalidate its pins
+before review. The lateral v3 draft is also unexecuted and its expected
+approach has not been reached; do not run it merely because revision102 now
+exists after cleanup. A successful recovery will advance the revision again.
