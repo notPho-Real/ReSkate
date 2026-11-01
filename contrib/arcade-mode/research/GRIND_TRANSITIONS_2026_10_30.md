@@ -2047,3 +2047,55 @@ Final native100 speed0.000124 at(145.004608,1.028666,-63.076706), heading
 10.387815. Both peers received explicit hardware release and acknowledged;
 Grind has no pending hardware job. Revalidate identity/world/geometry before
 any later input rather than treating this pose as a new fixture approach.
+
+### Offline continuation while Manuals holds priority hardware
+
+Manuals explicitly reclaimed the Deck after the preceding clean release to
+complete its user-prioritized work. Grind confirmed no active/pending job or
+reservation and will make no input, console or telemetry call before Manual's
+clean handback. This continuation used only local source, retained executable
+bytes and inert reader fixtures. No native recipe or build was added.
+
+The hash-verified original executable separates the remaining control problem
+more precisely. The six dispatch entries at RVA0x481436c map source states
+400..405 to 0x481432e,0x4814187,0x48141d3,0x48142a5,0x48141d3,0x4814333.
+Thus an initial401 request selects only400 or403; reaching402/404 from that
+source requires another native transition. For source403, the existing
+target-dependent heading band selects400 when absolute pitch is at most
+0.1745329201, or402/404 through additional native side/contact predicates
+when pitch is larger. Outside that heading band, its near-neutral pitch and
+heading branch can return401. These are destination-class conditions, not
+validated named recipes. The production source401/fine20 gate must not be
+widened just because those branches exist.
+
+The native lookup also rules out treating the measured 5-0 heading sweep as
+a Smith recipe. BS5-0 24 accepts[1,1,1,0,0/1,1]; BSSmith26 requires
+[1,1,0/1,1,1,1]. At0x47dd103..151, tuple element3 compares the dot product
+of signed source+96 and output+48 against -0.10000000149. The source vector
+is negated only when tuple element1 is zero; element3 is1 for a finite dot
+at or below the threshold. Changing alignment element2 alone cannot turn
+the measured5-0 intoSmith. Earlier receipts record neither output+48 nor
+source+320/output+0, so they cannot explain/control this additional predicate.
+
+Tuple element4 is returned by0x47c8290 and stored at classifier+36. It is not
+a direct left/right stick bit: that routine combines vectors from source+0,
+the page at pages+40 offsets256/272, output+0, classifier history and its
+selected history entry+96. For coarse0/1, it also uses classifier+240 and
+stores an intermediate flag at+256. For larger coarse classes, the history
+flag and a separate page+16 offset260 threshold120 select the0/1 or2/3
+return range. Retain this distinction before interpreting the Noseslide21,
+Tailslide22, Noseblunt30 and Blunt31 table entries; those depend on coarse
+class2/3 and element4 as well as longitudinal identity.
+
+Prepared only a local read-only observer fragment that adds source+320,
+output+0 and output+48 to the successful tail observer's existing repeated
+read bracket. It does not derive a name, alter an input sequence or contain
+a runnable hardware entry point. Preparation script
+`build/grind-investigation/prepare_classifier_vectors.py` verifies the exact
+successful tail-runner SHA before extracting the function. Result fragment
+SHA-2567a625bfb32e08185dd50d08bae176919561b60deafcf454c14ffdc2e3d73545b.
+Seven inert checks cover stable data, each newly/previously read vector
+changing during the bracket, and owner loss. These checks establish reader
+rejection behavior only; repeated equal reads still are not an atomic frame.
+Any actual probe must first be repinned, independently reviewed and staged
+after hardware handback. Six bindings and repeated changes remain unresolved.
