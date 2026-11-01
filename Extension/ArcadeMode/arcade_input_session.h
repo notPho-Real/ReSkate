@@ -532,6 +532,9 @@ private:
     InputDisposition request_extension(const InputRequest& request) noexcept {
         auto result = InputDisposition::unsupported;
         if (admission_.extensions.request) result = admission_.extensions.request(admission_.extensions.state,request);
+        if (result == InputDisposition::started && request.action == InputAction::rail_change) {
+            rail_ = false; rail_request_ = {};
+        }
         extension_started_ = extension_started_ || result == InputDisposition::started;
         current_->unsupported = result == InputDisposition::unsupported;
         return result;

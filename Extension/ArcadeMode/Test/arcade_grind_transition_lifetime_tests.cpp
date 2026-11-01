@@ -69,6 +69,7 @@ struct ContactFixture {
         memory.put(context+c::selected_state,state);
         memory.put(core+0x440,selector);memory.put(selector,pages);memory.put(pages+32,output);
         memory.put(context+4016,std::uint8_t{1});memory.put(output+400,std::uint8_t{1});
+        memory.put(output+188,std::uint32_t{1});
         memory.put(output+192,std::uint32_t{20});memory.put(actor+c::missing_segment,std::uint8_t{0});
         // Original c69 completion receipt's four-metre rail. This reader
         // establishes a current segment, not whether enough travel remains.
@@ -85,11 +86,11 @@ int main() {
         ContactFixture f(state);
         const auto sample=f.sample();
         check(sample.valid && sample.actor==f.actor && sample.output==f.output && sample.state==state &&
-            sample.identity==20 && sample.end[2]-sample.begin[2]==4.f &&
+            sample.identity==20 && sample.geometry==1 && sample.end[2]-sample.begin[2]==4.f &&
             sample.segment_identity==std::array<std::uint64_t,2>{17,29},
             "original contact actors expose the current native segment without a minimum-length policy");
     }
-    for(unsigned reject=0;reject<15;++reject) {
+    for(unsigned reject=0;reject<16;++reject) {
         ContactFixture f;
         switch(reject) {
         case 0:f.memory.put(f.context+c::selected_state,std::uint32_t{406});break;
@@ -107,10 +108,11 @@ int main() {
         case 12:f.memory.put(f.pages+32,std::uintptr_t{0});break;
         case 13:f.memory.put(f.core+c::core_context,std::uintptr_t{0x800000});break;
         case 14:f.memory.bytes.erase(f.actor+c::segment_identity+8);break;
+        case 15:f.memory.bytes.erase(f.output+188);break;
         }
         check(!f.sample().valid,"missing contact/segment, invalid owner or rail exit cannot admit a new request");
     }
-    for(unsigned changed=0;changed<10;++changed) {
+    for(unsigned changed=0;changed<11;++changed) {
         ContactFixture f;unsigned reads{},resolves{};
         const auto sample=read_grind_contact(f.base,f.core,f.context,[&](auto address,auto& value) {
             const bool ok=f.memory(address,value);
@@ -126,6 +128,7 @@ int main() {
                 case 6:f.memory.put(f.selector,std::uintptr_t{0x800000});break;
                 case 8:f.memory.put(f.actor+c::segment_identity,std::array<std::uint64_t,2>{18,29});break;
                 case 9:f.memory.put(f.actor+c::segment_identity,std::array<std::uint64_t,2>{17,30});break;
+                case 10:f.memory.put(f.output+188,std::uint32_t{2});break;
                 default:break;
                 }
             }

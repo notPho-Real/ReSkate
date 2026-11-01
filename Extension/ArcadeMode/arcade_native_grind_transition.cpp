@@ -21,6 +21,7 @@ struct Lease {
     NoBailSkater owner{};
     std::uint64_t serial{},deadline{};
     bool entered{};
+    NativeGrindContact contact{};
 };
 Lease lease;
 struct Completed { NoBailSkater owner{}; Completion result{}; } completed;
@@ -129,12 +130,13 @@ Completion completion(const NoBailSkater& owner,std::uint64_t serial,std::uint64
         !no_bail_skater(current) || current!=owner || current.base!=image)return {};
     return result.result;
 }
-bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept {
+bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint64_t serial,
+    std::uint64_t now,std::uint64_t deadline) noexcept {
     const auto current_time=GetTickCount64();
     if (!available() || current_time>tick_expires.load() || !serial || now>current_time || current_time-now>150 ||
         deadline<=current_time || deadline-now>1500 || owner.base!=image) return false;
-    const Lease candidate{owner,serial,deadline};
-    if (!contact(owner).valid) return false;
+    const Lease candidate{owner,serial,deadline,false,expected};
+    if (!expected.valid || contact(owner)!=expected) return false;
     std::lock_guard lock(mutex);
     if (lease.serial) return false;
     lease=candidate;completed={};request_pending.store(true,std::memory_order_release);return true;
@@ -149,7 +151,7 @@ bool setting_override(const void* reference,std::uintptr_t expression) noexcept 
         !expression_owner(expression,l) || !read(l.owner.context+c::selected_state,state))return false;
     // Initial admission needs contact. Native 406 can briefly lift the board;
     // its exact actor and selector remain authoritative during that interval.
-    const bool admitted=(state>=400 && state<=405 && !l.entered && contact(l.owner).valid) ||
+    const bool admitted=(state>=400 && state<=405 && !l.entered && contact(l.owner)==l.contact) ||
         (state==406 && active_actor(l));
     return admitted && valid(l);
 }

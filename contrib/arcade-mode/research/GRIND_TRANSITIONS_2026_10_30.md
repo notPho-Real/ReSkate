@@ -1641,3 +1641,84 @@ publication blocker, not named-grind gameplay acceptance. Animation/HUD/combo
 continuity was not established in these ArcadeOFF native controls. The named
 production dispatcher is still unwired; the Ollie/early-flip candidate remains
 offline-only. No DLL/CI build, installation, merge or release occurred.
+
+### Held sweep: actual named publication and first production executor
+
+The next bounded native control supplied Up first, then changed X to12000
+after200ms while continuing to hold Up. The initial evdev vector was
+(0,-32767), followed by(12000,-32767), released after1000ms. This exercises
+the original captured-reference path rather than supplying an initial diagonal.
+The immutable v4 runner SHA-256 is
+`08b6f05990f4f63de53f34e317dc6843b1609a1e417dcce268e46a3e9a1c3f05`.
+Its lossless receipt is
+`~/.local/share/reskate-arcade-lab/grind-native-long-56f6c7b-v4/results/held-sweep.json.gz`,
+SHA-256 `af29ff22cd89a46db955665127fc9472107897211087d5c43caf4d189545ff9e`.
+It independently verified installed56f6c7b/fbf20e96, executablefbce74d5,
+PID70570 and the mapped DLL inode before input. Original physics and cached
+step were both0.0333333313: this remains30Hz native evidence.
+
+Relative to the first observer sample, native401/fine20 begins2049.400ms,
+406 begins2213.359ms, successor403 begins2551.747ms, and **fine23 publishes
+at2590.283ms while still403**. It remains23 until701 exit at3216.578ms.
+Source and successor retain the same six-metre endpoints and opaque native
+segment identity[1460288880679,0], missing=false, geometry1. The original
+actor requested heading0.351071119/pitch0.4, completed at phase1, and cleaned
+up with active=false. Actual completion orientation was approximately
+(0.311739445,0.399101734,0.000016451). The original identity classifier and
+completion writer were untouched. No target/identity/animation field was set.
+This establishes an actual BS50-50 ->BSNosegrind physics identity change,
+unlike the earlier Up-only and initial-biased negative controls.
+
+The receipt ran ArcadeOFF and did not establish animation/HUD/combo acceptance.
+Cleanup restored the feature, detached GDB, neutralized/closed the pad,
+released the shared lock, and undid all own temporary objects. Final world
+was bam generation8/revision52, fixture absent, ArcadeON. Hardware was returned
+to Manual; subsequent coordination released it to Grab. These coordinates and
+installed identity must be revalidated before another trial.
+
+`arcade_grind_change.h` now provides the first production named executor:
+existing Y->B recognition calls `InputSession::request_extension`, through
+the facade and controller remapper, into the exact-owner native admission
+lease and measured held RS sweep. XInput Y is+32767 (evdev Y is inverted).
+Generic Y ownership is retired only when the named request starts. Final
+face/RS masking and packet ownership include the named RS owner, so the
+delivered sweep is not erased by the final controller filter. A cancels this
+owner before the existing rail-exit Ollie path runs.
+
+Qualification is deliberately narrow: independently established401/fine20,
+geometry1, horizontal segment at least six metres, same owner and original
+physics progress for80ms. The length is a tested-scope restriction, not a
+claim about native minimum length or remaining forward travel. Native missing
+segment and geometry remain authoritative. Other names/source identities have
+no qualified recipe and cannot arm this executor. All nine combinations are
+therefore **not implemented**. Repeated named changes are not ready yet.
+
+The lease rechecks exact contact/segment/identity before initial native feature
+admission, preserves its own406 transition, and cancels on A, OFF/menu,
+owner loss, stale observation, incompatible geometry, bail/landing or real
+rail exit. Native completion is separate from destination physics identity
+and independently resolved CurrentGrindType. An unchanged animation cannot
+be acknowledged. These evidence flags do not write score or combo state.
+Simultaneous pairs now use existing table priority rather than numeric
+button-scan order; distinct timestamps preserve ordered bindings. Same-time
+Y+B selects the earlier Y->B table row, while sequential B->Y remains the
+unsupported Nosebluntslide request.
+
+Validation:2006 new strict C++20/ASAN/UBSAN production-composed checks cover
+30/60/120Hz, held/released sequential and simultaneous input, exact original
+timestamps, strict300ms boundaries, repeated polls, bounded RS execution,
+independent identity/animation evidence and cancellation/A handoff. Also pass:
+639 native lifetime/contact,1362 rail-pop,5645 input-session plus326 jump-idle,
+2486 ordinary native flip,40 rail facade and10 rail composition checks.
+The unchanged combo/HUD targets pass1736/7010 checks with their normal portable
+build configuration. The initial strict combo compile rejected existing float
+truth tests; the initial HUD command omitted ImGui. Corrected invocations
+passed without changing either protected source.
+
+`arcade_input_pattern_dispatch_tests` fails an unrelated contextual-air
+press-age assertion on both this tree and a separate header snapshot of
+HEAD c9c0581f; this is not claimed green and was not changed as grind work.
+Local logs are under `build/grind-investigation/named-executor-checks`.
+Windows runtime compilation, native animation/HUD/combo acceptance, live
+Ollie/early-flip verification and eight remaining named recipes are outstanding.
+No DLL/CI build, upload, installation, merge or release was performed.

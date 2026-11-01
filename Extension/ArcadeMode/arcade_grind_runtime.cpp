@@ -149,6 +149,23 @@ void grind_observer_tick(std::uintptr_t base, std::uint64_t now, bool gameplay,
         r->guard.clear(std::memory_order_release);
     } catch (...) { invalidate_grind_observer(); }
 }
+NativeGrindSnapshot sample_grind_identity(const NoBailSkater& supplied, std::uint64_t now) noexcept {
+    auto* r=runtime.load(std::memory_order_acquire);
+    if(!r || now>r->expires.load() || r->guard.test_and_set(std::memory_order_acquire))return {};
+    const auto generation=r->generation.load();
+    const auto owner=r->owner;
+    const auto bindings=r->bindings;
+    r->guard.clear(std::memory_order_release);
+    if(!grind_observer_detail::fresh(owner,now) ||
+        !grind_observer_detail::same(owner,owner_of(supplied,generation,now)))return {};
+    auto resolve=[&]() noexcept {
+        NoBailSkater value{};
+        if(r->generation.load()!=generation || GetTickCount64()>r->expires.load() ||
+            !no_bail_skater(value) || value!=supplied)return GrindObserverOwner{};
+        return owner_of(value,generation,now);
+    };
+    return read_native_grind(Read{},resolve,bindings,now,true);
+}
 RailAdapterLipSnapshot observe_grind_step(const NoBailSkater& supplied, std::uint64_t now) noexcept {
     auto* r = runtime.load(std::memory_order_acquire);
     if (!r) return {};

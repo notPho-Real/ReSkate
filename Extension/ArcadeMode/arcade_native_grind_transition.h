@@ -13,7 +13,8 @@ void tick(bool gameplay) noexcept;
 void cancel() noexcept;
 bool available() noexcept;
 NativeGrindContact contact(const NoBailSkater& owner) noexcept;
-bool arm(const NoBailSkater& owner,std::uint64_t serial,std::uint64_t now,std::uint64_t deadline) noexcept;
+bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint64_t serial,
+    std::uint64_t now,std::uint64_t deadline) noexcept;
 bool pending() noexcept;
 bool setting_override(const void* reference,std::uintptr_t expression) noexcept;
 struct Completion {

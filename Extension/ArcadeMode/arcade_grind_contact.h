@@ -8,9 +8,10 @@ namespace dingosdk::arcade_mode {
 struct NativeGrindContact {
     bool valid{};
     std::uintptr_t actor{},output{};
-    std::uint32_t state{},identity{};
+    std::uint32_t state{},identity{},geometry{};
     std::array<float,3> begin{},end{};
     std::array<std::uint64_t,2> segment_identity{};
+    bool operator==(const NativeGrindContact&) const = default;
 };
 
 // Valid freshly resolves the complete local owner and its gameplay lease.
@@ -39,7 +40,8 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
             read(result.output+400,observed) && observed==1 &&
             read(result.actor+c::missing_segment,missing) && missing==0;
     };
-    if(!contact() || !read(result.output+192,result.identity) || !result.identity || result.identity>68 ||
+    if(!contact() || !read(result.output+188,result.geometry) ||
+        !read(result.output+192,result.identity) || !result.identity || result.identity>68 ||
         !read(result.actor+c::segment_begin,result.begin) || !read(result.actor+c::segment_end,result.end) ||
         !read(result.actor+c::segment_identity,result.segment_identity))return {};
     double length_squared{};
@@ -52,7 +54,7 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
     // A replacement actor, segment, selector, identity or owner invalidates
     // the whole sample. Native missing-segment output remains authoritative;
     // do not substitute fixture coordinates or invent geometry tolerances.
-    std::uint32_t state{},identity{};
+    std::uint32_t state{},identity{},geometry{};
     std::array<float,3> begin{},end{};
     std::array<std::uint64_t,2> segment_identity{};
     if(!read(context+c::selected_state,state) || state!=result.state ||
@@ -63,6 +65,7 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
         !read(core,type) || type!=base+c::core_vtable ||
         !read(core+0x440,owner) || owner!=selector || !read(selector,owner) || owner!=pages ||
         !read(pages+32,owner) || owner!=result.output ||
+        !read(result.output+188,geometry) || geometry!=result.geometry ||
         !read(result.output+192,identity) || identity!=result.identity || !contact() ||
         !read(result.actor+c::segment_begin,begin) || begin!=result.begin ||
         !read(result.actor+c::segment_end,end) || end!=result.end ||

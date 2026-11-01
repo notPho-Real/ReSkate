@@ -1037,7 +1037,14 @@ private:
         const auto query = [&](Pair pair, std::uint64_t window, InputAction action) noexcept {
             if (rail.excluded_variant == pair.target && !(action == InputAction::rail_change && !rail.frontside && pair.target == 3)) return false;
             const std::array tokens{InputToken{InputSource::buttons, pair.first, InputEdge::press}, InputToken{InputSource::buttons, pair.second, InputEdge::press}};
-            const auto match = events_.history().match({tokens, window, ~manual_owner}, now);
+            auto match = events_.history().match({tokens, window, ~manual_owner}, now);
+            // Simultaneous physical edges have one timestamp; their journal
+            // order is a bit-scan detail. Resolve ties by the existing table
+            // priority, while distinct timestamps retain directional ordering.
+            if (!match && action == InputAction::rail_change && pair.first != pair.second) {
+                const std::array reverse{tokens[1],tokens[0]};
+                match=events_.history().match({reverse,window,~manual_owner,true,true},now);
+            }
             if (!match || !events_.history().consume(match, branch_owner, ~manual_owner)) return false;
             enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };

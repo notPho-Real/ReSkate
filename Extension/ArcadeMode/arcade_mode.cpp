@@ -22,6 +22,7 @@
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
 #include "arcade_native_grind_transition.h"
+#include "arcade_grind_change.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -63,6 +64,8 @@
 namespace dingosdk::arcade_mode {
 namespace {
 std::atomic<bool> ready{};
+// Serialized with the existing controller/gesture mutex.
+GrindChange grind_change;
 std::atomic<bool> mode_enabled{};
 std::atomic<bool> auto_kick{true};
 std::atomic<SpinMode> selected_spin_mode{SpinMode::held};
@@ -1678,6 +1681,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    grind_change.cancel();
     native_grind::cancel();
     native_flip::cancel();
     arcade_input.invalidate_authority();
@@ -1719,6 +1723,7 @@ void set_enabled(bool value, bool persist) noexcept {
     {
         std::lock_guard lock(ollie_mutex);
         // Controller capture off publication begin.
+        grind_change.cancel();
         if(!value){
             if(input_capture_correlation.schema4()&&capture_manual_join.request&&!capture_manual_join.exit_seen){
                 capture_manual_join.exit_reason=2;
@@ -2222,15 +2227,31 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
             return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
         }};
+        const auto grind_frame=arcade_input.native_context(now);
+        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
+            !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
+        const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
+        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available());
+        if(grind_change.active() && !native_grind::pending() &&
+            !native_grind::completion(native_flip_owner,grind_change.serial(),now).native.valid)grind_change.cancel();
+        if(!grind_change.active())native_grind::cancel();
+        struct GrindDispatch { NoBailSkater owner; NativeGrindContact contact; std::uint64_t now; }
+            grind_dispatch{native_flip_owner,grind_contact,now};
+        const InputAdapter grind_adapter{&grind_dispatch,[](void* context,const InputRequest& request) noexcept {
+            const auto& dispatch=*static_cast<GrindDispatch*>(context);
+            return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline) noexcept {
+                return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline);
+            });
+        }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
+            manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip);
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,grind_change.admission(),grind_adapter);
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){
@@ -2281,6 +2302,16 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rail_pad = arcade_input.sample_native_rail(result.rail,now,
             game_input && !offboard && !releasing_manual && !reference && !action.owned);
         if (rail_pad.owns_right_stick) { result.right_x = rail_pad.right_x; result.right_y = rail_pad.right_y; }
+        if(grind_change.active() && (reference || action.owned || result.authored_playback)) {
+            grind_change.cancel();native_grind::cancel();
+        }
+        if(grind_change.active()) {
+            const auto completion=native_grind::completion(native_flip_owner,grind_change.serial(),now);
+            grind_change.verify(now,completion.native,grind_contact,sample_grind_identity(native_flip_owner,now));
+            if(!grind_change.active())native_grind::cancel();
+        }
+        const auto grind_pad=grind_change.sample(now);
+        if(grind_pad.owns) { result.right_x=grind_pad.x;result.right_y=grind_pad.y; }
 
         const auto pose = manual_observed.load(std::memory_order_relaxed);
         const auto hop_origin = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
@@ -2298,7 +2329,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // claiming native entry, contact validity or a balance force.
         ground_controls.manual_vertical_reserved = rotation_enabled && manual_delivery &&
             !result.authored_playback && !action.owned && !reference && !manual_hop.active() &&
-            !result.rail.held && !rail_pad.owns_right_stick && !rail_pad.button_mask &&
+            !result.rail.held && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask &&
             ((result.manual.owns && (result.manual.request == -1 || result.manual.request == 1) &&
               result.right_x == 0 && result.right_y == result.manual.request * 20000) ||
              (releasing_manual && result.right_x == 0 && result.right_y == 0));
@@ -2378,7 +2409,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             {configured_balance.first,configured_balance.second},
             configured_balance.available && rotation_enabled && !manual_hop.active() && !reference && !action.owned && !result.authored_playback &&
             (!result.command_busy || result.manual.owns) &&
-            result.phase!=3 && !rail_pad.owns_right_stick && !rail_pad.button_mask && !rotation.owns_left &&
+            result.phase!=3 && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask && !rotation.owns_left &&
             !(physical_buttons & (classic_a | 0x0030u)) &&
             physical_left_trigger<=30 && physical_right_trigger<=30);
         if(manual_correction.owns_y)left_y=manual_correction.y;
@@ -2393,7 +2424,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                     (result.phase==3 ? BoardChord::native_y : 0));
             result.buttons = static_cast<std::uint16_t>((result.buttons & ~0xf30fu) | (native_faces & 0xf000u));
             if (!action.pad.owns_triggers) left_trigger = right_trigger = 0;
-            if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick)
+            if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick && !grind_pad.owns)
                 result.right_x = result.right_y = 0;
         }
         // Controller route final_controls publication end.
@@ -2403,7 +2434,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         capture_ownership=(result.authored_playback?16u:0u) | (action.owned||action.consume_rt||action.consume_buttons?32u:0u) |
-            (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick?256u:0u) | (normal_mask?512u:0u);
+            (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick||grind_pad.owns?256u:0u) | (normal_mask?512u:0u);
         if(capture&&input_capture_correlation.schema4()){
             capture->manual_request=result.manual.recognition_id;
             capture->manual_recognized_ms=result.manual.recognized_at;
@@ -2414,12 +2445,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             capture->owned_neutral=ground_controls.manual_vertical_reserved && releasing_manual &&
                 result.right_x==0 && result.right_y==0;
             capture->final_writer=capture->manual_owns?1u:capture->owned_neutral?2u:
-                result.authored_playback?3u:action.owned?4u:rail_pad.owns_right_stick?5u:
+                result.authored_playback?3u:action.owned?4u:rail_pad.owns_right_stick||grind_pad.owns?5u:
                 result.right_x==physical_right_x && result.right_y==physical_right_y?0u:6u;
         }
         // Controller route packet_sample publication begin.
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick || grind_pad.owns);
         // Controller route packet_sample publication end.
         neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
             result.right_x, result.right_y);
