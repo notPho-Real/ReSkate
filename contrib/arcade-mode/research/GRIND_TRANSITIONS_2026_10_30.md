@@ -1946,3 +1946,30 @@ still gate the trial. No stale pose is used as a geometry substitute. Peer
 hardware handback and fresh installed identity must precede external review,
 staging or execution; any changed pin invalidates this candidate.
 No Deck call, new production recipe or DLL/CI build occurred in this follow-up.
+
+### Subsequent runtime handback: readiness only, no tail-sweep trial
+
+Grab's separately authorized diagnostic installation/restart invalidated the
+prepared c048914 probe. After both peers released hardware, fixed external
+identity/status runners independently verified installed and mapped
+dbaa45a1ad63103a2926c84a50bcb11c898a6c38,
+DLL4a54bf245ce4fe00b58602c98b9f0770382d7c09b68e561608f9a6bfe66a9356,
+PID78791/launcher78799 and three matching DLL mapping rows. Receipt
+`grind-readiness-dbaa45a-v1/results/1793500694596826000-status.json` shows
+the city spawn near(626.651367,199.972504,1065.314697), native100, speed below
+0.002, bam generation5/revision5, fixture unconfigured/absent. This is not the
+previous Mega Park fixture world, so the old native redo was not attempted.
+
+The source `Extension/World/console_commands.cpp::register_world_commands`
+provides native `levels`/`load` routing. A bounded `levels` query confirmed the
+installed destination `skate3_megapark` with asset
+`levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark`.
+Receipt `grind-readiness-dbaa45a-v1/results/1793500740408231000-levels.json`.
+No world load was issued: Manual's corrected air batch became ready, and Grind
+released at this clean boundary for its priority restoration/testing. Only
+status/levels commands ran, all jobs finished and lock/console closed. No
+controller, debugger, capture, fixture or installed-file mutation occurred.
+Last native100 speed0.001568, ArcadeON, editor/menu closed, same generation/
+revision and absent fixture. Both peers received the explicit handback.
+The 5-0 probe remains unexecuted and must be repinned after the next handback;
+two production recipes remain qualified, with no new DLL/CI build.
