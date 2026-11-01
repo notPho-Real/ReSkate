@@ -7,7 +7,7 @@
 
 namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
-// held sweeps ending in native23 (Nosegrind) or32 (Crooked). Other named
+// held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0). Other named
 // bindings have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -58,7 +58,8 @@ public:
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
         if(request.action!=InputAction::rail_change ||
-            (request.grind_target()!=GrindChangeTarget::nosegrind && request.grind_target()!=GrindChangeTarget::crooked))
+            (request.grind_target()!=GrindChangeTarget::nosegrind && request.grind_target()!=GrindChangeTarget::crooked &&
+             request.grind_target()!=GrindChangeTarget::grind_5_0))
             return InputDisposition::unsupported;
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
@@ -67,10 +68,12 @@ public:
             serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
         const auto next=serial_+1;
         if(!arm(next,now+1500))return InputDisposition::unsupported;
-        // Both measured recipes retain Up. The larger heading sweep crosses
-        // the native alignment predicate; the classifier supplies the name.
+        // The measured 5-0 recipe retains Down; the other two retain Up.
+        // The native geometry classifier supplies the destination identity.
         const bool crooked=request.grind_target()==GrindChangeTarget::crooked;
-        sweep_x_=crooked?24000:12000;target_identity_=crooked?32u:23u;
+        const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0;
+        sweep_x_=crooked?24000:12000;held_y_=tail?-32767:32767;
+        target_identity_=tail?24u:crooked?32u:23u;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -79,9 +82,9 @@ public:
     Pad sample(std::uint64_t now) const noexcept {
         if(!active_ || !fresh(now,frame_) || now<evidence_.started_at || now-evidence_.started_at>=1000)return {};
         // Native XInput Y is opposite to evdev ABS_RY used in the control trial.
-        // Keep Up held across the 200ms heading change; neutral between the two
+        // Keep the vertical input held across the 200ms heading change; neutral between the two
         // samples loses the native captured-reference path.
-        return {true,static_cast<std::int16_t>(now-evidence_.started_at<200?0:sweep_x_),32767};
+        return {true,static_cast<std::int16_t>(now-evidence_.started_at<200?0:sweep_x_),held_y_};
     }
     void verify(std::uint64_t now,const NativeGrindCompletion& completion,
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
@@ -126,7 +129,7 @@ private:
     NativeGrindContact source_{};
     InputRailState admission_{};
     Evidence evidence_{};
-    std::int16_t sweep_x_{};
+    std::int16_t sweep_x_{},held_y_{};
     std::uint32_t target_identity_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
     bool active_{},stable_{},source_animation_known_{};

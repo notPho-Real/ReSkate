@@ -50,13 +50,16 @@ struct Pipeline {
 };
 }
 int main() {
-    for(unsigned hz:{30u,60u,120u})for(bool crooked:{false,true})for(bool together:{false,true}) {
-        if(crooked && together)continue; // B then B requires two physical edges.
-        const auto target=crooked?GrindChangeTarget::crooked:GrindChangeTarget::nosegrind;
-        const unsigned identity=crooked?32u:23u;
-        const std::uint16_t held=crooked?0x2000u:0xa000u;
+    for(unsigned hz:{30u,60u,120u})for(auto target:{GrindChangeTarget::nosegrind,GrindChangeTarget::crooked,GrindChangeTarget::grind_5_0})for(bool together:{false,true}) {
+        const bool crooked=target==GrindChangeTarget::crooked;
+        const bool tail=target==GrindChangeTarget::grind_5_0;
+        // B then B requires two edges; simultaneous X+B has the existing
+        // B->X Bluntslide priority and is deliberately not a 5-0 alias.
+        if((crooked || tail) && together)continue;
+        const unsigned identity=tail?24u:crooked?32u:23u;
+        const std::uint16_t held=tail?0x6000u:crooked?0x2000u:0xa000u;
         Pipeline p;p.establish();p.step(1200);
-        p.poll(crooked?0x2000:together?0xa000:0x8000);
+        p.poll(tail?0x4000:crooked?0x2000:together?0xa000:0x8000);
         if(crooked){p.step(1210);p.poll();}
         if(!together){p.step(1230);p.poll(held);}
         const auto start=p.now;
@@ -73,13 +76,13 @@ int main() {
             auto pad=p.change.sample(p.now);
             check(p.arms==1,"held buttons and repeated polls never replay the actor");
             check(pad.owns==(elapsed<1000),"bounded right-stick ownership uses elapsed time at every cadence");
-            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:crooked?24000:12000),"Up remains held across measured heading change");
+            if(pad.owns)check(pad.y==(tail?-32767:32767) && pad.x==(elapsed<200?0:crooked?24000:12000),"measured vertical input remains held across heading change");
             check(!p.change.evidence().physics_changed,"requested name never supplies native completion evidence");
         }
         NativeGrindCompletion done{true,401,403,1,{}};
         NativeGrindSnapshot snapshot{};snapshot.valid=snapshot.grind_type_valid=snapshot.physics_grind_type_valid=true;
         snapshot.physics_state=403;snapshot.sampled_at=p.now;snapshot.grind_type=20;snapshot.physics_grind_type=identity;
-        auto other=p.contact;other.identity=crooked?23u:32u;
+        auto other=p.contact;other.identity=identity==23?32u:23u;
         p.change.verify(p.now,done,other,snapshot);
         check(!p.change.evidence().physics_changed,"another qualified native name cannot satisfy the requested target");
         p.change.verify(p.now,done,p.contact,snapshot);
@@ -106,8 +109,8 @@ int main() {
         check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
             "an unchanged or initially unknown animation cannot become a verified named change");
     }
-    for(unsigned fault=0;fault<10;++fault) {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);p.poll(0xa000);
+    for(bool tail:{false,true})for(unsigned fault=0;fault<10;++fault) {
+        Pipeline p;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);p.step(1230);p.poll(tail?0x6000:0xa000);
         check(p.change.active(),"negative case starts an admitted actor");
         p.step(1250,406);
         switch(fault) {
@@ -126,12 +129,17 @@ int main() {
         check(!p.change.evidence().animation_changed,"cancellation never acknowledges a grind");
     }
     {
+        Pipeline p;p.establish();p.step(1200);p.poll(0x6000);
+        check(p.dispatched.grind_target()==GrindChangeTarget::bluntslide && p.arms==0,
+            "simultaneous X+B retains existing Bluntslide priority instead of dispatching the 5-0 recipe");
+    }
+    {
         Pipeline p;p.establish();p.step(1200);p.poll(0x2000);p.step(1230);p.poll(0xa000);
         check(p.dispatched.grind_target()==GrindChangeTarget::nosebluntslide && p.arms==0,
             "distinct B then Y remains ordered and unsupported recipe never arms native actor");
     }
-    for(auto age:{299u,300u,301u}) {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x8000);
+    for(bool tail:{false,true})for(auto age:{299u,300u,301u}) {
+        Pipeline p;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);
         p.step(1230);p.poll();p.step(1330);p.poll();p.step(1430);p.poll();
         p.step(1200+age);p.poll(0x2000);
         check(p.arms==(age==299?1u:0u),"released sequential buttons obey the original strict 300ms recognition window");

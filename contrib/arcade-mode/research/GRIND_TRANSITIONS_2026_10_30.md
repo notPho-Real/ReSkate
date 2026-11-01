@@ -1973,3 +1973,77 @@ Last native100 speed0.001568, ArcadeON, editor/menu closed, same generation/
 revision and absent fixture. Both peers received the explicit handback.
 The 5-0 probe remains unexecuted and must be repinned after the next handback;
 two production recipes remain qualified, with no new DLL/CI build.
+
+### Third qualified recipe: native BS5-0 from BS50-50
+
+After both peers released hardware, fresh identity checks verified Manual's
+restored c0489142ef8f1380606688d02d5e3c8f833909b5, unchanged DLL
+7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+PID79762/launcher79771 and three matching DLL mapping rows. The first fixed
+tail runner stopped before fixture/controller-transition setup because the
+native mount attempt remained504. No recipe was qualified by that attempt.
+Receipt `grind-native-tail-c048914-return1-v1/results/tail-sweep.json.gz`,
+SHA-256 bc27c203ee277ed824d30fe73ba75a356e6a37dfa0b88fd3d0eaeb630e1e71a8.
+
+Source inspection of native world `load` routing and the installed `levels`
+list justified an ordinary reload of the same custom skate3_megapark. The
+bounded reload receipt is
+`grind-readiness-c048914-return1-v1/results/1793501910168445000-reload.json`.
+Console text said "Load request rejected", but independent observations
+showed generation8 becoming11 and the new settled spawn pose
+(142.998047,0.949993,-88.574219). Only those observations, followed by a fresh
+successful native mount and unchanged collision/geometry gates, admitted the
+next trial. No teleport or synthetic recovery write was used.
+
+Immutable `grind-native-tail-c048914-return1-v2/trial.py`, SHA-256
+311f02e1f19c6384b0c8ec74db508921af9ed5bec7d92f37224aa62a97dd7dec,
+used the existing shared lock,160-second watchdog, owner/image checks,
+temporary native fixture transactions and bounded original406 observation.
+Eleven inert setup/negative checks passed before external staging. Receipt
+`grind-native-tail-c048914-return1-v2/results/tail-sweep.json.gz`, SHA-256
+b1a17730521110018a47da282882a4a8c3635baa1576e2c79c88feebb082d8f6,
+has499 samples and no runner, observer or cleanup error. Native401/fine20/
+contact1 appeared at2040.679ms,406 at2233.664ms,403 at2542.190ms, and
+**403/fine24/contact1 at2577.806ms**. Fine24 persisted in61 samples until
+native701/contact0 at3300.044ms. Both original physics dt and cached step
+were0.0333333313, proving30Hz for this receipt only.
+
+The conditional input waiter observed established401 contact before Down.
+Evdev RS(0,+32767) arrived at2105.529ms, RS(+12000,+32767) at2305.599ms,
+and neutral at3105.602ms: a200.070ms held heading sweep and1000.073ms lease.
+The native actor completed401->403 at phase1 with requested heading
+-0.351061344/pitch-0.4 and final orientation heading-0.305821657/
+pitch-0.355577469; original cleanup cleared active0. Source and destination
+retained segment[970662608935,0], geometry1, missing0 and endpoints
+(142.839844,0.49,-75.779297)/(142.839844,0.49,-81.779297). All61 destination
+samples retained that segment. The independent classifier published24 with
+accepted tuple[1,1,1,0,1,1]. Its bracketed source vectors were equal with
+dot approximately1.000000015 and contact byte402=0, matching the previously
+traced longitudinal comparison. This confirms BS50-50->BS5-0 physics, not
+merely delivery of the proposed stick values.
+
+Production `GrindChange` now admits the existing ordered X->B target24
+through this measured Down recipe (XInput Y=-32767), retaining the existing
+401/fine20 source, owner, six-metre geometry, establishment and cancellation
+gates. No target identity, animation, HUD or score is written. Y->B and B->B
+retain their measured Up recipes. Simultaneous X+B remains the existing
+table's B->X Bluntslide priority; it is not silently remapped to5-0. That
+binding remains unimplemented pending its native recipe.
+
+4029 strict C++20 address/undefined-behavior sanitizer checks pass for all
+three recipes at30/60/120Hz, covering
+original physical timestamps, held/repeated polls, unrelated destination
+rejection, independent animation evidence, Down cancellation and the strict
+300ms released-edge boundary. Native animation/HUD/combo acceptance and
+Ollie/early-flip live acceptance remain outstanding. Six named bindings,
+additional source contexts and repeated named changes are still missing.
+The baseline contextual-air press-age failure remains separate; full checks
+are not green. No new DLL/CI build, upload, merge, release or install occurred.
+
+All owned fixture edits were undone to generation11/revision23, metadata
+configured but object absent. GDB returned0/detached, native gate restored,
+controls neutralized/destroyed, route withdrawn, editor/menu closed, ArcadeON.
+Final native100 speed0.000124 at(145.004608,1.028666,-63.076706), heading
+10.387815. Both peers received explicit hardware release and acknowledged;
+Grind has no pending hardware job. Revalidate identity/world/geometry before
+any later input rather than treating this pose as a new fixture approach.
