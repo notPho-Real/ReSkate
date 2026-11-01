@@ -2388,3 +2388,71 @@ require fresh native12m geometry and repeat the two-leg test. Do not replay
 either consumed runner or assume these world pins survive another peer's work.
 No fourth production recipe, full gameplay acceptance, new DLL or CI build
 is claimed from the completed second actor or the aborted geometry retry.
+
+### Exact no-op repair succeeds; direct create does not apply native scale
+
+Both peers released hardware. Fresh identity and two console status reads
+confirmed the samec048914/PID85401/launcher85410/DLL7853ae1a identity,
+Mega Park bam23/rev40, stopped100 and absent fixture. The first status attempt
+again had no echo; capture showed Hub. The reviewed Escape/grave recovery
+visibly opened console and the open-console status variant recovered without
+user intervention. Treat console visibility as current evidence, not a durable
+assumption across idle periods.
+
+The immutable v3 runner
+`grind-native-two-leg-c048914-return2-v3/trial.py`, SHA-256
+a6a4f8248ccc3830a6333b33da7404d958dcc822e0508c38669400e522e6836e,
+repaired the external setup ledger. Nineteen inert tests cover exact no-op
+echo/revision, mismatching metadata, owned undo/recreate and rejected receipts.
+Native restore40->42, relocate `No changes.`42->43, owned undo43->45 and
+recreation45->47 succeeded. The new rail exactly matched the freshly
+collision-checked fixture metadata. No history entry was invented for the
+no-op, and no production fixture code was changed.
+
+The subsequent direct scale2 long-rail create failed the strict receipt:
+delete47->49 succeeded, but create49 advanced to52 rather than51. The runner
+stopped before debugger or grind input, with zero native grind samples; it
+correctly refused to guess an undo after an unexplained extra revision.
+Receipt `grind-native-two-leg-c048914-return2-v3/results/two-leg-long.json.gz`
+has SHA-256
+2d71d7ab2450aae62f8c137c552041933a42f8d0e9890d826fe01e8c61af2115.
+No twelve-metre geometry was observed and no destination was qualified.
+
+Source inspection identifies the setup error. These files are identical at
+installedc048914 and this branch. `PlacementCreateRecipe` in
+`placement_create_queue.h` serializes item, position and rotation, but never
+scale. `park_editor_runtime.cpp::begin` adds only a create step for a new
+object; the ordinary completed create commits without an additional move.
+`update_placement_poses` later reads actual matrix scale and calls
+`park_editor_external_change` on a discrepancy, incrementing revision and
+clearing undo/redo. That source path explains the extra revision; the trial
+did not capture a native matrix scale read, so scale1 is a source-derived
+explanation rather than an independently measured geometry result.
+
+The existing native **move** path does invoke both the body setter and
+transform setter, then requires `object_has_pose` on the following tick.
+The next external setup candidate therefore creates at unit scale and only
+then submits a separate move to scale2 for its exact owned ID. It must still
+require original twelve-metre segment/contact readback; a scale command or
+matrix alone does not establish that the grind segment length changed.
+`prepare_two_leg_scaled_move.py` produced the unstaged v4 draft SHA-256
+7d8f248e91474d3f33845dbb416172f15c1cda3be017f1b98d49a263793bedd5.
+It has not received fresh setup tests or hardware review; re-pin its world
+before staging. The v1/v2/v3 trial result slots are all consumed.
+
+Cleanup used a separately reviewed immutable exact-ID deletion, not undo.
+Read-only SQLite inspection identified only our new long railID6 at
+(142.86871337890625,-.4900070130825043,-75.76290130615234), distinct from
+existing short railID2 at the unrelated older coordinates. The cleanup
+rechecked installed identity, bam23/rev52 and the exact ID/item/pose, deleted
+ID6 through the original native editor, verified its persisted absence and
+revision54, and closed the editor. Receipt:
+`grind-owned-scaled-cleanup-c048914-v1/results/1793522450136082000-status.json`.
+Its initial invocation had stopped at missing console echo before deletion;
+fresh capture/recovery preceded the successful invocation. StockID2 was
+untouched. Both peers received clean handback: no job/reservation, ArcadeON,
+automatic routing, pad destroyed, no debugger attached, menus/editorclosed,
+state100 speed.000284 at(142.982758,1.028669,-88.561417), bam23/rev54,
+fixture metadata configured but actual object absent. Revalidate all pins
+before future input. Production remains three narrowly qualified recipes;
+no new DLL, CI build, repeated-change acceptance or fourth recipe is claimed.
