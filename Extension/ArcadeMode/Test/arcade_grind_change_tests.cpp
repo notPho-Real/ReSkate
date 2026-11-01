@@ -158,5 +158,65 @@ int main() {
         check(out.jump.setup_started && out.jump.from_rail && out.right_y==-28000,
             "A cancels named RS before the existing rail-exit gesture acquires its channel");
     }
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        check(p.change.admission().ready && p.change.admission().excluded_variant==
+            grind_change_variant(GrindChangeTarget::grind_5_0),"verified 5-0 admits return and excludes unchanged 5-0");
+        p.step(1200,403);p.poll(0x8000);p.step(1210,403);p.poll();p.step(1230,403);p.poll(0x8000);
+        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::grind_50_50 &&
+            p.dispatched.first_input_at==1200 && p.dispatched.last_input_at==1230,"Y then Y dispatches a fresh native return lease");
+        for(unsigned i=0;i<=1100*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(1230+elapsed,elapsed<50?403:elapsed<1000?406:401);
+            if(elapsed>=1030)p.contact.identity=20;
+            p.poll(0x8000);p.poll(0x8000);
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && pad.x==0 && pad.y==0,"return owns neutral through the slower original blend and identity publication");
+            check(p.arms==1 && !p.change.evidence().physics_changed,"held Y and raw contact never manufacture completion");
+        }
+        auto snapshot=p.animation;snapshot.physics_state=401;snapshot.physics_grind_type=20;snapshot.grind_type=24;
+        p.change.verify(p.now,{true,401,403,1,{}},p.contact,snapshot);
+        check(!p.change.evidence().completed,"first-leg completion cannot satisfy the independently armed return");
+        auto wrong=p.contact;wrong.segment_identity[0]++;
+        p.change.verify(p.now,{true,403,401,1,{}},wrong,snapshot);
+        check(!p.change.evidence().physics_changed,"return completion without original segment is not accepted");
+        p.change.verify(p.now,{true,403,401,1,{}},p.contact,snapshot);
+        check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed && p.change.active(),
+            "real return physics cannot stand in for a changed animation");
+        snapshot.grind_type=20;p.change.verify(p.now,{true,403,401,1,{}},p.contact,snapshot);
+        check(p.change.evidence().animation_changed && !p.change.active(),"independent return animation closes its lease");
+        // Reacquire the returned native source using new physics samples;
+        // holding the old Y may not replay either request.
+        p.step(2400);p.poll(0x8000);p.step(2500);p.poll(0x8000);
+        check(p.arms==1,"continuous held return button cannot replay after actor completion");
+        p.step(2510);p.poll();p.step(2600);p.poll(0x8000);p.step(2630);p.poll(0xa000);
+        check(p.arms==2 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::nosegrind,
+            "new physical pair after native return dispatches the existing Nosegrind executor");
+    }
+    for(unsigned fault=0;fault<5;++fault) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        if(fault==0)p.contact.end[2]=-6;
+        if(fault==1)p.contact.identity=23;
+        if(fault==2)p.contact.identity=32;
+        if(fault==3)p.contact.geometry=2;
+        if(fault==4)p.contact.begin[1]=1;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        check(!p.change.admission().ready,"unqualified return source or geometry never arms the native gate");
+    }
+    for(unsigned fault=0;fault<5;++fault) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x8000);
+        p.step(1210,403);p.poll();p.step(1230,403);p.poll(0x8000);check(p.change.active(),"negative return case armed");
+        p.step(1300,406);
+        switch(fault) {
+        case 0:p.poll(classic_a);break;
+        case 1:p.poll(0,false);break;
+        case 2:p.frame.owner.core++;p.poll();break;
+        case 3:p.step(1300,701);p.poll();break;
+        case 4:p.now=2730;p.poll();break;
+        }
+        check(!p.change.active() && !p.change.sample(p.now).owns,"return neutral cancels on A, OFF, owner loss, exit or expiry");
+    }
     std::cout<<checks<<" grind change production composition checks passed\n";
 }

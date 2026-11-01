@@ -2456,3 +2456,84 @@ state100 speed.000284 at(142.982758,1.028669,-88.561417), bam23/rev54,
 fixture metadata configured but actual object absent. Revalidate all pins
 before future input. Production remains three narrowly qualified recipes;
 no new DLL, CI build, repeated-change acceptance or fourth recipe is claimed.
+
+### Native twelve-metre rail verifies the return; Y→Y executor added
+
+After both peers released the Deck, the existing immutable identity probe
+freshly confirmed c048914/PID85401/launcher85410 and the same installed DLL
+and executable hashes. Capture showed Steam idle artwork; a separately
+reviewed one-Shift wake restored visible Skate gameplay. Two status reads
+then confirmed bam23/rev54, stopped100 and absent fixture. No installation
+or world reload was needed.
+
+The v4 setup passed19 exact-no-op/ownership tests and13 unit-create/owned-ID
+lookup/native-geometry requirements. Its immutable runner SHA-256 is
+7d8f248e91474d3f33845dbb416172f15c1cda3be017f1b98d49a263793bedd5.
+Unit-scale creation followed by the original editor move to scale2 succeeded;
+the actual contact actor independently reported a twelve-metre segment:
+endpoints(142.982422,.500742,-69.560547) and
+(142.982422,.500742,-81.560547), identity[1511828488231,0].
+The move command itself was not used as geometry acceptance.
+
+Receipt `grind-native-two-leg-c048914-return2-v4/results/two-leg-long.json.gz`
+has SHA-256
+c7bd573dbba106902c6cc9cc3fad20348f612a22c17907c1278190088df448a0.
+It contains505 read-only samples, both native/cached clock intervals
+.03333333135 seconds, no runner/observer/cleanup errors and no dropped
+controller writes. Relative to the observer, native401/fine20/contact began
+2056.548ms; first4062261.347ms;4032584.567ms; fine242620.306ms.
+Conditional neutral was sent2677.604ms, only after first original completion
+and independently observed fine24/contact on the original segment. Second406
+began2722.307ms, original completion403→401 reached phase1 after.933333s,
+native401 appeared3650.757ms and independently published fine203687.113ms.
+
+The gate ended `second_native_identity_verified` with exactly two original
+completions and restored its feature. There are74 reader samples of returned
+401/fine20 from3687.113 through4569.901ms, all with physical/published
+contact1, missing-segment0 and the original segment. These are repeated
+reader samples, not74 distinct physics updates. This is actual native
+50-50→5-0→50-50 execution with retained destination contact. A transient
+physical-contact0 sample during the first406 remains part of the native lift;
+it is not hidden or replaced with synthetic ground evidence.
+
+Later, after gate retirement, ordinary physics selected403/fine24 and then
+402/fine31 on a different short end segment before701. Those incidental
+edge events do not qualify another named recipe or a requested Bluntslide.
+This Arcade-OFF control experiment establishes physics execution only;
+animation, Arcade HUD/balance and combo continuity still lack live acceptance.
+
+Production `GrindChange` now admits the existing Y→Y binding from the narrow
+source403/fine24 with horizontal geometry1 at least12m long. It submits a
+fresh existing native lease and owns a neutral RS sample; original native
+admission/initialization selects401. It neither assigns the native target nor
+writes an identity. Return verification requires the new request's original
+403→401 phase1 completion, actual401/fine20 and the same segment/output,
+plus independently changed native animation before setting animation evidence.
+The slower return owns neutral up to the existing1500ms lease, closing after
+verified completion/animation at or after1000ms. The three source401 sweep
+recipes keep their original1000ms control duration and200ms heading sweep.
+
+Source-specific exclusion now prevents unchanged5-0 input on403/fine24;
+other targets from that source remain unsupported. A returned401/fine20 can
+re-establish and dispatch the existing named sweep with fresh physical edges.
+This makes that limited repeated route executable in production, not a
+claim that arbitrary named sequences have been qualified. The original native
+hook retires each lease after its own406 completion; no persistent setting or
+new multi-leg hook was introduced. Flat Ollie, flips, manuals and HUD code
+were untouched.4536 strict production-composed address/undefined-behavior
+sanitizer checks pass at30/60/120Hz, including both directions, original event
+timestamps, held/polled deduplication, source/geometry rejection, wrong-leg
+completion, missing segment, unchanged animation, rearming and cancellation.
+This does not supersede the known baseline input_pattern_dispatch failure.
+
+Cleanup detached GDB0, restored the native feature, neutralized/destroyed the
+pad, restored ArcadeON/automatic routing and undid every owned transaction.
+Both peers received clean handback. Last fresh observation: bam23/rev74,
+menus/editorclosed, fixture metadata configured but object absent, state100
+speed.000069 at(143.253113,1.028671,-66.207054), heading24.645342. No job or
+reservation remains; revalidate before future hardware work. The fixture's
+recorded old start is now over22m away, so the current restore candidate's
+four-metre travel guard will correctly reject it. Prepare a new source-checked
+setup for the current stopped position instead of weakening ownership checks
+or replaying the consumed v4 slot. Five bindings, broader source contexts,
+all-feature gameplay acceptance and the isolated build remain outstanding.

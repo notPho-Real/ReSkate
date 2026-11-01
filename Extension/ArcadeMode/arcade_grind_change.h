@@ -7,8 +7,9 @@
 
 namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
-// held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0). Other named
-// bindings have no qualified control recipe yet.
+// held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0), and
+// the measured neutral 403/24 ->406 ->401/20 return. Other named bindings
+// and source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
 class GrindChange {
@@ -40,26 +41,32 @@ public:
                 (frame.state!=406 && (!contact.valid || contact.state!=frame.state || !same_segment(contact)))) cancel();
             return;
         }
-        source_animation_known_=animation.valid && animation.physics_state==401 &&
+        source_animation_known_=animation.valid && animation.physics_state==contact.state &&
             animation.sampled_at>=frame.sampled_at && animation.sampled_at<=now &&
-            animation.grind_type_valid && animation.grind_type==20 &&
-            animation.physics_grind_type_valid && animation.physics_grind_type==20;
+            animation.grind_type_valid && animation.grind_type==contact.identity &&
+            animation.physics_grind_type_valid && animation.physics_grind_type==contact.identity;
         if(!qualified(contact) || frame.state!=contact.state) { stable_=false;return; }
-        if(!stable_ || !same_segment(contact) || source_.actor!=contact.actor) {
+        if(!stable_ || !same_segment(contact) || source_.actor!=contact.actor ||
+            source_.state!=contact.state || source_.identity!=contact.identity) {
             if(generation_==UINT64_MAX)return;
             ++generation_;source_=contact;stable_at_=frame.sampled_at;stable_=true;
         }
         if(frame.sampled_at<stable_at_ || frame.sampled_at-stable_at_<80)return;
         admission_.phase=InputRailPhase::established;
         admission_.generation=generation_;admission_.gameframe=frame.physics_step;
-        admission_.excluded_variant=grind_change_variant(GrindChangeTarget::grind_50_50);
+        admission_.excluded_variant=grind_change_variant(source_.state==403?
+            GrindChangeTarget::grind_5_0:GrindChangeTarget::grind_50_50);
         admission_.fresh=admission_.ready=admission_.geometry_known=true;
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
+        const bool returning=source_.state==403 && source_.identity==24 &&
+            request.grind_target()==GrindChangeTarget::grind_50_50;
+        const bool sweep=source_.state==401 && source_.identity==20 &&
+            (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked ||
+             request.grind_target()==GrindChangeTarget::grind_5_0);
         if(request.action!=InputAction::rail_change ||
-            (request.grind_target()!=GrindChangeTarget::nosegrind && request.grind_target()!=GrindChangeTarget::crooked &&
-             request.grind_target()!=GrindChangeTarget::grind_5_0))
+            (!returning && !sweep))
             return InputDisposition::unsupported;
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
@@ -72,15 +79,19 @@ public:
         // The native geometry classifier supplies the destination identity.
         const bool crooked=request.grind_target()==GrindChangeTarget::crooked;
         const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0;
-        sweep_x_=crooked?24000:12000;held_y_=tail?-32767:32767;
-        target_identity_=tail?24u:crooked?32u:23u;
+        // Neutral is an owned control sample, not a fabricated 50-50 result.
+        // The original 403 admission and 406 initialization select the return.
+        sweep_x_=returning?0:crooked?24000:12000;held_y_=returning?0:tail?-32767:32767;
+        target_identity_=returning?20u:tail?24u:crooked?32u:23u;
+        target_state_=returning?401u:403u;
+        hold_ms_=returning?1500u:1000u;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
         admission_={};return InputDisposition::started;
     }
     Pad sample(std::uint64_t now) const noexcept {
-        if(!active_ || !fresh(now,frame_) || now<evidence_.started_at || now-evidence_.started_at>=1000)return {};
+        if(!active_ || !fresh(now,frame_) || now<evidence_.started_at || now-evidence_.started_at>=hold_ms_)return {};
         // Native XInput Y is opposite to evdev ABS_RY used in the control trial.
         // Keep the vertical input held across the 200ms heading change; neutral between the two
         // samples loses the native captured-reference path.
@@ -89,15 +100,15 @@ public:
     void verify(std::uint64_t now,const NativeGrindCompletion& completion,
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
         if(!active_ || !fresh(now,frame_))return;
-        evidence_.completed=evidence_.completed || (completion.valid && completion.source==401 &&
-            completion.target==403 && completion.phase==1.f);
-        const bool changed=evidence_.completed && frame_.state==403 && contact.valid && contact.state==403 &&
+        evidence_.completed=evidence_.completed || (completion.valid && completion.source==source_.state &&
+            completion.target==target_state_ && completion.phase==1.f);
+        const bool changed=evidence_.completed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
             same_segment(contact) && contact.identity==target_identity_;
         evidence_.physics_changed=evidence_.physics_changed || changed;
         // This snapshot is supplied by the owner-bracketed native reader. A
         // lingering animation label alone cannot complete this request: the
         // matching source animation must also have been read before arming.
-        if(changed && evidence_.source_animation_known && animation.valid && animation.physics_state==403 &&
+        if(changed && evidence_.source_animation_known && animation.valid && animation.physics_state==target_state_ &&
             animation.sampled_at>=evidence_.started_at && animation.sampled_at<=now &&
             now-animation.sampled_at<=150 && animation.physics_grind_type_valid && animation.physics_grind_type==target_identity_ &&
             animation.grind_type_valid && animation.grind_type==target_identity_) evidence_.animation_changed=true;
@@ -113,13 +124,17 @@ private:
     static bool qualified(const NativeGrindContact& c) noexcept {
         // Qualification scope of the native control receipt, not a promise
         // that enough forward travel remains. Native geometry still decides.
-        if(!c.valid || c.state!=401 || c.identity!=20 || c.geometry!=1 || c.begin[1]!=c.end[1])return false;
+        const bool sweep=c.state==401 && c.identity==20;
+        const bool returning=c.state==403 && c.identity==24;
+        if(!c.valid || (!sweep && !returning) || c.geometry!=1 || c.begin[1]!=c.end[1])return false;
         double length{};
         for(unsigned i=0;i<3;++i) {
             if(!std::isfinite(c.begin[i]) || !std::isfinite(c.end[i]))return false;
             const auto d=static_cast<double>(c.end[i])-c.begin[i];length+=d*d;
         }
-        return length>=36.;
+        // The return completed with contact on a measured twelve-metre rail;
+        // its six-metre negative control ran out of geometry before completion.
+        return length>=(returning?144.:36.);
     }
     bool same_segment(const NativeGrindContact& c) const noexcept {
         return c.output==source_.output && c.segment_identity==source_.segment_identity &&
@@ -130,7 +145,7 @@ private:
     InputRailState admission_{};
     Evidence evidence_{};
     std::int16_t sweep_x_{},held_y_{};
-    std::uint32_t target_identity_{};
+    std::uint32_t target_identity_{},target_state_{},hold_ms_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
     bool active_{},stable_{},source_animation_known_{};
 };
