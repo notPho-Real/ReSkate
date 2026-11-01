@@ -602,7 +602,8 @@ public:
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
                 active_grab_ = event.request.named_binding && event.request.form == InputForm::ordinary;
-                active_grab_count_ = active_grab_ ? event.request.presses : 0; grab_started_ = now;
+                active_grab_count_ = active_grab_ ? event.request.presses : 0;
+                grab_pressed_at_ = event.request.physical_pressed_at;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
                 grab_generations_ = event.request.generations;
                 grab_native_ = native;
@@ -891,10 +892,13 @@ private:
         const InputToken face{InputSource::buttons,13,InputEdge::press};
         InputMatch match{};
         InputForm form{};
-        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ <= 250) {
+        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_) {
             const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
+            // Native admission may wait after recognition. Repetition belongs
+            // to the two physical B edges, never to either dispatch timestamp.
+            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > 250)) match = {};
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
         if (!match && !environment.deferred_grabs) {
@@ -1324,7 +1328,7 @@ private:
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
     std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
-    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_started_{};
+    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
     InputContext previous_context_{};

@@ -77,7 +77,7 @@ void grab_and_native_shoulders() {
             "production B delivery retains trigger ownership while allowing an independent native shoulder");
         check(r->tricks.size()==1 && r->tricks[0]==ArcadeTrick::melon && !out.authored_playback,
             "shoulder composition preserves the selected named grab without pop playback");
-        check(spin.owns_left && spin.x==(shoulder==BoardChord::lb?-31783:31783) && !spin.y && !spin.yaw_rate,
+        check(spin.owns_left && spin.x==(shoulder==BoardChord::lb?-31783:31783) && !spin.y && spin.yaw_rate==0,
             "actual grab output reaches the existing native LS spin actuator with no SDK body rate");
         check(r->lease.acknowledge(4,1,0,1,true,true,true),
             "fixture supplies independent native grab acknowledgment before testing held release");
@@ -90,14 +90,14 @@ void grab_and_native_shoulders() {
             intent.yaw_rate=spin.yaw_rate;intent.spin=spin.spin;intent.angular_proof=NativeAirSpinProof::from_frame(r->frame);
             const auto physical=motion.step(intent,{r->now,r->owner.core,201,1.f/hz,5,0,0,true,0,0,true,
                 NativeAirSpinProof::from_frame(r->frame)});
-            check(!physical.angular && !physical.spin_y,"native grab/shoulder composition never adds custom angular motion");
+            check(!physical.angular && physical.spin_y==0,"native grab/shoulder composition never adds custom angular motion");
         }
         out=r->poll(at(8),0x2004);spin=rotate(*r,rotation,out,0x2004);
         check(!spin.owns_left && !spin.x && out.action.pad.right_trigger==255,
             "shoulder release stops native LS without releasing the held grab");
         out=r->poll(at(9),static_cast<std::uint16_t>(0x2004|BoardChord::pair));
         spin=rotate(*r,rotation,out,static_cast<std::uint16_t>(0x2004|BoardChord::pair));
-        check(!spin.x && !spin.yaw_rate && out.action.pad.right_trigger==255,
+        check(!spin.x && spin.yaw_rate==0 && out.action.pad.right_trigger==255,
             "opposed shoulders cannot create spin or steal the grab trigger");
         out=r->poll(at(10),buttons);spin=rotate(*r,rotation,out,buttons,
             SpinMode::held,{SpinFact::set,SpinFact::unknown,SpinFact::unknown});
@@ -190,6 +190,27 @@ void delayed_tap_and_controls() {
     lease.request(ArcadeTrick::melon,8000,true);lease.refresh(8200,true,true);
     check(!lease.selected(),"lost physical heartbeat cancels");
     check(!lease.request(ArcadeTrick::indy,9000,true),"unqualified named grab never aliases a supported pose");
+}
+void repeated_grab_uses_physical_interval() {
+    for (unsigned hz:{30u,60u,120u}) for (unsigned interval:{200u,300u}) {
+        auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
+        const auto delivery_frame=1+(100u+dt-1)/dt;
+        const auto second_frame=1+(interval+dt-1)/dt;
+        r->poll(1000);r->accept=false;
+        for(unsigned n=1;n<=second_frame;++n) {
+            if(n==delivery_frame)r->accept=true;
+            r->poll(1000+n*dt,static_cast<std::uint16_t>(4u|((n==1 || n==second_frame)?0x2000u:0u)));
+        }
+        check(r->requests.size()==2,"each physical B press is delivered once despite initial native wait");
+        check(r->requests.front().physical_pressed_at==1000+dt &&
+              r->requests.back().physical_pressed_at==1000+second_frame*dt,
+              "grab delivery retains both original physical press timestamps");
+        check(r->tricks.front()==ArcadeTrick::melon &&
+              r->tricks.back()==(interval==200?ArcadeTrick::method:ArcadeTrick::melon),
+              "native admission delay must not extend the physical repeated-B window");
+        check(r->requests.front().air_episode==r->requests.back().air_episode,
+              "physical repeated-B selection preserves the original airborne episode");
+    }
 }
 void input_order_and_launch() {
     for (unsigned hz:{30u,60u,120u}) {
@@ -286,4 +307,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();delayed_tap_and_controls();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

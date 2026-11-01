@@ -11,6 +11,51 @@ scoring, capture completeness, body rotation and higher-rate acceptance remain o
 The user subsequently authorized coordinated Deck trials. Broad
 catalog expansion and accepted chains remain gated on Stage A native tests.
 
+### Physical repeated-B interval correction
+
+Source review found a separate recognition defect: `UnifiedInput::poll` saved
+the first grab's dispatch time, and `recognize_grab` used that time to open the
+250 ms repeated-B window. A native admission delay therefore extended the
+physical interval that could select Method. The existing request already
+retains `physical_pressed_at`, and the original event matcher retains the
+second edge's `last_at`; no new input producer or native mechanism is needed.
+The repeat window now compares those physical edges. The presentation-only
+`grab_table_at` remains the dispatch time. Flip timing and native transitions
+are unchanged. Source-first reference: the recorded upstream/fork method
+survey and the existing physical-history/queued-request implementations in
+`arcade_input_dispatch.h`, `arcade_input_events.h` and `arcade_air_selection.h`.
+
+A production-composed regression at 30/60/120 Hz delays the first native
+submission by approximately 100 ms. A second physical press approximately
+200 ms after the first still selects Method; one approximately 300 ms after
+the first selects a fresh Melon. Both retain their actual physical timestamps
+and the same airborne episode. This regression failed before the correction
+and passes afterward. The grab suite now passes 494 checks. Input session
+(326 + 5645), protected neutral flip (9014), air episode (29), grab hold (33)
+and native grab wait (72) checks pass. These are source/contract results, not
+new gameplay acceptance.
+
+The broader `arcade_input_pattern_dispatch` test fails its contextual-table
+300 ms press-age assertion. Recompiling it against the unchanged HEAD
+`f372ddf169eae423443a3c1291c62a10a1de029d` header reproduces the same failure;
+the ordinary-grab correction did not introduce it. Do not report the entire
+local suite as green or silently alter unrelated contextual behavior.
+
+The earlier missed Method trace remains a separate unresolved first-press
+problem. Its capture 2 records input events 7/8 at 232018288 ms, followed by
+action generation 2896 to 2897 at 232018303 ms. There is no corresponding
+grab recognition. Events 7/10 form the later single-Melon recognition at
+232018487 ms. The independent native samples place the first kernel B edge
+between observations of state 200 and 201. That capture has no current source7
+controller rows, so it does not establish the precise admission gate or permit
+equating Windows and Linux clocks. This timing correction is not claimed to
+fix that separate symptom.
+
+The subsequent deployment-only window is recorded in
+[the storage-blocked receipt](native-grab-be22b1a-storage-blocked-window.json).
+No gameplay trial ran in that window. The Deck was explicitly released;
+its installed identity and world must be freshly qualified before reuse.
+
 ### be22b1a coordinated follow-up
 
 Five fresh-qualified 30 Hz trials on the installed and mapped be22b1a DLL
