@@ -706,3 +706,30 @@ or episode guard is relaxed. Logging remains in the bounded existing event
 queue and client-tick flush. This is diagnostic preparation, not a Method fix
 or new native acceptance. Local production-composed regressions passed 494 grab
 and 9014 protected flip checks across 30/60/120 Hz.
+
+### dbaa45a diagnostic hardware window
+
+The diagnostic DLL passed all CI (97 Windows tests, Linux, macOS, targeted
+tests, runtime build and Deck packaging) and was verified on disk and mapped
+in PID 78791. DLL SHA-256:
+`4a54bf245ce4fe00b58602c98b9f0770382d7c09b68e561608f9a6bfe66a9356`.
+The preceding manual build was backed up before installation. The full measured
+results and raw hashes are in `native-grab-dbaa45a-window.json`.
+
+Two Method trials initialized the original Method actor and advanced it with
+positive delta; a 100 ms Basic tap did the same for the BS actor. The native
+observer measured 30 Hz and return to ground 100 with grab flags cleared.
+Retirement owner proofs passed, and no failed validity check was observed.
+The intermittent failure therefore remains unreproduced and unresolved; this
+observation-only build has not established a gameplay correction.
+
+The first Method retained every capture row (435/435), and Basic retained
+423/423. The second Method's SDK footer also reported complete and zero drops,
+but independent ordinal auditing found only 426/433 rows in local storage,
+missing 278–284. Its second request log is also absent. Native actor execution
+is evidenced, but that trial's complete input/recognition chain is **unverified**.
+Future acceptance must check retained ordinals as well as the SDK footer.
+The first Method's GrabExit value remained unknown; Basic and the second Method
+observed native GrabExit. Native scoring ownership, higher-rate hardware tests,
+early-press reliability and chains remain outstanding. The Deck was cleaned up
+and released with the diagnostic build identity explicitly reported.
