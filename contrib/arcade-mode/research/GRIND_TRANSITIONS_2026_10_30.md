@@ -2314,3 +2314,77 @@ is0f2395abcb4d44c909a83cd505d22b30c23d1e98774ef7ca3c59311349253a8b;
 current task is active in its diagnostic capture work and has not handed back
 the Deck; Grind issued no hardware calls. No production recipe, new DLL or
 CI run was added, and the requested feature milestone is still incomplete.
+
+### Two original transition legs execute; six-metre rail ends before return
+
+After Manual's explicit clean handback and Grab's no-conflict response, a
+fresh read-only inspection verified installed/mappedc0489142ef8f1380606688d02d5e3c8f833909b5,
+DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410 and the unchanged pinned executable. The first
+fixture-status attempt lacked a console echo; a fresh capture identified Hub.
+One reviewed Escape/grave sequence visibly opened the console, after which
+two status queries independently established Mega Park bam generation20/
+revision20, no fixture metadata/object, stopped504 at(142.998047,.949993,-88.574219).
+The console key remained grave. No user intervention or installation occurred.
+
+The reviewed immutable runner `grind-native-two-leg-c048914-return2-v1/trial.py`
+(SHA-2564036b153202d97ee5e59454ef1d599f645b8c0e045b6cfc020800b3892ae1928)
+extended the original scoped gate to at most two native406 lifetimes. It
+requires first original completion401->403 and fine24/contact/same segment
+before a conditional neutral event. The second original completion must be
+403->401 at phase1; only actual401/fine20 with contact can qualify a return.
+No target, orientation, identity or position is written. Twenty inert lease/
+geometry, ten conditional-neutral, eleven fixture-transaction and48 read-only
+observer cases passed before staging. A2MiB result slot was reserved.
+
+Receipt `grind-native-two-leg-c048914-return2-v1/results/two-leg.json.gz`,
+SHA-256c59a084b716c50f22be8989ab5c7720d83a6af767ee0755eb7936a00c391593d,
+has486 samples, both clocks30Hz, and no runner/observer/cleanup error. Native
+401/fine20 appeared2056.385ms, first4062251.906ms,4032582.513ms, fine24
+2622.084ms, and a genuine **second4062723.599ms**. Both original completion
+callbacks ran at phase1, with sources/targets401->403 and403->401. The second
+completion's native elapsed time was0.933333 seconds; its configured blend
+included0.5 seconds, versus the first leg's faster native curve.
+
+This did **not** produce an accepted return to50-50. The six-metre segment
+[1168231104551,0] ended first. At second entry its native contact point was
+(142.866211,.49,-78.335602), forward velocity4.674191; endpointZ was-75.764648.
+At3285.606ms the original actor reported missing_segment1 and physical
+contact0, while still406. Native completion then cleaned up into701 at
+3652.839ms, not401/fine20. The gate ended with `native_exit`. Its cleanup
+detached GDB0, restored the feature, neutralized/destroyed the pad, withdrew
+the route and undid all fixture transactions. This resolves second-leg
+execution/admission, but not retained-contact destination qualification.
+
+One longer-geometry retry was prepared using the existing native editor's
+uniform scale2 body/transform setters and a required independently observed
+12m segment. Its fixture setup stopped before geometry, debugger or grind
+input: same-level reload retained fixture metadata. Restoring the absent
+short rail succeeded, but `arcadefixture relocate` returned `No changes.`
+and advanced revision37->38 rather than+2. Source explains the discrepancy:
+`placement_same_pose` accepts positions within1cm; editor `begin` increments
+revision once without a history entry on that no-op; the fixture updates its
+metadata to the slightly different new start and then uses exact position
+equality to find the object. Thus status can say absent although the restored
+rail still exists. This is test-setup evidence, not a grind regression or a
+reason to relax transaction ownership indiscriminately.
+
+The aborted retry receipt is
+`grind-native-two-leg-c048914-return2-v2/results/two-leg-long.json.gz`,
+SHA-256f56fed6b49dc4fafe5ac4934e5fba8650d91456c160086091385cb7341927469.
+A separately reviewed exact-owned undo, gated on freshc048/PID85401/gen23/
+rev38, removed that sole placement and verified rev40. No extra history entry
+was invented for the no-op. Cleanup receipt is
+`grind-readiness-c048914-return2-v1/results/1793518177228662000-status.json`.
+Both peers received clean handback: ArcadeON, automatic routing, stopped100
+speed0.000046 at(142.868713,1.028669,-88.762909), bam23/rev40, fixture metadata
+configured but actual object absent, menus/editor closed, no pending job.
+
+Next repair the external setup ledger for the *specific observed* relocate
+no-op (+1 plus exact `No changes.` echo, no undo count). If its updated metadata
+does not match the restored object exactly, undo only that owned placement
+and recreate it at the freshly collision-checked metadata position. Then
+require fresh native12m geometry and repeat the two-leg test. Do not replay
+either consumed runner or assume these world pins survive another peer's work.
+No fourth production recipe, full gameplay acceptance, new DLL or CI build
+is claimed from the completed second actor or the aborted geometry retry.
