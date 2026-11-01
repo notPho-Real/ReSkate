@@ -1907,3 +1907,42 @@ heading337.878876. Hardware was explicitly released to both peers; Manual
 then reclaimed it for its priority tests. Grind has no pending hardware job.
 The final position differs from the trial lane: future work must revalidate
 owner/world/geometry and may not treat this as a stopped fixture approach.
+
+### Follow-up: trace the longitudinal classifier before the next control trial
+
+While Manual retained exclusive Deck control, offline disassembly resolved
+the producer of classifier tuple element1. `0x47dd0f3..0x47dd0f6` copies it
+from classifier object+32. The preceding call to `0x47dfa80` writes that
+field at `0x47dffa2`: for coarse classes1..3, compare output byte+402 with
+the predicate `dot(source+96,source+32)>0`; element1 is1 when they differ,
+otherwise0. Other coarse classes force0. The source page is `*pages` and
+the output page is `*(pages+32)`, as in the existing independently bracketed
+reader. This is a native geometry/orientation comparison, not a name request
+or a direct mapping from the stick's vertical sign.
+
+The native lookup distinguishes BSNosegrind23 from BS5-0 24 by this element:
+23 admits[1,0,1,0,0/1,1], while24 admits[1,1,1,0,0/1,1]. Existing positive
+Nosegrind and Crooked receipts both show output+402 becoming1, with accepted
+element1 remaining0. Those receipts do not record the two source vectors,
+so they cannot independently establish the comparison's operands.
+
+A local, **unexecuted and unstaged** next-probe candidate now records both
+source vectors and output+402 with repeat-read race checks, alongside the
+existing owner/contact/tuple/actor evidence. Its proposed control is held
+Down followed200ms later by RX12000 with Down retained, neutral at1000ms.
+This is a hypothesis for reversing the longitudinal predicate, not a qualified
+5-0 implementation. Acceptance must observe original actor completion,
+actual fine24, the intended classifier tuple and unchanged segment/contact;
+an exit, another name or an unchanged identity is a negative result.
+
+Candidate preparation is `build/grind-investigation/prepare_tail_sweep.py`;
+generated candidate SHA-256
+`498bf81d56964a769371c3e8b462c82194ee6a0fd4f5844d2415bb432aa0f5e7`.
+It validates the earlier Crooked receipt before deriving exact owned-fixture
+metadata and permits only the corresponding native redo at generation8/
+revision20. Fresh stopped native100, unchanged process/world/metadata,
+native reset collision validation and a new completed geometry measurement
+still gate the trial. No stale pose is used as a geometry substitute. Peer
+hardware handback and fresh installed identity must precede external review,
+staging or execution; any changed pin invalidates this candidate.
+No Deck call, new production recipe or DLL/CI build occurred in this follow-up.
