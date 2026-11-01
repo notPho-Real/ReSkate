@@ -2144,3 +2144,74 @@ and stop on loss of owner/contact/segment, rather than keeping the existing
 single-transition experimental feature lease enabled indefinitely. No new
 recipe, state write, acknowledgment or production generalization was made
 from these static conditions.
+
+### 5387765 window: opposite tail sweep produces Salad, not Smith
+
+Grab released its separately installed5387765b070a08acf4ccaea600867664abd8abd5
+at21:28 Pacific. Manual's completed handback also confirmed no pending job or
+reservation. Grind coordinated its window and independently verified DLL
+0e0b256ca26cc60b0694765bbad4799b80034d4d6ea4824dae66b0e3f03cd8ad,
+unchanged original executable, PID83858/launcher83866 and three matching
+installed DLL inode/device mappings. The fresh status receipt
+`grind-readiness-5387765-v1/results/1793507350178541000-status.json`
+showed native100, stopped, city-world bam generation5/revision5, no fixture.
+An ordinary native load of the installed Mega Park then changed generation
+to8/revision8 and produced a settled504 spawn at(142.998047,0.949993,-88.574219).
+Receipt `grind-readiness-5387765-v1/results/1793507425415698000-reload.json`.
+As previously, the console's "rejected" text was not used as acceptance:
+fresh world/pose, then native mount and unchanged collision checks admitted
+the actual trial. Grind installed nothing.
+
+The reviewed immutable runner
+`grind-native-signed-tail-5387765-v1/trial.py`, SHA-256
+ad7e6ef84baeb5b0724dcf9384c15e87ce39a635debe287a4d71689e685cdb0b,
+kept the existing160-second watchdog,95-second forward edit budget, shared
+lock, exact process/owner gates, original406 feature/lifetime interception,
+single transition boundary, physical contact waiter and owned transaction
+undo. The control hypothesis was Down then RX-24000 after200ms with Down
+retained, neutral after1000ms. The new read-only vector fragment was included;
+11 inert setup cases and7 vector-bracket cases passed before staging. A
+2MiB durable result slot was reserved before input.
+
+Receipt `grind-native-signed-tail-5387765-v1/results/signed-tail-sweep.json.gz`,
+SHA-256879f876df64f94124d8a07e148ff73c5b947c7ac933001e20a8b9759975afd1c,
+contains505 samples and no runner/observer/cleanup error. Relative to the
+observer start,401/fine20/contact1 appeared at2023.450ms,406 at2256.990ms,
+403 at2598.840ms and **403/fine25/contact1 at2648.894ms**. The original enum
+asset `native-identity/ebx-1767.txt` explicitly names25 **BS_Salad**; Smith is26
+and Feeble is27. Neither a generic diagonal label nor a related grind name
+can satisfy the Smith request. No production recipe was added.
+
+The original actor completed401->403 at phase1, requested heading0.437060118/
+pitch-0.4, retarget heading0.632153273, actual final heading0.388094664/
+pitch-0.399101496. Original cleanup cleared active0. All53 fine25 destination
+samples retained contact, geometry1, missing0 and the same six-metre segment
+[970662608935,0], endpoints(142.8515625,0.49,-75.771484375) and
+(142.8515625,0.49,-81.771484375). Native701 exit appeared at3288.677ms.
+Original physics dt and cached step were both0.0333333313 (30Hz).
+Down arrived2165.474ms, the heading sweep2365.568ms, neutral3165.528ms.
+
+Independent bracketed vectors explain the failed Smith predicate: in all53
+destination samples output+48 remained(0,1,0), longitudinal byte402 was0 and
+tuple[1,1,0,0,0,1] published25. The source+96 Y component stayed between
+0.387360 and0.389244, so the signed dot was positive, far from the <=-0.1
+needed for Smith's element3. Reversing the heading did not change that
+predicate. This rejects that specific Smith hypothesis while confirming a
+real different native action; it is not a failed input-delivery experiment.
+
+Further source tracing ties the coarse1 publisher0x48188b0 to the shared
+context flags:0x48188dc..ec copies bit2 of context+4068 into output+402 on
+each publication. Common entry captures the same bit in actor+767. A future
+trial must observe the original producer of this bit and its relationship
+to the board's physical pitch/contact before proposing a Smith correction.
+Directly changing the bit, classifier tuple or identity would bypass the
+native mechanism and is not an implementation option.
+
+Cleanup returned GDB0/detached, restored the native gate and original fixture
+absence, neutralized/destroyed the pad, withdrew the route with OFF/ON and
+left ArcadeON/menu/editor closed. Final bam generation8/revision20, fixture
+metadata configured but object absent; native100 speed0.000222 at
+(137.587067,1.028670,-51.380939), heading347.405548. Both peers received the
+explicit clean handback. No pending Grind hardware job remains. Production
+still has three qualified narrow recipes; six requested bindings and repeated
+changes remain unresolved, with no new DLL/CI build or gameplay acceptance.
