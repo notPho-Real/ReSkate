@@ -337,6 +337,12 @@ int main() {
         check(p.dispatched.grind_target()==GrindChangeTarget::nosegrind && p.arms==0,
             "simultaneous B+Y retains existing Nosegrind priority rather than inventing an ordered Nosebluntslide alias");
     }
+    for(unsigned identity=69;identity<=76;++identity) {
+        Pipeline p;p.contact.identity=identity;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
+        check(!p.change.admission().ready && !p.change.active() && p.arms==0,
+            "real Suski/Darklip contact alone cannot admit an unqualified named source");
+    }
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
         [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),
         "existing native admission is unchanged");

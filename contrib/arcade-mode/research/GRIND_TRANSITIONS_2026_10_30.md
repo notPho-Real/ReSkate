@@ -2898,3 +2898,59 @@ bam23/rev198. Configured metadata/object absent, native100 speed.0000309014
 at(148.036606,1.028673,-40.816639), heading78.319359; c048914/PID85401 unchanged.
 Both peers received clean handback before any further bounded window request.
 This reset and trial slot are consumed.
+
+### Opposite tail reaches Tailslide, but held controls do not retain it
+
+A newly coordinated window revalidated c048914/PID85401 and reset the approach
+through the original ground-checked fixture manager, revision198→202. Reset
+runner SHA-256 63e49fb8380dc2d791a259cc7aadd5da1d7595be37c9353646e64038979730b3;
+receipt `grind-native-approach-reset-tail-opposite-c048914-v1/results/1793536996656794000-status.json`.
+The immutable tail-opposite runner SHA-256
+c4a7cfeed772f7ec0ee80ab763b643d2652fc4a753c8d80808379d9f50bf7715
+changed the second lateral X sign after measured5-0. Receipt
+`grind-native-tail-opposite-c048914-v1/results/two-leg-lateral.json.gz`, SHA-256
+28a533fe7c3c752ae23b4695dfec42c918ed700191714abfb9b3e0a8ce8ffac5,
+contains484 independent samples with both clocks.03333333135 seconds.
+
+Original401→403 completed and fine24 appeared2574.371ms. Following43.598ms
+conditional neutral, native XInput(-32767,-8192) produced raw heading
+-2.12752366, pitch-.4 at2747.746ms. Second406 started2811.848ms; original
+403→402 completed at phase1 after.533333302 seconds. Independent physics
+initially published402/fine71 at3339.657ms, then **BS_Tailslide22 at3383.743ms**.
+The original segment[2422361554983,0] remained unchanged, with measured12m
+endpoints(143.8076171875,.500742197,-46.2041015625) and
+(143.8076171875,.500742197,-58.2041015625), physical/published contact1.
+However, the held lateral controls subsequently produced403/fine22 at4013.433ms
+and403/fine71 at4040.322ms. Later physical-contact loss and fine72 preceded
+natural701 at4746.263ms. The roughly.63-second Tailslide interval is real,
+but **does not qualify a reliable production Tailslide recipe**. No eighth
+recipe was added. A bounded earlier control withdrawal needs qualification.
+
+The experiment gate stopped with AssertionError on intermediate71: its
+assumed upper identity bound68 was wrong. Both original completions were
+already recorded, and the independent reader continued through actual22
+and the subsequent drift. Native enum asset
+`build/grind-investigation/native-identity/ebx-1767.txt`, exported GUID
+75934470-c85c-df18-7593-4470c85cdf18, defines69–72 as Suski variants and73–76
+as Darklip variants;71 is BS_Suski. Invalid is0 and Exit is77. Thus71 alone
+must not be interpreted as a physical rail exit or as an accepted named target.
+
+The production native contact reader now accepts real enum identities1–76,
+while retaining all independent owner/vtable/contact/segment guards and
+rejecting0,77 and out-of-range values. Named source/target qualification is
+unchanged: none of69–76 can admit a requested recipe or acknowledge one.
+Strict ASan/UBSan checks pass651 contact/lifetime cases and8291 composed
+grind-change cases, including all eight additional real contact identities,
+exit/out-of-range rejection and unqualified-source rejection. This correction
+prevents a native identity change from masquerading as contact loss; it does
+not claim HUD/balance/combo or live production acceptance.
+
+Cleanup independently returned GDB0/native feature restored, destroyed the
+pad, restored ArcadeON/automatic routing, closed menus/editor and undid all
+owned transactions to bam23/rev222. Fixture metadata is configured/object
+absent. Native100 speed.000158463 at(139.824631,1.028673,-40.812485), heading
+265.599609; installed identity unchanged. Both peers received clean handback;
+no job or reservation remains. This reset/trial slot is consumed. Seven narrow
+recipes remain implemented; Tailslide stability, Smith, broader source contexts,
+arbitrary repeated changes and live Ollie/early-flip acceptance remain open.
+No DLL/CI build, installation, merge or release occurred.

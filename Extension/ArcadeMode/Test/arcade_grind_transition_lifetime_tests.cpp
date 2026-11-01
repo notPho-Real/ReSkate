@@ -90,6 +90,16 @@ int main() {
             sample.segment_identity==std::array<std::uint64_t,2>{17,29},
             "original contact actors expose the current native segment without a minimum-length policy");
     }
+    for(std::uint32_t identity=69;identity<=76;++identity) {
+        ContactFixture f(402);f.memory.put(f.output+192,identity);
+        const auto sample=f.sample();
+        check(sample.valid && sample.identity==identity && sample.state==402 && sample.segment_identity==std::array<std::uint64_t,2>{17,29},
+            "native Suski/Darklip identities retain independently verified contact, without implying a named target");
+    }
+    for(auto identity:{0u,77u,78u,UINT32_MAX}) {
+        ContactFixture f(402);f.memory.put(f.output+192,identity);
+        check(!f.sample().valid,"Invalid, Exit and out-of-enumeration values remain rejected");
+    }
     for(unsigned reject=0;reject<16;++reject) {
         ContactFixture f;
         switch(reject) {

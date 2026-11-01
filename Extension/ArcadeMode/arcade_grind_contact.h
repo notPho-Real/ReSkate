@@ -41,7 +41,12 @@ NativeGrindContact read_grind_contact(std::uintptr_t base,std::uintptr_t core,
             read(result.actor+c::missing_segment,missing) && missing==0;
     };
     if(!contact() || !read(result.output+188,result.geometry) ||
-        !read(result.output+192,result.identity) || !result.identity || result.identity>68 ||
+        // Enum.SkateGrindType also contains Suski/Darklip entries69..76.
+        // They are real contact identities, including during a native blend;
+        // the narrower named-input catalog must not turn them into rail exits.
+        // Invalid0 and Exit77 remain ineligible. Source/target qualification
+        // belongs to the executor and does not follow from contact alone.
+        !read(result.output+192,result.identity) || !result.identity || result.identity>=77 ||
         !read(result.actor+c::segment_begin,result.begin) || !read(result.actor+c::segment_end,result.end) ||
         !read(result.actor+c::segment_identity,result.segment_identity))return {};
     double length_squared{};
