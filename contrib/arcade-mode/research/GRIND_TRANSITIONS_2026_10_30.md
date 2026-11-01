@@ -3438,3 +3438,108 @@ hardware window is reserved. Historical identity/world pins remainrev342 and
 must be revalidated. Broader sources, repeated changes out of native402, and
 live production/Ollie/early-flip/HUD/combo acceptance remain open. The new paths
 expand the usable initial50-50 requests; they do not establish build readiness.
+
+### Active native402 heading opens re-admission on the same segment
+
+The source-derived active-heading hypothesis above now has a native positive
+receipt. `grind-native-slide-heading-c048914-v4/results/two-leg-lateral.json.gz`
+has SHA-256 `93b8d400a057045c7beb30b22806fe439f00e94a2b01149f21c6859e92dff379`;
+the immutable runner has SHA-256
+`55a85b2df23f1489c68087b17775aba5fa92a798d1e56761806dfa1b6e5c1dd8`.
+It records616 independent samples with both native physics and cached-step
+clocks at30Hz. This is ArcadeOFF physics/control evidence, not integrated
+production, animation, HUD, balance, combo or rail-Ollie acceptance.
+
+The existing original401→403/fine24→402/fine31 preparation completed exactly
+two original406 actors. The third conditioned phase required both original
+completions, actual Bluntslide31 with physical/published contact on the original
+12m segment, debugger exit0 and native feature-off. Only then did it send
+native Down for200ms, evdev RS(32767,8192) for600ms, and neutral. Writer times
+are3596.233,3796.310 and4396.309ms respectively. These are writer-relative
+times; reader-relative times below use the independent reader's first sample.
+There was no third feature lease, debugger override,406 initialization or
+completion. The native state, contact, names and animation were never assigned.
+
+From reader3838.651068 through4414.822863ms,47 stable native402/fine31 brackets
+show both actor+766 and published output+419 admission1, physical and published
+contact1, missing-segment0, actor4138022496 and original segment
+`[3753801416743,0]`. Requested raw heading is0.1917705535888672 radians;
+pitch ranges from-0.3494592607021332 to-0.4839797019958496 and roll remains0.
+The measured endpoints are x144.7177734375,y0.5007421970367432,
+z-44.58984375/-56.58984375. Thus the active native control moves requested
+heading out of the lateral band and opens admission without losing the
+measured segment. This is different from the388 neutral/held-slide brackets
+with admission0 recorded above.
+
+With no third406 admitted, original control motion eventually changes physical
+state402→403 at4477.862ms. It publishes actual Salad25 at4503.722636ms;
+18 stable same-segment Salad brackets continue through4716.618396ms, all with
+admission0. It reaches a different short end segment at4743.287ms and exits701
+at4834.951ms. Salad is not a requested destination, and this in-place motion
+does not prove a named repeated-change executor. The next qualification should
+use the measured active402 admission window for a bounded original402→406→403
+leg and independently identify the resulting name/contact/segment. Do not
+assign5-0,50-50 or an original completion based on the selector alone. A later
+50-50 return would still need its own qualified native continuation.
+
+The outer reader reports physical-contact0 at3505.072331,3564.751528,
+3898.563757,4132.943389 and4465.858809ms. Each corresponding later stable
+admission bracket reads contact1 on the same segment. Preserve both readings:
+the sequential reader is not atomic and these data prove neither continuous
+completed-frame contact nor a completed-frame loss. No production contact
+cancellation guard is relaxed. A separate offline check of the existing Smith
+receipt finds113 stable same-segment403/26 physical-contact brackets with
+admission0; Smith neutral is not a qualified general return path either.
+
+The preceding setup attempts are retained as failures, not gameplay evidence:
+
+- `grind-native-slide-heading-c048914-v1` receipt SHA
+  `b83c2c353cbc0666a62e1dc4d6faff086acc835edfd78480bdb284e9ebce6d6d`
+  stopped on the worker's two-condition maximum before grind controls. Its
+  three reader samples are all native100. The debugger detached, feature
+  restored and five owned transactions were undone356→366. The corrected
+  ephemeral worker permits exactly the reviewed three bounded wait types;
+  the installed trusted worker is unchanged. Local preflight now executes
+  its actual validator before any SSH or editor operation. The fixed schedule
+  has a4.2s aggregate wait bound.23 inert validator/replay/geometry cases and
+ 23 detached-owner/contact/control cases pass; production tests were not rerun.
+- `v2` receipt SHA
+  `bbdc899cae3c33f96397bcf803614ff14ce29af5067cbb92c2748b8a1ae3a9ea`
+  stopped before fixture/debugger/grind work on a missing exact initial console
+  echo. Fresh capture confirmed Hub; reviewed Escape/grave recovery visibly
+  opened the console and the open-console status reader confirmed gameplay at
+  rev366. No blind retry or revision relaxation was used.
+- `v3` receipt SHA
+  `00533c0a9b83be72e0ce3bab2456a559ee18295d9345b6ea476001743661e767`
+  used the corrected schedule with unit-create/native-move scale3 setup. Its
+ 270 samples never entered400–406; the first native-geometry wait timed out
+  and withheld all grind-change controls. The18m native endpoints were never
+  measured, so that setup is unqualified. Cleanup restored absence atrev386.
+  The successfulv4 reverted to the already verified scale2/12m setup, with
+  its original geometry guards. No production editor change was made.
+
+The new offline `analyze_grind_slide_controls.py` verifies all four pinned
+receipts, exact preparation count, third-phase delivery timing,47 admission
+brackets,18 later Salad brackets, the mixed-time contact observations and
+cleanup revisions. It has no process, controller or console access. The
+source-first native402 control mechanism is now measured, but no new production
+recipe or requested-name acknowledgment is justified yet. Production stays at
+7de1f23 and its previously recorded22480 composed checks; the known baseline
+contextual-air assertion remains. No DLL/CI build, install, merge or release.
+
+Both peers confirmed the exclusive window and received explicit clean handback.
+All four probe slots and both new approach-reset slots are consumed. The reset
+`grind-native-approach-reset-slide-heading-c048914-v2/reset.py`, SHA
+`88c69be762481ac6fb25470a09e9fb21597919c4a2022f397ab6a54c4d937c32`,
+used the original ground-checked trainer reset386→390; its receipt is
+`results/1793554960130688000-status.json`. The final probe cleanup ended at
+BAM generation23/revision410, native100 speed0.000243253, position
+144.29736328125,1.028672695159912,-42.73271179199219, heading338.749237.
+Installed identity remains c048914/PID85401/launcher85410 and DLL
+`7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28`.
+ArcadeON, menus/editorclosed, pad destroyed, debugger exit0/feature restored,
+owned edits undone, fixture configured but object absent. Latest metadata start
+is144.71788024902344,1.028671145439148,-63.59046173095703; rail position
+144.71788024902344,-4.76837158203125e-06,-55.59046173095703, identity rotation,
+scale1. No Grind job or reservation remains. These are historical pins and must
+be revalidated with both peers before another trial.
