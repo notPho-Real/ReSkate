@@ -3367,3 +3367,74 @@ test results remain at88c59dd; no new gameplay check is claimed. No hardware
 window was requested or used, and no DLL/CI build, install, merge or release
 was performed in this continuation. Broader execution and live acceptance
 remain open.
+
+### Compose the measured slide and Smith routes from established50-50
+
+The existing source401/fine20 executor previously rejected Noseslide,
+Nosebluntslide, Bluntslide, Tailslide and Smith requests even though retained
+native receipts already establish the required original401→403 preparation
+and subsequent named execution on one12m segment. This is a missing production
+sequencing path, separate from the unresolved402 re-admission mechanism above.
+`GrindChange` now composes those measured paths from established401/fine20 on
+horizontal geometry1 of at least12m. It retains the existing nine mappings,
+simultaneous priorities and first-grind actor.
+
+Y→X and orderedB→Y first run the original Nosegrind23 preparation; B→X,
+orderedX→Y and X→X first run the original5-0 identity24 preparation. The first
+lease still has its1500ms bound and ordinary native admission. Original
+401→403 completion and independently read intermediate name, contact and
+original segment must both be present before input changes to owned neutral.
+The preparation is explicitly separate evidence: it cannot set the final
+requested-name completion, physics or animation flags.
+
+The lateral routes then require retirement of the first native lease and an
+unchanged intermediate actor/contact/segment before arming a fresh1500ms lease
+with the existing raw-control admission guard. The final native sequence is
+unchanged: neutral50ms then the qualified lateral controls, including the
+Tailslide1000ms pulse and neutral withdrawal. The final403→402 completion,
+actual requested name on the same segment and independently matching changed
+animation remain necessary. Retained supporting receipts are the Nosegrind→
+Noseslide and Nosebluntslide receipts,5-0→Bluntslide lateralv4, and the
+Tailslide withdrawal receipt already recorded above; no new native receipt is
+claimed for this integrated production sequencing.
+
+Smith instead waits for original lease retirement **and** the existing native
+feature-off/neutral-control reader. It starts the previously qualified2200ms
+original403 control sequence without arming a second406. Its final evidence
+remains `control_only=true`, `completed=false`; the real first406 completion
+is recorded only as preparation. Intermediate Suski71 cannot satisfy Smith.
+The positive Smith reference receipt above supplies the native route evidence,
+including its unresolved mixed-time contact observation.
+
+Continuation preserves the original physical pair's first/last timestamps and
+request start. It does not submit another input request, synthesize an event,
+re-date an old press or bypass the recognizer's300ms rule. Each execution leg
+has a distinct serial and timing origin. A150ms handoff bound prevents stale
+preparation from waiting indefinitely; the preparation's original1500ms
+deadline also continues to apply until handoff. The composed maximum is3000ms
+for a lateral route or3700ms for Smith. A live prior lease, unknown native
+controls, wrong intermediate identity, replacement actor, stale frame,
+owner/contact/segment loss, A, OFF or conflicting authored/action ownership
+prevents or cancels continuation. Native arm failure withdraws controls.
+
+The only shared-runtime edit is the named executor's `advance` call after its
+independent verification and before sampling its RS output. It uses the current
+owner/contact and existing native `arm`; it retains no callback beyond that
+poll. Native406 lifetime, ordinary input routing, balance/HUD/combo, manual,
+flip, prewind and camera implementations are unchanged.
+
+Strict C++20 ASan/UBSan production-composed checks pass22480 cases at30/60/120Hz,
+including all four ordered slide pairs, their supported simultaneous aliases,
+Smith's ordered double press, original timestamps, retired-lease handoff,
+wrong/absent intermediate evidence, held/repeated polls, final independent
+physics/animation and cancellation.651 native-lifetime and1362 rail-pop checks
+pass;1736 combo trace checks pass with the existing portable warning profile.
+The previous contextual-air baseline failure and extra-Wconversion combo-test
+limitation remain; this is not full platform CI or gameplay acceptance.
+
+No Deck input, console, installation, DLL/CI build, merge or release occurred.
+Compact peer snapshots still report idle after the prior clean handback; no
+hardware window is reserved. Historical identity/world pins remainrev342 and
+must be revalidated. Broader sources, repeated changes out of native402, and
+live production/Ollie/early-flip/HUD/combo acceptance remain open. The new paths
+expand the usable initial50-50 requests; they do not establish build readiness.

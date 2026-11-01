@@ -6,6 +6,7 @@
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
+constexpr std::uint16_t test_b=0x2000,test_y=0x8000;
 void check(bool value,const char* why) {
     ++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}
 }
@@ -50,9 +51,167 @@ struct Pipeline {
             ActionExperiment::classic,true,true,false,{},change.admission(),adapter);
     }
     void establish() {step(1000);poll();step(1100);poll();}
+    void advance(bool native_idle=true,bool arm_allowed=true) {
+        change.advance(now,contact,native_idle,[&](auto,auto deadline,auto admission_control) noexcept {
+            ++arms;last_deadline=deadline;control=admission_control;return arm_allowed;
+        });
+    }
 };
 }
 int main() {
+    for(unsigned hz:{30u,60u,120u})for(auto target:{GrindChangeTarget::noseslide,GrindChangeTarget::nosebluntslide,
+            GrindChangeTarget::bluntslide,GrindChangeTarget::tailslide})for(bool together:{false,true}) {
+        const bool nose=target==GrindChangeTarget::noseslide || target==GrindChangeTarget::nosebluntslide;
+        const bool reverse=target==GrindChangeTarget::nosebluntslide || target==GrindChangeTarget::tailslide;
+        if(reverse && together)continue; // Existing simultaneous priorities stay unchanged.
+        const unsigned preparation=nose?23u:24u;
+        const unsigned identity=nose?(reverse?30u:21u):(reverse?22u:31u);
+        const std::uint16_t first=target==GrindChangeTarget::noseslide?test_y:
+            target==GrindChangeTarget::tailslide?classic_x:test_b;
+        const std::uint16_t held=target==GrindChangeTarget::nosebluntslide?test_b|test_y:
+            target==GrindChangeTarget::bluntslide?test_b|classic_x:classic_x|test_y;
+        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(together?held:first);
+        if(!together){p.step(1230);p.poll(held);}
+        const auto start=p.now,initial_serial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==target,
+            "requested slide from native50-50 arms its qualified preparation, not another recognizer");
+        check(p.control==GrindAdmissionControl::ordinary,"preparation retains original401 admission");
+        for(unsigned i=0;i<700*hz/1000 && p.arms==1;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(start+elapsed,elapsed<150?401:elapsed<400?406:403);
+            if(elapsed>=400){p.contact.actor=32;p.contact.identity=preparation;}
+            p.poll(held);p.poll(held);
+            p.change.verify(p.now,elapsed>=400?NativeGrindCompletion{true,401,403,1,{}}:NativeGrindCompletion{},p.contact,p.animation);
+            check(!p.change.evidence().completed && !p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+                "preparation completion, physics and animation never acknowledge the requested slide");
+            if(elapsed>=400 && elapsed<500) {
+                const auto pad=p.change.sample(p.now);
+                check(pad.owns && pad.x==0 && pad.y==0,"verified preparation withdraws into owned neutral while original lease retires");
+            }
+            p.advance(elapsed>=500);p.advance(elapsed>=500);
+        }
+        const auto final_start=p.change.evidence().final_leg_started_at;
+        check(p.arms==2 && p.change.serial()==initial_serial+1 && final_start>=start+500,
+            "retired original lease and verified native intermediate admit one fresh lateral lease");
+        check(p.last_deadline==final_start+1500 && p.change.evidence().preparation_completed &&
+            p.change.evidence().preparation_physics_changed,"each native leg retains its own bounded lifetime and evidence");
+        check(p.control==(nose?(reverse?GrindAdmissionControl::lateral_nose_reverse:GrindAdmissionControl::lateral_nose):
+            (reverse?GrindAdmissionControl::lateral_tail_reverse:GrindAdmissionControl::lateral_tail)),
+            "second admission waits for the correct raw native lateral band");
+        for(unsigned i=0;i<=1600*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(final_start+elapsed,elapsed<150?403:elapsed<700?406:402);
+            if(elapsed>=700){p.contact.actor=40;p.contact.identity=identity;}
+            p.animation.grind_type=elapsed>=900?identity:preparation;
+            p.animation.physics_grind_type=p.contact.identity;
+            p.poll(held);p.poll(held);
+            p.change.verify(p.now,elapsed<700?NativeGrindCompletion{true,401,403,1,{}}:
+                NativeGrindCompletion{true,403,402,1,{}},p.contact,p.animation);
+            p.advance();p.advance();
+            check(p.arms==2,"held physical pair, repeated polls and old completion cannot arm a third native leg");
+            const auto& evidence=p.change.evidence();
+            check(evidence.first_input_at==1200 && evidence.last_input_at==start && evidence.started_at==start &&
+                evidence.serial==initial_serial && evidence.final_leg_serial==initial_serial+1,
+                "continuation retains original physical timestamps and distinct native lease serials");
+            if(elapsed<700)check(!evidence.completed && !evidence.physics_changed,"first completion cannot satisfy second leg");
+            if(elapsed>=700 && elapsed<900)check(evidence.physics_changed && !evidence.animation_changed,
+                "final native identity still requires independent changed animation");
+            const auto pad=p.change.sample(p.now);
+            const bool retained=elapsed<(reverse && !nose?1500u:1000u);
+            check(pad.owns==retained,"final trajectory duration uses its own start, not the old physical event age");
+            if(pad.owns) {
+                const bool neutral=elapsed<50 || (reverse && !nose && elapsed>=1050);
+                check(pad.x==(neutral?0:reverse?-32767:32767) && pad.y==(neutral?0:nose?8192:-8192),
+                    "two-leg routes reproduce neutral/lateral/withdrawal controls at each cadence");
+            }
+        }
+        check(p.change.evidence().completed && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
+            "only independent second completion, final physics and animation satisfy the slide request");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
+        p.step(1210);p.poll();p.step(1230);p.poll(classic_x);
+        const auto initial_serial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::smith,
+            "X then X from50-50 arms only the native5-0 preparation");
+        for(unsigned i=0;i<650*hz/1000 && !p.change.evidence().final_leg_serial;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(1230+elapsed,elapsed<150?401:elapsed<400?406:403);
+            if(elapsed>=400){p.contact.actor=32;p.contact.identity=24;}
+            p.controls.neutral=elapsed>=500;
+            p.poll(classic_x);p.poll(classic_x);
+            p.change.verify(p.now,elapsed>=400?NativeGrindCompletion{true,401,403,1,{}}:NativeGrindCompletion{},p.contact,p.animation);
+            p.advance(elapsed>=450);p.advance(elapsed>=450);
+            if(elapsed>=400 && elapsed<500) {
+                const auto pad=p.change.sample(p.now);
+                check(pad.owns && pad.x==0 && pad.y==0 && !p.change.evidence().control_only,
+                    "Smith waits in owned neutral for native lease retirement and observed control neutral");
+            }
+        }
+        const auto start=p.change.evidence().final_leg_started_at;
+        check(start>=1730 && p.change.serial()==initial_serial+1 && p.arms==1 && !p.change.requires_transition(),
+            "verified preparation hands off to original403 control motion without arming a second406");
+        for(unsigned i=0;i<=2300*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(start+elapsed,403);p.contact.identity=elapsed<800?24u:elapsed<1200?71u:26u;
+            p.animation.grind_type=elapsed<1400?24u:26u;p.animation.physics_grind_type=p.contact.identity;
+            p.poll(classic_x);p.poll(classic_x);
+            p.change.verify(p.now,{true,401,403,1,{}},p.contact,p.animation);p.advance();
+            const auto& evidence=p.change.evidence();
+            check(p.arms==1 && !evidence.completed && evidence.control_only && evidence.preparation_completed,
+                "preparation completion remains distinct from Smith's control-only execution");
+            check(evidence.first_input_at==1200 && evidence.last_input_at==1230 && evidence.started_at==1230,
+                "Smith continuation retains physical press times without a re-dated request");
+            if(elapsed<1200)check(!evidence.physics_changed,"prior preparation age and Suski cannot qualify Smith early");
+            if(elapsed>=1200 && elapsed<1400)check(evidence.physics_changed && !evidence.animation_changed,
+                "actual Smith physics after its own ramp still needs matching changed animation");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<2200),"Smith continuation retains its own bounded ramp and neutral withdrawal");
+            if(pad.owns) {
+                const std::int16_t x=elapsed>=200 && elapsed<500?24000:0;
+                constexpr std::array<std::int16_t,5> ramp{6553,13106,19660,26213,32767};
+                const auto step=elapsed>=800?(elapsed-800)/100:0;
+                const std::int16_t y=elapsed<500?-32767:elapsed<800 || elapsed>=2000?0:ramp[step<4?step:4];
+                check(pad.x==x && pad.y==y,"Smith starts captured-reference controls after, not during, preparation");
+            }
+        }
+        check(p.change.evidence().physics_changed && p.change.evidence().animation_changed && !p.change.active(),
+            "the independent final Smith identity and animation remain recorded after control withdrawal");
+    }
+    for(unsigned fault=0;fault<3;++fault) {
+        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
+        p.step(1210);p.poll();p.step(1230);p.poll(classic_x);
+        p.step(1330,406);p.poll();p.step(1430,403);p.contact.actor=32;p.contact.identity=24;
+        p.controls={fault!=0,fault==2};p.poll();p.change.verify(p.now,{true,401,403,1,{}},p.contact,p.animation);
+        p.advance(fault!=2);
+        check(p.change.active() && !p.change.evidence().control_only && p.arms==1,
+            "missing or non-neutral native controls and pending lease keep Smith handoff disabled");
+        p.step(1530,403);p.poll();p.advance(fault!=2);
+        p.step(1581,403);p.poll();p.advance(fault!=2);
+        check(!p.change.active() && !p.change.sample(p.now).owns && p.arms==1,
+            "unverified Smith handoff expires without stale controls or another native lease");
+    }
+    for(unsigned fault=0;fault<12;++fault) {
+        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(test_b);p.step(1230);p.poll(test_b|classic_x);
+        p.step(1330,406);p.poll();p.step(1430,403);p.contact.actor=32;p.contact.identity=24;p.poll();
+        auto done=NativeGrindCompletion{true,401,403,1,{}};
+        if(fault==0)done.valid=false;
+        if(fault==1)done.phase=.5f;
+        if(fault==2)p.contact.identity=23;
+        if(fault==3)p.contact.segment_identity[0]++;
+        p.change.verify(p.now,done,p.contact,p.animation);
+        if(fault==4)p.contact.actor++;
+        if(fault==5)p.contact.valid=false;
+        if(fault==6){p.now+=151;}
+        if(fault==7){p.step(1440,403);p.frame.owner.rig++;p.poll();}
+        if(fault==8){p.step(1440,403);p.poll(classic_a);}
+        if(fault==9){p.step(1440,403);p.poll(0,false);}
+        p.advance(fault!=10,fault!=11);
+        check(p.arms==(fault==11?2u:1u),"missing preparation, stale/contact/actor/owner/input loss or live old lease cannot begin a second leg");
+        check(!p.change.evidence().completed && !p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+            "failed continuation never acknowledges or fabricates the requested name");
+        if(fault==11)check(!p.change.active() && !p.change.sample(p.now).owns,"rejected native continuation withdraws input immediately");
+    }
     for(unsigned hz:{30u,60u,120u})for(auto target:{GrindChangeTarget::nosegrind,GrindChangeTarget::crooked,GrindChangeTarget::grind_5_0})for(bool together:{false,true}) {
         const bool crooked=target==GrindChangeTarget::crooked;
         const bool tail=target==GrindChangeTarget::grind_5_0;

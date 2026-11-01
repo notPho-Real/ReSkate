@@ -2312,6 +2312,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if(grind_change.active()) {
             const auto completion=native_grind::completion(native_flip_owner,grind_change.serial(),now);
             grind_change.verify(now,completion.native,grind_contact,grind_animation);
+            grind_change.advance(now,grind_contact,!native_grind::pending(),[&](auto serial,auto deadline,auto control) noexcept {
+                return native_grind::arm(native_flip_owner,grind_contact,serial,now,deadline,control);
+            });
             if(!grind_change.active())native_grind::cancel();
         }
         const auto grind_pad=grind_change.sample(now);
