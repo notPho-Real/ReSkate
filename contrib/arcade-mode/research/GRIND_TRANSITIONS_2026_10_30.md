@@ -2734,11 +2734,11 @@ Production now includes **B→X Bluntslide from established403/fine24**, plus
 the existing simultaneous B+X priority. It retains the narrow horizontal
 geometry1/at-least12m source qualification. The bounded RS actor owns neutral
 for50ms before the measured lateral tail input. A new per-request admission
-policy reads the original raw GrindInputs at context+5248 (heading+24,
+policy reads the original raw GrindInputs pointer at context+5248 (heading+24,
 pitch+60,roll+52), brackets those reads against unchanged owner/contact and
-rejects torn/nonfinite input. Initial native admission stays disabled until
+rejects torn/nonfinite input or a missing/replaced GrindInputs pointer. Initial native admission stays disabled until
 the neutral interval has elapsed and the actual request matches absolute
-wrapped heading55–125 degrees, pitch[-.45,-.1745329201], and abs(roll)<.001.
+wrapped heading strictly between55–125 degrees, pitch(-.45,-.1745329201), and abs(roll)<.001.
 This prevents the v1 failure where neutral accidentally admitted a50-50 return.
 Original native admission and initialization still select the destination;
 the code never writes a target state, name, animation or contact field.
@@ -2748,7 +2748,7 @@ animation can satisfy the request. A native404 result cancels instead.
 
 The other four recipes retain their original controls and ordinary admission.
 The new guard is bypassed for those requests. Focused strict warnings plus
-ASan/UBSan passed **6019 production-composed checks at30/60/120Hz**, including
+ASan/UBSan passed **6027 production-composed checks at30/60/120Hz**, including
 sequential/simultaneous B-X, original physical timestamps, repeated polls,
 neutral admission rejection, both heading signs, torn/stale owner/control
 evidence, intermediate59 rejection and independent animation acknowledgment.

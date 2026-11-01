@@ -273,8 +273,8 @@ int main() {
     }
     // Exercise the same native request guard used by the production feature
     // override. Neutral wait must never select an unintended 50-50 return.
-    for(unsigned fault=0;fault<12;++fault) {
-        std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{};
+    for(unsigned fault=0;fault<20;++fault) {
+        std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{},pointer_reads{};
         if(fault==1)raw[0]=-raw[0];
         if(fault==2)raw[0]=0;
         if(fault==3)raw[1]=0;
@@ -282,22 +282,35 @@ int main() {
         if(fault==5)raw[0]=std::numeric_limits<float>::quiet_NaN();
         if(fault==6)raw[1]=-.46f;
         if(fault==7)raw[0]=2.5f;
-        const auto reader=[&](std::uintptr_t address,float& value) {
-            ++reads;unsigned index{};
-            if(address==100+5248+24)index=0;
-            else if(address==100+5248+60)index=1;
-            else if(address==100+5248+52)index=2;
-            else return false;
-            value=raw[index];
-            if(fault==8 && reads>3)value+=.01f;
-            return fault!=9;
+        if(fault==16)raw[0]=55*std::numbers::pi_v<float>/180;
+        if(fault==17)raw[0]=125*std::numbers::pi_v<float>/180;
+        if(fault==18)raw[1]=-.45f;
+        if(fault==19)raw[1]=-.1745329201f;
+        const auto reader=[&](std::uintptr_t address,auto& value) {
+            if constexpr(std::is_same_v<std::remove_reference_t<decltype(value)>,std::uintptr_t>) {
+                if(address!=100+5248)return false;
+                value=0x20000;++pointer_reads;
+                if(fault==12)value=0;
+                if(fault==13 && pointer_reads>1)value+=8;
+                if(fault==14)value+=1;
+                return fault!=15;
+            } else {
+                ++reads;unsigned index{};
+                if(address==0x20000+24)index=0;
+                else if(address==0x20000+60)index=1;
+                else if(address==0x20000+52)index=2;
+                else return false;
+                value=raw[index];
+                if(fault==8 && reads>3)value+=.01f;
+                return fault!=9;
+            }
         };
         const bool admitted=grind_control_admitted(GrindAdmissionControl::lateral_tail,100,fault==11?49:50,
             reader,[&]{return ++validations==1 || fault!=10;});
         check(admitted==(fault<2),"native guard accepts either wrapped lateral sign and rejects neutral, pitch/roll, stale/torn, missing or early evidence");
     }
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
-        [](auto,float&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),
+        [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),
         "existing native admission is unchanged");
     std::cout<<checks<<" grind change production composition checks passed\n";
 }
