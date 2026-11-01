@@ -2215,3 +2215,54 @@ metadata configured but object absent; native100 speed0.000222 at
 explicit clean handback. No pending Grind hardware job remains. Production
 still has three qualified narrow recipes; six requested bindings and repeated
 changes remain unresolved, with no new DLL/CI build or gameplay acceptance.
+
+### Contact-bit producer traced; repeated-transition observation prepared
+
+Continued offline against the same independently rehashed executable. The
+missing writer of context+4068 is a substructure copy, which explains why
+searching for direct stores at displacement4068 did not find it. At
+0x4801e72..8c the native contact updater copies its result at updater+96 into
+context+3024 through0x47e8120. That copy preserves the individual bits of
+substructure+1044; bit2 is copied at0x47e8466..73. Thus3024+1044=4068.
+This is physical contact-selection output, not a named-action command.
+
+The original403 contact candidate routine0x47ed610 supplies the bit. Selecting
+the candidate with point+80 and segment index+96 clears bit2 at0x47edbcc;
+selecting point+32/index+48 sets it at0x47edc40. Both branches copy the actual
+segment and publish contact at substructure+992. The402 candidate routine
+0x47f0180 uses the same distinction at0x47f022b/0x47f0285. The contact query
+0x47e1950 constructs these opposing probes from the actual context transform:
+position+112, longitudinal axis+96, lateral axis+64 and up axis+80. Probe
+dimensions include runtime values0x77a2370/0x77a25e0; their current values
+cannot be recovered from the file's unbacked data section. No static default
+or new geometry was assumed for them.
+
+The403 candidate selection also checks physical separation, segment heading,
+native tuning and direction of travel (dot(context+976,context+96)), then
+chooses between eligible contacts. This explains why a heading input alone
+does not guarantee the longitudinal bit or Smith's signed-axis predicate.
+The exact remaining Smith blocker is a native control trajectory that keeps
+the required physical contact while achieving the negative signed dot and
+correct side predicate. The producer is now identified; a successful Smith
+recipe still is not established.
+
+Prepared a read-only repeated-admission observer fragment locally at
+`build/grind-investigation/admission_observer_fragment.py`, SHA-256
+13d497290855d6b85429e25054ab165d47c6291758ff28a692ca9ffffc7f482c.
+It brackets owner, actor/vtable, selector/output, state, segment identity,
+contact, context flags/orientation/elapsed time, actor+766/+767 and the
+published output+419 admission byte. Twenty-seven inert memory cases passed,
+including owner loss, invalid actors and changed fields/pointers during the
+bracket. This is observation preparation only, not a production recipe or
+native acceptance. The fragment was not staged or run against the Deck.
+
+The next bounded native observation can retain the measured5-0 entry, release
+the stick earlier after verified403/fine24, and measure whether original403
+admission becomes eligible while the same contact/segment remains. That
+observation must precede extending the single-transition gate to a second
+leg; a high admission byte alone will still not prove an executed50-50.
+Grab reported no reservation or changes since handback. Manual is reclaiming
+priority hardware, so Grind explicitly released any tentative window and
+issued no hardware, console or telemetry operation. Latest installed/world
+pins above are retained evidence, not fresh observations. The three production
+recipes and the DLL/CI build hold remain unchanged.
