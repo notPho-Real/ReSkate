@@ -1,0 +1,1135 @@
+{
+  "source_commit": "5387765b070a08acf4ccaea600867664abd8abd5",
+  "dll_sha256": "0e0b256ca26cc60b0694765bbad4799b80034d4d6ea4824dae66b0e3f03cd8ad",
+  "installation_id": "7991b98d6eaa4056abdce6c63df94884",
+  "pid": 83858,
+  "trials": [
+    {
+      "trial": "method_early",
+      "qualified_capture": 2,
+      "retained_capture": {
+        "expected": 428,
+        "retained": 428,
+        "missing": [],
+        "duplicate_ordinals": false,
+        "recovered_partial_copies": 0,
+        "conflicting_copies": false,
+        "retained_complete": true,
+        "producer_complete": true,
+        "complete": true
+      },
+      "log_gaps": [],
+      "raw_file": "1793506806357903000-method_early.json.gz",
+      "raw_sha256": "a54d087506053d79284f1e763feffe46c615a8032da8aba646dfb66101d0df32",
+      "requests": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "251249831",
+          "released_at": "0",
+          "recognized_at": "251249851",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        },
+        {
+          "serial": "2",
+          "episode": "1",
+          "semantic": "29",
+          "expected_detail": "2",
+          "held": "true",
+          "pressed_at": "251250031",
+          "released_at": "0",
+          "recognized_at": "251250031",
+          "direction": "4",
+          "presses": "2",
+          "acknowledged": "false"
+        }
+      ],
+      "initializations": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor": "1042842912",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "duration": "305"
+        }
+      ],
+      "advancements": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor": "1042842912",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "before": "0",
+          "after": "1.8027897",
+          "delta": "1.8027897",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.0125054"
+        }
+      ],
+      "ends": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "transition_lease",
+          "observed_at": "251250387",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "physical_b_edges": [
+        {
+          "ms": "251249831",
+          "native_ms": "251249828",
+          "raw_buttons": "8196",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "4778",
+          "action_generation": "4784",
+          "readiness": "513"
+        },
+        {
+          "ms": "251249931",
+          "native_ms": "251249924",
+          "raw_buttons": "4",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "4778",
+          "action_generation": "4785",
+          "readiness": "4897"
+        },
+        {
+          "ms": "251250031",
+          "native_ms": "251250025",
+          "raw_buttons": "8196",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "4778",
+          "action_generation": "4785",
+          "readiness": "4897"
+        },
+        {
+          "ms": "251250383",
+          "native_ms": "251250363",
+          "raw_buttons": "0",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "4778",
+          "action_generation": "4785",
+          "readiness": "4897"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "velocity": [
+            3.001453478645999e-05,
+            -1.627849087526556e-06,
+            -0.0001019457631628029
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 631.858,
+          "state": 103,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "velocity": [
+            -0.11892598122358322,
+            0.35726025700569153,
+            -0.03508003056049347
+          ],
+          "height": 198.9914093017578
+        },
+        {
+          "ms": 739.143,
+          "state": 200,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "velocity": [
+            0.3996574282646179,
+            3.9162659645080566,
+            -0.6138086915016174
+          ],
+          "height": 199.41836547851562
+        },
+        {
+          "ms": 771.921,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "velocity": [
+            0.06040307879447937,
+            4.670660018920898,
+            0.0833868682384491
+          ],
+          "height": 199.57086181640625
+        },
+        {
+          "ms": 846.809,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": true,
+          "velocity": [
+            0.2590380907058716,
+            4.3403825759887695,
+            1.6786452531814575
+          ],
+          "height": 199.83709716796875
+        },
+        {
+          "ms": 1163.436,
+          "state": 201,
+          "detail": 2,
+          "grab_exit": null,
+          "grabbing": true,
+          "velocity": [
+            -0.2783203423023224,
+            -0.5680847764015198,
+            0.0769043043255806
+          ],
+          "height": 200.3216094970703
+        },
+        {
+          "ms": 1493.554,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "velocity": [
+            2.2461633682250977,
+            -5.173241138458252,
+            3.2867369651794434
+          ],
+          "height": 199.6802215576172
+        },
+        {
+          "ms": 1635.422,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "velocity": [
+            -0.0585753358900547,
+            -0.7414358258247375,
+            -0.0586458221077919
+          ],
+          "height": 198.97274780273438
+        }
+      ],
+      "scoring_acceptance": "unverified",
+      "interpretation": "Complete late control: first B was already state201; Method actor initialized and advanced. GrabExit unknown. Does not qualify state200 input-history fix."
+    },
+    {
+      "trial": "basic_tap",
+      "qualified_capture": 3,
+      "retained_capture": {
+        "complete": false
+      },
+      "log_gaps": [
+        "AssertionError",
+        "AssertionError"
+      ],
+      "raw_file": "1793506867970855000-basic_tap.json.gz",
+      "raw_sha256": "20ad7e357f17670617bc01f884929b4d7f35afd8abe001ef2a7477d90757cd6e",
+      "requests": [],
+      "initializations": [],
+      "advancements": [],
+      "ends": [],
+      "physical_b_edges": [],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "velocity": [
+            -0.00041652724030427635,
+            -1.701929136288527e-06,
+            0.001116710714995861
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 651.648,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "velocity": [
+            -0.11900050193071365,
+            0.3593069911003113,
+            -0.047136373817920685
+          ],
+          "height": 198.99147033691406
+        },
+        {
+          "ms": 747.856,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "velocity": [
+            0.43528828024864197,
+            3.9157326221466064,
+            -0.5934940576553345
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 779.946,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "velocity": [
+            0.7460708618164062,
+            4.630837440490723,
+            -0.07355192303657532
+          ],
+          "height": 199.5708770751953
+        },
+        {
+          "ms": 888.559,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": true,
+          "velocity": [
+            0.05264878645539284,
+            3.345489025115967,
+            1.3799830675125122
+          ],
+          "height": 199.9088592529297
+        },
+        {
+          "ms": 1179.74,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "velocity": [
+            0.005493164528161287,
+            -0.6692505478858948,
+            0.8349609971046448
+          ],
+          "height": 200.32473754882812
+        },
+        {
+          "ms": 1246.854,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "velocity": [
+            -0.12989459931850433,
+            -1.744641900062561,
+            0.27625471353530884
+          ],
+          "height": 200.1776885986328
+        },
+        {
+          "ms": 1511.324,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.06389525532722473,
+            -4.583173751831055,
+            -0.13412214815616608
+          ],
+          "height": 199.2363739013672
+        },
+        {
+          "ms": 1619.469,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.006133736111223698,
+            -0.00047972548054531217,
+            0.015493783168494701
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "scoring_acceptance": "unverified",
+      "interpretation": "Incomplete collector result; independent BS detail/release/ground observed, but missing input/action/actor chain prevents acceptance."
+    },
+    {
+      "trial": "melon",
+      "qualified_capture": 4,
+      "retained_capture": {
+        "expected": 427,
+        "retained": 427,
+        "missing": [],
+        "duplicate_ordinals": false,
+        "recovered_partial_copies": 0,
+        "conflicting_copies": false,
+        "retained_complete": true,
+        "producer_complete": true,
+        "complete": true
+      },
+      "log_gaps": [],
+      "raw_file": "1793506918516115000-melon.json.gz",
+      "raw_sha256": "6f09b23986500aa99fd4c04d109bdbd6622b87c5831e8c33e54b68be664f8026",
+      "requests": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "251361861",
+          "released_at": "0",
+          "recognized_at": "251361861",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initializations": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "detail": "4",
+          "actor": "1043696800",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "duration": "305"
+        }
+      ],
+      "advancements": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "detail": "4",
+          "actor": "1043696800",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "before": "0",
+          "after": "0.60092926",
+          "delta": "0.60092926",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.5867145"
+        }
+      ],
+      "ends": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "transition_lease",
+          "observed_at": "251362223",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "physical_b_edges": [
+        {
+          "ms": "251361861",
+          "native_ms": "251361856",
+          "raw_buttons": "8196",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "7772",
+          "action_generation": "7791",
+          "readiness": "4897"
+        },
+        {
+          "ms": "251362210",
+          "native_ms": "251362191",
+          "raw_buttons": "0",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "7772",
+          "action_generation": "7792",
+          "readiness": "4897"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.001308282371610403,
+            -1.4305345530374325e-06,
+            0.0033325457479804754
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 628.404,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.11678503453731537,
+            0.3591731786727905,
+            -0.04439857602119446
+          ],
+          "height": 198.99147033691406
+        },
+        {
+          "ms": 726.945,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.4439033269882202,
+            3.91573166847229,
+            -0.5839097499847412
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 758.739,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.7454171180725098,
+            4.629922389984131,
+            -0.04943862557411194
+          ],
+          "height": 199.5708465576172
+        },
+        {
+          "ms": 896.439,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            0.040116820484399796,
+            2.569925308227539,
+            0.7300892472267151
+          ],
+          "height": 199.96751403808594
+        },
+        {
+          "ms": 1195.887,
+          "state": 201,
+          "detail": 4,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            -0.048508238047361374,
+            -1.586714506149292,
+            0.833953320980072
+          ],
+          "height": 200.2534637451172
+        },
+        {
+          "ms": 1259.341,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "velocity": [
+            -0.09926065802574158,
+            -2.053046703338623,
+            0.19313418865203857
+          ],
+          "height": 200.12716674804688
+        },
+        {
+          "ms": 1525.758,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.07274925708770752,
+            -4.922379016876221,
+            -0.1383926421403885
+          ],
+          "height": 199.09088134765625
+        },
+        {
+          "ms": 1600.495,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.007747363764792681,
+            -3.546523294062354e-05,
+            -0.018913691863417625
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "scoring_acceptance": "unverified",
+      "interpretation": "Complete Melon actor initialization and positive advancement; native release/ground observations retained below."
+    },
+    {
+      "trial": "method_takeoff",
+      "qualified_capture": 5,
+      "retained_capture": {
+        "expected": 431,
+        "retained": 431,
+        "missing": [],
+        "duplicate_ordinals": false,
+        "recovered_partial_copies": 0,
+        "conflicting_copies": false,
+        "retained_complete": true,
+        "producer_complete": true,
+        "complete": true
+      },
+      "log_gaps": [],
+      "raw_file": "1793507192900213000-method_takeoff.json.gz",
+      "raw_sha256": "81eb1113011a9cfb811b1fe2b1c0b22518cf8d215b8a1d8ebafef2074fd30e54",
+      "requests": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "251638204",
+          "released_at": "0",
+          "recognized_at": "251638204",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initializations": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "detail": "4",
+          "actor": "1085110912",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "duration": "305"
+        }
+      ],
+      "advancements": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "detail": "4",
+          "actor": "1085110912",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "before": "0",
+          "after": "1",
+          "delta": "1",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.9129692"
+        }
+      ],
+      "ends": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "transition_lease",
+          "observed_at": "251638589",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "physical_b_edges": [
+        {
+          "ms": "251638004",
+          "native_ms": "251637990",
+          "raw_buttons": "8196",
+          "native_state": "103",
+          "native_mode": "0",
+          "owner_generation": "15879",
+          "action_generation": "15903",
+          "readiness": "4609"
+        },
+        {
+          "ms": "251638104",
+          "native_ms": "251638092",
+          "raw_buttons": "4",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "15879",
+          "action_generation": "15905",
+          "readiness": "4897"
+        },
+        {
+          "ms": "251638204",
+          "native_ms": "251638190",
+          "raw_buttons": "8196",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "15879",
+          "action_generation": "15906",
+          "readiness": "2849"
+        },
+        {
+          "ms": "251638584",
+          "native_ms": "251638559",
+          "raw_buttons": "0",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "15879",
+          "action_generation": "15907",
+          "readiness": "4897"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.0009050564258359373,
+            -1.3935198239778401e-06,
+            -0.002152011264115572
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 655.217,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.11443938314914703,
+            0.35918763279914856,
+            -0.04602115601301193
+          ],
+          "height": 198.99147033691406
+        },
+        {
+          "ms": 752.192,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -7.024048682069406e-05,
+            3.2835965156555176,
+            -0.000138345843879506
+          ],
+          "height": 199.28448486328125
+        },
+        {
+          "ms": 783.911,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.5474854111671448,
+            4.990997791290283,
+            -0.1391601711511612
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 954.409,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            0.2655029594898224,
+            3.365020990371704,
+            0.2673340141773224
+          ],
+          "height": 199.94773864746094
+        },
+        {
+          "ms": 1260.046,
+          "state": 201,
+          "detail": 4,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            -0.07534630596637726,
+            -1.9129692316055298,
+            0.8238086700439453
+          ],
+          "height": 200.2057342529297
+        },
+        {
+          "ms": 1323.618,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "velocity": [
+            -0.4396229386329651,
+            -2.3822805881500244,
+            0.1608000099658966
+          ],
+          "height": 200.0494384765625
+        },
+        {
+          "ms": 1594.236,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.08518247306346893,
+            -3.0880143642425537,
+            -0.021644875407218933
+          ],
+          "height": 198.97348022460938
+        },
+        {
+          "ms": 1625.965,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.01116690319031477,
+            -6.36885961284861e-05,
+            -0.02564082108438015
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "scoring_acceptance": "unverified",
+      "interpretation": "Complete negative boundary control: first B began in state103 and was correctly excluded; second B became single Melon. Does not qualify state200 input-history fix."
+    },
+    {
+      "trial": "basic_tap",
+      "qualified_capture": 6,
+      "retained_capture": {
+        "expected": 423,
+        "retained": 423,
+        "missing": [],
+        "duplicate_ordinals": false,
+        "recovered_partial_copies": 0,
+        "conflicting_copies": false,
+        "retained_complete": true,
+        "producer_complete": true,
+        "complete": true
+      },
+      "log_gaps": [],
+      "raw_file": "1793507216635046000-basic_tap.json.gz",
+      "raw_sha256": "26300ce1ffc017d5bf16c2086807b9ad6f55cd2108b0badba2a2ee544692d6de",
+      "requests": [
+        {
+          "serial": "6",
+          "episode": "5",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "251660074",
+          "released_at": "0",
+          "recognized_at": "251660074",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initializations": [
+        {
+          "serial": "6",
+          "episode": "5",
+          "detail": "1",
+          "actor": "1045782112",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "duration": "305"
+        }
+      ],
+      "advancements": [
+        {
+          "serial": "6",
+          "episode": "5",
+          "detail": "1",
+          "actor": "1045782112",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "before": "0",
+          "after": "0.20186043",
+          "delta": "0.20186043",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.3153343"
+        }
+      ],
+      "ends": [
+        {
+          "serial": "6",
+          "episode": "5",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "transition_lease",
+          "observed_at": "251660425",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "physical_b_edges": [
+        {
+          "ms": "251660074",
+          "native_ms": "251660056",
+          "raw_buttons": "8192",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "16359",
+          "action_generation": "16393",
+          "readiness": "4897"
+        },
+        {
+          "ms": "251660174",
+          "native_ms": "251660158",
+          "raw_buttons": "0",
+          "native_state": "201",
+          "native_mode": "2",
+          "owner_generation": "16359",
+          "action_generation": "16394",
+          "readiness": "4897"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.0002255359577247873,
+            -1.6432172742497642e-06,
+            0.0004931465955451131
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 660.743,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.114722341299057,
+            0.35917940735816956,
+            -0.05095237120985985
+          ],
+          "height": 198.99147033691406
+        },
+        {
+          "ms": 756.93,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.4737047851085663,
+            3.9157347679138184,
+            -0.5553421378135681
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 788.182,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            0.04159626364707947,
+            4.669713973999023,
+            -0.22570866346359253
+          ],
+          "height": 199.5708465576172
+        },
+        {
+          "ms": 894.253,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            -0.0866757482290268,
+            4.793364524841309,
+            1.2788430452346802
+          ],
+          "height": 199.90884399414062
+        },
+        {
+          "ms": 1184.791,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": false,
+          "grabbing": true,
+          "velocity": [
+            -0.0512695349752903,
+            -0.6697083115577698,
+            0.8312988877296448
+          ],
+          "height": 200.3247528076172
+        },
+        {
+          "ms": 1259.728,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "velocity": [
+            -0.19551672041416168,
+            -1.8994133472442627,
+            0.21913735568523407
+          ],
+          "height": 200.17770385742188
+        },
+        {
+          "ms": 1528.055,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.032742246985435486,
+            -4.582718372344971,
+            -0.13186292350292206
+          ],
+          "height": 199.23638916015625
+        },
+        {
+          "ms": 1625.075,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "velocity": [
+            -0.005759248975664377,
+            -2.445180325594265e-05,
+            0.012244214303791523
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "scoring_acceptance": "unverified",
+      "interpretation": "Complete Basic 100ms tap: original BS actor initialized and advanced, native GrabExit and cleared grab flags followed by ground100."
+    }
+  ],
+  "stage_a_complete": false,
+  "complete_mission": false,
+  "remaining": [
+    "Native200 first-edge acceptance of input-history fix",
+    "Intermittent owner failure reproduction and resolution",
+    "Sustained held-grab acceptance",
+    "Native scoring ownership and landing scoring acceptance",
+    "60/120Hz hardware acceptance",
+    "Full native catalog execution and supported chains"
+  ],
+  "cleanup": {
+    "raw_file": "1793507249764498000-cleanup.json.gz",
+    "raw_sha256": "d5f9280540f3289f781690efc2d0b75292f7a34c4d8e8748919b0b821d5a71d3",
+    "mapped_count": 3,
+    "mapped_match": true,
+    "native_state": 100,
+    "mode": 1,
+    "arcade_enabled": true,
+    "capture_stopped": true,
+    "automatic_route": true,
+    "physical_slot": 1,
+    "logical_actor": 0,
+    "explicit_binding": false,
+    "jobs_finished": true,
+    "deck_released": true
+  }
+}

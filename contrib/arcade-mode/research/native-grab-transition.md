@@ -778,3 +778,43 @@ The next hardware trial must repeat the original early pair with complete
 retained capture ordinals and independent actor initialization/advancement,
 release, flight, landing and scoring evidence. Broad catalog expansion remains
 gated on Stage A; the intermittent owner failure remains unresolved.
+
+### 5387765 native controls and boundary classification
+
+The isolated Windows DLL from successful CI run 41268074406 was installed and
+independently matched to three live process mappings. Windows completed 97/97
+tests; Linux and macOS CI also succeeded. The DLL SHA-256 is
+`0e0b256ca26cc60b0694765bbad4799b80034d4d6ea4824dae66b0e3f03cd8ad`.
+No release was published. The prior manual build and known-good flip rollback
+were preserved.
+
+`native-grab-5387765-window.json` records five finite trials with raw receipt
+hashes, physical B edges, requests, exact native actor assets, advancement,
+flight and native state transitions. Actual physics and cached local-skater
+steps were 30 Hz. Complete captures establish native actor initialization and
+positive advancement for Basic BS Grab (100 ms tap), Melon and Method. Native
+ground100 and cleared grabbing flags followed all three; Basic and Melon also
+observed GrabExit, while that value remained unknown in the Method control.
+These observations do not establish native scoring ownership or landing score.
+
+The Method control retained 428/428 rows, Melon 427/427, and the repeated Basic
+capture 423/423. The first Basic capture failed the local log collector and is
+explicitly incomplete. A revised read-only collector retained file descriptors
+for rotated segments to prevent inode reuse and added exact assertion reasons;
+its subsequent boundary and Basic captures were complete. The cause of the
+earlier unlabelled assertion is not independently proven.
+
+Neither Method timing recipe qualifies the specific state200 input-history
+fix. The first recipe's initial B arrived in state201. The earlier recipe's
+initial B arrived in grounded state103 and was correctly excluded; its second
+B became a single Melon, with 431/431 rows retained. Scheduling an input near
+takeoff does not prove its actual native context. A future bounded trial must
+qualify the first physical edge in state200 from independent observations.
+Do not relax the grounded-input cutoff to make this negative control pass.
+
+Stage A remains incomplete: sustained hold, native scoring, the intermittent
+owner failure, and higher-rate hardware acceptance remain outstanding. Broad
+catalog activation and midair-chain acceptance remain gated. The session ended
+with capture stopped, pads destroyed, automatic controller routing restored,
+Arcade enabled, native100/mode1 and the console closed. Both collaborating tasks
+received the fresh build/process identity and explicit Deck handback.
