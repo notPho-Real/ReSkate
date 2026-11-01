@@ -199,7 +199,7 @@ int main() {
     for(unsigned fault=0;fault<5;++fault) {
         Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
         if(fault==0)p.contact.end[2]=-6;
-        if(fault==1)p.contact.identity=23;
+        if(fault==1)p.contact.identity=25;
         if(fault==2)p.contact.identity=32;
         if(fault==3)p.contact.geometry=2;
         if(fault==4)p.contact.begin[1]=1;
@@ -220,42 +220,46 @@ int main() {
         }
         check(!p.change.active() && !p.change.sample(p.now).owns,"return neutral cancels on A, OFF, owner loss, exit or expiry");
     }
-    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true}) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true})for(bool nose:{false,true}) {
+        const auto source_identity=nose?23u:24u,target_identity=nose?21u:31u,intermediate=nose?66u:59u;
+        const std::uint16_t held=nose?0xc000u:0x6000u;
+        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
-        p.step(1200,403);p.poll(together?0x6000:0x2000);
-        if(!together){p.step(1230,403);p.poll(0x6000);}
+        p.step(1200,403);p.poll(together?held:nose?0x8000:0x2000);
+        if(!together){p.step(1230,403);p.poll(held);}
         const auto start=p.now;
-        check(p.change.active() && p.arms==1 && p.control==GrindAdmissionControl::lateral_tail,
-            "sequential B-X and simultaneous B+X dispatch only the measured lateral lease from 5-0");
-        check(p.dispatched.grind_target()==GrindChangeTarget::bluntslide && p.dispatched.first_input_at==1200 &&
+        check(p.change.active() && p.arms==1 && p.control==(nose?GrindAdmissionControl::lateral_nose:GrindAdmissionControl::lateral_tail),
+            "sequential and simultaneous Y-X/B-X dispatch the measured lateral lease only from its qualified source");
+        check(p.dispatched.grind_target()==(nose?GrindChangeTarget::noseslide:GrindChangeTarget::bluntslide) && p.dispatched.first_input_at==1200 &&
             p.dispatched.last_input_at==start,"lateral dispatch preserves physical event timestamps");
         for(unsigned i=0;i<=1100*hz/1000;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
-            p.contact.identity=elapsed<700?24u:elapsed<800?59u:31u;
-            p.step(start+elapsed,elapsed<100?403:elapsed<700?406:402);p.poll(0x6000);p.poll(0x6000);
+            p.contact.identity=elapsed<700?source_identity:elapsed<800?intermediate:target_identity;
+            p.step(start+elapsed,elapsed<100?403:elapsed<700?406:402);p.poll(held);p.poll(held);
             const auto pad=p.change.sample(p.now);
             check(p.arms==1 && pad.owns,"lateral controls remain bounded and held/repeated polls cannot replay");
-            check(pad.x==(elapsed<50?0:32767) && pad.y==(elapsed<50?0:-8192),
+            check(pad.x==(elapsed<50?0:32767) && pad.y==(elapsed<50?0:nose?8192:-8192),
                 "lateral recipe owns neutral then the measured native axes at every cadence");
             check(!p.change.evidence().physics_changed,"neither input delivery nor raw identity manufactures completion");
         }
-        auto wrong=p.contact;wrong.identity=59;
+        auto wrong=p.contact;wrong.identity=intermediate;
         p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
-        check(!p.change.evidence().physics_changed,"transient native identity59 is not Bluntslide31");
+        check(!p.change.evidence().physics_changed,"transient native identity59/66 cannot satisfy the requested destination");
+        wrong.identity=nose?30u:21u;p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
+        check(!p.change.evidence().physics_changed,"Nosebluntslide or another native slide cannot substitute for the measured name");
         wrong=p.contact;wrong.segment_identity[0]++;
         p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
         check(!p.change.evidence().physics_changed,"lateral completion on a different segment is not accepted");
-        auto snapshot=p.animation;snapshot.grind_type=24;
+        auto snapshot=p.animation;snapshot.grind_type=source_identity;
         p.change.verify(p.now,{true,403,402,1,{}},p.contact,snapshot);
         check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
             "lateral physics identity requires separate changed animation evidence");
         p.change.verify(p.now,{true,403,402,1,{}},p.contact,p.animation);
-        check(p.change.evidence().animation_changed && !p.change.active(),"matching native Bluntslide animation retires its bounded lease");
+        check(p.change.evidence().animation_changed && !p.change.active(),"matching independently changed native slide animation retires its bounded lease");
     }
-    for(unsigned fault=0;fault<9;++fault) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
-        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x6000);
+    for(unsigned fault=0;fault<9;++fault)for(bool nose:{false,true}) {
+        Pipeline p;p.contact.identity=nose?23u:24u;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(nose?0xc000:0x6000);
         check(p.change.active(),"negative lateral case has a qualified source");
         p.step(1220,403);
         switch(fault) {
@@ -273,7 +277,7 @@ int main() {
     }
     // Exercise the same native request guard used by the production feature
     // override. Neutral wait must never select an unintended 50-50 return.
-    for(unsigned fault=0;fault<20;++fault) {
+    for(unsigned fault=0;fault<20;++fault)for(bool nose:{false,true}) {
         std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{},pointer_reads{};
         if(fault==1)raw[0]=-raw[0];
         if(fault==2)raw[0]=0;
@@ -286,6 +290,7 @@ int main() {
         if(fault==17)raw[0]=125*std::numbers::pi_v<float>/180;
         if(fault==18)raw[1]=-.45f;
         if(fault==19)raw[1]=-.1745329201f;
+        if(nose)raw[1]=-raw[1];
         const auto reader=[&](std::uintptr_t address,auto& value) {
             if constexpr(std::is_same_v<std::remove_reference_t<decltype(value)>,std::uintptr_t>) {
                 if(address!=100+5248)return false;
@@ -305,9 +310,24 @@ int main() {
                 return fault!=9;
             }
         };
-        const bool admitted=grind_control_admitted(GrindAdmissionControl::lateral_tail,100,fault==11?49:50,
+        const bool admitted=grind_control_admitted(nose?GrindAdmissionControl::lateral_nose:GrindAdmissionControl::lateral_tail,100,fault==11?49:50,
             reader,[&]{return ++validations==1 || fault!=10;});
         check(admitted==(fault<2),"native guard accepts either wrapped lateral sign and rejects neutral, pitch/roll, stale/torn, missing or early evidence");
+    }
+    for(unsigned fault=0;fault<4;++fault) {
+        Pipeline p;p.contact.identity=23;p.contact.end[2]=fault==0?-6.f:-12.f;
+        if(fault==1)p.contact.identity=24;
+        if(fault==2)p.contact.geometry=2;
+        if(fault==3)p.contact.begin[1]=1;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
+        check(p.arms==0,"Noseslide requires actual Nosegrind source and measured horizontal twelve-metre geometry");
+    }
+    {
+        Pipeline p;p.contact.identity=23;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(0x2000);p.step(1230,403);p.poll(0xa000);
+        check(p.dispatched.grind_target()==GrindChangeTarget::nosebluntslide && p.arms==0,
+            "opposite pitch proved Noseslide21, so an unqualified Nosebluntslide binding cannot execute it");
     }
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
         [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),

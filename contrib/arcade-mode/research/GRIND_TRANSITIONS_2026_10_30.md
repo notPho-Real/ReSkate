@@ -2774,3 +2774,72 @@ c0489142ef8f1380606688d02d5e3c8f833909b5, DLL
 game85401/launcher85410. Both Manual and Grab received clean handback;
 no Grind job/reservation remains. Re-coordinate and revalidate identity,
 world and source-checked setup before further input; these are historical pins.
+
+### Sixth qualified recipe: Nosegrind to Noseslide, not Nosebluntslide
+
+Both peers released another bounded window. Fresh identity confirmed the same
+c048914 DLL/PID85401; capture showed Steam idle artwork, and the reviewed
+one-Shift wake restored visible gameplay. Native status independently pinned
+bam23/rev150 and current fixture metadata. The exact-echo native approach
+reset succeeded150→154 using the existing ground-checked teleport manager,
+then undid its sole owned placement. Reset runner SHA-256
+18593e2c42e02f7d63dac0187ba895c0f244a1be8d0786dc3b6faba5429fd03b;
+receipt `grind-native-approach-reset-nose-c048914-v1/results/1793535992059409000-status.json`.
+
+The first nose-lateral runner's outer operation was enabled_up but its inner
+trial selector still required enabled_down. It performed status only, with
+zero native samples, no fixture change and unchanged revision154. Receipt
+`grind-native-nose-lateral-c048914-v1/results/two-leg-lateral.json.gz`, SHA-256
+ee6d1a41a8cc8eccde2bd84f444a7fa2510e79ba34f03b3b752e492cdcea245f,
+is consumed and is not native evidence. A new immutable v2 changes that exact
+selector;71 extracted inert setup/ownership/control/reachability checks pass.
+
+Reviewed v2 runner SHA-256
+9a312a225f8b23cd8082ec8c2641fb5c6df8b73de660bf8db8120aebf571d516
+completed both original native legs. Receipt
+`grind-native-nose-lateral-c048914-v2/results/two-leg-lateral.json.gz`, SHA-256
+a47227610d824030473948b7dc1641d55b67ebde3891e65fdff8194f2d59d3b6,
+contains490 independent samples, both clocks.03333333135 seconds. First406
+at2196.152ms completed401→403; fine23 Nosegrind appeared2594.324ms. The
+conditional neutral wait lasted44.730ms after verified original completion
+and fine23/contact/segment. The second physical input was evdev(32767,-8192),
+native XInput(32767,8192). Raw heading1.637928 radians, pitch+.400000006,
+roll0 appeared2750.156ms; second406 started2787.297ms. Original403→402
+completed at phase1 after.499999970 seconds, with orientation approximately
+(1.664835,.412159,0). No target, identity or contact was assigned.
+
+Native402 initially published intermediate66 at3294.840ms, then actual
+**BS_Noseslide21 at3343.864ms**, not Nosebluntslide30. There are105 independent
+402/fine21 samples through4672.427ms, all with physical/published contact1,
+missing-segment0 and original segment[2130303778855,0]. The measured12m
+endpoints remained(143.5869140625,.500742197,-46.60546875) and
+(143.5869140625,.500742197,-58.60546875). Later native701 at4688.205ms was
+the natural rail exit. Intermediate32/66 in the transition are not accepted
+names. Both original actor completions and cleanup were observed separately.
+
+Production now routes **Y→X Noseslide from established403/fine23** through
+the measured lateral nose request. Simultaneous Y+X keeps the existing table
+priority. It uses the shared bounded neutral interval and lateral heading
+guard, with a separate positive-pitch policy and source23 check. It requires
+horizontal geometry1 at least12m, fresh owner/contact, original403→402
+completion, same-segment fine21 and independently changed animation. Negative
+pitch, intermediate66, actual30 or a different source/segment cannot satisfy
+it. The existing five recipes retain their controls. Ordered B→Y remains
+unsupported: a Noseslide result cannot be advertised as Nosebluntslide.
+
+Strict C++20 warnings and ASan/UBSan pass7522 production-composed checks
+at30/60/120Hz, including both lateral recipes, sequential/simultaneous input,
+polarity-specific native gates, cancellation, intermediate/wrong-name rejection
+and independent animation evidence. This is not DLL/native production or
+Arcade HUD/combo acceptance. No build, install, merge or release occurred.
+Three bindings still lack recipes: Nosebluntslide, Smith and Tailslide;
+broader source contexts, arbitrary repeated changes and live Ollie/early-flip
+acceptance also remain incomplete.
+
+The trial restored native feature0/GDB exit0, destroyed its controller,
+restored ArcadeON/automatic routing, closed editor/menu and undid all owned
+edits to bam23/rev174. Metadata remains configured/object absent. Stopped
+native100 speed.0000684065 at(143.825363,1.028673,-45.094643), heading277.297485.
+Both peers received clean handback, no job/reservation remaining. A subsequent
+opposite-heading candidate requires a newly coordinated window and fresh pins;
+none of the consumed reset/trial slots may be replayed.
