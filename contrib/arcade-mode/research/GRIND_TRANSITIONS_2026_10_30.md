@@ -2651,3 +2651,126 @@ unexecuted; exact typing is not proven by these checks. Revalidate its pins
 before review. The lateral v3 draft is also unexecuted and its expected
 approach has not been reached; do not run it merely because revision102 now
 exists after cleanup. A successful recovery will advance the revision again.
+
+### Native approach recovery succeeds; actual lateral input exposes signed-guard error
+
+Both peers released hardware again. Fresh identity verified the unchanged
+c048914 DLL/executable and PID85401/launcher85410. A fresh capture showed
+Steam idle artwork; the reviewed one-Shift wake restored visible gameplay.
+Recovery v3's slower placement typing and exact echo checks succeeded. Native
+fixture reset independently reached its existing start through the original
+ground-checked teleport manager, and its single owned restore was undone
+102→106. Receipt
+`grind-native-approach-reset-c048914-v3/results/1793532050285587000-status.json`
+records state504 at(143.253113,.949994,-66.207054), heading.003893, speed0,
+ArcadeON and absent fixture. No raw transform was written.
+
+The re-pinned lateral v3 runner SHA-256
+65251c8319f142849a91ea86398d290c064941eb5fe5d4b8e5185b55c81efff6
+then completed setup and delivered both requested controls. Receipt
+`grind-native-two-leg-lateral-c048914-v3/results/two-leg-lateral.json.gz`,
+SHA-25634a587e21b63a4e1ae2cd7a3e3e4218e921a9e1d069baf337f8e08d330d84134,
+contains468 read-only samples, both native clocks.03333333135 seconds. The
+first original401→403 completion and fine24/contact/segment were verified
+before the second event. The neutral evidence wait no longer triggered an
+unintended return. Its40.744ms wait completed before the second input write.
+
+The actual raw lateral request was **positive** heading1.50407398 radians,
+pitch-.400000006 and roll0. Forty bracket-stable source403/fine24 samples
+from2744.910 through3266.093ms retained segment[1838246002727,0] and published
+native admission1. The external gate incorrectly required a negative heading,
+so it never enabled a second actor. The native403 predicate at0x481d910 wraps
+and takes the absolute heading before its admission comparisons; the sign of
+an earlier small sweep is not a valid assumption for this captured request.
+Correcting the experimental guard to the absolute band preserves the neutral
+rejection and still leaves original native destination selection authoritative.
+
+Afterwards ordinary controls changed contact to a side facet and fine25,
+causing the strict same-segment gate to retire. Later fine22 at an end segment
+does not qualify a requested Tailslide: there was only one original406
+completion and intervening segment changes. No fifth production recipe was
+added. Cleanup returned GDB0, restored native feature0, removed all owned
+fixture transactions and left ArcadeON, editor/menuclosed, state100 speed
+.000159 at(143.691406,1.028672,-46.757153), bam23/rev126. Both peers received
+that clean handback before a further bounded retry was requested.
+
+### Fifth qualified control recipe: native 5-0 to Bluntslide
+
+Both peers released hardware for the next bounded trial. Source-checked
+approach recovery v4 succeeded126→130; its immutable runner SHA-256 is
+8056ee5d6ad1fb0ca9a1de0ab1ea17eceeacca240d3d9f200177fc9a4007df50 and receipt
+is `grind-native-approach-reset-c048914-v4/results/1793532390248816000-status.json`.
+The absolute-heading correction then succeeded in immutable runner
+`grind-native-two-leg-lateral-c048914-v4/trial.py`, SHA-256
+70b84f6449d68978d6e3a5f7aeb94918dc3020aa7033fb3e88450f1f8d4d3b81.
+Receipt `results/two-leg-lateral.json.gz`, SHA-256
+06523b2ba624d8c35319db57f3b1f7ba4be5f2092b67d942d58046f375b1471e,
+contains473 independent reader samples with both clocks.03333333135 seconds.
+This slot is consumed; never replay it.
+
+The native sequence was401/fine20 at2042.324ms, first406 at2211.506ms,
+403 at2543.889ms and fine24 at2572.199ms. After original first completion
+and verified fine24/contact/segment, the conditional neutral wait lasted
+51.301ms. The second input was evdev RS(32767,8192), corresponding to native
+XInput(32767,-8192). Raw native GrindInputs became heading1.5040742 radians,
+pitch-.400000006 and roll0 at2740.115ms. Only then did the scoped feature
+override admit another original406, at2777.116ms. Original initialization
+selected402; its original update completed403→402 with phase1 after
+.666666508 seconds. There were exactly two original completions.
+
+Independent physics reached402 at3439.775ms and **fine31 BS_Bluntslide** at
+3492.549ms. The initial402/fine59 interval had physical and published contact1,
+missing-segment0 and unchanged endpoints; it was not accepted as Bluntslide.
+Fine31 then persisted until native701 at4697.997ms, approximately1.2 seconds
+of retained destination contact. Segment identity[1984274890791,0] and the
+same measured12m endpoints remained throughout the accepted destination:
+(143.4765625,.500742197,-46.8037109375) and
+(143.4765625,.500742197,-58.8037109375). Native406 temporarily lifted physical
+contact and published intermediate identities25/59; neither is fabricated
+exit evidence or a requested trick acknowledgment. The gate's early changed
+identity observation alone is insufficient: the separate reader establishes31.
+
+Production now includes **B→X Bluntslide from established403/fine24**, plus
+the existing simultaneous B+X priority. It retains the narrow horizontal
+geometry1/at-least12m source qualification. The bounded RS actor owns neutral
+for50ms before the measured lateral tail input. A new per-request admission
+policy reads the original raw GrindInputs at context+5248 (heading+24,
+pitch+60,roll+52), brackets those reads against unchanged owner/contact and
+rejects torn/nonfinite input. Initial native admission stays disabled until
+the neutral interval has elapsed and the actual request matches absolute
+wrapped heading55–125 degrees, pitch[-.45,-.1745329201], and abs(roll)<.001.
+This prevents the v1 failure where neutral accidentally admitted a50-50 return.
+Original native admission and initialization still select the destination;
+the code never writes a target state, name, animation or contact field.
+In-flight406 uses the existing verified lifetime path. Only402/fine31 with
+the original segment, original403→402 completion, and independently changed
+animation can satisfy the request. A native404 result cancels instead.
+
+The other four recipes retain their original controls and ordinary admission.
+The new guard is bypassed for those requests. Focused strict warnings plus
+ASan/UBSan passed **6019 production-composed checks at30/60/120Hz**, including
+sequential/simultaneous B-X, original physical timestamps, repeated polls,
+neutral admission rejection, both heading signs, torn/stale owner/control
+evidence, intermediate59 rejection and independent animation acknowledgment.
+Additional sanitizer checks passed:639 native lifetime,1362 rail-pop routing,
+1736 combo trace. These are offline checks. Windows/backend integration
+compilation, new DLL/CI and live Arcade animation/HUD/balance/combo acceptance
+remain pending. The known unchanged-baseline contextual-air press-age failure
+remains; this is not a claim of complete green checks.
+
+The native receipt was ArcadeOFF control evidence. Four bindings still lack
+qualified executors: Y→X Noseslide, B→Y Nosebluntslide, X→X Smith and
+X→Y Tailslide. Source402 exits, arbitrary repeated sequences, broader source
+contexts and the local Ollie/early-flip candidate's live acceptance remain
+unresolved. No new DLL or CI build was started.
+
+Cleanup returned GDB0, restored native feature0 and undid all owned fixture
+transactions to bam generation23/revision150. ArcadeON, automatic routing,
+pad destroyed, menus/editor closed and fixture metadata configured/object
+absent were verified. Last stopped native100 speed.000430502 at
+(148.082764,1.028666,-43.454994), heading70.433243. Identity remained
+c0489142ef8f1380606688d02d5e3c8f833909b5, DLL
+7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410. Both Manual and Grab received clean handback;
+no Grind job/reservation remains. Re-coordinate and revalidate identity,
+world and source-checked setup before further input; these are historical pins.

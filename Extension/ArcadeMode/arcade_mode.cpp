@@ -2241,8 +2241,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             grind_dispatch{native_flip_owner,grind_contact,now};
         const InputAdapter grind_adapter{&grind_dispatch,[](void* context,const InputRequest& request) noexcept {
             const auto& dispatch=*static_cast<GrindDispatch*>(context);
-            return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline) noexcept {
-                return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline);
+            return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline,auto control) noexcept {
+                return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline,control);
             });
         }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,

@@ -2,6 +2,7 @@
 #include "Extension/Skater/no_bail.h"
 #include "arcade_grind_transition_lifetime.h"
 #include "arcade_grind_contact.h"
+#include "arcade_grind_admission.h"
 #include <cstdint>
 
 namespace dingosdk::arcade_mode::native_grind {
@@ -14,7 +15,7 @@ void cancel() noexcept;
 bool available() noexcept;
 NativeGrindContact contact(const NoBailSkater& owner) noexcept;
 bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint64_t serial,
-    std::uint64_t now,std::uint64_t deadline) noexcept;
+    std::uint64_t now,std::uint64_t deadline,GrindAdmissionControl control) noexcept;
 bool pending() noexcept;
 bool setting_override(const void* reference,std::uintptr_t expression) noexcept;
 struct Completion {

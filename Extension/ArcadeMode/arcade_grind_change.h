@@ -4,11 +4,13 @@
 #include "arcade_grind_contact.h"
 #include "arcade_grind_transition_lifetime.h"
 #include "arcade_grind_observer.h"
+#include "arcade_grind_admission.h"
 
 namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
 // held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0), and
-// the measured neutral 403/24 ->406 ->401/20 return. Other named bindings
+// the measured neutral 403/24 ->406 ->401/20 return and lateral tail
+// 403/24 ->406 ->402/31 Bluntslide. Other named bindings
 // and source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -37,7 +39,7 @@ public:
         frame_=frame;
         if(active_) {
             if(now<evidence_.started_at || now-evidence_.started_at>=1500 ||
-                (frame.state!=401 && frame.state!=406 && frame.state!=403) ||
+                (frame.state!=source_.state && frame.state!=406 && frame.state!=target_state_) ||
                 (frame.state!=406 && (!contact.valid || contact.state!=frame.state || !same_segment(contact)))) cancel();
             return;
         }
@@ -62,11 +64,13 @@ public:
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
         const bool returning=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
+        const bool lateral=source_.state==403 && source_.identity==24 &&
+            request.grind_target()==GrindChangeTarget::bluntslide;
         const bool sweep=source_.state==401 && source_.identity==20 &&
             (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked ||
              request.grind_target()==GrindChangeTarget::grind_5_0);
         if(request.action!=InputAction::rail_change ||
-            (!returning && !sweep))
+            (!returning && !sweep && !lateral))
             return InputDisposition::unsupported;
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
@@ -74,17 +78,19 @@ public:
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
             serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
         const auto next=serial_+1;
-        if(!arm(next,now+1500))return InputDisposition::unsupported;
+        if(!arm(next,now+1500,lateral?GrindAdmissionControl::lateral_tail:GrindAdmissionControl::ordinary))
+            return InputDisposition::unsupported;
         // The measured 5-0 recipe retains Down; the other two retain Up.
         // The native geometry classifier supplies the destination identity.
         const bool crooked=request.grind_target()==GrindChangeTarget::crooked;
         const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0;
         // Neutral is an owned control sample, not a fabricated 50-50 result.
         // The original 403 admission and 406 initialization select the return.
-        sweep_x_=returning?0:crooked?24000:12000;held_y_=returning?0:tail?-32767:32767;
-        target_identity_=returning?20u:tail?24u:crooked?32u:23u;
-        target_state_=returning?401u:403u;
-        hold_ms_=returning?1500u:1000u;
+        sweep_x_=lateral?32767:returning?0:crooked?24000:12000;
+        held_y_=lateral?-8192:returning?0:tail?-32767:32767;
+        target_identity_=lateral?31u:returning?20u:tail?24u:crooked?32u:23u;
+        target_state_=lateral?402u:returning?401u:403u;
+        hold_ms_=(returning || lateral)?1500u:1000u;lateral_=lateral;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -92,6 +98,10 @@ public:
     }
     Pad sample(std::uint64_t now) const noexcept {
         if(!active_ || !fresh(now,frame_) || now<evidence_.started_at || now-evidence_.started_at>=hold_ms_)return {};
+        // The measured lateral leg starts with neutral. Its lease remains
+        // disabled until the actual native request enters the lateral band;
+        // enabling it during neutral would execute the 50-50 return instead.
+        if(lateral_)return now-evidence_.started_at<grind_lateral_neutral_ms?Pad{true,0,0}:Pad{true,sweep_x_,held_y_};
         // Native XInput Y is opposite to evdev ABS_RY used in the control trial.
         // Keep the vertical input held across the 200ms heading change; neutral between the two
         // samples loses the native captured-reference path.
@@ -147,6 +157,6 @@ private:
     std::int16_t sweep_x_{},held_y_{};
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
-    bool active_{},stable_{},source_animation_known_{};
+    bool active_{},stable_{},source_animation_known_{},lateral_{};
 };
 }

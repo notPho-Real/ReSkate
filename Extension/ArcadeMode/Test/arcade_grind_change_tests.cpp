@@ -18,6 +18,7 @@ struct Pipeline {
     NativeGrindSnapshot animation{};
     std::uint64_t now{},arms{},last_deadline{};
     InputRequest dispatched{};
+    GrindAdmissionControl control{};
     std::vector<PreparedGesture> catalog{
         {1,false,GestureContext::from_grind,{{0,0,-28000},{18,0,28000},{21,0,0},{24,0,0}}}};
     Pipeline() {
@@ -38,8 +39,8 @@ struct Pipeline {
         change.observe(now,frame,contact,allowed && !(buttons&classic_a),animation);
         const InputAdapter adapter{this,[](void* value,const InputRequest& request) noexcept {
             auto& p=*static_cast<Pipeline*>(value);p.dispatched=request;
-            return p.change.request(request,p.now,[&](auto,auto deadline) noexcept {
-                ++p.arms;p.last_deadline=deadline;return true;
+            return p.change.request(request,p.now,[&](auto,auto deadline,auto admission_control) noexcept {
+                ++p.arms;p.last_deadline=deadline;p.control=admission_control;return true;
             });
         }};
         return input.poll(0,now,buttons,0,0,0,0,allowed,true,false,0,false,false,true,now/8,false,catalog,
@@ -67,6 +68,7 @@ int main() {
         check(p.dispatched.grind_target()==target && p.dispatched.first_input_at==1200 &&
             p.dispatched.last_input_at==start,"sequential and simultaneous recognition preserve original event times");
         check(p.last_deadline==start+1500,"native admission has a bounded lease");
+        check(p.control==GrindAdmissionControl::ordinary,"existing vertical recipes retain ordinary admission");
         check(!p.poll(held).rail.held,"named ownership retires ordinary Y actor");
         for(unsigned i=0;i<1200*hz/1000;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
@@ -218,5 +220,84 @@ int main() {
         }
         check(!p.change.active() && !p.change.sample(p.now).owns,"return neutral cancels on A, OFF, owner loss, exit or expiry");
     }
+    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true}) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(together?0x6000:0x2000);
+        if(!together){p.step(1230,403);p.poll(0x6000);}
+        const auto start=p.now;
+        check(p.change.active() && p.arms==1 && p.control==GrindAdmissionControl::lateral_tail,
+            "sequential B-X and simultaneous B+X dispatch only the measured lateral lease from 5-0");
+        check(p.dispatched.grind_target()==GrindChangeTarget::bluntslide && p.dispatched.first_input_at==1200 &&
+            p.dispatched.last_input_at==start,"lateral dispatch preserves physical event timestamps");
+        for(unsigned i=0;i<=1100*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.contact.identity=elapsed<700?24u:elapsed<800?59u:31u;
+            p.step(start+elapsed,elapsed<100?403:elapsed<700?406:402);p.poll(0x6000);p.poll(0x6000);
+            const auto pad=p.change.sample(p.now);
+            check(p.arms==1 && pad.owns,"lateral controls remain bounded and held/repeated polls cannot replay");
+            check(pad.x==(elapsed<50?0:32767) && pad.y==(elapsed<50?0:-8192),
+                "lateral recipe owns neutral then the measured native axes at every cadence");
+            check(!p.change.evidence().physics_changed,"neither input delivery nor raw identity manufactures completion");
+        }
+        auto wrong=p.contact;wrong.identity=59;
+        p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
+        check(!p.change.evidence().physics_changed,"transient native identity59 is not Bluntslide31");
+        wrong=p.contact;wrong.segment_identity[0]++;
+        p.change.verify(p.now,{true,403,402,1,{}},wrong,p.animation);
+        check(!p.change.evidence().physics_changed,"lateral completion on a different segment is not accepted");
+        auto snapshot=p.animation;snapshot.grind_type=24;
+        p.change.verify(p.now,{true,403,402,1,{}},p.contact,snapshot);
+        check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+            "lateral physics identity requires separate changed animation evidence");
+        p.change.verify(p.now,{true,403,402,1,{}},p.contact,p.animation);
+        check(p.change.evidence().animation_changed && !p.change.active(),"matching native Bluntslide animation retires its bounded lease");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x6000);
+        check(p.change.active(),"negative lateral case has a qualified source");
+        p.step(1220,403);
+        switch(fault) {
+        case 0:p.poll(classic_a);break;
+        case 1:p.poll(0,false);break;
+        case 2:p.frame.owner.core++;p.poll();break;
+        case 3:p.step(1220,701);p.poll();break;
+        case 4:p.step(1220,100);p.poll();break;
+        case 5:p.contact.segment_identity[0]++;p.poll();break;
+        case 6:p.contact.valid=false;p.poll();break;
+        case 7:p.step(1220,404);p.poll();break;
+        case 8:p.now=2700;p.poll();break;
+        }
+        check(!p.change.active() && !p.change.sample(p.now).owns,"lateral cancellation withdraws control on ownership/geometry/exit/timeout or wrong destination");
+    }
+    // Exercise the same native request guard used by the production feature
+    // override. Neutral wait must never select an unintended 50-50 return.
+    for(unsigned fault=0;fault<12;++fault) {
+        std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{};
+        if(fault==1)raw[0]=-raw[0];
+        if(fault==2)raw[0]=0;
+        if(fault==3)raw[1]=0;
+        if(fault==4)raw[2]=.01f;
+        if(fault==5)raw[0]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==6)raw[1]=-.46f;
+        if(fault==7)raw[0]=2.5f;
+        const auto reader=[&](std::uintptr_t address,float& value) {
+            ++reads;unsigned index{};
+            if(address==100+5248+24)index=0;
+            else if(address==100+5248+60)index=1;
+            else if(address==100+5248+52)index=2;
+            else return false;
+            value=raw[index];
+            if(fault==8 && reads>3)value+=.01f;
+            return fault!=9;
+        };
+        const bool admitted=grind_control_admitted(GrindAdmissionControl::lateral_tail,100,fault==11?49:50,
+            reader,[&]{return ++validations==1 || fault!=10;});
+        check(admitted==(fault<2),"native guard accepts either wrapped lateral sign and rejects neutral, pitch/roll, stale/torn, missing or early evidence");
+    }
+    check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
+        [](auto,float&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),
+        "existing native admission is unchanged");
     std::cout<<checks<<" grind change production composition checks passed\n";
 }
