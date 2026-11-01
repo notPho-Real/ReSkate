@@ -105,6 +105,13 @@ NativeGrindContact contact(const NoBailSkater& owner) noexcept {
         });
 }
 bool pending() noexcept { return request_pending.load(std::memory_order_acquire); }
+NativeGrindControl control(const NoBailSkater& owner) noexcept {
+    return read_grind_control(owner.base,owner.context,[](auto p,auto& value){return read(p,value);},[&] {
+        NoBailSkater current{};
+        return available() && !pending() && owner.base==image && GetTickCount64()<=tick_expires.load() &&
+            no_bail_skater(current) && current==owner;
+    });
+}
 void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     tick_expires.store(gameplay?GetTickCount64()+150:0);

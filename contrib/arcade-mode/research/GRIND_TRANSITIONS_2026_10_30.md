@@ -3141,3 +3141,166 @@ new reset/trial slots are consumed. Production remains9d61704 with eight narrow
 recipes and the same offline checks. Smith, broader contexts/repetition and
 live production/Ollie/early-flip/HUD/combo acceptance remain open. No DLL/CI
 build, installation, merge or release occurred.
+
+### Smith reference and physical contact producers; heading-pulse negative
+
+The original common rail update at0x4822e26..37 copies context+3920 to
+actor+160 and actor+112. Publication at0x4818a05..0e copies actor+112 to
+output+48, the Smith classifier's reference vector. Context+3920 belongs to
+the contact substructure (3024+896); it is not the requested pitch. Actor+96
+comes from context+3056 and actor+128 is a cross product of the two basis
+vectors. Keep those physical outputs separate from raw GrindInputs.
+
+Further original403 candidate tracing at0x47ed610 shows projected separation
+and segment-direction tests against context+64/+80 before selecting the
+opposing contact candidates. At0x47eda93..dad3, the direction-of-travel dot
+context+976 dot context+96 orders candidate preference. Another branch at
+0x47edb03..53 uses context+5064 bit30 or context+6368; neither is an identified
+stick command. At0x47d82be..e4, bit30 is copied from byte21 of the cached
+step-input object at core+968. Its constructor0xfd61b0 clears bytes18..25 and
+sets cached dt at+32. This narrows the producer chain but does not establish
+a writable Smith command. The physical401/403 query also evaluates both
+probe points and their segment directions at0x47ef2f8 onward; the alternate
+segment seen in the receipts must not be hidden as a mere label change.
+
+A fresh coordinated window tested native tail heading before the prior slow
+opposing-pitch ramp. Reset runner SHA-256
+406b108742b9a1ce10a45b5eb0aed04e25a8380dd364667675c40216c1a6a93a
+recovered294→298; receipt
+`grind-native-approach-reset-smith-heading-c048914-v1/results/1793543514027261000-status.json`.
+Immutable trial SHA-256
+51bf193a4b4c25fdd168d586f5cb50a870910040f3f0d4001e87781521b45dc7
+adds evdevRS(24000,32767)300ms after the detached original5-0 wait, then
+neutral300ms and the previous five-step Up ramp. The original preparation,
+lease and worker are unchanged. Eighteen lease/waiter,12 timeline and7 inert
+classifier-vector bracket checks passed. Newly included passive vectors
+source+320/output+0/output+48 remain owner/pointer/data bracketed.
+
+Receipt `grind-native-smith-heading-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-25650a1e54a26617cc2133b8c6bdfa714ab7ccd23a324155fa80e37189599d56eb7,
+contains471 independent samples, both clocks.03333333135 seconds. There is
+exactly one original401→403 completion; native5-0 appears2597.423ms. NoSmith26
+occurs. The writer sends the diagonal2711.902ms, neutral3012.000ms, ramp
+3311.972 through3712.052ms, final neutral4511.993ms. Raw native heading stays
+about-.31173 during the diagonal; it does not follow the new physical X axis.
+Pitch responds, but at3721.235ms native401 changes to offset segment
+3006477107267;403 reacquires original3006477107239 at3783.332ms. Alternating
+401/20 and403/24 continues through native701 at5320.963ms. Two transient
+invalid0 identity publications are retained in the receipt, not counted as
+successful changes. The original endpoints are x144.25390625,y.500742197,
+z-45.396484375/-57.396484375; the offset segment is x144.34051514,y.450742185.
+
+In the2720–5300ms analysis window, all199 samples retain physical and
+published contact but alternate those segments. Of147 native403 samples,
+144 have stable classifier-vector brackets. Their signed-axis/reference
+dot ranges-.040562 to+.385269; the52 native401 samples range-.069061 to
++.068608. Neither reaches Smith's<=-.1 threshold. Measured output+48 is
+(0,1,0). This establishes the failed physical predicate directly rather than
+assuming requested pitch controls it.
+
+The heading result needs a control-reference correction in the experiment,
+not an enum write. The original orientation action32849/11786 captures
+current control at PCs0550–0574 and clears its reference on absence at
+0adc–0b58. The trusted worker neutralizes before the conditioned evidence
+wait. Therefore starting immediately with the diagonal may recapture it as
+zero rather than generate a heading change. This is a source-derived
+explanation, not a recorded read of the saved control-reference variable.
+A bounded follow-up must first establish native Down, then change heading
+without a neutral gap and verify actual raw heading before interpreting
+Smith evidence. No production recipe is added from this negative result.
+
+Cleanup independently verifies GDB0/restored feature, pad destroyed,
+ArcadeON/automatic route, menus/editorclosed and all owned edits undone to
+bam23/rev318. Native100 speed.000027947 at(145.278259,1.028673,-42.633465),
+heading14.461284. Fixture configured/object absent; metadata start
+(144.25428771972656,1.028671145439148,-64.3973388671875), rail
+(144.25428771972656,-.00000476837158203125,-56.3973388671875), scale1.
+Installed c048914/PID85401/launcher85410 and DLL hash are unchanged. Both
+peers received clean handback before any follow-up coordination.
+
+### Original403 control-reference sequence produces Smith; ninth narrow executor
+
+Both peers confirmed the next bounded window. Fresh capture showed gameplay
+and unchanged installed identity. Reset SHA-256
+0be54d22f13f10427207fccb4ca62fe2470bce253ec86578fd5e64b4e6f557d7
+recovered318→322; receipt
+`grind-native-approach-reset-smith-reference-c048914-v1/results/1793544124916489000-status.json`.
+The new immutable trial SHA-256
+3b9faa2721dfe35d8d371f57c21d9c0ac6c6292c09fde95b4a04c4de3acef831
+holds native Down200ms after the verified5-0/detached-gate wait, then
+RX24000/Down300ms, neutral300ms, five Up steps100ms apart, fullUp800ms,
+and neutral. Eighteen unchanged lease/waiter and13 timeline/reference checks
+passed. Original preparation, worker, passive reader and one-lease gate are
+unchanged. There is **no second406**, assigned destination or native data write.
+
+Receipt `grind-native-smith-reference-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-2566fbed3da9095ade50932c2fa9d997a08db85f0b36c02cc0795f830294a9c15f8,
+contains467 samples with both clocks.03333333135 seconds. Original401→403
+preparation completes once; fine24 appears2609.393ms. Writer Down2695.867ms,
+diagonal2895.945ms and neutral3195.935ms now produce raw native heading
+-.968297 at2946.383ms, unlike the prior diagonal-first negative control.
+Intermediate native403/fine71 appears3336.184ms. Ramp writes3495.954,
+3595.984,3695.962,3796.549,3895.928ms followed by neutral4695.935ms.
+Actual403/fine26 appears4077.057ms and remains on original12m segment
+[3152505995303,0] through5588.380ms:115 samples,113 stable classifier brackets,
+one original403 actor4137961440. The bracketed candidate and accepted tuples
+are actual Smith[1,1,0/1,1,1,1], and signed-axis/reference dots range
+-.384697 to-.121755, satisfying the native<=-.1 predicate. Endpoints are
+x144.3740234375,y.500742197,z-45.1982421875/-57.1982421875.
+
+This is sustained native named physics evidence, **not uninterrupted physical
+contact acceptance**: physical contact is0 at4366.607ms despite published
+contact1 and the retained segment. All other114 Smith samples report physical
+contact1. The production executor continues to cancel on such a loss; it
+does not relax contact guards to hide this observation. Near rail-end, later
+fine25 on a different short segment and701 at5742.895ms are not Smith evidence.
+There is no animation/HUD/combo observation in this ArcadeOFF receipt.
+
+`GrindChange` now handles ordered X→X from established native403/fine24 on
+horizontal geometry1 at least12m using this native control-only trajectory.
+Its production sequence uses native XInput Y signs (opposite evdev):
+Down200ms, RX24000/Down300ms, neutral300ms, Up magnitudes6553/13106/19660/
+26213/32767 at100ms intervals, fullUp until2000ms, then owned neutral until
+the2200ms bound. It never arms the experimental transition feature or invents
+a406 completion. A separately owner/pointer/data-bracketed native reader
+requires state403 and original flags+26==0; entry additionally requires
+observed neutral raw pitch/roll and physical RS. Missing native evidence,
+feature activation, another actor, owner/segment/contact loss, stale frames,
+OFF/menu, A or another input owner cancels delivery. The eight existing
+transition recipes retain their1500ms lease and completion behavior.
+
+Same-segment actual26 and independent matching changed animation are still
+required for success. `Evidence.control_only` distinguishes this path;
+`Evidence.completed` remains false because no406 ran. Suski71, stale source
+labels, another segment and fabricated completion records cannot acknowledge
+Smith. Early acknowledgment cannot skip the final neutral interval. Runtime
+integration bypasses only the406-pending requirement for this control-only
+actor; the existing adapter, RS priority, masks and native flip paths are
+unchanged. No balance, combo, manual, prewind or camera code was modified.
+
+Strict C++20 ASan/UBSan production composition passes10722 checks at30/60/120Hz,
+including repeated polls/held X, original physical timestamps, control phases,
+negative reader races/owners and cancellation.651 existing native-lifetime
+and1362 rail-pop checks also pass. The1736 combo trace checks pass with the
+existing portable warning profile. An additional -Wconversion/-Werror attempt
+rejects unchanged combo-test float-to-bool assertions; those protected tests
+were not edited. The previously recorded contextual-air baseline assertion
+also remains unresolved. These are focused offline checks, not full platform
+CI or gameplay acceptance; Windows/backend compilation remains deferred.
+
+Cleanup independently verifies native feature restored, GDB0/detached,
+destroyed pad, ArcadeON/automatic routing, closed menus/editor and exact owned
+undo to bam23/rev342. Native100 speed.000355877 at(144.894974,1.028673,-44.659241),
+heading29.290298. Fixture configured/object absent; metadata start
+(144.3743896484375,1.028671145439148,-64.19857788085938), rail
+(144.3743896484375,-.00000476837158203125,-56.198577880859375), scale1.
+Source c048914/DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410 unchanged. Both peers received explicit clean handback;
+no job/reservation remains. Every reset/trial slot above is consumed.
+
+All nine bindings now have a narrowly scoped production executor, but broader
+source contexts/arbitrary repeated changes and live production animation,
+HUD/balance/combo, Ollie/early-flip acceptance remain incomplete. In particular,
+Smith's transient physical-contact loss may cancel its conservative executor
+and needs production testing. No new DLL/CI build, installation, merge or
+release was performed; the user's full-feature build gate remains closed.

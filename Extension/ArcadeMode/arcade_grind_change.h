@@ -5,6 +5,7 @@
 #include "arcade_grind_transition_lifetime.h"
 #include "arcade_grind_observer.h"
 #include "arcade_grind_admission.h"
+#include "arcade_grind_control.h"
 
 namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
@@ -13,8 +14,8 @@ namespace dingosdk::arcade_mode {
 // 403/24 ->406 ->402/31 Bluntslide and 403/23 ->406 ->402/21 Noseslide
 // or opposite-heading 402/30 Nosebluntslide and 403/24 ->402/22 Tailslide.
 // The Tailslide pulse must return to neutral before held-input drift.
-// Other named bindings
-// and source contexts have no qualified control recipe yet.
+// Smith uses original403 control motion on the same actor, without a406 lease.
+// Other source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
 class GrindChange {
@@ -23,15 +24,17 @@ public:
     struct Evidence {
         std::uint64_t serial{},first_input_at{},last_input_at{},started_at{};
         bool completed{},physics_changed{},animation_changed{},source_animation_known{};
+        bool control_only{};
     };
     void cancel() noexcept { active_=false; admission_={}; source_={}; frame_={}; stable_=false; source_animation_known_=false; }
     bool active() const noexcept { return active_; }
+    bool requires_transition() const noexcept { return active_ && !smith_; }
     std::uint64_t serial() const noexcept { return active_?serial_:0; }
     const Evidence& evidence() const noexcept { return evidence_; }
     InputRailState admission() const noexcept { return admission_; }
     // Repeated game-facing polls may not advance the establishment clock.
     void observe(std::uint64_t now,const NativeInputFrame& frame,const NativeGrindContact& contact,
-                 bool permitted,const NativeGrindSnapshot& animation={}) noexcept {
+                 bool permitted,const NativeGrindSnapshot& animation={},NativeGrindControl controls={}) noexcept {
         admission_={};
         if(!permitted || !fresh(now,frame) || (frame_.valid &&
             (frame.owner!=frame_.owner || frame.owner_generation!=frame_.owner_generation ||
@@ -39,9 +42,10 @@ public:
              frame.sampled_at-frame_.sampled_at>150))) {
             cancel();return;
         }
-        frame_=frame;
+        frame_=frame;controls_=controls;
         if(active_) {
-            if(now<evidence_.started_at || now-evidence_.started_at>=1500 ||
+            if(now<evidence_.started_at || now-evidence_.started_at>=duration_ms_ ||
+                (smith_ && (!controls.valid || frame.state!=403 || contact.actor!=source_.actor)) ||
                 (frame.state!=source_.state && frame.state!=406 && frame.state!=target_state_) ||
                 (frame.state!=406 && (!contact.valid || contact.state!=frame.state || !same_segment(contact)))) cancel();
             return;
@@ -67,6 +71,8 @@ public:
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
         const bool returning=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
+        const bool smith=source_.state==403 && source_.identity==24 &&
+            request.grind_target()==GrindChangeTarget::smith;
         const bool lateral_tail=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::bluntslide;
         const bool lateral_tail_reverse=source_.state==403 && source_.identity==24 &&
@@ -80,15 +86,20 @@ public:
             (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked ||
              request.grind_target()==GrindChangeTarget::grind_5_0);
         if(request.action!=InputAction::rail_change ||
-            (!returning && !sweep && !lateral))
+            (!returning && !sweep && !lateral && !smith))
             return InputDisposition::unsupported;
+        const std::uint64_t duration=smith?2200u:1500u;
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
             request.last_input_at>request.recognized_at || request.recognized_at>now ||
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
-            serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
+            serial_==UINT64_MAX || now>UINT64_MAX-duration) return InputDisposition::cancelled;
+        // The native reference was cleared before the measured control-only
+        // sequence. Require observed neutral pitch/roll and feature-off now;
+        // do not reuse an active transition lease or a held prior control.
+        if(smith && (!controls_.valid || !controls_.neutral))return InputDisposition::cancelled;
         const auto next=serial_+1;
-        if(!arm(next,now+1500,lateral_tail_reverse?GrindAdmissionControl::lateral_tail_reverse:
+        if(!smith && !arm(next,now+1500,lateral_tail_reverse?GrindAdmissionControl::lateral_tail_reverse:
             lateral_nose_reverse?GrindAdmissionControl::lateral_nose_reverse:
             lateral_nose?GrindAdmissionControl::lateral_nose:
             lateral_tail?GrindAdmissionControl::lateral_tail:GrindAdmissionControl::ordinary))
@@ -101,16 +112,29 @@ public:
         // The original 403 admission and 406 initialization select the return.
         sweep_x_=(lateral_nose_reverse || lateral_tail_reverse)?-32767:lateral?32767:returning?0:crooked?24000:12000;
         held_y_=(lateral_nose || lateral_nose_reverse)?8192:(lateral_tail || lateral_tail_reverse)?-8192:returning?0:tail?-32767:32767;
-        target_identity_=lateral_tail_reverse?22u:lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
+        target_identity_=smith?26u:lateral_tail_reverse?22u:lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
         target_state_=lateral?402u:returning?401u:403u;
-        hold_ms_=(returning || lateral)?1500u:1000u;lateral_=lateral;tail_release_=lateral_tail_reverse;
+        hold_ms_=smith?2200u:(returning || lateral)?1500u:1000u;
+        duration_ms_=duration;smith_=smith;lateral_=lateral;tail_release_=lateral_tail_reverse;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
+        evidence_.control_only=smith;
         admission_={};return InputDisposition::started;
     }
     Pad sample(std::uint64_t now) const noexcept {
         if(!active_ || !fresh(now,frame_) || now<evidence_.started_at || now-evidence_.started_at>=hold_ms_)return {};
+        if(smith_) {
+            const auto elapsed=now-evidence_.started_at;
+            // Native Down captures the reference before the heading sweep.
+            // Starting directly with diagonal input recaptures it as zero.
+            if(elapsed<200)return {true,0,-32767};
+            if(elapsed<500)return {true,24000,-32767};
+            if(elapsed<800 || elapsed>=2000)return {true,0,0};
+            constexpr std::array<std::int16_t,5> ramp{6553,13106,19660,26213,32767};
+            const auto step=(elapsed-800)/100;
+            return {true,0,ramp[step<4?step:4]};
+        }
         // The measured lateral leg starts with neutral. Its lease remains
         // disabled until the actual native request enters the lateral band;
         // enabling it during neutral would execute the 50-50 return instead.
@@ -131,9 +155,11 @@ public:
     void verify(std::uint64_t now,const NativeGrindCompletion& completion,
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
         if(!active_ || !fresh(now,frame_))return;
-        evidence_.completed=evidence_.completed || (completion.valid && completion.source==source_.state &&
+        evidence_.completed=evidence_.completed || (!smith_ && completion.valid && completion.source==source_.state &&
             completion.target==target_state_ && completion.phase==1.f);
-        const bool changed=evidence_.completed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
+        const bool executed=smith_?(controls_.valid && now>=evidence_.started_at && now-evidence_.started_at>=1200):evidence_.completed;
+        const bool changed=executed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
+            (!smith_ || contact.actor==source_.actor) &&
             same_segment(contact) && contact.identity==target_identity_;
         evidence_.physics_changed=evidence_.physics_changed || changed;
         // This snapshot is supplied by the owner-bracketed native reader. A
@@ -145,7 +171,7 @@ public:
             animation.grind_type_valid && animation.grind_type==target_identity_) evidence_.animation_changed=true;
         // Preserve the measured held input through its bounded duration even
         // after identity publication; do not cut the control trajectory short.
-        if(evidence_.animation_changed && now-evidence_.started_at>=(tail_release_?1500u:1000u))cancel();
+        if(evidence_.animation_changed && now-evidence_.started_at>=(smith_?2200u:tail_release_?1500u:1000u))cancel();
     }
 private:
     static bool fresh(std::uint64_t now,const NativeInputFrame& f) noexcept {
@@ -172,12 +198,13 @@ private:
             c.begin==source_.begin && c.end==source_.end && c.geometry==source_.geometry;
     }
     NativeInputFrame frame_{};
+    NativeGrindControl controls_{};
     NativeGrindContact source_{};
     InputRailState admission_{};
     Evidence evidence_{};
     std::int16_t sweep_x_{},held_y_{};
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
-    std::uint64_t serial_{},generation_{},stable_at_{};
-    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{};
+    std::uint64_t serial_{},generation_{},stable_at_{},duration_ms_{1500};
+    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{};
 };
 }

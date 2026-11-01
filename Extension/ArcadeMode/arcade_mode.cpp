@@ -2233,8 +2233,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
         const auto grind_animation=grind_permitted && (grind_contact.valid || grind_change.active())?
             sample_grind_identity(native_flip_owner,now):NativeGrindSnapshot{};
-        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available(),grind_animation);
-        if(grind_change.active() && !native_grind::pending() &&
+        auto grind_control=grind_permitted?native_grind::control(native_flip_owner):NativeGrindControl{};
+        grind_control.neutral=grind_control.neutral && physical_right_x==0 && physical_right_y==0;
+        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available(),grind_animation,grind_control);
+        if(grind_change.requires_transition() && !native_grind::pending() &&
             !native_grind::completion(native_flip_owner,grind_change.serial(),now).native.valid)grind_change.cancel();
         if(!grind_change.active())native_grind::cancel();
         struct GrindDispatch { NoBailSkater owner; NativeGrindContact contact; std::uint64_t now; }

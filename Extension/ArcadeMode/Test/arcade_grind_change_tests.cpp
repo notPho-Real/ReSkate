@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
+#include <cstring>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
@@ -16,6 +17,7 @@ struct Pipeline {
     NativeInputFrame frame{};
     NativeGrindContact contact{};
     NativeGrindSnapshot animation{};
+    NativeGrindControl controls{true,true};
     std::uint64_t now{},arms{},last_deadline{};
     InputRequest dispatched{};
     GrindAdmissionControl control{};
@@ -36,7 +38,7 @@ struct Pipeline {
         animation.grind_type=animation.physics_grind_type=contact.identity;
     }
     NativeGesture::Output poll(std::uint16_t buttons=0,bool allowed=true) {
-        change.observe(now,frame,contact,allowed && !(buttons&classic_a),animation);
+        change.observe(now,frame,contact,allowed && !(buttons&classic_a),animation,controls);
         const InputAdapter adapter{this,[](void* value,const InputRequest& request) noexcept {
             auto& p=*static_cast<Pipeline*>(value);p.dispatched=request;
             return p.change.request(request,p.now,[&](auto,auto deadline,auto admission_control) noexcept {
@@ -381,6 +383,98 @@ int main() {
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
         check(!p.change.admission().ready && !p.change.active() && p.arms==0,
             "real Suski/Darklip contact alone cannot admit an unqualified named source");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(classic_x);p.step(1210,403);p.poll();p.step(1230,403);p.poll(classic_x);
+        check(p.change.active() && !p.change.requires_transition() && p.arms==0 &&
+            p.dispatched.grind_target()==GrindChangeTarget::smith && p.dispatched.first_input_at==1200 &&
+            p.dispatched.last_input_at==1230,"X then X starts the original control-only Smith path without arming406");
+        const auto serial=p.change.serial();p.controls.neutral=false;
+        for(unsigned i=0;i<2200*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.contact.identity=elapsed<600?24u:elapsed<1400?71u:26u;
+            p.step(1230+elapsed,403);p.poll(classic_x);p.poll(classic_x);
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && p.change.serial()==serial && p.arms==0,"held/repeated polls retain one bounded control request");
+            if(elapsed<200)check(pad.x==0 && pad.y==-32767,"Down establishes original control reference");
+            else if(elapsed<500)check(pad.x==24000 && pad.y==-32767,"heading sweep retains captured Down reference");
+            else if(elapsed<800 || elapsed>=2000)check(pad.x==0 && pad.y==0,"neutral separates pitch gesture and withdraws after the measured pulse");
+            else {
+                constexpr std::array<std::int16_t,5> values{6553,13106,19660,26213,32767};
+                const auto step=(elapsed-800)/100;
+                check(pad.x==0 && pad.y==values[step<4?step:4],"slow Up ramp and800ms hold preserve measured physical timing");
+            }
+            if(elapsed>=1400) {
+                auto wrong=p.contact;wrong.segment_identity[0]++;
+                p.change.verify(p.now,{},wrong,p.animation);
+                if(!p.change.evidence().physics_changed)check(!p.change.evidence().animation_changed,"another segment cannot acknowledge Smith");
+                auto animation=p.animation;animation.grind_type=24;
+                p.change.verify(p.now,{true,403,403,1,{}},p.contact,animation);
+                check(!p.change.evidence().completed && p.change.evidence().control_only && p.change.evidence().physics_changed,
+                    "real control-only physics is separate from a406 completion; bogus completion is ignored");
+                p.change.verify(p.now,{},p.contact,p.animation);
+                check(p.change.evidence().animation_changed && p.change.active(),"matching native animation cannot skip final neutral withdrawal");
+            } else {
+                p.change.verify(p.now,{},p.contact,p.animation);
+                check(!p.change.evidence().physics_changed,"5-0 and intermediate Suski never acknowledge Smith");
+            }
+        }
+        p.step(3430,403);p.poll(classic_x);
+        check(!p.change.active() && !p.change.sample(p.now).owns && p.change.evidence().animation_changed,
+            "Smith retires after bounded neutral with independent evidence retained");
+        p.contact.identity=24;p.step(3530,403);p.poll(classic_x);p.step(3630,403);p.poll(classic_x);
+        check(!p.change.active() && p.arms==0,"held X does not replay after another source is observed");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(classic_x);p.step(1210,403);p.poll();p.step(1230,403);p.poll(classic_x);
+        check(p.change.active(),"Smith cancellation case starts");
+        p.step(1300,403);
+        if(fault==0)p.controls.valid=false;
+        if(fault==1)p.contact.actor++;
+        if(fault==2)p.contact.segment_identity[0]++;
+        if(fault==3)p.contact.valid=false;
+        if(fault==4)p.frame.owner_generation++;
+        if(fault==5)p.step(1300,406);
+        if(fault==6)p.now+=151;
+        p.poll(fault==7?classic_a:0,fault!=8);
+        check(!p.change.active() && !p.change.sample(p.now).owns && p.arms==0,
+            "feature/owner/actor/contact/segment loss, unexpected406, stale input, A and OFF cancel Smith without a lease");
+    }
+    for(unsigned fault=0;fault<5;++fault) {
+        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        if(fault==0)p.controls={};
+        if(fault==1)p.controls.neutral=false;
+        if(fault==2)p.contact.identity=23;
+        if(fault==3)p.contact.end[2]=-6;
+        p.step(1000,fault==4?401:403);p.poll();p.step(1100,fault==4?401:403);p.poll();
+        p.step(1200,fault==4?401:403);p.poll(classic_x);p.step(1210,fault==4?401:403);p.poll();
+        p.step(1230,fault==4?401:403);p.poll(classic_x);
+        check(!p.change.active() && p.arms==0,"Smith requires neutral native controls, feature-off and the qualified source geometry");
+    }
+    for(unsigned fault=0;fault<9;++fault) {
+        std::array<std::uint8_t,0x15000> bytes{};
+        const std::uintptr_t base=0x140000000,context=0x10008,flags=0x13000,inputs=0x14000;
+        const auto put=[&](std::uintptr_t p,auto value){std::memcpy(bytes.data()+p,&value,sizeof(value));};
+        put(context+5140,std::uint32_t{403});put(context+5280,flags);put(flags,base+0x6123098);
+        put(context+5248,inputs);put(inputs+24,-.3117f);put(inputs+60,0.f);put(inputs+52,0.f);
+        if(fault==1)put(flags+26,std::uint8_t{1});
+        if(fault==2)put(inputs+60,.4f);
+        if(fault==3)put(inputs+24,std::numeric_limits<float>::quiet_NaN());
+        if(fault==4)put(flags,std::uintptr_t{0});
+        unsigned valid_calls{},pitch_reads{},pointer_reads{};
+        const auto control=read_grind_control(base,context,[&](auto p,auto& value){
+            if(p==inputs+60 && ++pitch_reads==2 && fault==5)put(p,.1f);
+            if(p==context+5248 && ++pointer_reads==2 && fault==6)put(p,inputs+8);
+            if(fault==7 && p==flags+26)return false;
+            if(p+sizeof(value)>bytes.size())return false;
+            std::memcpy(&value,bytes.data()+p,sizeof(value));return true;
+        },[&]{return ++valid_calls<2 || fault!=8;});
+        check(control.valid==(fault==0 || fault==2) && control.neutral==(fault==0),
+            "native control reader distinguishes neutral from held input and rejects missing, raced, invalid or replaced state");
     }
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
         [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),

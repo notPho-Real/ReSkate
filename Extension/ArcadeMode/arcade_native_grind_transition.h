@@ -3,6 +3,7 @@
 #include "arcade_grind_transition_lifetime.h"
 #include "arcade_grind_contact.h"
 #include "arcade_grind_admission.h"
+#include "arcade_grind_control.h"
 #include <cstdint>
 
 namespace dingosdk::arcade_mode::native_grind {
@@ -14,6 +15,7 @@ void tick(bool gameplay) noexcept;
 void cancel() noexcept;
 bool available() noexcept;
 NativeGrindContact contact(const NoBailSkater& owner) noexcept;
+NativeGrindControl control(const NoBailSkater& owner) noexcept;
 bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint64_t serial,
     std::uint64_t now,std::uint64_t deadline,GrindAdmissionControl control) noexcept;
 bool pending() noexcept;
