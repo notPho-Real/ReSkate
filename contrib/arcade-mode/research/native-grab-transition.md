@@ -663,3 +663,30 @@ new DLL hash or new CI success to report from this follow-up. The previous
 CI result applies only to the previous source checkpoint. Do not start the
 broad catalog or ship repeated/compound bindings on the strength of this
 static investigation.
+# ab50787 hardware follow-up (2026-10-31 Pacific)
+
+The exact CI-built DLL (`9ea528fb0c0896888c9aac614c8cbfb01dce1e32b82534ea7c622afb2d667755`)
+was installed and independently verified as mapped by PID 74662. The preceding
+be22 DLL, receipt, settings and log were backed up before replacement. See
+`native-grab-ab50787-window.json` for measured results and raw receipt hashes.
+
+At native 30 Hz, the 100 ms Basic tap initialized and advanced the original BS
+actor, then cleared grab flags through native GrabExit and returned to ground.
+Two directional B presses 304 ms apart correctly remained single Melon requests;
+the original Melon actor initialized and advanced. Scope 103 at 3500 ms produced
+complete, zero-drop captures for these controls. The original 5000 ms capture
+overflowed; its incomplete status is retained.
+
+The fast directional pair **was recognized as Method** (semantic 29, presses 2),
+but did not initialize an actor. The first request's action generation changed
+5679 → 5680 → 5681; the repeat reported `native_owner=false`, failed proofs 88,
+and cancellation. Its prior lease ended unacknowledged with `airborne=false`
+while independent native samples remained in state 201. That log field evaluates
+`same_owner() && airborne()`, so it does not prove a landing. The evidence does
+not distinguish owner-resolution failure, identity mismatch or an intervening
+state read. Preserve the guards until the exact failed predicate is established.
+
+The earlier 750/950 ms pair still recognized only one Melon. This remains a
+separate takeoff/watermark investigation. No runtime catalog expansion, native
+scoring acceptance, 60/120 Hz hardware acceptance or chaining acceptance follows
+from this window. The Deck was cleaned up and handed to the Manual task.
