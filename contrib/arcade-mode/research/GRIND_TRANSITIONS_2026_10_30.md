@@ -5,9 +5,15 @@ Baseline: `65d34a0bc06034125b28779d10490e479df37fba`, the user-verified
 `arcade-stage-grind-transitions`. No installation, release, manual branch,
 StateFlow/PTM flip implementation, balance model, or scoring changes.
 
-**Status: incomplete gameplay feature.** The rail A routing defect is reproduced
-and corrected offline. Neither a live pop on this revision nor grind-to-grind
-execution is accepted. No named two-button combination is confirmed working.
+**Status: incomplete gameplay feature.** The rail A routing and early-flip
+handoff candidates are implemented locally but lack live acceptance. Three
+narrowly qualified named executors exist from native401/fine20: Y->B
+Nosegrind23, B->B Crooked32 and ordered X->B5-0 24. Independent native trials
+verify their physics identity changes and retained segments; animation/HUD/
+combo acceptance remains outstanding. Six bindings, additional source
+contexts and repeated changes are missing. The sections below record the
+initial failures and subsequent findings chronologically; later qualification
+does not establish acceptance of the whole requested feature set.
 
 **User build hold:** do not start another DLL/CI build or offer a test handoff
 until named grind changes and early flips after rail exit are implemented and
@@ -2099,3 +2105,42 @@ changing during the bracket, and owner loss. These checks establish reader
 rejection behavior only; repeated equal reads still are not an atomic frame.
 Any actual probe must first be repinned, independently reviewed and staged
 after hardware handback. Six bindings and repeated changes remain unresolved.
+
+### Repeated-transition admission is separate from destination selection
+
+Manual's completed handback records no pending job, neutral/destroyed pad,
+stopped capture, automatic routing and native100/mode1 at30Hz in Mega Park.
+Grab then explicitly claimed the next window for its separately authorized
+5387765 deployment and early-B/control batch. Grind acknowledged and remains
+offline; the c048/PID79762 pins must be treated as stale after that window.
+No hardware or console call was issued by Grind in this continuation.
+
+Offline tracing identifies an additional gate needed before a second native
+transition can be qualified. `0x48189a0` publishes actor+766 to output+419 at
+`0x4818b7d..89`, which is the byte consumed by selector0x4746896. It also
+publishes actor+112 to output+48, the reference vector used by the Smith
+classifier predicate identified above. Neither output field is an input
+command. The common orientation helper0x4815790 writes actor+766 only when
+the actor's virtual+248 predicate returns false and native state elapsed
+context+6200 exceeds0.0833333358. Destination selection0x48140e0 alone is
+therefore insufficient to prove the game will admit the next request.
+
+The pinned vtable slot+248 resolves to0x481d8f0 for401,0x481d910 for403,
+0x481da50 for400,0x481da30 for402/404, and the constant-true0x3b8830 for406.
+The403 predicate additionally compares actor+767 with the sign of the current
+context pitch+4048. Its near-straight branch uses requested pitch magnitude
+at most0.15 and heading boundaries20/160 and21/159 degrees before returning
+false. Its other branch uses the native tuning value at config+216 and the
+35-degree constant0x6439c34. Thus simply replaying the first401 recipe or
+releasing the stick is not yet a verified return-to50-50 control.
+
+Common initialization0x4817770 captures actor+767 from bit2 of context+4068
+at0x481780c..821. This is an entry-time reference bit, not the requested
+grind identity; its higher-level meaning is not established here. A future
+two-transition probe must record that bit, actor+766/output+419, native
+elapsed time, current pitch, requested orientation, actual completion and
+the independently named destination for each leg. It must bound both legs
+and stop on loss of owner/contact/segment, rather than keeping the existing
+single-transition experimental feature lease enabled indefinitely. No new
+recipe, state write, acknowledgment or production generalization was made
+from these static conditions.
