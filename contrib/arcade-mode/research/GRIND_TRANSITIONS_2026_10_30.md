@@ -3025,3 +3025,119 @@ c048914/PID85401. Both Manual and Grab received clean handback; no job or
 reservation remains. These reset/trial slots are consumed. Any next trial
 requires new peer coordination, fresh identity/world pins and a new immutable
 runner; old coordinates and receipts may not be replayed.
+
+### Smith investigation: separate native board pitch from a jump gesture
+
+The next source pass follows the original 5-0 heading and pitch programs,
+not a guessed named-state assignment. The heading asset is EBX34197 paired
+with RES7329 (`Gameplay/SkaterIntentTree/Grinds/Heading/CalculateTargetHeading_5_0`).
+Its pitch/physical-side branches and heading constraints suggest examining
+original403 orientation while maintaining contact. Native403 may also select
+403 when outside the lateral heading band with non-neutral pitch; the earlier
+402/404/401 summary was not exhaustive. Trainer/schema defaults include
+MinSmithPitch=.0125, MinSmithHeading=.2 and Max5_0TargetPitch=.4. These defaults
+are source evidence, not a live tuning readback or a qualified input recipe.
+
+Bounded native disassembly also resolves call hash c07cd1f5 at RVA16eb5c0
+as floating not-equal with epsilon, not boolean XOR; ce900afc at16d7890 is
+addition,30364d4d at16e25d0 multiplication, and7bec9f8f at16e4d00 subtraction.
+The corrected local annotation is `build/grind-investigation/grind-heading-5o-annotated.txt`.
+Smith still requires the actual physical contact tuple and negative signed
+axis/reference dot recorded above. Neither a tuning name nor requested pitch
+establishes that result.
+
+Both peers released a bounded window. Reset runner SHA-256
+e500873c85d78af8844f3550ab5d6db131d442fbc834d80aabd08de9d09ad7f0
+successfully restored the native approach246→250; receipt
+`grind-native-approach-reset-smith-pitch-c048914-v1/results/1793539681090995000-status.json`.
+The subsequent trial enables only the already qualified original401→403
+preparation. It waits for original completion, actual5-0/contact/same segment
+and debugger detachment before delivering opposing pitch. No second native
+transition lease is admitted, and no contact, identity or target is written.
+Seventeen inert lease/waiter checks passed before the trial.
+
+Immutable trial SHA-256
+d16f0e113dc105bdcc7f14b7c5d5d8cd9ba2b7f4aa4c58db44d4d4aabc8c5c16;
+receipt `grind-native-smith-pitch-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-256de0f0cbd830eaee51596460fe92cbf5dcb7d664f51bc7cc1c585ccede528c10d.
+The484 independent samples have both clocks.03333333135 seconds. Original406
+began2224.559ms and completed401→403 at phase1 after.3333333135s; actual5-0
+appeared2587.979ms. Gate reason first_native_5_0_verified, one completion,
+then detached gate. The writer sent nativeUp2675.920ms after the first
+destination wait and neutral3675.964ms, a1000.044ms pulse. Raw requested pitch
+became+.4 at2746.915ms, but native200 began2783.968ms and201 at2820.332ms
+with lost physical contact. Native401/fine20 re-entered the same12m segment
+at3648.489ms. There was no fine26 sample. Later incidental403/24 and402/31
+occurred on a different short end segment and cannot acknowledge Smith.
+
+This is a negative Smith control and evidence of a native air transition
+following abrupt opposing input. It does **not** verify the A-button Ollie
+actor, upward launch velocity, early flip handoff, animation, HUD or combo:
+the collector did not record launch velocity and Arcade was OFF. The segment
+was[2714419331111,0], endpoints(144.0263671875,.500742197,-45.7958984375)
+and(144.0263671875,.500742197,-57.7958984375). Cleanup restored the native
+feature, detached GDB0, destroyed the pad, restored ArcadeON/automatic route,
+closed menus/editor and undid all owned edits to bam23/rev270. Both peers
+received clean handback. No ninth production recipe was added.
+
+### Slow opposing pitch avoids the air gesture but does not produce Smith
+
+A separately coordinated window tested whether the abrupt input above was
+being interpreted as a jump flick. The source defaults GestureInputBufferTime=.2
+and FastFlipInputSpeed=.0025 informed a slower candidate; neither was read
+back as active live tuning. After original401→403 completion, actual5-0 and
+same segment, the new waiter additionally requires detached debugger and
+native flags+26==0. It then owns neutral300ms, five nativeUp steps of roughly
+.2 normalized magnitude100ms apart, fullUp800ms, then neutral. The original
+worker and first preparation lease are unchanged; there is no second lease.
+Eighteen inert lease/waiter cases and eight timeline/ramp checks passed.
+
+Reset runner SHA-256
+7480ee88d2e2be97748a906682a64f31758389f0696434320f9bb36d619ea4b9
+successfully recovered the approach270→274, receipt
+`grind-native-approach-reset-smith-ramp-c048914-v1/results/1793540164242451000-status.json`.
+Immutable trial SHA-256
+1a87ce6c4dbca7a125fdedc512c81e5cceb002dc23bc4d18305d684761533551;
+receipt `grind-native-smith-ramp-c048914-v1/results/two-leg-lateral.json.gz`,
+SHA-256670166b22f09e2542cb2137cdd657962e07099c882f1bf1f65a34926df6dcebf.
+There are471 independent samples, both clocks.03333333135 seconds, one original
+401→403 completion and gate reason first_native_5_0_verified. Actual5-0 appears
+2587.654ms. The writer delivers neutral2665.954ms, ramp steps2966.091,
+3066.948,3166.019,3266.035,3366.029ms, then neutral4166.187ms. These are
+physical write timestamps, not assumed game polls.
+
+Unlike the abrupt negative control, this sequence produces no200/201 exit
+after5-0. It still produces **no Smith26 anywhere**. Raw requested pitch becomes
+.110400 at3247.100ms, .335949 at3312.075ms and .4 by3407.448ms. Actual pitch
+approaches-.051 rather than immediately following that request. At3407.448ms
+native401 selects a different physical segment, followed by fine20 at3445.213ms;
+403 reacquires the original segment at3483.389ms and fine24 at3521.864ms.
+This alternating401/20 and403/24 pattern repeats through natural701 at5016.212ms.
+The original12m segment[2860448219175,0] has endpoints
+(144.1455078125,.500742197,-45.5947265625/-57.5947265625); the alternative
+segment[2860448219203,0] is offset to x144.23211669921875,y.4507421851 with
+the same endpoint z values. This is a real change in physical contact geometry,
+not a successful retained-segment named transition.
+
+Published contact remains1 during the post-ramp rail samples, but physical
+contact is0 in one sample at4238.751ms. Some independent segment brackets also
+return unavailable during changes. Do not hide these observations behind a
+claim of uninterrupted contact. Stable admission samples continue to report
+selected physical contact bit0, and the5-0 classifier retains tuple element3=0
+instead of Smith's1. Changing requested pitch alone has therefore not established
+the necessary contact/axis conditions. A next source pass must explain the
+native candidate switch and heading/contact constraints before another
+experiment; do not add a control-only executor by fabricating406 completion.
+
+Cleanup independently verifies GDB0/restored feature, destroyed pad,
+ArcadeON/automatic routing, closed menus/editor and exact-owned undo to
+bam23/rev294. Native100 speed.000127937 at(145.228806,1.028673,-42.913170),
+heading15.657194. Fixture configured/object absent; new metadata start
+(144.14633178710938,1.028671145439148,-64.5953140258789), rail
+(144.14633178710938,-.00000476837158203125,-56.595314025878906), unit scale.
+Installed c048914/PID85401, launcher85410 and recorded DLL hash are unchanged.
+Both peers received clean handback; no Grind job/reservation remains. Both
+new reset/trial slots are consumed. Production remains9d61704 with eight narrow
+recipes and the same offline checks. Smith, broader contexts/repetition and
+live production/Ollie/early-flip/HUD/combo acceptance remain open. No DLL/CI
+build, installation, merge or release occurred.
