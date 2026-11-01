@@ -15,6 +15,7 @@ struct Pipeline {
     NativeInputOwner owner{1,2,3,4,5};
     NativeInputFrame frame{};
     NativeGrindContact contact{};
+    NativeGrindSnapshot animation{};
     std::uint64_t now{},arms{},last_deadline{};
     InputRequest dispatched{};
     std::vector<PreparedGesture> catalog{
@@ -29,9 +30,12 @@ struct Pipeline {
         frame=physics.observe(now,owner,native,{true,-1,32});
         input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
         contact.state=state;
+        animation.valid=animation.grind_type_valid=animation.physics_grind_type_valid=true;
+        animation.physics_state=state;animation.sampled_at=now;
+        animation.grind_type=animation.physics_grind_type=contact.identity;
     }
     NativeGesture::Output poll(std::uint16_t buttons=0,bool allowed=true) {
-        change.observe(now,frame,contact,allowed && !(buttons&classic_a));
+        change.observe(now,frame,contact,allowed && !(buttons&classic_a),animation);
         const InputAdapter adapter{this,[](void* value,const InputRequest& request) noexcept {
             auto& p=*static_cast<Pipeline*>(value);p.dispatched=request;
             return p.change.request(request,p.now,[&](auto,auto deadline) noexcept {
@@ -75,6 +79,24 @@ int main() {
             "actual destination contact and native completion cannot stand in for animation change");
         snapshot.grind_type=23;p.change.verify(p.now,done,p.contact,snapshot);
         check(p.change.evidence().animation_changed && !p.change.active(),"independent matching animation retires completed bounded request");
+    }
+    for(unsigned fault=0;fault<4;++fault) {
+        Pipeline p;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);
+        switch(fault) {
+        case 0:p.animation.grind_type=23;break;
+        case 1:p.animation.valid=false;break;
+        case 2:p.animation.sampled_at=1200;break;
+        case 3:p.animation.physics_grind_type=23;break;
+        }
+        p.poll(0xa000);
+        check(p.change.active() && !p.change.evidence().source_animation_known,
+            "missing or mismatched animation baseline does not manufacture an initial identity");
+        p.step(1300,406);p.poll();p.step(1400,403);p.contact.identity=23;p.poll();
+        NativeGrindSnapshot destination{};destination.valid=destination.grind_type_valid=destination.physics_grind_type_valid=true;
+        destination.physics_state=403;destination.grind_type=destination.physics_grind_type=23;destination.sampled_at=p.now;
+        p.change.verify(p.now,{true,401,403,1,{}},p.contact,destination);
+        check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+            "an unchanged or initially unknown animation cannot become a verified named change");
     }
     for(unsigned fault=0;fault<10;++fault) {
         Pipeline p;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);p.poll(0xa000);

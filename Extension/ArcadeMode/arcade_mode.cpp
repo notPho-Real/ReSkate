@@ -2231,7 +2231,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
         const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
-        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available());
+        const auto grind_animation=grind_permitted && (grind_contact.valid || grind_change.active())?
+            sample_grind_identity(native_flip_owner,now):NativeGrindSnapshot{};
+        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available(),grind_animation);
         if(grind_change.active() && !native_grind::pending() &&
             !native_grind::completion(native_flip_owner,grind_change.serial(),now).native.valid)grind_change.cancel();
         if(!grind_change.active())native_grind::cancel();
@@ -2307,7 +2309,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         }
         if(grind_change.active()) {
             const auto completion=native_grind::completion(native_flip_owner,grind_change.serial(),now);
-            grind_change.verify(now,completion.native,grind_contact,sample_grind_identity(native_flip_owner,now));
+            grind_change.verify(now,completion.native,grind_contact,grind_animation);
             if(!grind_change.active())native_grind::cancel();
         }
         const auto grind_pad=grind_change.sample(now);

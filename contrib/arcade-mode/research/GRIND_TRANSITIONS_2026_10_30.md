@@ -1722,3 +1722,52 @@ Local logs are under `build/grind-investigation/named-executor-checks`.
 Windows runtime compilation, native animation/HUD/combo acceptance, live
 Ollie/early-flip verification and eight remaining named recipes are outstanding.
 No DLL/CI build, upload, installation, merge or release was performed.
+
+### Follow-up: reject unchanged animation and narrow the next native probe
+
+Review found a false-positive evidence route in cfc7a4d: requiring destination
+physics23 plus CurrentGrindType23 after actor completion did not prove the
+animation changed. If CurrentGrindType was already23 before the request, that
+lingering value could satisfy the check. The executor now records a fresh,
+owner-bracketed source401/physics20/animation20 observation before arming.
+Missing, stale, mismatched or already-target source animation permits the
+physical control investigation but cannot acknowledge animation change.
+Only that recorded20 baseline followed by independently observed403/23 can
+set animation_changed. The production remapper reuses one bracketed identity
+sample per poll.2014 strict sanitizer composition checks pass, including
+four regressions for the missing/unchanged baseline. No score/HUD writer changed.
+
+Offline classifier inspection also narrows the next control probe. At
+0x47dd155..0x47dd236 the original code projects the vector at source+320
+off output+48, normalizes the remainder when its length exceeds0.01, takes
+the absolute dot product against output+0, and sets tuple element2 using
+strict greater-than0.9397000074 (constant RVA0x65e73ec). The degenerate
+branch sets it to1. This is an alignment predicate, not a stick-angle or
+named-action selector. Tuple element3 independently tests another vector's
+dot product against-0.1 (RVA0x60ebf60).
+
+The unchanged384-entry native lookup contains BSNosegrind23 at
+[1,0,1,0,0,1] and[1,0,1,0,1,1], but BSCrooked32 only at[1,0,0,0,0,1].
+The v4 positive control's first fine23 sample has candidate/accepted
+[1,0,1,0,0,1], actual heading0.3117813 and pitch0.3987983. Increasing the
+held heading sweep is therefore a source-derived experiment for crossing
+the alignment predicate, not an established Crooked recipe. A candidate
+Up then RX24000/RY-32767 after200ms should be evaluated against actual
+native tuple/completion/contact/animation evidence before enabling B->B.
+The source401 selector jump table at RVA0x481436c dispatches to0x4814187;
+source403 dispatches to0x48142a5. Their separate55/125-degree and pitch
+conditions must still be respected. No new recipe was enabled from this
+static inference.
+
+Grab's separate authorized installation/restart changed the live process.
+After both peers released hardware, Grind ran only the existing bounded
+read-only identity inspector. Receipt
+`grind-readiness-be22b1a-v1/results/1793492143669900000.json` independently
+verified sourcebe22b1a2f731485f8175c5fc8d8645598bb6a322,
+DLL98aa97e1c4322b99023d286d0ccdce7bf3be87248e56d9195150147897e5b179,
+the unchanged executable hash, gamePID73485/launcher73493, and matching
+installed inode for both mapped DLL rows. Fresh native state is504/mode0.
+Grind sent no input/console command and changed no telemetry, fixture or
+world state. The short read-only window was explicitly released. Prior
+Mega Park geometry, fixture history and controller route are not qualified
+for this restarted process. No new DLL build or gameplay acceptance occurred.

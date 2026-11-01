@@ -15,16 +15,16 @@ public:
     struct Pad { bool owns{}; std::int16_t x{},y{}; };
     struct Evidence {
         std::uint64_t serial{},first_input_at{},last_input_at{},started_at{};
-        bool completed{},physics_changed{},animation_changed{};
+        bool completed{},physics_changed{},animation_changed{},source_animation_known{};
     };
-    void cancel() noexcept { active_=false; admission_={}; source_={}; frame_={}; stable_=false; }
+    void cancel() noexcept { active_=false; admission_={}; source_={}; frame_={}; stable_=false; source_animation_known_=false; }
     bool active() const noexcept { return active_; }
     std::uint64_t serial() const noexcept { return active_?serial_:0; }
     const Evidence& evidence() const noexcept { return evidence_; }
     InputRailState admission() const noexcept { return admission_; }
     // Repeated game-facing polls may not advance the establishment clock.
     void observe(std::uint64_t now,const NativeInputFrame& frame,const NativeGrindContact& contact,
-                 bool permitted) noexcept {
+                 bool permitted,const NativeGrindSnapshot& animation={}) noexcept {
         admission_={};
         if(!permitted || !fresh(now,frame) || (frame_.valid &&
             (frame.owner!=frame_.owner || frame.owner_generation!=frame_.owner_generation ||
@@ -39,6 +39,10 @@ public:
                 (frame.state!=406 && (!contact.valid || contact.state!=frame.state || !same_segment(contact)))) cancel();
             return;
         }
+        source_animation_known_=animation.valid && animation.physics_state==401 &&
+            animation.sampled_at>=frame.sampled_at && animation.sampled_at<=now &&
+            animation.grind_type_valid && animation.grind_type==20 &&
+            animation.physics_grind_type_valid && animation.physics_grind_type==20;
         if(!qualified(contact) || frame.state!=contact.state) { stable_=false;return; }
         if(!stable_ || !same_segment(contact) || source_.actor!=contact.actor) {
             if(generation_==UINT64_MAX)return;
@@ -63,6 +67,7 @@ public:
         if(!arm(next,now+1500))return InputDisposition::unsupported;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
+        evidence_.source_animation_known=source_animation_known_;
         admission_={};return InputDisposition::started;
     }
     Pad sample(std::uint64_t now) const noexcept {
@@ -81,8 +86,9 @@ public:
             same_segment(contact) && contact.identity==23;
         evidence_.physics_changed=evidence_.physics_changed || changed;
         // This snapshot is supplied by the owner-bracketed native reader. A
-        // lingering animation label alone cannot complete this request.
-        if(changed && animation.valid && animation.physics_state==403 &&
+        // lingering animation label alone cannot complete this request: the
+        // matching source animation must also have been read before arming.
+        if(changed && evidence_.source_animation_known && animation.valid && animation.physics_state==403 &&
             animation.sampled_at>=evidence_.started_at && animation.sampled_at<=now &&
             now-animation.sampled_at<=150 && animation.physics_grind_type_valid && animation.physics_grind_type==23 &&
             animation.grind_type_valid && animation.grind_type==23) evidence_.animation_changed=true;
@@ -115,6 +121,6 @@ private:
     InputRailState admission_{};
     Evidence evidence_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
-    bool active_{},stable_{};
+    bool active_{},stable_{},source_animation_known_{};
 };
 }
