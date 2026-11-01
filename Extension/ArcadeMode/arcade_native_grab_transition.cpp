@@ -37,6 +37,15 @@ constexpr std::array<const char*,3> actor_names{"e7191c5c-9c2e-7abb-e719-1c5c9c2
     "3fbc3fdd-701e-719d-3fbc-3fdd701e719d","12d1f15d-c040-6fd0-12d1-f15dc0406fd0"};
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
 struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
+// Observation only: distinguish a failed owner proof from a native landing.
+// Missing reads remain unknown; these fields never grant permission.
+struct OwnershipObservation {
+    std::uint64_t ms{};
+    unsigned owner_failure{}; // 1=no request, 2=resolver, 3=identity, 4=state block
+    unsigned validity_failure{}; // 1=gameplay, 2=assets, 3=owner, 4=air state
+    bool owner_verified{},state_read{};
+    std::uint32_t state{};
+};
 struct Session {
     Lease lease{};NoBailSkater owner{};std::uintptr_t block{};
     std::uint64_t episode{},serial{};
@@ -44,6 +53,7 @@ struct Session {
     std::array<Written,4> writes{};
     std::array<Actor,3> actors{};
     bool reported{};
+    OwnershipObservation last_invalid{};
 } session;
 std::uint64_t serial{},retry_at{};
 // Input producers only copy bounded evidence; the client tick formats logs.
@@ -54,6 +64,8 @@ struct Event {
     bool input_trace{},extra{},native_adapter{},retired{},native_owner{};
     std::uint64_t ms{},origin_action{},current_action{};
     unsigned failed_proofs{},gate{},disposition{},result{};
+    const char* ending_reason{};
+    OwnershipObservation ending_owner{},last_invalid{};
 };
 std::array<Event,32> events{};
 unsigned event_count{},lost_events{};
@@ -72,8 +84,11 @@ void flush_events() noexcept {
             static_cast<unsigned>(e.physical.form),static_cast<unsigned>(e.physical.air.trick),e.physical.generations.action,
             e.origin_action,e.current_action,e.extra,e.native_adapter,e.retired,e.failed_proofs,e.native_owner,e.gate,e.disposition,e.result);
         else if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified.",
-            e.serial,e.episode,e.acknowledged,e.airborne);
+            "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified reason={} observed_at={} owner_verified={} owner_failure={} state_read={} state={} last_invalid_at={} validity_failure={} invalid_owner_failure={} invalid_state_read={} invalid_state={}.",
+            e.serial,e.episode,e.acknowledged,e.airborne,e.ending_reason,e.ending_owner.ms,
+            e.ending_owner.owner_verified,e.ending_owner.owner_failure,e.ending_owner.state_read,e.ending_owner.state,
+            e.last_invalid.ms,e.last_invalid.validity_failure,e.last_invalid.owner_failure,
+            e.last_invalid.state_read,e.last_invalid.state);
         else logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE NATIVE GRAB REQUEST: serial={} episode={} semantic={} expected_detail={} held={} pressed_at={} released_at={} recognized_at={} direction={} presses={} acknowledged=false.",
             e.serial,e.episode,static_cast<unsigned>(e.trick),e.detail,e.held,e.physical.physical_pressed_at,
@@ -100,13 +115,21 @@ std::uintptr_t state_block(const NoBailSkater& owner) noexcept {
     }
     return 0;
 }
-bool same_owner() noexcept {
+bool same_owner(OwnershipObservation* observation=nullptr) noexcept {
     NoBailSkater owner{};
-    return session.serial && no_bail_skater(owner) && owner==session.owner && state_block(owner)==session.block;
+    unsigned failure{};
+    if (!session.serial) failure=1;
+    else if (!no_bail_skater(owner)) failure=2;
+    else if (owner!=session.owner) failure=3;
+    else if (state_block(owner)!=session.block) failure=4;
+    if (observation) {observation->owner_failure=failure;observation->owner_verified=!failure;}
+    return !failure;
 }
-bool airborne() noexcept {
+bool airborne(OwnershipObservation* observation=nullptr) noexcept {
     std::uint32_t state{};
-    return read(session.owner.context+0x1414,state) && (state==200 || state==201);
+    const bool known=read(session.owner.context+0x1414,state);
+    if (observation) {observation->state_read=known;observation->state=state;}
+    return known && (state==200 || state==201);
 }
 std::uintptr_t address_at(std::uintptr_t block,unsigned index) noexcept {
     const auto& a=assets[index];std::uint32_t handle{},valid{};
@@ -135,11 +158,24 @@ void restore() noexcept {
     }
     session.writes={};
 }
-void retire() noexcept {
-    if (session.serial) enqueue({true,false,session.reported,same_owner() && airborne(),session.serial,session.episode});
+void retire(const char* reason) noexcept {
+    if (session.serial) {
+        Event event{true,false,session.reported,false,session.serial,session.episode};
+        event.ending_reason=reason;event.ending_owner.ms=GetTickCount64();
+        event.airborne=same_owner(&event.ending_owner) && airborne(&event.ending_owner);
+        event.last_invalid=session.last_invalid;enqueue(event);
+    }
     restore();session={};active.store(false);
 }
-bool valid() noexcept {return gameplay_allowed.load() && assets_ready.load() && same_owner() && airborne();}
+bool valid() noexcept {
+    OwnershipObservation observation{};
+    if (!gameplay_allowed.load()) observation.validity_failure=1;
+    else if (!assets_ready.load()) observation.validity_failure=2;
+    else if (!same_owner(&observation)) observation.validity_failure=3;
+    else if (!airborne(&observation)) observation.validity_failure=4;
+    if (!observation.validity_failure) return true;
+    observation.ms=GetTickCount64();session.last_invalid=observation;return false;
+}
 RetargetObservation retarget_observation() noexcept {
     RetargetObservation out{};
     const auto left=address(0),right=address(1),grabbing=address(4),family=address(6),can_grab=address(7);
@@ -215,7 +251,7 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
     return result;
 }
 }
-void cancel() noexcept {std::lock_guard lock(mutex);retire();}
+void cancel() noexcept {std::lock_guard lock(mutex);retire("cancel");}
 bool available() noexcept {return hooks_ready.load() && assets_ready.load() && gameplay_allowed.load();}
 bool blocks_flip(const NoBailSkater& owner) noexcept {
     if (!available()) return false;
@@ -249,27 +285,27 @@ void tick(bool gameplay) noexcept {
     }
     if (active.load()) {
         std::lock_guard lock(mutex);
-        if (!valid() || !session.lease.intent(GetTickCount64())) retire();
+        if (!valid() || !session.lease.intent(GetTickCount64())) retire("tick");
     }
 }
 void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool permitted) noexcept {
     if (!active.load()) return;
     std::lock_guard lock(mutex);
     session.lease.refresh(GetTickCount64(),held,permitted && owner==session.owner && episode && episode==session.episode && valid());
-    if (!session.lease.selected()) retire();
+    if (!session.lease.selected()) retire("refresh");
 }
 bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest& physical,ArcadeTrick trick,bool held) noexcept {
     if (!available() || !episode || !pilot(trick)) return false;
     const auto block=state_block(owner);if (!block) return false;
     std::lock_guard lock(mutex);
-    if (session.serial && (owner!=session.owner || episode!=session.episode)) retire();
+    if (session.serial && (owner!=session.owner || episode!=session.episode)) retire("request_owner_episode");
     // A changed native action lineage needs the same independent grab-owner
     // proof at dispatch too. Never borrow a retired flip selector as permission.
     if (session.serial && physical.generations!=session.lineage &&
         (!valid() || !session.lease.intent(GetTickCount64()) || !retarget_observation().eligible())) return false;
     if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
     session.serial=++serial;session.reported=false;
-    if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire();return false;}
+    if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire("request");return false;}
     session.lineage=physical.generations;session.air=physical.air_episode;
     active.store(true);
     enqueue({false,held,false,false,session.serial,episode,trick,pilot(trick)->detail,physical});
@@ -324,14 +360,14 @@ void trace_input(std::uint64_t now,const UnifiedInput::Diagnostic& diagnostic,co
 void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!active.load() || !std::isfinite(delta) || delta<=0) return;
     std::lock_guard lock(mutex);
-    if (!valid()) {retire();return;}
+    if (!valid()) {retire("transition_owner");return;}
     if (view!=session.block+0x48) return;
     const auto now=GetTickCount64();acknowledge(now);
     if (session.lease.acknowledged()) {
         bool grabbing{};const auto at=address(4);
-        if (!at || !read(at,grabbing) || !grabbing) {retire();return;}
+        if (!at || !read(at,grabbing) || !grabbing) {retire("native_exit");return;}
     }
-    if (!session.lease.intent(now)) {retire();return;}
+    if (!session.lease.intent(now)) {retire("transition_lease");return;}
     const auto& p=*session.lease.selected();
     const std::array<std::uint32_t,4> values{0,1,std::bit_cast<std::uint32_t>(p.x),std::bit_cast<std::uint32_t>(p.y)};
     // The original trigger-input path owns hand intent and CanGrab. HIL proved
@@ -340,12 +376,12 @@ void before_transition(std::uintptr_t view,float delta) noexcept {
     // identities, animation clocks, blending and physics remain game-owned.
     for (unsigned i=2;i<4;++i) {
         const auto at=address(i);const unsigned size=i<2?1:4;auto& w=session.writes[i];
-        if (!at || (w.at && w.at!=at)) {retire();return;}
+        if (!at || (w.at && w.at!=at)) {retire("signal_address");return;}
         if (!w.at) {
-            std::uint32_t previous{};if (!bits(at,size,previous)) {retire();return;}
+            std::uint32_t previous{};if (!bits(at,size,previous)) {retire("signal_read");return;}
             w={at,previous,values[i],size};
         }
-        w.value=values[i];if (!write(at,w.value,size)) {retire();return;}
+        w.value=values[i];if (!write(at,w.value,size)) {retire("signal_write");return;}
     }
 }
 bool start(std::uintptr_t base) noexcept {

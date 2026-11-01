@@ -690,3 +690,19 @@ The earlier 750/950 ms pair still recognized only one Melon. This remains a
 separate takeoff/watermark investigation. No runtime catalog expansion, native
 scoring acceptance, 60/120 Hz hardware acceptance or chaining acceptance follows
 from this window. The Deck was cleaned up and handed to the Manual task.
+
+The subsequent observation-only change makes each `ARCADE NATIVE GRAB END`
+identify its retirement call site, the fresh owner proof, whether the native
+state was read, and the last failed validity check with its timestamp. Owner
+failure codes distinguish no request (1), the existing owner resolver failing
+(2), an identity mismatch (3), and a different animation state block (4).
+Validity failure codes distinguish gameplay permission (1), assets (2), owner
+proof (3), and native air state (4). A false `state_read` means unknown, even
+when the numeric state field is zero. The last failed check may precede the
+retirement sample; its timestamp is part of the evidence.
+
+The checks retain their original order and short-circuit behavior, and no owner
+or episode guard is relaxed. Logging remains in the bounded existing event
+queue and client-tick flush. This is diagnostic preparation, not a Method fix
+or new native acceptance. Local production-composed regressions passed 494 grab
+and 9014 protected flip checks across 30/60/120 Hz.
