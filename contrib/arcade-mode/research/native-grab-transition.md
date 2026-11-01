@@ -733,3 +733,48 @@ The first Method's GrabExit value remained unknown; Basic and the second Method
 observed native GrabExit. Native scoring ownership, higher-rate hardware tests,
 early-press reliability and chains remain outstanding. The Deck was cleaned up
 and released with the diagnostic build identity explicitly reported.
+
+### Early native-air B recognition
+
+The ab50787 early trial independently sampled the first physical Left+B at
+241038487 while the native actor was already in state 200/mode 0. State
+201/mode 2 followed at 241038499, before client action readiness caught up at
+241038527. The second B at 241038687 was consequently treated as a single Melon.
+This is a recognition-history timing defect, separate from the intermittent
+native owner failure.
+
+`ArcadeInput::poll` already reconciles the pose from the physics observation.
+However, `UnifiedInput::poll` advances the shared face-input cutoff on every
+native action-generation change. That discards the first B during 200 -> 201
+even though neither the physical owner nor the airborne episode changed.
+The released-Ollie marker used by flips cannot substitute here: B deliberately
+retires that marker in `InputSession::poll`.
+
+The fix adds a separate history cutoff used only when recognizing an ordinary
+grab through the native grab adapter. It reuses the existing
+`InputNativeContext::released_jump_continues` observation predicate, restricted
+to two already-airborne samples. This checks the same owner, native selection
+object, stance, forward state/selector progression and generation increments.
+It grants recognition continuity only; the native grab callback, current action
+readiness, request correlation, animation ownership and lease checks still
+decide execution. Ground-to-air cutoffs, contextual tables and all flip cutoffs
+are unchanged. No animation, engine write or native flip transition changed.
+
+Source review covered the pinned official tree
+`6c45e9666dcdea6577248f6ab7f3111de48b6039`, the surveyed fork implementations in
+`upstream-method-survey.json`, and the existing event journal, action queue,
+native readiness and released-jump observation code. No surveyed implementation
+supplied a better equivalent for this specific delayed-action-publication gap.
+The shared observation predicate is reused instead of adding an engine hook.
+
+The production-composed regression fails against the preceding source and
+passes with this change. At 30/60/120 Hz it covers held and released early B,
+original timestamps/episode, a following Method press, no second pop, no held
+repeat, and rejection after ground input, owner/selector replacement, landing,
+other native action, Arcade OFF, stale observation or expired physical input.
+557 grab checks, 9014 protected flip checks, 72 grab-wait checks and 124 action
+dispatch checks passed. These are source checks, not native animation acceptance.
+The next hardware trial must repeat the original early pair with complete
+retained capture ordinals and independent actor initialization/advancement,
+release, flight, landing and scoring evidence. Broad catalog expansion remains
+gated on Stage A; the intermittent owner failure remains unresolved.

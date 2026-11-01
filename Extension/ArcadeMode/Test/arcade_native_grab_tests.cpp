@@ -16,7 +16,7 @@ struct Route {
     NativeInputOwner owner{1,2,3,4,5};NativeInputFrame frame{};
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
     bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
-    bool selection_valid{true};native_grab::RetargetObservation grab_observation{};
+    bool selection_valid{true},client_action_ready{true};native_grab::RetargetObservation grab_observation{};
     InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
@@ -40,7 +40,7 @@ struct Route {
     }
     NativeGesture::Output poll(std::uint64_t at,std::uint16_t buttons=0,std::uint32_t state=201,
                               std::int32_t selection=-1,bool enabled=true) {
-        now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
+        now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:state==200?0:2;
         sample.words[1]=state==100?0xc000u:0;
         frame=producer.observe(at,owner,sample,{selection_valid,selection,selection_object});
         readiness.publish(frame,{true,state==100,false,false,false,false,false,false,true,0});
@@ -48,9 +48,9 @@ struct Route {
         const auto admission=readiness.sample(at,frame);
         lease.refresh(at,(buttons&0x2000)!=0,enabled && frame.airborne);
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
-            false,recipes,admission.mirror_x,false,frame.airborne?SkatePose::air:SkatePose::riding,
-            false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action,
-            admission.mirror_x,false,{}, {this,submit,right_hand_input,continues});
+            false,recipes,admission.mirror_x,false,frame.airborne&&client_action_ready?SkatePose::air:SkatePose::riding,
+            false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action&&client_action_ready,
+            admission.mirror_x,false,{}, client_action_ready?NativeGrabRequest{this,submit,right_hand_input,continues}:NativeGrabRequest{});
     }
 };
 AirRotation::Output rotate(Route& route,AirRotation& rotation,const NativeGesture::Output& output,
@@ -235,6 +235,62 @@ void input_order_and_launch() {
         check(episode && jump->frame.airborne_episode==episode,"grab admission preserves the observed airborne episode");
     }
 }
+void native_air_before_client_readiness() {
+    for (unsigned hz:{30u,60u,120u}) for(bool held:{false,true}) {
+        const auto dt=(1000u+hz-1)/hz;
+        auto r=std::make_unique<Route>();
+        r->poll(1000,0,100);
+        r->poll(1000+dt,0x1000,100);
+        r->poll(1000+2*dt,0,103,1);
+        for(auto at=1000+3*dt;at<1600;at+=dt)r->poll(at,0,103,1);
+        r->client_action_ready=false;
+        r->poll(1600,0x2004,200,1);
+        const auto episode=r->frame.airborne_episode;
+        r->poll(1600+dt,held?0x2004:4,201,1);
+        check(r->requests.empty(),"native AIR history alone cannot bypass client/action admission");
+        r->client_action_ready=true;
+        const auto out=r->poll(1600+2*dt,held?0x2004:4,201,1);
+        check(r->requests.size()==1 && r->tricks.front()==ArcadeTrick::melon,
+              "B observed in native 200 survives forward 201 and delayed client action admission");
+        check(r->requests.front().physical_pressed_at==1600 &&
+              r->requests.front().air_episode.number==episode && r->frame.airborne_episode==episode,
+              "delayed action admission preserves the original physical edge and flight");
+        check(!out.jump.released && !out.authored_playback && out.action.pad.right_trigger==255,
+              "early grab handoff uses the native trigger without another pop");
+        r->poll(1600+3*dt,held?0x2004:4,201,1);
+        check(r->requests.size()==1,"preserving a held early B does not synthesize another press");
+        r->poll(1600+4*dt,4,201,1);
+        r->poll(1600+5*dt,0x2004,201,1);
+        check(r->requests.size()==2 && r->tricks.back()==ArcadeTrick::method &&
+              r->requests.back().physical_pressed_at==1600+5*dt,
+              "the next physical B selects Method using the original early press interval");
+    }
+    for(unsigned hz:{30u,60u,120u}) for(unsigned fault=0;fault<8;++fault) {
+        const auto dt=(1000u+hz-1)/hz;
+        auto r=std::make_unique<Route>();r->poll(1000,0,100);
+        r->client_action_ready=false;
+        r->poll(1000+dt,0x2004,fault==0?100:200,1);
+        if(fault==1)++r->owner.entity;
+        if(fault==2)r->selection_object=32;
+        if(fault==3)r->poll(1000+2*dt,4,100,1);
+        if(fault==4)r->poll(1000+2*dt,4,201,5);
+        if(fault==5)r->poll(1000+2*dt,4,201,1,false);
+        if(fault==6)r->selection_valid=false;
+        const auto admitted_at=fault==7?1300u:1000+3*dt;
+        r->client_action_ready=true;
+        r->poll(admitted_at,4,201,1);
+        check(r->requests.empty(),
+              "ground B, owner/selector change, landing, other action, OFF or stale history never borrows grab admission");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        const auto dt=(1000u+hz-1)/hz;
+        auto r=std::make_unique<Route>();r->poll(1000,0,100);
+        r->client_action_ready=false;r->poll(1000+dt,0x2004,200,1);
+        for(auto at=1000+2*dt;at<1700;at+=dt)r->poll(at,4,201,1);
+        r->client_action_ready=true;r->poll(1700,4,201,1);
+        check(r->requests.empty(),"delayed client readiness cannot renew an expired physical B edge");
+    }
+}
 void repeated_grab_after_native_jump_retirement() {
     for (unsigned hz:{30u,60u,120u}) {
         const auto dt=(1000u+hz-1)/hz;
@@ -307,4 +363,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

@@ -357,7 +357,7 @@ public:
         // Current-poll attempts cannot survive a session/authority reset.
         // Keep cumulative recognition identity and loss counters monotonic.
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
-        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = 0; clocked_ = false; manual_unknown_ = false;
+        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
@@ -407,6 +407,12 @@ public:
         if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
             reset(); return;
         }
+        // Native AIR can precede the client action-readiness publication. Preserve
+        // only grab recognition history already sampled in this flight through
+        // the existing forward Ollie/idle observation checks. This grants no
+        // native actor permission and never borrows a ground B press.
+        const bool grab_air_continues = native_.airborne && native.airborne &&
+            native.released_jump_continues(native_,now);
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
@@ -419,6 +425,7 @@ public:
                 }
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
+                    if (!grab_air_continues) native_grab_after_ = last_event_;
                     if (!takeoff && !native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
                         !native.ordinary_flip_wait_continues(native_.generations,native_.air_episode(),native_.flip))
                         air_flip_after_ = last_event_;
@@ -486,8 +493,10 @@ public:
             // and its category ownership survive the admitted transition.
             pending_.clear_ordinary(); direction_ = 0;
         }
-        if (previous_context_ != InputContext::air && environment.context == InputContext::air)
+        if (previous_context_ != InputContext::air && environment.context == InputContext::air) {
             air_face_after_ = air_flip_after_ = last_event_; // Preserve a ground direction preload, never a ground face press.
+            native_grab_after_ = last_event_;
+        }
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
@@ -877,8 +886,9 @@ private:
             1,0,0,0,{},&match,InputForm::contextual,row.direction,InputFootprintKind::unknown,nullptr,&row);
         return true;
     }
-    bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false) const noexcept {
-        const auto after = ordinary_flip ? air_flip_after_ : air_face_after_;
+    bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false,
+                           bool native_grab = false) const noexcept {
+        const auto after = ordinary_flip ? air_flip_after_ : native_grab ? native_grab_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
             if ((event.sequence > after || (ordinary_flip && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 (!ordinary_flip || previous_context_==InputContext::air || (takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
@@ -917,7 +927,7 @@ private:
                 }
             } else { const std::array tokens{face}; match = events_.history().match({tokens,500,ordinary_reject},now); }
         }
-        if (!match || !air_face_eligible(match,13)) return;
+        if (!match || !air_face_eligible(match,13,false,environment.native_grab_transition)) return;
         if (environment.deferred_grabs) {
             for (const auto& request : pending_.slots()) if (request.action == InputAction::grab) {
                 if (now - request.recognized_at > 180) break;
@@ -1326,7 +1336,7 @@ private:
     std::uint64_t crouch_sequence_{};
     bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
-    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{};
+    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{}, native_grab_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
