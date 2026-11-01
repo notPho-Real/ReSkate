@@ -3304,3 +3304,66 @@ HUD/balance/combo, Ollie/early-flip acceptance remain incomplete. In particular,
 Smith's transient physical-contact loss may cancel its conservative executor
 and needs production testing. No new DLL/CI build, installation, merge or
 release was performed; the user's full-feature build gate remains closed.
+
+### Smith observation boundary and native Tipslide re-admission
+
+An offline re-analysis qualifies the contact-loss wording above. At
+4366.606578ms the Smith receipt's outer `allowed` read is0, but its later
+`admission_sample` has `stable_reads=true`, physical contact1, the same403
+actor and original segment, and actual26. The context orientation differs
+between those reads, so the enclosing row is not an atomic native update.
+This does **not** erase the observed0 or establish uninterrupted contact. It
+also does not establish that a completed physics step lost contact. The
+production reader still rejects a missing contact sample; no grace interval,
+contact substitution or cancellation relaxation has been introduced.
+
+Static tracing separates scratch computation from publication. The original
+0x47ed610 routine clears destination+992 at0x47ed636 and sets it at0x47edc55
+only after a physical candidate succeeds. All three direct callers at
+0x47ef1b3,0x47ef865,0x47ef9f6 pass stack scratch at rsp+736 as destination,
+not context+3024. Therefore that clear/set pair is not evidence of a visible
+per-frame clear of context+4016. The independently traced publication at
+0x4801e72 passes updater+96 to0x47e8120, which copies source+992 into
+context+4016 at0x47e839c..83a3. Its copy routine does not first clear that
+byte. Further measurement must distinguish a completed updater result from
+interleaved observation before changing production cancellation policy.
+
+The same offline pass identifies the specific obstacle to repeating a change
+after a named slide. Retained positive receipts contain the following stable,
+same-segment, physically contacting native402 destination samples:113
+Tailslide22,104 Noseslide21,82 Nosebluntslide30 and89 Bluntslide31. **All388**
+have actor+766=0 and published admission+419=0. They cannot authorize another
+native406 merely because the preceding named transition completed.
+
+In particular, Tailslide's measured neutral withdrawal retains raw requested
+heading -1.57079637 and pitch -.34906590 radians, rather than requesting a
+straight, flat board. Original heading asset18531/RES7410 explains this:
+its inactive-input branch at PCs0298..039c selects +pi/2 or -pi/2 from a
+native vector-dot sign. Active input instead evaluates the heading curve and
+adds BaseHeading atPC0274. The original schema's Tipslide heading curve has
+knots(0,0),(180,180); its heading-to-pitch curve has(0,36.0066),(90,20).
+Those are schema defaults, not a live tuning readback or a substitute for
+the complete curve interpolation.
+
+The402 and404 vtable+248 predicates both resolve to0x481da30, which invokes
+0x481db80 with both direction enables true. That predicate tests distance
+from the corresponding +pi/2 or -pi/2 heading against
+asin(config+216)+35degrees. The common orientation helper admits a change
+only after this predicate becomes false and the existing elapsed-time guard
+passes. Separately, selector0x48140e0's402/404 branch at0x48141d3 selects403
+outside its lateral heading band; it does not directly select401. Therefore
+copying the5-0 neutral-to50-50 recipe to a slide would be an unsupported
+implementation. The next bounded repeated-change probe needs actual active
+heading movement outside the native lateral band, independently observed
+admission, original402→403 completion and a measured named destination on
+the same segment. Returning to50-50 would require another verified native
+leg. No destination identity or named recipe is inferred from selection alone.
+
+`analyze_grind_readmission.py` in this directory reproduces the contact-read
+disagreement and all388 closed-admission samples from five SHA-256-pinned
+receipts. It is strictly offline and accepts only the local receipt root;
+it has no process, controller or console operations. Existing production and
+test results remain at88c59dd; no new gameplay check is claimed. No hardware
+window was requested or used, and no DLL/CI build, install, merge or release
+was performed in this continuation. Broader execution and live acceptance
+remain open.
