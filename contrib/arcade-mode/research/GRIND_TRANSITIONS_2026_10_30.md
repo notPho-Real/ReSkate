@@ -2266,3 +2266,51 @@ priority hardware, so Grind explicitly released any tentative window and
 issued no hardware, console or telemetry operation. Latest installed/world
 pins above are retained evidence, not fresh observations. The three production
 recipes and the DLL/CI build hold remain unchanged.
+
+### Existing receipt establishes a narrow native re-admission window
+
+Re-analysis of the immutable 5-0 receipt above found that it already contains
+the published admission byte: contact[19] is output+419. After the delivered
+neutral event, eleven samples retained403/fine24, physical contact and the
+same six-metre segment while output+419 was1. The first was45.980ms after
+neutral, the last161.644ms. Requested pitch had returned to0, while actual
+pitch remained approximately-0.397; requested heading was-0.30582 radians.
+Both native physics and cached step were0.0333333313. This is evidence of
+original403 re-admission after neutral in this specific 5-0 context. It is
+not evidence of another executed transition: the scoped gate had ended with
+`native_transition_end`, and no second406 occurred.
+
+The signed-tail Salad25 receipt provides a useful counterexample. Its final
+contact sample100.273ms after neutral had requested pitch0 and requested
+heading+0.388114, but output+419 remained0; there were no post-neutral admitted
+contact samples. Thus neutral cannot be generalized to re-admission for every
+403 grind. These headings are consistent with the previously traced20-degree
+boundary; the samples alone do not establish which predicate branch ran.
+
+The hash-checking offline re-analysis is saved in ignored
+`build/grind-investigation/summarize_repeated_admission.py`, with compact
+results in `repeated-admission-summary.json`. It reads existing receipts only.
+The next hardware test can therefore target a bounded second native execution
+leg after the measured5-0, rather than spending a separate trial rediscovering
+the already recorded admission window. Require independently observed first
+completion and fine24/contact/segment before neutral and second admission;
+require a second original406 completion and actual401/fine20 with retained
+contact to qualify the return. A high admission byte remains insufficient.
+
+Tracing the admission call also found a gap in the prepared observer:
+actor+72 is the smoothed output, not the request examined by virtual+248.
+At0x482549f..0x4825525, the common update reads GrindInputs at context+5248,
+with heading+24, pitch+60 and roll+52, wraps heading, and passes those values
+to0x4815790. That helper passes the unsmoothed request to virtual+248, before
+the caller writes the smoothed result to actor+72 at0x4825537. The update is
+conditional on context+5084 bit30, so merely reading inputs does not prove
+this branch executed in the sampled frame.
+
+The read-only observer now brackets that input pointer and the three raw
+request fields separately, records the update flag, and rejects invalid
+selector/page/output/input pointers before dereferencing them. Its new SHA-256
+is0f2395abcb4d44c909a83cd505d22b30c23d1e98774ef7ca3c59311349253a8b;
+48 inert cases pass. It remains unstaged and unrun on hardware. Manual's
+current task is active in its diagnostic capture work and has not handed back
+the Deck; Grind issued no hardware calls. No production recipe, new DLL or
+CI run was added, and the requested feature milestone is still incomplete.
