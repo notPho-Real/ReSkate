@@ -449,6 +449,137 @@ int main() {
         }
         check(!p.change.active() && !p.change.sample(p.now).owns,"lateral cancellation withdraws control on ownership/geometry/exit/timeout or wrong destination");
     }
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        check(p.change.admission().ready && p.change.admission().excluded_variant==
+            grind_change_variant(GrindChangeTarget::bluntslide),"actual Bluntslide excludes unchanged Bluntslide");
+        p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_b);
+        check(p.arms==1 && p.change.active() && p.control==GrindAdmissionControl::slide_tail_return &&
+            p.dispatched.grind_target()==GrindChangeTarget::grind_5_0 && p.dispatched.first_input_at==1200 &&
+            p.dispatched.last_input_at==1230,"ordered X then B admits measured402 to5-0 with original timestamps");
+        for(unsigned i=0;i<=1490*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=810)p.contact.identity=24;
+            p.step(1230+elapsed,elapsed<250?402:elapsed<780?406:403);
+            p.poll(test_b);p.poll(test_b);
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && pad.x==(elapsed<200 || elapsed>=800?0:32767) &&
+                pad.y==(elapsed<200?-32767:elapsed<800?-8192:0),
+                "402 return preserves Down,600ms sweep and neutral independently of poll count");
+            check(p.arms==1,"held B cannot replay a return lease");
+            if(elapsed>=810) {
+                if(!p.change.evidence().completed) {
+                    p.change.verify(p.now,{true,403,402,1,{}},p.contact,p.animation);
+                    check(!p.change.evidence().completed,"previous Bluntslide completion is not402 return completion");
+                    auto wrong=p.contact;wrong.segment_identity[0]++;
+                    p.change.verify(p.now,{true,402,403,1,{}},wrong,p.animation);
+                    check(!p.change.evidence().physics_changed,"402 return requires independently retained segment");
+                    auto old=p.animation;old.grind_type=31;
+                    p.change.verify(p.now,{true,402,403,1,{}},p.contact,old);
+                    check(p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
+                        "5-0 physics alone cannot acknowledge unchanged animation");
+                }
+                p.change.verify(p.now,{true,402,403,1,{}},p.contact,p.animation);
+                check(p.change.evidence().animation_changed && p.change.active(),
+                    "early native acknowledgment cannot skip bounded neutral withdrawal");
+            }
+        }
+        p.step(2730,403);p.poll(test_b);
+        check(!p.change.active() && !p.change.sample(p.now).owns,"402 return expires without synthetic control leakage");
+        p.step(2740,403);p.poll(test_b);p.step(2840,403);p.poll(test_b);
+        check(p.arms==1 && p.change.admission().ready,"actual returned5-0 establishes for another physical pair");
+        p.step(2900,403);p.poll(test_y);p.step(2910,403);p.poll();p.step(2930,403);p.poll(test_y);
+        check(p.arms==2 && p.control==GrindAdmissionControl::ordinary &&
+            p.dispatched.grind_target()==GrindChangeTarget::grind_50_50,
+            "new Y then Y after402 return enters the existing native5-0 to50-50 executor");
+    }
+    for(bool simultaneous:{false,true}) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        if(simultaneous) {p.step(1200,402);p.poll(classic_x|test_b);}
+        else {p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);}
+        check(p.arms==0 && !p.change.active(),
+            "simultaneous BX remains unchanged Bluntslide and402 neutral is not an unqualified50-50 alias");
+    }
+    for(unsigned fault=0;fault<7;++fault) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        if(fault==0)p.contact.end[2]=-6;
+        if(fault==1)p.contact.identity=21;
+        if(fault==2)p.contact.identity=22;
+        if(fault==3)p.contact.identity=30;
+        if(fault==4)p.contact.geometry=2;
+        if(fault==5)p.contact.begin[1]=1;
+        p.step(1000,fault==6?404:402);p.poll();p.step(1100,fault==6?404:402);p.poll();
+        check(!p.change.admission().ready,"only measured402/31 horizontal12m source admits slide return");
+    }
+    for(unsigned fault=0;fault<8;++fault) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();p.step(1200,402);p.poll(classic_x);
+        p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_b);
+        check(p.change.active(),"negative402 return case armed");
+        p.step(1300,402);
+        if(fault==0)p.contact.actor++;
+        if(fault==1)p.contact.segment_identity[0]++;
+        if(fault==2)p.contact.valid=false;
+        if(fault==3) {p.owner.entity++;p.step(1300,402);}
+        if(fault==4)p.step(1300,701);
+        if(fault==5)p.now+=151;
+        p.poll(fault==6?classic_a:0,fault!=7);
+        check(!p.change.active() && !p.change.sample(p.now).owns,
+            "slide return cancels on actor,segment,contact,owner,exit,stale,A or OFF loss");
+    }
+    for(unsigned fault=0;fault<24;++fault) {
+        std::array<float,3> raw{.19176197f,-.3494857f,0};
+        unsigned reads{},pointers{},validations{},active_reads{},published_reads{};
+        if(fault==1)raw[0]=0;
+        if(fault==2)raw[0]=-raw[0];
+        if(fault==3)raw[0]=35*std::numbers::pi_v<float>/180;
+        if(fault==4)raw[1]=-.5f;
+        if(fault==5)raw[1]=-.1745329201f;
+        if(fault==6)raw[2]=.001f;
+        if(fault==7)raw[0]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==8)raw[1]=.4f;
+        if(fault==23)raw[0]+=2*std::numbers::pi_v<float>;
+        const auto read=[&](std::uintptr_t address,auto& value) {
+            using T=std::remove_reference_t<decltype(value)>;
+            if constexpr(std::is_same_v<T,std::uintptr_t>) {
+                if(address!=100+5248)return false;
+                ++pointers;value=(fault==12?0u:0x20000u)+(fault==13 && pointers>1?8u:0u);
+                return fault!=14;
+            } else if constexpr(std::is_same_v<T,std::uint8_t>) {
+                value=1;
+                if(address==0x30000+766) {++active_reads;if(fault==15 || (fault==17 && active_reads>1))value=0;}
+                else if(address==0x40000+419) {++published_reads;if(fault==16 || (fault==18 && published_reads>1))value=0;}
+                else return false;
+                return fault!=19;
+            } else {
+                ++reads;
+                if(address==0x20000+24)value=raw[0];
+                else if(address==0x20000+60)value=raw[1];
+                else if(address==0x20000+52)value=raw[2];
+                else return false;
+                if(fault==10 && reads>3)value+=.01f;
+                return fault!=11;
+            }
+        };
+        const bool admitted=grind_control_admitted(GrindAdmissionControl::slide_tail_return,100,
+            fault==9?199:200,read,[&]{return ++validations==1 || fault!=20;},
+            fault==21?0:0x30000,fault==22?0:0x40000);
+        check(admitted==(fault==0 || fault==23),
+            "slide lease requires actual bounded active controls, original native admission and stable owner reads");
+    }
+    for(unsigned state:{401u,402u,403u,404u})for(unsigned identity:{20u,21u,22u,23u,24u,30u,31u,32u}) {
+        check(grind_admission_source(GrindAdmissionControl::slide_tail_return,state,identity)==(state==402 && identity==31),
+            "native arm source policy does not generalize slide return to unmeasured identities");
+        check(grind_admission_source(GrindAdmissionControl::ordinary,state,identity),"ordinary arm source policy unchanged");
+        for(auto policy:{GrindAdmissionControl::lateral_tail,GrindAdmissionControl::lateral_tail_reverse,
+                         GrindAdmissionControl::lateral_nose,GrindAdmissionControl::lateral_nose_reverse}) {
+            const bool nose=policy==GrindAdmissionControl::lateral_nose || policy==GrindAdmissionControl::lateral_nose_reverse;
+            check(grind_admission_source(policy,state,identity)==(state==403 && identity==(nose?23u:24u)),
+                "prior lateral arm source scope remains unchanged");
+        }
+    }
     // Exercise the same native request guard used by the production feature
     // override. Neutral wait must never select an unintended 50-50 return.
     for(unsigned fault=0;fault<20;++fault)for(auto policy:{GrindAdmissionControl::lateral_tail,GrindAdmissionControl::lateral_nose,GrindAdmissionControl::lateral_nose_reverse,GrindAdmissionControl::lateral_tail_reverse}) {
@@ -476,6 +607,8 @@ int main() {
                 if(fault==13 && pointer_reads>1)value+=8;
                 if(fault==14)value+=1;
                 return fault!=15;
+            } else if constexpr(std::is_same_v<std::remove_reference_t<decltype(value)>,std::uint8_t>) {
+                check(false,"existing lateral admission does not read slide admission bytes");return false;
             } else {
                 ++reads;unsigned index{};
                 if(address==0x20000+24)index=0;
@@ -614,11 +747,11 @@ int main() {
         p.step(1230,fault==4?401:403);p.poll(classic_x);
         check(!p.change.active() && p.arms==0,"Smith requires neutral native controls, feature-off and the qualified source geometry");
     }
-    for(unsigned fault=0;fault<9;++fault) {
+    for(unsigned state:{402u,403u})for(unsigned fault=0;fault<9;++fault) {
         std::array<std::uint8_t,0x15000> bytes{};
         const std::uintptr_t base=0x140000000,context=0x10008,flags=0x13000,inputs=0x14000;
         const auto put=[&](std::uintptr_t p,auto value){std::memcpy(bytes.data()+p,&value,sizeof(value));};
-        put(context+5140,std::uint32_t{403});put(context+5280,flags);put(flags,base+0x6123098);
+        put(context+5140,state);put(context+5280,flags);put(flags,base+0x6123098);
         put(context+5248,inputs);put(inputs+24,-.3117f);put(inputs+60,0.f);put(inputs+52,0.f);
         if(fault==1)put(flags+26,std::uint8_t{1});
         if(fault==2)put(inputs+60,.4f);
@@ -631,9 +764,16 @@ int main() {
             if(fault==7 && p==flags+26)return false;
             if(p+sizeof(value)>bytes.size())return false;
             std::memcpy(&value,bytes.data()+p,sizeof(value));return true;
-        },[&]{return ++valid_calls<2 || fault!=8;});
+        },[&]{return ++valid_calls<2 || fault!=8;},state);
         check(control.valid==(fault==0 || fault==2) && control.neutral==(fault==0),
             "native control reader distinguishes neutral from held input and rejects missing, raced, invalid or replaced state");
+        if(fault==0) {
+            const auto legacy=read_grind_control(base,context,[&](auto p,auto& value) {
+                if(p+sizeof(value)>bytes.size())return false;
+                std::memcpy(&value,bytes.data()+p,sizeof(value));return true;
+            },[]{return true;});
+            check(legacy.valid==(state==403),"existing default control reader remains403-only");
+        }
     }
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
         [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),

@@ -17,6 +17,7 @@ namespace dingosdk::arcade_mode {
 // Smith uses original403 control motion on the same actor, without a406 lease.
 // The measured slide/Smith routes may begin in401/20: independently verify
 // original403 preparation before admitting the lateral lease or Smith controls.
+// Measured active402/31 controls also return through406 to403/24 (5-0).
 // Other source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -50,6 +51,7 @@ public:
         if(active_) {
             if(now<leg_started_at_ || now-leg_started_at_>=duration_ms_ ||
                 (smith_ && (!controls.valid || frame.state!=403 || contact.actor!=source_.actor)) ||
+                (slide_return_ && frame.state==402 && contact.actor!=source_.actor) ||
                 (frame.state!=source_.state && frame.state!=406 && frame.state!=target_state_) ||
                 (frame.state!=406 && (!contact.valid || contact.state!=frame.state || !same_segment(contact)))) cancel();
             return;
@@ -67,12 +69,14 @@ public:
         if(frame.sampled_at<stable_at_ || frame.sampled_at-stable_at_<80)return;
         admission_.phase=InputRailPhase::established;
         admission_.generation=generation_;admission_.gameframe=frame.physics_step;
-        admission_.excluded_variant=grind_change_variant(source_.state==403?
+        admission_.excluded_variant=grind_change_variant(source_.state==402?GrindChangeTarget::bluntslide:source_.state==403?
             (source_.identity==23?GrindChangeTarget::nosegrind:GrindChangeTarget::grind_5_0):GrindChangeTarget::grind_50_50);
         admission_.fresh=admission_.ready=admission_.geometry_known=true;
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
+        const bool slide_return=source_.state==402 && source_.identity==31 &&
+            request.grind_target()==GrindChangeTarget::grind_5_0;
         const bool returning=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool smith=source_.state==403 && source_.identity==24 &&
@@ -96,7 +100,7 @@ public:
             (request.grind_target()==GrindChangeTarget::noseslide || request.grind_target()==GrindChangeTarget::nosebluntslide);
         const bool preparing=prepare_tail || prepare_nose;
         if(request.action!=InputAction::rail_change ||
-            (!returning && !sweep && !lateral && !smith && !preparing) ||
+            (!returning && !sweep && !lateral && !smith && !preparing && !slide_return) ||
             (preparing && !geometry(source_,144.)))
             return InputDisposition::unsupported;
         const std::uint64_t duration=smith?2200u:1500u;
@@ -112,7 +116,8 @@ public:
         // do not reuse an active transition lease or a held prior control.
         if(smith && (!controls_.valid || !controls_.neutral))return InputDisposition::cancelled;
         const auto next=serial_+1;
-        if(!smith && !arm(next,now+1500,lateral_tail_reverse?GrindAdmissionControl::lateral_tail_reverse:
+        if(!smith && !arm(next,now+1500,slide_return?GrindAdmissionControl::slide_tail_return:
+            lateral_tail_reverse?GrindAdmissionControl::lateral_tail_reverse:
             lateral_nose_reverse?GrindAdmissionControl::lateral_nose_reverse:
             lateral_nose?GrindAdmissionControl::lateral_nose:
             lateral_tail?GrindAdmissionControl::lateral_tail:GrindAdmissionControl::ordinary))
@@ -127,8 +132,9 @@ public:
         held_y_=(lateral_nose || lateral_nose_reverse)?8192:(lateral_tail || lateral_tail_reverse)?-8192:returning?0:tail?-32767:32767;
         target_identity_=smith?26u:lateral_tail_reverse?22u:lateral_nose_reverse?30u:lateral_nose?21u:lateral_tail?31u:returning?20u:tail?24u:crooked?32u:23u;
         target_state_=lateral?402u:returning?401u:403u;
-        hold_ms_=smith?2200u:(returning || lateral)?1500u:1000u;
+        hold_ms_=smith?2200u:(returning || lateral || slide_return)?1500u:1000u;
         duration_ms_=duration;smith_=smith;lateral_=lateral;tail_release_=lateral_tail_reverse;
+        slide_return_=slide_return;
         serial_=next;active_=true;stable_=false;
         leg_started_at_=now;preparing_=preparing;preparation_ready_=false;
         final_target_=request.grind_target();
@@ -180,6 +186,15 @@ public:
         if(!active_ || !fresh(now,frame_) || now<leg_started_at_ || now-leg_started_at_>=duration_ms_)return {};
         if(preparation_ready_)return {true,0,0};
         if(now-leg_started_at_>=hold_ms_)return {};
+        if(slide_return_) {
+            const auto elapsed=now-leg_started_at_;
+            // The native402 heading curve needs active Down before the sweep.
+            // A600ms diagonal pulse then owned neutral completed402→403/24.
+            // Do not stop the pulse early on physics/animation publication.
+            if(elapsed<200)return {true,0,-32767};
+            if(elapsed<800)return {true,32767,-8192};
+            return {true,0,0};
+        }
         if(smith_) {
             const auto elapsed=now-leg_started_at_;
             // Native Down captures the reference before the heading sweep.
@@ -238,7 +253,7 @@ public:
             animation.grind_type_valid && animation.grind_type==target_identity_) evidence_.animation_changed=true;
         // Preserve the measured held input through its bounded duration even
         // after identity publication; do not cut the control trajectory short.
-        if(evidence_.animation_changed && now-leg_started_at_>=(smith_?2200u:tail_release_?1500u:1000u))cancel();
+        if(evidence_.animation_changed && now-leg_started_at_>=(smith_?2200u:(tail_release_ || slide_return_)?1500u:1000u))cancel();
     }
 private:
     static bool fresh(std::uint64_t now,const NativeInputFrame& f) noexcept {
@@ -250,7 +265,8 @@ private:
         // that enough forward travel remains. Native geometry still decides.
         const bool sweep=c.state==401 && c.identity==20;
         const bool from_single_truck=c.state==403 && (c.identity==24 || c.identity==23);
-        return (sweep || from_single_truck) && geometry(c,from_single_truck?144.:36.);
+        const bool from_blunt=c.state==402 && c.identity==31;
+        return (sweep || from_single_truck || from_blunt) && geometry(c,sweep?36.:144.);
     }
     static bool geometry(const NativeGrindContact& c,double minimum) noexcept {
         if(!c.valid || c.geometry!=1 || c.begin[1]!=c.end[1])return false;
@@ -277,6 +293,6 @@ private:
     std::uint32_t target_identity_{},target_state_{},hold_ms_{};
     std::uint64_t serial_{},generation_{},stable_at_{},duration_ms_{1500},leg_started_at_{},preparation_ready_at_{};
     GrindChangeTarget final_target_{};
-    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{},preparing_{},preparation_ready_{};
+    bool active_{},stable_{},source_animation_known_{},lateral_{},tail_release_{},smith_{},preparing_{},preparation_ready_{},slide_return_{};
 };
 }

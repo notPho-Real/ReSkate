@@ -1035,7 +1035,14 @@ private:
             Pair{15,15,44}, Pair{15,14,45}, Pair{15,13,46}};
         constexpr std::array inverted{Pair{14,14,50}, Pair{15,15,51}, Pair{13,13,52}, Pair{13,14,53}, Pair{14,13,54}, Pair{15,13,55}};
         const auto query = [&](Pair pair, std::uint64_t window, InputAction action) noexcept {
-            if (rail.excluded_variant == pair.target && !(action == InputAction::rail_change && !rail.frontside && pair.target == 3)) return false;
+            const bool excluded=rail.excluded_variant == pair.target &&
+                !(action == InputAction::rail_change && !rail.frontside && pair.target == 3);
+            // In an existing Bluntslide, simultaneous BX still names that
+            // unchanged grind. Retire the tie instead of falling through to
+            // the ordered X→B5-0 recipe newly available from native402/31.
+            const bool retire_blunt_tie=excluded && action==InputAction::rail_change &&
+                pair.target==grind_change_variant(Target::bluntslide);
+            if(excluded && !retire_blunt_tie)return false;
             const std::array tokens{InputToken{InputSource::buttons, pair.first, InputEdge::press}, InputToken{InputSource::buttons, pair.second, InputEdge::press}};
             auto match = events_.history().match({tokens, window, ~manual_owner}, now);
             // Simultaneous physical edges have one timestamp; their journal
@@ -1045,7 +1052,9 @@ private:
                 const std::array reverse{tokens[1],tokens[0]};
                 match=events_.history().match({reverse,window,~manual_owner,true,true},now);
             }
-            if (!match || !events_.history().consume(match, branch_owner, ~manual_owner)) return false;
+            if (!match || (retire_blunt_tie && match.first_at!=match.last_at) ||
+                !events_.history().consume(match, branch_owner, ~manual_owner)) return false;
+            if(retire_blunt_tie)return true;
             enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };
         if (rail.phase == InputRailPhase::established) {

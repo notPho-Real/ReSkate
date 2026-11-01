@@ -3543,3 +3543,97 @@ is144.71788024902344,1.028671145439148,-63.59046173095703; rail position
 144.71788024902344,-4.76837158203125e-06,-55.59046173095703, identity rotation,
 scale1. No Grind job or reservation remains. These are historical pins and must
 be revalidated with both peers before another trial.
+
+### Original402 return completes to5-0; implement the narrow repeated change
+
+Positive receipt `grind-native-slide-third-c048914-v2/results/two-leg-lateral.json.gz`
+has SHA-256`4dd8538d0c8b4feab2a56a16f3ce1c18f712d739d32e0ffb458cc0dd75bd1c2d`;
+immutable runner SHA is
+`1cb5a921fa725e55082ebef0a92498db261cd270d62bfad82ced7035490223d9`.
+Its614 independent samples have both clocks30Hz. Exactly three original406
+actors complete401→403,403→402,402→403, with actual native names
+50-50→5-0→Bluntslide→5-0 on the same measured12m segment. This is ArcadeOFF
+physics/control evidence, not production animation/HUD/balance/combo/Ollie acceptance.
+
+After two original completions and actual402/31 contact, third controls are
+Down200ms, native XInput RS(32767,-8192)600ms, then neutral; writer-relative times
+3605.187/3805.281/4405.393ms. The third lease remains disabled until actual raw
+GrindInputs show positive wrapped heading below35degrees, pitch between-.5 and
+-.1745329201, near-zero roll, and native actor+766/output+419 admission1.
+Original native admission, destination selection, initialization, lifetime and
+completion remain authoritative. No identity/animation/contact/target/completion
+field is assigned.
+
+Reader eligibility occurs3846.534879/3860.917245ms with raw heading
+0.19176197052001953,pitch-0.34948572516441345,roll0 and physical/published contact1.
+Third406 first appears3872.221ms. Original402→403 reaches phase1; cleanup records
+elapsed0.4999999701976776s. Physical403 appears4380.144ms with old name31, which
+is not accepted. Actual24 appears4405.680162ms through4627.771902ms:19 outer
+contact samples,18 stable admission brackets, all on segment`[4045859192871,0]`,
+endpoints x144.9501953125,y0.5007421970367432,z-44.1923828125/-56.1923828125.
+Stable destination actor4137964656; natural701 at4639.043ms. No fourth native
+leg is claimed. Outer contact0 at3334.823785ms during earlier preparation has a
+later stable contact1 bracket: preserve both sequential observations, without
+claiming uninterrupted completed-frame contact or a completed-frame loss.
+
+Production now admits ordered X→B from established402/31 on horizontal geometry1
+at least12m, using the measured controls and fresh1500ms lease. Both original
+admission bytes and raw controls are bracketed by existing owner/actor/contact
+validation. Initial arm additionally brackets the feature pointer/vtable/byte26
+and requires feature-off with valid402 raw controls. The existing control
+reader's default remains403-only; only this new arm requests402 explicitly.
+Ordinary and prior lateral source policies are unchanged. Original
+402→403 completion, independent same-segment24 and independently matching changed
+animation are required. Early acknowledgment cannot skip neutral withdrawal.
+Owner/actor/contact/segment loss, stale frames, incompatible state, A, OFF/menu
+or conflicting authored ownership cancels. No other402 identity is qualified.
+After actual5-0 re-establishes, a new Y→Y enters the existing native return to
+50-50. That further leg after this new return has not been measured live.
+
+A composed negative exposed a tie-priority dependency: excluding current
+Bluntslide made simultaneous BX skip its preferred entry and fall through to
+ordered X→B5-0. The recognizer now consumes only that excluded same-timestamp
+Bluntslide tie without enqueueing. Distinct timestamps, other exclusions,
+first-grind/early recognition and lip tables remain unchanged. Original physical
+timestamps and300ms window remain intact. No HUD/balance/combo, manual, flip,
+ground Ollie, push, revert, prewind or camera implementation changed.
+
+Strict C++20 ASan/UBSan composed tests pass23526 cases at30/60/120Hz, including
+native source/admission policies, stale completion, independent identity/animation,
+held/repeated polls, cancellation, tie priority and another fresh request after
+the return.651 lifetime and1362 rail-pop checks pass;1736 combo cases pass with
+the existing portable warning profile.7010 production HUD publication/pending/
+draw checks pass with the original ImGui sources linked. The contextual-air press-age assertion
+still fails on input_pattern_dispatch, as on baselinec9c0581f; never report full
+green checks. Windows/backend compilation remains deferred by the build gate.
+Integrated production acceptance, broader sources and arbitrary repeated changes
+remain incomplete.
+
+The preceding third-legv1 is a retained failure: receipt SHA
+`aca75b3a2372e48d7936d180ee3e08a4c1ff22043eff154aaaca80adad9212d0`,
+runner SHA`cb1c7b3c976c1e32b89d9c13f0ffa77316eb9c4e52185cecfab00714709b4bf6`.
+Its296 samples verify only two completions. Phase7's state guard rejected before
+third controls but omitted the offending selector value; adjacent reader/GDB
+samples show402/31. Its exact cause is unknown. V2 adds a bounded read-only
+diagnostic before the unchanged guard, with no ownership/state relaxation.
+Seven readiness samples all show402/31, physical/published contact1, feature-off.
+V1 partial evidence confirms pad neutralization, GDB exit0/restored feature and
+owned undo414→434.68 inert worker/lease cases pass. The new offline pinned
+`analyze_grind_slide_return.py` verifies both receipts without hardware access.
+
+Both peers confirmed the exclusive window and received clean handback. All trial
+and reset slots are consumed. Reset-slide-thirdv1 SHA
+`cb9b10832cb86149d73b4f6e0a48d8cd3a254a9a2b8e2bafcce8199127bae19b`
+used the original ground-checked reset410→414; v2 SHA
+`e7e5157b88dec519c60cf23f56932acc26b81d5427c5f55373f896e4fac40d80`
+reset434→438, receipt`results/1793558318035946000-status.json`. These are setup,
+not rail-exit evidence. Final five owned undos end BAM23/rev458, ArcadeON,
+menus/editorclosed, fixture configured/objectabsent, pad destroyed, GDB0/feature
+restored. Installed source remainsc048914/PID85401/launcher85410, DLL
+`7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28`.
+Native100 speed0.000064281, position144.82432556152344,1.0286675691604614,
+-41.084808349609375, heading356.55670166015625. Metadata start
+144.95022583007812,1.0286712646484375,-63.19279479980469; rail
+144.95022583007812,-4.887580871582031e-06,-55.19279479980469, identityrotation,
+scale1. No Grind job/reservation remains. Recoordinate and revalidate all pins
+before further input. No DLL/CI build, upload, install, merge or release.
