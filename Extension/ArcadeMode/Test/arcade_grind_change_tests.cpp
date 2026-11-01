@@ -50,34 +50,42 @@ struct Pipeline {
 };
 }
 int main() {
-    for(unsigned hz:{30u,60u,120u})for(bool together:{false,true}) {
+    for(unsigned hz:{30u,60u,120u})for(bool crooked:{false,true})for(bool together:{false,true}) {
+        if(crooked && together)continue; // B then B requires two physical edges.
+        const auto target=crooked?GrindChangeTarget::crooked:GrindChangeTarget::nosegrind;
+        const unsigned identity=crooked?32u:23u;
+        const std::uint16_t held=crooked?0x2000u:0xa000u;
         Pipeline p;p.establish();p.step(1200);
-        p.poll(together?0xa000:0x8000);
-        if(!together){p.step(1230);p.poll(0xa000);}
+        p.poll(crooked?0x2000:together?0xa000:0x8000);
+        if(crooked){p.step(1210);p.poll();}
+        if(!together){p.step(1230);p.poll(held);}
         const auto start=p.now;
-        check(p.arms==1 && p.change.active(),"production facade dispatches Y/B to native armer exactly once");
-        check(p.dispatched.grind_target()==GrindChangeTarget::nosegrind && p.dispatched.first_input_at==1200 &&
+        check(p.arms==1 && p.change.active(),"production facade dispatches qualified named binding exactly once");
+        check(p.dispatched.grind_target()==target && p.dispatched.first_input_at==1200 &&
             p.dispatched.last_input_at==start,"sequential and simultaneous recognition preserve original event times");
         check(p.last_deadline==start+1500,"native admission has a bounded lease");
-        check(!p.poll(0xa000).rail.held,"named ownership retires ordinary Y actor");
+        check(!p.poll(held).rail.held,"named ownership retires ordinary Y actor");
         for(unsigned i=0;i<1200*hz/1000;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
             p.step(start+elapsed,elapsed<150?401:elapsed<500?406:403);
-            if(elapsed>=500)p.contact.identity=23;
-            p.poll(0xa000);p.poll(0xa000);
+            if(elapsed>=500)p.contact.identity=identity;
+            p.poll(held);p.poll(held);
             auto pad=p.change.sample(p.now);
             check(p.arms==1,"held buttons and repeated polls never replay the actor");
             check(pad.owns==(elapsed<1000),"bounded right-stick ownership uses elapsed time at every cadence");
-            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:12000),"Up remains held across measured heading change");
+            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:crooked?24000:12000),"Up remains held across measured heading change");
             check(!p.change.evidence().physics_changed,"requested name never supplies native completion evidence");
         }
         NativeGrindCompletion done{true,401,403,1,{}};
         NativeGrindSnapshot snapshot{};snapshot.valid=snapshot.grind_type_valid=snapshot.physics_grind_type_valid=true;
-        snapshot.physics_state=403;snapshot.sampled_at=p.now;snapshot.grind_type=20;snapshot.physics_grind_type=23;
+        snapshot.physics_state=403;snapshot.sampled_at=p.now;snapshot.grind_type=20;snapshot.physics_grind_type=identity;
+        auto other=p.contact;other.identity=crooked?23u:32u;
+        p.change.verify(p.now,done,other,snapshot);
+        check(!p.change.evidence().physics_changed,"another qualified native name cannot satisfy the requested target");
         p.change.verify(p.now,done,p.contact,snapshot);
         check(p.change.evidence().completed && p.change.evidence().physics_changed && !p.change.evidence().animation_changed,
             "actual destination contact and native completion cannot stand in for animation change");
-        snapshot.grind_type=23;p.change.verify(p.now,done,p.contact,snapshot);
+        snapshot.grind_type=identity;p.change.verify(p.now,done,p.contact,snapshot);
         check(p.change.evidence().animation_changed && !p.change.active(),"independent matching animation retires completed bounded request");
     }
     for(unsigned fault=0;fault<4;++fault) {

@@ -1835,3 +1835,75 @@ named recipes and repeated changes remain unimplemented; the first qualified
 recipe still lacks animation/HUD/combo acceptance and the local Ollie/early
 flip candidate lacks live acceptance. No additional recipe, gameplay claim,
 DLL/CI build, upload, merge or release resulted from these setup attempts.
+
+### October 31 evening: second qualified native recipe, Crooked
+
+Manual subsequently released its separately installed c048914 candidate after
+returning to the custom skate3_megapark. Grab confirmed no pending hardware
+job. Grind freshly verified c0489142ef8f1380606688d02d5e3c8f833909b5,
+DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+the unchanged executable hash, PID75680/launcher75688 and all three DLL
+mapping rows against the installed inode. Status receipt:
+`grind-readiness-c048914-v1/results/1793497707806347000-status.json`.
+Fresh native status was504, speed0, bam generation8/revision8, fixture absent,
+at (166.776093,0.949989,-134.904388). This observation, rather than the old
+world's coordinates, admitted setup.
+
+The immutable runner `grind-native-megapark-c048914-v1/trial.py`, SHA-256
+`cda2154555ca30ea7d9deb500ca66b0cedca811d39604305a3079a5be3f5fca3`,
+retained the earlier160-second budget, exact native owner, shared lock,
+original placement/collision guards, scoped feature/lifetime interception,
+independent physics reader and owned-edit undo. Only installed/world pins
+changed from city v3. Eleven inert admission/transaction cases passed before
+external staging. Native mount/stop, fresh short-rail geometry and temporary
+long-rail replacement all succeeded. No installed DLL was changed.
+
+Receipt `grind-native-megapark-c048914-v1/results/alignment-sweep.json.gz`,
+SHA-256 `e9c74f826cd80449773333a40bfaa23f40fa0f9fe232b95422636afe2104971f`,
+contains499 native samples and no runner/observer/cleanup error. Relative to
+the observer start, native401/fine20/contact1 appeared at2055.03ms,
+406 at2219.00ms, 403 at2581.86ms, and **403/fine32/contact1 at2639.51ms**.
+Fine32 remained until native701 exit at3180.88ms. Both the original physics
+delta and local cached step were0.0333333313 (30Hz).
+
+The conditional input waiter independently found the established native
+six-metre segment before the first Up sample. The held RX24000 sweep arrived
+200.155ms later with Up retained; neutral followed at1000.082ms. The original
+actor completed source401 ->target403 at phase1, with requested heading
+0.437060118/pitch0.4, retarget heading0.631842375, actual final heading
+0.388042450/pitch0.415385008. Original cleanup observed active0. The feature
+observer ended at `native_transition_end`; it did not write named identity,
+animation, position or score. Source/destination contacts retained opaque
+segment[970662608935,0], identical endpoints
+(166.516602,0.49,-121.988281)/(166.516602,0.49,-127.988281), missing0,
+geometry1. The classifier accepted[1,0,0,0,0,1] and published32: **actual
+BS50-50 ->BSCrooked native physics**, consistent with the alignment predicate
+traced above. The uinput receipt alone remains explicitly UNVERIFIED; the
+separate native observations establish this narrower result.
+
+`arcade_grind_change.h` now dispatches the existing B->B binding through this
+measured recipe. It shares the already qualified401/fine20/geometry1/segment
+and owner gates with Y->B, retains Up, and selects24000 versus12000 for the
+200ms heading sweep. Verification requires the requested destination32 or23;
+another real native name cannot satisfy the request. Source animation must
+still be independently known20 before either target can acknowledge an
+animation change. All cancellation, native completion, HUD and scoring
+ownership remain as before. No speculative recipe was enabled.
+
+The composed test now covers both recipes at30/60/120Hz: released B then B,
+sequential/simultaneous Y+B, original edge timestamps, repeat suppression,
+bounded control and rejection of the other destination identity.3007 checks
+pass strict C++20 warnings and address/undefined-behavior sanitizers. These
+are offline checks, not native animation/HUD/combo acceptance. The two native
+recipes remain qualified only from source401/fine20; seven bindings and
+repeated named changes are not implemented. Live Ollie/early-flip acceptance
+and complete platform checks remain outstanding. No new DLL/CI build started.
+
+All own native fixture transactions were undone (generation8/revision20,
+fixture metadata configured but object absent), GDB detached with return0,
+controls neutralized/destroyed, editor/menu closed and ArcadeON with route
+withdrawn. Final native100, speed0.584957, position(135.266632,1.031418,-41.038578),
+heading337.878876. Hardware was explicitly released to both peers; Manual
+then reclaimed it for its priority tests. Grind has no pending hardware job.
+The final position differs from the trial lane: future work must revalidate
+owner/world/geometry and may not treat this as a stopped fixture approach.

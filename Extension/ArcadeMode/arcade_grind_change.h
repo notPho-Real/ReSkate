@@ -6,8 +6,9 @@
 #include "arcade_grind_observer.h"
 
 namespace dingosdk::arcade_mode {
-// Bounded input executor for the independently observed 401/20 ->406 ->403/23
-// held sweep. Other named bindings have no qualified control recipe yet.
+// Bounded input executor for independently observed 401/20 ->406 ->403
+// held sweeps ending in native23 (Nosegrind) or32 (Crooked). Other named
+// bindings have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
 class GrindChange {
@@ -56,7 +57,8 @@ public:
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
-        if(request.action!=InputAction::rail_change || request.grind_target()!=GrindChangeTarget::nosegrind)
+        if(request.action!=InputAction::rail_change ||
+            (request.grind_target()!=GrindChangeTarget::nosegrind && request.grind_target()!=GrindChangeTarget::crooked))
             return InputDisposition::unsupported;
         if(active_ || !admission_.ready || !fresh(now,frame_) || request.rail_generation!=generation_ ||
             request.generations!=admission_.generations || request.first_input_at>request.last_input_at ||
@@ -65,6 +67,10 @@ public:
             serial_==UINT64_MAX || now>UINT64_MAX-1500) return InputDisposition::cancelled;
         const auto next=serial_+1;
         if(!arm(next,now+1500))return InputDisposition::unsupported;
+        // Both measured recipes retain Up. The larger heading sweep crosses
+        // the native alignment predicate; the classifier supplies the name.
+        const bool crooked=request.grind_target()==GrindChangeTarget::crooked;
+        sweep_x_=crooked?24000:12000;target_identity_=crooked?32u:23u;
         serial_=next;active_=true;stable_=false;
         evidence_={serial_,request.first_input_at,request.last_input_at,now};
         evidence_.source_animation_known=source_animation_known_;
@@ -75,7 +81,7 @@ public:
         // Native XInput Y is opposite to evdev ABS_RY used in the control trial.
         // Keep Up held across the 200ms heading change; neutral between the two
         // samples loses the native captured-reference path.
-        return {true,static_cast<std::int16_t>(now-evidence_.started_at<200?0:12000),32767};
+        return {true,static_cast<std::int16_t>(now-evidence_.started_at<200?0:sweep_x_),32767};
     }
     void verify(std::uint64_t now,const NativeGrindCompletion& completion,
                 const NativeGrindContact& contact,const NativeGrindSnapshot& animation) noexcept {
@@ -83,15 +89,15 @@ public:
         evidence_.completed=evidence_.completed || (completion.valid && completion.source==401 &&
             completion.target==403 && completion.phase==1.f);
         const bool changed=evidence_.completed && frame_.state==403 && contact.valid && contact.state==403 &&
-            same_segment(contact) && contact.identity==23;
+            same_segment(contact) && contact.identity==target_identity_;
         evidence_.physics_changed=evidence_.physics_changed || changed;
         // This snapshot is supplied by the owner-bracketed native reader. A
         // lingering animation label alone cannot complete this request: the
         // matching source animation must also have been read before arming.
         if(changed && evidence_.source_animation_known && animation.valid && animation.physics_state==403 &&
             animation.sampled_at>=evidence_.started_at && animation.sampled_at<=now &&
-            now-animation.sampled_at<=150 && animation.physics_grind_type_valid && animation.physics_grind_type==23 &&
-            animation.grind_type_valid && animation.grind_type==23) evidence_.animation_changed=true;
+            now-animation.sampled_at<=150 && animation.physics_grind_type_valid && animation.physics_grind_type==target_identity_ &&
+            animation.grind_type_valid && animation.grind_type==target_identity_) evidence_.animation_changed=true;
         // Preserve the measured held input through its bounded duration even
         // after identity publication; do not cut the control trajectory short.
         if(evidence_.animation_changed && now-evidence_.started_at>=1000)cancel();
@@ -120,6 +126,8 @@ private:
     NativeGrindContact source_{};
     InputRailState admission_{};
     Evidence evidence_{};
+    std::int16_t sweep_x_{};
+    std::uint32_t target_identity_{};
     std::uint64_t serial_{},generation_{},stable_at_{};
     bool active_{},stable_{},source_animation_known_{};
 };
