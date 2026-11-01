@@ -1771,3 +1771,67 @@ Grind sent no input/console command and changed no telemetry, fixture or
 world state. The short read-only window was explicitly released. Prior
 Mega Park geometry, fixture history and controller route are not qualified
 for this restarted process. No new DLL build or gameplay acceptance occurred.
+
+### November 1 follow-up: fresh-world setup rejected before native sweep
+
+The next bounded trial retained the source-derived RX24000 hypothesis above;
+it did not enable another production recipe. After coordination with Manual
+and Grab, separately reviewed immutable runners dismissed Steam idle artwork
+with one released Shift key and closed the native Hub with one Escape. Fresh
+native status established bam generation5/revision5, no fixture, off-board504
+near (627.27,199.93,1062.48). This is a different physical lane from the prior
+Mega Park receipt despite the same map key. No stored fixture coordinates were
+reused. The installed source remained be22b1a and DLL98aa97e1..., gamePID73485.
+
+Three guarded setup attempts produced **zero native grind samples**:
+
+* `grind-native-city-be22b1a-v1/trial.py`, SHA-256
+  `5a448f15da3c01fdc333e26ebdf59f1f18bbac55d7b0f70fefefd195532e6b51`,
+  rejected the changed readiness position before controller input or edits.
+  Receipt `results/alignment-sweep.json.gz` SHA-256
+  `24cde6531ef94ef7e02a88786dc06726f04b5a2e18cc9aef063cb10ebb779197`.
+* v2, SHA-256
+  `4f2fbe6e0d4260b02e2374c020e2e890de6bf1aad12f3cdfc4a420527dbbcafe`,
+  pinned the fresh position and mounted through the existing native shoulder
+  chord. Riding100 at speed0.636792 failed the stopped-baseline gate before
+  placement. Receipt SHA-256
+  `e01746825bcdd20f668ace8e0ede56b52d663e10fccad3b1d1ed25616f1e0a8e`.
+* v3, SHA-256
+  `579b2024987548b015de6ef5e909627f4c809102e2bbb77dac4a0c37232a35d6`,
+  added bounded native braking with Arcade OFF only if needed for setup,
+  retained all placement/ownership guards, and passed11 inert setup/negative
+  cases. The skater had already stopped, so neither mounting nor braking ran.
+  Original `arcadefixture place` rejected the lane: "Fixture lane lacks a
+  continuous flat native collision surface." Receipt SHA-256
+  `6654cc35f95e7416ba84ac5f6364ec476036df7dc88cad7a003aba86ee060ce5`.
+
+All paths are under the external reskate-arcade-lab directory; v2/v3 receipts
+use the same relative results filename. Each wrapper completed, but its inner
+error records setup rejection, not a successful trial. No debugger, grind
+control sequence or rail transaction ran. Revision stayed5 throughout; fixture
+absence was verified, not restored by an undo of a newly placed rail. Editor
+was closed, temporary controller neutralized/closed, Arcade restored ON and
+the route withdrawn. Final native state100, speed0.0018054, position
+(626.163391,199.972519,1066.713867), heading342.811371, bam generation5/revision5,
+menu closed and fixture absent. The lock was released and hardware explicitly
+handed to Grab for its separately authorized restart/deployment. Manual was
+informed. This chat installed nothing and has no pending hardware job.
+
+Source inspection locates the immediate blocker precisely:
+`arcade_grind_fixture.cpp::flat_start` requires a central native ground ray
+and twelve lane rays at X offsets{-1.5,0,1.5}, Z offsets{-1,3,8,13}, within
+0.08m height agreement. Native placement rejects before `edit_local_park`
+when these fail. Another freshly verified flat lane is needed before testing
+the alignment hypothesis; bypassing this guard would invalidate the trial.
+`trainer ground` is an existing native fixture-navigation option, but its
+`land_at` fallback can initially use hint height while collision streams in;
+command success alone would not prove safe/stopped ground or a flat lane.
+Any future use must await native riding/ground evidence and then pass the
+unchanged fixture guard. It is not an Ollie or grind execution mechanism.
+
+After Grab's window, revalidate installed identity, process, world, native
+owner and current geometry before proposing the next bounded runner. Eight
+named recipes and repeated changes remain unimplemented; the first qualified
+recipe still lacks animation/HUD/combo acceptance and the local Ollie/early
+flip candidate lacks live acceptance. No additional recipe, gameplay claim,
+DLL/CI build, upload, merge or release resulted from these setup attempts.
