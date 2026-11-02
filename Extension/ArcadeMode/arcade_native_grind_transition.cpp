@@ -143,11 +143,14 @@ bool arm(const NoBailSkater& owner,const NativeGrindContact& expected,std::uint6
     std::uint64_t now,std::uint64_t deadline,GrindAdmissionControl control) noexcept {
     const auto current_time=GetTickCount64();
     if (!available() || current_time>tick_expires.load() || !serial || now>current_time || current_time-now>150 ||
-        deadline<=current_time || deadline-now>1500 || owner.base!=image) return false;
+        deadline<=current_time || deadline-now>grind_admission_duration(control) || owner.base!=image) return false;
     if(!grind_admission_source(control,expected.state,expected.identity))return false;
     if(control==GrindAdmissionControl::slide_tail_return &&
         !read_grind_control(owner.base,owner.context,[](auto p,auto& value){return read(p,value);},
             [&]{return contact(owner)==expected;},402).valid)return false;
+    if(control==GrindAdmissionControl::crooked_return &&
+        !read_grind_control(owner.base,owner.context,[](auto p,auto& value){return read(p,value);},
+            [&]{return contact(owner)==expected;}).neutral)return false;
     const Lease candidate{owner,serial,deadline,false,expected,control,now};
     if (!expected.valid || contact(owner)!=expected) return false;
     std::lock_guard lock(mutex);
@@ -166,9 +169,9 @@ bool setting_override(const void* reference,std::uintptr_t expression) noexcept 
     // its exact actor and selector remain authoritative during that interval.
     const auto now=GetTickCount64();
     const bool admitted=(state>=400 && state<=405 && !l.entered && now>=l.started_at &&
-        contact(l.owner)==l.contact && (l.control==GrindAdmissionControl::ordinary ||
+        grind_admission_contact(l.control,l.contact,contact(l.owner)) && (l.control==GrindAdmissionControl::ordinary ||
             grind_control_admitted(l.control,l.owner.context,now-l.started_at,
-                [](auto p,auto& value){return read(p,value);},[&]{return valid(l) && contact(l.owner)==l.contact;},
+                [](auto p,auto& value){return read(p,value);},[&]{return valid(l) && grind_admission_contact(l.control,l.contact,contact(l.owner));},
                 l.contact.actor,l.contact.output))) ||
         (state==406 && active_actor(l));
     return admitted && valid(l);

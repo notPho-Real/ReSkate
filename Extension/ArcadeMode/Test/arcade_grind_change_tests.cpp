@@ -59,6 +59,113 @@ struct Pipeline {
 };
 }
 int main() {
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.identity=32;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        check(p.change.admission().excluded_variant==grind_change_variant(GrindChangeTarget::crooked),
+            "established Crooked excludes its actual name");
+        p.step(1200,403);p.poll(test_y);p.step(1210,403);p.poll();p.step(1230,403);p.poll(test_y);
+        check(p.arms==1 && p.change.active() && p.last_deadline==3230 &&
+            p.control==GrindAdmissionControl::crooked_return,"physical YY starts bounded Crooked return policy");
+        for(unsigned i=0;i<=2100*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(1230+elapsed,elapsed<760?403:elapsed<1660?406:401);
+            if(elapsed>=690)p.contact.identity=elapsed<1695?23u:20u;
+            if(elapsed>=1660)p.contact.actor=32;
+            p.poll(test_y);p.poll(test_y);
+            p.animation.grind_type=elapsed>=1800?20u:32u;
+            p.change.verify(p.now,{elapsed>=1660,403,401,1,{}},p.contact,p.animation);
+            const auto& e=p.change.evidence();
+            check(p.arms==1 && e.first_input_at==1200 && e.last_input_at==1230,
+                "held YY cannot replay or replace physical request timestamps");
+            if(elapsed<1660)check(!e.completed && !e.physics_changed && !e.animation_changed,
+                "natural intermediate Nosegrind cannot acknowledge requested50-50");
+            if(elapsed>=1660 && elapsed<1695)check(e.completed && !e.physics_changed,
+                "original completion with old23 is not destination acceptance");
+            if(elapsed>=1695 && elapsed<1800)check(e.physics_changed && !e.animation_changed,
+                "actual20 needs independently changed matching animation");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<2000),"Crooked return owns a bounded2000ms trajectory");
+            if(pad.owns)check(pad.x==(elapsed>=200 && elapsed<500?-12000:0) &&
+                pad.y==(elapsed<500?32767:0),"reference Up, opposite sweep and complete neutral withdrawal");
+        }
+        check(p.change.evidence().completed && p.change.evidence().physics_changed &&
+            p.change.evidence().animation_changed,"Crooked return requires all independent final evidence");
+    }
+    for(unsigned fault=0;fault<12;++fault) {
+        Pipeline p;p.contact.identity=32;p.contact.end[2]=-12;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(test_y);p.step(1210,403);p.poll();p.step(1230,403);
+        if(fault==0)p.controls.valid=false;
+        if(fault==1)p.controls.neutral=false;
+        p.poll(test_y);
+        if(fault<2){check(p.arms==0 && !p.change.active(),"fresh feature-off neutral controls required at Crooked entry");continue;}
+        check(p.change.active(),"Crooked cancellation case admitted");
+        p.step(1330,403);
+        if(fault==2)p.contact.actor++;
+        if(fault==3)p.contact.segment_identity[0]++;
+        if(fault==4)p.contact.valid=false;
+        if(fault==5)p.contact.identity=24;
+        if(fault==6)p.contact.output++;
+        if(fault==7)p.contact.end[2]-=1;
+        if(fault==8)p.contact.geometry=2;
+        if(fault==9)p.frame.owner_generation++;
+        p.poll(fault==10?classic_a:test_y,fault!=11);
+        check(!p.change.active() && !p.change.sample(p.now).owns,"loss of exact Crooked control source cancels delivery");
+    }
+    for(unsigned fault=0;fault<10;++fault) {
+        NativeGrindContact source{true,16,24,403,32,1,{0,.5f,0},{0,.5f,-12},{7,8}},actual=source;
+        if(fault==1)actual.identity=23;
+        if(fault==2)actual.identity=24;
+        if(fault==3)actual.actor++;
+        if(fault==4)actual.output++;
+        if(fault==5)actual.valid=false;
+        if(fault==6)actual.state=402;
+        if(fault==7)actual.segment_identity[0]++;
+        if(fault==8)actual.end[2]-=1;
+        if(fault==9)actual.geometry=2;
+        check(grind_admission_contact(GrindAdmissionControl::crooked_return,source,actual)==(fault<=1),
+            "backend contact policy permits only measured32-to23 on the identical native source");
+        check(grind_admission_contact(GrindAdmissionControl::ordinary,source,actual)==(fault==0),
+            "ordinary backend contact equality is unchanged");
+    }
+    for(unsigned fault=0;fault<18;++fault) {
+        std::array<float,3> raw{.3407048583f,0,0};
+        unsigned pointers{},reads{},admission_reads{},validations{};
+        if(fault==1)raw[0]=.388117f;
+        if(fault==2)raw[0]=.3490658402442932f;
+        if(fault==3)raw[1]=.4f;
+        if(fault==4)raw[2]=.001f;
+        if(fault==5)raw[0]=std::numeric_limits<float>::quiet_NaN();
+        if(fault==6)raw[1]=.00002f;
+        const auto read=[&](std::uintptr_t address,auto& value) {
+            using T=std::remove_reference_t<decltype(value)>;
+            if constexpr(std::is_same_v<T,std::uintptr_t>) {
+                ++pointers;if(address!=100+5248)return false;
+                value=fault==8?0:0x20000+(fault==9 && pointers>1?8u:0u);return fault!=10;
+            } else if constexpr(std::is_same_v<T,std::uint8_t>) {
+                ++admission_reads;value=1;
+                if(address==0x30000+766){if(fault==11 || (fault==13 && admission_reads>2))value=0;}
+                else if(address==0x40000+419){if(fault==12)value=0;}
+                else return false;
+                return true;
+            } else {
+                ++reads;
+                if(address==0x20000+24)value=raw[0];
+                else if(address==0x20000+60)value=raw[1];
+                else if(address==0x20000+52)value=raw[2];
+                else return false;
+                if(fault==14 && reads>3)value+=.01f;
+                return fault!=15;
+            }
+        };
+        check(grind_control_admitted(GrindAdmissionControl::crooked_return,100,fault==7?499:500,read,
+            [&]{return ++validations==1 || fault!=16;},fault==17?0:0x30000,0x40000)==(fault==0),
+            "Crooked lease waits for completed pulse, actual neutral raw band and duplicated native admission");
+    }
+    check(grind_admission_duration(GrindAdmissionControl::crooked_return)==2000 &&
+        grind_admission_duration(GrindAdmissionControl::ordinary)==1500,
+        "only the qualified Crooked policy extends the native request bound");
     for(unsigned hz:{30u,60u,120u})for(unsigned source:{23u,24u})for(bool crooked:{false,true}) {
         const bool tail=source==23 && !crooked;
         const auto requested=crooked?GrindChangeTarget::crooked:tail?GrindChangeTarget::grind_5_0:GrindChangeTarget::nosegrind;
@@ -437,7 +544,7 @@ int main() {
         Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
         if(fault==0)p.contact.end[2]=-6;
         if(fault==1)p.contact.identity=25;
-        if(fault==2)p.contact.identity=32;
+        if(fault==2)p.contact.identity=26;
         if(fault==3)p.contact.geometry=2;
         if(fault==4)p.contact.begin[1]=1;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
@@ -721,6 +828,8 @@ int main() {
             "slide lease requires actual bounded active controls, original native admission and stable owner reads");
     }
     for(unsigned state:{401u,402u,403u,404u})for(unsigned identity:{20u,21u,22u,23u,24u,30u,31u,32u}) {
+        check(grind_admission_source(GrindAdmissionControl::crooked_return,state,identity)==(state==403 && identity==32),
+            "Crooked control policy cannot be armed from another native identity");
         check(grind_admission_source(GrindAdmissionControl::slide_tail_return,state,identity)==(state==402 && identity==31),
             "native arm source policy does not generalize slide return to unmeasured identities");
         check(grind_admission_source(GrindAdmissionControl::ordinary,state,identity),"ordinary arm source policy unchanged");

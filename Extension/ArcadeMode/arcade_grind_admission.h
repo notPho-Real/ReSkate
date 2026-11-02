@@ -3,13 +3,29 @@
 #include <cmath>
 #include <cstdint>
 #include <numbers>
+#include "arcade_grind_contact.h"
 
 namespace dingosdk::arcade_mode {
-enum class GrindAdmissionControl { ordinary, lateral_tail, lateral_nose, lateral_nose_reverse, lateral_tail_reverse, slide_tail_return };
+enum class GrindAdmissionControl { ordinary, lateral_tail, lateral_nose, lateral_nose_reverse, lateral_tail_reverse, slide_tail_return, crooked_return };
 inline constexpr std::uint64_t grind_lateral_neutral_ms=50;
+inline constexpr std::uint64_t grind_admission_duration(GrindAdmissionControl control) noexcept {
+    return control==GrindAdmissionControl::crooked_return?2000u:1500u;
+}
+// The measured Crooked heading preparation naturally publishes Nosegrind23
+// before original403→401. Only this policy permits that observed intermediate;
+// every owner/actor/output/geometry field still has to match the admitted source.
+inline bool grind_admission_contact(GrindAdmissionControl control,const NativeGrindContact& expected,
+                                    const NativeGrindContact& actual) noexcept {
+    if(control!=GrindAdmissionControl::crooked_return)return actual==expected;
+    return expected.valid && actual.valid && expected.state==403 && expected.identity==32 &&
+        actual.state==403 && (actual.identity==32 || actual.identity==23) &&
+        actual.actor==expected.actor && actual.output==expected.output && actual.geometry==expected.geometry &&
+        actual.begin==expected.begin && actual.end==expected.end && actual.segment_identity==expected.segment_identity;
+}
 
 inline bool grind_admission_source(GrindAdmissionControl control,std::uint32_t state,std::uint32_t identity) noexcept {
     if(control==GrindAdmissionControl::ordinary)return true;
+    if(control==GrindAdmissionControl::crooked_return)return state==403 && identity==32;
     if(control==GrindAdmissionControl::slide_tail_return)return state==402 && identity==31;
     if(state!=403)return false;
     return ((control==GrindAdmissionControl::lateral_tail || control==GrindAdmissionControl::lateral_tail_reverse) && identity==24) ||
@@ -26,14 +42,15 @@ bool grind_control_admitted(GrindAdmissionControl control,std::uintptr_t context
                             std::uintptr_t actor=0,std::uintptr_t output=0) noexcept {
     if(control==GrindAdmissionControl::ordinary)return valid();
     const bool slide=control==GrindAdmissionControl::slide_tail_return;
+    const bool crooked=control==GrindAdmissionControl::crooked_return;
     const bool nose=control==GrindAdmissionControl::lateral_nose || control==GrindAdmissionControl::lateral_nose_reverse;
-    if((control!=GrindAdmissionControl::lateral_tail && control!=GrindAdmissionControl::lateral_tail_reverse && !nose && !slide) ||
-        elapsed<(slide?200:grind_lateral_neutral_ms) || !context || !valid())return false;
+    if((control!=GrindAdmissionControl::lateral_tail && control!=GrindAdmissionControl::lateral_tail_reverse && !nose && !slide && !crooked) ||
+        elapsed<(crooked?500:slide?200:grind_lateral_neutral_ms) || !context || !valid())return false;
     // The402 receipt requires original actor and published admission together.
     // Valid brackets their native owner/vtable/contact via read_grind_contact;
     // these bytes and the request are observations, never assignments.
     const auto native_admission=[&] {
-        if(!slide)return true;
+        if(!slide && !crooked)return true;
         std::uint8_t active{},published{};
         return actor>0x10000 && actor<0x00007ffffffff000ULL && !(actor&7) &&
             output>0x10000 && output<0x00007ffffffff000ULL && !(output&7) &&
@@ -51,6 +68,8 @@ bool grind_control_admitted(GrindAdmissionControl control,std::uintptr_t context
     if(before!=after || !read(context+5248,again) || again!=inputs || !native_admission() || !valid())return false;
     constexpr float pi=std::numbers::pi_v<float>;
     const auto wrapped=std::remainder(before[0],2*pi);
+    if(crooked)return std::abs(wrapped)<.3490658402442932f &&
+        std::abs(before[1])<=.0000152587890625f && std::abs(before[2])<.001f;
     // Neutral402 keeps its lateral base heading and is not a return request.
     // Only the measured active positive-heading/negative-pitch window admits
     // this lease; original402 admission/initialization still chooses403.

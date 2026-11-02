@@ -16,6 +16,10 @@ Y->Y now also returns established403/fine23 Nosegrind to401/fine20, following
 an independent native two-leg qualification on the same twelve-metre segment.
 That measured return also prepares ordered X->B 5-0 and B->B Crooked from
 Nosegrind, with a fresh native sweep after verified401/20 and lease retirement.
+Y->Y from403/fine32 Crooked now has a separately qualified active-heading
+return: Up200ms, opposite heading300ms, neutral, then original403->401.
+Its natural same-actor Nosegrind23 intermediate is explicitly checked; it is
+not a direct neutral return or final-name acknowledgment.
 Independent native trials verify the constituent physics actions and retained
 segments; the newly composed full return and production animation/HUD/combo
 acceptance remain unverified. Broader source contexts and arbitrary repeated
@@ -4120,3 +4124,98 @@ heading344.7289733886719. Fixture object absent; metadata start145.3034515380859
 received explicit clean handback; no job/reservation remains. Reset/trial slots
 are consumed. All pins require fresh coordination/revalidation. No DLL/CI,
 upload, installation, merge or release occurred.
+
+### Active Crooked heading preparation and original return qualified
+
+The preceding neutral negative was used to bound a different control candidate,
+not relaxed into success. The source survey and original orientation reference
+capture/heading curve were revisited. Up held200ms followed by native XInput
+RS(-12000,32767) for300ms and neutral is a source-derived candidate to move
+actual heading towards the admission band. Stick values are not assumed to be
+native angles. The second feature lease stays disabled until original native
+admission and measured raw controls agree. The saved native control reference
+itself was not sampled; its capture remains a source-derived explanation.
+
+Both peers cleared this window. Fixed capture showed idle artwork, the reviewed
+one-Shift wake restored visible gameplay, and fresh status revalidated installed
+c048914/DLL7853ae1a, game85401/launcher85410 and BAM32/rev539. New setup runner
+`grind-native-approach-reset-crooked-heading-c048914-v1/reset.py`, SHA256
+fc8d768a98441da6e68bd0b2aaa6146a7da79496f536344bad2884573bc99bd9,
+performed exact-owned restore/ground-check/native reset/undo539→541→543.
+Receipt `results/1793627738479229000-status.json` retains the offboard result.
+The subsequent trial independently mounted and validated the full lane, owned
+unit-create/scale2 move and actual twelve-metre native endpoints.
+
+Immutable trial `grind-native-crooked-heading-c048914-v1/trial.py`, SHA256
+abe628e9d1d3650c3526b77d3e64c0168eac25efd173bb4373aff17a9de41090,
+receipt `results/two-leg-lateral.json.gz`, SHA256
+2f8d967b3c8604afcff155d0f20f0eeea726ea6fc9f127950275e7647a95a895.
+The2MiB receipt was preallocated. Thirty-nine inert angle/lease/owner cases and
+three actual-worker timeline cases passed before execution; original406
+initialization/completion instrumentation was unchanged. Fresh controls and
+actor/owner/pointer brackets, raw pitch/roll, original actor+766/output+419,
+the same segment and actual intermediate identity were observations only.
+
+496 independent samples, both native dt readbacks30Hz. Original401→403
+preparation completed; actual403/32 appears2692.060977ms. After that completion,
+actual32 and same-segment condition, writer Up2738.449ms, opposite sweep
+2938.538ms, neutral3239.387ms. These are uinput writes, not game-poll timestamps;
+the worker also neutralizes during its condition wait. Actual source403/32 has
+58 stable contact brackets. The controls naturally produce403/23 at3427.009435ms,
+with five stable contact brackets on the same actor4138055392 and segment.
+No23 identity was assigned or used to acknowledge the requested50-50.
+
+Two independent reader brackets3462.084818/3473.022955ms have rawheading
+.34070485830307007,pitch/roll0 and actor+766/output+419 both1. The gate's
+separate eligible read is3483.592705ms with the same angles/admission.
+Second406 appears3498.045732ms; original403→401 completes phase1 with native
+elapsed.8999996185302734s. First401/old23 at4390.111256ms is not destination
+acceptance. Actual401/20 at4425.635600–4740.008888ms has28 stable destination
+brackets with physical/publishedcontact1 and missing0, on original segment
+[1297080123431,0], endpoints x145.412109375,y.5007421970367432,
+z-43.41015625/-55.41015625. Later403/24 and402/31 near the rail end, then
+natural7014992.347065ms, are incidental and not A-button Ollie evidence.
+
+Three outer physicalcontact0 observations (2387.347347ms preparation406,
+3918.333052ms return406,4681.402484ms destination401) each have a later stable
+contact1 bracket. Both readings are retained. Neither uninterrupted atomic
+contact nor completed-frame loss is proved; production still rejects invalid
+contact. `analyze_grind_crooked_return.py` now pins and verifies both negative
+and positive receipts, the32→23 intermediate, two independent admission reads,
+original completions, destination, writer times, clocks and cleanup.
+
+Production adds only Y→Y from403/32 on horizontal geometry1 at least12m. Entry
+requires fresh feature-off controls with neutral native pitch/roll and existing
+physical-RS neutrality. It owns Up200ms, RS(-12000,32767)300ms then neutral until
+a2000ms bound. Admission waits until500ms and requires absolute wrapped heading
+strictly below20degrees, pitch magnitude<=1.52587890625e-05, absroll<.001,
+and duplicated original actor/published admission1. Original403 initialization
+still selects401. The scoped contact policy permits only32 or measured23 on
+the identical actor/output/geometry/endpoints/segment; other policies retain
+exact contact equality. Only this native lease receives the2000ms cap, because
+the measured return destination arrives1687ms after the control starts. Existing
+1500ms policies and original406 lifetime/completion are unchanged. The executor
+requires original completion plus actual same-segment20 and independently
+changed matching animation. Intermediate23 cannot satisfy final evidence.
+
+32479 strict C++20 ASan/UBSan composed checks pass at30/60/120Hz, plus651 lifetime,
+1362 rail-pop,326 jump-idle/5645 session,2486 neutral-flip,40 facade and10 native
+rail composition checks. Combo1736 and HUD7010 pass with their established
+portable harness. The broad strict harness again reports the known unchanged
+contextual-air press-age failure and combo float-to-bool warnings; its HUD
+attempt omitted the ImGui include path, and the correctly configured portable
+run passes. Tests were not weakened. Windows/backend integration compilation
+is deferred by the build gate. No full-green or integrated gameplay acceptance
+claim follows from these checks or the ArcadeOFF native physics receipt.
+
+Cleanup restored feature/GDBexit0, destroyed pad/session, undid all owned edits
+to BAM32/rev563 and restored ArcadeON/menu/editorclosed/objectabsent. Final100,
+speed.0003988931 at144.85104370117188,1.0286729335784912,-42.93785858154297,
+heading30.408418655395508. Metadata start145.41287231445312,1.0286712646484375,
+-62.41065216064453; rail145.41287231445312,-.00000476837158203125,
+-54.41065216064453,identityrotation/scale1. Both peers received explicit clean
+handback; no job/reservation remains. Reset/trial slots are consumed. Revalidate
+identity/world/geometry after coordination before future input. No DLL/CI,
+upload, installation, merge or release occurred. Smith and slide21/22/30 returns,
+broader repeated sources and production A/earlyflip/animation/HUD/combo
+acceptance remain incomplete; build readiness is not claimed.
