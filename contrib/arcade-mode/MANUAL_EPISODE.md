@@ -308,3 +308,32 @@ native endpoint outcomes, and protected flip/ground-control/grind/camera/board
 regressions. Use existing native captures to report the first termination step
 and verify actual physics cadence/cached dt. The installed working DLL must not
 be overwritten by this isolated build.
+
+## Native revert lifetime after transition entry
+
+A later live inverse trial exposed a separate ownership failure. The original
+native 101 state persisted for about 1.7 seconds. At 1.5 seconds from RT, three
+consumers of the manual revert link still applied the initial request deadline.
+They discarded provenance before the native return to 100. ManualEpisode then
+reported an incompatible native state and removed the HUD while that same
+native revert was still progressing. The production composition reproduces
+this at 1,533 ms with the old policy.
+
+The shared link policy now distinguishes a request awaiting native entry from
+an originally observed native transition. Only an original, later 101 frame
+from the admitted owner retires the initial deadline. Freshness, native owner,
+mode, competing input and real exit requirements remain in force. The observed
+consecutive 101→100 return starts the existing successor-acquisition window;
+elapsed request time cannot end an already observed native transition. A return
+across an observation gap cannot manufacture acknowledgment, and missing native
+freshness cannot authorize controller output. No native recipe, animation, flip
+integration, physics duration or score rule changes.
+
+Production-composed tests exercise both directions with native returns after
+300, 900, 1,900 and 5,500 ms, then two linked ten-second holds at 30/60/120 Hz.
+They preserve the native LS recipe, episode, combo and HUD; insufficient wheel
+evidence still suspends balance integration. Extended negatives include missing
+101, interrupted observation, owner replacement, pushing, bail, offboard, grind,
+client-only return, stale native input and Arcade OFF. Requests with no observed
+transition still expire. The longer cases are software inputs at the native
+observation boundary, not evidence that a live revert completed successfully.

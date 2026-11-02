@@ -56,7 +56,7 @@ public:
         auto& link=revert_link_;
         if(!link.direction || link.confirmed_at)return;
         if(!frame.required || !frame.valid || frame.generations.owner!=link.owner ||
-            frame.sampled_at<link.started || frame.sampled_at-link.started>1500 ||
+            manual_revert_expired(frame.sampled_at) ||
             frame.airborne || frame.rail_family || frame.flip.mode!=1 ||
             (frame.flip.stance&0x40u) || (frame.flip.state!=100 && frame.flip.state!=101)) {
             link.transition_step=0;return;
@@ -65,15 +65,16 @@ public:
         if(link.observed_step && (frame.physics_step!=link.observed_step+1 ||
             frame.sampled_at<link.observed_at || frame.sampled_at-link.observed_at>150))link.transition_step=0;
         link.observed_step=frame.physics_step;link.observed_at=frame.sampled_at;
-        if(frame.flip.state==101){link.transition_step=frame.physics_step;return;}
+        if(frame.flip.state==101){link.native_started=true;link.transition_step=frame.physics_step;return;}
         if(link.transition_step && frame.physics_step>link.transition_step)
             link.confirmed_at=frame.sampled_at;
+        else if(link.native_started)
+            link={}; // A return across an observation gap cannot fabricate acknowledgment.
     }
     // This is an admitted transition lease, not a revert success or score event.
     std::uint64_t pending_manual_revert(std::uint64_t now,const InputNativeContext& frame) const noexcept {
         const bool pending=revert_link_.direction && frame.required && frame.fresh(now) &&
-            frame.generations.owner==revert_link_.owner && now>=revert_link_.started &&
-            (revert_link_.confirmed_at ? now>=revert_link_.confirmed_at && now-revert_link_.confirmed_at<=1100 : now-revert_link_.started<=1500) && !frame.airborne && !frame.rail_family &&
+            frame.generations.owner==revert_link_.owner && !manual_revert_expired(now) && !frame.airborne && !frame.rail_family &&
             (frame.flip.state==100 || frame.flip.state==101) && frame.flip.mode<=1 && !(frame.flip.stance&0x40u);
         // The admitted request clock identifies this link. A later RT can
         // replace a completed link before any native step observes no link.
@@ -188,8 +189,7 @@ public:
         // fabricate a physical Y release or reset the held-event baseline.
         if (!(physical.buttons & 0x8000u) || admission.observed_lip) rail_ = false;
         if(revert_link_.direction) {
-            const bool expired=now<revert_link_.started || (!revert_link_.confirmed_at && now-revert_link_.started>1500) ||
-                (revert_link_.confirmed_at && (now<revert_link_.confirmed_at || now-revert_link_.confirmed_at>1100));
+            const bool expired=manual_revert_expired(now);
             if(expired || !native.required || !native.fresh(now) || native.generations.owner!=revert_link_.owner ||
                 native.airborne || native.rail_family || admission.external_owner || physical.lt>30 ||
                 (physical.buttons & 0x9330u)) {
@@ -394,6 +394,16 @@ public:
         return output;
     }
 private:
+    bool manual_revert_expired(std::uint64_t now) const noexcept {
+        const auto& link=revert_link_;
+        if(now<link.started)return true;
+        if(link.confirmed_at)return now<link.confirmed_at || now-link.confirmed_at>1100;
+        // The request deadline is retired by ORIGINAL native transition entry.
+        // Its ongoing state still needs fresh same-owner observations at every
+        // consumer. A long native revert is not an expired manual. Only the
+        // observed return starts the separate successor-acquisition deadline.
+        return !link.native_started && now-link.started>1500;
+    }
     // Direct opposite partial pressure is a native flick/pop. The measured
     // 200ms pressure crossing reaches opposite contact without changing the
     // native LS revert recipe or the game's launch/flip machinery. This is an
@@ -667,7 +677,7 @@ private:
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
         std::uint32_t stance{};std::uint64_t recognition{},step{},contact{};bool issued{};
         std::uint64_t transition_step{},observed_step{},observed_at{};
-        std::uint64_t pressure_step{},pressure_at{};unsigned pressure_ms{};} revert_link_;
+        std::uint64_t pressure_step{},pressure_at{};unsigned pressure_ms{};bool native_started{};} revert_link_;
     bool revert_trigger_owned_{};
     UnifiedInput input_{};
     AuthoredPlayback authored_{};

@@ -830,11 +830,11 @@ void analog_manual_cone_continuation(){
  }
 }
 void manual_handoff_native_boundaries(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned missing=0;missing<9;++missing){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned duration:{300u,1900u,5500u})for(unsigned missing=0;missing<9;++missing){
   const unsigned dt=1000/hz;raw.words[0]=0;qualified(nose,dt,300);
   const auto id=manual_episode.serial();const auto began=clock_ms;
   check(remap(0,0,0,255).action.owned,"native handoff negative control begins from independently admitted manual and RT");
-  while(clock_ms-began<300){
+  while(clock_ms-began<duration){
    tick(dt,missing==0?100:101,0xc000);remap();
   }
   // A label may exist even when the physical transition is incomplete. It
@@ -860,7 +860,7 @@ void manual_handoff_native_boundaries(){
  }
 }
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u})for(bool rapid:{false,true}){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u,1900u,5500u})for(bool rapid:{false,true}){
   if(rapid&&(ack||contact_mode!=2||ack_delay!=900))continue;
   const unsigned dt=1000/hz;const bool already=contact_mode==1;
   qualified(nose,dt,300);const bool initial_nose=nose;trial_hz=hz;trial_start=clock_ms;trial_frame=0;
@@ -882,7 +882,13 @@ void manual_revert_production(){
    };
    verify_left(started);
    while(clock_ms-began<ack_delay){
-    advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());verify_left(remap(0,0,0,255));
+    advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());
+    const auto turning=remap(0,0,0,255);verify_left(turning);
+    if(!((!turning.manual.owns||turning.right_y==(nose?20000:-20000))&&manual_episode.serial()==episode_id&&manual_episode.transitioning()&&balance_hud_pending()&&!manual_release.pending()))
+     std::cerr<<"native progress nose="<<nose<<" hz="<<hz<<" delay="<<ack_delay<<" age="<<clock_ms-began<<" owns="<<turning.manual.owns<<" ry="<<turning.right_y<<" phase="<<static_cast<int>(manual_episode.phase())<<" exit="<<static_cast<int>(manual_episode.exit())<<" hud="<<balance_hud_pending()<<" release="<<manual_release.pending()<<"\n";
+    check((!turning.manual.owns||turning.right_y==(nose?20000:-20000))&&
+       manual_episode.serial()==episode_id&&manual_episode.transitioning()&&balance_hud_pending()&&!manual_release.pending(),
+       "original native revert progress retires request expiry without losing the manual episode or RS owner");
     check(combo_session.model().state().combo_active&&!combo_session.model().state().revert_pending,
        "admitted native revert preparation preserves original combo beyond landing grace without claiming success");
    }
@@ -1084,6 +1090,8 @@ void manual_revert_without_native_transition(){
        "unacknowledged RT retains original manual actuator and request clock without a false opposite handoff");
    check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
        "finite revert recipe cannot end an independently continuing original manual or combo");
+   if(age>1600)check(!manual_episode.transitioning(),
+       "an unobserved revert request still expires without claiming native transition progress");
   }
   const auto released=remap(12u);
   check(released.manual.release_requested&&!released.manual.owns&&released.right_y==0,
@@ -1091,6 +1099,22 @@ void manual_revert_without_native_transition(){
   tick(dt,100,0xc000);remap();
   for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
   check(!remap().manual.owns&&!balance_hud_pending(),"retained original still exits on a verified native putdown");
+ }
+}
+void manual_native_revert_freshness(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool disabled:{false,true}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  check(remap(0,0,0,255).action.owned,"native-progress freshness control starts the admitted RT actor");
+  const auto began=clock_ms;
+  while(clock_ms-began<1900){tick(dt,101,nose?0x8000u:0x4000u);remap();}
+  check(manual_episode.transitioning(),"original native progress remains authoritative beyond request expiry");
+  const auto elapsed=snapshot().elapsed;
+  if(disabled)set_enabled(false,false);else clock_ms+=200;
+  const auto stopped=remap();
+  check(!stopped.manual.owns&&!stopped.action.owned&&!stopped.manual.revert.ack_at,
+      "native progress cannot authorize stale actuator output or survive Arcade OFF");
+  check(snapshot().elapsed==elapsed&&!manual_release.pending(),
+      "missing native progress suspends rather than integrating time or fabricating putdown");
  }
 }
 void manual_pressure_observation_gaps(){
@@ -1292,6 +1316,7 @@ int main(){
  manual_revert_production();
  manual_revert_contact_publication_gap();
  manual_revert_without_native_transition();
+ manual_native_revert_freshness();
  manual_pressure_observation_gaps();
  manual_observation_continuity();
  analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
