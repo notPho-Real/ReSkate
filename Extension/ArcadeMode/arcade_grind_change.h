@@ -204,7 +204,7 @@ public:
             source_=contact;serial_=next;leg_started_at_=now;
             preparing_=preparation_ready_=false;slide_return_=false;
             lateral_=tail_release_=smith_=false;sweep_x_=held_y_=0;
-            target_identity_=20;target_state_=401;hold_ms_=duration_ms_=1500;
+            target_identity_=20;target_state_=401;hold_ms_=1500;duration_ms_=1500;
             evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
             return;
         }
