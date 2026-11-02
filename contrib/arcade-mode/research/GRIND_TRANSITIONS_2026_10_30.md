@@ -4456,3 +4456,52 @@ BAM32/rev587 and require full fresh coordination/validation. Prior35671 composed
 checks and the known unchanged input_pattern_dispatch failure remain; physical
 A/early-flip and integrated animation/HUD/balance/combo acceptance are still
 outstanding.
+
+### Bounded failure diagnostics for a future reviewed gate
+
+The repeated bare `AssertionError` receipts are an observation gap, not
+grounds to relax native eligibility or segment equality. This continuation
+reread the current contact/executor contracts, native segment equality
+documentation, existing gate, upstream grind-exit documentation and retained
+source survey. It adds research-only `grind_gate_diagnostics.py`: a bounded
+serializer of selected Python values already read by a failing experiment.
+It performs no memory read, native call, input, debugger operation or file I/O.
+It records exception type/message, up to eight traceback frames and a fixed
+whitelist of observed values. Bytes, strings, integers and nested collections
+are bounded; arbitrary objects are not inspected or represented. The result
+explicitly declares no new native reads and no atomic-frame claim. Private or
+unlisted locals are omitted. It does not recover any previous failure site.
+
+An offline preparer produces the disabled local
+`build/grind-investigation/grind-native-noseslide-return-diagnostics-DRAFT.py`,
+SHA2561bfc3e5295e598c072d48b627eb585fcb08175bd9fb588867275532e568dc4ee.
+Its embedded helper SHA256 is
+754851418afc07d6cb40f00d55b443113f71b62421442902b8223c5658e8136a.
+It labels previously bare assertions with a constant function/line/expression
+description and captures failures at the existing ActorBoundary, CacheRead and
+Discover exception handlers, at most four records. Segment equality uses the
+same single `segment_snapshot` call, stored as `observed_segment` before the
+unchanged assertion so both expected and observed values survive a failure.
+There are no extra native reads or admission attempts. All49 assertion tests
+remain in their original order, with only this single-read local substitution;
+all controller events, time bounds, original completion guards and cleanup
+remain unchanged. The consumed immutablev1 runner is untouched.
+
+Six inert serializer tests pass, including exact failure-site/segment values,
+omission of unrelated locals, rejection of arbitrary object inspection,
+bounded traceback/collection/message/integer size and nonfinite JSON handling.
+The diagnostic gate passes the same59 inert owner/control/readiness negatives.
+Eight extracted gate paths also produce identical results and identical native
+read-call sequences before and after instrumentation, including the changed
+segment and incomplete original-completion failures. This tests diagnostic
+plumbing only; it is not native execution or a qualified return.
+
+The draft begins with an unconditional UNPINNED exception. It has not been
+staged outside the workspace or run against hardware. Its old world/pose
+values cannot authorize execution. A future trial still requires fresh peer
+coordination, identity/world/geometry validation, a new reviewed slot and reset
+pins, preallocated receipt and the existing shared lock. More detailed native
+physical candidate-selection context is not supplied by this Python-only
+failure serializer. No production changes or C++ rerun; production remains
+69d1b62 and the build gate remains closed. Hardware remains historical
+BAM32/rev587 with no reservation or job. No DLL/CI/upload/install/merge/release.
