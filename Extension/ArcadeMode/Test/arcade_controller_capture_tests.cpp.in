@@ -1,6 +1,7 @@
 #include "Extension/ArcadeMode/arcade_input_telemetry.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
 #include "Extension/ArcadeMode/arcade_controller_route.h"
+#include "Extension/ArcadeMode/arcade_grind_change.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include <mutex>
 #include <iostream>
@@ -16,6 +17,7 @@ std::uint64_t GetTickCount64(){return clock_ms;}
 namespace dingosdk::arcade_mode {
 std::mutex ollie_mutex;
 ArcadeInput arcade_input{true};
+GrindChange grind_change;
 NativeControllerRoute controller_route;
 NativeInputReadiness native_readiness;
 NativeInputFrame capture_native_frame;
@@ -110,7 +112,7 @@ std::vector<CaptureCorrelationEvidence> drain(){
 }
 void reset(){
     (void)drain();clock_ms=1000;mode=true;input_capture_correlation={};controller_capture_live=false;
-    arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_readiness.reset();playback_packets={};
+    arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_readiness.reset();playback_packets={};grind_change.cancel();
     capture_native_frame=frame();capture_focus=capture_gameplay=capture_source_available=capture_cached_valid=true;input_clock_valid=true;
     capture_bitmap_as_read=2;capture_bitmap_readable=true;capture_source_at=1000;capture_cached_at=1000;capture_physics_dt=capture_cached_dt=.016f;capture_native_words={1,0xc000,3,4,5,6,7,8};
     arcade_input.publish_native_context(capture_native_frame);arcade_input.publish_authority(1000,7,1,true);
