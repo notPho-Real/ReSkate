@@ -22,6 +22,7 @@
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
+#include "arcade_native_grab_transition.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -1711,6 +1712,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
     native_flip::cancel();
+    native_grab::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1742,6 +1744,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 
 void set_enabled(bool value, bool persist) noexcept {
     native_flip::cancel();
+    native_grab::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -1828,8 +1831,11 @@ bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
     score_probe_base = image_base;
+    const bool native_flip_bridge=native_flip::start(image_base);
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip::start(image_base));
+        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip_bridge);
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GRAB BRIDGE: available={} gameplay_acceptance=unverified.",native_flip_bridge && native_grab::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -1943,6 +1949,7 @@ void on_client_tick() noexcept {
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         native_flip::tick(gameplay && focus_available);
+        native_grab::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
@@ -2261,6 +2268,24 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
             return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
         }};
+        struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode;};
+        GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode};
+        const bool grab_permitted=game_input && action_safe && action_experiment==ActionExperiment::classic &&
+            !offboard && observed==SkatePose::air && left_trigger<=30 && right_trigger<=30 &&
+            !(physical_buttons & (classic_a | 0x8000u | 0x0030u));
+        native_grab::refresh(grab_context.owner,grab_context.episode,(physical_buttons&0x2000u)!=0,grab_permitted);
+        NativeGrabRequest normal_grab{};
+        if (grab_permitted && native_grab::available()) normal_grab={&grab_context,
+            [](void* context,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::request(grab.owner,grab.episode,request,trick,held);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::right_hand_input(grab.owner,grab.episode);
+            },[](void* context,InputGenerations origin,InputAirEpisode air) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::continues(grab.owner,grab.episode,origin,air);
+            }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2269,7 +2294,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip);
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab);
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){
@@ -2284,7 +2309,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 row.first_event=row.last_event=event.sequence;row.first_ms=row.last_ms=event.at;row.events_known=true;
                 input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
             }
-            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session))capture_recognitions(*diagnostic,now,capture_proof);
+            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session)) {
+                capture_recognitions(*diagnostic,now,capture_proof);
+                native_grab::trace_input(now,*diagnostic,result.action);
+            }
         }
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
@@ -2360,11 +2388,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
+        // Controller route air_ownership publication begin.
+        const auto air_spin_mode = spin_mode();
+        const auto held_shoulders = physical_buttons & BoardChord::pair;
+        const bool rotation_action_conflict = action.blocks_air_rotation(air_spin_mode==SpinMode::held &&
+            (held_shoulders==BoardChord::lb || held_shoulders==BoardChord::rb));
+        // Controller route air_ownership publication end.
         // Ordinary native AIR alone admits this writer. Unknown orientation,
         // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[NativeControllerRoute::session].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
-            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
+            rotation_enabled,rotation_pose,native_rate_ready,reference || rotation_action_conflict || result.phase==3,air_spin_mode,{},&rotation_native);
         // Controller route preparation publication begin.
         const auto prewind = prewinds[NativeControllerRoute::session].poll_preparation(now,physical_buttons,
             rotation_enabled,rotation_native,crouched || ((physical_buttons&classic_a) && result.authored_playback &&
@@ -2381,10 +2415,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
             if (result.jump.released && release.sequence && !result.jump.from_rail && !reference &&
                 rotation_enabled && result.jump.launch.ordinary_writer()) native_flip::arm(native_flip_owner);
-            const bool angular_allowed = !reference && !action.owned &&
+            const bool angular_allowed = !reference && !rotation_action_conflict &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};
-            rotation = AirRotation::native_shoulder_output(rotation,spin_mode(),physical_buttons,angular_allowed);
+            rotation = AirRotation::native_shoulder_output(rotation,air_spin_mode,physical_buttons,angular_allowed);
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
                 (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
@@ -2398,7 +2432,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
                 release.sequence ? (release.nollie ? 16 : 1) : 0,arcade_input.authored_air_followup(now,rotation_native));
             observe_angular_controller(now,rotation_native,physical_buttons,static_cast<unsigned>(result.phase),rotation_enabled,
-                native_rate_ready,reference || action.owned || result.phase==3,angular_allowed,rotation);
+                native_rate_ready,reference || rotation_action_conflict || result.phase==3,angular_allowed,rotation);
         }
         // Controller route air publication end.
         // BoardChord has already consumed a valid pair and emitted native Y.

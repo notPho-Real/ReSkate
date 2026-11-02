@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "source_commit": "be22b1a2f731485f8175c5fc8d8645598bb6a322",
+  "date": "2026-10-31",
+  "status": "partial_evidence_not_gameplay_acceptance",
+  "dll_sha256": "98aa97e1c4322b99023d286d0ccdce7bf3be87248e56d9195150147897e5b179",
+  "ci": {"run": 41248372192, "conclusion": "success", "windows_tests_passed": 97, "publish": "skipped"},
+  "deployment": {
+    "installed_verified": true,
+    "loaded_mapping_verified": true,
+    "installation_id": "b78b73129f92450cb88623875561006c",
+    "pid": 69119,
+    "prior_commit": "2ad20da1d5696d69a7fcfc58637a8f0808afb07d",
+    "prior_dll_sha256": "855c5b691c5d313b26290770b2c88ab53c2271f5a9e82bf44df7fc857ce72383",
+    "rollback_directory": "/home/deck/Games/ReSkate/.arcade-grab-be22b1a-backup",
+    "preserved": ["prior DLL", "prior installation receipt", "launcher settings", "prior log", "stock backup", "game executable", "launcher executable"],
+    "world_after_normal_restart": "San Vansterdam / Hedgemont / Blue Light Beach",
+    "prior_world_preserved": false,
+    "prior_world": "skate3_megapark"
+  },
+  "trial": {
+    "requested": "Left plus double B / Method",
+    "actual_acknowledged_semantic": "Melon",
+    "native_detail": 4,
+    "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+    "actor_initialized": true,
+    "native_duration": 305,
+    "positive_delta": {"before": 0, "after": 1, "delta": 1},
+    "request_serial": 1,
+    "airborne_episode": 1,
+    "vertical_velocity_at_advance": -2.2388964,
+    "end_receipt": {"acknowledged": true, "airborne": true, "intent_withdrawn": true},
+    "native_samples": 474,
+    "collector_read_errors": 0,
+    "observed_physics_dt": 0.03333333,
+    "observed_cached_dt": 0.03333333,
+    "observed_return_state": 100,
+    "method_acknowledged": false,
+    "capture_complete": false,
+    "clean_release_landing_scoring_accepted": false,
+    "limitations": [
+      "The only acknowledged grab request was the second physical B press, recognized as a single Melon. This does not verify the requested Method binding.",
+      "The original GrabExit and IsGrabbingLoop definitions resolved but had zero handles throughout; missing values are not false values or native exit acknowledgments.",
+      "The trial used angular mask39, which excludes controller-poll source7. The old preflight could read preceding capture rows; fresh current-capture controller qualification was not established.",
+      "The capture footer remained incomplete. Native actor evidence is narrower than complete physical-input, release, landing and scoring acceptance.",
+      "Windows event milliseconds and the remote monotonic clock must not be directly compared without an independently established clock relationship."
+    ]
+  },
+  "shoulder_trials": {
+    "left_attempts": 2,
+    "right_attempts": 0,
+    "trick_input_sent": false,
+    "result": "preflight_stopped",
+    "first_failure": "mask39 has no current controller-poll rows",
+    "retry_failure": "127 on is rejected by the existing console: angular-on requires mask39",
+    "gameplay_regression_inferred": false
+  },
+  "handoff": {
+    "released_utc": "2026-10-31T23:01:45Z",
+    "native_state": 100,
+    "native_mode": 1,
+    "arcade_enabled": true,
+    "hub_console_closed": true,
+    "virtual_controller_destroyed": true,
+    "capture_stopped": true,
+    "shared_lock_released": true,
+    "debugger_attached": false,
+    "automatic_route": {"physical_slot": 1, "logical_actor": 0, "generation": 29, "explicit_binding": false},
+    "manual_and_grind_informed": true
+  },
+  "next_steps": [
+    "Repair the bounded observer workflow offline: qualify current controller capture separately; never silently reuse an earlier capture or weaken freshness.",
+    "Use supported capture modes:127 without angular-on for controller/event evidence;39 on for angular evidence only after independently qualifying the live binding.",
+    "Reproduce the first-press recognition boundary using native generation and episode transitions before changing gameplay code.",
+    "Repeat Basic, Melon and Method with complete release/landing/scoring evidence; then test both shoulders and independent releases.",
+    "Keep broader runtime catalog expansion and chains gated on Stage A acceptance."
+  ],
+  "complete_mission": false
+}

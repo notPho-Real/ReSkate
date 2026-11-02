@@ -14,6 +14,7 @@ namespace dingosdk::arcade_mode::native_flip {
 void arm(const NoBailSkater&) noexcept {}
 void cancel() noexcept {}
 }
+namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
     route.observe_unfiltered(slot,pad);route.observe(slot,pad);
 }
@@ -43,20 +44,21 @@ void observe_angular_controller(std::uint64_t,const NativeInputFrame&,std::uint1
         bool,bool,bool,bool,const AirRotation::Output&) noexcept {}
 SpinMode spin_mode(){return SpinMode::held;}
 void writers(unsigned user,std::uint64_t now,NativeGesture::Output result,SkatePose pose,
-        bool reference=false,bool occupied=false,bool releasing_manual=false){
+        bool reference=false,bool occupied=false,bool releasing_manual=false,std::uint16_t held_buttons=0){
     // Mirrors the earlier production routing boundary; nonowners never reach
     // the extracted statements. Proof freshness remains owned by the facade.
     if(!route.accepts(user,now)||!arcade_input.admitted(NativeControllerRoute::session,now))return;
     const bool drive_safe=true,crouched=false,rotation_enabled=true,native_rate_ready=true;
-    const std::uint16_t physical_buttons=0;
-    ActionInputOutput action{};action.owned=occupied;
+    const std::uint16_t physical_buttons=held_buttons;
+    auto action=result.action;action.owned=action.owned||occupied;
     const auto rotation_native=arcade_input.native_context(now);
     const auto& native_owner=rotation_native.owner;
     const dingosdk::NoBailSkater native_flip_owner{native_owner.base,native_owner.entity,native_owner.core,native_owner.context,native_owner.rig};
-    AirRotation::Output rotation{false,0,0,2.0f,{}};
+    AirRotation::Output rotation{held_buttons!=0,0,0,2.0f,{}};
     const AirRotation::Output prewind{}; // This fixture exercises the rate-publication path.
     const GroundControl ground_controls{};
 @controller_route_push@
+@controller_route_air_ownership@
 @controller_route_air@
 }
 void establish(unsigned user,std::uint64_t now,unsigned source=0){
@@ -356,6 +358,15 @@ void run_controller_publication_tests(){
         }
         sink={};writers(user,(base+1121),{},SkatePose::air);
         require(sink.air==1&&sink.angular&&sink.yaw==2&&!sink.ground_turn,"air rotation publication is available to every selected physical source");++checks;
+        for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned fault=0;fault<4;++fault){
+            NativeGesture::Output grab{};grab.action.owned=true;
+            grab.action.native_grab_triggers=fault!=1;
+            grab.action.pad.owns_triggers=true;grab.action.pad.right_trigger=255;
+            grab.action.pad.owns_left_stick=fault==2;
+            sink={};writers(user,(base+1121),grab,SkatePose::air,fault==3,false,false,side);
+            require(sink.air==1&&sink.angular==(fault==0)&&sink.yaw==0&&!sink.release&&!sink.ground_turn,
+                "exact production statements share native trigger-only grab with held shoulder, but never add body rate/pop or bypass another owner");++checks;
+        }
         for(unsigned blocked=0;blocked<3;++blocked){
             sink={};writers(user,(base+1121),release,SkatePose::riding,blocked==0,blocked==1,blocked==2);
             require(!sink.ground_turn,"reference playback, competing actor and Manual release retain ground-turn exclusions");++checks;

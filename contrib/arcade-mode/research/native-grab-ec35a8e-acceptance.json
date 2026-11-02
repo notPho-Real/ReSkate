@@ -1,0 +1,520 @@
+{
+  "schema_version": 1,
+  "tested_source": "ec35a8ee929ce78a2e655fdac35a402c21efba8d",
+  "tested_dll_sha256": "8a8857f2d09ddf934df35c356a183c17b914756e37e578bb9b664aa2cc0c578e",
+  "ci_run": 41155816414,
+  "ci_status": "success",
+  "windows_tests_passed": 97,
+  "measured_physics_hz": 30,
+  "measured_cached_step": 0.03333333134651184,
+  "stage_a_complete": false,
+  "native_scoring": "unverified: numeric score owner not established",
+  "trials": [
+    {
+      "pattern": "basic",
+      "intended_native_detail": 1,
+      "intended_animation_acknowledged": true,
+      "records": [
+        {
+          "semantic": "54",
+          "requested_native_detail": 1,
+          "serial": "1",
+          "episode": "1",
+          "native_initialization": [
+            {
+              "serial": "1",
+              "episode": "1",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "1",
+              "episode": "1",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "before": "0",
+              "after": "0.20186043",
+              "delta": "0.20186043",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.3141899"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "1",
+              "episode": "1",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 408,
+          "True": 70
+        },
+        "Bool.Anim.IsGrabbing": {
+          "None": 81,
+          "True": 70,
+          "False": 327
+        },
+        "EnumGS.GrabType": {
+          "None": 81,
+          "2": 397
+        },
+        "Enum.GS.DetailedGrabType": {
+          "None": 109,
+          "1": 42,
+          "0": 327
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 478,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "650dd85641c2c626e9b75682829446f11db87be32754f363cc3f88900d498c63"
+    },
+    {
+      "pattern": "melon",
+      "intended_native_detail": 4,
+      "intended_animation_acknowledged": true,
+      "records": [
+        {
+          "semantic": "21",
+          "requested_native_detail": 4,
+          "serial": "2",
+          "episode": "2",
+          "native_initialization": [
+            {
+              "serial": "2",
+              "episode": "2",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "2",
+              "episode": "2",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "before": "0",
+              "after": "0.60092926",
+              "delta": "0.60092926",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.5867159"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "2",
+              "episode": "2",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 442,
+          "True": 32
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 442,
+          "True": 32
+        },
+        "EnumGS.GrabType": {
+          "2": 113,
+          "0": 361
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 468,
+          "4": 6
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 474,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "b2a91795b3ab7107935056187329130928d39ce421657355d5a6a20bdf8089f0"
+    },
+    {
+      "pattern": "method",
+      "intended_native_detail": 2,
+      "intended_animation_acknowledged": false,
+      "records": [
+        {
+          "semantic": "21",
+          "requested_native_detail": 4,
+          "serial": "3",
+          "episode": "3",
+          "native_initialization": [
+            {
+              "serial": "3",
+              "episode": "3",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "3",
+              "episode": "3",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "before": "0",
+              "after": "1.8027897",
+              "delta": "1.8027897",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.2089387"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "3",
+              "episode": "3",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 438,
+          "True": 36
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 439,
+          "True": 35
+        },
+        "EnumGS.GrabType": {
+          "0": 438,
+          "2": 36
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 468,
+          "4": 6
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 474,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "4c641f86ee1de77d2035a9fbf8f20503a728d58d13744a530adb32030e3b3050"
+    },
+    {
+      "pattern": "basic_tap",
+      "intended_native_detail": 1,
+      "intended_animation_acknowledged": true,
+      "records": [
+        {
+          "semantic": "54",
+          "requested_native_detail": 1,
+          "serial": "4",
+          "episode": "4",
+          "native_initialization": [
+            {
+              "serial": "4",
+              "episode": "4",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "4",
+              "episode": "4",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "before": "0",
+              "after": "0.20186043",
+              "delta": "0.20186043",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.3144177"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "4",
+              "episode": "4",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 445,
+          "True": 34
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 445,
+          "True": 34
+        },
+        "EnumGS.GrabType": {
+          "0": 445,
+          "2": 34
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 473,
+          "1": 6
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 479,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "03609360b46345edc52c49690615feb8655b72621df6f572e38d40c78e9fa367"
+    },
+    {
+      "pattern": "method-late",
+      "intended_native_detail": 2,
+      "intended_animation_acknowledged": false,
+      "records": [
+        {
+          "semantic": "21",
+          "requested_native_detail": 4,
+          "serial": "5",
+          "episode": "5",
+          "native_initialization": [
+            {
+              "serial": "5",
+              "episode": "5",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "5",
+              "episode": "5",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "before": "0",
+              "after": "1",
+              "delta": "1",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.913208"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "5",
+              "episode": "5",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 443,
+          "True": 34
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 443,
+          "True": 34
+        },
+        "EnumGS.GrabType": {
+          "0": 443,
+          "2": 34
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 471,
+          "4": 6
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 477,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "b0e119503984c51c3d3bc58961a87030e30d62df6a7f8c8fa74da09aa18605b1"
+    },
+    {
+      "pattern": "held",
+      "intended_native_detail": 1,
+      "intended_animation_acknowledged": true,
+      "records": [
+        {
+          "semantic": "54",
+          "requested_native_detail": 1,
+          "serial": "6",
+          "episode": "6",
+          "native_initialization": [
+            {
+              "serial": "6",
+              "episode": "6",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "6",
+              "episode": "6",
+              "detail": "1",
+              "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+              "before": "0",
+              "after": "0.20186043",
+              "delta": "0.20186043",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.3153324"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "6",
+              "episode": "6",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 411,
+          "True": 65
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 411,
+          "True": 65
+        },
+        "EnumGS.GrabType": {
+          "0": 411,
+          "2": 65
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 439,
+          "1": 37
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 476,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "4d401960d0bfaf0da8f7a49bb26ef136536a36b53ca7b288a86e50060f62ae49"
+    },
+    {
+      "pattern": "method-fast",
+      "intended_native_detail": 2,
+      "intended_animation_acknowledged": false,
+      "records": [
+        {
+          "semantic": "21",
+          "requested_native_detail": 4,
+          "serial": "7",
+          "episode": "7",
+          "native_initialization": [
+            {
+              "serial": "7",
+              "episode": "7",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "duration": "305"
+            }
+          ],
+          "native_advancement": [
+            {
+              "serial": "7",
+              "episode": "7",
+              "detail": "4",
+              "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+              "before": "0",
+              "after": "0.60092926",
+              "delta": "0.60092926",
+              "initialized": "true",
+              "native_evaluation": "true",
+              "velocity_known": "true",
+              "vertical_velocity": "-1.5862603"
+            }
+          ],
+          "ending": [
+            {
+              "serial": "7",
+              "episode": "7",
+              "acknowledged": "true",
+              "airborne": "true",
+              "intent_withdrawn": "true",
+              "landing_scoring_acceptance": "unverified"
+            }
+          ]
+        }
+      ],
+      "native_values": {
+        "Bool.GP.CanGrab": {
+          "False": 438,
+          "True": 35
+        },
+        "Bool.Anim.IsGrabbing": {
+          "False": 438,
+          "True": 35
+        },
+        "EnumGS.GrabType": {
+          "0": 438,
+          "2": 35
+        },
+        "Enum.GS.DetailedGrabType": {
+          "0": 467,
+          "4": 6
+        }
+      },
+      "landing_observed": true,
+      "independent_samples": 473,
+      "sample_errors": [],
+      "log_gaps": [],
+      "capture_complete": false,
+      "capture_sha256": "cb3255a151f98c4f0c6b28cdbf9f2d9572644ca0252deee80646215a4dd03ab4"
+    }
+  ],
+  "repeat_failure": {
+    "observation": "second physical B recognized but no Method native request",
+    "cause": "inherited first-grab action generation rejected after native Ollie selection 1 retired to -1",
+    "source_reproduction": "production-composed regression failed before correction",
+    "correction": "new physical repeat may inherit direction across the independently verified same-owner same-episode 201/mode2 Ollie-to-idle transition only",
+    "revised_build_gameplay": "unverified"
+  }
+}

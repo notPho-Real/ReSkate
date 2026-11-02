@@ -117,6 +117,9 @@ struct InputEnvironment {
     bool native_pop_transition{}; // Validated native bridge owns this pop's pending selection.
     std::uint64_t takeoff_release_at{}; // Existing actor's admitted ordinary A release only.
     bool takeoff_actor_busy{};
+    bool native_grab_transition{}; // Qualified grab adapter, separate from flip ownership.
+    void* native_grab_context{};
+    bool (*native_grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -317,6 +320,11 @@ private:
 class UnifiedInput {
 public:
     struct Diagnostic {
+        struct GrabRepeat {
+            bool observed{}, extra{}, native_adapter{}, retired{}, native_owner{};
+            InputGenerations origin{};
+            InputNativeContext before{}, current{};
+        } grab_repeat{};
         std::uint64_t session{}, samples{}, recognized{}, queue_full{}, journal_overflows{}, dispatch_dropped{};
         int stick{}, pad{}, stick_first{}, pad_first{};
         std::uint64_t stick_at{}, pad_at{}, flip_table_at{}, grab_table_at{};
@@ -349,7 +357,7 @@ public:
         // Current-poll attempts cannot survive a session/authority reset.
         // Keep cumulative recognition identity and loss counters monotonic.
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
-        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = 0; clocked_ = false; manual_unknown_ = false;
+        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
@@ -391,6 +399,7 @@ public:
     void poll(std::uint64_t now, PhysicalInputSample physical, InputEnvironment environment,
               InputAdapter adapter = {}) noexcept {
         diagnostic_.recognition_count = 0; diagnostic_.recognition_omitted = 0;
+        diagnostic_.grab_repeat = {};
         const auto native = environment.native_context;
         const auto takeoff = environment.takeoff_release_at && now>=environment.takeoff_release_at &&
             (native.airborne || now-environment.takeoff_release_at<InputTiming::direction_ms) ? environment.takeoff_release_at : 0;
@@ -398,6 +407,12 @@ public:
         if (native_required_ && (!native.required || !native.fresh(now) || !native.follows(native_))) {
             reset(); return;
         }
+        // Native AIR can precede the client action-readiness publication. Preserve
+        // only grab recognition history already sampled in this flight through
+        // the existing forward Ollie/idle observation checks. This grants no
+        // native actor permission and never borrows a ground B press.
+        const bool grab_air_continues = native_.airborne && native.airborne &&
+            native.released_jump_continues(native_,now);
         if (native.required) {
             if (!native_.valid || native.generations.owner != native_.generations.owner) reset();
             else {
@@ -410,6 +425,7 @@ public:
                 }
                 if (native.generations.action != native_.generations.action) {
                     air_face_after_ = last_event_;
+                    if (!grab_air_continues) native_grab_after_ = last_event_;
                     if (!takeoff && !native.jump_selection_retired(native_.generations,native_.air_episode(),native_.flip) &&
                         !native.ordinary_flip_wait_continues(native_.generations,native_.air_episode(),native_.flip))
                         air_flip_after_ = last_event_;
@@ -477,8 +493,10 @@ public:
             // and its category ownership survive the admitted transition.
             pending_.clear_ordinary(); direction_ = 0;
         }
-        if (previous_context_ != InputContext::air && environment.context == InputContext::air)
+        if (previous_context_ != InputContext::air && environment.context == InputContext::air) {
             air_face_after_ = air_flip_after_ = last_event_; // Preserve a ground direction preload, never a ground face press.
+            native_grab_after_ = last_event_;
+        }
         // Physical held state always updates. Balance-event exclusions apply
         // from the preceding admitted context, separately from native ownership.
         events_.sample(now, physical, balance_controls_, environment.manual_active, environment.policy);
@@ -596,9 +614,11 @@ public:
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
                 active_grab_ = event.request.named_binding && event.request.form == InputForm::ordinary;
-                active_grab_count_ = active_grab_ ? event.request.presses : 0; grab_started_ = now;
+                active_grab_count_ = active_grab_ ? event.request.presses : 0;
+                grab_pressed_at_ = event.request.physical_pressed_at;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
                 grab_generations_ = event.request.generations;
+                grab_native_ = native;
             }
             if (event.disposition == InputDisposition::started && (event.request.action == InputAction::manual ||
                 event.request.action == InputAction::nose_manual || event.request.action == InputAction::flip || event.request.action == InputAction::grab))
@@ -869,8 +889,9 @@ private:
             1,0,0,0,{},&match,InputForm::contextual,row.direction,InputFootprintKind::unknown,nullptr,&row);
         return true;
     }
-    bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false) const noexcept {
-        const auto after = ordinary_flip ? air_flip_after_ : air_face_after_;
+    bool air_face_eligible(const InputMatch& match, std::int16_t code, bool ordinary_flip = false,
+                           bool native_grab = false) const noexcept {
+        const auto after = ordinary_flip ? air_flip_after_ : native_grab ? native_grab_after_ : air_face_after_;
         for (const auto& event : events_.history().events())
             if ((event.sequence > after || (ordinary_flip && takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
                 (!ordinary_flip || previous_context_==InputContext::air || (takeoff_release_at_ && event.at>=takeoff_release_at_)) &&
@@ -884,10 +905,13 @@ private:
         const InputToken face{InputSource::buttons,13,InputEdge::press};
         InputMatch match{};
         InputForm form{};
-        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_ && now - grab_started_ <= 250) {
+        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_) {
             const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
+            // Native admission may wait after recognition. Repetition belongs
+            // to the two physical B edges, never to either dispatch timestamp.
+            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > 250)) match = {};
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
         if (!match && !environment.deferred_grabs) {
@@ -898,9 +922,15 @@ private:
             if (!environment.deferred_grabs && (selected || environment.named_grabs)) {
                 const auto binding = match_air_direction(events_,TrickFamily::grab,now,ordinary_reject);
                 match = binding.match; selected = binding.direction;
+                // A neutral first grab is valid. An expired named-grab extra
+                // remains buffered for a genuine direction; never relabel it.
+                if (!match && !selected && (!active_grab_ || !grab_direction_)) {
+                    const std::array tokens{face};
+                    match=events_.history().match({tokens,500,ordinary_reject},now);
+                }
             } else { const std::array tokens{face}; match = events_.history().match({tokens,500,ordinary_reject},now); }
         }
-        if (!match || !air_face_eligible(match,13)) return;
+        if (!match || !air_face_eligible(match,13,false,environment.native_grab_transition)) return;
         if (environment.deferred_grabs) {
             for (const auto& request : pending_.slots()) if (request.action == InputAction::grab) {
                 if (now - request.recognized_at > 180) break;
@@ -912,10 +942,26 @@ private:
         }
         const bool extra = presses > 1 && !environment.deferred_grabs;
         if (!events_.history().consume(match, extra ? branch_owner : InputConsumption::regular, ordinary_reject)) return;
+        // This is a new physical press, inheriting only the first grab's direction.
+        // Native grab entry can invalidate the flip selector entirely. Rebind
+        // only through the grab adapter's same-request/owner/episode proof and
+        // independently observed native BS-grab state. Flip observations never
+        // grant grab continuity. The unchanged queue still rejects other owners.
+        const auto* lineage = extra ? &grab_generations_ : nullptr;
+        const bool native_owner = extra && environment.native_grab_continues &&
+            environment.native_context.air_episode()==grab_native_.air_episode() &&
+            environment.native_context.generations.owner==grab_generations_.owner &&
+            environment.native_grab_continues(environment.native_grab_context,grab_generations_,grab_native_.air_episode());
+        const bool retired = environment.native_context.jump_selection_retired(
+            grab_generations_,grab_native_.air_episode(),grab_native_.flip);
+        if (recognition_capture_) diagnostic_.grab_repeat = {true,extra,environment.native_grab_transition,
+            retired,native_owner,grab_generations_,grab_native_,environment.native_context};
+        if (native_owner)
+            lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
             extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
-            InputFootprintKind::unknown, extra ? &grab_generations_ : nullptr);
+            InputFootprintKind::unknown, lineage);
     }
     bool recognize_flip(std::uint64_t now, InputEnvironment environment, std::uint64_t release) noexcept {
         // The session's observed released-Ollie proof carries the physical
@@ -1303,6 +1349,7 @@ private:
     std::array<bool,static_cast<std::size_t>(InputAirTableKind::count)> table_retired_{};
     InputNativeContext native_{};
     InputGenerations flip_generations_{}, grab_generations_{};
+    InputNativeContext grab_native_{};
     bool native_required_{};
     InputBalanceControls balance_controls_{};
     InputRailState previous_rail_{};
@@ -1312,9 +1359,9 @@ private:
     std::uint64_t crouch_sequence_{};
     bool recognition_capture_{};
     bool surface_clocked_{}, lip_clocked_{}, lip_had_input_{}, lip_defaulted_{};
-    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{};
+    std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{}, native_grab_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
-    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_started_{};
+    std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
     InputContext previous_context_{};

@@ -19,6 +19,20 @@ struct ActionInputOutput {
     ArcadeTrick trick{ArcadeTrick::none};
     unsigned request_kind{};
     DispatchResult result{DispatchResult::disabled};
+    // Observation only: entered=1, unavailable=2, authored=4, manual=8,
+    // auxiliary=16, rail=32, extension=64. Never grants native admission.
+    unsigned grab_gate{};
+    // Current-poll delivery receipt from the qualified native grab lease.
+    // This is channel ownership, never native animation acknowledgment.
+    bool native_grab_triggers{};
+    bool blocks_air_rotation(bool native_held_shoulder) const noexcept {
+        // Only the existing single-held-shoulder native LS actuator may share
+        // a trigger-only grab. Tap/directional body-rate writers stay excluded.
+        const bool trigger_only_grab = native_grab_triggers && pad.owns_triggers &&
+            !pad.owns_left_stick && !pad.owns_right_stick && !pad.owns_face_buttons &&
+            !pad.left_trigger && pad.right_trigger == 255;
+        return owned && !(native_held_shoulder && trigger_only_grab);
+    }
 };
 struct InputJumpEdge {
     bool released{}, setup_admitted{}, nollie{}, from_rail{};
@@ -49,6 +63,12 @@ struct GroundTurnCommand {
 struct NativeFlipRequest {
     void* context{};
     bool (*submit)(void*,std::int32_t) noexcept{};
+};
+struct NativeGrabRequest {
+    void* context{};
+    bool (*submit)(void*,const InputRequest&,ArcadeTrick,bool) noexcept{};
+    bool (*right_hand_input)(void*) noexcept{};
+    bool (*continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
 };
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;

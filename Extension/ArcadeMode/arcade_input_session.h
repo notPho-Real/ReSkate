@@ -5,6 +5,7 @@
 #include "arcade_push.h"
 #include "arcade_board.h"
 #include "arcade_native_flip_entry.h"
+#include "arcade_native_grab_lease.h"
 
 namespace dingosdk::arcade_mode {
 struct InputAdmission {
@@ -32,6 +33,7 @@ struct InputAdmission {
     bool export_rail_requests{};
     LaunchDescriptor launch{LaunchDescriptor::ordinary()};
     NativeFlipRequest normal_flip{};
+    NativeGrabRequest normal_grab{};
     bool manual_contact_only{}; // Physical admission without matching native history.
 };
 // One per-controller journal and one dispatch path. Native playback objects have
@@ -289,6 +291,10 @@ public:
             admission.named_grab_bindings || admission.action_mode == ActionExperiment::grabs, admission.balance_controls,
             admission.may_toggle_board && !board_active_, admission.board_binding, native};
         environment.native_pop_transition=admission.normal_flip.submit!=nullptr;
+        environment.named_grabs=environment.named_grabs || admission.normal_grab.submit!=nullptr;
+        environment.native_grab_transition=admission.normal_grab.submit!=nullptr;
+        environment.native_grab_context=admission.normal_grab.context;
+        environment.native_grab_continues=admission.normal_grab.continues;
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers
@@ -362,6 +368,19 @@ public:
             (admission.action_mode == ActionExperiment::classic && admission.nollie)) auxiliary_.cancel();
         output.action.pad = auxiliary_.sample(now, action_context);
         if(manual_revert_owner() && manual.owns_stick)output.action.pad.owns_right_stick=false;
+        // Use the original grab input producer, not a fixed-duration recipe.
+        // The native lease retains taps until exact actor acknowledgment and
+        // withdraws on release/exit; this never requests another pop or stick flick.
+        if (admission.action_mode==ActionExperiment::classic && admission.normal_grab.right_hand_input &&
+            context==InputContext::air && admission.action_fresh && admission.inspected_stance &&
+            !admission.nollie && !busy && !board_active_ && !admission.external_owner &&
+            physical.lt<=30 && physical.rt<=30 && !auxiliary_.busy() &&
+            admission.normal_grab.right_hand_input(admission.normal_grab.context)) {
+            output.action.pad.owns_triggers=true;
+            output.action.pad.left_trigger=0;
+            output.action.pad.right_trigger=255;
+            output.action.native_grab_triggers=true;
+        }
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
         output.action.owned = action.owns_right_stick || action.owns_left_stick || action.owns_triggers || action.owns_face_buttons;
@@ -605,6 +624,11 @@ private:
         const auto& admission = admission_;
         const bool grab = request.action == InputAction::grab;
         const bool classic = admission.action_mode == ActionExperiment::classic;
+        if (grab) out.grab_gate = 1u |
+            ((!admission.action_fresh || admission.action_mode == ActionExperiment::off) ? 2u : 0u) |
+            (authored_.busy() ? 4u : 0u) | (manual_.busy() ? 8u : 0u) |
+            (auxiliary_.busy() ? 16u : 0u) | (rail_ ? 32u : 0u) |
+            (request.form != InputForm::ordinary ? 64u : 0u);
         if (!admission.action_fresh || admission.action_mode == ActionExperiment::off) return InputDisposition::cancelled;
         if (authored_.busy() || (manual_.busy() && (grab || !verified_manual(admission,now_))) || auxiliary_.busy() || rail_) return InputDisposition::waiting;
         if (request.form != InputForm::ordinary) return request_extension(request);
@@ -619,6 +643,22 @@ private:
         if (grab) {
             out.trick = classic && !request.named_binding && request.presses == 1 ? ArcadeTrick::basic_bs_grab :
                 select_named_trick(TrickFamily::grab, direction(request.direction), request.presses);
+            if (classic && admission.normal_grab.submit) {
+                // Pilot mappings are native intent ports and original actor
+                // identities. A callback receipt only acknowledges queuing.
+                const auto& native=admission.native_context;
+                if (!native_grab::pilot(out.trick) || request.nollie || admission.nollie ||
+                    !native.required || !native.fresh(now_) || !native.correlates_action(request.generations) ||
+                    !admission.inspected_stance || admission.external_owner || physical_.lt>30 || physical_.rt>30 ||
+                    (physical_.buttons & (classic_a | 0x8000u | 0x0010u))) {
+                    out.result=DispatchResult::unavailable;current_->unsupported=true;return InputDisposition::unsupported;
+                }
+                const bool held=request.control && (physical_.buttons & request.control);
+                if (!admission.normal_grab.submit(admission.normal_grab.context,request,out.trick,held)) {
+                    out.result=DispatchResult::busy;return InputDisposition::waiting;
+                }
+                out.result=DispatchResult::started;return InputDisposition::started;
+            }
             if (out.trick == ArcadeTrick::basic_bs_grab && request.control && !(physical_.buttons & request.control)) {
                 // Recognition survives release. The native adapter must supply its
                 // minimum initialization/out stage before a released tap can run.

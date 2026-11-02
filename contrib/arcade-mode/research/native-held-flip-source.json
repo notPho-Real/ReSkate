@@ -1,0 +1,1869 @@
+{
+  "schema_version": 1,
+  "status": "Native authored mechanism discovered; Arcade execution and exact counts unverified",
+  "source_archive_capture_sha256": "a9403f1a1a972eb07d1100b4b82bb315554bf029bc86d081d95664506d46479b",
+  "prior_source": "TRICK_FINDINGS.md: held flips and native composite held-flip amount already identified",
+  "supported_base_native_ids": [
+    2,
+    3,
+    4,
+    7,
+    11,
+    14,
+    17,
+    18,
+    19,
+    22,
+    27,
+    29,
+    36,
+    37,
+    38,
+    39
+  ],
+  "selector_databases": [
+    {
+      "resource_index": 9303,
+      "name": "animation/dingo/cdb_onboard_heldtricksinto",
+      "fields": [
+        "EnumGS.Anim.CurrentFlipTrick"
+      ],
+      "rows": [
+        {
+          "native_id": 2,
+          "encoded_fields": [
+            2,
+            255
+          ],
+          "asset_guid": "c1ba6c10-105f-039f-c1ba-6c10105f039f",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_kickflip_high_held_into",
+          "resource_index": 30109
+        },
+        {
+          "native_id": 3,
+          "encoded_fields": [
+            3,
+            255
+          ],
+          "asset_guid": "3c2f42f0-2fad-a3dc-3c2f-42f02fada3dc",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_heelflip_held_into",
+          "resource_index": 13891
+        },
+        {
+          "native_id": 11,
+          "encoded_fields": [
+            11,
+            255
+          ],
+          "asset_guid": "7eb4b579-594d-cdc7-7eb4-b579594dcdc7",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_360flip_high_held_into",
+          "resource_index": 19277
+        },
+        {
+          "native_id": 7,
+          "encoded_fields": [
+            7,
+            255
+          ],
+          "asset_guid": "edc86b89-a2ff-8ab6-edc8-6b89a2ff8ab6",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_fs_held_into",
+          "resource_index": 1411
+        },
+        {
+          "native_id": 4,
+          "encoded_fields": [
+            4,
+            255
+          ],
+          "asset_guid": "e196e110-031a-fda3-e196-e110031afda3",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_bs_held_into",
+          "resource_index": 17952
+        },
+        {
+          "native_id": 14,
+          "encoded_fields": [
+            14,
+            255
+          ],
+          "asset_guid": "abbefc05-de95-341f-abbe-fc05de95341f",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_laserflip_held_into",
+          "resource_index": 14183
+        },
+        {
+          "native_id": 36,
+          "encoded_fields": [
+            36,
+            255
+          ],
+          "asset_guid": "007ee4f6-d2ad-842b-007e-e4f6d2ad842b",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_impossible_high_held_into",
+          "resource_index": 2255
+        },
+        {
+          "native_id": 37,
+          "encoded_fields": [
+            37,
+            255
+          ],
+          "asset_guid": "96054f9a-b5b2-5e11-9605-4f9ab5b25e11",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_frontfoot_impossible_high_held_into",
+          "resource_index": 3781
+        },
+        {
+          "native_id": 38,
+          "encoded_fields": [
+            38,
+            255
+          ],
+          "asset_guid": "ffb44515-65c5-a0f8-ffb4-451565c5a0f8",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_impossible_high_held_into",
+          "resource_index": 24736
+        },
+        {
+          "native_id": 39,
+          "encoded_fields": [
+            39,
+            255
+          ],
+          "asset_guid": "815a9d79-5e37-d70e-815a-9d795e37d70e",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_backfoot_impossible_high_held_into",
+          "resource_index": 33166
+        },
+        {
+          "native_id": 17,
+          "encoded_fields": [
+            17,
+            255
+          ],
+          "asset_guid": "5bb72ac5-34c0-e173-5bb7-2ac534c0e173",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_kickflip_high_held_into",
+          "resource_index": 29364
+        },
+        {
+          "native_id": 18,
+          "encoded_fields": [
+            18,
+            255
+          ],
+          "asset_guid": "39f5087b-4185-ed2f-39f5-087b4185ed2f",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_heelflip_high_held_into",
+          "resource_index": 25771
+        },
+        {
+          "native_id": 29,
+          "encoded_fields": [
+            29,
+            255
+          ],
+          "asset_guid": "b3330d10-3ad2-85ae-b333-0d103ad285ae",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_360flip_high_held_into",
+          "resource_index": 27903
+        },
+        {
+          "native_id": 27,
+          "encoded_fields": [
+            27,
+            255
+          ],
+          "asset_guid": "2fa88a78-cf9f-17ae-2fa8-8a78cf9f17ae",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_laserflip_high_held_into",
+          "resource_index": 31419
+        },
+        {
+          "native_id": 19,
+          "encoded_fields": [
+            19,
+            255
+          ],
+          "asset_guid": "9d5bc305-0dee-8f23-9d5b-c3050dee8f23",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_bs_high_held_into",
+          "resource_index": 31762
+        },
+        {
+          "native_id": 22,
+          "encoded_fields": [
+            22,
+            255
+          ],
+          "asset_guid": "188125bd-fe14-5389-1881-25bdfe145389",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_fs_high_held_into",
+          "resource_index": 30894
+        }
+      ],
+      "decoded_sha256": "c9e5953b1f3cbb873c249a6fa4994d6a67068d9720679cd901f7e6e477ad5b56"
+    },
+    {
+      "resource_index": 34789,
+      "name": "animation/dingo/cdb_onboard_heldtricksloop",
+      "fields": [
+        "EnumGS.Anim.CurrentFlipTrick"
+      ],
+      "rows": [
+        {
+          "native_id": 2,
+          "encoded_fields": [
+            2,
+            255
+          ],
+          "asset_guid": "2a19396c-4315-bb6f-2a19-396c4315bb6f",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_kickflip_high_held_loop_(loop)",
+          "resource_index": 1705
+        },
+        {
+          "native_id": 3,
+          "encoded_fields": [
+            3,
+            255
+          ],
+          "asset_guid": "a8066c0b-acbe-6234-a806-6c0bacbe6234",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_heelflip_held_loop_(loop)",
+          "resource_index": 14921
+        },
+        {
+          "native_id": 11,
+          "encoded_fields": [
+            11,
+            255
+          ],
+          "asset_guid": "54576052-5882-9f41-5457-605258829f41",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_360flip_high_held_loop_(loop)",
+          "resource_index": 12538
+        },
+        {
+          "native_id": 14,
+          "encoded_fields": [
+            14,
+            255
+          ],
+          "asset_guid": "d272b4a7-a59a-077f-d272-b4a7a59a077f",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_laserflip_held_loop_(loop)",
+          "resource_index": 22085
+        },
+        {
+          "native_id": 7,
+          "encoded_fields": [
+            7,
+            255
+          ],
+          "asset_guid": "ce51e0a2-d544-b05c-ce51-e0a2d544b05c",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_fs_held_loop_(loop)",
+          "resource_index": 19279
+        },
+        {
+          "native_id": 4,
+          "encoded_fields": [
+            4,
+            255
+          ],
+          "asset_guid": "c1d9ccb4-e31a-692e-c1d9-ccb4e31a692e",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_bs_held_loop_(loop)",
+          "resource_index": 30073
+        },
+        {
+          "native_id": 36,
+          "encoded_fields": [
+            36,
+            255
+          ],
+          "asset_guid": "0bdd12b2-6646-1651-0bdd-12b266461651",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_impossible_high_held_loop_(loop)",
+          "resource_index": 22065
+        },
+        {
+          "native_id": 37,
+          "encoded_fields": [
+            37,
+            255
+          ],
+          "asset_guid": "f2677727-ad88-098c-f267-7727ad88098c",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_frontfoot_impossible_high_held_loop_(loop)",
+          "resource_index": 19442
+        },
+        {
+          "native_id": 38,
+          "encoded_fields": [
+            38,
+            255
+          ],
+          "asset_guid": "e84231ad-09a3-af92-e842-31ad09a3af92",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_impossible_high_held_loop_(loop)",
+          "resource_index": 22052
+        },
+        {
+          "native_id": 39,
+          "encoded_fields": [
+            39,
+            255
+          ],
+          "asset_guid": "7e594450-55a8-24a6-7e59-445055a824a6",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_backfoot_impossible_high_held_loop_(loop)",
+          "resource_index": 16850
+        },
+        {
+          "native_id": 17,
+          "encoded_fields": [
+            17,
+            255
+          ],
+          "asset_guid": "4ae170a4-2bd8-45fe-4ae1-70a42bd845fe",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_kickflip_high_held_loop_(loop)",
+          "resource_index": 34864
+        },
+        {
+          "native_id": 18,
+          "encoded_fields": [
+            18,
+            255
+          ],
+          "asset_guid": "81b76de2-1a81-25fa-81b7-6de21a8125fa",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_heelflip_high_held_loop_(loop)",
+          "resource_index": 25894
+        },
+        {
+          "native_id": 29,
+          "encoded_fields": [
+            29,
+            255
+          ],
+          "asset_guid": "c43fb87b-8f06-5303-c43f-b87b8f065303",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_360flip_high_held_loop_(loop)",
+          "resource_index": 25167
+        },
+        {
+          "native_id": 27,
+          "encoded_fields": [
+            27,
+            255
+          ],
+          "asset_guid": "6f0dae7e-6efb-7a70-6f0d-ae7e6efb7a70",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_laserflip_high_held_loop_(loop)",
+          "resource_index": 6564
+        },
+        {
+          "native_id": 19,
+          "encoded_fields": [
+            19,
+            255
+          ],
+          "asset_guid": "fbab4a3e-1bb7-16ea-fbab-4a3e1bb716ea",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_bs_high_held_loop_(loop)",
+          "resource_index": 12697
+        },
+        {
+          "native_id": 22,
+          "encoded_fields": [
+            22,
+            255
+          ],
+          "asset_guid": "c648ee32-bbd7-d817-c648-ee32bbd7d817",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_fs_high_held_loop_(loop)",
+          "resource_index": 1642
+        }
+      ],
+      "decoded_sha256": "44b522a3849b699d7c2c8bf1369ba407ae11405674278c10724041eb8e6cd111"
+    },
+    {
+      "resource_index": 19093,
+      "name": "animation/dingo/cdb_onboard_heldtricksexit",
+      "fields": [
+        "EnumGS.Anim.CurrentFlipTrick",
+        "Bool.Anim.OnBoard.AnimEndsFakie"
+      ],
+      "rows": [
+        {
+          "native_id": 2,
+          "encoded_fields": [
+            2,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "f0632084-164e-e29c-f063-2084164ee29c",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_kickflip_high_held_exit",
+          "resource_index": 16068
+        },
+        {
+          "native_id": 3,
+          "encoded_fields": [
+            3,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "599c4667-3efb-3047-599c-46673efb3047",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_heelflip_held_exit",
+          "resource_index": 31646
+        },
+        {
+          "native_id": 11,
+          "encoded_fields": [
+            11,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "2d168015-08a8-0368-2d16-801508a80368",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_360flip_high_held_exit",
+          "resource_index": 3143
+        },
+        {
+          "native_id": 7,
+          "encoded_fields": [
+            7,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "6358afdb-4cf1-0445-6358-afdb4cf10445",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_fs_held_exit",
+          "resource_index": 2098
+        },
+        {
+          "native_id": 4,
+          "encoded_fields": [
+            4,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "9999305e-69e7-2099-9999-305e69e72099",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_bs_held_exit",
+          "resource_index": 539
+        },
+        {
+          "native_id": 14,
+          "encoded_fields": [
+            14,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "a25df7ea-8112-af5e-a25d-f7ea8112af5e",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_laserflip_held_exit",
+          "resource_index": 34061
+        },
+        {
+          "native_id": 36,
+          "encoded_fields": [
+            36,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "5b89609b-a3fe-11a6-5b89-609ba3fe11a6",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_impossible_high_held_exit",
+          "resource_index": 19019
+        },
+        {
+          "native_id": 37,
+          "encoded_fields": [
+            37,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "68a74229-5128-5eb7-68a7-422951285eb7",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_o_frontfoot_impossible_high_held_exit",
+          "resource_index": 11247
+        },
+        {
+          "native_id": 38,
+          "encoded_fields": [
+            38,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "bb5acab2-9096-c980-bb5a-cab29096c980",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_impossible_high_held_exit",
+          "resource_index": 6966
+        },
+        {
+          "native_id": 39,
+          "encoded_fields": [
+            39,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "fabb9a84-9008-c4d4-fabb-9a849008c4d4",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_backfoot_impossible_high_held_exit",
+          "resource_index": 8986
+        },
+        {
+          "native_id": 17,
+          "encoded_fields": [
+            17,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "5890cbf3-450d-fb06-5890-cbf3450dfb06",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_kickflip_high_held_exit",
+          "resource_index": 29669
+        },
+        {
+          "native_id": 18,
+          "encoded_fields": [
+            18,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "f8640be4-cddf-daf7-f864-0be4cddfdaf7",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_heelflip_high_held_exit",
+          "resource_index": 32696
+        },
+        {
+          "native_id": 29,
+          "encoded_fields": [
+            29,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "9f17cc7f-7d82-4233-9f17-cc7f7d824233",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_360flip_high_held_exit",
+          "resource_index": 35324
+        },
+        {
+          "native_id": 27,
+          "encoded_fields": [
+            27,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "37e185cc-dfe3-17dc-37e1-85ccdfe317dc",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_laserflip_high_held_exit",
+          "resource_index": 10531
+        },
+        {
+          "native_id": 19,
+          "encoded_fields": [
+            19,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "67a240f4-06fa-a3f8-67a2-40f406faa3f8",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_bs_high_held_exit",
+          "resource_index": 16476
+        },
+        {
+          "native_id": 22,
+          "encoded_fields": [
+            22,
+            255,
+            0,
+            1
+          ],
+          "asset_guid": "30cd9467-752a-bff9-30cd-9467752abff9",
+          "asset_name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_fs_high_held_exit",
+          "resource_index": 17580
+        }
+      ],
+      "decoded_sha256": "3bf68a7af1b2fd469476fa48acd94b7ab0d1e2f31bbd4afe0d941803ee28621d"
+    },
+    {
+      "resource_index": 7995,
+      "name": "animation/dingo/cdb_onboard_freestylecasperfliptrick",
+      "fields": [
+        "EnumGS.Intent.FreeStyleFlipTrick"
+      ],
+      "rows": [
+        {
+          "native_id": 1,
+          "encoded_fields": [
+            1,
+            255
+          ],
+          "asset_guid": "0adc710c-5e31-225f-0adc-710c5e31225f",
+          "asset_name": null,
+          "resource_index": null
+        },
+        {
+          "native_id": 2,
+          "encoded_fields": [
+            2,
+            255
+          ],
+          "asset_guid": "521cfb44-e697-b800-521c-fb44e697b800",
+          "asset_name": null,
+          "resource_index": null
+        }
+      ],
+      "decoded_sha256": "8accdcd447b0e945ee33fee86ccef6f4c2cf45a666e87b65489fa1be64d893fe"
+    }
+  ],
+  "counter_asset": {
+    "name": "Float.Anim.TrickHeldFlipCount",
+    "guid": "2f06727d-457a-4b1a-2f06-727d457a4b1a"
+  },
+  "original_counter_tags": [
+    {
+      "resource_index": 249,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_laserflip_lateflip",
+      "guid": "49fee1cd-2e39-0f81-49fe-e1cd2e390f81",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 40.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "6a83c25d389ea9b4a3de6df273e4c2947c6e646bc725d8e581368a470f07aeec"
+    },
+    {
+      "resource_index": 950,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_fs_lateflip_start",
+      "guid": "5cf9fa7e-6f03-6180-5cf9-fa7e6f036180",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 37.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "19d18823695c6bc5c9b75d20df9aecf5ec8436ef0a7f28407f06b44de5536f74"
+    },
+    {
+      "resource_index": 3046,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_backfoot_impossible_high_held_loop",
+      "guid": "f163b83e-3d36-6695-f163-b83e3d366695",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 71.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 25.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "d942a3f843e91a6267815ecd56350c5fa0ab8e1419fc940a614e033c94d5fdc8"
+    },
+    {
+      "resource_index": 4108,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_heelflip_lateflip_start",
+      "guid": "10507c39-be4f-0b5d-1050-7c39be4f0b5d",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 38.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "0e78342c4ae1c559dd3bc1644f35019dc8ab13bf7b143d7f416edbe6a0300676"
+    },
+    {
+      "resource_index": 7818,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_kickflip_lateflip_start",
+      "guid": "d2b8e174-c57f-e116-d2b8-e174c57fe116",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 35.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 50.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "9fce2ca1ce7ac0fed89d8d6c333ddea596f99a5e07a51f2e761abc1301315a66"
+    },
+    {
+      "resource_index": 8496,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_fs_lateflip_start",
+      "guid": "8beca791-2f16-e68d-8bec-a7912f16e68d",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 37.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "5a1c7c97c9d3b216b684c581a325618707899b5e2a94dff09d5a7cfa2d19735e"
+    },
+    {
+      "resource_index": 10714,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_fs_held_loop",
+      "guid": "b21716a1-058f-9401-b217-16a1058f9401",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 96.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 80.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 64.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 144.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 32.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 160.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "6381ecfc72530f59f924f34a111836b3177453b6346403be4eaf88128f757a79"
+    },
+    {
+      "resource_index": 13379,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_360flip_high_held_loop",
+      "guid": "21ed905d-e0c8-92c8-21ed-905de0c892c8",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 134.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 46.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 68.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 90.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 24.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 178.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "14b499b6fec370a714dc263b43fe04d9904ef22871b6c88065e4f2012ffe5bbb"
+    },
+    {
+      "resource_index": 14272,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_bs_lateflip_start",
+      "guid": "84a5e0d9-e0a6-1f07-84a5-e0d9e0a61f07",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 35.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "5e108ae9d6674192c01e46c9109531630134e14e656332efa68ade81d651a021"
+    },
+    {
+      "resource_index": 15443,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_kickflip_high_held_loop",
+      "guid": "c8ad7b8f-40b8-e497-c8ad-7b8f40b8e497",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 58.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 114.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 142.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 44.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 72.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 86.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 100.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 30.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "369ec908435398c6fa4ea71da3f6d20fa5b4042b9f823167449a86cd6e85cb3b"
+    },
+    {
+      "resource_index": 15910,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_impossible_high_held_loop",
+      "guid": "76bffbf3-ed77-c297-76bf-fbf3ed77c297",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 25.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 71.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "cf7c8a9c5f6f4041993ce26166b72474cef43cfc29948ec0497a907b75d88683"
+    },
+    {
+      "resource_index": 17860,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_laserflip_held_loop",
+      "guid": "9f1899b1-b2d2-9acc-9f18-99b1b2d29acc",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 90.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 178.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 134.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 24.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 46.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 68.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "6e1b752ed2bfa0fe0e6c245b1aaf58f3ad310d18cd29d2e4998c08852e0dded9"
+    },
+    {
+      "resource_index": 18376,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_360flip_lateflip_start",
+      "guid": "730780ee-42e4-8f37-7307-80ee42e48f37",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 40.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "0ffce32a9ab115b39bbe9eb766bb47dd76c4693fbe1d4faabceae7c349e25b20"
+    },
+    {
+      "resource_index": 19216,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_fs_high_held_loop",
+      "guid": "4040cb6f-ddb9-7722-4040-cb6fddb97722",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 80.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 96.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 32.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 64.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 160.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 144.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "eaa54ae0b0c1d3ae24af218dfdf899bb55e395c9aed529c6e53387fb5e3c46a6"
+    },
+    {
+      "resource_index": 21641,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_heelflip_high_held_loop",
+      "guid": "833bf232-332f-b66c-833b-f232332fb66c",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 114.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 142.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 44.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 72.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 100.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 86.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 58.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 30.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "00d892e5e97cdec6c3d87750985dd68237a1724e630a9849f4fb19e0cb3d3d2d"
+    },
+    {
+      "resource_index": 22838,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_heelflip_lateflip_start",
+      "guid": "61e3eaf5-b3e2-0db6-61e3-eaf5b3e20db6",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 42.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "c20b5ac23cc7629057e2e198837cd4ff2e1b45cec96ff495be631d5d90980ed1"
+    },
+    {
+      "resource_index": 25053,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_bs_held_loop",
+      "guid": "165230e0-47a1-7b04-1652-30e047a17b04",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 64.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 32.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 96.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 160.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 80.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 144.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "7b7bf08ec3b86e48d95656384cb29abe0da966d16e9097363c2ab29d04f92b56"
+    },
+    {
+      "resource_index": 25759,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_popshuv_bs_high_held_loop",
+      "guid": "71ad2059-7eed-c968-71ad-20597eedc968",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 80.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 64.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 96.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 160.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 144.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 32.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "2ef7e76a637cad09f5aa8df8ce585ba832ee12d2f5b4bd41e7dc64c4da5fa3a5"
+    },
+    {
+      "resource_index": 26420,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_popshuv_bs_lateflip_start",
+      "guid": "cc9fae83-1b87-f6ec-cc9f-ae831b87f6ec",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 34.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 58.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "5f67123ffd051d6ba28e12bf5ccb15bcc1c7c04e8cf523a41a0aa04d422335c5"
+    },
+    {
+      "resource_index": 26537,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_kickflip_lateflip_start",
+      "guid": "3911d6d0-9302-ab56-3911-d6d09302ab56",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 34.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "8350d457f766560d5a626fbff729979430fcc6db911e5edd6503fd3edb5c5167"
+    },
+    {
+      "resource_index": 28340,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_laserflip_high_held_loop",
+      "guid": "506bfcad-2488-7ed5-506b-fcad24887ed5",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 46.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 24.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 134.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 90.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 178.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 68.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "bba80d311eeffbebed22efcbcaf283240c54e08c0f89cf2a8cde7db0356aaa34"
+    },
+    {
+      "resource_index": 28651,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_frontfoot_impossible_high_held_loop",
+      "guid": "fcbd35a6-4f78-5191-fcbd-35a64f785191",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 25.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 71.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "a8f93bd35a169bdfecb7707167fcbf810f4e16676c7c17a62acc7297028227b8"
+    },
+    {
+      "resource_index": 28669,
+      "name": "animation/dingo/seq_c_proto_onb_trick_n_impossible_high_held_loop",
+      "guid": "63b1ccef-8e05-fa28-63b1-ccef8e05fa28",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 48.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 71.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 25.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "f0b10880e7a74aba0772e1024534ca7849e884b45af9a8d9d3b39216debc681c"
+    },
+    {
+      "resource_index": 29615,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_heelflip_held_loop",
+      "guid": "70b5698a-e160-882a-70b5-698ae160882a",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 114.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 100.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 58.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 72.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 142.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 86.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 44.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 30.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 128.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "2a726f707d764f459623cd0bf213a0198c08699ac69a1a42cbad9b4786d54a1f"
+    },
+    {
+      "resource_index": 30179,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_360flip_lateflip_start",
+      "guid": "e5c4c3ba-3129-2018-e5c4-c3ba31292018",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 43.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 68.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "81283b2796b9929ba4c3b68767a84dd2bcf4c23042b77a846f34613b0ad2b0a5"
+    },
+    {
+      "resource_index": 33205,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_360flip_high_held_loop",
+      "guid": "863ed461-1f18-7da3-863e-d4611f187da3",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 178.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 90.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 68.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 46.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 134.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 24.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 112.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "3224c84cbc9e3a02bfae136ed0a144d42a7fe23cf36f3c4c4dec97b4850b51d4"
+    },
+    {
+      "resource_index": 35099,
+      "name": "animation/dingo/seq_c_proto_onb_trick_o_kickflip_high_held_loop",
+      "guid": "a6d60271-1b6e-86d6-a6d6-02711b6e86d6",
+      "counter_tags": [
+        {
+          "StartLinkOffset": 58.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 30.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 113.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 141.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 156.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 16.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 100.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 127.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 86.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 72.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        },
+        {
+          "StartLinkOffset": 44.0,
+          "EndLinkOffset": 0.0,
+          "Mode": 4.0,
+          "Value": 1.0,
+          "ResetOnLeaveMode": 0.0
+        }
+      ],
+      "decoded_sha256": "e69b40a6fcbc134d559be02926f2f5c7b16d24458044ed736da6282eba73c2eb"
+    }
+  ],
+  "native_loop_example": {
+    "wrapper_resource": 1705,
+    "wrapper_guid": "2a19396c-4315-bb6f-2a19-396c4315bb6f",
+    "sequence_resource": 35099,
+    "sequence_guid": "a6d60271-1b6e-86d6-a6d6-02711b6e86d6",
+    "loop_start": 16,
+    "loop_end": 170
+  },
+  "original_stateflow": {
+    "entry_resource": 33022,
+    "into_to_loop_resource": 3652,
+    "loop_to_exit_resource": 4815,
+    "entry_conditions": [
+      "d119f91b-71e9-b210-d119-f91b71e9b210 true",
+      "EBool.Anim.NewHeldTrickContent true",
+      "69603de6-0719-bda8-6960-3de60719bda8 true",
+      "native PopHeight enumerator match"
+    ],
+    "exit_condition": "d119f91b-71e9-b210-d119-f91b71e9b210 false, with native BranchWindow and PivotBlend"
+  },
+  "native_action_owner": {
+    "condition_resource": 23124,
+    "action_resource": 10792,
+    "enabled_actions": true,
+    "condition_bytecode_and_input_producer": "not yet resolved; do not bypass this owner with a Boolean write"
+  },
+  "scoring": {
+    "existing_source": "Extension/Throwdowns/skate_trick_rule.cpp",
+    "fields": [
+      "stance",
+      "direction",
+      "spins",
+      "held_flip",
+      "late",
+      "scorable",
+      "held_category"
+    ],
+    "exact_held_flip_units_and_local_owner": "unverified"
+  },
+  "prohibits": [
+    "No manually incremented native counter",
+    "No forced extra rotation",
+    "No fixed animation playback multiplier",
+    "No aliasing a single flip as double/triple",
+    "No ordinary bridge replacement"
+  ],
+  "acceptance_required": [
+    "original native held action entry from a bridge-started flip",
+    "exact original held sequence initialization and positive advancement",
+    "native counter and board rotations agree",
+    "release selects original catch/exit with continuous flight",
+    "native local scoring agrees with exact count",
+    "physical repeat timing selects intended count at30/60/120Hz"
+  ]
+}
