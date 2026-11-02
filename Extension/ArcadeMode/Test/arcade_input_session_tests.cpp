@@ -811,9 +811,8 @@ void production_facade_matrix() {
             "actual rail release preserves ticket identity and its independently observed physical edge");
         ConformanceFacade contact;contact.cadence=cadence;contact.trace="bound-rail-exit-veto";
         contact.poll(1000,401);const auto exit=contact.poll(1000+cadence,401,{0x1000});
-        check(!exit.jump.setup_started&&!exit.authored_playback&&!exit.requested_id&&
-            contact.input.input_diagnostic(0)->recognition_count==0,
-            "bound rail-family safety veto does not publish an ordinary crouch/exit actor from caller may-start alone");
+        check(!exit.jump.setup_started&&!exit.authored_playback&&!exit.requested_id&&exit.unsupported,
+            "recognized rail A cannot borrow a ground recipe when the exact from-grind actor is absent");
         ConformanceFacade ground;ground.cadence=cadence;ground.trace="bound-ground-turn";
         ground.poll(1000,100);ground.poll(1000+cadence,100,{0,0,-25000});
         ground.poll(1000+2*cadence,100);ground.poll(1000+3*cadence,100,{0,0,-25000});

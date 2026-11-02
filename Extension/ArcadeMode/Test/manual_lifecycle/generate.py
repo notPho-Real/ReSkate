@@ -61,7 +61,7 @@ def generated(root):
         "CLIENT_AUTHORITY": between(mode,"        NativeInputFrame client_frame{};",
                                     "        // A deferred phase cannot consume history"),
         "STATE": between(mode, "ComboSession combo_session(", "void update_combo("),
-        "INPUT_STATE": mode[unique(mode, "ArcadeInput arcade_input("):mode.index(";", unique(mode, "ArcadeInput arcade_input("))+1],
+        "INPUT_STATE": between(mode, "ArcadeInput arcade_input(", "NativeControllerRoute controller_route;"),
         "UPDATE": function(mode, "void update_combo("),
         "PACKET_RETIRE": function(mode, "void retire_playback_packets("),
         "HUD_PUBLISH": function(hud, "void publish_balance_hud("),

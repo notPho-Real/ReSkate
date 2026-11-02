@@ -141,6 +141,7 @@ def generate(root,variant='current'):
      struct RotationBoundary{bool owns_left;short x{1111},y{2222};}rotation{competing_left_owner};
      const auto manual_pressure=result.right_y;
      const auto rail_pad=arcade_input.sample_native_rail(result.rail,now,game_input&&!offboard&&!releasing_manual&&!reference&&!action.owned);
+     const auto grind_pad=grind_change.sample(now);
      movement_eligible_until.store(now+150);
      ACTION_DELIVERY
      DRIVE

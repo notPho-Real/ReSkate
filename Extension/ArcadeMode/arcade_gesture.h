@@ -64,6 +64,7 @@ public:
     void invalidate_authority() noexcept { focused_ = false; owner_ = 0; authority_at_ = 0; balance_controls_ = {}; balance_frame_ = {}; cancel_commands(); }
     void publish_native_context(NativeInputFrame frame) noexcept {
         native_ = frame;
+        sessions_[0].observe_rail_followup(InputNativeContext::from_frame(frame));
         if (!frame.valid) native_lip_ = {};
         // Existing physics production calls this for every validated step;
         // client rereads retain the original timestamp and step identity.
@@ -201,6 +202,9 @@ public:
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
     }
+    bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
+        return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));
+    }
     std::uint64_t pending_manual_revert(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].pending_manual_revert(now,InputNativeContext::from_frame(frame)) : 0;
     }
@@ -235,7 +239,7 @@ public:
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false,
-            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}) noexcept {
+            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
@@ -253,6 +257,8 @@ public:
         admission.manual_balance_admitted = manual_balance_admitted;
         admission.normal_flip=normal_flip;
         admission.normal_grab=normal_grab;
+        admission.rail=rail;
+        admission.extensions=extensions;
         admission.input_policy = policy_;
         admission.export_rail_requests = native_bound_;
         const auto native = native_context(now);
@@ -307,11 +313,13 @@ public:
                 }
             }
             // The native400 family covers physical rail contact independently
-            // of the current Manual/HUD observer. Named rail/Lip actor phases
-            // remain unavailable; an observed Lip flag only vetoes generic input.
+            // of the current Manual/HUD observer. Named rail phases require
+            // the separate contact/geometry executor supplied above.
             if (native.rail_family) {
                 admission.pose = SkatePose::grind;
-                admission.may_start = admission.may_push = admission.manual_safe = admission.manual_prepare = false;
+                admission.may_start = admission.may_start && rail_pop_input_ready(admission.native_context,now);
+                admission.launch = LaunchDescriptor::rail_pop();
+                admission.may_push = admission.manual_safe = admission.manual_prepare = false;
                 admission.manual_balance_admitted = false;
             }
             admission.flip_ready = admission.flip_ready && native.flip_known && native.flip_id == -1;

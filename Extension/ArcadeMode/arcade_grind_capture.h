@@ -11,6 +11,9 @@ struct GrindRow {
     bool valid{}, grind_valid{}, skate_valid{}, speed_valid{}, requested_y{}, arcade{};
     unsigned state{}, grind{}, skate{}, user{}, kind{};
     int speed_mm_s{}, x{}, y{};
+    bool physics_grind_valid{};
+    unsigned physics_grind{};
+    GrindSelectionRelation selection_relation{};
 };
 // Two runtime producers, one background consumer. Per-slot publication prevents
 // a reader draining the queue from making a producer discard an otherwise valid

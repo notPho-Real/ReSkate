@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_grind_identity.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -12,14 +13,35 @@
 namespace dingosdk::arcade_mode {
 enum class GrindSemantic : std::uint8_t { unknown };
 enum class GrindContext : std::uint8_t { unknown, grind_physics };
+// Native Grind.Loop's InCorrectGrind expression compares the physics selector
+// with CurrentGrindType. Zero disables reselection. These are diagnostic
+// relations, not named-trick mappings, contact proof or action acknowledgments.
+enum class GrindSelectionRelation : std::uint8_t { unavailable, no_target, matched, mismatch };
 struct NativeGrindSnapshot {
     bool valid{}, grind_type_valid{}, skate_grind_type_valid{};
     std::uint32_t physics_state{}, grind_type{}, skate_grind_type{};
     std::uint64_t sampled_at{}, generation{};
     GrindContext context{GrindContext::unknown};
     GrindSemantic grind_semantic{GrindSemantic::unknown}, skate_grind_semantic{GrindSemantic::unknown};
-    // Readability is not an enum mapping, a trick occurrence, or proof that a
-    // commanded Y trick happened. All numeric values have UNKNOWN semantics.
+    bool physics_grind_type_valid{};
+    std::uint32_t physics_grind_type{};
+    constexpr GrindSelectionRelation selection_relation() const noexcept {
+        if (!valid || context != GrindContext::grind_physics || !physics_grind_type_valid)
+            return GrindSelectionRelation::unavailable;
+        if (!physics_grind_type) return GrindSelectionRelation::no_target;
+        if (!grind_type_valid) return GrindSelectionRelation::unavailable;
+        return physics_grind_type == grind_type ? GrindSelectionRelation::matched : GrindSelectionRelation::mismatch;
+    }
+    NativeGrindIdentity selected_identity() const noexcept {
+        return valid && context==GrindContext::grind_physics && physics_grind_type_valid ?
+            native_grind_identity(physics_grind_type) : NativeGrindIdentity{};
+    }
+    NativeGrindIdentity animated_identity() const noexcept {
+        return valid && context==GrindContext::grind_physics && grind_type_valid ?
+            native_grind_identity(grind_type) : NativeGrindIdentity{};
+    }
+    // Matching named selector and animation values still does not prove a new
+    // occurrence, completed actor transition, or uninterrupted contact.
 };
 // Internal integration context, never serialized. Resolve this from the existing
 // validated local owner before AND after sampling. Increment generation on owner,
@@ -30,7 +52,7 @@ struct GrindObserverOwner {
     bool valid{};
 };
 struct GrindStateBindings {
-    std::array<std::uintptr_t, 2> objects{};
+    std::array<std::uintptr_t, 3> objects{};
     std::uint64_t generation{};
 };
 namespace grind_observer_detail {
@@ -39,7 +61,11 @@ inline constexpr std::array assets{
     Asset{{0x85,0xc4,0x26,0x2b,0xd5,0x4e,0x37,0x04,0x2b,0x26,0xc4,0x85,0x4e,0xd5,0x04,0x37},
         "Animation/Dingo/Enum.GS.Anim.CurrentGrindType"},
     Asset{{0x7f,0xf7,0xde,0xa2,0x14,0xd2,0x6b,0x3b,0xa2,0xde,0xf7,0x7f,0xd2,0x14,0x3b,0x6b},
-        "Animation/Dingo/Enum.GS.Anim.CurrentSkateGrindType"}};
+        "Animation/Dingo/Enum.GS.Anim.CurrentSkateGrindType"},
+    // Independently resolved from InCorrectGrind's native dependency list on
+    // the supported executable; this is distinct from both animated identities.
+    Asset{{0x55,0xb1,0x44,0x08,0x0e,0xbe,0x28,0x92,0x08,0x44,0xb1,0x55,0xbe,0x0e,0x92,0x28},
+        "Animation/Dingo/Enum.GS.SkateGrindType"}};
 inline constexpr std::uintptr_t highest = 0x00007fffffffffffULL;
 inline constexpr bool pointer(std::uintptr_t at) noexcept { return at > 0x10000 && at < highest && !(at & 3); }
 template<class Read, class T> bool get(Read& read, std::uintptr_t base, std::size_t offset, T& out) noexcept {
@@ -176,6 +202,7 @@ template<class Read, class ResolveOwner> NativeGrindSnapshot read_native_grind(
         if (!block) return {};
         result.grind_type_valid = value(read, 0, bindings.objects[0], block, result.grind_type);
         result.skate_grind_type_valid = value(read, 1, bindings.objects[1], block, result.skate_grind_type);
+        result.physics_grind_type_valid = value(read, 2, bindings.objects[2], block, result.physics_grind_type);
     }
     if (!get(read, owner.context, 0x1414, after) || after != before ||
         (block && states_block(read, owner) != block)) return {};

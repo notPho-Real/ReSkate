@@ -23,7 +23,7 @@ struct Fixture {
     std::uint32_t mutation{};
     GrindObserverOwner owner{};
     std::uintptr_t collection{}, component{}, animatable{}, holder{}, block{}, page{};
-    std::array<std::uintptr_t, 2> objects{};
+    std::array<std::uintptr_t, 3> objects{};
     std::uintptr_t alloc(std::size_t size) { auto at = start + next; next += (size + 7) & ~std::size_t{7}; return at; }
     template<class T> void put(std::uintptr_t at, T value) { std::memcpy(data.data() + at - start, &value, sizeof(value)); }
     template<class T> bool operator()(std::uintptr_t at, T& out) noexcept {
@@ -49,7 +49,7 @@ struct Fixture {
             put(objects[i] + 0x28, std::uint32_t{0x01000000} | (place << 12));
             put(page + place, static_cast<std::uint32_t>(i + 5));
         }
-        put(page + 0x71c + 4, std::uint32_t{0x11});
+        put(page + 0x71c + 4, std::uint32_t{0x111});
     }
     GrindStateBindings bindings() const { return {objects, owner.generation}; }
     NativeGrindSnapshot sample(std::uint64_t now = 1000, bool build = true) {
@@ -60,12 +60,83 @@ struct Fixture {
 int main() {
     Fixture f;
     auto sample = f.sample();
+    check(sample.physics_grind_type_valid && sample.physics_grind_type == 7 &&
+          sample.selection_relation() == GrindSelectionRelation::mismatch,
+          "physics selector is independent from both animation identities");
+    f.put(f.page + 0x28, std::uint32_t{5});
+    check(f.sample().selection_relation() == GrindSelectionRelation::matched,
+          "matching physics and animated grind satisfies native selection predicate");
+    f.put(f.page + 0x28, std::uint32_t{0});
+    check(f.sample().selection_relation() == GrindSelectionRelation::no_target,
+          "zero physics selector is no target, never a named grind or success");
+    auto partial = f.bindings(); partial.objects[2] = 0;
+    const auto without_physics=read_native_grind(f,[&]{return f.owner;},partial,1000,true);
+    check(without_physics.valid && without_physics.grind_type_valid && without_physics.skate_grind_type_valid &&
+          without_physics.selection_relation()==GrindSelectionRelation::unavailable,
+          "missing optional physics selector preserves original observation");
+    f.put(f.page + 0x28, std::uint32_t{7});
+    for (const unsigned hz : {30u,60u,120u}) {
+        Fixture trace; GrindTransitions continuity;
+        const auto generation=trace.owner.generation;
+        for (unsigned step=0;step<4;++step) {
+            trace.owner.sampled_at=1000+step*1000/hz;
+            trace.put(trace.page+0x28,std::uint32_t{step ? 9u : 5u});
+            trace.put(trace.page+0x20,std::uint32_t{step>=2 ? 9u : 5u});
+            const auto native=trace.sample(trace.owner.sampled_at);
+            check(native.valid && native.generation==generation && native.selection_relation()==
+                (step==1 ? GrindSelectionRelation::mismatch : GrindSelectionRelation::matched),
+                "native selector can precede animation without changing contact ownership at 30/60/120 Hz");
+            GrindRow row{};row.valid=native.valid;row.state=native.physics_state;
+            row.ms=native.sampled_at;row.generation=native.generation;row.grind=native.grind_type;
+            row.physics_grind=native.physics_grind_type;
+            check(continuity.sample(row).edge==(step ? GrindEdge::sample : GrindEdge::entry),
+                "selection changes do not fabricate a rail exit or another initial grind");
+        }
+    }
     check(sample.valid && sample.grind_type_valid && sample.skate_grind_type_valid &&
           sample.grind_type == 5 && sample.skate_grind_type == 6, "both independent native scalars copied");
     check(sample.context == GrindContext::grind_physics && sample.physics_state == 401 &&
           sample.sampled_at == 1000 && sample.generation == 1, "fresh native grind context accompanies numeric sample");
     check(sample.grind_semantic == GrindSemantic::unknown && sample.skate_grind_semantic == GrindSemantic::unknown,
-          "no numeric value is assigned a named grind");
+          "legacy capture semantics remain unchanged");
+    check(sample.animated_identity().target==GrindChangeTarget::tailslide,
+          "guarded native animated value 5 identifies FS TailSlide from the original enum");
+    {
+        // Independent enumeration rows transcribed from the original asset.
+        constexpr std::array<std::array<std::uint32_t,4>,9> ids{{
+            {3,20,37,54}, {4,21,38,55}, {6,23,40,57}, {15,32,49,66},
+            {14,31,48,65}, {13,30,47,64}, {9,26,43,60}, {7,24,41,58}, {5,22,39,56}}};
+        for (unsigned i=0;i<ids.size();++i) for(unsigned bank=0;bank<4;++bank) {
+            const auto native=native_grind_identity(ids[i][bank]);
+            check(native && native.target==grind_change_target(i+1) && native.value==ids[i][bank] &&
+                  native.bf==(bank>=2) && native.side==(bank%2 ? NativeGrindSide::backside : NativeGrindSide::frontside),
+                  "native enum rows preserve exact named target and original side/block");
+            check(native_grind_target(ids[0][bank],grind_change_target(i+1))==ids[i][bank],
+                  "target resolution preserves the verified native origin block");
+        }
+        for (auto invalid : {0u,1u,2u,8u,10u,11u,12u,16u,17u,69u,73u,77u,78u,UINT32_MAX})
+            check(!native_grind_identity(invalid) && !native_grind_target(invalid,GrindChangeTarget::nosegrind),
+                  "unsupported origins, Invalid and Exit cannot alias a target");
+        for (unsigned hz : {30u,60u,120u}) {
+            auto named=f;
+            for (unsigned step=0;step<3;++step) {
+                named.owner.sampled_at=1000+step*1000/hz;
+                named.put(named.page+0x28,std::uint32_t{step ? 6u : 3u});
+                named.put(named.page+0x20,std::uint32_t{step==2 ? 6u : 3u});
+                const auto observation=named.sample(named.owner.sampled_at);
+                check(observation.selected_identity().target==(step ? GrindChangeTarget::nosegrind : GrindChangeTarget::grind_50_50) &&
+                      observation.animated_identity().target==(step==2 ? GrindChangeTarget::nosegrind : GrindChangeTarget::grind_50_50),
+                      "native selector and animation names retain their independently observed timing");
+            }
+            named.put(named.owner.context+0x1414,std::uint32_t{200});
+            check(!named.sample(named.owner.sampled_at).selected_identity() && !named.sample(named.owner.sampled_at).animated_identity(),
+                  "airborne state withdraws retained named grind identities");
+        }
+        auto unavailable=sample;unavailable.valid=false;
+        check(!unavailable.selected_identity() && !unavailable.animated_identity(),"invalid observation has no named identity");
+        unavailable=sample;unavailable.grind_type_valid=false;unavailable.physics_grind_type_valid=false;
+        check(!unavailable.selected_identity() && !unavailable.animated_identity(),"missing native fields have no named identity");
+    }
     f.put(f.page + 0x20, UINT32_MAX); f.put(f.page + 0x24, std::uint32_t{0});
     sample = f.sample();
     check(sample.grind_type_valid && sample.grind_type == UINT32_MAX && sample.skate_grind_type_valid && sample.skate_grind_type == 0,
@@ -133,8 +204,8 @@ int main() {
     check(!bad.sample().grind_type_valid, "validity removal during sampling rejected");
     GrindStateBindings found{}; f.reads = 0;
     const auto candidate_start = f.objects[0] - 0x10;
-    check(inspect_grind_candidates(f, candidate_start, 512, 1, found) == 2 && found.objects == f.objects,
-          "bounded discovery identifies exact two asset candidates");
+    check(inspect_grind_candidates(f, candidate_start, 768, 1, found) == 3 && found.objects == f.objects,
+          "bounded discovery identifies exact three asset candidates");
     check(f.reads < 1000, "small discovery span stays bounded");
     check(inspect_grind_candidates(f, candidate_start, 512, 1, found) == 0, "live bindings are retained across duplicate candidates");
     auto refreshed = refresh_grind_candidates(f, found, 2);
@@ -148,7 +219,7 @@ int main() {
     refreshed = refresh_grind_candidates(bad, found, 2);
     check(!refreshed.objects[0] && refreshed.objects[1] == f.objects[1],
           "unregistered reset hint cannot survive rebinding");
-    check(refresh_grind_candidates(f, found, 0).objects == std::array<std::uintptr_t, 2>{},
+    check(refresh_grind_candidates(f, found, 0).objects == std::array<std::uintptr_t, 3>{},
           "reset hint refresh requires a live generation");
     found = f.bindings();
     check(inspect_grind_candidates(f, f.owner.entity, 4, 2, found) == 0 && found.generation == 2 && !found.objects[0],
@@ -157,7 +228,7 @@ int main() {
     check(!inspect_grind_candidates(f, candidate_start, 4097, 1, found) && !f.reads, "oversized discovery request rejected before reads");
     check(!inspect_grind_candidates(f, candidate_start, 512, 0, found), "discovery needs a current generation");
     found = {}; f.reads = 0;
-    check(inspect_grind_candidates(f, candidate_start, 4096, 1, found) == 2 && f.reads < 3000,
+    check(inspect_grind_candidates(f, candidate_start, 4096, 1, found) == 3 && f.reads < 4000,
           "maximum accepted discovery span remains bounded");
     check(!detail::get(f, detail::highest - 2, 8, sample.physics_state), "address arithmetic cannot wrap into another object");
     GrindTransitions transitions;
