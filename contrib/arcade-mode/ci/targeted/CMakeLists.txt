@@ -15,5 +15,9 @@ foreach(test input_session neutral_flip_release air_motion_proof launch_descript
              grind_transition_lifetime grind_change native_grab)
     add_executable(arcade_${test} "${reskate_root}/Extension/ArcadeMode/Test/arcade_${test}_tests.cpp")
     target_include_directories(arcade_${test} PRIVATE "${reskate_root}")
+    if(MSVC)
+        # Match the full preflight so template warnings fail in this fast lane.
+        target_compile_options(arcade_${test} PRIVATE /W4 /WX /permissive- /EHsc)
+    endif()
     add_test(NAME arcade_${test} COMMAND arcade_${test})
 endforeach()

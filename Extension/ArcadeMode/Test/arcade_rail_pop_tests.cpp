@@ -141,7 +141,7 @@ int main() {
                 p.bridge={};
                 // A real catalog contains rail flip recipes. Missing native
                 // bridge permission must not silently select one as fallback.
-                p.catalog.emplace_back(2,false,GestureContext::from_grind,
+                p.catalog.emplace_back(std::uint8_t{2},false,GestureContext::from_grind,
                     std::vector<AuthoredStickStep>{{0,0,-27000},{18,27000,27000},{24,0,0}});
             }
             auto out=p.poll(press,classic_x,fault!=5);
