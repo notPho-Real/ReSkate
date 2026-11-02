@@ -18,6 +18,7 @@ namespace dingosdk::arcade_mode {
 // The measured slide/Smith routes may begin in401/20: independently verify
 // original403 preparation before admitting the lateral lease or Smith controls.
 // Measured active402/31 controls also return through406 to403/24 (5-0).
+// From403/24, the measured401/20 return may prepare a Nosegrind/Crooked sweep.
 // Other source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -75,12 +76,14 @@ public:
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
+        const bool prepare_sweep=source_.state==403 && source_.identity==24 &&
+            (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked);
         const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool slide_return=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
         const bool returning=source_.state==403 && source_.identity==24 &&
-            request.grind_target()==GrindChangeTarget::grind_50_50;
+            (request.grind_target()==GrindChangeTarget::grind_50_50 || prepare_sweep);
         const bool smith=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::smith;
         const bool lateral_tail=source_.state==403 && source_.identity==24 &&
@@ -100,7 +103,7 @@ public:
              request.grind_target()==GrindChangeTarget::smith);
         const bool prepare_nose=source_.state==401 && source_.identity==20 &&
             (request.grind_target()==GrindChangeTarget::noseslide || request.grind_target()==GrindChangeTarget::nosebluntslide);
-        const bool preparing=prepare_tail || prepare_nose || prepare_slide_return;
+        const bool preparing=prepare_tail || prepare_nose || prepare_slide_return || prepare_sweep;
         if(request.action!=InputAction::rail_change ||
             (!returning && !sweep && !lateral && !smith && !preparing && !slide_return) ||
             (preparing && !geometry(source_,144.)))
@@ -154,12 +157,27 @@ public:
         if(!active_ || !preparing_ || !preparation_ready_)return;
         if(!fresh(now,frame_) || now<preparation_ready_at_ || now-preparation_ready_at_>150 ||
             now<leg_started_at_ || now-leg_started_at_>=1500 ||
-            frame_.state!=403 || !contact.valid || contact!=preparation_contact_ || !same_segment(contact)) {
+            frame_.state!=target_state_ || !contact.valid || contact!=preparation_contact_ || !same_segment(contact)) {
             cancel();return;
         }
         // A still-live original406 lease cannot be replaced by a new lease.
         // During retirement the executor owns neutral, as in the native trial.
         if(!native_idle)return;
+        if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked) {
+            // Only the measured403/24->401/20 return can reach this branch.
+            // Original arm revalidates401/20 and the retired feature lease;
+            // the403-only control reader must not be used as a401 predicate.
+            const auto next=serial_+1;
+            if(!arm(next,now+1500,GrindAdmissionControl::ordinary)) { cancel();return; }
+            source_=contact;serial_=next;leg_started_at_=now;
+            preparing_=preparation_ready_=false;slide_return_=false;
+            lateral_=tail_release_=smith_=false;
+            const bool crooked=final_target_==GrindChangeTarget::crooked;
+            sweep_x_=crooked?24000:12000;held_y_=32767;
+            target_identity_=crooked?32u:23u;target_state_=403;hold_ms_=1000;duration_ms_=1500;
+            evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
+            return;
+        }
         if(final_target_==GrindChangeTarget::grind_50_50) {
             // Compose only the measured402/31→403/24 and403/24→401/20
             // routes. The first pulse has fully withdrawn before readiness;
@@ -244,8 +262,8 @@ public:
         if(!active_ || !fresh(now,frame_))return;
         if(preparing_) {
             evidence_.preparation_completed=evidence_.preparation_completed ||
-                (completion.valid && completion.source==source_.state && completion.target==403 && completion.phase==1.f);
-            if(evidence_.preparation_completed && frame_.state==403 && contact.valid && contact.state==403 &&
+                (completion.valid && completion.source==source_.state && completion.target==target_state_ && completion.phase==1.f);
+            if(evidence_.preparation_completed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
                 same_segment(contact) && contact.identity==target_identity_) {
                 evidence_.preparation_physics_changed=true;
                 // The402 return's complete600ms diagonal pulse precedes

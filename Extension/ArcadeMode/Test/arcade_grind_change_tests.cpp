@@ -59,6 +59,80 @@ struct Pipeline {
 };
 }
 int main() {
+    for(unsigned hz:{30u,60u,120u})for(bool crooked:{false,true}) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(crooked?test_b:test_y);
+        p.step(1210,403);p.poll();p.step(1230,403);p.poll(test_b);
+        const auto initial_serial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==
+            (crooked?GrindChangeTarget::crooked:GrindChangeTarget::nosegrind),
+            "physical pair from5-0 starts the measured50-50 return preparation");
+        for(unsigned i=0;i<1150*hz/1000 && p.arms==1;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(1230+elapsed,elapsed<150?403:elapsed<950?406:401);
+            if(elapsed>=950){p.contact.actor=32;p.contact.identity=20;}
+            // Native control publication is403-only. A valid401 intermediate
+            // relies on original arm validation, not invented403 controls.
+            if(elapsed>=950)p.controls={};
+            p.poll(test_b);p.poll(test_b);
+            p.change.verify(p.now,elapsed>=950?NativeGrindCompletion{true,403,401,1,{}}:
+                NativeGrindCompletion{true,401,403,1,{}},p.contact,p.animation);
+            check(!p.change.evidence().completed && !p.change.evidence().physics_changed &&
+                !p.change.evidence().animation_changed,"return preparation cannot acknowledge requested sweep name");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && !pad.x && !pad.y,"return preparation owns neutral until original lease retirement");
+            p.advance(elapsed>=1000);p.advance(elapsed>=1000);
+        }
+        const auto start=p.change.evidence().final_leg_started_at;
+        check(p.arms==2 && p.change.serial()==initial_serial+1 && start>=2230 &&
+            p.last_deadline==start+1500 && p.control==GrindAdmissionControl::ordinary,
+            "actual401/20 and retired lease start exactly one bounded native sweep");
+        const unsigned target=crooked?32u:23u;
+        for(unsigned i=0;i<=1100*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            p.step(start+elapsed,elapsed<150?401:elapsed<450?406:403);
+            if(elapsed>=450){p.contact.actor=40;p.contact.identity=target;}
+            p.animation.grind_type=elapsed>=700?target:20;
+            p.poll(test_b);p.poll(test_b);
+            p.change.verify(p.now,elapsed>=450?NativeGrindCompletion{true,401,403,1,{}}:
+                NativeGrindCompletion{true,403,401,1,{}},p.contact,p.animation);
+            p.advance();p.advance();
+            const auto& evidence=p.change.evidence();
+            check(p.arms==2 && evidence.serial==initial_serial && evidence.first_input_at==1200 &&
+                evidence.last_input_at==1230 && evidence.started_at==1230 && evidence.final_leg_serial==initial_serial+1,
+                "held input cannot repeat and physical timestamps survive the returned50-50 intermediate");
+            if(elapsed<450)check(!evidence.completed && !evidence.physics_changed,
+                "earlier403-to401 completion cannot finish the opposite sweep leg");
+            if(elapsed>=450 && elapsed<700)check(evidence.physics_changed && !evidence.animation_changed,
+                "sweep destination requires its independent matching animation after physics");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<1000),"sweep duration begins at the new execution leg");
+            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:crooked?24000:12000),
+                "returned50-50 delivers the measured heldUp and heading sweep without neutral interruption");
+        }
+        check(p.change.evidence().completed && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
+            "composed5-0 sweep requires final native completion, destination and animation");
+    }
+    for(unsigned fault=0;fault<8;++fault) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(test_y);p.step(1230,403);p.poll(test_b);
+        // Reach the intermediate with distinct fresh samples, as production
+        // would; stale gaps must not make an otherwise invalid handoff pass.
+        for(unsigned t=1330;t<2230;t+=100){p.step(t,406);p.poll(test_b);}
+        p.contact.actor=32;p.contact.identity=fault==0?24u:20u;
+        p.step(2230,401);p.poll(test_b);
+        p.change.verify(p.now,{fault!=1,403,401,1,{}},p.contact,p.animation);
+        if(fault==2)p.contact.actor=48;
+        if(fault==3)p.contact.segment_identity[0]++;
+        if(fault==4)p.contact.valid=false;
+        if(fault==5){p.step(2400,401);p.poll(test_b);}
+        p.advance(fault!=6,fault!=7);
+        check(p.arms==(fault==7?2u:1u) && !p.change.evidence().final_leg_serial,
+            "missing completion,wrong identity,actor/segment/contact loss,staleness,live lease or arm failure cannot continue");
+        if(fault>=2 && fault!=6)check(!p.change.active(),"invalid return-to-sweep handoff withdraws ownership");
+    }
     for(unsigned hz:{30u,60u,120u})for(auto target:{GrindChangeTarget::noseslide,GrindChangeTarget::nosebluntslide,
             GrindChangeTarget::bluntslide,GrindChangeTarget::tailslide})for(bool together:{false,true}) {
         const bool nose=target==GrindChangeTarget::noseslide || target==GrindChangeTarget::nosebluntslide;

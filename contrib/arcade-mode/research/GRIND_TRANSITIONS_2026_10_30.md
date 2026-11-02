@@ -10,6 +10,8 @@ handoff candidates are implemented locally but lack live acceptance. All nine
 named bindings have executors in the documented narrow source contexts, with
 composed routes from401/fine20. From402/fine31, ordered X->B returns to403/fine24;
 Y->Y now composes that preparation with the existing return to401/fine20.
+From403/fine24, Nosegrind and Crooked requests now compose the measured
+401/fine20 return with their existing native sweep.
 Independent native trials verify the constituent physics actions and retained
 segments; the newly composed full return and production animation/HUD/combo
 acceptance remain unverified. Broader source contexts and arbitrary repeated
@@ -3697,3 +3699,46 @@ checks to proceed. Source, native receipts and logs were retained. The host
 still reported only134MiB available on its926GiB volume; further host cleanup
 is needed before sustained captures/platform builds. No unrelated files were
 removed and no approval check was bypassed.
+
+### Compose5-0 to Nosegrind/Crooked through independently verified50-50
+
+At e992b99, established403/fine24 accepted50-50, Bluntslide, Tailslide and
+Smith requests, but rejected Nosegrind and Crooked. Current source review
+found no native mechanism missing for those two routes: the measured
+403/24->406->401/20 neutral return and401/20->406->403/23 or32 sweeps already
+have production executors and separate native receipts. The complete local
+official/main search still has no equivalent named-transition implementation;
+the pinned fork survey and original control contracts above remain applicable.
+This is a missing sequence, not evidence that arbitrary403/402 identities can
+use the same neutral return.
+
+The new routes accept only403/fine24 on horizontal geometry1 at least12m.
+They retain the existing first1500ms neutral return and require its original
+403->401 completion plus actual401/fine20 on the original segment. They own
+neutral until the original lease retires, within the existing150ms handoff
+bound. The original arm then revalidates401/20 and starts a distinct1500ms
+sweep lease: heldUp, followed after200ms byRX12000 for Nosegrind23 orRX24000
+for Crooked32. The measured sweep owns input through1000ms. The403-only
+control reader is not generalized or used to pretend401 has403 controls.
+
+Preparation verification now compares against its configured destination
+state rather than a hardcoded403; every previous preparation still configures
+403. Original physical first/last press timestamps and request serial remain
+unchanged, and the final leg has a distinct serial/time origin. The intermediate
+50-50 completion/identity/animation cannot acknowledge the requested name.
+Only the final original401->403 completion, same-segment23/32 and independently
+matching changed animation can do so. Invalid intermediate identity, missing
+completion, changed actor/segment/contact, stale frame, still-live lease and
+native arm failure prevent continuation. Other unqualified source contexts
+remain rejected; no identity, animation, contact, completion or score is written.
+
+27651 strict C++20 ASan/UBSan production-composed checks pass at30/60/120Hz.
+The added cases exercise both physical pairs, distinct native completions,
+lease retirement, exact controls, original timestamps, held/repeated polls,
+independent final animation and invalid handoffs. This composes individually
+measured native legs; it is not a newly observed full sequence or integrated
+production acceptance. Existing baseline test failures remain as documented.
+No Windows/backend build, CI, upload, installation, merge or release occurred.
+No hardware calls or reservation were made; historical Deck pins remainrev458
+and require fresh coordination. Host storage remained low at128MiB before
+the focused edits/checks; source and native receipts were preserved.
