@@ -4042,3 +4042,81 @@ heading34.59212112426758. New metadata start145.1956024169922,1.0286712646484375
 handback; no job/reservation remains. Both reset and trial slots are consumed.
 These pins are historical and require fresh coordination/revalidation before
 further input. No DLL/CI/upload/installation/merge/release occurred.
+
+### Crooked neutral return: measured negative and selector constraint
+
+Production remains4ff90929; no source32 return is added. The existing source23
+and24 neutral return cannot be generalized to Crooked from recognition alone.
+The source-first survey and pinned native selector were revisited before this
+bounded negative control. Both peers cleared access, installedc048914/DLL7853ae1a
+and BAM32/rev515 were freshly verified, and idle artwork was captured before the
+reviewed single-Shift wake. Exact-owned native approach reset
+`grind-native-approach-reset-crooked-return-c048914-v1/reset.py`, SHA256
+54b4f6b126798206721cd7e76d3da1b8523a724eae6fe73f175fc1a7f4cc95a0,
+ground-checked the approach and undid its restore515→517→519. Receipt
+`results/1793623933615456000-status.json` preserves the offboard result; the
+trial then mounted and independently verified100 before fresh lane checks.
+
+Immutable trial `grind-native-crooked-return-c048914-v1/trial.py`, SHA256
+e8351e6ad9be8b504b72bb1aef7442e367256f52c3c06ee1646421f7f6400f84,
+used the measured Up/RX24000 preparation and conditional neutral return with
+the existing original403→401 gate. Eleven inert gate cases, six reset ownership
+cases and actual worker validation passed before execution. Its2MiB receipt
+was reserved. Receipt `results/two-leg-lateral.json.gz`, SHA256
+3af936376205882c0c1e57dfde04e52f9dd5332f3744debd202b825750e12ded,
+contains485 independent samples, both physics/cached dt30Hz. Only the original
+401→403 preparation completed. Actual403/32 appears2565.242ms. The writer
+delivered Up2100.474ms, RX24000/Up2300.545ms and conditional neutral2644.691ms,
+after original completion and independently observed32/same12m segment.
+The worker also neutralizes during the conditional wait; do not assign every
+neutral reader sample to the final writer event.
+
+205 stable403/32 brackets at2622.272815–5251.215494ms have physical/published
+contact1, missing0, the same actor and original segment[1151051235367,0].
+Endpoints are x145.302734375,y.5007421970367432,z-43.6064453125/-55.6064453125.
+Raw requested pitch/roll are0; heading stays about.3881rad (22.236degrees).
+Every one has actor+766/output+419 both0. No second406 or401/20 return occurs.
+A transient fine0 and later natural701 are retained, not destination evidence.
+The gate reports `AssertionError: `, one leg and one completion; it does not
+capture an assertion value/traceback, so the exact failing assertion is not
+claimed. The independent negative admission evidence does not depend on that
+error. Debugger exit0 and restored-feature evidence remain separate from the
+gate's unsuccessful qualification result.
+
+Source-derived constraint is the admission predicate, not merely the destination
+selector. Original403 predicate0x481d910 checks absolute wrapped heading below
+.3490658402442932 (20degrees, RVA0x65e7c30) or above2.792526960372925
+(160degrees, RVA0x65e901c) before the near-straight branch. It also requires
+the captured actor+767 bit to differ from the sign of current context pitch,
+requested pitch magnitude<=.15, and its21/159-degree secondary comparisons.
+Crooked's measured neutral heading is outside the first near-straight band;
+the measured entry bit1/current positive pitch does not rescue that branch.
+The fallback uses native config+216 and35degrees, whose live tuning value was
+not captured. Actual admission0 remains the independent result.
+
+Do not misread selector0x48142f0 as the admission predicate: it checks requested
+pitch against±1.52587890625e-05 (RVAs0x607e818/0x607e83c), then compares20degrees
+against absolute heading, but its alternative compares160degrees against
+**pi minus absolute heading**, not absolute heading. Therefore the20-degree
+selector comparison alone does not explain rejection. This distinction follows
+the pinned instructions at0x4814316..0x481432e, not a live call trace. A new
+candidate must establish active native heading movement into the required
+band, original admission/completion and independent same-segment destination.
+No heading/reference/identity/contact write or guard relaxation is justified.
+
+`analyze_grind_crooked_return.py` pins the receipt and checks the205 negative
+brackets, actual geometry, clocks, writer prerequisite, absence of a second
+transition, original completion and cleanup. It passes offline. Equal brackets
+are not atomic-frame contact evidence. Production was unchanged, so the prior
+30691 composed checks were not rerun; baseline contextual-air failure remains.
+This trial does not test production A, early flip, animation, HUD or combo.
+
+Cleanup undid owned setup to BAM32/rev539, restored ArcadeON, closed menus/editor,
+destroyed pad/session and detached/restored the debugger feature. Final100,
+speed.0001927516 at146.34022521972656,1.028672695159912,-43.811302185058594,
+heading344.7289733886719. Fixture object absent; metadata start145.30345153808594,
+1.0286712646484375,-62.60688781738281; rail145.30345153808594,
+-.00000476837158203125,-54.60688781738281, identityrotation/scale1. Both peers
+received explicit clean handback; no job/reservation remains. Reset/trial slots
+are consumed. All pins require fresh coordination/revalidation. No DLL/CI,
+upload, installation, merge or release occurred.
