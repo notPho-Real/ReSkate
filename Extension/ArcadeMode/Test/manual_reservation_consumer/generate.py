@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 import subprocess
 
-VARIANTS=('current','rollback-no-reservation','rollback-admitted-only','rollback-first-down-mask')
+VARIANTS=('current','rollback-no-reservation','rollback-admitted-only','rollback-first-down-mask','rollback-native-axis','rollback-revert-delivery')
 
 def generate(root,variant='current'):
     if variant not in VARIANTS:raise ValueError('unknown control')
@@ -24,6 +24,9 @@ def generate(root,variant='current'):
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     generated=module.generated(TREE)
     source=generated['current.cpp']
+    if variant=='rollback-revert-delivery':
+        source=module.replace_once(source,'(!action.owned || linked_manual_delivery)',
+                                   '(!action.owned || (false && linked_manual_delivery))')
     mode=(TREE/'Extension/ArcadeMode/arcade_mode.cpp').read_text()
     reverse_mask=module.between(mode,'        if (result.suppress_reverse) left_y = 0;',
                                '        // The inspected guide stance')
@@ -31,6 +34,10 @@ def generate(root,variant='current'):
                          '        const auto rotation_native = arcade_input.native_context(now);')
     correction=module.between(mode,'        const auto configured_balance=arcade_input.configured_balance(now);',
                               '        observe_grind_pad(user, now,')
+    if variant=='rollback-native-axis':
+        reservation='if(manual_correction.owns_y || (ground_controls.manual_vertical_reserved && !rotation.owns_left))left_y=0;'
+        if correction.count(reservation)!=1:raise ValueError('native axis reservation marker changed')
+        correction=correction.replace(reservation,'if(manual_correction.owns_y)left_y=manual_correction.y;')
     manual_publication=module.between(mode,'            const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ?',
                                       '            const auto& spin_proof = rotation_native;')
     control_owner=module.between(mode,'        const auto admission = native_readiness.sample(now,arcade_input.native_context(now));',
@@ -109,7 +116,12 @@ def generate(root,variant='current'):
     if remap_form==2:
         # The lifecycle fixture has RT as argument4; this consumer has LT/RT
         # as arguments4/5. Preserve the physical RT edge in its new link test.
-        once('remap(0,0,0,255).action.owned','remap(0,0,0,0,255).action.owned')
+        source=source.replace('remap(0,0,0,255)','remap(0,0,0,0,255)')
+        once('remap(already&&ack_delay==900?0x6000u:0u,0,0,255)','remap(already&&ack_delay==900?0x6000u:0u,0,0,0,255)')
+        once('remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
+             'remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
+        once('remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,clock_ms-began<1200?255:0)',
+             'remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,0,clock_ms-began<1200?255:0)')
     once('const bool reference=false;const unsigned char physical_right_trigger='+('physical_rt' if remap_form==2 else '0')+';',
          'const bool reference=false;const unsigned char physical_left_trigger=lt,physical_right_trigger=rt;')
     once(' const auto admission=native_readiness.sample(now,arcade_input.native_context(now));\n const bool game_input=active&&fixture_watch&&admission.gameplay,may_start=admission.start,may_push=false,may_toggle_board=false,offboard=admission.offboard;',
@@ -127,6 +139,7 @@ def generate(root,variant='current'):
     new=r'''
      if(releasing_manual&&!result.authored_playback&&!action.owned)result.right_x=result.right_y=0;
      struct RotationBoundary{bool owns_left;short x{1111},y{2222};}rotation{competing_left_owner};
+     const auto manual_pressure=result.right_y;
      const auto rail_pad=arcade_input.sample_native_rail(result.rail,now,game_input&&!offboard&&!releasing_manual&&!reference&&!action.owned);
      movement_eligible_until.store(now+150);
      ACTION_DELIVERY
@@ -140,6 +153,12 @@ def generate(root,variant='current'):
      CORRECTION
      FINAL_CONTROLS
      last_pad={left_x,left_y,result.right_x,result.right_y,result.buttons,ground_controls.encode(),manual_correction.owns_y,delivered_drive,left_trigger,right_trigger,physical_buttons};
+     if(result.manual.owns&&result.manual.revert.ack_at&&action.pad.owns_left_stick){
+      check(last_pad.ry==manual_pressure&&std::abs(static_cast<int>(last_pad.ry))<=20000&&!action.pad.owns_right_stick,
+         "final native packet retains the measured successor pressure trajectory during LS revert playback");
+      check(last_pad.x==action.pad.left_x&&last_pad.y==action.pad.left_y,
+         "final native packet preserves the original LS revert recipe during manual handoff");
+     }
      return result;'''.replace('DRIVE',drive).replace('ACTION_DELIVERY',action_delivery).replace('FINAL_CONTROLS',final_controls).replace('CORRECTION',correction).replace('MANUAL_PUBLICATION',manual_publication)
     once(old,new)
 
@@ -281,6 +300,25 @@ def generate(root,variant='current'):
      }
      automatic_kick=true;
     }
+    void native_axis_cases(){
+     for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true}){
+      const auto contact=nose?0x8000u:0x4000u;
+      const short inward=nose?25000:-25000;
+      enter_ground(nose,hz);remap(0,inward,15000);
+      const auto speed=snapshot().velocity;physical_step(hz,contact);remap(0,inward,15000);
+      expect(last_pad.y==0,"owned manual correction must not also send native locomotion LSY");
+      expect((snapshot().velocity-speed)*inward>0,"native axis reservation preserves real balance integration");
+      expect(last_pad.ry==(nose?20000:-20000)&&last_pad.x==15000,"manual axis reservation preserves partial RS and horizontal steering");
+      observe(1.f/hz,0xc000);remap(0,inward,15000);
+      expect(last_pad.y==0&&!last_pad.correction&&writer_manual_hold,"contact publication gap retains actuator axis reservation");
+      reset_case();source_step=0;physical_step(hz,0xc000);remap();
+      physical_step(hz,0xc000);remap(0,static_cast<short>(-inward));
+      physical_step(hz,0xc000);const auto request=remap(0,inward);
+      expect(request.manual.owns&&!writer_manual.admitted&&last_pad.y==0,
+             "analog grounded acquisition reserves final native Y before balance admission");
+      trace("native-axis-reservation",hz,nose,inward);
+     }
+    }
     void coupling_cases(){
      for(unsigned hz:{30u,60u})for(bool nose:{false,true}){
       const unsigned contact=nose?0x8000u:0x4000u;
@@ -288,12 +326,14 @@ def generate(root,variant='current'):
       enter_ground(nose,hz);
       // New physical correction cannot borrow an earlier post-integration decision.
       remap(0,inward,15000);expect(last_pad.correction&&last_pad.y==0,"new physical direction waits for its own original-step model decision");
+      const auto speed_before=snapshot().velocity;
       physical_step(hz,contact);remap(0,inward,15000);
-      expect(last_pad.correction&&last_pad.y==(nose?32767:-32768),"actual protected model correction becomes full-scale native LSY");
-      expect(last_pad.ry==(nose?20000:-20000)&&last_pad.x==15000,"partial RS and independent horizontal steering coexist with projected LSY");
+      expect((snapshot().velocity-speed_before)*inward>0,"reserved vertical input still corrects the physical balance model");
+      expect(last_pad.correction&&last_pad.y==0,"owned manual correction must not also send native locomotion LSY");
+      expect(last_pad.ry==(nose?20000:-20000)&&last_pad.x==15000,"partial RS and independent horizontal steering coexist with reserved vertical input");
       expect(!last_pad.drive&&!(last_pad.buttons&0x4000u),"admitted Manual cannot acquire SDK drive or automatic native X push despite granted outer drive permission");
       trace("effective-inward",hz,nose,inward);
-      for(unsigned poll=0;poll<4;++poll){++clock_ms;remap(0,inward,15000);expect(last_pad.y==(nose?32767:-32768)&&!last_pad.drive,"repeated input polls reuse force decision without creating drive authority");}
+      for(unsigned poll=0;poll<4;++poll){++clock_ms;remap(0,inward,15000);expect(last_pad.y==0&&!last_pad.drive,"repeated input polls retain vertical reservation without creating drive authority");}
       remap(0,0,15000);expect(last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),"physical neutral withdraws LSY while preserving native manual hold");
       remap(0,outward,15000);expect(last_pad.correction&&last_pad.y==0,"opposite physical input cannot reuse old inward force");
       competing_left_owner=true;remap(0,inward);expect(!last_pad.correction&&last_pad.x==1111&&last_pad.y==2222,"manual projection yields to actual competing left-stick owner");
@@ -305,16 +345,16 @@ def generate(root,variant='current'):
       // Trigger-only input is permitted to retain the established Manual RS hold,
       // but makes native-correction compatibility false in the actual mode block.
       remap(0,outward,15000,31,0);
-      expect(!last_pad.correction&&last_pad.y==outward&&last_pad.ry==(nose?20000:-20000),"trigger veto exposes raw physical LSY alongside retained native RS hold");
+      expect(!last_pad.correction&&last_pad.y==0&&last_pad.ry==(nose?20000:-20000),"trigger-only veto cannot leak raw vertical input beside retained Manual RS");
       expect(!last_pad.drive&&!(last_pad.buttons&0x4000u),"trigger veto still cannot acquire SDK drive/native X push");
-      trace("trigger-veto-raw-y",hz,nose,outward);
+      trace("trigger-veto-reserved-y",hz,nose,outward);
       remap(0,outward,15000);
       expect(last_pad.correction&&last_pad.y==0,"removing trigger restores protected zero ownership on the same physical interval");
 
-      // A newer physical contact generation can revoke old correction until the
-      // next client publication, rather than making a cached force current.
+      // A newer physical contact generation revokes correction publication,
+      // while the existing actuator still owns its reserved vertical axis.
       observe(1.f/static_cast<float>(hz),0xc000);remap(0,inward,15000);
-      expect(!last_pad.correction&&last_pad.y==inward,"unrepublished contact change revokes projection and exposes raw LSY");
+      expect(!last_pad.correction&&last_pad.y==0,"unrepublished contact change cannot turn reserved correction into native locomotion");
       trace("contact-generation-gap",hz,nose,inward);
 
       // Safe and unsafe model endpoints use different production release paths.
@@ -324,8 +364,8 @@ def generate(root,variant='current'):
       expect(putdown&&manual_release.pending()&&!last_pad.ry&&!last_pad.drive&&!last_pad.correction,
              "safe endpoint owns neutral RS and withdraws force/drive until observed physical completion");
       expect(writer_intent.ground_controls.manual_vertical_reserved,"current production carrier reserves owned neutral release");
-      expect(writer_manual_hold&&last_pad.y==inward,
-             "owned neutral-RS release remains a separate reservation while raw physical LSY is visible");
+      expect(writer_manual_hold&&last_pad.y==0,
+             "owned neutral-RS release also reserves vertical native locomotion through physical completion");
       trace("safe-putdown",hz,nose,inward);
       physical_step(hz,0xc000);remap();expect(!manual_release.pending(),"fresh actual two-wheel completion retires putdown ownership");
 
@@ -451,27 +491,33 @@ def generate(root,variant='current'):
       expect(last_pad.x==15000&&writer_intent.ground_controls.down&&!last_pad.drive,
              "independent horizontal steering and physical Down survive returned-axis reservation");
      }
-     for(bool nose:{false,true})for(unsigned hz:{30u,60u}){
-      // A historyless first touch and subsequent full-contact riding are still
-      // the same provisional request, not the established exit tested above.
-      enter_ground(nose,hz);const auto began=remap().manual.request_at;
-      const auto loss_at=clock_ms;
+     for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+      // Attributable native contact establishes the episode without history.
+      // Sustained original two-truck evidence must retire its input reservation;
+      // it must not demote that established episode into provisional authority.
+      enter_ground(nose,hz);
+      const auto release=remap(12u);
+      expect(release.manual.release_requested&&!release.manual.owns&&last_pad.ry==0,
+             "historyless release is a physical cancellation delivered through final native packet writers");
+      const auto episode=manual_episode.serial();const auto loss_at=clock_ms;
       while(clock_ms-loss_at<200){physical_step(hz,0xc000);remap(0,-20000);}
-      expect(rows.empty()&&!manual_balance_admitted.load()&&writer_manual_hold&&
-             writer_intent.ground_controls.manual_vertical_reserved,
-             "firsttouch loss retains only the original provisional Manual reservation");
+      expect(rows.empty()&&manual_episode.serial()==episode&&manual_episode.ended()&&
+             manual_episode.exit()==ManualEpisode::Exit::putdown&&
+             !manual_balance_admitted.load()&&!writer_manual_hold&&
+             !writer_intent.ground_controls.manual_vertical_reserved&&!manual_release.pending(),
+             "verified historyless putdown retires established Manual reservation without synthetic cleanup");
       ScalarWorld before,after;before_scalar(before);current_scalar(after);
       physical_step(hz,0xc000);const auto request=remap(0,-20000);
-      const auto baseline=before_scalar(before),withdrawn=current_scalar(after);
-      expect(request.manual.owns&&request.manual.request_at==began&&baseline<0&&withdrawn==0&&
-             !linear_writes&&!dirty_writes&&!last_pad.drive,
-             "a provisional original request withdraws ordinary resistance without a second balance admission");
+      const auto baseline=before_scalar(before),ordinary=current_scalar(after);
+      expect(!request.manual.owns&&baseline<0&&std::abs(baseline-ordinary)<.00001f&&
+             linear_writes==2&&dirty_writes==2&&!last_pad.drive,
+             "confirmed native putdown restores ordinary resistance without stale Manual authority");
      }
      std::cout<<coupling_checks<<" additional production output-coupling checks passed\n";
      reset_case();
     }
     '''
-    once('int main(){','void controller_conflicts();void coupling_cases();\nint main(){\n coupling_cases();controller_conflicts();')
+    once('int main(){','void controller_conflicts();void native_axis_cases();void coupling_cases();\nint main(){\n native_axis_cases();coupling_cases();controller_conflicts();')
     # Insert exact native guard and scalar blocks before the new test main, after
     # their ordinary fixture services and owner variables have been declared.
     once('void coupling_cases();',baseline_scalar+'\n'+candidate_scalar+'\nvoid coupling_cases();')
@@ -525,7 +571,9 @@ def main():
         if not args.binary:parser.error('--verify-control requires --binary')
         expected={'rollback-no-reservation':'production reservation grants no linear write during unresolved Manual hold',
                   'rollback-admitted-only':'new acquisition RS ownership must withdraw ordinary Down brake before balance admission',
-                  'rollback-first-down-mask':'actual first-Down return mask ends only after275ms'}[args.verify_control]
+                  'rollback-first-down-mask':'actual first-Down return mask ends only after275ms',
+                  'rollback-native-axis':'owned manual correction must not also send native locomotion LSY',
+                  'rollback-revert-delivery':'delivered successor owns opposite balance and HUD after consecutive original contact while native LS may still run'}[args.verify_control]
         result=subprocess.run([str(args.binary.resolve())],capture_output=True,text=True)
         if result.returncode!=1 or result.stderr.strip()!=expected:
             raise ValueError('rollback did not fail at its intended assertion: '+result.stderr)

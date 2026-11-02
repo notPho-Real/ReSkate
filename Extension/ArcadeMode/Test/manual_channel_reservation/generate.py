@@ -20,9 +20,9 @@ def generate(root, variant="current"):
     mode = (root / 'Extension/ArcadeMode/arcade_mode.cpp').read_text()
     client = (root / 'Extension/Skater/client_noclip.cpp').read_text()
     parts = {}
-    first = '        const bool manual_delivery = '
-    start = once(mode, first)
-    parts['DELIVERY'] = mode[start:mode.index(';', start)+1]
+    start = once(mode, '        const bool linked_manual_delivery = ')
+    end = once(mode, '        const bool manual_delivery = ')
+    parts['DELIVERY'] = mode[start:mode.index(';', end)+1]
     start = once(mode, '        // Manual vertical reservation publication begin.')
     end = once(mode, '        // Manual vertical reservation publication end.')
     parts['RESERVE'] = mode[start:end]

@@ -11,7 +11,7 @@ constexpr std::uint16_t classic_a=0x1000;
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';std::exit(1);}}
 GroundControl publish(unsigned kind,unsigned conflict){
     NativeGesture::Output result{};
-    struct {bool owned{};} action;
+    auto& action=result.action;
     struct {bool owns_right_stick{};unsigned button_mask{};} rail_pad;
     struct {bool held{};bool active()const{return held;}} manual_hop;
     bool game_input=true,offboard=false,rotation_enabled=true,reference=false,releasing_manual=kind==2;

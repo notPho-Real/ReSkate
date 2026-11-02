@@ -95,6 +95,11 @@ public:
         state_.link_grace_s = tuning_.revert_link_grace_s;
         return true;
     }
+    void manual_transition(bool acknowledged) noexcept {
+        if(state_.combo_active && state_.balance_kind==BalanceKind::manual && acknowledged)state_.revert_pending=true;
+    }
+    void manual_continue() noexcept { if(state_.balance_kind==BalanceKind::manual)consume_grace(); }
+    void manual_airborne() noexcept { end_balance(); consume_grace(); }
     void trick(std::uint32_t points) noexcept {
         if (state_.combo_active) link();
         state_.combo_active = true;

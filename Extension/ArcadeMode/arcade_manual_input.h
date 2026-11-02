@@ -19,11 +19,13 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
         unsigned mode, bool revert_pending) noexcept {
     return valid && !bail && state == 101 && mode == 1 && revert_pending;
 }
-// Internal handoff proof from a verified balance and independently observed
-// native revert. This is not a generic permission to adopt one-wheel contact.
+// Internal physical handoff proof: verified original balance, native101 followed
+// by100/1 under the same owner. ack_at timestamps that native
+// transition, not a score-label event or an award. Opposite contact must still
+// corroborate successor delivery; this cannot adopt generic one-wheel contact.
 struct ManualRevertContact {
     std::uint64_t owner{},step{},contact{},ack_at{};
-    std::uint32_t previous_stance{};
+    std::uint32_t previous_stance{}; // Origin diagnostic only; leading foot need not change in a180.
     bool operator==(const ManualRevertContact&) const = default;
 };
 struct ManualInputDiagnostic {
@@ -36,6 +38,7 @@ struct ManualInputDiagnostic {
         std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
         bool held_air{}; // Continuously held final direction, owned by this actor.
         ManualRevertContact revert{};
+        bool release_requested{}; // Explicit physical cancellation, never an observation timeout.
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the
@@ -47,8 +50,17 @@ public:
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
     void cancel() noexcept { confirmed_ = established_ = balance_established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    // Resume one retained, independently revalidated episode after suspension.
+    // No recognition/controller edge and no new acquisition clock is created.
+    void resume(const ManualInputDiagnostic& d) noexcept {
+        if(busy() || !d.owns || (d.request!=-1 && d.request!=1))return;
+        requested_=d.request;requested_at_=d.request_at;recognized_at_=d.recognized_at;recognition_id_=d.recognition_id;
+        confirmed_=established_=balance_established_=landed_=true;air_prepared_=d.from_air;
+        hard_reset_=clocked_=wrong_contact_=held_air_=false;
+    }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
+    bool established_balance() const noexcept { return requested_ && confirmed_ && balance_established_; }
     bool initial_ground_acquisition(std::uint64_t now) const noexcept {
         return requested_ && !air_prepared_ && !established_ && now >= requested_at_ &&
             now-requested_at_ < acquisition_ms;
@@ -81,8 +93,15 @@ public:
         // it must not drop the established native RS balance hold.
         const auto wanted=requested_<0 ? SkatePose::manual : SkatePose::nose_manual;
         const bool vertical_balance=balance_admitted && requested_ && confirmed_ && observed==wanted;
+        // A newer native contact generation can precede the client balance
+        // publication. Retain an already-established RS hold for trigger-only
+        // input while the queued revert waits for current admission. Cancelling
+        // here would turn the same RT edge into an unrelated ground revert.
+        // This grants no revert admission, contact evidence or balance control.
+        const bool retained_trigger_hold=trigger_only_conflict && requested_ && confirmed_ &&
+            balance_established_ && observed==wanted;
         const bool opposed_vertical=(buttons&3u)==3u && !vertical_balance;
-        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict)) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
+        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict) && !retained_trigger_hold) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
             opposed_vertical || (buttons & 12u) == 12u || observed == SkatePose::bail ||
             observed == SkatePose::grind || (clocked_ && now < last_)) {
             const bool hard = !gameplay || (buttons & 0x0030u) || opposed_vertical || (buttons & 12u) == 12u ||

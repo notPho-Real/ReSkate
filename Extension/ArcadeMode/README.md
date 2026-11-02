@@ -134,12 +134,18 @@ ollie handoff; release does not issue a second flip. The continuous native
 ollie proof ends on its actual owner/flight/action boundary, rather than at an
 arbitrary500ms age. Software delivery is not proof of native animation timing.
 
-A manual/revert link retains its original verified balance and native revert
-acknowledgment until opposite balance acquires. A changed stance plus attributed
+A manual/revert link retains its original verified balance until opposite balance
+acquires. Physical handoff requires original native steps through101 and back to
+100/1 with changed stance, the same owner, and no observation gap. A score label
+cannot substitute for that transition, and a missing score label cannot block it.
+Scoring continues to require its independent native evidence. Changed stance plus attributed
 opposite contact may already be present when the new RS hold begins; one later
 native physics step must corroborate it. Generic existing one-wheel contact
 still cannot create a manual. Ground revert gesture/sweep/stance playback is
-unchanged. Shoulder preparation is buffered AIR spin: short crouches retain
+unchanged. Manual input diagnostics include the handoff's native timestamp and
+original owner/contact/step. A future Powerslide continuation needs its own native
+transition proof; it is not enabled by this revert rule.
+Shoulder preparation is buffered AIR spin: short crouches retain
 intent across takeoff while finishing the existing120ms chord interval. Ground
 LS remains neutral; genuine native wind-up is not claimed.
 
@@ -219,7 +225,14 @@ revert experiments. These selections do not enable Arcade Mode themselves.
   the existing combo continuation hook; request delivery never does.
 
 `arcade_manual_input.h` retains native manual actuation and contact settling;
-the session journal recognizes directional commands. Balance corrections cannot start a new manual while already in
+the session journal recognizes directional commands. Production analog Manual
+entry accepts tilted vertical throws when vertical travel is at least sideways
+travel. It annotates existing physical direction edges without changing the
+shared eight-way tokens used by flips. Sideways jitter within a throw does not
+restart its pair clock. A qualifying first Down also suppresses native reverse
+while the pair is being recognized; mostly sideways input and diagonal D-pad
+commands remain excluded. Native contact is still required for balance admission.
+Balance corrections cannot start a new manual while already in
 one; confirmed takeoff, incompatible poses and competing commands release
 ownership. New command repeatability and combined gameplay still need Deck tests.
 

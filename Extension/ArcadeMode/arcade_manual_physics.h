@@ -55,6 +55,12 @@ public:
         time_ = std::max(0.0f, adjusted_time); lean_ = adjusted_lean; speed_ = adjusted_speed;
         return true;
     }
+    // A verified linked successor inherits the SAME physical balance, including RNG.
+    void transfer(bool nose) noexcept { if(active_ && !closed_)nose_=nose; }
+    PhysicalBalanceSample snapshot() const noexcept {
+        return {true,active_,std::clamp(lean_/GameplayProfile::balance_display_scale,-1.0f,1.0f),
+            speed_/GameplayProfile::balance_display_scale,time_,cheese_};
+    }
     bool begin(bool nose) noexcept {
         if (closed_) return false;
         if (active_ && nose_ == nose) return true; // Only the same type keeps its current setup.

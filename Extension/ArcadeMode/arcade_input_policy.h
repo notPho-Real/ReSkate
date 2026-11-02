@@ -181,12 +181,14 @@ struct InputPolicy {
     std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
     bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{false};
     bool neutral_flip_on_release{};
+    bool manual_axis_projection{};
     bool operator==(const InputPolicy&) const = default;
     // Preserve the admitted physical Manual contract at30/60Hz; only ground
     // recognition receives this allowance, never air lifetime or actuation.
     static constexpr InputPolicy production() noexcept {
         auto result = InputPolicy{};
         result.neutral_flip_on_release = true;
+        result.manual_axis_projection = true;
         return result;
     }
     static constexpr InputPolicy compatibility() noexcept {
