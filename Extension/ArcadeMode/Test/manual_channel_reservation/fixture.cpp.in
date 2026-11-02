@@ -1,5 +1,6 @@
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_input_types.h"
+#include "Extension/ArcadeMode/arcade_grind_change.h"
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
@@ -12,6 +13,7 @@ void check(bool value,const char* why){++checks;if(!value){std::cerr<<why<<'\n';
 GroundControl publish(unsigned kind,unsigned conflict){
     NativeGesture::Output result{};
     auto& action=result.action;
+    GrindChange::Pad grind_pad{};
     struct {bool owns_right_stick{};unsigned button_mask{};} rail_pad;
     struct {bool held{};bool active()const{return held;}} manual_hop;
     bool game_input=true,offboard=false,rotation_enabled=true,reference=false,releasing_manual=kind==2;
@@ -33,6 +35,7 @@ GroundControl publish(unsigned kind,unsigned conflict){
     if(conflict==13)physical_buttons=0x1000;
     if(conflict==14)physical_buttons=0x10;
     if(conflict==15)physical_buttons=0x20;
+    if(conflict==16)grind_pad.owns=true;
 @@DELIVERY@@
     auto ground_controls=GroundControl::physical(true,2,0,0);
 @@RESERVE@@
@@ -47,7 +50,7 @@ GroundControl transport(const GroundControl* ground_controls,bool active){
 }
 }
 int main(){
-    for(unsigned kind=0;kind<4;++kind)for(unsigned conflict=0;conflict<16;++conflict){
+    for(unsigned kind=0;kind<4;++kind)for(unsigned conflict=0;conflict<17;++conflict){
         const auto published=publish(kind,conflict);
         check(published.manual_vertical_reserved==(kind<3&&conflict==0),
             "only final actual Manual hold or owned neutral release reserves the vertical channel");

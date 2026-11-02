@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 
-VARIANTS = ("current", "rollback-owner", "rollback-reservation", "rollback-competitor", "rollback-rs", "rollback-release")
+VARIANTS = ("current", "rollback-owner", "rollback-reservation", "rollback-competitor", "rollback-grind", "rollback-rs", "rollback-release")
 
 
 def once(text, marker):
@@ -39,7 +39,8 @@ def generate(root, variant="current"):
     controls = {
         "rollback-owner": ("result.manual.owns && (result.manual.request == -1 || result.manual.request == 1)", "(result.manual.request == -1 || result.manual.request == 1)"),
         "rollback-reservation": ("ground_controls.manual_vertical_reserved = rotation_enabled && manual_delivery &&", "ground_controls.manual_vertical_reserved = false && rotation_enabled && manual_delivery &&"),
-        "rollback-competitor": ("!result.rail.held && !rail_pad.owns_right_stick && !rail_pad.button_mask &&", "true &&"),
+        "rollback-competitor": ("!result.rail.held && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask &&", "true &&"),
+        "rollback-grind": ("!grind_pad.owns &&", "true &&"),
         "rollback-rs": ("result.right_x == 0 && result.right_y == result.manual.request * 20000", "true"),
         "rollback-release": ("(releasing_manual && result.right_x == 0 && result.right_y == 0)", "(false && releasing_manual && result.right_x == 0 && result.right_y == 0)"),
     }
