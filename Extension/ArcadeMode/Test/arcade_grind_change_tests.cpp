@@ -166,8 +166,10 @@ int main() {
     check(grind_admission_duration(GrindAdmissionControl::crooked_return)==2000 &&
         grind_admission_duration(GrindAdmissionControl::ordinary)==1500,
         "only the qualified Crooked policy extends the native request bound");
-    for(unsigned hz:{30u,60u,120u})for(unsigned source:{23u,24u})for(bool crooked:{false,true}) {
-        const bool tail=source==23 && !crooked;
+    for(unsigned hz:{30u,60u,120u})for(unsigned source:{23u,24u,32u})for(bool alternate:{false,true}) {
+        const bool crooked=alternate && source!=32;
+        const bool tail=(source==23 && !alternate) || (source==32 && alternate);
+        const bool active_return=source==32;
         const auto requested=crooked?GrindChangeTarget::crooked:tail?GrindChangeTarget::grind_5_0:GrindChangeTarget::nosegrind;
         Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
@@ -176,24 +178,32 @@ int main() {
         const auto initial_serial=p.change.serial();
         check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==requested,
             "physical pair from a qualified truck grind starts the measured50-50 return preparation");
-        for(unsigned i=0;i<1150*hz/1000 && p.arms==1;++i) {
+        check(p.control==(active_return?GrindAdmissionControl::crooked_return:GrindAdmissionControl::ordinary) &&
+            p.last_deadline==1230+(active_return?2000u:1500u),"preparation retains its measured admission policy and deadline");
+        const unsigned completed_at=active_return?1660u:950u;
+        const unsigned destination_at=active_return?1695u:950u;
+        const unsigned retired_at=active_return?1750u:1000u;
+        for(unsigned i=0;i<(retired_at+150)*hz/1000 && p.arms==1;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
-            p.step(1230+elapsed,elapsed<150?403:elapsed<950?406:401);
-            if(elapsed>=950){p.contact.actor=32;p.contact.identity=20;}
+            p.step(1230+elapsed,elapsed<(active_return?760u:150u)?403:elapsed<completed_at?406:401);
+            if(active_return && elapsed>=690)p.contact.identity=23;
+            if(elapsed>=completed_at)p.contact.actor=32;
+            if(elapsed>=destination_at)p.contact.identity=20;
             // Native control publication is403-only. A valid401 intermediate
             // relies on original arm validation, not invented403 controls.
-            if(elapsed>=950)p.controls={};
+            if(elapsed>=completed_at)p.controls={};
             p.poll(test_b);p.poll(test_b);
-            p.change.verify(p.now,elapsed>=950?NativeGrindCompletion{true,403,401,1,{}}:
+            p.change.verify(p.now,elapsed>=completed_at?NativeGrindCompletion{true,403,401,1,{}}:
                 NativeGrindCompletion{true,401,403,1,{}},p.contact,p.animation);
             check(!p.change.evidence().completed && !p.change.evidence().physics_changed &&
                 !p.change.evidence().animation_changed,"return preparation cannot acknowledge requested sweep name");
             const auto pad=p.change.sample(p.now);
-            check(pad.owns && !pad.x && !pad.y,"return preparation owns neutral until original lease retirement");
-            p.advance(elapsed>=1000);p.advance(elapsed>=1000);
+            check(pad.owns && pad.x==(active_return && elapsed>=200 && elapsed<500?-12000:0) &&
+                pad.y==(active_return && elapsed<500?32767:0),"return preparation keeps its pulse then neutral until lease retirement");
+            p.advance(elapsed>=retired_at);p.advance(elapsed>=retired_at);
         }
         const auto start=p.change.evidence().final_leg_started_at;
-        check(p.arms==2 && p.change.serial()==initial_serial+1 && start>=2230 &&
+        check(p.arms==2 && p.change.serial()==initial_serial+1 && start>=1230+retired_at &&
             p.last_deadline==start+1500 && p.control==GrindAdmissionControl::ordinary,
             "actual401/20 and retired lease start exactly one bounded native sweep");
         const unsigned target=crooked?32u:tail?24u:23u;
@@ -222,7 +232,7 @@ int main() {
         check(p.change.evidence().completed && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
             "composed truck-grind sweep requires final native completion, destination and animation");
     }
-    for(unsigned source:{23u,24u})for(unsigned fault=0;fault<8;++fault) {
+    for(unsigned source:{23u,24u,32u})for(unsigned fault=0;fault<8;++fault) {
         Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(source==23?classic_x:test_y);p.step(1230,403);p.poll(test_b);
@@ -240,6 +250,48 @@ int main() {
         check(p.arms==(fault==7?2u:1u) && !p.change.evidence().final_leg_serial,
             "missing completion,wrong identity,actor/segment/contact loss,staleness,live lease or arm failure cannot continue");
         if(fault>=2 && fault!=6)check(!p.change.active(),"invalid return-to-sweep handoff withdraws ownership");
+    }
+    for(bool expired:{false,true}) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(test_y);p.step(1230,403);p.poll(test_b);
+        // A destination late in the measured2000ms preparation still has
+        // only the remaining lease time, not a new150ms extension past it.
+        for(unsigned t=1330;t<3180;t+=100){p.step(t,406);p.poll(test_b);}
+        p.contact.actor=32;p.contact.identity=20;p.step(3180,401);p.poll(test_b);
+        p.change.verify(p.now,{true,403,401,1,{}},p.contact,p.animation);
+        p.advance(false);
+        p.step(expired?3230:3229,401);p.poll(test_b);p.controls={};p.advance();
+        check(p.arms==(expired?1u:2u) && p.change.active()!=expired,
+            "Crooked handoff can use its remaining2000ms bound but cannot extend it");
+    }
+    {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        p.step(1200,403);p.poll(classic_x);p.step(1230,403);p.poll(test_b);
+        for(unsigned t=1330;t<1630;t+=100){p.step(t,406);p.poll(test_b);}
+        p.contact.actor=32;p.contact.identity=20;p.step(1630,401);p.poll(test_b);
+        p.change.verify(p.now,{true,403,401,1,{}},p.contact,p.animation);p.advance();
+        const auto pulse=p.change.sample(p.now);
+        check(p.arms==1 && pulse.owns && pulse.x==-12000 && pulse.y==32767,
+            "even early intermediate completion cannot truncate the500ms Crooked pulse");
+        p.step(1730,401);p.poll(test_b);
+        p.change.verify(p.now,{true,403,401,1,{}},p.contact,p.animation);p.advance();
+        const auto tail=p.change.sample(p.now);
+        check(p.arms==2 && tail.owns && tail.x==0 && tail.y==-32767,
+            "after complete preparation a fresh5-0 leg replaces the Crooked control policy");
+    }
+    for(auto target:{GrindChangeTarget::noseslide,GrindChangeTarget::nosebluntslide,
+            GrindChangeTarget::bluntslide,GrindChangeTarget::tailslide,GrindChangeTarget::smith}) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        p.step(1000,403);p.poll();p.step(1100,403);p.poll();
+        const auto admission=p.change.admission();
+        InputRequest request{};request.action=InputAction::rail_change;
+        request.variant=grind_change_variant(target);request.rail_generation=admission.generation;
+        request.generations=admission.generations;request.first_input_at=request.last_input_at=request.recognized_at=p.now;
+        unsigned calls{};
+        check(p.change.request(request,p.now,[&](auto,auto,auto){++calls;return true;})==InputDisposition::unsupported &&
+            !calls && !p.change.active(),"Crooked composition does not admit unqualified multi-leg targets");
     }
     for(unsigned hz:{30u,60u,120u})for(auto target:{GrindChangeTarget::noseslide,GrindChangeTarget::nosebluntslide,
             GrindChangeTarget::bluntslide,GrindChangeTarget::tailslide})for(bool together:{false,true}) {

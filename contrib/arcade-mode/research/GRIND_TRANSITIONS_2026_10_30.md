@@ -20,6 +20,9 @@ Y->Y from403/fine32 Crooked now has a separately qualified active-heading
 return: Up200ms, opposite heading300ms, neutral, then original403->401.
 Its natural same-actor Nosegrind23 intermediate is explicitly checked; it is
 not a direct neutral return or final-name acknowledgment.
+That measured Crooked return now prepares Y->B Nosegrind and ordered X->B5-0
+through verified401/20 and a fresh existing native sweep lease. Intermediate23
+cannot acknowledge the Nosegrind request before that final leg.
 Independent native trials verify the constituent physics actions and retained
 segments; the newly composed full return and production animation/HUD/combo
 acceptance remain unverified. Broader source contexts and arbitrary repeated
@@ -4219,3 +4222,52 @@ identity/world/geometry after coordination before future input. No DLL/CI,
 upload, installation, merge or release occurred. Smith and slide21/22/30 returns,
 broader repeated sources and production A/earlyflip/animation/HUD/combo
 acceptance remain incomplete; build readiness is not claimed.
+
+### Compose Crooked return with the measured Nosegrind and5-0 sweeps
+
+This is a source-routing extension, not a new native mechanism qualification.
+Rechecked the local executor, admission/control readers and production
+verify/advance/RS sampling order, the complete tracked official/main source
+search, the pinned fork-method survey and the native receipts above. Reuse the
+existing original403 return and401 sweep mechanisms; no new native hook,
+reference write, identity assignment or experimental trajectory is introduced.
+
+From established403/fine32 on horizontal geometry1 at least12m, Y->B Nosegrind
+and ordered X->B5-0 now start the independently qualified Crooked return. It
+keeps the exact Up200ms/opposite-heading300ms pulse, scoped32-or23 same-actor
+contact policy, raw-control/native-admission guard and2000ms first-leg bound.
+The original403->401 completion AND actual401/20 on the same segment must be
+observed before readiness. Even implausibly early destination evidence cannot
+shorten the500ms preparation pulse. The natural403/23 intermediate is not the
+requested Nosegrind acknowledgment.
+
+After owned neutral and prior lease retirement, the unchanged401 sweep is
+armed within150ms of readiness AND before the original2000ms deadline. The
+first-leg deadline is not refreshed. Its source is the actual returned401/20;
+the403-only control reader is not reused as a401 predicate. The Crooked policy
+is cleared at handoff so it cannot override the new sweep or reject the final
+403 actor. The final leg holds Up for Nosegrind or Down for5-0 and addsRX12000
+after200ms, with1000ms input duration and1500ms ordinary lease. Overflow checks
+now reserve2000+1500ms for this composition, preserving all previous bounds.
+Original physical input timestamps/request serial remain; the final leg has a
+distinct serial/time origin. Only its original401->403 completion, actual
+same-segment23/24 and independently changed matching animation can acknowledge
+the requested target. Other source32 target routes remain unsupported.
+
+35671 strict C++20 ASan/UBSan production-composed checks pass at30/60/120Hz.
+They cover actual two-button dispatch, the natural23 intermediate, old23 at401
+before real20, lease retirement after1500ms but before2000ms, the exact2000ms
+rejection boundary, complete pulse withdrawal, fresh final control timing,
+independent final evidence, actor/segment/contact/stale/arm-failure negatives
+and rejection of unqualified source32 targets. The pinned Crooked analyzer
+also passes for both the neutral negative and active-heading positive receipts.
+No new full-sequence native receipt or integrated production acceptance was
+obtained. Existing baseline input_pattern_dispatch failure and combo warning
+limitations remain; this is not a full-green check claim. Windows/backend
+compilation remains deferred by the build gate.
+
+No Deck access or reservation occurred. Hardware pins remain historical
+BAM32/rev563 and require fresh peer coordination and identity/world/geometry
+validation before use. No DLL/CI/upload/install/merge/release. Smith and
+slide21/22/30 returns, broader repeated-source coverage and production
+A/early-flip/animation/HUD/balance/combo acceptance remain unfinished.

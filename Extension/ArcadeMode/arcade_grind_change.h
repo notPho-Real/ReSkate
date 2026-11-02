@@ -22,6 +22,7 @@ namespace dingosdk::arcade_mode {
 // grind or Crooked sweep.
 // Crooked32 returns via a measured Up/opposite-heading pulse, neutral, then
 // original403→401; native23 during the same-actor preparation is not final20.
+// That verified401/20 may prepare the existing Nosegrind or5-0 sweep.
 // Other source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -84,13 +85,15 @@ public:
         const bool prepare_sweep=source_.state==403 &&
             ((source_.identity==24 && request.grind_target()==GrindChangeTarget::nosegrind) ||
              (source_.identity==23 && request.grind_target()==GrindChangeTarget::grind_5_0) ||
+             (source_.identity==32 && (request.grind_target()==GrindChangeTarget::nosegrind ||
+                                      request.grind_target()==GrindChangeTarget::grind_5_0)) ||
              ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked));
         const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool slide_return=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
         const bool crooked_return=source_.state==403 && source_.identity==32 &&
-            request.grind_target()==GrindChangeTarget::grind_50_50;
+            (request.grind_target()==GrindChangeTarget::grind_50_50 || prepare_sweep);
         const bool returning=crooked_return || (source_.state==403 &&
             (((source_.identity==24 || source_.identity==23) &&
               request.grind_target()==GrindChangeTarget::grind_50_50) || prepare_sweep));
@@ -124,7 +127,7 @@ public:
             request.last_input_at>request.recognized_at || request.recognized_at>now ||
             now-request.last_input_at>300 || request.last_input_at-request.first_input_at>300 ||
             serial_>=UINT64_MAX-(preparing?1u:0u) ||
-            now>UINT64_MAX-(preparing?(request.grind_target()==GrindChangeTarget::smith?3700u:3000u):duration))
+            now>UINT64_MAX-(duration+(preparing?(request.grind_target()==GrindChangeTarget::smith?2200u:1500u):0u)))
             return InputDisposition::cancelled;
         // Require observed neutral pitch/roll and feature-off before the
         // reference-capture sequences; the saved reference itself is not read.
@@ -167,7 +170,7 @@ public:
                                     bool native_idle,Arm&& arm) noexcept {
         if(!active_ || !preparing_ || !preparation_ready_)return;
         if(!fresh(now,frame_) || now<preparation_ready_at_ || now-preparation_ready_at_>150 ||
-            now<leg_started_at_ || now-leg_started_at_>=1500 ||
+            now<leg_started_at_ || now-leg_started_at_>=duration_ms_ ||
             frame_.state!=target_state_ || !contact.valid || contact!=preparation_contact_ || !same_segment(contact)) {
             cancel();return;
         }
@@ -176,13 +179,13 @@ public:
         if(!native_idle)return;
         if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked ||
            final_target_==GrindChangeTarget::grind_5_0) {
-            // Only the measured403/23 or24->401/20 returns reach this branch.
+            // Only the measured403/23,24 or32->401/20 returns reach this branch.
             // Original arm revalidates401/20 and the retired feature lease;
             // the403-only control reader must not be used as a401 predicate.
             const auto next=serial_+1;
             if(!arm(next,now+1500,GrindAdmissionControl::ordinary)) { cancel();return; }
             source_=contact;serial_=next;leg_started_at_=now;
-            preparing_=preparation_ready_=false;slide_return_=false;
+            preparing_=preparation_ready_=false;slide_return_=crooked_return_=false;
             lateral_=tail_release_=smith_=false;
             const bool crooked=final_target_==GrindChangeTarget::crooked;
             const bool tail=final_target_==GrindChangeTarget::grind_5_0;
@@ -285,9 +288,10 @@ public:
             if(evidence_.preparation_completed && frame_.state==target_state_ && contact.valid && contact.state==target_state_ &&
                 same_segment(contact) && contact.identity==target_identity_) {
                 evidence_.preparation_physics_changed=true;
-                // The402 return's complete600ms diagonal pulse precedes
-                // neutral. Early destination evidence cannot shorten it.
-                if(!preparation_ready_ && (!slide_return_ || (now>=leg_started_at_ && now-leg_started_at_>=800))) {
+                // Finish each measured preparation pulse before handing off:
+                // slide800ms, Crooked500ms. Early evidence cannot shorten it.
+                const auto pulse_ms=slide_return_?800u:crooked_return_?500u:0u;
+                if(!preparation_ready_ && now>=leg_started_at_ && now-leg_started_at_>=pulse_ms) {
                     preparation_contact_=contact;preparation_ready_at_=now;preparation_ready_=true;
                 }
             }
