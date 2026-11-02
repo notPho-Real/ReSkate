@@ -3863,3 +3863,79 @@ BAM23/rev482 and require fresh peer coordination and identity/world validation.
 No DLL/CI, upload, installation, merge or release occurred. The Ollie/early-flip
 candidate, broader source contexts and integrated HUD/balance/combo acceptance
 remain unfinished.
+
+### Read-only rail-pop motion evidence preparation
+
+Source review followed the existing production `native_board_velocity()` and
+official/main `Extension/Skater/grind_exit_control.cpp::board_velocity`, using
+the shared `skater_state.h` layout. The existing backend ordinary admission
+allows the newly composed source23 return; inspection found no additional
+source23 rejection there. The rail follow-up also retains an accepted native
+flip through its airborne episode. No change to those production paths was
+justified by this review.
+
+The earlier transition receipts do not contain board-root launch velocity.
+Their field named `mode` is context+5136 (state family400 during a grind), not
+the rig+0x59a8 crouch mode consumed by `rail_pop_input_ready`. For example, the
+pinned Nosegrind-returnv2 receipt's first403/23 row has mode400 and matching
+classification selector_states[400,403]. That is not evidence that the rail
+input mode<=2 guard fails, and does not justify weakening it. Future pop
+qualification must sample the actual rig mode separately.
+
+`grind_board_motion_observer.py` now provides an inert read-only collector for
+a separately reviewed runner. It follows core+0x430 ->holder+0x18 ->board
+physics(vtablebase+0x65e67a0) ->bodies+0x20, requires count9/root owner, and
+reads root velocity+0x70 and pending flags+0x60. It brackets the local-owner
+predicate, core/context/rig identities, all body pointers/count/vtable/owner,
+selected state, state family, rig crouch mode, velocity and flags. Mismatched
+second reads remain explicitly unstable raw evidence rather than silently
+replacing the first reading. Invalid addresses/reads fail closed.
+
+The velocity is the native body buffer. Pending bit8 means its velocity may
+still await application to the physics world; neither a positive buffered Y
+nor state200 proves an A-button pop or a native trajectory call. Equal brackets
+are not atomic physics steps. The collector sends no controls, opens no process
+and performs no writes. Its caller must freshly pin executable/DLL/owner and
+correlate physical A timestamps, native Ollie identity, trajectory/airborne
+evidence, measured clock cadence, HUD/combo and early flip independently.
+
+Eight inert test methods with parameterized layout, owner, mode, pending flag,
+mixed-read, invalid-value and unreadable-memory cases pass. No C++ production
+code changed, so the prior30691 focused results remain historical rather than
+newly rerun. No DLL/CI, source upload, installation, merge or release occurred.
+
+Both peers confirmed no active/planned job. Manual reported a subsequent
+Mega Park reload, making the old BAM23 pins invalid. Fixed capture receipt
+`grind-readiness-c048914-return2-v1/results/1793616613105270000.json` showed
+idle artwork; the reviewed single-Shift wake restored visible Mega Park
+gameplay. Fresh status receipt
+`grind-readiness-c048914-return2-v1/results/1793616672469318000-status.json`
+confirmed installedc048914, DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410 and BAMgeneration32/revision491. Skater offboard504,
+speed0 at142.998046875,0.9499925374984741,-88.57421875,
+heading180.09202575683594. ArcadeON/menu/editorclosed; fixture metadata remains
+configured with the old start/pose but actual object absent. No old trial or
+old coordinates were replayed.
+
+A separately reviewed immutable read-only probe was then staged in a fresh
+external slot with a reserved128KiB receipt. Runner
+`grind-board-motion-c048914-v1/probe.py`, SHA256
+`b9c6dd781217ad60c213f32956ddc99949ec95b15ff75c037ac312636ce76473`;
+receipt `results/board-motion.json.gz`, SHA256
+`7c912950a5d7e889bbf0863ec99115e24e9f6ad0b413d67f880a5fe33084dcbe`.
+It validated executable/DLL/mapped inode/local owner and took the shared lock
+for12 read-only samples over226.749980ms. All12 brackets were stable,
+state/family504, actual rig crouch mode0, velocity buffer(0,0,0), pendingflags0.
+Native feature byte26 remained0, TracerPid remained0; exit0. This establishes
+the collector on the current stopped offboard owner only. It does not establish
+rail contact, pop eligibility, upward velocity, an A-button Ollie, flip, clock
+cadence, HUD or combo acceptance. The slot is consumed and must not be rerun.
+
+No gameplay trial, virtual pad, fixture change, teleport, debugger or setting
+change occurred in this window. Console was closed by the status runner; both
+peers received explicit clean handback. No job/reservation remains. The new
+BAM32/rev491 pins supersede rev482 but still require fresh coordination and
+revalidation before input. Next rail-pop qualification needs freshly checked
+approach/geometry and this observer combined with native identity/trajectory
+and actual physical event evidence; the earlier abrupt-Up control alone still
+does not qualify the production A path.
