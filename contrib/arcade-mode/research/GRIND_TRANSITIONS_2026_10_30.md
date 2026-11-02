@@ -4332,3 +4332,84 @@ the prior35671 composed checks and baseline input_pattern_dispatch limitation
 remain. Hardware pins remain historical BAM32/rev563 with no pending job.
 No DLL/CI/upload/install/merge/release; build and gameplay acceptance gates
 remain closed.
+
+### Noseslide return candidate stopped at a changed preparation segment
+
+Production remains69d1b62. Before the bounded experiment, the current executor,
+official/main search and grind-exit documentation, pinned fork/trainer survey,
+native402 predicate481da30/481db80, selector48141d3 and Tipslide heading asset
+18531/RES7410 were rechecked. The measured Bluntslide return demonstrates one
+active-heading admission window; it does not establish a Noseslide return.
+The new candidate required original401->403/23 and403->402/21 completions,
+actual21/contact on the original12m segment, feature-off and a live gate before
+any further controls. Only then would it send Up200ms, native XInput
+RS(32767,8192)600ms and neutral. Its third admission required duplicated raw
+positive heading0..35degrees, pitch(.1745329201,.5), absroll<.001, both native
+admission bytes and unchanged owner/actor/contact. This was a source-derived
+candidate, not an assumed Nosegrind destination. No destination field was set.
+
+Immutable runner
+`grind-native-noseslide-return-c048914-v1/trial.py` SHA256
+868bc32c7072af1b949fca71849b93532629d63c76016355bda7c100f96e49e7
+produced receipt `results/two-leg-lateral.json.gz` SHA256
+e0f168365b1b9502cef8d8d604854ca59387f5097e1e543ac513f861065e1d4c.
+The preallocated receipt retains297 independent samples with both native dt
+readbacks .03333333134651184. Exactly two original406 completions ran:
+401->403 and403->402. The writer delivered first Up at2117.471ms,
+RX12000/Up at2317.530ms and the established Noseslide lateral control at
+2712.284ms. The worker neutralizes before conditional waits as previously
+documented. Phase7 stopped with `Native preparation gate failed`; the gate
+reported `AssertionError: ` without an assertion site/value. No2700/2900/3500
+scheduled third-leg controls were sent, no third admission reads were taken,
+and no third406 or destination completion occurred.
+
+Independent reader evidence identifies a material preparation failure without
+inventing that missing assertion trace. The original segment is
+[1443109011495,0], endpoints
+(145.5234375,.5007421970367432,-43.2109375/-55.2109375).
+Seventeen stable403/23 contact brackets2593.714674..2806.119853ms retain it.
+After the second original completion, three402/66 brackets3319.933049..
+3346.786503ms still retain it; intermediate66 is not the requested Noseslide.
+All23 stable402/21 contact brackets3358.110188..3647.727513ms instead read
+segment[1443109011523,0], endpoints
+(145.61004638671875,.4507421851158142,-43.2109375/-55.2109375).
+The segment-changed byte is1 for the first three and0 for the remaining20.
+The402 actor4138024800 is unchanged, but matching actor/name and12m length
+cannot substitute for the original segment identity/endpoints. Both native
+admission bytes remain0 in these23 brackets. This is no evidence against the
+undelivered return controls, and it does not supersede the earlier independently
+qualified same-segment Noseslide receipt. A future trial must first establish
+the required original-segment source; no geometry/contact guard is relaxed.
+
+`analyze_grind_noseslide_return.py` pins the completions, input cutoff,
+independent23-versus21 segments, clock readbacks and cleanup. It passes.
+Before execution,59 inert gate/readiness/owner/angle/actor cases and four
+actual-worker timelines passed; six exact-owned reset cases also passed.
+These are harness checks, not integrated gameplay acceptance. No production
+change or C++ rerun was justified. The previous35671 composed checks and known
+baseline input_pattern_dispatch failure remain as recorded.
+
+Both peers explicitly cleared access and received clean handback. Freshly
+verified installedc048914/DLL7853ae1a/executablefbce74d5 hashes and
+game85401/launcher85410 remained unchanged. Reset-noseslide-returnv1 was
+consumed by a local missing-argument assertion before SSH; it made no hardware
+change. The identical reviewedv2 reset SHA256
+2a2174a077961b59eb28258a94fe06d501e454c68b144c84af96532a45702627
+used freshBAM32/rev563 pins and original native ground/reset/owned undo,
+ending567. Its receipt is
+`grind-native-approach-reset-noseslide-return-c048914-v2/results/1793638551249936000-status.json`.
+The trial then completed owned setup/cleanup through587. All these slots are
+consumed. GDBexit0/feature restored, pad/session destroyed, ArcadeON,
+menus/editorclosed and all owned edits undone/objectabsent were verified.
+No job or reservation remains.
+
+Final historical pins: BAM32/rev587, native100, speed.00006181431672303006,
+position(144.12222290039062,1.0286741256713867,-42.023094177246094),
+heading280.0885009765625. Fixture metadata start
+(145.52430725097656,1.0286712646484375,-62.211727142333984), rail
+(145.52430725097656,-.000004649162292480469,-54.211727142333984),
+identityrotation/scale1, actualobjectabsent. These require fresh peer
+coordination and identity/world/geometry validation before reuse. The new
+receipt is ArcadeOFF control/physics evidence only; physical A/early flip,
+production animation/HUD/balance/combo and broader repeated sources remain
+unaccepted. No DLL/CI/upload/install/merge/release; build gate remains closed.
