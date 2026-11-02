@@ -75,8 +75,10 @@ public:
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
+        const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
+            request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool slide_return=source_.state==402 && source_.identity==31 &&
-            request.grind_target()==GrindChangeTarget::grind_5_0;
+            (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
         const bool returning=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool smith=source_.state==403 && source_.identity==24 &&
@@ -98,7 +100,7 @@ public:
              request.grind_target()==GrindChangeTarget::smith);
         const bool prepare_nose=source_.state==401 && source_.identity==20 &&
             (request.grind_target()==GrindChangeTarget::noseslide || request.grind_target()==GrindChangeTarget::nosebluntslide);
-        const bool preparing=prepare_tail || prepare_nose;
+        const bool preparing=prepare_tail || prepare_nose || prepare_slide_return;
         if(request.action!=InputAction::rail_change ||
             (!returning && !sweep && !lateral && !smith && !preparing && !slide_return) ||
             (preparing && !geometry(source_,144.)))
@@ -125,7 +127,7 @@ public:
         // The measured 5-0 recipe retains Down; the other two retain Up.
         // The native geometry classifier supplies the destination identity.
         const bool crooked=request.grind_target()==GrindChangeTarget::crooked;
-        const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_tail;
+        const bool tail=request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_tail || prepare_slide_return;
         // Neutral is an owned control sample, not a fabricated 50-50 result.
         // The original 403 admission and 406 initialization select the return.
         sweep_x_=(lateral_nose_reverse || lateral_tail_reverse)?-32767:lateral?32767:returning?0:crooked?24000:12000;
@@ -158,6 +160,20 @@ public:
         // A still-live original406 lease cannot be replaced by a new lease.
         // During retirement the executor owns neutral, as in the native trial.
         if(!native_idle)return;
+        if(final_target_==GrindChangeTarget::grind_50_50) {
+            // Compose only the measured402/31→403/24 and403/24→401/20
+            // routes. The first pulse has fully withdrawn before readiness;
+            // require native feature-off and observed neutral before rearming.
+            if(!controls_.valid || !controls_.neutral)return;
+            const auto next=serial_+1;
+            if(!arm(next,now+1500,GrindAdmissionControl::ordinary)) { cancel();return; }
+            source_=contact;serial_=next;leg_started_at_=now;
+            preparing_=preparation_ready_=false;slide_return_=false;
+            lateral_=tail_release_=smith_=false;sweep_x_=held_y_=0;
+            target_identity_=20;target_state_=401;hold_ms_=duration_ms_=1500;
+            evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
+            return;
+        }
         if(final_target_==GrindChangeTarget::smith) {
             // The measured Smith leg starts only after the original lease is
             // gone and native controls have observed neutral. No second406 is
@@ -228,11 +244,15 @@ public:
         if(!active_ || !fresh(now,frame_))return;
         if(preparing_) {
             evidence_.preparation_completed=evidence_.preparation_completed ||
-                (completion.valid && completion.source==401 && completion.target==403 && completion.phase==1.f);
+                (completion.valid && completion.source==source_.state && completion.target==403 && completion.phase==1.f);
             if(evidence_.preparation_completed && frame_.state==403 && contact.valid && contact.state==403 &&
                 same_segment(contact) && contact.identity==target_identity_) {
                 evidence_.preparation_physics_changed=true;
-                if(!preparation_ready_) { preparation_contact_=contact;preparation_ready_at_=now;preparation_ready_=true; }
+                // The402 return's complete600ms diagonal pulse precedes
+                // neutral. Early destination evidence cannot shorten it.
+                if(!preparation_ready_ && (!slide_return_ || (now>=leg_started_at_ && now-leg_started_at_>=800))) {
+                    preparation_contact_=contact;preparation_ready_at_=now;preparation_ready_=true;
+                }
             }
             // An observed Nosegrind/5-0 preparation is not the requested name.
             return;

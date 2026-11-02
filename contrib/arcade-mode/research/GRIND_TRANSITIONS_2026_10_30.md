@@ -6,13 +6,14 @@ Baseline: `65d34a0bc06034125b28779d10490e479df37fba`, the user-verified
 StateFlow/PTM flip implementation, balance model, or scoring changes.
 
 **Status: incomplete gameplay feature.** The rail A routing and early-flip
-handoff candidates are implemented locally but lack live acceptance. Four
-narrowly qualified named executors exist: from native401/fine20, Y->B
-Nosegrind23, B->B Crooked32 and ordered X->B5-0 24; from403/fine24,
-Y->Y returns to401/fine20 on twelve-metre horizontal geometry. Independent
-native trials verify their physics identity changes and retained segments;
-animation/HUD/combo acceptance remains outstanding. Five bindings, additional
-source contexts and arbitrary repeated sequences are missing. The sections below record the
+handoff candidates are implemented locally but lack live acceptance. All nine
+named bindings have executors in the documented narrow source contexts, with
+composed routes from401/fine20. From402/fine31, ordered X->B returns to403/fine24;
+Y->Y now composes that preparation with the existing return to401/fine20.
+Independent native trials verify the constituent physics actions and retained
+segments; the newly composed full return and production animation/HUD/combo
+acceptance remain unverified. Broader source contexts and arbitrary repeated
+sequences remain incomplete. The sections below record the
 initial failures and subsequent findings chronologically; later qualification
 does not establish acceptance of the whole requested feature set.
 
@@ -3637,3 +3638,62 @@ Native100 speed0.000064281, position144.82432556152344,1.0286675691604614,
 144.95022583007812,-4.887580871582031e-06,-55.19279479980469, identityrotation,
 scale1. No Grind job/reservation remains. Recoordinate and revalidate all pins
 before further input. No DLL/CI build, upload, install, merge or release.
+
+### Compose Bluntslide to50-50 from the two measured return mechanisms
+
+Source review at13efbdd found a missing sequencing path: Y→Y was unsupported
+from402/31 although402/31→403/24 and403/24→401/20 have independent native
+receipts above. The official/main search still exposes only the trainer's
+generic grind-control entry, not an equivalent named continuation executor.
+This change reuses `GrindChange::request/verify/advance`, original admission,
+the existing two control recipes and their native completion readers.
+
+Offline re-analysis of the pinned third-legv2 receipt additionally finds13
+stable destination403/24 brackets from4469.840734 through4627.771902ms with
+actor+766/output+419 admission1, same actor/segment, physical/published contact1,
+and requested pitch/roll0. That establishes a native neutral re-admission
+window after the measured Bluntslide return. It does not establish a fourth
+native completion. The independent return2-v4 receipt establishes the existing
+403/24→401/20 neutral leg; composing those legs is an implementation candidate,
+not a new native acceptance receipt.
+
+Y→Y from established402/31 on horizontal geometry1 at least12m now starts the
+existing guarded5-0 preparation. The full Down200ms/diagonal600ms trajectory
+remains intact even if actual5-0 publishes early. Preparation readiness cannot
+be latched before800ms; then original402→403 completion and fresh same-segment24
+are required. Its first1500ms deadline still applies. Within the existing150ms
+handoff bound, the original lease must retire and the native403 control reader
+must observe feature-off and neutral pitch/roll before arming the existing
+ordinary403→401 return. A still-held physical RS prevents the neutral handoff
+through the existing runtime control publication.
+
+The second lease has a distinct serial/time origin and1500ms bound; original
+physical Y press times, recognition serial and request age are retained. No
+new input is submitted or re-dated. Preparation completion/identity cannot
+acknowledge the final requested50-50. Final acknowledgment requires this
+request's original403→401 completion, actual same-segment401/20 and matching
+changed animation. Wrong/replaced intermediate actor, owner/contact/segment
+loss, stale frame, arm failure, nonneutral controls or a live prior lease
+prevent continuation. No other402 source or target is added. Earlier401
+preparations, direct5-0 return, Smith controls, simultaneous priorities and
+the protected HUD/balance/combo/flip/manual systems are unchanged.
+
+25118 strict C++20 ASan/UBSan production-composed checks pass at30/60/120Hz.
+They include the full pulse despite early identity, separately scoped original
+completions, native-neutral and lease-retirement waits, preserved timestamps,
+no held-input replay, final identity versus animation and invalid handoffs.
+The pinned offline receipt analyzer also passes with the13 neutral-admission
+brackets added. These checks are not a fourth native transition, integrated
+production acceptance or a DLL build. Previously documented baseline test
+limitations remain. No hardware call, reservation, build/CI, upload, install,
+merge or release occurred in this continuation; historical world pins remain
+rev458 and require new peer coordination and validation.
+
+Host storage interrupted automatic approval review twice with `No space left
+on device` while opening its thread-writer lock. This was a review-service
+initialization failure, not a policy rejection. Removing only this worktree's
+rebuildable old test executables allowed the same reviewed patches and focused
+checks to proceed. Source, native receipts and logs were retained. The host
+still reported only134MiB available on its926GiB volume; further host cleanup
+is needed before sustained captures/platform builds. No unrelated files were
+removed and no approval check was bypassed.

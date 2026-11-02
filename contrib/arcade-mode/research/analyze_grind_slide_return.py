@@ -83,6 +83,9 @@ def analyze(root):
                                                      [144.9501953125, 0.5007421970367432, -56.1923828125]]
                for r, _ in destination)
     assert all(b["actor"] == 4137964656 for _, b in destination)
+    neutral_return = [(r, b) for r, b in destination if b["actor_active"] == b["published_admission"] == 1]
+    assert len(neutral_return) == 13
+    assert all(b["requested_orientation_raw"][1:] == [0.0, 0.0] for _, b in neutral_return)
     mixed = [ms(r) for r, _ in stable if r["allowed"] == 0]
     assert mixed == [3334.823785]
     return {
@@ -92,6 +95,8 @@ def analyze(root):
         "admission_reader_ms": [ms(r) for r, _ in admitted],
         "independent_5_0": {"stable_same_segment_samples": len(destination),
                              "reader_ms": [ms(destination[0][0]), ms(destination[-1][0])]},
+        "later_neutral_5_0_admission": {"stable_samples": len(neutral_return),
+                                        "reader_ms": [ms(neutral_return[0][0]), ms(neutral_return[-1][0])]},
         "mixed_time_contact_samples_ms": mixed,
         "limits": ["ArcadeOFF native physics/control evidence; not production animation/HUD/balance/combo acceptance.",
                    "Only402/fine31 to403/fine24 qualified; no fourth native leg or arbitrary slide source.",

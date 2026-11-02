@@ -494,13 +494,88 @@ int main() {
             p.dispatched.grind_target()==GrindChangeTarget::grind_50_50,
             "new Y then Y after402 return enters the existing native5-0 to50-50 executor");
     }
+    for(unsigned hz:{30u,60u,120u}) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);
+        const auto initial_serial=p.change.serial();
+        check(p.arms==1 && p.change.active() && p.control==GrindAdmissionControl::slide_tail_return &&
+            p.dispatched.grind_target()==GrindChangeTarget::grind_50_50,
+            "Y then Y from Bluntslide starts native5-0 preparation, not direct neutral402 return");
+        for(unsigned i=0;i<=950*hz/1000 && p.arms==1;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=550){p.contact.actor=32;p.contact.identity=24;}
+            p.step(1230+elapsed,elapsed<250?402:elapsed<550?406:403);
+            p.controls.valid=p.controls.neutral=elapsed>=850;
+            p.poll(test_y);p.poll(test_y);
+            p.change.verify(p.now,elapsed>=550?NativeGrindCompletion{true,402,403,1,{}}:
+                NativeGrindCompletion{true,401,403,1,{}},p.contact,p.animation);
+            check(!p.change.evidence().completed && !p.change.evidence().physics_changed &&
+                !p.change.evidence().animation_changed,"preparation cannot acknowledge requested50-50");
+            if(elapsed<550)check(!p.change.evidence().preparation_completed,"old401 completion cannot finish402 preparation");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns && pad.x==(elapsed<200 || elapsed>=800?0:32767) &&
+                pad.y==(elapsed<200?-32767:elapsed<800?-8192:0),
+                "early actual5-0 cannot truncate the full measured402 return pulse");
+            p.advance(elapsed>=820);p.advance(elapsed>=820);
+            if(elapsed<850)check(p.arms==1,"handoff waits for lease retirement and observed native neutral");
+        }
+        const auto final_start=p.change.evidence().final_leg_started_at;
+        check(p.arms==2 && final_start>=2080 && p.change.serial()==initial_serial+1 &&
+            p.control==GrindAdmissionControl::ordinary && p.last_deadline==final_start+1500,
+            "verified5-0 and retired first lease arm one existing native50-50 return");
+        for(unsigned i=0;i<=1600*hz/1000;++i) {
+            const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
+            if(elapsed>=1000){p.contact.actor=40;p.contact.identity=20;}
+            p.step(final_start+elapsed,elapsed<100?403:elapsed<1000?406:401);
+            p.animation.grind_type=elapsed<1100?24u:20u;
+            p.poll(test_y);p.poll(test_y);
+            p.change.verify(p.now,elapsed<1000?NativeGrindCompletion{true,402,403,1,{}}:
+                NativeGrindCompletion{true,403,401,1,{}},p.contact,p.animation);
+            p.advance();p.advance();
+            const auto& e=p.change.evidence();
+            check(p.arms==2 && e.serial==initial_serial && e.final_leg_serial==initial_serial+1 &&
+                e.first_input_at==1200 && e.last_input_at==1230 && e.started_at==1230,
+                "held Y cannot replay; both legs retain original input timestamps and separate lease serials");
+            if(elapsed<1000)check(!e.completed && !e.physics_changed,"402 completion cannot satisfy final403 to401");
+            if(elapsed>=1000 && elapsed<1100)check(e.physics_changed && !e.animation_changed,
+                "native50-50 identity still needs independent changed animation");
+            const auto pad=p.change.sample(p.now);
+            check(pad.owns==(elapsed<1100) && (!pad.owns || (pad.x==0 && pad.y==0)),
+                "second leg uses its own bounded native neutral policy");
+        }
+        check(p.change.evidence().animation_changed,"composed return accepts only final native evidence");
+    }
+    for(unsigned fault=0;fault<10;++fault) {
+        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        p.step(1000,402);p.poll();p.step(1100,402);p.poll();
+        p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);
+        p.step(1350,406);p.poll();p.step(1500,406);p.poll();p.step(1600,406);p.poll();p.step(1700,406);p.poll();
+        p.step(1800,406);p.poll();p.step(1900,406);p.poll();
+        p.contact.actor=32;p.contact.identity=fault==0?25u:24u;
+        p.step(2030,403);p.poll(test_y);
+        p.change.verify(p.now,fault==1?NativeGrindCompletion{true,401,403,1,{}}:
+            NativeGrindCompletion{true,402,403,1,{}},p.contact,p.animation);
+        if(fault==2)p.contact.actor++;
+        if(fault==3)p.contact.segment_identity[0]++;
+        if(fault==4)p.contact.valid=false;
+        if(fault==5)p.controls.valid=false;
+        if(fault==6)p.controls.neutral=false;
+        if(fault==7)p.now=2181;
+        if(fault!=7){p.step(2050,403);p.poll(test_y);}
+        p.advance(fault!=8,fault!=9);
+        check(p.arms==(fault==9?2u:1u) && !p.change.evidence().final_leg_serial,
+            "unverified,replaced,stale,nonneutral or still-live preparation never starts final return");
+        if(fault==2 || fault==3 || fault==4 || fault==7 || fault==9)
+            check(!p.change.active(),"invalid handoff or native arm failure withdraws composed return");
+    }
     for(bool simultaneous:{false,true}) {
         Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
         if(simultaneous) {p.step(1200,402);p.poll(classic_x|test_b);}
-        else {p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);}
+        else {p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();p.step(1230,402);p.poll(classic_x);}
         check(p.arms==0 && !p.change.active(),
-            "simultaneous BX remains unchanged Bluntslide and402 neutral is not an unqualified50-50 alias");
+            "simultaneous BX remains unchanged Bluntslide and unqualified402 Smith is rejected");
     }
     for(unsigned fault=0;fault<7;++fault) {
         Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
