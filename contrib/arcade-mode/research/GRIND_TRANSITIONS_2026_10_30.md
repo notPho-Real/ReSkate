@@ -4271,3 +4271,64 @@ BAM32/rev563 and require fresh peer coordination and identity/world/geometry
 validation before use. No DLL/CI/upload/install/merge/release. Smith and
 slide21/22/30 returns, broader repeated-source coverage and production
 A/early-flip/animation/HUD/balance/combo acceptance remain unfinished.
+
+### Smith re-admission: distinguish the captured side from negative actual pitch
+
+Production remains69d1b62. This continuation rechecked the current executor,
+the entire tracked official/main search, upstream grind-exit documentation,
+the pinned trainer control reader/fork survey, the retained native predicate
+disassembly and the original Smith positive receipt. Upstream pop-out steering
+and trainer intent readers do not supply a repeated Smith-to-grind executor.
+No hardware access, reservation or gameplay experiment occurred.
+
+The sign test at0x481d964 must be read with AT&T operand order: zero is in
+xmm0, `vcomiss context+4048,xmm0` followed by `seta` at0x481d97c computes
+**actual context pitch < 0**, not positive pitch. The captured actor+767 bit
+must differ from that negative-pitch predicate at0x481d995..998 for the
+near-straight branch. That branch also needs abs wrapped requested heading
+below20degrees or above160degrees and abs requested pitch<=.15, followed by
+the existing secondary comparisons. The helper at0x4815790 calls the original
+vtable+248 predicate and only considers admission after its false result and
+the elapsed-time guard. Neither a semantic target nor raw heading alone is an
+admission command. The config+216 fallback remains a separate unmeasured
+tuning path; it is not simulated or guessed here.
+
+The SHA-pinned Smith receipt
+`grind-native-smith-reference-c048914-v1/results/two-leg-lateral.json.gz`
+(6fbed3da9095ade50932c2fa9d997a08db85f0b36c02cc0795f830294a9c15f8)
+contains113 stable403/26 physical/published-contact brackets on the original
+segment3152505995303 and actor4137961440. Every captured entry bit is0, every
+actual context pitch is positive (.11826424..39487958), and every original
+actor/published admission is0. The captured bit therefore equals the observed
+negative-pitch predicate in all113 samples, closing that near-straight branch.
+
+There are two distinct requested-control phases. Forty-nine held-Up samples
+4077.056895..4728.235607ms have requested heading-.311706841 (inside20degrees)
+but requested pitch+.400000006 (outside.15). Sixty-four later neutral samples
+4743.240423..5588.380313ms have requested pitch0 but heading
+-.456331611..-.455371380 (outside20degrees). Neither phase satisfies all three
+prerequisites. These are independently observed fields correlated with static
+source, not a call trace or an atomic native step. The earlier outer-contact0
+and later stable-contact1 disagreement remains unchanged. The complete
+predicate's fallback is not attributed to a made-up config value.
+
+This explains why the Crooked active-heading recipe cannot simply be copied
+to Smith: its independently eligible return samples have a different captured
+entry bit. A new Smith candidate must actually establish native admission,
+either after physical pitch/heading satisfy the near-straight conditions or
+through the original fallback, without writing contact bits or reference
+fields. It must then independently record original406 completion and the
+actual named destination on the same segment. The existing Smith recording
+finishes its control sequence near the end of the12m segment; enough remaining
+native geometry must be established for another leg. This analysis neither
+selects a new stick recipe nor qualifies longer geometry or a return target.
+
+`analyze_grind_readmission.py` now reproduces the113 samples and their49/64
+split while preserving its earlier contact-disagreement and388 slide-sample
+checks. Four new inert test methods cover the operand-order sign interpretation,
+held-versus-neutral failures, strict heading/inclusive pitch bounds and invalid
+inputs. They and the pinned analyzer pass. No C++ production change or rerun;
+the prior35671 composed checks and baseline input_pattern_dispatch limitation
+remain. Hardware pins remain historical BAM32/rev563 with no pending job.
+No DLL/CI/upload/install/merge/release; build and gameplay acceptance gates
+remain closed.
