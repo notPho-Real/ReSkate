@@ -898,7 +898,7 @@ int main() {
     for(unsigned fault=0;fault<20;++fault)for(auto policy:{GrindAdmissionControl::lateral_tail,GrindAdmissionControl::lateral_nose,GrindAdmissionControl::lateral_nose_reverse,GrindAdmissionControl::lateral_tail_reverse}) {
         const bool nose=policy==GrindAdmissionControl::lateral_nose || policy==GrindAdmissionControl::lateral_nose_reverse;
         const bool reverse=policy==GrindAdmissionControl::lateral_nose_reverse || policy==GrindAdmissionControl::lateral_tail_reverse;
-        std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{},pointer_reads{};
+        std::array<float,3> raw{1.5040742f,-.4f,0};unsigned reads{},validations{},pointer_reads{},admission_reads{};
         if(fault==1)raw[0]=-raw[0];
         if(fault==2)raw[0]=0;
         if(fault==3)raw[1]=0;
@@ -921,7 +921,8 @@ int main() {
                 if(fault==14)value+=1;
                 return fault!=15;
             } else if constexpr(std::is_same_v<std::remove_reference_t<decltype(value)>,std::uint8_t>) {
-                check(false,"existing lateral admission does not read slide admission bytes");return false;
+                ++admission_reads;value=1;
+                return address==0x30000+766 || address==0x40000+419;
             } else {
                 ++reads;unsigned index{};
                 if(address==0x20000+24)index=0;
@@ -935,6 +936,7 @@ int main() {
         };
         const bool admitted=grind_control_admitted(policy,100,fault==11?49:50,
             reader,[&]{return ++validations==1 || fault!=10;});
+        check(admission_reads==0,"existing lateral admission does not read slide admission bytes");
         check(admitted==(fault==0 || (fault==1 && !reverse)),"native guard enforces qualified heading/pitch polarity and rejects neutral, pitch/roll, stale/torn, missing or early evidence");
     }
     for(unsigned fault=0;fault<4;++fault) {
@@ -1088,8 +1090,16 @@ int main() {
             check(legacy.valid==(state==403),"existing default control reader remains403-only");
         }
     }
+    // Keep the read spy callable for every template specialization. An
+    // unconditional exit inside it makes MSVC flag the production guard's
+    // following short-circuit operands as unreachable before the test runs.
+    unsigned ordinary_reads{};std::array<std::uint8_t,64> ordinary_bytes{};
     check(grind_control_admitted(GrindAdmissionControl::ordinary,0,0,
-        [](auto,auto&){check(false,"ordinary admission must not read new lateral fields");return false;},[]{return true;}),
-        "existing native admission is unchanged");
+        [&](std::uintptr_t address,auto& value){
+            ++ordinary_reads;
+            if(address>ordinary_bytes.size()-sizeof(value))return false;
+            std::memcpy(&value,ordinary_bytes.data()+address,sizeof(value));return true;
+        },[]{return true;}),"existing native admission is unchanged");
+    check(ordinary_reads==0,"ordinary admission must not read new lateral fields");
     std::cout<<checks<<" grind change production composition checks passed\n";
 }
