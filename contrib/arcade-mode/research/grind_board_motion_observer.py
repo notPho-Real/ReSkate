@@ -34,10 +34,11 @@ def board_motion_sample(base, core, context, rig, read, valid):
                 u64(core + 0x3c0) != context or u64(core + 0x438) != rig):
             return None
         state = u32(context + 5140)
-        # Existing grind receipts call context+5136 "mode" (state family400).
+        # Existing grind receipts call context+5144 "mode" (often400 on rail).
         # InputSession instead uses the rig's crouch mode at+0x59a8. Keep them
         # separate: the former cannot prove rail_pop_input_ready's mode<=2.
-        family = u32(context + 5136)
+        selector_1410 = u32(context + 5136)
+        selector_1418 = u32(context + 5144)
         crouch_mode = u32(rig + 0x59a8)
         holder = u64(core + 0x430)
         if not pointer(holder):
@@ -48,7 +49,7 @@ def board_motion_sample(base, core, context, rig, read, valid):
         bodies = u64(physics + 0x20)
         if not pointer(bodies) or u32(bodies) != 9 or u64(bodies + 0x10) != physics:
             return None
-        return state, family, crouch_mode, holder, physics, bodies
+        return state, selector_1410, selector_1418, crouch_mode, holder, physics, bodies
 
     if not all(pointer(p) for p in (base, core, context, rig)) or base > 0x7fffffffffff - 0x65e67a0:
         return None
@@ -68,7 +69,7 @@ def board_motion_sample(base, core, context, rig, read, valid):
         # evidence; a later valid bracket must not erase the earlier reading.
         return dict(stable_reads=bool(owned and finite and before == after and
                                      velocity == again_velocity and flags == again_flags),
-                    state=before[0], state_family=before[1], crouch_mode=before[2],
+                    state=before[0], selector_1410=before[1], selector_1418=before[2], crouch_mode=before[3],
                     layout_before=before, layout_after=after,
                     velocity_buffer_m_s=velocity, velocity_buffer_after_m_s=again_velocity,
                     pending_flags=flags, pending_flags_after=again_flags,

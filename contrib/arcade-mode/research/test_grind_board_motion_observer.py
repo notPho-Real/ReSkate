@@ -22,6 +22,7 @@ class Memory:
             self.put(address, '<Q', value)
         self.put(self.context + 5140, '<I', 200)
         self.put(self.context + 5136, '<I', 200)
+        self.put(self.context + 5144, '<I', 200)
         self.put(self.rig + 0x59a8, '<I', 2)
         self.put(self.bodies, '<I', 9)
         self.put(self.bodies + 0x60, '<I', 0)
@@ -70,13 +71,14 @@ class BoardMotionTests(unittest.TestCase):
                 self.assertTrue(r['stable_reads'])
                 self.assertLessEqual(r['velocity_buffer_m_s'][1], 0)
 
-    def test_rail_family_is_not_rig_crouch_mode(self):
+    def test_selector_words_are_not_rig_crouch_mode(self):
         m = Memory()
         m.put(m.context + 5140, '<I', 403)
         m.put(m.context + 5136, '<I', 400)
+        m.put(m.context + 5144, '<I', 401)
         r = m.sample()
         self.assertTrue(r['stable_reads'])
-        self.assertEqual((r['state'], r['state_family'], r['crouch_mode']), (403, 400, 2))
+        self.assertEqual((r['state'], r['selector_1410'], r['selector_1418'], r['crouch_mode']), (403, 400, 401, 2))
 
     def test_every_layout_field_brackets_owner_and_state(self):
         # Every pointer, vtable, state, count and owner is re-read. Replacements

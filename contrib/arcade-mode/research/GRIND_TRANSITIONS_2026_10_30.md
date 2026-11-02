@@ -3875,7 +3875,7 @@ flip through its airborne episode. No change to those production paths was
 justified by this review.
 
 The earlier transition receipts do not contain board-root launch velocity.
-Their field named `mode` is context+5136 (state family400 during a grind), not
+Their field named `mode` is context+5144 (raw selector word, often400 on rail), not
 the rig+0x59a8 crouch mode consumed by `rail_pop_input_ready`. For example, the
 pinned Nosegrind-returnv2 receipt's first403/23 row has mode400 and matching
 classification selector_states[400,403]. That is not evidence that the rail
@@ -3887,7 +3887,7 @@ a separately reviewed runner. It follows core+0x430 ->holder+0x18 ->board
 physics(vtablebase+0x65e67a0) ->bodies+0x20, requires count9/root owner, and
 reads root velocity+0x70 and pending flags+0x60. It brackets the local-owner
 predicate, core/context/rig identities, all body pointers/count/vtable/owner,
-selected state, state family, rig crouch mode, velocity and flags. Mismatched
+selected state, raw selector words, rig crouch mode, velocity and flags. Mismatched
 second reads remain explicitly unstable raw evidence rather than silently
 replacing the first reading. Invalid addresses/reads fail closed.
 
@@ -3925,7 +3925,8 @@ receipt `results/board-motion.json.gz`, SHA256
 `7c912950a5d7e889bbf0863ec99115e24e9f6ad0b413d67f880a5fe33084dcbe`.
 It validated executable/DLL/mapped inode/local owner and took the shared lock
 for12 read-only samples over226.749980ms. All12 brackets were stable,
-state/family504, actual rig crouch mode0, velocity buffer(0,0,0), pendingflags0.
+state504 and the then-labelled `state_family` raw context+5136 value504,
+actual rig crouch mode0, velocity buffer(0,0,0), pendingflags0.
 Native feature byte26 remained0, TracerPid remained0; exit0. This establishes
 the collector on the current stopped offboard owner only. It does not establish
 rail contact, pop eligibility, upward velocity, an A-button Ollie, flip, clock
@@ -3939,3 +3940,105 @@ revalidation before input. Next rail-pop qualification needs freshly checked
 approach/geometry and this observer combined with native identity/trajectory
 and actual physical event evidence; the earlier abrupt-Up control alone still
 does not qualify the production A path.
+
+### Native authored rail-pop control and upward-buffer qualification
+
+Correction to the preceding observer note: direct inspection of the retained
+transition runner shows its `mode` reads context+0x1418 (5144), not+0x1410
+(5136). The previous stopped probe's `state_family` field read5136; its raw504
+value and velocity observations are retained, but that schema name did not
+establish the field's semantics. The collector now separately brackets both
+raw words as `selector_1410`/`selector_1418` and the actual rig+0x59a8 crouch
+mode. Eight inert test methods pass, including deliberately different selector
+words. Neither raw word is used to weaken the production crouch-mode guard.
+
+The pinned asset1495, EBXSHA1af79b67e413c94accb6efbef88d887ce511fce41,
+provides the original Mode1 `_fromgrind` arc pattern. The unchanged production
+compiler emits XInputRS steps `(tick,x,y)`:
+`(0,0,-32767),(18,0,5734),(19,0,24575),(23,0,0),(55,0,0)`.
+The unchanged `AuthoredPlayback` with its delivery-relative schedule and
+`AuthoredTickClock` advances two sixtieth-second units per30Hz frame. A small
+host source probe verified heldDown and release-relative deliveries at0ms
+(5734),33.333ms(24575),100ms(neutral); these are not three intervals of one
+sixtieth. The external trial translates XInputY to the opposite evdevY sign.
+Three inert executions of the actual bounded worker verify those intervals
+survive the two conditional waits. No DLL or CI build was performed.
+
+Both peers cleared this window. Fresh identity and status revalidatedc048914,
+DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410 and BAMgeneration32/revision491. Source inspection
+confirmed the original fixture reset performs a fresh ground check before its
+native trainer teleport, including from offboard504. New immutable setup
+`grind-native-approach-reset-rail-pop-c048914-v1/reset.py`, SHA256
+7c6ce18cdca2f6da28ba454339f65d7ef2fdb7873a142041b17c4515235bde0f,
+restored exactly one metadata-matched rail491→493, ground-checked/reset the
+approach, and undid only that restore493→495. Receipt
+`results/1793620673462218000-status.json` retains the offboard504 result at
+145.05862426757812,.9499944448471069,-62.993980407714844. Reset is setup,
+not an Ollie or evidence of mounted state. The subsequent trial used the
+existing native mount chord and independently observed stopped100 before
+fresh full-lane collision validation, unit-create/exact-owned scale2 move and
+actual12m segment validation. Old BAM23 geometry was not trusted.
+
+New immutable trial `grind-native-rail-pop-c048914-v1/trial.py`, SHA256
+9e281d2dc3234ae28dc7d7ae2ecf9674dd89f2cb654b69010c82951315662a5c,
+receipt `results/two-leg-lateral.json.gz`, SHA256
+07cb954934c5c1ba9e8aba607b65ec0838f2abbb8b2eee23ff7369af553bbac7.
+Its2MiB result slot was preallocated. The reviewed preparation gate ran exactly
+one original401→406→403 completion and detached after actual5-0. Final controls
+were conditional on original completion, actual403/fine24, physical/published
+contact, the same measured12m segment, debuggerexit0 and nativefeature26=0.
+No second lease/completion or direct physics/identity/animation write occurred.
+
+There are456 independent reader samples; both physicsdt and cachedstepdt read
+.03333333134651184 throughout. The measured segment is[1005022347303,0],
+endpoints145.1953125,.5007421970367432,z-43.8037109375/-55.8037109375.
+WriterDown begins2670.358ms, compiled release middle2970.418ms, upper arc
+3003.746ms, neutral3070.408ms:300.060ms hold,33.328ms to upper arc and99.990ms
+release-to-neutral. Writer times are uinput writes, not game-poll timestamps.
+
+The independent reader observes actual403/fine24 from2578.337ms. During the
+qualified held interval, physical/publishedcontact remain1 on that segment,
+actual crouchmode1 and selected flip-1. A fresh native Ollie1 appears while
+still403 at3039.871233ms with actual crouchmode0. Native200 appears3107.116055ms
+with Ollie1, actual crouchmode2 and stable board-root velocity buffer
+(-1.0667769909,**3.1853985786**,1.0206143856)m/s, pendingflags0. Three200 reader
+rows retain that result before201 at3141.958ms. No701 intervenes in this
+commanded exit. The earlier approach Ollie is separate: its selection had
+already cleared to-1 before established rail contact. The same native selection
+owner4138131392 is bracketed throughout; identity was never assigned by the
+observer. The later rail re-entry and natural7014911.337ms are not pop evidence.
+
+455 motion brackets are stable. One preparation-boundary row at2538.108ms
+reads406 before and403 after; it is retained as unstable. Later flight rows
+also contain pendingflag8, explicitly distinguished from the initial200
+pending0 samples. Equal brackets are not atomic frames. The observer did not
+trace the trajectory setter call or board position, and positive velocity
+buffer alone would not establish a pop. Here the ordered control, fresh native
+Ollie identity, physical rail source and new200/201 corridor provide additional
+native mechanism evidence. `analyze_grind_rail_pop_controls.py` independently
+pins and checks the receipt, source/completion/segment, writer intervals,
+selection reset/newOllie, actual crouchmode, clocks, upwardbuffer/pendingflags,
+mixed-read preservation and cleanup.
+
+This qualifies the source-derived native rail-pop controls at the measured30Hz
+and403/24 source. It does **not** accept production physical A press/release:
+installedc048914 lacks this isolated branch's `arcade_rail_pop.h`, and the
+final rail controls were external RS events. The only physical A in this trial
+belongs to the approach. No early flip was requested, no native animation/HUD/
+balance/combo acceptance was measured, and no other source/rate is generalized.
+The production mode<=2 guard is consistent with these actual rig-mode readings;
+no production code change was justified. Broader repeated-source paths and
+integrated A/earlyflip acceptance remain open. Prior30691 C++ checks remain
+historical, and the known baseline contextual-air failure remains recorded.
+
+Cleanup restored nativefeature/GDBexit0, destroyed the pad/session, undid all
+owned setup transactions to BAM32/rev515, and restored ArcadeON with menus/
+editorclosed and fixtureobjectabsent. Final native100 speed.0003871813,
+position144.36468505859375,1.0286685228347778,-41.872947692871094,
+heading34.59212112426758. New metadata start145.1956024169922,1.0286712646484375,
+-62.80458068847656; rail145.1956024169922,-.00000476837158203125,
+-54.80458068847656,identityrotation/scale1. Both peers received explicit clean
+handback; no job/reservation remains. Both reset and trial slots are consumed.
+These pins are historical and require fresh coordination/revalidation before
+further input. No DLL/CI/upload/installation/merge/release occurred.
