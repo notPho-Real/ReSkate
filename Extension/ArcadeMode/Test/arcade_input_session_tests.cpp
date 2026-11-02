@@ -108,7 +108,7 @@ void one_journal_and_boundaries() {
         out = test.poll(100, {0x1000});
         check(!out.authored_playback && !out.requested_id, "held-through-boundary A cannot become a fresh press");
     }
-    ArcadeInput input; input.enable(true);
+    auto input_storage=std::make_unique<ArcadeInput>();auto& input=*input_storage; input.enable(true);
     input.poll(0, 0, 0, 0, 0, 0, 0, true, true);
     input.enable(false);
     const auto off = input.poll(0, 17, 0xf30f, -30000, 20000, 12000, -14000, true, true);
@@ -707,7 +707,7 @@ void grounded_manual_readiness_wait() {
     }
 }
 void manual_transition_continuity_negatives() {
-    ConformanceFacade h;
+    auto h_storage=std::make_unique<ConformanceFacade>();auto& h=*h_storage;
     h.poll(1000,100); h.poll(1017,100,{0,0,12800});
     const auto before=InputNativeContext::from_frame(h.input.native_context(1017));
     h.poll(1034,200,{0,0,12800});
@@ -734,7 +734,7 @@ void manual_transition_continuity_negatives() {
     }
     check(!after.ordinary_air_transition(before,1168),"transition continuity cannot renew the older native frame lease");
     for(unsigned boundary=0;boundary<4;++boundary){
-        ConformanceFacade n;n.manual_ready=true;n.poll(1000,100);n.poll(1017,100,{0,0,12800});
+        auto n_storage=std::make_unique<ConformanceFacade>();auto& n=*n_storage;n.manual_ready=true;n.poll(1000,100);n.poll(1017,100,{0,0,12800});
         if(boundary==0)++n.owner.core;
         if(boundary==1)n.poll(1034,999,{0,0,12800});
         if(boundary==2)n.poll(1034,401,{0,0,12800});
@@ -745,7 +745,7 @@ void manual_transition_continuity_negatives() {
         check(out.manual.owns==(boundary==3),"only positively observed ordinary transitions preserve an unfinished physical pair");
     }
     for(auto face:{std::uint16_t{0x2000},std::uint16_t{0x4000}}){
-        ConformanceFacade n;n.poll(1000,100);n.poll(1017,100,{face,-25000});n.poll(1034,100,{0,-25000});
+        auto n_storage=std::make_unique<ConformanceFacade>();auto& n=*n_storage;n.poll(1000,100);n.poll(1017,100,{face,-25000});n.poll(1034,100,{0,-25000});
         n.poll(1051,200,{0,-25000});const auto out=n.poll(1068,200,{face,-25000});
         const auto* d=n.input.input_diagnostic(0);
         check(d->recognition_count==1 && d->recognition[0].request.presses==1,
@@ -768,7 +768,7 @@ void manual_context_window_contracts(){
 }
 void production_facade_matrix() {
     for(auto cadence:{17u,34u})for(unsigned actor=0;actor<5;++actor)for(unsigned boundary=0;boundary<5;++boundary) {
-        ConformanceFacade h;h.cadence=cadence;h.trace="bound-owner-lifecycle";
+        auto h_storage=std::make_unique<ConformanceFacade>();auto& h=*h_storage;h.cadence=cadence;h.trace="bound-owner-lifecycle";
         const auto state=actor==1||actor==2||actor==3?200u:100u;
         const PhysicalInputSample commands[]{{0x1000},{0x4000,-25000},{0x2000},{0x8000},{0,0,0,0,255}};
         const auto physical=commands[actor];h.poll(1000,state);const auto start=h.poll(1000+cadence,state,physical);
@@ -793,14 +793,14 @@ void production_facade_matrix() {
             "a genuine release and fresh press rearm the supported endpoint through the actual native-bound caller");
     }
     for(auto cadence:{17u,34u}) {
-        ConformanceFacade jump;jump.cadence=cadence;jump.trace="bound-jump-release";
+        auto jump_storage=std::make_unique<ConformanceFacade>();auto& jump=*jump_storage;jump.cadence=cadence;jump.trace="bound-jump-release";
         jump.poll(1000,100);jump.poll(1000+cadence,100,{0x1000});
         const auto released=jump.poll(1000+2*cadence,200);
         check(released.jump.released&&released.jump.setup_admitted&&released.jump.pressed_at==1000+cadence&&
             released.jump.released_at==1000+2*cadence&&!released.jump.from_rail,
             "actual bound ordinary jump retains its admitted original press and physical release across takeoff");
         check(!jump.poll(1000+3*cadence,200).jump.released,"bound release is published once independently of the held setup actor");
-        ConformanceFacade rail;rail.cadence=cadence;rail.trace="bound-rail-handoff";
+        auto rail_storage=std::make_unique<ConformanceFacade>();auto& rail=*rail_storage;rail.cadence=cadence;rail.trace="bound-rail-handoff";
         rail.poll(1000,200);const auto ticket=rail.poll(1000+cadence,200,{0x8000});
         const auto pad=rail.input.sample_native_rail(ticket.rail,1000+cadence,true);
         check(ticket.rail.held&&pad.owns_right_stick&&!pad.button_mask,
@@ -809,11 +809,11 @@ void production_facade_matrix() {
         check(!release.rail.held&&release.rail.request.input_sequence==ticket.rail.request.input_sequence&&
             release.rail.request.physical_released_at==1000+2*cadence,
             "actual rail release preserves ticket identity and its independently observed physical edge");
-        ConformanceFacade contact;contact.cadence=cadence;contact.trace="bound-rail-exit-veto";
+        auto contact_storage=std::make_unique<ConformanceFacade>();auto& contact=*contact_storage;contact.cadence=cadence;contact.trace="bound-rail-exit-veto";
         contact.poll(1000,401);const auto exit=contact.poll(1000+cadence,401,{0x1000});
         check(!exit.jump.setup_started&&!exit.authored_playback&&!exit.requested_id&&exit.unsupported,
             "recognized rail A cannot borrow a ground recipe when the exact from-grind actor is absent");
-        ConformanceFacade ground;ground.cadence=cadence;ground.trace="bound-ground-turn";
+        auto ground_storage=std::make_unique<ConformanceFacade>();auto& ground=*ground_storage;ground.cadence=cadence;ground.trace="bound-ground-turn";
         ground.poll(1000,100);ground.poll(1000+cadence,100,{0,0,-25000});
         ground.poll(1000+2*cadence,100);ground.poll(1000+3*cadence,100,{0,0,-25000});
         const auto turn=ground.poll(1000+4*cadence,100,{0x0200,0,-25000});
@@ -843,7 +843,7 @@ void auxiliary_mode_contract() {
     }
     // The actual caller supports selecting this experiment only while disabled.
     for(auto cadence:{17u,34u})for(auto mode:{ActionExperiment::grabs,ActionExperiment::classic,ActionExperiment::revert_backside}) {
-        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};ArcadeInput input{true};
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};auto input_storage=std::make_unique<ArcadeInput>(true);auto& input=*input_storage;
         input.enable(true);input.set_recognition_capture(0,true);
         const auto poll=[&](std::uint64_t now,std::uint8_t rt) {
             NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[1]=0xc000;

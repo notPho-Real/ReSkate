@@ -108,10 +108,10 @@ int main() {
             {14,31,48,65}, {13,30,47,64}, {9,26,43,60}, {7,24,41,58}, {5,22,39,56}}};
         for (unsigned i=0;i<ids.size();++i) for(unsigned bank=0;bank<4;++bank) {
             const auto native=native_grind_identity(ids[i][bank]);
-            check(native && native.target==grind_change_target(i+1) && native.value==ids[i][bank] &&
+            check(native && native.target==grind_change_target(static_cast<std::uint8_t>(i+1)) && native.value==ids[i][bank] &&
                   native.bf==(bank>=2) && native.side==(bank%2 ? NativeGrindSide::backside : NativeGrindSide::frontside),
                   "native enum rows preserve exact named target and original side/block");
-            check(native_grind_target(ids[0][bank],grind_change_target(i+1))==ids[i][bank],
+            check(native_grind_target(ids[0][bank],grind_change_target(static_cast<std::uint8_t>(i+1)))==ids[i][bank],
                   "target resolution preserves the verified native origin block");
         }
         for (auto invalid : {0u,1u,2u,8u,10u,11u,12u,16u,17u,69u,73u,77u,78u,UINT32_MAX})

@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_gesture.h"
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <cstring>
 using namespace dingosdk::arcade_mode;
 namespace {
@@ -60,7 +61,7 @@ struct Pipeline {
 }
 int main() {
     for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.identity=32;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=32;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         check(p.change.admission().excluded_variant==grind_change_variant(GrindChangeTarget::crooked),
             "established Crooked excludes its actual name");
@@ -93,7 +94,7 @@ int main() {
             p.change.evidence().animation_changed,"Crooked return requires all independent final evidence");
     }
     for(unsigned fault=0;fault<12;++fault) {
-        Pipeline p;p.contact.identity=32;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=32;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(test_y);p.step(1210,403);p.poll();p.step(1230,403);
         if(fault==0)p.controls.valid=false;
@@ -171,7 +172,7 @@ int main() {
         const bool tail=(source==23 && !alternate) || (source==32 && alternate);
         const bool active_return=source==32;
         const auto requested=crooked?GrindChangeTarget::crooked:tail?GrindChangeTarget::grind_5_0:GrindChangeTarget::nosegrind;
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(crooked?test_b:tail?classic_x:test_y);
         p.step(1210,403);p.poll();p.step(1230,403);p.poll(test_b);
@@ -233,7 +234,7 @@ int main() {
             "composed truck-grind sweep requires final native completion, destination and animation");
     }
     for(unsigned source:{23u,24u,32u})for(unsigned fault=0;fault<8;++fault) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(source==23?classic_x:test_y);p.step(1230,403);p.poll(test_b);
         // Reach the intermediate with distinct fresh samples, as production
@@ -252,7 +253,7 @@ int main() {
         if(fault>=2 && fault!=6)check(!p.change.active(),"invalid return-to-sweep handoff withdraws ownership");
     }
     for(bool expired:{false,true}) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=32;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(test_y);p.step(1230,403);p.poll(test_b);
         // A destination late in the measured2000ms preparation still has
@@ -266,7 +267,7 @@ int main() {
             "Crooked handoff can use its remaining2000ms bound but cannot extend it");
     }
     {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=32;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(classic_x);p.step(1230,403);p.poll(test_b);
         for(unsigned t=1330;t<1630;t+=100){p.step(t,406);p.poll(test_b);}
@@ -283,7 +284,7 @@ int main() {
     }
     for(auto target:{GrindChangeTarget::noseslide,GrindChangeTarget::nosebluntslide,
             GrindChangeTarget::bluntslide,GrindChangeTarget::tailslide,GrindChangeTarget::smith}) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=32;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=32;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         const auto admission=p.change.admission();
         InputRequest request{};request.action=InputAction::rail_change;
@@ -304,7 +305,7 @@ int main() {
             target==GrindChangeTarget::tailslide?classic_x:test_b;
         const std::uint16_t held=target==GrindChangeTarget::nosebluntslide?test_b|test_y:
             target==GrindChangeTarget::bluntslide?test_b|classic_x:classic_x|test_y;
-        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(together?held:first);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(together?held:first);
         if(!together){p.step(1230);p.poll(held);}
         const auto start=p.now,initial_serial=p.change.serial();
         check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==target,
@@ -363,7 +364,7 @@ int main() {
             "only independent second completion, final physics and animation satisfy the slide request");
     }
     for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
         p.step(1210);p.poll();p.step(1230);p.poll(classic_x);
         const auto initial_serial=p.change.serial();
         check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::smith,
@@ -413,7 +414,7 @@ int main() {
             "the independent final Smith identity and animation remain recorded after control withdrawal");
     }
     for(unsigned fault=0;fault<3;++fault) {
-        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(classic_x);
         p.step(1210);p.poll();p.step(1230);p.poll(classic_x);
         p.step(1330,406);p.poll();p.step(1430,403);p.contact.actor=32;p.contact.identity=24;
         p.controls={fault!=0,fault==2};p.poll();p.change.verify(p.now,{true,401,403,1,{}},p.contact,p.animation);
@@ -426,7 +427,7 @@ int main() {
             "unverified Smith handoff expires without stale controls or another native lease");
     }
     for(unsigned fault=0;fault<12;++fault) {
-        Pipeline p;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(test_b);p.step(1230);p.poll(test_b|classic_x);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.establish();p.step(1200);p.poll(test_b);p.step(1230);p.poll(test_b|classic_x);
         p.step(1330,406);p.poll();p.step(1430,403);p.contact.actor=32;p.contact.identity=24;p.poll();
         auto done=NativeGrindCompletion{true,401,403,1,{}};
         if(fault==0)done.valid=false;
@@ -454,7 +455,7 @@ int main() {
         if((crooked || tail) && together)continue;
         const unsigned identity=tail?24u:crooked?32u:23u;
         const std::uint16_t held=tail?0x6000u:crooked?0x2000u:0xa000u;
-        Pipeline p;p.establish();p.step(1200);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);
         p.poll(tail?0x4000:crooked?0x2000:together?0xa000:0x8000);
         if(crooked){p.step(1210);p.poll();}
         if(!together){p.step(1230);p.poll(held);}
@@ -489,7 +490,7 @@ int main() {
         check(p.change.evidence().animation_changed && !p.change.active(),"independent matching animation retires completed bounded request");
     }
     for(unsigned fault=0;fault<4;++fault) {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);
         switch(fault) {
         case 0:p.animation.grind_type=23;break;
         case 1:p.animation.valid=false;break;
@@ -507,7 +508,7 @@ int main() {
             "an unchanged or initially unknown animation cannot become a verified named change");
     }
     for(bool tail:{false,true})for(unsigned fault=0;fault<10;++fault) {
-        Pipeline p;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);p.step(1230);p.poll(tail?0x6000:0xa000);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);p.step(1230);p.poll(tail?0x6000:0xa000);
         check(p.change.active(),"negative case starts an admitted actor");
         p.step(1250,406);
         switch(fault) {
@@ -526,17 +527,17 @@ int main() {
         check(!p.change.evidence().animation_changed,"cancellation never acknowledges a grind");
     }
     {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x6000);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(0x6000);
         check(p.dispatched.grind_target()==GrindChangeTarget::bluntslide && p.arms==0,
             "simultaneous X+B retains existing Bluntslide priority instead of dispatching the 5-0 recipe");
     }
     {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x2000);p.step(1230);p.poll(0xa000);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(0x2000);p.step(1230);p.poll(0xa000);
         check(p.dispatched.grind_target()==GrindChangeTarget::nosebluntslide && p.arms==0,
             "distinct B then Y remains ordered and unsupported recipe never arms native actor");
     }
     for(bool tail:{false,true})for(auto age:{299u,300u,301u}) {
-        Pipeline p;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(tail?0x4000:0x8000);
         p.step(1230);p.poll();p.step(1330);p.poll();p.step(1430);p.poll();
         p.step(1200+age);p.poll(0x2000);
         check(p.arms==(age==299?1u:0u),"released sequential buttons obey the original strict 300ms recognition window");
@@ -544,19 +545,19 @@ int main() {
             "released buttons retain physical timestamps rather than dispatch time");
     }
     {
-        Pipeline p;p.step(1000);p.poll();p.now=1100;p.poll();
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.step(1000);p.poll();p.now=1100;p.poll();
         check(!p.change.admission().ready,"polls cannot fabricate established original physics time");
         p.step(1100);p.contact.geometry=2;p.poll();
         check(!p.change.admission().ready,"unqualified native geometry cannot admit named controls");
     }
     {
-        Pipeline p;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);p.poll(0xa000);
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.establish();p.step(1200);p.poll(0x8000);p.step(1230);p.poll(0xa000);
         p.step(1260);const auto out=p.poll(classic_a);
         check(out.jump.setup_started && out.jump.from_rail && out.right_y==-28000,
             "A cancels named RS before the existing rail-exit gesture acquires its channel");
     }
     for(unsigned hz:{30u,60u,120u})for(unsigned source_identity:{23u,24u}) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source_identity;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.end[2]=-12;p.contact.identity=source_identity;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         check(p.change.admission().ready && p.change.admission().excluded_variant==
             grind_change_variant(source_identity==23?GrindChangeTarget::nosegrind:GrindChangeTarget::grind_5_0),
@@ -593,7 +594,7 @@ int main() {
             "new physical pair after native return dispatches the existing Nosegrind executor");
     }
     for(unsigned source_identity:{23u,24u})for(unsigned fault=0;fault<5;++fault) {
-        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=source_identity;p.contact.end[2]=-12;
         if(fault==0)p.contact.end[2]=-6;
         if(fault==1)p.contact.identity=25;
         if(fault==2)p.contact.identity=26;
@@ -603,7 +604,7 @@ int main() {
         check(!p.change.admission().ready,"unqualified return source or geometry never arms the native gate");
     }
     for(unsigned source_identity:{23u,24u})for(unsigned fault=0;fault<5;++fault) {
-        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=source_identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x8000);
         p.step(1210,403);p.poll();p.step(1230,403);p.poll(0x8000);check(p.change.active(),"negative return case armed");
         p.step(1300,406);
@@ -622,7 +623,7 @@ int main() {
         if(reverse && together)continue;
         const auto source_identity=nose?23u:24u,target_identity=tail_release?22u:reverse?30u:nose?21u:31u,intermediate=tail_release?71u:reverse?26u:nose?66u:59u;
         const std::uint16_t held=tail_release?0xc000u:reverse?0xa000u:nose?0xc000u:0x6000u;
-        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=source_identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(together?held:tail_release?0x4000:reverse?0x2000:nose?0x8000:0x2000);
         if(!together){p.step(1230,403);p.poll(held);}
@@ -665,7 +666,7 @@ int main() {
     }
     for(unsigned fault=0;fault<9;++fault)for(unsigned recipe:{0u,1u,2u,3u}) {
         const bool nose=recipe==1 || recipe==2,reverse=recipe>=2,tail_release=recipe==3;
-        Pipeline p;p.contact.identity=nose?23u:24u;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=nose?23u:24u;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         if(reverse){p.step(1170,403);p.poll(tail_release?0x4000:0x2000);}
         p.step(1200,403);p.poll(tail_release?0xc000:reverse?0xa000:nose?0xc000:0x6000);
@@ -685,7 +686,7 @@ int main() {
         check(!p.change.active() && !p.change.sample(p.now).owns,"lateral cancellation withdraws control on ownership/geometry/exit/timeout or wrong destination");
     }
     for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
         check(p.change.admission().ready && p.change.admission().excluded_variant==
             grind_change_variant(GrindChangeTarget::bluntslide),"actual Bluntslide excludes unchanged Bluntslide");
@@ -730,7 +731,7 @@ int main() {
             "new Y then Y after402 return enters the existing native5-0 to50-50 executor");
     }
     for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
         p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);
         const auto initial_serial=p.change.serial();
@@ -782,7 +783,7 @@ int main() {
         check(p.change.evidence().animation_changed,"composed return accepts only final native evidence");
     }
     for(unsigned fault=0;fault<10;++fault) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
         p.step(1200,402);p.poll(test_y);p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_y);
         p.step(1350,406);p.poll();p.step(1500,406);p.poll();p.step(1600,406);p.poll();p.step(1700,406);p.poll();
@@ -805,7 +806,7 @@ int main() {
             check(!p.change.active(),"invalid handoff or native arm failure withdraws composed return");
     }
     for(bool simultaneous:{false,true}) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();
         if(simultaneous) {p.step(1200,402);p.poll(classic_x|test_b);}
         else {p.step(1200,402);p.poll(classic_x);p.step(1210,402);p.poll();p.step(1230,402);p.poll(classic_x);}
@@ -813,7 +814,7 @@ int main() {
             "simultaneous BX remains unchanged Bluntslide and unqualified402 Smith is rejected");
     }
     for(unsigned fault=0;fault<7;++fault) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         if(fault==0)p.contact.end[2]=-6;
         if(fault==1)p.contact.identity=21;
         if(fault==2)p.contact.identity=22;
@@ -824,7 +825,7 @@ int main() {
         check(!p.change.admission().ready,"only measured402/31 horizontal12m source admits slide return");
     }
     for(unsigned fault=0;fault<8;++fault) {
-        Pipeline p;p.contact.identity=31;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=31;p.contact.end[2]=-12;
         p.step(1000,402);p.poll();p.step(1100,402);p.poll();p.step(1200,402);p.poll(classic_x);
         p.step(1210,402);p.poll();p.step(1230,402);p.poll(test_b);
         check(p.change.active(),"negative402 return case armed");
@@ -937,7 +938,7 @@ int main() {
         check(admitted==(fault==0 || (fault==1 && !reverse)),"native guard enforces qualified heading/pitch polarity and rejects neutral, pitch/roll, stale/torn, missing or early evidence");
     }
     for(unsigned fault=0;fault<4;++fault) {
-        Pipeline p;p.contact.identity=23;p.contact.end[2]=fault==0?-6.f:-12.f;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=23;p.contact.end[2]=fault==0?-6.f:-12.f;
         if(fault==1)p.contact.identity=24;
         if(fault==2)p.contact.geometry=2;
         if(fault==3)p.contact.begin[1]=1;
@@ -945,7 +946,7 @@ int main() {
         check(p.arms==0,"Noseslide requires actual Nosegrind source and measured horizontal twelve-metre geometry");
     }
     for(unsigned fault=0;fault<4;++fault) {
-        Pipeline p;p.contact.identity=fault==1?23u:24u;p.contact.end[2]=fault==0?-6.f:-12.f;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=fault==1?23u:24u;p.contact.end[2]=fault==0?-6.f:-12.f;
         if(fault==2)p.contact.geometry=2;
         if(fault==3)p.contact.begin[1]=1;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x4000);
@@ -953,13 +954,13 @@ int main() {
         check(p.arms==0,"Tailslide requires actual5-0 source and measured horizontal twelve-metre geometry");
     }
     {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
         check(p.dispatched.grind_target()==GrindChangeTarget::noseslide && p.arms==0,
             "simultaneous X+Y retains Noseslide priority instead of inventing an ordered Tailslide alias");
     }
     {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x4000);
         p.step(1230,403);p.poll(0xc000);const auto start=p.now;
         for(std::uint64_t elapsed=0;elapsed<1500;elapsed+=50) {
@@ -976,20 +977,20 @@ int main() {
             "Tailslide expires cleanly while retaining only independently observed evidence");
     }
     {
-        Pipeline p;p.contact.identity=23;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=23;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(0xa000);
         check(p.dispatched.grind_target()==GrindChangeTarget::nosegrind && p.arms==0,
             "simultaneous B+Y retains existing Nosegrind priority rather than inventing an ordered Nosebluntslide alias");
     }
     for(unsigned identity=69;identity<=76;++identity) {
-        Pipeline p;p.contact.identity=identity;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0xc000);
         check(!p.change.admission().ready && !p.change.active() && p.arms==0,
             "real Suski/Darklip contact alone cannot admit an unqualified named source");
     }
     for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(classic_x);p.step(1210,403);p.poll();p.step(1230,403);p.poll(classic_x);
         check(p.change.active() && !p.change.requires_transition() && p.arms==0 &&
@@ -1032,7 +1033,7 @@ int main() {
         check(!p.change.active() && p.arms==0,"held X does not replay after another source is observed");
     }
     for(unsigned fault=0;fault<9;++fault) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         p.step(1200,403);p.poll(classic_x);p.step(1210,403);p.poll();p.step(1230,403);p.poll(classic_x);
         check(p.change.active(),"Smith cancellation case starts");
@@ -1049,7 +1050,7 @@ int main() {
             "feature/owner/actor/contact/segment loss, unexpected406, stale input, A and OFF cancel Smith without a lease");
     }
     for(unsigned fault=0;fault<5;++fault) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+        auto fixture=std::make_unique<Pipeline>();auto& p=*fixture;p.contact.identity=24;p.contact.end[2]=-12;
         if(fault==0)p.controls={};
         if(fault==1)p.controls.neutral=false;
         if(fault==2)p.contact.identity=23;

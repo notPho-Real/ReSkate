@@ -254,7 +254,7 @@ int main() {
     displayed(true, "another physical sample is independently fresh");
 
     clock_ms.store(20000);
-    for (const auto source : {BalanceHudSource{}, BalanceHudSource{20001, true},
+    for (const auto& source : {BalanceHudSource{}, BalanceHudSource{20001, true},
                               BalanceHudSource{UINT64_MAX, true}, BalanceHudSource{20000, false}}) {
         publish_balance_hud(active(), 0, source);
         displayed(false, "invalid and future sources hide");
