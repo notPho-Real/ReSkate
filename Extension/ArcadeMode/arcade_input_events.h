@@ -37,6 +37,9 @@ struct InputEvent {
     // Manual-only interpretation of this actual direction edge. The shared
     // eight-way token and its sequence remain unchanged for every other trick.
     std::int16_t manual_vertical{};
+    // A physical throw can enter the Manual cone without changing its eight-way
+    // token. Keep that observation separate from the original command timestamp.
+    std::uint64_t manual_qualified_at{};
 };
 struct InputPattern {
     std::span<const InputToken> steps;
@@ -73,7 +76,21 @@ public:
     void record(InputToken token, std::uint64_t now, std::int16_t manual_vertical = 0) noexcept {
         if (!advance(now)) return;
         if (size_ == capacity) { erase_front(); ++overflows_; }
-        at(size_++) = {token, now, ++sequence_, 0, manual_vertical};
+        at(size_++) = {token, now, ++sequence_, 0, manual_vertical, manual_vertical ? now : 0};
+    }
+    void qualify_manual_direction(std::int16_t direction, std::int16_t vertical,
+                                  std::uint64_t now) noexcept {
+        if (!direction || !vertical) return;
+        for (std::size_t i=size_; i>0; --i) {
+            auto& event=at(i-1);
+            if (event.token.source!=InputSource::direction || event.token.code!=direction) continue;
+            // A released, consumed or already qualified throw cannot be revived
+            // by cone jitter. No new shared edge, sequence or input time is made.
+            if (event.token.edge==InputEdge::press && !event.owners && !event.manual_vertical && now>=event.at) {
+                event.manual_vertical=vertical; event.manual_qualified_at=now;
+            }
+            return;
+        }
     }
     struct EventView {
         const InputHistory* journal;
@@ -563,6 +580,8 @@ private:
         vertical_pad_=digital_.pad_buttons&1u?1:digital_.pad_buttons&2u?-1:0;
         if (!armed_ || !continuous) { if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = digital_.direction; armed_ = true; observe_held(now); return; }
         direction(now, InputSource::direction, digital_.direction, canonical_);
+        if (policy_.manual_axis_projection && !exclusions_.admitted)
+            history_.qualify_manual_direction(canonical_,manual_vertical(input),now);
         // Current layout maps the physical controls into the fixed event order.
         // Trigger thresholds remain a declared layout policy, separate from axes.
         constexpr std::array<unsigned,10> order{13,14,15,12,8,16,6,9,17,7};

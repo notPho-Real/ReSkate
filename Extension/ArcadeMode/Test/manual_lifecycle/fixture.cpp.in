@@ -793,6 +793,42 @@ void analog_manual_entry_tolerance(){
   }
  }
 }
+void analog_manual_cone_continuation(){
+ for(bool air:{false,true})for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;
+  if(air)start_analog_air(dt);
+  else {reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();}
+  arcade_input.set_recognition_capture(0,true);
+  const unsigned state=air?200:100,contacts=air?0:0xc000;
+  const short sign=nose?1:-1;
+  tick(dt,state,contacts);remap(0,static_cast<short>(-sign*19000),26000);const auto first=clock_ms;
+  tick(dt,state,contacts);const auto qualified_first=remap(0,static_cast<short>(-sign*25000),22000);
+  if(!air&&nose)check(qualified_first.suppress_reverse,"late Manual cone entry reserves reverse on its first qualifying sample");
+  // Keep the physical throw duration comparable across rates. The existing
+  // airborne launch actor still owns its finite release interval at120Hz.
+  while(clock_ms-first<100){tick(dt,state,contacts);remap(0,static_cast<short>(-sign*25000),22000);}
+  tick(dt,state,contacts);remap(0,static_cast<short>(sign*19000),26000);const auto last=clock_ms;
+  tick(dt,state,contacts);const auto output=remap(0,static_cast<short>(sign*25000),22000);
+  if(!output.manual.owns){std::cerr<<"cone air="<<air<<" nose="<<nose<<" hz="<<hz<<" request="<<output.manual.request<<" safe="<<output.manual.safe<<" rejected="<<output.manual.rejected<<'\n';
+   for(const auto&e:arcade_input.history(0)->events())std::cerr<<" token="<<e.token.code<<" edge="<<static_cast<int>(e.token.edge)<<" at="<<e.at<<" owners="<<e.owners<<" cone="<<e.manual_vertical<<" qualified="<<e.manual_qualified_at<<'\n';}
+  check(output.manual.owns && output.right_y==sign*20000,
+      "production remap acquires manual pressure when both throws qualify inside unchanged diagonal tokens");
+  const auto* diagnostic=arcade_input.input_diagnostic(0);unsigned matches{};
+  for(std::size_t i=0;i<diagnostic->recognition_count;++i){const auto&r=diagnostic->recognition[i].request;
+   if(r.action==InputAction::manual||r.action==InputAction::nose_manual){++matches;
+    check(r.first_input_at==first&&r.last_input_at==last&&r.recognized_at==clock_ms,
+        "composed Manual qualification retains original edges and separate recognition time");}}
+  check(matches==1 && !manual_balance_admitted.load() && !balance_hud_pending(),
+      "cone request is once-only and cannot fabricate native balance or HUD");
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"cone-request ground or air landing still needs original matching contact");
+  const auto episode=manual_episode.serial(),began=clock_ms;
+  while(clock_ms-began<10000){const auto value=snapshot();tick(dt,100,nose?0x8000u:0x4000u);
+   const auto held=remap(0,value.velocity+.02f*value.position>0?-25000:25000);
+   check(held.manual.owns&&manual_episode.serial()==episode&&combo_session.model().state().combo_active&&balance_hud_pending(),
+       "newly qualified analog pair continues one manual episode with model and HUD for ten seconds");}
+ }
+}
 void manual_handoff_native_boundaries(){
  for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned missing=0;missing<9;++missing){
   const unsigned dt=1000/hz;raw.words[0]=0;qualified(nose,dt,300);
@@ -1249,6 +1285,7 @@ int main(){
 #endif
  episode_ten_seconds();
  analog_manual_entry_tolerance();
+ analog_manual_cone_continuation();
  manual_handoff_native_boundaries();
  manual_ground_contact_bounce();
  manual_revert_successor_contact_bounce();

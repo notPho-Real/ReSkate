@@ -35,6 +35,29 @@ The defects are ownership, timing and observation:
 
 ## Lifetime and evidence
 
+### Analog cone qualification follow-up
+
+A further production input reproduction found that a throw can enter the accepted
+Manual angle while its eight-way direction stays diagonal. The shared journal
+recorded only the earlier, steering-dominant sample, so an otherwise valid pair
+never requested a Manual. This also prevented the first qualifying Down sample
+from reserving native reverse input. Widening a timeout would not repair it.
+
+The existing direction event now carries a separate, one-time Manual qualification
+timestamp when the current physical sample first enters the accepted cone. Its
+token, sequence and original input timestamp remain unchanged. Manual recognition
+can run on that qualification sample, but pair expiry still uses the original
+physical edges. Cone jitter cannot refresh the clock; consumed, released,
+startup-held, cancelled and expired input cannot gain new authority. No additional
+controller edge or alternate flip gesture history is created. Strict/reference
+input policy, native launch ownership and the actual revert recipe are unchanged.
+
+Production-composed regressions exercise both directions from ground and air at
+30/60/120Hz through actual remap, independently supplied native landing contact,
+balance/combo/HUD admission and ten-second continuation. Removing either the
+qualification observation or its recognition path fails the reproduced boundary.
+These software checks do not establish live acceptance of this follow-up build.
+
 `ManualEpisode` owns identity and lifetime under the existing input mutex.
 Phases are inactive/acquiring, active, transitioning, airborne-suspended,
 combo-airborne and ended. Independent observers admit it but cannot expire it.

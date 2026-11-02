@@ -1279,7 +1279,9 @@ private:
         auto& first=pad?diagnostic_.pad_first:diagnostic_.stick_first;
         auto& at=pad?diagnostic_.pad_at:diagnostic_.stick_at;
         first=fresh?sign(latest):0;at=latest?latest->at:0;
-        if(fresh && latest->at==now && prior && sign(prior)==-sign(latest) &&
+        const bool newly_qualified=latest && (latest->at==now ||
+            (environment.policy.manual_axis_projection && latest->manual_qualified_at==now));
+        if(fresh && newly_qualified && prior && sign(prior)==-sign(latest) &&
             (inclusive?now-prior->at<=window:now-prior->at<window)) {
             // Consume the selected physical edges themselves. Searching their
             // token names again would select later sideways jitter and backdate

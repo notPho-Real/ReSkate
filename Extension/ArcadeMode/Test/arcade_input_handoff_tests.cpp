@@ -104,6 +104,56 @@ void used_prefix_and_diagonal(){
         check(other.requests.empty(),"steering-dominant diagonal cannot supply a Manual prefix");
     }
 }
+void manual_cone_qualification(){
+    for(unsigned hz:{30u,60u,120u})for(int sign:{-1,1}){
+        UnifiedInput input;Sink sink;InputEnvironment env{InputContext::ground,true};
+        env.policy=InputPolicy::production();
+        std::uint64_t first{},last{},qualified{};
+        for(unsigned step=0;step<hz;++step){
+            const auto now=std::uint64_t{step}*1000/hz;
+            PhysicalInputSample physical{};
+            if(now>=100){physical={0,26000,static_cast<short>(-sign*19000)};if(!first)first=now;}
+            if(now>=140)physical={0,22000,static_cast<short>(-sign*25000)};
+            if(now>=220){physical={0,26000,static_cast<short>(sign*19000)};if(!last)last=now;}
+            if(now>=260){physical={0,22000,static_cast<short>(sign*25000)};if(!qualified)qualified=now;}
+            input.poll(now,physical,env,sink.adapter());
+            const auto count=sink.requests.size();input.poll(now,physical,env,sink.adapter());
+            check(sink.requests.size()==count,"duplicate cone sample cannot add a Manual request");
+        }
+        check(sink.requests.size()==1,"entering the Manual cone inside each unchanged diagonal recognizes one opposite pair");
+        if(sink.requests.size()==1){const auto&r=sink.requests[0];
+            check(r.first_input_at==first && r.last_input_at==last && r.recognized_at==qualified,
+                "cone qualification preserves physical edge timestamps rather than backdating or renewing them");
+            check(r.action==(sign>0?InputAction::nose_manual:InputAction::manual),"cone qualification chooses the correct manual");
+        }
+        check(input.history().events().size()==3,"cone entry creates no extra shared controller edges");
+        for(const auto&e:input.history().events())
+            check(e.at==first||e.at==last,"all shared event timestamps still describe actual eight-way changes");
+    }
+    for(unsigned invalid=0;invalid<5;++invalid){
+        UnifiedInput input;Sink sink;InputEnvironment env{InputContext::ground,true};env.policy=InputPolicy::production();
+        input.poll(0,invalid==0?PhysicalInputSample{0,26000,-19000}:PhysicalInputSample{},env,sink.adapter());
+        input.poll(100,{0,26000,-19000},env,sink.adapter());
+        input.poll(140,{0,22000,-25000},env,sink.adapter());
+        if(invalid==1)input.reset_manual_continuity();
+        const unsigned second=invalid==2?500:220;
+        input.poll(second,{0,26000,19000},env,sink.adapter());
+        if(invalid==3)env.policy=InputPolicy::strict();
+        input.poll(second+40,{0,invalid==4?short{26000}:short{22000},invalid==4?short{19000}:short{25000}},env,sink.adapter());
+        check(sink.requests.empty(),"startup held, cancelled, expired, strict and steering-only throws do not gain Manual authority");
+    }
+    InputEvents journal;const auto policy=InputPolicy::production();
+    journal.sample(0,{},false,false,policy);journal.sample(10,{0,26000,19000},false,false,policy);
+    const auto edge=journal.history().events()[0];
+    journal.history().consume(InputMatch::single(edge),InputConsumption::regular);
+    journal.sample(20,{0,22000,25000},false,false,policy);
+    check(journal.history().events()[0].manual_vertical==0,"an edge consumed by another trick cannot gain manual qualification");
+    InputEvents jitter;jitter.sample(0,{},false,false,policy);jitter.sample(10,{0,26000,19000},false,false,policy);
+    jitter.sample(20,{0,22000,25000},false,false,policy);jitter.sample(30,{0,26000,19000},false,false,policy);
+    jitter.sample(40,{0,22000,25000},false,false,policy);
+    check(jitter.history().events().size()==1 && jitter.history().events()[0].at==10 &&
+        jitter.history().events()[0].manual_qualified_at==20,"cone jitter cannot renew a throw or its qualification clock");
 }
-int main(){effective_direction_pairs();no_new_logical_edge();cancelled_handoff();used_prefix_and_diagonal();
+}
+int main(){effective_direction_pairs();no_new_logical_edge();cancelled_handoff();used_prefix_and_diagonal();manual_cone_qualification();
     std::cout<<checks<<" logical handoff checks, "<<failures<<" failed\n";return failures?1:0;}
