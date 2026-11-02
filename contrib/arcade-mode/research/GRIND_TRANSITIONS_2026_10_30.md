@@ -4413,3 +4413,46 @@ coordination and identity/world/geometry validation before reuse. The new
 receipt is ArcadeOFF control/physics evidence only; physical A/early flip,
 production animation/HUD/balance/combo and broader repeated sources remain
 unaccepted. No DLL/CI/upload/install/merge/release; build gate remains closed.
+
+### Compare the two Noseslide preparations before choosing another control
+
+This offline continuation compared the SHA-pinned successful nose-lateralv2
+and unsuccessful noseslide-returnv1 preparations, after rereading current
+source, official/main results, upstream grind-exit documentation and the
+pinned trainer/fork survey. The first seven authored physical event entries
+are identical in their immutable runners. The return candidate's three later
+entries never ran. Both second original406 actors select403->402, have no
+curve overrides, use defaults(.25,0,4), request pitch.3490658700, retarget
+pitch.400000006 and complete phase1 after.499999970 seconds. Their recorded
+completion orientations are close: positive(1.6648352,.4121587,approximately0)
+versus negative(1.6644776,.4125609,approximately0). Original completion remains
+insufficient for the requested same-segment destination.
+
+There are measurable preparation differences. The successful conditional
+neutral evidence wait lasts44.730ms, while the unsuccessful one lasts94.748ms.
+The native406 initial pitch is.3815645278 versus.3635562360. These differences
+correlate with104 stable original-segment Noseslide samples in the positive
+receipt versus0 in the negative receipt, whose23 stable Noseslide samples all
+use the offset segment. They do not establish causation. The world generations,
+fixture positions and debugger lifetimes also differ: the positive gate
+detaches after its second identity observation, while the repeat candidate
+continues watching for its third leg. Native requested headings are1.6379282
+and1.6375711; no reversed control or different requested lateral sign explains
+the result. No pitch threshold, shorter evidence wait, segment equivalence or
+alternate production control is justified from these two recordings.
+
+The extended `analyze_grind_noseslide_return.py` checks both receipt hashes and
+both runner hashes, parses their event literals without executing either runner,
+and reproduces these measured differences along with the original negative
+receipt and cleanup checks. It passes. The next native investigation should
+retain exact failure-site/value diagnostics and independently observe the
+physical segment-selection context before changing preparation timing. This
+does not recover the previous assertion site, qualify the unexecuted return,
+or authorize relaxing the contact/geometry guards.
+
+Production remains69d1b62; no new C++ checks, hardware call, reservation,
+build/CI/upload/install/merge/release occurred. Hardware pins remain historical
+BAM32/rev587 and require full fresh coordination/validation. Prior35671 composed
+checks and the known unchanged input_pattern_dispatch failure remain; physical
+A/early-flip and integrated animation/HUD/balance/combo acceptance are still
+outstanding.

@@ -4,11 +4,79 @@ Usage: python analyze_grind_noseslide_return.py /absolute/path/to/reskate-arcade
 Actual Noseslide on another native segment cannot qualify a retained-segment
 return. This recording sent no third-leg controls or feature lease.
 """
+import ast
 import gzip
 import hashlib
 import json
 from pathlib import Path
 import sys
+
+
+def preparation_comparison(root, negative):
+    """Compare actual recordings without assigning a cause to segment selection."""
+    folder = root / "grind-native-nose-lateral-c048914-v2"
+    blob = (folder / "results/two-leg-lateral.json.gz").read_bytes()
+    assert hashlib.sha256(blob).hexdigest() == "a47227610d824030473948b7dc1641d55b67ebde3891e65fdff8194f2d59d3b6"
+    envelope = json.loads(gzip.decompress(blob))
+    assert envelope["returncode"] == 0
+    positive = json.loads(envelope["stdout"])
+    # Inspect literal event tables, never execute an external runner.
+    def events(path, digest):
+        source = path.read_bytes()
+        assert hashlib.sha256(source).hexdigest() == digest
+        tree = ast.parse(source)
+        body = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign) and
+                    any(isinstance(t, ast.Name) and t.id == "body" for t in n.targets))
+        tree = ast.parse(body)
+        initial = next(ast.literal_eval(n.value) for n in ast.walk(tree) if isinstance(n, ast.Assign) and
+                       any(isinstance(t, ast.Name) and t.id == "events" for t in n.targets))
+        extension = next(n for n in ast.walk(tree) if isinstance(n, ast.Call) and
+                         isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and
+                         n.func.value.id == "events" and n.func.attr == "extend")
+        return initial + ast.literal_eval(extension.args[0])
+    old_events = events(folder / "trial.py", "9a312a225f8b23cd8082ec8c2641fb5c6df8b73de660bf8db8120aebf571d516")
+    new_events = events(root / "grind-native-noseslide-return-c048914-v1/trial.py",
+                        "868bc32c7072af1b949fca71849b93532629d63c76016355bda7c100f96e49e7")
+    assert len(old_events) == 7 and old_events == new_events[:7]
+    compared = []
+    for data in (positive, negative):
+        gate = next(json.loads(line.split(" ", 1)[1]) for line in data["gate_log"]
+                    if line.startswith("GRIND_GATE_RESULT "))
+        first = next(a for a in gate["actor_events"] if a.get("leg") == 2 and a["boundary"] == "shared_flag_writer")
+        cleanup = next(a for a in gate["actor_events"] if a.get("leg") == 2 and a["boundary"] == "cleanup")
+        assert (first["source"], first["target"]) == (403, 402)
+        assert first["curves_override"] == ["0x0"] * 9
+        assert first["defaults"] == [.25, 0., 4.] and first["overrides"] == [0., 0., 0.]
+        assert cleanup["timing"][-1] == 1 and cleanup["timing"][6] == .4999999701976776
+        assert cleanup["requested"][1:] == [.3490658700466156, 0.]
+        assert cleanup["retarget"][1:] == [.4000000059604645, 0.]
+        timing = (data["partial_run"]["delivery_timing"] if "partial_run" in data else
+                  next(t["delivery_timing"] for t in data["trials"] if t["recipe"].startswith("native-long-rail-")))
+        wait = next(c for c in timing["conditions"] if c["phase"] == 6)
+        assert wait["status"] == "READY" and wait["observation"]["original_completed"]
+        assert wait["observation"]["state"] == 403 and wait["observation"]["named"] == 23
+        original = wait["observation"]["segment"]
+        nose = [(r, b) for r in data["native_samples"] if (b := r.get("admission_sample")) and
+                b["stable_reads"] and b["state"] == 402 and b["named"] == 21 and
+                b["physical_contact"] == b["published_contact"] == 1 and b["missing_segment"] == 0]
+        retained = [(r, b) for r, b in nose if b["segment_identity"] == original["segment_identity"] and
+                    r["active_segment"] is not None and r["active_segment"]["endpoints"] == original["endpoints"]]
+        compared.append({"neutral_evidence_wait_ms": wait["wait_ms"],
+                         "initial_native_orientation": first["initial"],
+                         "requested_native_orientation": first["requested"],
+                         "completed_native_orientation": cleanup["orientation"],
+                         "original_completion_seconds": cleanup["timing"][6],
+                         "stable_noseslide_contact_samples": len(nose),
+                         "stable_original_segment_samples": len(retained)})
+    assert [c["neutral_evidence_wait_ms"] for c in compared] == [44.73, 94.748]
+    assert [c["initial_native_orientation"][1] for c in compared] == [.38156452775001526, .36355623602867126]
+    assert [c["stable_original_segment_samples"] for c in compared] == [104, 0]
+    return {"positive": compared[0], "negative_preparation": compared[1],
+            "same_first_seven_authored_events": True,
+            "limits": ["Different native initial pitch and wait duration are correlations, not proof of why geometry selection differed.",
+                       "Both native transitions complete with the same phase1 duration; completion is not destination acceptance.",
+                       "The positive gate detaches on its second identity observation; the negative gate remains for a third leg. World generations and fixture positions also differ.",
+                       "Do not tune a pitch threshold or shorten evidence waits from two confounded recordings."]}
 
 
 def analyze(root):
@@ -76,6 +144,7 @@ def analyze(root):
                                          "stable_samples": len(nose),
                                          "reader_ms": [ms(nose[0][0]), ms(nose[-1][0])]},
         "restored_revision": after["revision"],
+        "preparation_comparison": preparation_comparison(root, data),
         "limits": ["Gate assertion site/value was not captured; segment mismatch is independent reader evidence, not a predicate call trace.",
                    "No third-leg input, admission or original completion; no Noseslide return destination qualified.",
                    "Equal sequential brackets are not atomic frames or uninterrupted-contact proof.",
