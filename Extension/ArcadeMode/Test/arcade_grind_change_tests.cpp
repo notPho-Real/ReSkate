@@ -395,11 +395,12 @@ int main() {
         check(out.jump.setup_started && out.jump.from_rail && out.right_y==-28000,
             "A cancels named RS before the existing rail-exit gesture acquires its channel");
     }
-    for(unsigned hz:{30u,60u,120u}) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+    for(unsigned hz:{30u,60u,120u})for(unsigned source_identity:{23u,24u}) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source_identity;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         check(p.change.admission().ready && p.change.admission().excluded_variant==
-            grind_change_variant(GrindChangeTarget::grind_5_0),"verified 5-0 admits return and excludes unchanged 5-0");
+            grind_change_variant(source_identity==23?GrindChangeTarget::nosegrind:GrindChangeTarget::grind_5_0),
+            "verified Nosegrind/5-0 admits return and excludes its unchanged source name");
         p.step(1200,403);p.poll(0x8000);p.step(1210,403);p.poll();p.step(1230,403);p.poll(0x8000);
         check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::grind_50_50 &&
             p.dispatched.first_input_at==1200 && p.dispatched.last_input_at==1230,"Y then Y dispatches a fresh native return lease");
@@ -412,7 +413,7 @@ int main() {
             check(pad.owns && pad.x==0 && pad.y==0,"return owns neutral through the slower original blend and identity publication");
             check(p.arms==1 && !p.change.evidence().physics_changed,"held Y and raw contact never manufacture completion");
         }
-        auto snapshot=p.animation;snapshot.physics_state=401;snapshot.physics_grind_type=20;snapshot.grind_type=24;
+        auto snapshot=p.animation;snapshot.physics_state=401;snapshot.physics_grind_type=20;snapshot.grind_type=source_identity;
         p.change.verify(p.now,{true,401,403,1,{}},p.contact,snapshot);
         check(!p.change.evidence().completed,"first-leg completion cannot satisfy the independently armed return");
         auto wrong=p.contact;wrong.segment_identity[0]++;
@@ -431,8 +432,8 @@ int main() {
         check(p.arms==2 && p.change.active() && p.dispatched.grind_target()==GrindChangeTarget::nosegrind,
             "new physical pair after native return dispatches the existing Nosegrind executor");
     }
-    for(unsigned fault=0;fault<5;++fault) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+    for(unsigned source_identity:{23u,24u})for(unsigned fault=0;fault<5;++fault) {
+        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
         if(fault==0)p.contact.end[2]=-6;
         if(fault==1)p.contact.identity=25;
         if(fault==2)p.contact.identity=32;
@@ -441,8 +442,8 @@ int main() {
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
         check(!p.change.admission().ready,"unqualified return source or geometry never arms the native gate");
     }
-    for(unsigned fault=0;fault<5;++fault) {
-        Pipeline p;p.contact.identity=24;p.contact.end[2]=-12;
+    for(unsigned source_identity:{23u,24u})for(unsigned fault=0;fault<5;++fault) {
+        Pipeline p;p.contact.identity=source_identity;p.contact.end[2]=-12;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();p.step(1200,403);p.poll(0x8000);
         p.step(1210,403);p.poll();p.step(1230,403);p.poll(0x8000);check(p.change.active(),"negative return case armed");
         p.step(1300,406);

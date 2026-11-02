@@ -12,6 +12,8 @@ composed routes from401/fine20. From402/fine31, ordered X->B returns to403/fine2
 Y->Y now composes that preparation with the existing return to401/fine20.
 From403/fine24, Nosegrind and Crooked requests now compose the measured
 401/fine20 return with their existing native sweep.
+Y->Y now also returns established403/fine23 Nosegrind to401/fine20, following
+an independent native two-leg qualification on the same twelve-metre segment.
 Independent native trials verify the constituent physics actions and retained
 segments; the newly composed full return and production animation/HUD/combo
 acceptance remain unverified. Broader source contexts and arbitrary repeated
@@ -3742,3 +3744,78 @@ No Windows/backend build, CI, upload, installation, merge or release occurred.
 No hardware calls or reservation were made; historical Deck pins remainrev458
 and require fresh coordination. Host storage remained low at128MiB before
 the focused edits/checks; source and native receipts were preserved.
+
+### Native Nosegrind neutral return and production Y->Y integration
+
+Source-first review reused the existing original403 selector at0x48142a5,
+its neutral heading/pitch branch0x48142f0..0x481432e, the original406
+admission/initialization/update and the existing5-0 neutral-return executor.
+No identity or animation setter is introduced. Re-analysis of the pinned
+nose-lateralv2 receipt found seven stable403/23 same-segment contact brackets
+at2658.839163..2735.068375ms with actor+766/output+419 both1, requestedpitch/
+roll0 and heading0.3120996..0.3121155. Five preceding held-pitch brackets had
+admission0. That justified a return experiment, but was not return acceptance:
+that old receipt completed403->402. The new offline
+`analyze_grind_nose_return_candidate.py` retains that distinction and checks
+both separately pinned receipts.
+
+Both Manual and Grab confirmed handback before any Deck access. Fresh capture
+showed Steam idle artwork; the reviewed single-Shift wake restored gameplay.
+Fresh status independently confirmed installedc048914, DLL7853ae1a2dc11de526bb8cb4f19f6ec7e57a8b4913554f868f4525dac768df28,
+game85401/launcher85410, BAM23/rev458. The newly pinned original native approach
+reset restored only its exact owned fixture, used the native ground-checked
+reset, and undid that single placement458->460->462. Reset runner SHA
+`b2a50d961d706d058512d5e2cbe1f7a6d6d7d7454a010a4ff5076fd82d3679de`, receipt
+`grind-native-approach-reset-nose-return-c048914-v1/results/1793609762984800000-status.json`.
+This reset is setup only, not rail-exit evidence.
+
+The Nosegrind-returnv1 attempt stopped locally before SSH because its required
+2MiB receipt slot had not been preallocated. It sent no Deck input. The fresh
+v2 slot contains the identical immutable runner SHA
+`9920b5dace1ce2c752c36b21c190718ebecac618126e05f93f172a035adc1b1b` and a reserved
+receipt. Ten inert gate cases and the actual ephemeral worker phase validator
+passed before execution. All these trial/reset slots are now consumed.
+
+Positive receipt:
+`grind-native-nose-return-c048914-v2/results/two-leg-lateral.json.gz`, SHA256
+`df44e2faebdcb3991bd93f33eec18c96ea56bb9a263f83bf77ba0d9433a26853`.
+504 independent reader samples, both native dt readbacks0.0333333313s.
+Original401->403 completed, actualNosegrind23 appeared2576.935ms, and the
+conditional neutral phase was delivered2658.692ms on the writer clock after
+original completion/actual23/contact/segment verification. The second original
+406 appeared2675.484ms on the reader clock; original403->401 reached phase1
+with native elapsed0.9333329201s. First401/old23 at3608.306ms is not acceptance.
+Actual401/20 from3643.259224 through4561.950531ms has77 outer and77 stable
+bracketed destination samples, physical/published contact1, missing0 and the
+original segment[4191888080935,0]. Endpointsx145.05859375,y0.5007421970,
+z-43.9931640625/-55.9931640625 measure12m. Gate reason
+`second_native_identity_verified`, exactly two original completions.
+
+An outer physicalcontact0 at3537.977005ms during406 has a later stable bracket
+reading1 on that same segment. Preserve both: these reads are not atomic and
+do not prove uninterrupted physical contact or a completed-frame loss. No
+production cancellation guard is relaxed. Later403/24 and402/22 near the rail
+end are incidental, not requested transitions. Natural701 at4776.880ms is
+not A-button Ollie acceptance. The trial was ArcadeOFF physics/control
+qualification, not integrated production animation/HUD/balance/combo acceptance.
+
+Production now admits Y->Y from403/fine23 as well as the already qualified
+403/fine24 source, using the unchanged1500ms owned-neutral return and original
+native lease. The existing horizontal12m restriction, owner/contact/segment
+guards, original completion requirement and independent final401/20 animation
+evidence remain. Crooked/Smith/other403 and402 sources are not generalized.
+28158 strict C++20 ASan/UBSan composed cases pass30/60/120Hz, now exercising
+both return sources, old identity versus final animation, held-input replay,
+subsequent fresh requests and negative owner/A/OFF/expiry/geometry cases.
+No native hooks, ordinary Ollie/flip, HUD/balance/combo or other protected
+implementations changed. Existing baseline test limitations remain.
+
+Cleanup completed normally: GDBexit0, nativefeature0, pad/session destroyed,
+all five owned transactions undone to BAM23/rev482, ArcadeON, menus/editor
+closed, fixture metadata configured/objectabsent. Finalnative100 speed
+0.00008172 at151.1729736328125,1.0286728143692017,-42.391971588134766,
+heading90.10433197021484. Metadata start145.05862426757812,1.0286712646484375,
+-62.993980407714844; rail145.05862426757812,-0.00000476837158203125,
+-54.993980407714844, identityrotation, scale1. Both peers received explicit
+clean handback; no job/reservation remains. These are historical pins requiring
+fresh revalidation. No DLL/CI, upload, installation, merge or release occurred.

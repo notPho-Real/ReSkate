@@ -10,7 +10,7 @@
 namespace dingosdk::arcade_mode {
 // Bounded input executor for independently observed 401/20 ->406 ->403
 // held sweeps ending in native23 (Nosegrind),32 (Crooked) or24 (5-0), and
-// the measured neutral 403/24 ->406 ->401/20 return and lateral tail
+// the measured neutral 403/23 or24 ->406 ->401/20 returns and lateral tail
 // 403/24 ->406 ->402/31 Bluntslide and 403/23 ->406 ->402/21 Noseslide
 // or opposite-heading 402/30 Nosebluntslide and 403/24 ->402/22 Tailslide.
 // The Tailslide pulse must return to neutral before held-input drift.
@@ -82,8 +82,9 @@ public:
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool slide_return=source_.state==402 && source_.identity==31 &&
             (request.grind_target()==GrindChangeTarget::grind_5_0 || prepare_slide_return);
-        const bool returning=source_.state==403 && source_.identity==24 &&
-            (request.grind_target()==GrindChangeTarget::grind_50_50 || prepare_sweep);
+        const bool returning=source_.state==403 &&
+            (((source_.identity==24 || source_.identity==23) &&
+              request.grind_target()==GrindChangeTarget::grind_50_50) || prepare_sweep);
         const bool smith=source_.state==403 && source_.identity==24 &&
             request.grind_target()==GrindChangeTarget::smith;
         const bool lateral_tail=source_.state==403 && source_.identity==24 &&
