@@ -14,6 +14,8 @@ From403/fine24, Nosegrind and Crooked requests now compose the measured
 401/fine20 return with their existing native sweep.
 Y->Y now also returns established403/fine23 Nosegrind to401/fine20, following
 an independent native two-leg qualification on the same twelve-metre segment.
+That measured return also prepares ordered X->B 5-0 and B->B Crooked from
+Nosegrind, with a fresh native sweep after verified401/20 and lease retirement.
 Independent native trials verify the constituent physics actions and retained
 segments; the newly composed full return and production animation/HUD/combo
 acceptance remain unverified. Broader source contexts and arbitrary repeated
@@ -3819,3 +3821,45 @@ heading90.10433197021484. Metadata start145.05862426757812,1.0286712646484375,
 -54.993980407714844, identityrotation, scale1. Both peers received explicit
 clean handback; no job/reservation remains. These are historical pins requiring
 fresh revalidation. No DLL/CI, upload, installation, merge or release occurred.
+
+### Composed Nosegrind-to-5-0 and Nosegrind-to-Crooked execution
+
+Source-first review identified another missing sequence in `GrindChange::request`
+and `advance`: the qualified403/23 return was available only as Y->Y, whereas
+the existing return-then-sweep composition admitted403/24 only. The unchanged
+official/main search has no equivalent executor; the pinned fork survey and
+native control contracts above remain applicable. This is a production routing
+gap, not a new native transition or justification to admit arbitrary403 sources.
+
+From403/fine23 on horizontal geometry1 at least12m, ordered X->B now prepares
+the measured neutral403->406->401/20 return and then starts the existing Down /
+RX12000 sweep to403/24. B->B uses the same return followed by the existing Up /
+RX24000 sweep to403/32. Both return legs are supported by the Nosegrind-returnv2
+receipt above; the final sweeps retain their independently measured native
+controls. No new full-sequence native receipt is claimed.
+
+The original return completion and independently read401/20 on the same segment
+must precede owned neutral and prior lease retirement within the existing150ms
+handoff and1500ms first-leg deadline. The final sweep receives its own serial
+and time origin, preserving the original physical event timestamps and request
+serial. Down or Up stays held across the200ms heading change, and the measured
+input duration remains1000ms within a1500ms lease. Preparation evidence cannot
+acknowledge the final name; only the final original401->403 completion, actual
+same-segment24 or32 and matching changed native animation can do so. Other
+sources, simultaneous priorities, contact guards and protected systems are
+unchanged. No identity, animation, completion, contact or score is assigned.
+
+30691 strict C++20 ASan/UBSan production-composed checks pass at30/60/120Hz.
+The return/sweep tests now cover both starting truck grinds and their opposite
+truck/Crooked requests, including actual physical pair dispatch, held/repeated
+polls, exact pitch/heading, distinct completion evidence and animation delay.
+Both sources also exercise missing completion, wrong intermediate identity,
+actor/segment/contact changes, stale frames, live prior lease and failed native
+arm. These are offline checks, not integrated gameplay acceptance. The known
+baseline contextual-air test failure remains; no full-check green claim.
+
+This continuation made no Deck call or reservation. Historical pins remain
+BAM23/rev482 and require fresh peer coordination and identity/world validation.
+No DLL/CI, upload, installation, merge or release occurred. The Ollie/early-flip
+candidate, broader source contexts and integrated HUD/balance/combo acceptance
+remain unfinished.

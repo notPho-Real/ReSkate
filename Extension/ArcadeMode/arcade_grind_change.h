@@ -18,7 +18,8 @@ namespace dingosdk::arcade_mode {
 // The measured slide/Smith routes may begin in401/20: independently verify
 // original403 preparation before admitting the lateral lease or Smith controls.
 // Measured active402/31 controls also return through406 to403/24 (5-0).
-// From403/24, the measured401/20 return may prepare a Nosegrind/Crooked sweep.
+// From403/23 or24, the measured401/20 return may prepare the opposite truck
+// grind or Crooked sweep.
 // Other source contexts have no qualified control recipe yet.
 // This owns only RS and the scoped native admission lease. Native completion,
 // contact and animation are observations; none is synthesized by this actor.
@@ -76,8 +77,10 @@ public:
         admission_.generations={frame.owner_generation,frame.contact_generation,frame.action_generation};
     }
     template<class Arm> InputDisposition request(const InputRequest& request,std::uint64_t now,Arm&& arm) noexcept {
-        const bool prepare_sweep=source_.state==403 && source_.identity==24 &&
-            (request.grind_target()==GrindChangeTarget::nosegrind || request.grind_target()==GrindChangeTarget::crooked);
+        const bool prepare_sweep=source_.state==403 &&
+            ((source_.identity==24 && request.grind_target()==GrindChangeTarget::nosegrind) ||
+             (source_.identity==23 && request.grind_target()==GrindChangeTarget::grind_5_0) ||
+             ((source_.identity==23 || source_.identity==24) && request.grind_target()==GrindChangeTarget::crooked));
         const bool prepare_slide_return=source_.state==402 && source_.identity==31 &&
             request.grind_target()==GrindChangeTarget::grind_50_50;
         const bool slide_return=source_.state==402 && source_.identity==31 &&
@@ -164,8 +167,9 @@ public:
         // A still-live original406 lease cannot be replaced by a new lease.
         // During retirement the executor owns neutral, as in the native trial.
         if(!native_idle)return;
-        if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked) {
-            // Only the measured403/24->401/20 return can reach this branch.
+        if(final_target_==GrindChangeTarget::nosegrind || final_target_==GrindChangeTarget::crooked ||
+           final_target_==GrindChangeTarget::grind_5_0) {
+            // Only the measured403/23 or24->401/20 returns reach this branch.
             // Original arm revalidates401/20 and the retired feature lease;
             // the403-only control reader must not be used as a401 predicate.
             const auto next=serial_+1;
@@ -174,8 +178,9 @@ public:
             preparing_=preparation_ready_=false;slide_return_=false;
             lateral_=tail_release_=smith_=false;
             const bool crooked=final_target_==GrindChangeTarget::crooked;
-            sweep_x_=crooked?24000:12000;held_y_=32767;
-            target_identity_=crooked?32u:23u;target_state_=403;hold_ms_=1000;duration_ms_=1500;
+            const bool tail=final_target_==GrindChangeTarget::grind_5_0;
+            sweep_x_=crooked?24000:12000;held_y_=tail?-32767:32767;
+            target_identity_=crooked?32u:tail?24u:23u;target_state_=403;hold_ms_=1000;duration_ms_=1500;
             evidence_.final_leg_serial=serial_;evidence_.final_leg_started_at=now;
             return;
         }

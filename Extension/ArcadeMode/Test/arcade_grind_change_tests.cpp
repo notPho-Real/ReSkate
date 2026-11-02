@@ -59,15 +59,16 @@ struct Pipeline {
 };
 }
 int main() {
-    for(unsigned hz:{30u,60u,120u})for(bool crooked:{false,true}) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+    for(unsigned hz:{30u,60u,120u})for(unsigned source:{23u,24u})for(bool crooked:{false,true}) {
+        const bool tail=source==23 && !crooked;
+        const auto requested=crooked?GrindChangeTarget::crooked:tail?GrindChangeTarget::grind_5_0:GrindChangeTarget::nosegrind;
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
-        p.step(1200,403);p.poll(crooked?test_b:test_y);
+        p.step(1200,403);p.poll(crooked?test_b:tail?classic_x:test_y);
         p.step(1210,403);p.poll();p.step(1230,403);p.poll(test_b);
         const auto initial_serial=p.change.serial();
-        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==
-            (crooked?GrindChangeTarget::crooked:GrindChangeTarget::nosegrind),
-            "physical pair from5-0 starts the measured50-50 return preparation");
+        check(p.arms==1 && p.change.active() && p.dispatched.grind_target()==requested,
+            "physical pair from a qualified truck grind starts the measured50-50 return preparation");
         for(unsigned i=0;i<1150*hz/1000 && p.arms==1;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
             p.step(1230+elapsed,elapsed<150?403:elapsed<950?406:401);
@@ -88,7 +89,7 @@ int main() {
         check(p.arms==2 && p.change.serial()==initial_serial+1 && start>=2230 &&
             p.last_deadline==start+1500 && p.control==GrindAdmissionControl::ordinary,
             "actual401/20 and retired lease start exactly one bounded native sweep");
-        const unsigned target=crooked?32u:23u;
+        const unsigned target=crooked?32u:tail?24u:23u;
         for(unsigned i=0;i<=1100*hz/1000;++i) {
             const auto elapsed=static_cast<std::uint64_t>(i)*1000/hz;
             p.step(start+elapsed,elapsed<150?401:elapsed<450?406:403);
@@ -108,16 +109,16 @@ int main() {
                 "sweep destination requires its independent matching animation after physics");
             const auto pad=p.change.sample(p.now);
             check(pad.owns==(elapsed<1000),"sweep duration begins at the new execution leg");
-            if(pad.owns)check(pad.y==32767 && pad.x==(elapsed<200?0:crooked?24000:12000),
-                "returned50-50 delivers the measured heldUp and heading sweep without neutral interruption");
+            if(pad.owns)check(pad.y==(tail?-32767:32767) && pad.x==(elapsed<200?0:crooked?24000:12000),
+                "returned50-50 delivers the measured held pitch and heading sweep without neutral interruption");
         }
         check(p.change.evidence().completed && p.change.evidence().physics_changed && p.change.evidence().animation_changed,
-            "composed5-0 sweep requires final native completion, destination and animation");
+            "composed truck-grind sweep requires final native completion, destination and animation");
     }
-    for(unsigned fault=0;fault<8;++fault) {
-        Pipeline p;p.contact.end[2]=-12;p.contact.identity=24;
+    for(unsigned source:{23u,24u})for(unsigned fault=0;fault<8;++fault) {
+        Pipeline p;p.contact.end[2]=-12;p.contact.identity=source;
         p.step(1000,403);p.poll();p.step(1100,403);p.poll();
-        p.step(1200,403);p.poll(test_y);p.step(1230,403);p.poll(test_b);
+        p.step(1200,403);p.poll(source==23?classic_x:test_y);p.step(1230,403);p.poll(test_b);
         // Reach the intermediate with distinct fresh samples, as production
         // would; stale gaps must not make an otherwise invalid handoff pass.
         for(unsigned t=1330;t<2230;t+=100){p.step(t,406);p.poll(test_b);}
