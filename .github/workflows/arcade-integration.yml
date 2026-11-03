@@ -1,7 +1,7 @@
 name: Arcade upstream integration
 on:
   push:
-    branches: [arcade-stage-unified-rc2-upstream]
+    branches: [arcade-stage-unified-rc2-upstream, arcade-stage-rc3-gameplay]
   workflow_dispatch:
 permissions:
   contents: read
