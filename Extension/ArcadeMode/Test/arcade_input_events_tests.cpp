@@ -373,7 +373,7 @@ void sampled_replay_tests() {
                 check(adapter.calls == 1 && adapter.last.action == (sign > 0 ? InputAction::manual : InputAction::nose_manual),
                     "sampling-phase manual replay preserves direction and starts once");
             }
-    for (const unsigned gap : {300u, 350u, 800u}) {
+    for (const unsigned gap : {451u, 500u, 800u}) {
         UnifiedInput input; Adapter adapter;
         const InputEnvironment ground{InputContext::ground, true};
         input.poll(0, {}, ground, adapter.bind());
@@ -381,12 +381,12 @@ void sampled_replay_tests() {
         input.poll(10 + gap, {0, 0, -25000}, ground, adapter.bind());
         check(adapter.calls == 0, "observed-edge long steering negative cannot request manual");
     }
-    for (const unsigned gap : {399u, 400u, 401u}) {
+    for (const unsigned gap : {449u, 450u, 451u}) {
         UnifiedInput input; Adapter adapter; adapter.result = InputDisposition::waiting;
         const InputEnvironment air{InputContext::air, true};
         input.poll(0, {}, air, adapter.bind()); input.poll(10, {0, 0, 25000}, air, adapter.bind());
         input.poll(10 + gap, {0, 0, -25000}, air, adapter.bind());
-        check((adapter.calls != 0) == (gap < 400), "air query rejects its exact400ms endpoint independently of the ground sampling allowance");
+        check((adapter.calls != 0) == (gap < 450), "air query rejects its exact450ms endpoint independently of native acquisition");
     }
     for (const unsigned gap : {100u, 499u, 500u, 600u}) {
         UnifiedInput input; Adapter adapter;

@@ -703,17 +703,17 @@ std::uint64_t start_analog_air(unsigned dt){
  return clock_ms;
 }
 void analog_air_boundaries(){
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned gap:{399u,400u})for(unsigned age:{699u,700u,701u}){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned gap:{449u,450u})for(unsigned age:{699u,700u,701u}){
   start_analog_air(dt);const short first=nose?-13057:12800,second=nose?12800:-13057;
   tick(dt,200,0);remap(0,first);const auto first_at=clock_ms;
   while(clock_ms<first_at+gap){const auto step=static_cast<unsigned>(std::min<std::uint64_t>(dt,first_at+gap-clock_ms));tick(step,200,0);remap(0,first);}
   const auto recognized=clock_ms;const auto out=remap(0,second);
-  check(out.manual.owns==(gap<400),"actual analog399ms pairing starts the existing adapter while400ms equality is rejected");
+  check(out.manual.owns==(gap<450),"actual analog449ms pairing starts the existing adapter while450ms equality is rejected");
   while(clock_ms+dt<recognized+age){tick(dt,200,0);remap();}
   tick(static_cast<unsigned>(recognized+age-clock_ms),100,nose?0x8000u:0x4000u);const auto landed=remap();
-  check(manual_balance_admitted.load()==(gap<400)&&balance_hud_pending()==(gap<400),
+  check(manual_balance_admitted.load()==(gap<450)&&balance_hud_pending()==(gap<450),
         "admitted same-flight preparation crosses700ms while invalid direction pairs remain rejected");
-  if(gap<400)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
+  if(gap<450)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
         "landing acquisition never replaces the original analog recognition identity");
  }
 }
@@ -787,16 +787,16 @@ void analog_air_lifecycle(){
     if(request.action!=InputAction::manual&&request.action!=InputAction::nose_manual)continue;
     ++recognized_count;recognized=request.recognized_at;first_edge=request.first_input_at;last_edge=request.last_input_at;
     check(request.context==InputContext::air&&request.action==(nose?InputAction::nose_manual:InputAction::manual)&&
-          recognized==clock_ms&&recognized-first_edge<400&&last_edge==recognized,
-          "analog cardinal edges keep their observed strict400ms pair clock and typed once-only recognition");
+          recognized==clock_ms&&recognized-first_edge<450&&last_edge==recognized,
+          "analog cardinal edges keep their observed strict450ms pair clock and typed once-only recognition");
    }
    if(out.manual.owns){if(!delivered)delivered=clock_ms;check(out.manual.from_air&&out.manual.recognized_at==recognized&&
        out.right_x==0&&out.right_y==(nose?20000:-20000),"actual prelanding RS delivery retains the immutable analog recognition and family");}
    check(!manual_balance_admitted.load()&&!balance_hud_pending(),"analog airborne request and pad output alone cannot fabricate grounded balance");
   }
-  const bool valid=shape<3;
+  const bool valid=shape<4;
   check(recognized_count==(valid?1u:0u)&&bool(delivered)==valid,
-        "raw native analog trajectories recognize once; pure diagonals and insufficient first throw cannot substitute cardinal edges");
+        "raw analog trajectories including diagonal reversals recognize once; insufficient first throw remains rejected");
   if(valid){
    unsigned consumed{};for(const auto& event:arcade_input.history(0)->events())if(event.token.source==InputSource::direction&&
        event.token.edge==InputEdge::press&&(event.at==first_edge||event.at==last_edge)){
@@ -820,7 +820,10 @@ void analog_manual_entry_tolerance(){
   else {reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();}
   arcade_input.set_recognition_capture(0,true);
   const unsigned state=air?200:100,contacts=air?0:0xc000;
-  const short first=nose?-28000:28000,second=static_cast<short>(-first);
+  // RC3 accepts natural diagonal travel. Keep the steering negative outside
+  // the new cone while still above the vertical magnitude threshold.
+  const short magnitude=horizontal==31000?18000:28000;
+  const short first=nose?static_cast<short>(-magnitude):magnitude,second=static_cast<short>(-first);
   tick(dt,state,contacts);const auto first_out=remap(0,first,horizontal);
   const auto first_at=clock_ms;
   const bool accepted=horizontal!=31000;
@@ -858,13 +861,13 @@ void analog_manual_cone_continuation(){
   arcade_input.set_recognition_capture(0,true);
   const unsigned state=air?200:100,contacts=air?0:0xc000;
   const short sign=nose?1:-1;
-  tick(dt,state,contacts);remap(0,static_cast<short>(-sign*19000),26000);const auto first=clock_ms;
+  tick(dt,state,contacts);remap(0,static_cast<short>(-sign*19000),31000);const auto first=clock_ms;
   tick(dt,state,contacts);const auto qualified_first=remap(0,static_cast<short>(-sign*25000),22000);
   if(!air&&nose)check(qualified_first.suppress_reverse,"late Manual cone entry reserves reverse on its first qualifying sample");
   // Keep the physical throw duration comparable across rates. The existing
   // airborne launch actor still owns its finite release interval at120Hz.
   while(clock_ms-first<100){tick(dt,state,contacts);remap(0,static_cast<short>(-sign*25000),22000);}
-  tick(dt,state,contacts);remap(0,static_cast<short>(sign*19000),26000);const auto last=clock_ms;
+  tick(dt,state,contacts);remap(0,static_cast<short>(sign*19000),31000);const auto last=clock_ms;
   tick(dt,state,contacts);const auto output=remap(0,static_cast<short>(sign*25000),22000);
   if(!output.manual.owns){std::cerr<<"cone air="<<air<<" nose="<<nose<<" hz="<<hz<<" request="<<output.manual.request<<" safe="<<output.manual.safe<<" rejected="<<output.manual.rejected<<'\n';
    for(const auto&e:arcade_input.history(0)->events())std::cerr<<" token="<<e.token.code<<" edge="<<static_cast<int>(e.token.edge)<<" at="<<e.at<<" owners="<<e.owners<<" cone="<<e.manual_vertical<<" qualified="<<e.manual_qualified_at<<'\n';}

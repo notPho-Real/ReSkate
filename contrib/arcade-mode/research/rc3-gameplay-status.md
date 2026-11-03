@@ -126,3 +126,29 @@ installation. This task does not install the candidate on Steam Deck.
 
 CI and DLL identity belong to the exact staged source revision and accompanying
 artifact manifest. Green CI alone cannot close any native gameplay item above.
+
+## Local validation and build gate
+
+On macOS with AppleClang 15, the 13 targeted tests pass with warnings as errors.
+The production-composed manual lifecycle suite passes all 18 tests, including
+rollback controls, HUD ownership, landing, chained reverts and simulated
+ten-second holds. The controller route test and generated production publication
+checks pass. Existing input handoff, action dispatch, control state, manual
+lifecycle, manual observation, manual history and acquisition-boundary suites
+also pass. The native grab suite passes 1013 source/composition checks; the new
+manual suite covers 240 trajectories and 17544 assertions.
+
+The wider input-events suite retains a pre-existing failure at
+`face-first unmatched flip owns no adapter`, reproduced against unchanged RC2.
+That expectation conflicts with RC2's immediate neutral-X behavior. RC3 updates
+only its manual-window expectations; it does not revert RC2's working flips to
+make that historical assertion pass.
+
+Windows runtime compilation, hosted Windows/Linux/macOS and upstream integration
+CI have not run for RC3. No RC3 DLL or DLL checksum is available yet. The installed
+publication guard only permits an existing development-branch fast-forward and
+requires a separate reviewed procedure for new branches. Its full-tree inventory
+also refuses the unchanged 27,951,721-byte `assets/builtin/throwdown_menu.zip`, above
+its 16 MiB per-blob limit. That blob is identical in RC2 and RC3:
+`5c0629f2e24604b1078b135e18de172cd050f0ff`. The guard has not been disabled or
+changed, and RC3 has not been published through an alternate writer.
