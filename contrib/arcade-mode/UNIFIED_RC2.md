@@ -73,3 +73,25 @@ Local and hosted results, exact candidate source and binary hashes, download
 locations and skipped checks belong in the staged RC2 manifest after completion.
 Do not install, advance `arcade-mode`, or mark RC2 accepted merely because CI is
 green. Preserve RC1 as rollback until the owner accepts this exact candidate.
+
+## Early Ollie-to-manual correction
+
+Owner feedback identified that Up–Down early in an Ollie worked only near landing.
+The production-composed reproduction lost the original request at age726ms at
+30Hz: both ManualActuation and GroundManualBalance applied the700ms initial
+request deadline unless the final physical direction remained held. A neutral
+stick could therefore retire valid airborne preparation before landing.
+
+An admitted airborne request now retains its recognition and original native
+flight identity after stick release. Fresh matching owner/flight observations
+authorize continued pressure; the first verified landing starts the existing
+bounded contact acquisition. Independent native delivery and contact checks
+remain required. Unadmitted requests retain their original expiry. Owner loss,
+new flight, stale producer, OFF, bail, rail, offboard and conflicting grab retire
+the preparation without synthetic putdown or automatic re-acquisition.
+
+Production-composed checks cover both directions, neutral-stick flights lasting
+1,2.5 and5 seconds at30/60/120Hz, landing admission, HUD absence in air and presence
+after contact, and the cancellation cases above. Existing ground holds and both
+revert chains remain required. These are offline regressions; live acceptance of
+the new early-input behavior remains pending.

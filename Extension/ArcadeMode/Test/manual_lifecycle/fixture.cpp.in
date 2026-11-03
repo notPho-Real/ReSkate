@@ -711,10 +711,51 @@ void analog_air_boundaries(){
   check(out.manual.owns==(gap<400),"actual analog399ms pairing starts the existing adapter while400ms equality is rejected");
   while(clock_ms+dt<recognized+age){tick(dt,200,0);remap();}
   tick(static_cast<unsigned>(recognized+age-clock_ms),100,nose?0x8000u:0x4000u);const auto landed=remap();
-  check(manual_balance_admitted.load()==(gap<400&&age<=700)&&balance_hud_pending()==(gap<400&&age<=700),
-        "actual analog AIR recognition700ms landing is eligible and701ms cannot revive expired intent");
-  if(gap<400&&age<=700)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
-        "landing acquisition time never replaces the original analog recognition deadline");
+  check(manual_balance_admitted.load()==(gap<400)&&balance_hud_pending()==(gap<400),
+        "admitted same-flight preparation crosses700ms while invalid direction pairs remain rejected");
+  if(gap<400)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
+        "landing acquisition never replaces the original analog recognition identity");
+ }
+}
+void early_air_manual_landing(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned flight:{1000u,2500u,5000u}){
+  const unsigned dt=1000/hz;start_analog_air(dt);
+  tick(dt,200,0);remap(0,nose?-28000:28000);
+  tick(dt,200,0);auto selection=remap(0,nose?28000:-28000).manual;
+  // At faster polls the existing authored Ollie is still delivering its
+  // neutral tail. The original queued gesture must wait, without another edge.
+  for(unsigned wait=0;!selection.owns&&wait<200;wait+=dt){tick(dt,200,0);selection=remap().manual;}
+  if(!selection.owns)std::cerr<<"early-air admission hz="<<hz<<" nose="<<nose<<" flight="<<flight<<"\n";
+  check(selection.owns&&selection.from_air,"early manual is admitted during the original Ollie");
+  trial_hz=hz;trial_start=clock_ms;trial_frame=0;
+  while(clock_ms<selection.recognized_at+flight){
+   tick(dt,201,0);const auto out=remap();
+   if(!out.manual.owns)std::cerr<<"early-air first loss hz="<<hz<<" nose="<<nose<<" age="<<clock_ms-selection.recognized_at<<" request="<<out.manual.request<<"\n";
+   check(out.manual.owns&&out.manual.recognized_at==selection.recognized_at&&out.manual.recognition_id==selection.recognition_id,
+       "early released manual survives the same verified flight beyond700ms without reacquisition");
+   check(!manual_balance_admitted.load()&&!balance_hud_pending()&&!manual_release.pending(),
+       "prepared airborne manual does not invent ground balance or putdown");
+  }
+  tick(dt,100,nose?0x8000u:0x4000u);const auto landed=remap();
+  check(landed.manual.owns&&manual_balance_admitted.load()&&balance_hud_pending(),
+       "early released manual admits actual matching contact on a long-flight landing");
+  std::cout<<"PASS early "<<(nose?"Nose":"Manual")<<" neutral-stick flight "<<flight<<"ms "<<hz<<"Hz\n";
+ }
+ for(bool nose:{false,true})for(unsigned exit=0;exit<8;++exit){
+  const unsigned dt=17;prepare_air(nose,dt);const auto recognized=remap().manual.recognized_at;
+  while(clock_ms<recognized+900){tick(dt,201,0);check(remap().manual.owns,"negative control begins with a retained early preparation");}
+  if(exit==0)owner.rig+=16;
+  if(exit==1){tick(dt,100,0xc000);tick(dt,200,0);} // Unobserved landing and new flight.
+  else if(exit==2)clock_ms+=200; // Stale producer cannot authorize a stick.
+  else if(exit==3)set_enabled(false,false);
+  else tick(dt,exit==4?300:exit==5?400:exit==6?504:201,exit==5?0xc000u:0u);
+  const auto ended=remap(exit==7?0x2000u:0u);
+  check(!ended.manual.owns&&!manual_release.pending(),
+      "owner change, new flight, stale producer, OFF, bail, rail, offboard and conflicting grab revoke air intent without putdown");
+  if(exit==3)set_enabled(true,false);
+  tick(dt,200,0);remap();tick(dt,100,nose?0x8000u:0x4000u);const auto later=remap();
+  check(!later.manual.owns&&!manual_balance_admitted.load(),
+      "retired airborne selection cannot reappear on later matching contact without another gesture");
  }
 }
 void analog_air_lifecycle(){
@@ -1326,7 +1367,7 @@ int main(){
  manual_native_revert_freshness();
  manual_pressure_observation_gaps();
  manual_observation_continuity();
- analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
+ early_air_manual_landing();analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
  camera_lifecycle();camera_routing_lifecycle();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
  std::cout<<checks<<" production-composed manual episode checks passed\n";

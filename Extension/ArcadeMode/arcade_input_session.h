@@ -279,7 +279,7 @@ public:
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, manual_safe(), actuator_pose,
             authored_.busy() || (auxiliary_.busy() && !manual_revert_owner()) || admission.external_owner ||
-            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -355,7 +355,7 @@ public:
         }
         manual = manual_.sample(now, true, manual_safe(), actuator_pose,
             authored_.busy() || (auxiliary_.busy() && !manual_revert_owner()) || admission.external_owner ||
-            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual());
+            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues());
         if (manual.owns_stick) {
             output.right_x = 0;
             output.right_y = manual_revert_pressure(native,manual.y);
@@ -376,6 +376,7 @@ public:
             !admission.manual_safe && !admission.manual_prepare ? 4u : manual_conflict ? 2u : 0u,
             admission.manual_safe, admission.manual_prepare, manual.owns_stick, manual.confirmed,
             manual_.recognized_at(), manual_.from_air(),manual_.recognition_id(),manual_.held_air()};
+        output.manual.air_episode_owned=manual_.air_episode_owned();
         if(revert_link_.issued && manual.owns_stick && manual_.requested()==revert_link_.direction)
             output.manual.revert={revert_link_.owner,revert_link_.step,revert_link_.contact,
                 revert_link_.confirmed_at,revert_link_.stance};
@@ -584,7 +585,8 @@ private:
             return manual_.request(now_, request.action == InputAction::manual ? -1 : 1, airborne, admission.manual_safe,
                 request.context == InputContext::air, request.recognized_at,
                 request.recognition ? request.recognition->sequence : 0,
-                held_air_manual(request.action == InputAction::manual ? -1 : 1))
+                held_air_manual(request.action == InputAction::manual ? -1 : 1),
+                airborne && manual_flight_continues())
                 ? InputDisposition::started : InputDisposition::cancelled;
         case InputAction::rail_request:
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
@@ -747,16 +749,23 @@ private:
         }
         current_->unsupported = true; return false;
     }
-    bool held_air_manual(int direction=0) const noexcept {
-        if (!direction) direction=manual_.requested();
+    bool manual_flight_continues() const noexcept {
         const auto& native=admission_.native_context;
-        if (!direction || !native.required || !native.fresh(now_) || !manual_air_episode_.number ||
-            native.airborne_episode!=manual_air_episode_.number) return false;
-        const bool same_flight=native.airborne && native.air_episode()==manual_air_episode_;
+        // poll() independently rejects stale samples, owner replacement and
+        // regressing native generations before this session can publish input.
+        if (!native.required || !native.fresh(now_) || !manual_air_episode_.number || native.rail_family ||
+            (native.flip.stance&0x40u) || native.airborne_episode!=manual_air_episode_.number) return false;
+        const bool same_flight=native.airborne && native.air_episode()==manual_air_episode_ &&
+            (native.flip.state==200 || native.flip.state==201) && (native.flip.mode==1 || native.flip.mode==2);
         const bool first_landing=!native.airborne && native.flip.state==100 && native.flip.mode==1 &&
             native.air_departure>manual_air_episode_.departure && native.air_departure-manual_air_episode_.departure==1;
+        return same_flight || first_landing;
+    }
+    bool held_air_manual(int direction=0) const noexcept {
+        if (!direction) direction=manual_.requested();
+        if (!direction || !manual_flight_continues()) return false;
         const auto physical=InputEvents::normalize(physical_,now_,true,admission_.input_policy);
-        return (same_flight || first_landing) && physical.direction==(direction<0?2:8);
+        return physical.direction==(direction<0?2:8);
     }
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
         std::uint32_t stance{};std::uint64_t recognition{},step{},contact{};bool issued{};
