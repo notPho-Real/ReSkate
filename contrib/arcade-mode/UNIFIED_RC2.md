@@ -69,6 +69,15 @@ No unknown folder is fabricated. The existing real child-process crash tests
 continue to require mod metadata, exception chaining and native dump provenance;
 they run before the expensive full runtime build as well as in the full suite.
 
+A later run exposed an intermittent stuck-load capture failure (the same binary
+passed on the immediate full-suite invocation). Capture filenames used helper PID,
+Windows tick and faulting thread only. Consecutive captures within one tick could
+reuse a filename, overwrite the first dump's metadata, then delete its sidecars
+when the second dump could not replace it. Each helper now adds an atomic capture
+sequence. A fixed-tick regression checks distinct names, and the real stuck-load
+then crash test still requires both complete reports. This does not affect game
+input or gameplay execution.
+
 Local and hosted results, exact candidate source and binary hashes, download
 locations and skipped checks belong in the staged RC2 manifest after completion.
 Do not install, advance `arcade-mode`, or mark RC2 accepted merely because CI is

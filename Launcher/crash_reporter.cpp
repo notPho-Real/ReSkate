@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include "crash_reporter.h"
+#include "crash_capture_name.h"
 #include <DbgHelp.h>
 #include "Engine/Core/Debug/protocol.h"
 #include "Engine/Core/Debug/upload.h"
@@ -163,7 +164,7 @@ bool publish_dump(HANDLE process, const std::filesystem::path& game_root,
 }
 bool save_dump(HANDLE process, const std::filesystem::path& game_root,
     const SharedReport& report, const std::filesystem::path& directory) {
-    const auto id = std::format(L"{}-{}-{}", GetCurrentProcessId(), GetTickCount64(), report.thread_id);
+    const auto id = capture_file_stem(GetCurrentProcessId(), GetTickCount64(), report.thread_id);
     const auto temporary = directory / (id + L".tmp");
     Handle file(CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
     if (file.value == INVALID_HANDLE_VALUE) return false;

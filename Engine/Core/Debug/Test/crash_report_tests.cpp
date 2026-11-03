@@ -9,6 +9,7 @@
 #include "Engine/Core/Debug/trace.h"
 #include "crash_report_config.h"
 #include "Engine/Core/Log/logging.h"
+#include "Launcher/crash_capture_name.h"
 #include <array>
 #include <fstream>
 #include <format>
@@ -350,6 +351,9 @@ void crash_check(const std::filesystem::path& root, Mode mode) {
 // A stuck load: a dump of the running fixture, after which it goes on and crashes for real. Both
 // are captured, the first as a stuck-load report.
 void stuck_check(const std::filesystem::path& root) {
+    const auto first = capture_file_stem(42, 1000, 7);
+    const auto second = capture_file_stem(42, 1000, 7);
+    check(first != second, "Consecutive captures on one Windows tick share dump and sidecar names");
     std::filesystem::create_directories(root);
     std::array<wchar_t, 32768> executable{};
     GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
