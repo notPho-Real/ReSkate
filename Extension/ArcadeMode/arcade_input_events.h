@@ -40,6 +40,9 @@ struct InputEvent {
     // A physical throw can enter the Manual cone without changing its eight-way
     // token. Keep that observation separate from the original command timestamp.
     std::uint64_t manual_qualified_at{};
+    // Physical state at this edge, retained through takeoff/admission buffering.
+    std::uint16_t physical_buttons{};
+    std::int16_t physical_direction{};
 };
 struct InputPattern {
     std::span<const InputToken> steps;
@@ -73,10 +76,11 @@ public:
         now_ = now; clocked_ = true;
         return true;
     }
-    void record(InputToken token, std::uint64_t now, std::int16_t manual_vertical = 0) noexcept {
+    void record(InputToken token, std::uint64_t now, std::int16_t manual_vertical = 0,
+                std::uint16_t buttons = 0, std::int16_t direction = 0) noexcept {
         if (!advance(now)) return;
         if (size_ == capacity) { erase_front(); ++overflows_; }
-        at(size_++) = {token, now, ++sequence_, 0, manual_vertical, manual_vertical ? now : 0};
+        at(size_++) = {token, now, ++sequence_, 0, manual_vertical, manual_vertical ? now : 0, buttons, direction};
     }
     void qualify_manual_direction(std::int16_t direction, std::int16_t vertical,
                                   std::uint64_t now) noexcept {
@@ -622,7 +626,8 @@ private:
         };
         if (exclusions_.admitted && exclusions_.kind != InputBalanceKind::none &&
             (logical(token) == logical(exclusions_.first) || logical(token) == logical(exclusions_.second))) return;
-        history_.record(token,now,token.source==InputSource::direction ? manual_vertical(physical_) : 0);
+        history_.record(token,now,token.source==InputSource::direction ? manual_vertical(physical_) : 0,
+                        physical_.buttons,digital_.direction);
     }
     InputHistory history_{};
     PhysicalInputSample previous_{};

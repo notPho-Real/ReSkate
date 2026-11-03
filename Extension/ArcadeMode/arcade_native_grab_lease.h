@@ -6,9 +6,26 @@
 namespace dingosdk::arcade_mode::native_grab {
 // These are Enum.DetailedGrabType values emitted by the original loop actors,
 // not Enum.GrabType values and not requested animation IDs.
-struct Pilot { ArcadeTrick trick; std::int32_t detail; float x, y; };
+struct Pilot { ArcadeTrick trick; std::int32_t detail; float x, y; std::int32_t family{2}; unsigned hands{2}; };
 inline constexpr Pilot pilots[]{{ArcadeTrick::basic_bs_grab,1,0,0},
-    {ArcadeTrick::melon,4,0,1},{ArcadeTrick::method,2,1,0}};
+    {ArcadeTrick::melon,4,0,1},{ArcadeTrick::method,2,1,0},
+    {ArcadeTrick::japan,3,0,-1},{ArcadeTrick::crossbone,5,-1,0},
+    {ArcadeTrick::indy,6,0,0,1,1},{ArcadeTrick::fs_nosebone,7,0,1,1,1},
+    {ArcadeTrick::fs_tailbone,8,0,-1,1,1},{ArcadeTrick::tuck_knee,9,1,0,1,1},
+    {ArcadeTrick::stiffy,10,-1,0,1,1},
+    {ArcadeTrick::double_grab,33,0,0,9,3},{ArcadeTrick::double_grab_front,36,0,1,9,3},
+    {ArcadeTrick::double_grab_back,37,0,-1,9,3},{ArcadeTrick::double_grab_left,34,-1,0,9,3},
+    {ArcadeTrick::double_grab_right,35,1,0,9,3}};
+// R3 held at the physical B press selects this layer. No existing row moves.
+constexpr ArcadeTrick extended_grab(std::int16_t direction) noexcept {
+    switch(direction) {
+    case 7:return ArcadeTrick::crossbone; case 9:return ArcadeTrick::fs_nosebone;
+    case 1:return ArcadeTrick::fs_tailbone; case 3:return ArcadeTrick::tuck_knee;
+    case 8:return ArcadeTrick::double_grab_front; case 2:return ArcadeTrick::double_grab_back;
+    case 4:return ArcadeTrick::double_grab_left; case 6:return ArcadeTrick::double_grab_right;
+    default:return ArcadeTrick::double_grab;
+    }
+}
 constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {
     for (const auto& p:pilots) if (p.trick==trick) return &p;
     return nullptr;
@@ -19,7 +36,11 @@ constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {
 struct RetargetObservation {
     bool valid{},grabbing{},can_grab{},left{},right{};
     std::int32_t family{};
-    bool eligible() const noexcept { return valid && grabbing && can_grab && !left && right && family==2; }
+    bool eligible(const Pilot* selected=nullptr) const noexcept {
+        const auto hands=selected?selected->hands:2u;
+        return valid && grabbing && can_grab && left==((hands&1u)!=0) &&
+            right==((hands&2u)!=0) && family==(selected?selected->family:2);
+    }
 };
 
 // A physical request remains pending through a brief release until independent

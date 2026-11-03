@@ -2303,6 +2303,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             },[](void* context,InputGenerations origin,InputAirEpisode air) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
                 return native_grab::continues(grab.owner,grab.episode,origin,air);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::hand_inputs(grab.owner,grab.episode);
             }};
         const auto grind_frame=arcade_input.native_context(now);
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&

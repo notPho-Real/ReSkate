@@ -1,6 +1,7 @@
 #pragma once
 #include "arcade_input_events.h"
 #include "arcade_air_selection.h"
+#include "arcade_native_grab_lease.h"
 #include "arcade_input_policy.h"
 #include <limits>
 #include <memory>
@@ -616,7 +617,7 @@ public:
                 diagnostic_.flip_table_at = now;
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
-                active_grab_ = event.request.named_binding && event.request.form == InputForm::ordinary;
+                active_grab_ = !event.request.modifier && event.request.named_binding && event.request.form == InputForm::ordinary;
                 active_grab_count_ = active_grab_ ? event.request.presses : 0;
                 grab_pressed_at_ = event.request.physical_pressed_at;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
@@ -720,6 +721,10 @@ private:
             request.direction_inherited = false;
         }
         if (action == InputAction::flip || action == InputAction::grab) {
+            if(action==InputAction::grab && modifier==1) {
+                request.direction=defined_direction;request.direction_source=InputSource::direction;
+                request.direction_inherited=false;
+            }
             request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
                 request.direction,presses);
             if (action == InputAction::flip && (form == InputForm::neutral_release || form == InputForm::neutral_press)) {
@@ -735,6 +740,8 @@ private:
                 request.air = {}; request.air.family = TrickFamily::grab;
                 request.air.trick = ArcadeTrick::basic_bs_grab; request.air.predicate = AirInputPredicate::primitive;
             }
+            if(action==InputAction::grab && modifier==1)
+                request.air.trick=native_grab::extended_grab(request.direction);
             // Original physical edges are evidence for the adapter; recognition
             // time cannot turn a released buffered tap into a newly held press.
             if (footprint) for (const auto& event : events_.history().events()) {
@@ -906,9 +913,21 @@ private:
         unsigned presses = 1;
         auto selected = now >= direction_at_ && now - direction_at_ <= InputTiming::direction_ms ? direction_ : std::int16_t{0};
         const InputToken face{InputSource::buttons,13,InputEdge::press};
+        const std::array face_tokens{face};
+        const auto physical_press=events_.history().match({face_tokens,InputTiming::readiness_ms,ordinary_reject},now);
+        bool extended=false;
+        if(environment.native_grab_transition && physical_press) {
+            for(const auto& event:events_.history().events())
+                if(event.sequence==physical_press.events[0] && (event.physical_buttons&0x80u)) {
+                    extended=true; selected=event.physical_direction; break;
+                }
+        }
         InputMatch match{};
         InputForm form{};
-        if (!environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_) {
+        if(extended) {
+            match=physical_press;
+        }
+        if (!extended && !environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_) {
             const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
@@ -962,7 +981,7 @@ private:
         if (native_owner)
             lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
-            environment, presses, 0, environment.deferred_grabs ? 180u : 0u, 0,
+            environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
             extra ? InputToken{grab_source_,grab_direction_,InputEdge::press} : InputToken{}, &match,form,extra ? std::int16_t{0} : selected,
             InputFootprintKind::unknown, lineage);
     }

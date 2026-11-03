@@ -45,7 +45,9 @@ enum class ArcadeTrick : std::uint8_t {
     noseslide_or_tailslide, crooked_or_overcrook, smith_or_feeble,
     nosebluntslide, bluntslide, nosegrind_to_pivot, grind_5_0_overturn,
     hurricane, salad, hang_ten_nosegrind, crail_slide, double_blunt_slide, darkslide,
-    basic_bs_grab, compact_grab, pressure_turn_flip
+    basic_bs_grab, compact_grab, pressure_turn_flip,
+    crossbone, fs_nosebone, fs_tailbone, tuck_knee,
+    double_grab, double_grab_front, double_grab_back, double_grab_left, double_grab_right
 };
 // Context-selected semantics; these identities do not name native methods.
 enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
@@ -101,7 +103,7 @@ inline constexpr std::array literal_trick_table{
     TrickTableRow{TrickFamily::grab, TrickDirection::none, 1, ArcadeTrick::basic_bs_grab, "BS Grab"},
     TrickTableRow{TrickFamily::grab, TrickDirection::left, 1, ArcadeTrick::melon, "Melon"},
     TrickTableRow{TrickFamily::grab, TrickDirection::up, 1, ArcadeTrick::nosegrab, "Nosegrab"},
-    TrickTableRow{TrickFamily::grab, TrickDirection::right, 1, ArcadeTrick::indy, "Indy"},
+    TrickTableRow{TrickFamily::grab, TrickDirection::right, 1, ArcadeTrick::indy, "FS Grab"},
     TrickTableRow{TrickFamily::grab, TrickDirection::down, 1, ArcadeTrick::tailgrab, "Tailgrab"},
     TrickTableRow{TrickFamily::grab, TrickDirection::up_left, 1, ArcadeTrick::japan, "Japan"},
     TrickTableRow{TrickFamily::grab, TrickDirection::up_right, 1, ArcadeTrick::madonna, "Madonna"},

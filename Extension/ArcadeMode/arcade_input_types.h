@@ -30,7 +30,8 @@ struct ActionInputOutput {
         // a trigger-only grab. Tap/directional body-rate writers stay excluded.
         const bool trigger_only_grab = native_grab_triggers && pad.owns_triggers &&
             !pad.owns_left_stick && !pad.owns_right_stick && !pad.owns_face_buttons &&
-            !pad.left_trigger && pad.right_trigger == 255;
+            (pad.left_trigger==0 || pad.left_trigger==255) &&
+            (pad.right_trigger==0 || pad.right_trigger==255) && (pad.left_trigger || pad.right_trigger);
         return owned && !(native_held_shoulder && trigger_only_grab);
     }
 };
@@ -69,6 +70,7 @@ struct NativeGrabRequest {
     bool (*submit)(void*,const InputRequest&,ArcadeTrick,bool) noexcept{};
     bool (*right_hand_input)(void*) noexcept{};
     bool (*continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
+    unsigned (*hand_inputs)(void*) noexcept{}; // Native left/right trigger mask; zero withdraws both.
 };
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;

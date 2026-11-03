@@ -300,6 +300,9 @@ public:
         output.action.consume_buttons = action_enabled && admission.action_fresh &&
             (admission.action_mode == ActionExperiment::grabs ||
              (admission.action_mode == ActionExperiment::classic && context == InputContext::air)) ? 0x2000 : 0;
+        if(output.action.consume_buttons && admission.action_mode==ActionExperiment::classic &&
+            admission.normal_grab.submit && (physical.buttons&0x2080u)==0x2080u)
+            output.action.consume_buttons|=0x0080u;
         output.action.consume_rt = action_enabled && ((revert_trigger_owned_ && revert_context(admission,now)) || admission.action_fresh) &&
             (admission.action_mode == ActionExperiment::classic || admission.action_mode == ActionExperiment::revert_frontside ||
              admission.action_mode == ActionExperiment::revert_backside);
@@ -403,15 +406,18 @@ public:
         // Use the original grab input producer, not a fixed-duration recipe.
         // The native lease retains taps until exact actor acknowledgment and
         // withdraws on release/exit; this never requests another pop or stick flick.
-        if (admission.action_mode==ActionExperiment::classic && admission.normal_grab.right_hand_input &&
+        if (admission.action_mode==ActionExperiment::classic && (admission.normal_grab.hand_inputs || admission.normal_grab.right_hand_input) &&
             context==InputContext::air && admission.action_fresh && admission.inspected_stance &&
             !admission.nollie && !busy && !board_active_ && !admission.external_owner &&
-            physical.lt<=30 && physical.rt<=30 && !auxiliary_.busy() &&
-            admission.normal_grab.right_hand_input(admission.normal_grab.context)) {
-            output.action.pad.owns_triggers=true;
-            output.action.pad.left_trigger=0;
-            output.action.pad.right_trigger=255;
-            output.action.native_grab_triggers=true;
+            physical.lt<=30 && physical.rt<=30 && !auxiliary_.busy()) {
+            const auto hands=admission.normal_grab.hand_inputs ? admission.normal_grab.hand_inputs(admission.normal_grab.context) :
+                admission.normal_grab.right_hand_input(admission.normal_grab.context)?2u:0u;
+            if(hands && hands<=3) {
+                output.action.pad.owns_triggers=true;
+                output.action.pad.left_trigger=(hands&1u)?255:0;
+                output.action.pad.right_trigger=(hands&2u)?255:0;
+                output.action.native_grab_triggers=true;
+            }
         }
         if (!auxiliary_.busy()) { grab_actor_ = false; grab_actor_episode_ = {}; }
         const auto& action = output.action.pad;
@@ -689,6 +695,7 @@ private:
         if (grab) {
             out.trick = classic && !request.named_binding && request.presses == 1 ? ArcadeTrick::basic_bs_grab :
                 select_named_trick(TrickFamily::grab, direction(request.direction), request.presses);
+            if(classic && request.modifier==1)out.trick=native_grab::extended_grab(request.direction);
             if (classic && admission.normal_grab.submit) {
                 // Pilot mappings are native intent ports and original actor
                 // identities. A callback receipt only acknowledges queuing.

@@ -31,12 +31,16 @@ struct Route {
         return self.frame.valid && self.frame.airborne && self.owner==self.grab_owner &&
             self.frame.airborne_episode==self.grab_air.number && self.lease.intent(self.now);
     }
+    static unsigned hand_inputs(void* p) noexcept {
+        auto& self=*static_cast<Route*>(p);
+        return right_hand_input(p)?self.lease.selected()->hands:0u;
+    }
     static bool continues(void* p,InputGenerations origin,InputAirEpisode air) noexcept {
         auto& self=*static_cast<Route*>(p);
         return self.frame.valid && self.frame.airborne && self.owner==self.grab_owner &&
             origin==self.grab_lineage && air==self.grab_air &&
             InputNativeContext::from_frame(self.frame).air_episode()==air &&
-            self.lease.intent(self.now) && self.grab_observation.eligible();
+            self.lease.intent(self.now) && self.grab_observation.eligible(self.lease.selected());
     }
     NativeGesture::Output poll(std::uint64_t at,std::uint16_t buttons=0,std::uint32_t state=201,
                               std::int32_t selection=-1,bool enabled=true) {
@@ -50,7 +54,7 @@ struct Route {
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
             false,recipes,admission.mirror_x,false,frame.airborne&&client_action_ready?SkatePose::air:SkatePose::riding,
             false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action&&client_action_ready,
-            admission.mirror_x,false,{}, client_action_ready?NativeGrabRequest{this,submit,right_hand_input,continues}:NativeGrabRequest{});
+            admission.mirror_x,false,{}, client_action_ready?NativeGrabRequest{this,submit,right_hand_input,continues,hand_inputs}:NativeGrabRequest{});
     }
 };
 AirRotation::Output rotate(Route& route,AirRotation& rotation,const NativeGesture::Output& output,
@@ -126,7 +130,7 @@ void grab_and_native_shoulders() {
         if(fault==2)out.action.pad.owns_left_stick=true;
         if(fault==3)out.action.pad.owns_right_stick=true;
         if(fault==4)out.action.pad.owns_face_buttons=true;
-        if(fault==5)out.action.pad.left_trigger=255;
+        if(fault==5)out.action.pad.left_trigger=128;
         if(fault==6)out.action.pad.right_trigger=0;
         check(out.action.blocks_air_rotation(true),"another channel owner or invalid grab receipt remains exclusive");
     }
@@ -166,8 +170,54 @@ void requests() {
         out=r->poll(at(12),0,100);check(!r->lease.selected() && !out.action.pad.owns_triggers,"landing clears the native request owner and trigger");
     }
 }
+void complete_direct_families() {
+    struct Binding {std::uint16_t buttons;ArcadeTrick trick;int detail;unsigned hands;bool repeat;};
+    const Binding rows[]{
+        {0x2000,ArcadeTrick::basic_bs_grab,1,2,false},{0x2004,ArcadeTrick::melon,4,2,false},
+        {0x2004,ArcadeTrick::method,2,2,true},{0x2005,ArcadeTrick::japan,3,2,false},
+        {0x2008,ArcadeTrick::indy,6,1,false},{0x2008,ArcadeTrick::stiffy,10,1,true},
+        {0x2085,ArcadeTrick::crossbone,5,2,false},{0x2089,ArcadeTrick::fs_nosebone,7,1,false},
+        {0x2086,ArcadeTrick::fs_tailbone,8,1,false},{0x208a,ArcadeTrick::tuck_knee,9,1,false},
+        {0x2080,ArcadeTrick::double_grab,33,3,false},{0x2081,ArcadeTrick::double_grab_front,36,3,false},
+        {0x2082,ArcadeTrick::double_grab_back,37,3,false},{0x2084,ArcadeTrick::double_grab_left,34,3,false},
+        {0x2088,ArcadeTrick::double_grab_right,35,3,false}};
+    for(unsigned hz:{30u,60u,120u})for(const auto& row:rows) {
+        auto r=std::make_unique<Route>();const unsigned dt=(1000u+hz-1)/hz;
+        r->poll(1000);auto out=r->poll(1000+dt,row.buttons);
+        if(row.repeat) {r->poll(1000+2*dt,static_cast<std::uint16_t>(row.buttons&~0x2000u));out=r->poll(1000+3*dt,row.buttons);}
+        check(!r->tricks.empty() && r->tricks.back()==row.trick,"each direct-family binding reaches its intended native profile");
+        check(out.action.pad.left_trigger==((row.hands&1u)?255:0) && out.action.pad.right_trigger==((row.hands&2u)?255:0),
+            "original hand-input producer receives exactly the selected native hand pair");
+        check(!out.action.pad.owns_right_stick && !out.action.pad.owns_left_stick && !out.authored_playback,
+            "native grab never injects a pop or controller flick");
+        check(!out.action.blocks_air_rotation(true),"all direct hand pairs retain native shoulder spin");
+        check(!(row.buttons&0x80u) || (out.action.consume_buttons&0x80u),"extended chord cannot leak its R3 press alongside B");
+        check(!r->lease.acknowledge(row.detail,1,0,1,true,false,true),"matching detail without exact actor cannot acknowledge");
+        check(!r->lease.acknowledge(row.detail,0,1,1,true,true,true),"nonadvancing native actor cannot acknowledge");
+        // Contract only: the independent native observer must provide these facts in gameplay.
+        check(r->lease.acknowledge(row.detail,1,0,1,true,true,true),"exact advancing actor can acknowledge its own profile");
+        out=r->poll(1000+4*dt,static_cast<std::uint16_t>(row.buttons&~0x2000u));
+        check(!out.action.pad.owns_triggers,"B release after acknowledgment withdraws both hands");
+        out=r->poll(1000+5*dt,0,100);
+        check(!out.action.pad.owns_triggers,"landing cannot retain a native grab input owner");
+    }
+}
 void delayed_tap_and_controls() {
     for(unsigned hz:{30u,60u,120u}) {
+        // Modifier/direction belong to the original press even if native AIR
+        // readiness arrives after both controls have physically been released.
+        auto extended=std::make_unique<Route>();
+        extended->poll(900,0,100);
+        extended->poll(1000,0,200,1);
+        extended->client_action_ready=false;
+        extended->poll(1010,0x2089,200,1);
+        extended->poll(1020,0,200,1);
+        extended->client_action_ready=true;
+        extended->poll(1030,0,201,1);
+        check(extended->tricks.size()==1 && extended->tricks[0]==ArcadeTrick::fs_nosebone,
+            "R3 plus directional B survives 200 to 201 with its original binding");
+        check(extended->requests[0].physical_pressed_at==1010,
+            "buffered extended grab retains the original B event timestamp");
         auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
         r->poll(1000);r->accept=false;r->poll(1000+dt,0x2004);r->poll(1000+2*dt);
         r->accept=true;r->poll(1000+3*dt);
@@ -189,7 +239,7 @@ void delayed_tap_and_controls() {
     check(!lease.selected(),"absent native evidence expires instead of fabricating success");
     lease.request(ArcadeTrick::melon,8000,true);lease.refresh(8200,true,true);
     check(!lease.selected(),"lost physical heartbeat cancels");
-    check(!lease.request(ArcadeTrick::indy,9000,true),"unqualified named grab never aliases a supported pose");
+    check(!lease.request(ArcadeTrick::nosegrab,9000,true),"unqualified named grab never aliases a supported pose");
 }
 void repeated_grab_uses_physical_interval() {
     for (unsigned hz:{30u,60u,120u}) for (unsigned interval:{200u,300u}) {
@@ -363,4 +413,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
