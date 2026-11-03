@@ -10,12 +10,14 @@ gameplay acceptance remains a separate owner gate.
 - RC1 DLL SHA-256: `d572266c704854f7a7a455d87b4b3840ca12e3b73f263be3ed74d8197d0aecbc`.
 - Local annotated checkpoint: `arcade-approved-rc1-01-1b92abb`.
 - Original upstream main, fetched for this integration:
-  `da508ebff7d5608f2a04c9287a026fee635d64da`.
+  `919b04e9a5aa708974b8ea7298c61333104d3905`.
 - Dedicated candidate branch: `arcade-stage-unified-rc2-upstream`.
 
 The merge starts from accepted RC1. The older upstream integration is used only
 as a conflict-resolution reference; it is not the candidate's parent or accepted
 build baseline. RC1 and all feature branch histories remain unchanged.
+The initial upstream merge at `da508eb` is followed by the eight upstream
+corrections through `919b04e`, including build-header and test-target repairs.
 
 ## Compatibility decisions
 
