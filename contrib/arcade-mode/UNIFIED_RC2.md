@@ -53,6 +53,14 @@ workflows. Historical non-gating Arcade differential failures are not relabeled
 as passes. The upstream `trainer_tuning_names` asset test requires a separately
 supplied game installation and is explicitly excluded on hosted CI.
 
+The first full Windows run exposed two test compatibility defects: the Trainer
+curve test passed a conditional integer expression to a float parameter under
+`/WX`, and the upstream crash test still looked for fatal-handler evidence in
+the ordinary log. The corrected tests use float literals and require the actual
+handler record in Arcade's separate bounded fatal log. Native-handler negative
+controls, dump capture, exception chaining and attachment checks remain enabled.
+No runtime gameplay implementation changes are needed for these corrections.
+
 Local and hosted results, exact candidate source and binary hashes, download
 locations and skipped checks belong in the staged RC2 manifest after completion.
 Do not install, advance `arcade-mode`, or mark RC2 accepted merely because CI is

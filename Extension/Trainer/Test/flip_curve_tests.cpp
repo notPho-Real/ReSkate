@@ -64,7 +64,7 @@ void external_changes(){
     for(bool scaled:{false,true})for(unsigned field=0;field<5;++field){
         Fixture f;if(scaled)f.step(2);f.writes=0;
         f.seed(address(f.curve,field),9.f);const auto before=f.memory;
-        check(f.step(scaled?1:2).status==Status::retired&&f.memory==before&&!f.writes,
+        check(f.step(scaled?1.f:2.f).status==Status::retired&&f.memory==before&&!f.writes,
               "any current output or clamp overwrite withdraws the whole curve before change or restore");
     }
     for(unsigned fault=0;fault<8;++fault){

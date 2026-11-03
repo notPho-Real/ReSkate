@@ -285,7 +285,13 @@ void crash_check(const std::filesystem::path& root, Mode mode) {
     check(code == 42, "Previous exception handler was not preserved");
     const auto log = read(root / L"ReSkate.log");
     check(log.find("Crash reporting enabled") != std::string::npos, "Helper did not start");
-    check((log.find("ReSkate unhandled exception") != std::string::npos) != native, "Fixture did not exercise the expected exception handler");
+    // The bounded logger keeps last-chance evidence separate from the rotating
+    // session log. Still require the real handler, and reject it in native modes.
+    const auto fatal_path = root / L"ReSkate.fatal.log";
+    const auto fatal_log = std::filesystem::exists(fatal_path) ? read(fatal_path) : std::string{};
+    check((fatal_log.find("ReSkate unhandled exception") != std::string::npos) != native, "Fixture did not exercise the expected exception handler");
+    check(fatal_log.size() <= 16 * 1024 && log.find("ReSkate unhandled exception") == std::string::npos,
+        "Last-chance evidence escaped its separate bounded log");
     const auto queue = queue_directory(root / L"crashes", L"https://127.0.0.1:1/test/minidump");
     std::filesystem::path dump;
     for (int attempt = 0; attempt < 100 && dump.empty(); ++attempt) {
