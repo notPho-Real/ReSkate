@@ -61,6 +61,14 @@ handler record in Arcade's separate bounded fatal log. Native-handler negative
 controls, dump capture, exception chaining and attachment checks remain enabled.
 No runtime gameplay implementation changes are needed for these corrections.
 
+The next run compiled every configured Windows target and passed 122 of 123
+tests, exposing missing mod-folder metadata in native crash capture. The helper
+previously queried the parent's executable path after process exit. It now keeps
+that observed folder before signaling readiness, then uses it for all captures.
+No unknown folder is fabricated. The existing real child-process crash tests
+continue to require mod metadata, exception chaining and native dump provenance;
+they run before the expensive full runtime build as well as in the full suite.
+
 Local and hosted results, exact candidate source and binary hashes, download
 locations and skipped checks belong in the staged RC2 manifest after completion.
 Do not install, advance `arcade-mode`, or mark RC2 accepted merely because CI is

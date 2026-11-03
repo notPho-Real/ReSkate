@@ -321,6 +321,9 @@ void crash_check(const std::filesystem::path& root, Mode mode) {
     // (The fixture raises its exception, so it happens in RaiseException.)
     check(site.starts_with("KERNELBASE.dll+0x") && site.size() > 17, "Crash site not tagged");
     const auto details = Json::parse(read(event_details_path(dump)));
+    check(details.at("contexts").at("reskate").contains("mods"),
+        mode == Mode::native ? "Native crash lost its parent's mod folder after process exit" :
+        "Live crash capture lost its parent's mod folder");
     check(details.at("user").at("id").string().size() == 32 && details.at("breadcrumbs").at("values").size() > 0 &&
         details.at("contexts").at("reskate").at("mods").is_array() && tags.at("mods.count").string() == "0",
         "Crash did not carry its event details");
