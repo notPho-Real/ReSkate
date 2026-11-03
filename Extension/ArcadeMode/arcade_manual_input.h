@@ -124,8 +124,11 @@ public:
                 // The admission deadline bounds an unverified request, not an
                 // already-delivered preparation in the same native flight.
                 // Neutral stick input does not withdraw that landing selection.
-                if ((flight_bound_ && !flight_continues) ||
-                    (!flight_bound_ && now - requested_at_ > air_request_ms && !held_air_)) { cancel(); return {}; }
+                // A brief landing/rebound between input polls still has the
+                // original bounded preparation window. It cannot inherit the
+                // old flight's extended authority or renew that deadline.
+                if (flight_bound_ && !flight_continues) flight_bound_ = false;
+                if (!flight_bound_ && now - requested_at_ > air_request_ms && !held_air_) { cancel(); return {}; }
                 // Missing observation is neither ground nor wheel contact. It
                 // cannot turn the recognition deadline into a fresh lease.
                 if (observed == SkatePose::riding || observed == SkatePose::manual ||

@@ -741,6 +741,15 @@ void early_air_manual_landing(){
        "early released manual admits actual matching contact on a long-flight landing");
   std::cout<<"PASS early "<<(nose?"Nose":"Manual")<<" neutral-stick flight "<<flight<<"ms "<<hz<<"Hz\n";
  }
+ for(bool nose:{false,true}){
+  const unsigned dt=17;prepare_air(nose,dt);const auto recognized=remap().manual.recognized_at;
+  tick(dt,100,0xc000);tick(dt,200,0);const auto rebound=remap();
+  check(rebound.manual.owns&&!rebound.manual.air_episode_owned&&rebound.manual.recognized_at==recognized,
+      "brief unpolled landing rebound keeps only the original bounded preparation, not extended flight authority");
+  while(clock_ms<=recognized+700){tick(dt,201,0);remap();}
+  check(!remap().manual.owns&&!manual_balance_admitted.load()&&!manual_release.pending(),
+      "rebound cannot renew the original request deadline or invent balance or putdown");
+ }
  for(bool nose:{false,true})for(unsigned exit=0;exit<8;++exit){
   const unsigned dt=17;prepare_air(nose,dt);const auto recognized=remap().manual.recognized_at;
   while(clock_ms<recognized+900){tick(dt,201,0);check(remap().manual.owns,"negative control begins with a retained early preparation");}

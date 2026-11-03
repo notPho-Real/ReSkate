@@ -56,8 +56,8 @@ void client_phase_gap() {
             check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/bail/rail/offboard exit cannot defer withdrawal");
     }
 }
-void held_air_manual() {
-    for(unsigned hz:{30u,60u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
+void prepared_air_manual() {
+    for(unsigned hz:{30u,60u,120u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
         ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
         NativeInputOwner owner{1,2,3,4,5};NativeGesture::Output output{};std::uint64_t recognized{};
         const auto poll=[&](std::uint64_t now,int held,unsigned state=201,unsigned contacts=0,bool allowed=true){
@@ -86,18 +86,19 @@ void held_air_manual() {
             if(fault==5&&now>=1600&&now<1800)continue;
             poll(now,held,fault==6&&step==hz/2?300:201,0,allowed);
         }
-        check(output.manual.owns==(fault==0),"only uninterrupted fresh same-owner held direction survives beyond released700ms/ground1200ms");
-        if(fault==0) {
-            check(output.manual.recognized_at==recognized&&output.manual.request_at==recognized,"held input never renews recognition or original request time");
-            poll(3284,direction,100,0xc000);check(output.manual.owns&&output.manual.request_at==3284&&output.suppress_reverse,"first qualified landing retains vertical reservation and starts the separate original1200ms acquisition");
-            poll(3318,direction,100,direction<0?0x4000:0x8000);
+        check(output.manual.owns==(fault<=2),"same verified flight survives held, neutral and reheld input; owner loss, OFF, stale polling and bail revoke preparation");
+        if(fault<=2) {
+            check(output.manual.recognized_at==recognized&&output.manual.request_at==recognized,"flight continuation never renews recognition or original request time");
+            const int landing_direction=fault==1?0:direction;
+            poll(3284,landing_direction,100,0xc000);check(output.manual.owns&&output.manual.request_at==3284&&output.suppress_reverse==(landing_direction!=0),"first qualified landing starts its acquisition clock and reserves only an actual held modifier");
+            poll(3318,landing_direction,100,direction<0?0x4000:0x8000);
             check(output.manual.owns&&output.manual.confirmed&&!output.suppress_reverse,"confirmed landing contact hands vertical input to existing balance correction without a new pair");
         }
     }
 }
 }
 int main(){control_ownership();
-    client_phase_gap();held_air_manual();
+    client_phase_gap();prepared_air_manual();
     const NativeInputOwner owner{1,2,3,4,5};
     const NativeInputPermissions all{true,true,true,true,true,true,true,true,true,7};
     for(unsigned bit:{0u,0x20u}) {

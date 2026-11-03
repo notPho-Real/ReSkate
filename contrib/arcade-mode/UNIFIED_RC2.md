@@ -86,8 +86,10 @@ An admitted airborne request now retains its recognition and original native
 flight identity after stick release. Fresh matching owner/flight observations
 authorize continued pressure; the first verified landing starts the existing
 bounded contact acquisition. Independent native delivery and contact checks
-remain required. Unadmitted requests retain their original expiry. Owner loss,
-new flight, stale producer, OFF, bail, rail, offboard and conflicting grab retire
+remain required. Unadmitted requests retain their original expiry. A brief
+landing/rebound between input polls retains only the original700ms preparation
+window; the new flight cannot inherit extended authority or renew that deadline.
+Owner loss, stale producer, OFF, bail, rail, offboard and conflicting grab retire
 the preparation without synthetic putdown or automatic re-acquisition.
 
 Production-composed checks cover both directions, neutral-stick flights lasting
