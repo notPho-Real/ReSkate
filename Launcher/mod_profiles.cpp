@@ -40,6 +40,14 @@ std::string_view trimmed(std::string_view text) {
     return text;
 }
 
+// A byte limit may fall inside a UTF-8 character; keep only complete characters.
+std::string_view utf8_prefix(std::string_view text, std::size_t limit) {
+    if (text.size() <= limit) return text;
+    auto length = limit;
+    while (length && (static_cast<unsigned char>(text[length]) & 0xC0) == 0x80) --length;
+    return text.substr(0, length);
+}
+
 bool semantic(std::string_view version) {
     int parts = 1;
     bool digit = false;
@@ -174,7 +182,7 @@ std::string Profiles::free_name(std::string_view wanted) const {
     std::string name(wanted);
     for (int number = 2; taken(name); ++number) {
         const auto suffix = std::format(" ({})", number);
-        name = std::string(wanted.substr(0, max_name_bytes - std::min(max_name_bytes, suffix.size()))) + suffix;
+        name = std::string(utf8_prefix(wanted, max_name_bytes - std::min(max_name_bytes, suffix.size()))) + suffix;
     }
     return name;
 }
@@ -195,11 +203,7 @@ std::string clean_profile_name(std::string_view name) {
         if (byte < 0x20 || byte == 0x7f || std::string_view("<>:\"/\\|?*").find(ch) != std::string_view::npos) continue;
         out += ch;
     }
-    while (out.size() > max_name_bytes) {
-        // Never cut a UTF-8 character in half.
-        do out.pop_back();
-        while (!out.empty() && (static_cast<unsigned char>(out.back()) & 0xC0) == 0x80);
-    }
+    out.resize(utf8_prefix(out, max_name_bytes).size());
     while (!out.empty() && out.front() == ' ') out.erase(out.begin());
     while (!out.empty() && (out.back() == ' ' || out.back() == '.')) out.pop_back();
     return out.empty() ? std::string("Profile") : out;
@@ -228,6 +232,7 @@ Profiles load(const fs::path& mods_root) noexcept {
         }
         profiles.active = root.value("active", "");
         if (!profiles.find(profiles.active)) profiles.active.clear();
+        profiles.keep_others = root.value("keep_others", false);
     } catch (...) {
         profiles = {};
     }
@@ -252,6 +257,7 @@ void save(const fs::path& mods_root, const Profiles& profiles) {
     }
     Json root = Json::object();
     root["active"] = profiles.active;
+    root["keep_others"] = profiles.keep_others;
     root["profiles"] = std::move(list);
     const auto target = mods_root / profiles_file;
     auto temporary = target;
@@ -280,7 +286,7 @@ Profile capture(std::string name, const mods::ModList& list) {
     return profile;
 }
 
-Applied apply(const Profile& profile, const mods::ModList& list) {
+Applied apply(const Profile& profile, const mods::ModList& list, bool keep_others) {
     Applied result;
     std::map<std::string, const mods::ModEntry*> installed;
     for (const auto& entry : list.entries) installed.emplace(folded(entry.mod.name), &entry);
@@ -299,18 +305,23 @@ Applied apply(const Profile& profile, const mods::ModList& list) {
     for (const auto& entry : list.entries)
         if (!used.contains(folded(entry.mod.name))) {
             result.entries.push_back(entry);
-            result.entries.back().enabled = false;
+            if (!keep_others) result.entries.back().enabled = false;
         }
     return result;
 }
 
-bool in_use(const Profile& profile, const mods::ModList& list) {
-    const auto applied = apply(profile, list);
+bool in_use(const Profile& profile, const mods::ModList& list, bool keep_others) {
+    const auto applied = apply(profile, list, keep_others);
     if (!applied.missing.empty()) return false;
-    const auto enabled = [](const std::vector<mods::ModEntry>& entries) {
+    // With keep_others the player's own mods are left out: where they sit, and whether they are on,
+    // does not change what loading the profile would do to its mods.
+    std::set<std::string> own;
+    if (keep_others)
+        for (const auto& mod : profile.mods) own.insert(folded(mod.name));
+    const auto enabled = [&](const std::vector<mods::ModEntry>& entries) {
         std::vector<std::string> names;
         for (const auto& entry : entries)
-            if (entry.enabled) names.push_back(folded(entry.mod.name));
+            if (entry.enabled && (!keep_others || own.contains(folded(entry.mod.name)))) names.push_back(folded(entry.mod.name));
         return names;
     };
     return enabled(applied.entries) == enabled(list.entries);

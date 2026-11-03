@@ -8,7 +8,7 @@
 #include "Extension/Profile/local_profile_runtime.h"
 #include "Extension/Trainer/trainer.h"
 #include "Extension/Multiplayer/Hud/game_ui_state.h"
-#include "Extension/HallOfMeat/hall_of_meat_skater.h"
+#include "Extension/Skater/skater_physics.h"
 #include "Extension/Settings/named_settings.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
@@ -175,7 +175,7 @@ std::string fixture_rate(unsigned rate, const trainer::Telemetry& skater, bool e
     std::uint32_t state{}, mode{};
     const auto now = GetTickCount64();
     if ((rate != 30 && rate != 60) || editing || multiplayer_session_active() ||
-        !hall_of_meat::skater_available() || !no_bail_skater(owner) || !skater.skater ||
+        !skater_physics::available() || !no_bail_skater(owner) || !skater.skater ||
         skater.sampled_entity != owner.entity || !skater.sampled_ms || now < skater.sampled_ms ||
         now - skater.sampled_ms > 150 || !std::isfinite(skater.speed) || skater.speed > .1f ||
         !std::isfinite(skater.vertical) || std::abs(skater.vertical) > .1f ||
@@ -187,26 +187,26 @@ std::string fixture_rate(unsigned rate, const trainer::Telemetry& skater, bool e
         return "error: Rate setup requires the stopped local two-wheel skater, closed editor and no multiplayer session.";
     constexpr std::array names{"SimulationTime.ForceSimRate", "SimulationTime.MaxSimFps"};
     const std::array previous{named_setting_value(names[0]), named_setting_value(names[1])};
-    const float old_step = hall_of_meat::step_length(), step = simulation_time::step_seconds(rate);
+    const float old_step = skater_physics::step_length(), step = simulation_time::step_seconds(rate);
     if (!previous[0] || !previous[1] || !std::isfinite(old_step) || old_step <= 0 || old_step > .1f)
         return "error: Native rate ownership is unavailable.";
     const auto value = std::to_string(rate);
     auto restore = [&] {
         for (unsigned i = 0; i < names.size(); ++i)
             if (named_setting_value(names[i]) == value) (void)change_named_setting(names[i], *previous[i], false);
-        if (no_bail_skater(after) && owner == after && hall_of_meat::step_length() == step)
-            (void)hall_of_meat::set_step_length(old_step);
+        if (no_bail_skater(after) && owner == after && skater_physics::step_length() == step)
+            (void)skater_physics::set_step_length(old_step);
     };
     for (const auto name : names)
         if (change_named_setting(name, value, false).starts_with("error:")) {
             restore(); return "error: Native clock rate setup failed; owned values restored.";
         }
-    if (!no_bail_skater(after) || owner != after || !hall_of_meat::set_step_length(step) ||
-        hall_of_meat::step_length() != step || named_setting_value(names[0]) != value || named_setting_value(names[1]) != value) {
+    if (!no_bail_skater(after) || owner != after || !skater_physics::set_step_length(step) ||
+        skater_physics::step_length() != step || named_setting_value(names[0]) != value || named_setting_value(names[1]) != value) {
         restore(); return "error: Native skater rate setup failed; owned values restored.";
     }
     return std::format("ARCADE FIXTURE RATE: requested={} cached_rate={} cached_step_seconds={}.",
-        rate, simulation_time::rate_of(hall_of_meat::step_length()), hall_of_meat::step_length());
+        rate, simulation_time::rate_of(skater_physics::step_length()), skater_physics::step_length());
 }
 }
 void register_arcade_fixture_commands(Commands& registry) {

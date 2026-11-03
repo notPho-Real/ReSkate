@@ -53,6 +53,9 @@ struct ChatBudget {
 };
 // Throwdown messages per sender per 5 s: offers, joins, starts and ~4 scores a second.
 inline constexpr unsigned throwdown_burst = 60;
+// Plugin messages (Extension/Plugins/plugin_wire.h) ride the same packets on a budget of their own:
+// a plugin may send a few a second for a whole session (a drone's place, a game mode's state).
+inline constexpr unsigned plugin_burst = 200;
 // The party the echo test shows its mirrored player in (a real lobby has none until its
 // players form one).
 inline constexpr std::uint32_t lobby_party = 1;
@@ -137,7 +140,7 @@ struct Peer {
         std::uint64_t at{};
     };
     std::vector<ChatProof> chat_proofs, chat_waiting;
-    ChatBudget throwdown_budget, party_budget;
+    ChatBudget throwdown_budget, party_budget, plugin_budget;
     // Host: how the guest's mods change trick scoring, as they reported it (Engine/Vfs/mod_scoring.h):
     // nothing until the report arrives, 0 for the game's own. member.scoring is the verdict.
     std::optional<std::uint64_t> scoring;
@@ -170,6 +173,7 @@ struct Session {
     bool sync_effects{true};   // the dedicated server has players see each other's skater effects
     // What guests may use: the host's choice, or the host's roster for a guest.
     bool guest_noclip = true, guest_no_bail = true, guest_boosts = true;
+    bool guest_ollies = true; // a dedicated server's lock only: a lobby host has no such choice
     // Host: guests skate with its physics tuning. Guest: the host's roster says so (a
     // dedicated server's guests skate with the game's own).
     bool enforce_tuning = true;
@@ -258,17 +262,24 @@ struct Session {
     unsigned server_map_rotation{};           // minutes per map (0: off)
     std::string map_label;                    // the host's name for join_destination (may be empty)
     std::string map_package;                  // the Thunderstore package it is from (may be empty)
+    // A dedicated server's required plugins (map offer), and whether this PC has them all ready.
+    std::vector<std::string> required_plugins;
+    bool plugins_ready{};
+    bool fetching_with_map{};                 // the fetch under way brings the map too
     // The map is not installed and is being fetched (take_map_need): since when, 0 for not.
     // The host is told with what is sent while waiting (Packet::map_fetching).
     std::uint64_t fetching_since{};
+    std::uint64_t map_fetch_deadline{};
     std::optional<MapNeed> map_need;          // take_map_need()
     // The session a missing map ended, for "rejoin": who hosted it and the password key it was joined with.
     struct Rejoin {
         Invite invite;
         std::optional<PasswordKey> password;
+        std::uint64_t deadline_us{};
     };
     std::optional<Rejoin> rejoin;
     std::string leave_notice;                 // take_leave_notice()
+    std::string removed_notice;               // take_removed_notice()
     std::uint64_t joined_public_lobby{};
     std::array<Peer, max_remote_players> peers;
     // Players take the lowest free slots, so every one sits below this mark
@@ -281,6 +292,10 @@ struct Session {
     std::uint64_t world = 1, travel_started{}, last_world_state{}, last_world_ready{};
     std::uint32_t world_state_sequence{};
     bool travelling{}, host_world_ready = true;
+    // Reloading the map being played for the local player's own reasons (begin_local_reload): kept as
+    // travelling, in the same world. Whether its load has begun, and a guest's ready report to send
+    // once it is back.
+    bool local_reload{}, local_reload_started{}, reload_ready_due{};
     unsigned capacity = max_players;
     // Local display preferences, loaded once from the profile. Never sent to peers.
     bool nametags = true, chat_visible = true, display_preferences_loaded{};
@@ -313,6 +328,8 @@ struct Session {
     // Grey dots above this skater until this time. The overlay sets it while the chat
     // input is changing, and clears it after three seconds idle or when the box closes.
     std::uint64_t local_typing_until{};
+    // The next presence notice may go then, for input after `presence_for` (update_presence).
+    std::uint64_t next_presence{}, presence_for{};
     float chat_bubbles_distance = 40.f, chat_bubbles_duration = 5.f;
     int chat_bubbles_history = 3;
     bool game_menu{};            // a game menu is up or the game's UI is hidden: no chat on screen
@@ -472,15 +489,17 @@ std::string answer_server_poll(Session &s, std::size_t answer);
 // Whether a vote the local player may answer is running: read by the game thread for the binds.
 inline std::atomic<bool> server_vote_open_flag{};
 inline std::atomic<MapPackageLookup> map_package_lookup{};
+inline std::atomic<PluginCheck> plugin_check{};
+inline std::atomic<LevelCheck> level_check{};
 inline std::atomic<bool> fetching_map_flag{};
-inline std::atomic<bool> map_load_held{};
+inline std::atomic<std::uint64_t> map_fetch_deadline_flag{}, map_load_held{};
 // A guest without the map is downloading it: the clock they are loading against starts over
 // each time they say so, for as long as map_fetch_limit_us from the first time.
 inline void guest_fetching(Peer &peer, std::uint64_t now) {
     // (Only for a guest who is past the password.)
     if (!peer.handshaken && !peer.map_authorized) return;
     if (!peer.fetching_since) peer.fetching_since = now;
-    if (now - peer.fetching_since > map_fetch_limit_us) return;
+    if (map_fetch_policy::host_expired(peer.fetching_since, now)) return;
     if (!peer.handshaken) peer.connected_at = now;
     else if (peer.travel_since) peer.travel_since = now;
 }
@@ -539,6 +558,10 @@ void update_physics_tuning(Session &s, const NativeFrame &local, std::uint64_t n
 // How the local mods change trick scoring (Engine/Vfs/mod_scoring.h). Guest: reported to the host
 // or dedicated server once known and whenever it changes. Host: judged like a guest's.
 void update_scoring(Session &s, std::uint64_t now);
+// Guest of a dedicated server: tells it the player is at their game while they work the controls
+// (note_player_input), every present_interval_us at most.
+void update_presence(Session &s, std::uint64_t now);
+void note_input() noexcept; // (note_player_input)
 // Host: flags or clears a guest from its report and the host's choice.
 void judge_scoring(Session &s, Peer &peer);
 // The chat line for the local player's own mods changing scoring or physics.
@@ -577,9 +600,12 @@ void apply_distances(Session &s, const MultiplayerDistances &distances);
 void apply_object_placement(Session &s, ObjectPlacement policy);
 // The session's limit, and this game's own share of it: none while hosting or as a server's admin.
 void apply_object_limit(Session &s, unsigned limit);
+// Whether a dedicated server lets players resize what they place, and whether this game may (the
+// host and a role that may always build are exempt): the placements follow it.
+void apply_object_scaling(Session &s, bool allowed);
 // Stores what guests may use and applies it to the local player (the host and a dedicated
 // server's admins are exempt).
-void apply_guest_tools(Session &s, bool noclip, bool no_bail, bool boosts);
+void apply_guest_tools(Session &s, bool noclip, bool no_bail, bool boosts, bool ollies = true);
 // Shows the chosen nametags: ReSkate's (and none of the game's nametags or compass
 // arrows), the game's own, or none.
 void apply_nametags(const Session &s);

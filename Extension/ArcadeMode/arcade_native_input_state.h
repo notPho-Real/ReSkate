@@ -1,7 +1,7 @@
 #pragma once
 #include "arcade_native_probe.h"
 #include "arcade_native_trick.h"
-#include "Engine/Game/Build/20260929/grind_exit.h"
+#include "Engine/Game/Build/20260929/launches.h"
 #include <cmath>
 #include <cstdint>
 
@@ -91,7 +91,7 @@ public:
         // not manufacture a physical departure or landing observation.
         if (!boundary && frame_.airborne && !airborne && !increment(air_departure_)) return {};
         if (!increment(step_)) return {};
-        namespace rail = game::build::v20260929::grind_exit;
+        namespace rail = game::build::v20260929::launches;
         frame_ = {true, sample.state >= rail::grind_states_first && sample.state < rail::grind_states_end,
             flip.valid, owner, owner_generation_, contact_generation_, action_generation_, step_, now,
             sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_,airborne_started_at_,airborne,mode_generation_,flip_wait_generation_};

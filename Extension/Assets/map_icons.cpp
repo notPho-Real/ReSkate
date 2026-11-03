@@ -1,4 +1,5 @@
 #include "map_icons.h"
+#include "live_mods.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Build/addresses.h"
 #include "Engine/Game/Build/20260929/ui_textures.h"
@@ -9,7 +10,9 @@
 #include "Engine/Vfs/thunderstore_package.h"
 #include "Extension/Multiplayer/Session/session.h"
 #include "Extension/UI/Overlay/overlay.h"
+#include <algorithm>
 #include <atomic>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -136,9 +139,46 @@ void fetch(unsigned serial, std::vector<multiplayer::NextMapWanted> maps) {
     }
     fetching.store(false);
 }
+
+// The menu's map grid: each level's picture, a custom map's mod icon (its path found on the client
+// thread) or an official map's loading screen.
+std::atomic<bool> menu_fetching{};
+void fetch_menu(std::vector<std::pair<overlay::MenuMapWanted, fs::path>> maps) {
+    std::vector<overlay::MapVoteIcon> icons;
+    for (auto& [map, icon_path] : maps) {
+        overlay::MapVoteIcon icon;
+        if (!icon_path.empty()) icon.png = read_bytes(icon_path);
+        if (icon.png.empty()) {
+            icon.rgba = game_picture(map.name);
+            if (!icon.rgba.empty()) icon.side = picture_side;
+        }
+        if (icon.png.empty() && icon.rgba.empty()) continue;
+        icon.name = std::move(map.asset);
+        icons.push_back(std::move(icon));
+    }
+    overlay::set_menu_map_pictures(icons);
+    try {
+        logging::log(logging::Level::info, logging::Channel::assets, "Menu map grid: {} of {} map(s) with a picture.", icons.size(), maps.size());
+    } catch (...) {}
+    menu_fetching.store(false);
+}
+void menu_tick() {
+    if (menu_fetching.load()) return;
+    auto wanted = overlay::take_menu_map_request();
+    if (wanted.empty()) return;
+    std::vector<std::pair<overlay::MenuMapWanted, fs::path>> maps;
+    for (auto& map : wanted) {
+        // The mods in effect now: a map a live apply added is in no list the launch made.
+        const auto directory = live_mods::level_mod_directory(map.asset);
+        maps.emplace_back(std::move(map), directory.empty() ? fs::path() : directory / L"icon.png");
+    }
+    menu_fetching.store(true);
+    std::thread(fetch_menu, std::move(maps)).detach();
+}
 } // namespace
 
 void tick() {
+    menu_tick();
     const auto serial = multiplayer::next_maps_serial();
     if (serial == wanted_serial.load() || fetching.load()) return;
     wanted_serial.store(serial);

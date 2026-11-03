@@ -112,71 +112,31 @@ int main() {
         const auto find = [](const std::vector<Row>& rows, std::string_view id) {
             return std::find_if(rows.begin(), rows.end(), [&](const auto& row) { return row.id == id; });
         };
-        // Hall of Meat sits with the player's other switches.
-        const auto meat_row = [&] {
-            const auto page = render(state, model, cb, player_section);
-            return *find(page.main, "hall-of-meat");
-        };
-        check(meat_row().title == "Hall of Meat: Off" && meat_row().command.empty(), "Hall of Meat waits until it started");
-        model.hall_of_meat = {true, false};
-        activate(state, model, cb, "hall-of-meat", "");
-        check(meat_row().command == "hall-of-meat" && capture.command == "hallofmeat 1", "Hall of Meat turns on");
-        model.hall_of_meat = {true, true};
-        activate(state, model, cb, "hall-of-meat", "");
-        check(meat_row().title == "Hall of Meat: On" && capture.command == "hallofmeat 0", "and off again");
-        // Road Rash's switches sit there too; its blood and its healing wait for it to be on.
-        const auto rash_row = [&](std::string_view id) {
-            const auto page = render(state, model, cb, player_section);
-            return *find(page.main, id);
-        };
-        check(rash_row("road-rash").title == "Road Rash: Off" && rash_row("road-rash").command.empty(), "Road Rash waits until it started");
-        model.road_rash = {true, false, true};
-        check(rash_row("road-rash-blood").command.empty() && rash_row("road-rash-heal").command.empty(), "Its blood and healing wait for it");
-        activate(state, model, cb, "road-rash", "");
-        check(rash_row("road-rash").command == "road-rash" && capture.command == "roadrash 1", "Road Rash turns on");
-        model.road_rash = {true, true, true};
-        check(rash_row("road-rash").title == "Road Rash: On" && rash_row("road-rash-blood").title == "Road Rash blood: On", "and shows it");
-        activate(state, model, cb, "road-rash-blood", "");
-        check(capture.command == "roadrashblood 0", "The blood switches off");
-        activate(state, model, cb, "road-rash-heal", "");
-        check(capture.command == "roadrash heal", "and the skater heals");
-        // Board Break's switch sits there too, with the deck that is in the game; another deck waits for a deck pack.
-        check(rash_row("board-break").title == "Board Break: Off" && rash_row("board-break").command.empty(), "Board Break waits until it started");
-        model.board_break = {true, true, false, "None"};
-        check(rash_row("board-break").title == "Board Break: On" && rash_row("board-break-deck").command.empty(),
-              "Without a deck pack there is no deck to change");
-        activate(state, model, cb, "board-break", "");
-        check(capture.command == "boardbreak 0", "Board Break turns off");
-        model.board_break = {true, true, true, "Wide"};
-        check(rash_row("board-break-deck").title == "Board Break deck: Wide" && rash_row("board-break-deck").command == "board-break-deck",
-              "The deck in the game shows");
-        activate(state, model, cb, "board-break-deck", "");
-        check(capture.command == "boardbreak deck next", "and steps to the next one");
-        // Grind exit triggers: the switch, what LT / RT mean, and the stance toe/heel needs.
-        const auto grind_row = [&](std::string_view id) {
-            const auto page = render(state, model, cb, player_section);
-            const auto row = find(page.main, id);
+        // Keyframe smoothing sits with what you see, under the replay editor.
+        const auto smoothing_row = [&] {
+            const auto page = render(state, model, cb, visuals_section);
+            const auto row = find(page.main, "keyframe-smoothing");
             return row == page.main.end() ? Row{} : *row;
         };
-        check(grind_row("grind-exits").title == "Grind exit triggers: Off" && grind_row("grind-exits").command.empty(),
-              "Grind exit triggers wait until they started");
-        model.grind_exit = {true, false, true, 0};
-        activate(state, model, cb, "grind-exits", "");
-        check(grind_row("grind-exits").command == "grind-exits" && capture.command == "grindexit exits on", "Grind exit triggers turn on");
-        check(grind_row("grind-exit-sides").title == "Input Mode: Toe / Heel" && grind_row("grind-exit-stance").title == "Your stance: Not set",
-              "Toe / heel shows the stance it needs");
-        activate(state, model, cb, "grind-exit-stance", "");
-        check(capture.command == "grindexit stance goofy", "The stance is set");
-        model.grind_exit = {true, true, true, 2};
-        activate(state, model, cb, "grind-exit-stance", "");
-        check(capture.command == "grindexit stance regular", "and changed");
-        activate(state, model, cb, "grind-exit-sides", "");
-        check(capture.command == "grindexit sides travel", "LT / RT switch to left / right of travel");
-        model.grind_exit = {true, true, false, 2};
-        check(grind_row("grind-exit-sides").title == "Input Mode: Left / Right" && grind_row("grind-exit-stance").id.empty(),
-              "which needs no stance");
-        activate(state, model, cb, "grind-exits", "");
-        check(capture.command == "grindexit exits off", "and the triggers turn off");
+        check(smoothing_row().title == "Keyframe smoothing: Off" && smoothing_row().command.empty(),
+              "Keyframe smoothing waits until it started");
+        model.keyframe_smoothing = {true, false};
+        activate(state, model, cb, "keyframe-smoothing", "");
+        check(smoothing_row().command == "keyframe-smoothing" && capture.command == "keysmooth on", "Keyframe smoothing turns on");
+        model.keyframe_smoothing = {true, true};
+        activate(state, model, cb, "keyframe-smoothing", "");
+        check(smoothing_row().title == "Keyframe smoothing: On" && capture.command == "keysmooth off", "and off again");
+        // Its smoothness steps down a quarter at a time and wraps to the smoothest; only while it is on.
+        model.keyframe_smoothing = {true, true, 1.0f};
+        activate(state, model, cb, "keyframe-smoothness", "");
+        check(capture.command == "keysmooth amount 0.75", "Keyframe smoothness steps from 100% to 75%");
+        model.keyframe_smoothing.amount = 0.1f;
+        activate(state, model, cb, "keyframe-smoothness", "");
+        check(capture.command == "keysmooth amount 1", "and from the lowest back to 100%");
+        capture.command.clear();
+        model.keyframe_smoothing = {true, false, 1.0f};
+        activate(state, model, cb, "keyframe-smoothness", "");
+        check(capture.command.empty(), "Keyframe smoothness waits until smoothing is on");
         model.multiplayer.local_name = "steam_name";
         model.player_card = {true, "Card Name", {}};
         const auto card_page = render(state, model, cb, player_section);
