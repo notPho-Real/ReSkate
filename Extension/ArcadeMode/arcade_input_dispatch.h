@@ -1319,7 +1319,8 @@ private:
         // Eligibility follows effective logical direction edges. Releasing a
         // pad override can expose a held stick as a genuinely new direction;
         // unchanged logical input is already suppressed by the event recorder.
-        const auto window = environment.context == InputContext::air ? InputTiming::air_pair_ms :
+        const auto window = environment.policy.manual_axis_projection ? InputTiming::manual_throw_pair_ms :
+            environment.context == InputContext::air ? InputTiming::air_pair_ms :
             InputTiming::ground_pair_ms + environment.policy.manual_sample_allowance;
         const bool inclusive = environment.context == InputContext::ground && environment.policy.inclusive_manual;
         const auto reject = ~std::uint32_t{0};

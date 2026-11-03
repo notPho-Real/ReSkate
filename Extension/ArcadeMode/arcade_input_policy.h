@@ -2,6 +2,9 @@
 #include <cstdint>
 namespace dingosdk::arcade_mode {
 struct InputTiming {
+    // Physical opposite strokes, in either ground or airborne preparation.
+    // This does not extend native admission, acquisition or balance deadlines.
+    static constexpr std::uint64_t manual_throw_pair_ms = 450;
     static constexpr std::uint64_t ground_pair_ms = 220;
     static constexpr std::uint64_t ground_sample_slack_ms = 55;
     static constexpr std::uint64_t air_pair_ms = 400, air_request_ms = 700;

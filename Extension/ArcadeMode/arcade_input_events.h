@@ -502,12 +502,13 @@ public:
         return v >= (sign == previous ? 8000 : 11000) && v * 4 >= h * 3 ? sign : std::int16_t{0};
     }
     static std::int16_t manual_vertical(PhysicalInputSample input) noexcept {
-        // D-pad remains exact. Analog manuals accept the vertical half of each
-        // quadrant; steering-dominant throws remain horizontal intent.
+        // D-pad remains exact. A deliberate vertical reversal may naturally
+        // travel diagonally: accept up to 1.5 times as much horizontal travel.
+        // Keep the physical magnitude threshold and reject shallow steering.
         if(input.buttons&15u)return (input.buttons&15u)==1?1:(input.buttons&15u)==2?-1:0;
         const int x=input.x<0?-static_cast<int>(input.x):input.x;
         const int y=input.y<0?-static_cast<int>(input.y):input.y;
-        return y>=x && (input.y>=12800 || input.y<=-13057) ? (input.y>0?1:-1) : 0;
+        return y*3>=x*2 && (input.y>=12800 || input.y<=-13057) ? (input.y>0?1:-1) : 0;
     }
     std::int16_t vertical_direction(bool pad) const noexcept {
         if (policy_.normalization == InputNormalization::analog) {

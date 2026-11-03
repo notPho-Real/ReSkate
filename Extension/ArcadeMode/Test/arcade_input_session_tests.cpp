@@ -696,14 +696,14 @@ void grounded_manual_readiness_wait() {
         check(!recovered.manual.owns,
             "owner loss stale producer OFF unknown departure rail and physical conflicts retire pending intent");
     }
-    for (auto age : {219u,220u,275u,276u}) {
+    for (auto age : {219u,220u,275u,276u,449u,450u,451u}) {
         auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
         h.manual_ready = true;
         h.poll(1000,100); h.poll(1017,101,{0,0,25000}); h.poll(1034,101);
         for (auto t = 1051u; t < 1017+age; t += 17) h.poll(t,101);
         const auto out = h.poll(1017+age,100,{0,0,-25000});
-        check(out.manual.owns == (age <= 275),
-            "ground readiness waiting retains the explicit55ms physical sampling allowance");
+        check(out.manual.owns == (age <= InputTiming::manual_throw_pair_ms),
+            "ground readiness waiting retains the physical450ms reversal window");
     }
 }
 void manual_transition_continuity_negatives() {
@@ -754,14 +754,14 @@ void manual_transition_continuity_negatives() {
     }
 }
 void manual_context_window_contracts(){
- for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(bool ending_air:{false,true})for(unsigned age:{219u,220u,275u,276u,300u,399u,400u}){
+ for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(bool ending_air:{false,true})for(unsigned age:{219u,220u,275u,276u,300u,399u,400u,449u,450u,451u}){
   auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.manual_ready=true;h.cadence=cadence;
   const short first=nose?-13057:12800,second=nose?12800:-13057;
   h.poll(1000,ending_air?100u:200u);h.poll(1017,ending_air?100u:200u,{0,0,first});
   for(auto now=1017+cadence;now<1017+age;now+=cadence)h.poll(now,200,{0,0,first});
   const auto out=h.poll(1017+age,ending_air?200u:100u,{0,0,second});
-  const bool expected=ending_air ? age<400u : age<=275u;
-  check(out.manual.owns==expected,"actual query context selects sampled ground275 or strict air400 without rewriting a preexisting analog edge");
+  const bool expected=ending_air ? age<InputTiming::manual_throw_pair_ms : age<=InputTiming::manual_throw_pair_ms;
+  check(out.manual.owns==expected,"ground and air share450ms physical pairing without rewriting an existing edge");
   if(expected)check(out.manual.from_air==ending_air&&out.manual.recognized_at==1017+age,
        "cross-context recognition records its actual query context and immutable recognition time");
  }
