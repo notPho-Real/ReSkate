@@ -57,14 +57,14 @@ struct Route {
         }};
     }
     NativeGesture::Output poll(std::uint64_t now,PhysicalInputSample physical={},std::uint32_t state=201,std::int32_t id=2,
-                               bool prepare=true,float extra=0,bool held=false,bool actor=false) {
-        NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:2;
+                               bool prepare=true,float extra=0,bool held=false,bool actor=false,int animation_id=-999) {
+        NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:state==200?0:2;
         sample.words[1]=state==100?0xc000u:0;
         frame=producer.observe(now,owner,sample,{true,id,16});
         admission.native_context=InputNativeContext::from_frame(frame);
         admission.pose=frame.airborne?SkatePose::air:SkatePose::riding;
         admission.flip_ready=id==-1;admission.tick=now*60/1000;
-        admission.held_flip={held_available,frame.airborne,prepare,held,actor,id,extra,now};
+        admission.held_flip={held_available,frame.airborne,prepare,held,actor,animation_id==-999?id:animation_id,extra,now};
         const auto out=session.poll(now,physical,0,0,admission);
         const auto& d=session.diagnostic();
         for(std::size_t i=0;i<d.dispatched;++i)
@@ -80,6 +80,22 @@ struct Route {
     }
 };
 void physical_repetition() {
+    for(bool takeoff:{false,true}) {
+        auto h=std::make_unique<Route>();
+        h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);h->poll(1051,{0x1000},100,1);
+        h->poll(1085,{},100,1);h->poll(1102,{},200,1);
+        h->poll(1119,{0x4000},takeoff?200:201,1,false);
+        check(h->bridge_calls==1,"captured takeoff X reaches original flip bridge");
+        h->poll(1136,{},201,1,false,0,false,false,2);
+        h->poll(1187,{0x4000},201,1,false,0,false,false,2);
+        h->poll(1204,{},201,1,true,0,false,false,2);
+        check(h->repeats==1,"native animation Kickflip admits repeated X while physics retains the original Ollie selection");
+        h->poll(1237,{},201,1,true,0,true,true,2);
+        const auto caught=h->poll(1270,{},201,1,true,1,true,true,2);
+        check(h->bridge_calls==1 && caught.held_actor_acknowledged && caught.held_input_released &&
+            !caught.authored_playback && !caught.right_x && !caught.right_y,
+            "animation-owned extra rotation catches without changing physics selection or issuing another flip");
+    }
     {
         auto single=std::make_unique<Route>();single->first();
         for(unsigned now=1200;now<=1700;now+=25)single->poll(now);

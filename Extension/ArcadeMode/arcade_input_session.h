@@ -655,7 +655,10 @@ private:
                     (physical_.buttons&0xb030u) || manual_.busy() || auxiliary_.busy()) return InputDisposition::cancelled;
                 if (authored_.busy() || !admission.held_flip.fresh(now_) ||
                     admission.held_flip.id!=id || !admission.held_flip.prepare) return InputDisposition::waiting;
-                if (!admission.native_context.flip.valid || admission.native_context.flip.id!=id ||
+                // The animation bridge preserves the physics Ollie selection.
+                // CurrentFlipTrick above proves the actual native flip; requiring
+                // the physics selector to change rejects the working bridge.
+                if (!admission.native_context.flip.valid ||
                     admission.held_flip.holding || admission.held_flip.extra_rotations!=0) return InputDisposition::cancelled;
                 for (const auto& gesture:admission.catalog) {
                     if (gesture.native_id!=id || gesture.nollie || gesture.context!=GestureContext::ground ||

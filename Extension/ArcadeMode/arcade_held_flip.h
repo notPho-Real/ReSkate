@@ -4,13 +4,16 @@
 namespace dingosdk::arcade_mode {
 template<class Frame>
 bool held_flip_continues(const Frame& before,const Frame& current,std::uint64_t now,std::int32_t id) noexcept {
+    const auto air_mode=[](const auto& flip) noexcept {
+        return (flip.state==200 && flip.mode<=2) || (flip.state==201 && flip.mode>=1 && flip.mode<=2);
+    };
     if (!before.required || !current.required || !before.fresh(now) || !current.fresh(now) ||
         !before.airborne || !current.airborne || before.air_episode()!=current.air_episode() ||
         before.generations.owner!=current.generations.owner || !before.flip.valid || !current.flip.valid ||
         !before.flip.object || before.flip.object!=current.flip.object || before.flip.stance!=current.flip.stance ||
         (current.flip.stance&0x40u) ||
         (before.flip.state!=current.flip.state && !(before.flip.state==200 && current.flip.state==201)) ||
-        before.flip.mode<1 || before.flip.mode>2 || current.flip.mode<1 || current.flip.mode>2 ||
+        !air_mode(before.flip) || !air_mode(current.flip) ||
         (before.flip.id==id ? current.flip.id!=id :
             (before.flip.id!=1 && before.flip.id!=-1) || (current.flip.id!=1 && current.flip.id!=-1 && current.flip.id!=id))) return false;
     const unsigned action_change=before.flip.state!=current.flip.state || before.flip.id!=current.flip.id;
