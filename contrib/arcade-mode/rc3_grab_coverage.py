@@ -62,10 +62,22 @@ FINGER_BLOCKER = (
     "fingerflip identity, not ordinary repeated Kickflip execution."
 )
 GROUND_BLOCKER = (
-    "Requires native grounded/coffin grab admission and its own lifetime; the "
-    "airborne grab lease deliberately cannot acquire a grounded owner. Ground B "
-    "must remain suppressed from native braking."
+    "Ground FS/BS/Double/Coffin now have a separate original-input owner. "
+    "This particular transition, turning or airborne Coffin resource still "
+    "needs its exact native context and lifecycle acceptance; it is not another "
+    "independently selectable ground trick."
 )
+GROUND_PROFILES = {
+    53: ("R3+Right+B on ordinary ground; hold B", 24316,
+         "Animation/Dingo/seq_c_proto_onb_grab_ground_fs_loop", "deca33c3-4cd1-8066-deca-33c34cd18066", "LT"),
+    54: ("R3+Left+B on ordinary ground; hold B", 3927,
+         "Animation/Dingo/seq_c_proto_onb_grab_ground_bs_loop", "3c9f510d-1fd5-f81a-3c9f-510d1fd5f81a", "RT"),
+    55: ("R3+B with neutral LS on ordinary ground; hold B", 8921,
+         "Animation/Dingo/seq_c_proto_onb_grab_ground_dbl_loop", "aeba7f61-bcda-a41e-aeba-7f61bcdaa41e", "LT+RT"),
+    56: ("R3+Down+B on ordinary ground; hold B", 6986,
+         "Animation/Dingo/seq_c_proto_onb_coffin_loop", "52b5d2aa-fc13-6347-52b5-d2aafc136347",
+         "LT+RT; wait for Bool.GP.CanGroundGrab and both original GP hand flags in a later physics step; then original Input_Coffin A+X chord"),
+}
 
 
 def blocker(entry):
@@ -148,6 +160,15 @@ def build():
                        remaining_blocker="Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding")
             if ns == "Enum.GrabType":
                 row["dependency"] = {"namespace": "Enum.OneFooterType" if footer else "Enum.DetailedGrabType", "value": footer or detail}
+        if ns == "Enum.GrabType" and value in GROUND_PROFILES:
+            binding, resource, name, guid, mechanism = GROUND_PROFILES[value]
+            row.update(arcade_binding=[binding], implementation_state=PENDING,
+                       assets=[dict(resource_index=resource, name=name, sequence_guid=guid)],
+                       native_gameplay_context="Ordinary native ground state100; separate input owner; never the airborne grab lease",
+                       original_mechanism=mechanism,
+                       native_animation_acknowledgment="Native prerequisite readback only; actor initialization and positive advancement remain unverified in gameplay",
+                       release_landing_evidence="Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
+                       remaining_blocker="Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers")
         entries.append(row)
     seq_rows = []
     for seq in source["sequence_inventory"]:
@@ -166,12 +187,13 @@ def build():
                        remaining_blocker="RC3 native lifecycle and scoring acceptance outstanding")
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
-    return dict(schema_version=3, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
+    return dict(schema_version=4, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
                 feature_complete=False, game_exe_sha256=source["game_exe_sha256"],
                 scope=source["scope"], independently_mapped_native_poses=len(profiles),
                 independently_mapped_detailed_identities=len({p["detail"] for p in profiles.values() if not p["one_footer"]}),
                 independently_mapped_one_footer_identities=len({p["one_footer"] for p in profiles.values() if p["one_footer"]}),
+                independently_mapped_ground_identities=len(GROUND_PROFILES),
                 mapped_profiles=list(profiles.values()),
                 counts=dict(declarations=dict(Counter(e["implementation_state"] for e in entries)),
                             sequences=dict(Counter(e["implementation_state"] for e in seq_rows))),

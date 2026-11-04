@@ -24,6 +24,7 @@
 #include "arcade_native_flip_transition.h"
 #include "arcade_native_held_flip.h"
 #include "arcade_native_footplant.h"
+#include "arcade_native_ground_grab.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grind_transition.h"
 #include "arcade_grind_change.h"
@@ -1739,6 +1740,7 @@ static void withdraw_controller_authority() noexcept {
     native_flip::cancel();
     native_grab::cancel();
     native_footplant::cancel();
+    native_ground_grab::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1773,6 +1775,7 @@ void set_enabled(bool value, bool persist) noexcept {
     native_flip::cancel();
     native_grab::cancel();
     native_footplant::cancel();
+    native_ground_grab::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -2359,6 +2362,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 const auto& c=*static_cast<FootplantContext*>(context);
                 return native_footplant::controls(c.owner,c.step);
             }};
+        NativeGroundGrabRequest ground_grab{};
+        if(game_input && !offboard && action_experiment==ActionExperiment::classic && native_ground_grab::available())
+            ground_grab={&footplant_context,[](void* context,GroundGrab kind) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_ground_grab::request(c.owner,c.step,kind);
+            },[](void* context,bool held) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_ground_grab::controls(c.owner,c.step,held);
+            }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2368,8 +2380,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
-            held_flip,footplant);
+            held_flip,footplant,ground_grab);
         if (!result.footplant_owned) native_footplant::cancel();
+        if (!result.ground_grab_owned) native_ground_grab::cancel();
         if (result.held_flip_request || result.held_input_released) {
             RemapEvidence evidence{};
             evidence.held_ms=now;evidence.held_request=result.held_flip_request;evidence.held_released=result.held_input_released;

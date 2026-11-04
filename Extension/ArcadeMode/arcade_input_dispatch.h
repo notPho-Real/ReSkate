@@ -10,7 +10,7 @@ namespace dingosdk::arcade_mode {
 enum class InputContext : std::uint8_t { unknown, ground, air, balance, rail, foot, lip };
 enum class InputAction : std::uint8_t {
     none, crouch, ollie_release, flip, grab, rail_request, revert, manual, nose_manual,
-    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn, jump_variant
+    balance_branch_one, balance_branch_two, balance_variant, lip_request, balance_return, rail_change, lip_change, wall_command, transfer_command, rail_select, lip_select, board_toggle, ground_turn, jump_variant, ground_grab
 };
 enum class InputDisposition : std::uint8_t { waiting, started, unsupported, cancelled, expired };
 // The caller selects one installed release table only after establishing its
@@ -127,6 +127,7 @@ struct InputEnvironment {
     bool native_held_flip{}; // Original held input and read-only native observation are available.
     ArcadeTrick selected_grab{ArcadeTrick::double_grab};
     bool native_footplants{};
+    bool native_ground_grabs{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -579,6 +580,16 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
+            if(code==13 && environment.native_ground_grabs && environment.context==InputContext::ground &&
+                (physical.buttons&0x2080u)==0x2080u) {
+                const auto direction=events_.held_direction();
+                const unsigned variant=direction==4?2u:direction==6?1u:direction==2?4u:direction==0?3u:0u;
+                if(variant) {
+                    const auto match=consume(event);
+                    enqueue(InputAction::ground_grab,now,1,environment,1,static_cast<std::uint8_t>(variant),0,0,{},&match);
+                }
+                continue;
+            }
             if (code==13) {grab_choice_event_=event.sequence;grab_choice_=environment.selected_grab;}
             if (environment.context == InputContext::air && (code == 14 || code == 13)) {
                 grab_pressed = grab_pressed || (code == 13 && environment.auxiliary_enabled);

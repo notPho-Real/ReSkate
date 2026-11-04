@@ -1,10 +1,18 @@
 # RC3 native grab controls (gameplay acceptance pending)
 
-These bindings use the existing native grab lease, original hand-input producer,
+The airborne bindings below use the existing native grab lease, original hand-input producer,
 and original blendspace coordinates. They do not replay an Ollie, select a fake
 score ID, or install animation assets. The runtime acknowledges a request only
 after its exact native actor initializes and advances with a positive delta while
 the matching native detailed-grab tag is observed.
+
+Ordinary ground now has a separate original-input path: **R3+B** for Double
+Ground Grab, **R3+Left+B** for BS Ground Grab, **R3+Right+B** for FS Ground Grab,
+and **R3+Down+B** for Coffin. Hold B; release B to exit. Ground B without R3
+still cannot brake. These four paths have software tests and native prerequisite
+readback, but their actor advancement, exit and scoring are gameplay pending.
+See [native-ground-grab-entry.md](native-ground-grab-entry.md) for the distinct
+ground ownership and acceptance requirements. The airborne selector is unchanged.
 
 | Native pose | Arcade binding | Native family / detailed pose | Tweak X,Y |
 | --- | --- | --- | --- |

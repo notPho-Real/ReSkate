@@ -190,6 +190,7 @@ void cheats_tab(SkateMenu& menu, const Model& model, const CallbacksV3& callback
          "One-footers establish their required grab before releasing a foot. "
          "On the ground: Up then A requests No Comply; Up, Up then A requests Boneless. "
          "The original push or grab must be available. "
+         "Ground grabs: R3+B holds Double Grab; add Left for BS, Right for FS, Down for Coffin. Release B to exit. "
          "B, direction+B and R3+direction+B keep their usual bindings.");
     end_card();
     begin_card(menu, "cheats", "NOCLIP AND NO BAIL");

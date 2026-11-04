@@ -4,6 +4,7 @@
 #include "arcade_input_dispatch.h"
 #include "arcade_launch_descriptor.h"
 #include "arcade_footplant.h"
+#include "arcade_ground_grab.h"
 namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
@@ -87,6 +88,11 @@ struct NativeFootplantRequest {
     bool (*submit)(void*,Footplant) noexcept{};
     FootplantControl (*controls)(void*) noexcept{};
 };
+struct NativeGroundGrabRequest {
+    void* context{};
+    bool (*submit)(void*,GroundGrab) noexcept{};
+    GroundGrabControl (*controls)(void*,bool held) noexcept{};
+};
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
     struct Output {
@@ -106,6 +112,7 @@ struct NativeGesture {
         std::int32_t held_flip_request{}; // Physical repeat accepted by input playback, not native execution.
         bool held_input_released{},held_actor_acknowledged{};
         bool footplant_owned{};
+        bool ground_grab_owned{};
     };
 };
 }
