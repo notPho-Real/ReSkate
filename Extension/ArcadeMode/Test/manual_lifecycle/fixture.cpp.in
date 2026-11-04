@@ -98,8 +98,10 @@ namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){
 // Nonactuating native service boundary; manual tests do not claim flip playback.
 namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
 namespace dingosdk::arcade_mode::native_grab {void cancel()noexcept{}} // Nonactuating grab boundary.
+namespace dingosdk::arcade_mode::native_footplant {void cancel()noexcept{}}
 NativeFlipRequest normal_flip{};
 NativeGrabRequest normal_grab{};
+NativeFootplantRequest footplant{}; // Manual fixtures cannot admit native footplants.
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 GrindChange grind_change;
 InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
