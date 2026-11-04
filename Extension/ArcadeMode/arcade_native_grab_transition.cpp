@@ -5,6 +5,7 @@
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
+#include "Engine/Game/Input/gameplay_options.h"
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/20260929/arcade_grab_transition.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
@@ -23,7 +24,7 @@ contract::Evaluate original_evaluate{};
 std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
 std::mutex mutex;
 struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
-std::array<Asset,8> assets{{
+std::array<Asset,9> assets{{
     {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
     {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
     {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
@@ -31,7 +32,8 @@ std::array<Asset,8> assets{{
     {"Animation/Dingo/Bool.Anim.IsGrabbing",contract::grabbing},
     {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail},
     {"Animation/Dingo/EnumGS.GrabType",contract::family},
-    {"Animation/Dingo/Bool.GP.CanGrab",contract::can_grab}
+    {"Animation/Dingo/Bool.GP.CanGrab",contract::can_grab},
+    {"Animation/Dingo/EnumGS.OneFooterType",contract::one_footer}
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
@@ -52,9 +54,31 @@ struct Session {
     std::array<Written,4> writes{};
     std::array<Actor,contract::actor_assets.size()> actors{};
     bool reported{};
+    std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
 } session;
 std::uint64_t serial{},retry_at{};
+constexpr auto foot_settings_owner="arcade-native-foot-input";
+constexpr std::array foot_settings{"egf_invertxaonboard","egf_frontbackfoot"};
+bool foot_settings_applied(std::uint64_t now) noexcept {
+    if (!session.foot_settings_since) return false;
+    try {
+        for (const auto key:foot_settings) {
+            const auto value=input::gameplay_options().sampled(key,session.foot_settings_since,now);
+            if (!value || *value) return false;
+        }
+        return true;
+    } catch (...) {return false;}
+}
+void refresh_foot_settings(std::uint64_t now) noexcept {
+    const auto* p=session.lease.selected();
+    if (!p || !p->one_footer) return;
+    try {
+        for (const auto key:foot_settings)
+            if (!input::gameplay_options().hold(foot_settings_owner,key,false,now).empty()) return;
+        if (!session.foot_settings_since) session.foot_settings_since=now+1;
+    } catch (...) { }
+}
 // Input producers only copy bounded evidence; the client tick formats logs.
 struct Event {
     bool ending{},held{},acknowledged{},airborne{};
@@ -164,6 +188,7 @@ void retire(const char* reason) noexcept {
         event.airborne=same_owner(&event.ending_owner) && airborne(&event.ending_owner);
         event.last_invalid=session.last_invalid;enqueue(event);
     }
+    input::gameplay_options().release(foot_settings_owner);
     restore();session={};active.store(false);
 }
 bool valid() noexcept {
@@ -191,22 +216,23 @@ int actor_index(std::uintptr_t actor) noexcept {
 }
 void acknowledge(std::uint64_t now) noexcept {
     const auto* selected=session.lease.selected();if (!selected || session.lease.acknowledged()) return;
-    std::int32_t detail{};bool grabbing{};
+    std::int32_t detail{},one_footer{};bool grabbing{};
     const auto detail_at=address(5),grabbing_at=address(4);
     if (!detail_at || !grabbing_at || !read(detail_at,detail) || !read(grabbing_at,grabbing)) return;
+    if (selected->one_footer && (!address(8) || !read(address(8),one_footer))) return;
     for (unsigned i=0;i<contract::actor_assets.size();++i) {
         const auto& a=session.actors[i];
         if (pilots[i].trick!=selected->trick || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms) continue;
         if (session.lease.acknowledge(detail,a.delta,a.before,a.after,a.initialized,
-                                    a.object && actor_index(a.object)==static_cast<int>(i),grabbing) && !session.reported) {
+                                    a.object && actor_index(a.object)==static_cast<int>(i),grabbing,one_footer) && !session.reported) {
             session.reported=true;
             const auto board=pointer(pointer(session.owner.core+0x430)+0x18);
             const auto bodies=pointer(board+0x20);std::uint32_t count{};float vy{};
             const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
                 read(bodies,count) && count==9 && read(bodies+0x74,vy) && std::isfinite(vy);
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE NATIVE GRAB: serial={} episode={} detail={} actor={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
-                session.serial,session.episode,detail,a.object,contract::actor_assets[i].name,a.before,a.after,a.delta,velocity_known,vy);
+                "ARCADE NATIVE GRAB: serial={} episode={} detail={} one_footer={} actor={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
+                session.serial,session.episode,detail,one_footer,a.object,contract::actor_assets[i].name,a.before,a.after,a.delta,velocity_known,vy);
         }
     }
 }
@@ -268,7 +294,7 @@ void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     if (!gameplay) {cancel();return;}
     if (!hooks_ready.load()) return;
-    if (!assets_ready.load() && GetTickCount64()>=retry_at) {
+    if ((!assets_ready.load() || !guid_is(assets[8].object,assets[8].guid)) && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
         if (find) {
             bool complete=true;
@@ -280,7 +306,7 @@ void tick(bool gameplay) noexcept {
                     const auto object=find(domain,a.name);
                     if (guid_is(object,a.guid)) {a.object=object;break;}
                 }
-                complete=complete && a.object;
+                if (&a!=&assets[8]) complete=complete && a.object;
             }
             assets_ready.store(complete);
         }
@@ -295,10 +321,12 @@ void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool perm
     std::lock_guard lock(mutex);
     session.lease.refresh(GetTickCount64(),held,permitted && owner==session.owner && episode && episode==session.episode && valid());
     if (!session.lease.selected()) retire("refresh");
+    else refresh_foot_settings(GetTickCount64());
 }
 bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest& physical,ArcadeTrick trick,bool held) noexcept {
     if (!available() || !episode || !pilot(trick)) return false;
     const auto block=state_block(owner);if (!block) return false;
+    if (pilot(trick)->one_footer && !address_at(block,8)) return false;
     std::lock_guard lock(mutex);
     if (session.serial && (owner!=session.owner || episode!=session.episode)) retire("request_owner_episode");
     // A changed native action lineage needs the same independent grab-owner
@@ -308,6 +336,8 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
     if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
     session.serial=++serial;session.reported=false;
     if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire("request");return false;}
+    input::gameplay_options().release(foot_settings_owner);session.foot_settings_since=0;
+    refresh_foot_settings(GetTickCount64());
     session.lineage=physical.generations;session.air=physical.air_episode;
     active.store(true);
     enqueue({false,held,false,false,session.serial,episode,trick,pilot(trick)->detail,physical});
@@ -319,8 +349,9 @@ unsigned hand_inputs(const NoBailSkater& owner,std::uint64_t episode) noexcept {
 Control controls(const NoBailSkater& owner,std::uint64_t episode) noexcept {
     if (!active.load()) return {};
     std::lock_guard lock(mutex);
-    return valid() && owner==session.owner && episode==session.episode &&
-        session.lease.intent(GetTickCount64()) ? session.lease.selected()->control() : Control{};
+    const auto now=GetTickCount64();
+    return valid() && owner==session.owner && episode==session.episode && session.lease.intent(now) ?
+        session.lease.controls(retarget_observation(),foot_settings_applied(now)) : Control{};
 }
 bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept {
     return (hand_inputs(owner,episode)&2u)!=0;

@@ -26,14 +26,17 @@ struct ActionInputOutput {
     // This is channel ownership, never native animation acknowledgment.
     bool native_grab_triggers{};
     bool native_grab_selector{};
+    bool native_grab_feet{};
     bool blocks_air_rotation(bool native_held_shoulder) const noexcept {
         // Only the existing single-held-shoulder native LS actuator may share
         // native grab controls. A qualified family selector owns RS separately;
         // tap/directional body-rate writers and other RS owners stay excluded.
         const bool selector = native_grab_selector && pad.owns_right_stick &&
             ((pad.right_x==28000 && pad.right_y==0) || (pad.right_x==0 && (pad.right_y==28000 || pad.right_y==-28000)));
+        const bool feet = native_grab_feet && pad.owns_face_buttons &&
+            (pad.face_buttons==0x1000 || pad.face_buttons==0x2000 || pad.face_buttons==0x4000);
         const bool grab_controls = native_grab_triggers && pad.owns_triggers &&
-            !pad.owns_left_stick && (!pad.owns_right_stick || selector) && !pad.owns_face_buttons &&
+            !pad.owns_left_stick && (!pad.owns_right_stick || selector) && (!pad.owns_face_buttons || feet) &&
             (pad.left_trigger==0 || pad.left_trigger==255) &&
             (pad.right_trigger==0 || pad.right_trigger==255) && (pad.left_trigger || pad.right_trigger);
         return owned && !(native_held_shoulder && grab_controls);

@@ -3,6 +3,7 @@
 #include "Extension/ArcadeMode/arcade_native_grab_lease.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Engine/Game/Input/gameplay_options.h"
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -17,7 +18,7 @@ struct Route {
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
     bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
     bool selection_valid{true},client_action_ready{true};native_grab::RetargetObservation grab_observation{};
-    bool selector_available{true};ArcadeTrick selected{ArcadeTrick::double_grab};
+    bool selector_available{true},foot_settings_ready{true};ArcadeTrick selected{ArcadeTrick::double_grab};
     InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
@@ -38,7 +39,7 @@ struct Route {
     }
     static native_grab::Control controls(void* p) noexcept {
         auto& self=*static_cast<Route*>(p);
-        return right_hand_input(p)?self.lease.selected()->control():native_grab::Control{};
+        return right_hand_input(p)?self.lease.controls(self.grab_observation,self.foot_settings_ready):native_grab::Control{};
     }
     static bool continues(void* p,InputGenerations origin,InputAirEpisode air) noexcept {
         auto& self=*static_cast<Route*>(p);
@@ -227,14 +228,31 @@ void selected_native_families() {
             "only native held shoulders share the family selector; custom spin remains excluded");
         check(!trick_name(profile.trick).empty(),"every selectable profile has a discoverable name");
         check(!r->lease.acknowledge(profile.detail,1,0,1,true,false,true),"native tag alone never proves exact selected pose");
-        check(r->lease.acknowledge(profile.detail,1,0,1,true,true,true),"fixture supplies exact native actor advancement");
+        if (profile.one_footer) {
+            check(!r->lease.acknowledge(profile.detail,1,0,1,true,true,true,profile.one_footer),
+                "a stale one-footer tag cannot acknowledge before the native foot request");
+            r->grab_observation={true,true,true,(profile.hands&1)!=0,(profile.hands&2)!=0,profile.family};
+            r->foot_settings_ready=false;
+            out=r->poll(1000+2*dt,0x2080);
+            check(!out.action.pad.owns_face_buttons,"native grab alone cannot bypass unconsumed foot-control preferences");
+            r->foot_settings_ready=true;
+            out=r->poll(1000+3*dt,0x2080);
+            check(out.action.native_grab_feet && out.action.pad.face_buttons==native_grab::foot_button(profile.foot) &&
+                !out.authored_playback && !out.jump.released,"established grab receives exactly its original foot input, with no pop");
+            check(!out.action.blocks_air_rotation(true),"one-footer native face input preserves native shoulder spin");
+            check(!r->lease.acknowledge(profile.detail,1,0,1,true,true,true),"starting grab cannot acknowledge a one-footer");
+            check(!r->lease.acknowledge(profile.detail,1,0,1,true,true,true,profile.one_footer%13+1),
+                "another native one-footer identity cannot acknowledge");
+        }
+        check(r->lease.acknowledge(profile.detail,1,0,1,true,true,true,profile.one_footer),"fixture supplies exact native actor advancement");
         r->selected=ArcadeTrick::double_grab;
-        out=r->poll(1000+2*dt,0x2000);
+        out=r->poll(1000+4*dt,0x2000);
         check(r->tricks.size()==1 && r->lease.selected()->trick==profile.trick && out.action.pad.right_x==control.x && out.action.pad.right_y==control.y,
             "changing the menu choice cannot mutate an already held grab");
-        out=r->poll(1000+3*dt);
-        check(!out.action.pad.owns_triggers && !out.action.pad.owns_right_stick,"acknowledged B release withdraws selector and both hands together");
-        out=r->poll(1000+4*dt,0,100);
+        out=r->poll(1000+5*dt);
+        check(!out.action.pad.owns_triggers && !out.action.pad.owns_right_stick && !out.action.pad.owns_face_buttons,
+            "acknowledged B release withdraws selector, feet and both hands together");
+        out=r->poll(1000+6*dt,0,100);
         check(!r->lease.selected() && !out.action.owned,"landing clears the complete native input lease");
     }
     auto buffered=std::make_unique<Route>();buffered->selected=ArcadeTrick::nosegrab;
@@ -258,6 +276,34 @@ void selected_native_families() {
         out.action.pad.left_trigger==255 && out.action.pad.right_trigger==255 && out.action.pad.right_y==-28000,
         "Up+B,B enters original Rocket from Nose using both hands and original Nose admission");
     check(!rocket->lease.acknowledge(21,1,0,1,true,true,true),"the preceding Nose actor cannot acknowledge Rocket");
+}
+void foot_setting_admission() {
+    dingosdk::input::GameplayOptions options;
+    check(!options.sampled("egf_invertxaonboard",1000,1000),"unknown settings do not grant foot input");
+    check(options.observe("egf_invertxaonboard",true,1000,false),"record the original preference");
+    check(options.hold("foot","egf_invertxaonboard",false,1001).empty(),"lease can temporarily hold an observed preference");
+    check(!options.sampled("egf_invertxaonboard",1002,1002),"requesting a preference does not prove native consumption");
+    check(options.observe("egf_invertxaonboard",true,1003,true),"UI retains the original preference");
+    check(!options.sampled("egf_invertxaonboard",1002,1003),"UI reads cannot qualify foot input");
+    check(!options.observe("egf_invertxaonboard",true,1004,false) &&
+        options.sampled("egf_invertxaonboard",1002,1005)==false,"native producer must read the applied preference");
+    check(options.get("egf_invertxaonboard")==true,"temporary foot routing never saves a preference");
+    check(!options.sampled("egf_invertxaonboard",1002,1155),"stale setting observations fail closed");
+    check(!options.sampled("egf_invertxaonboard",1002,1003),"clock reversal fails closed");
+    options.release("foot");
+    check(options.observe("egf_invertxaonboard",true,1006,false),"release restores the original control configuration");
+    native_grab::Lease lease;
+    lease.request(ArcadeTrick::benihana,2000,true);
+    auto wrong=native_grab::RetargetObservation{true,true,true,true,false,2};
+    check(!lease.controls(wrong,true).feet,"wrong established family cannot emit foot input");
+    wrong.family=3;wrong.right=true;
+    check(!lease.controls(wrong,true).feet,"wrong hand pair cannot emit foot input");
+    wrong.right=false;wrong.valid=false;
+    check(!lease.controls(wrong,true).feet,"unknown native owner cannot emit foot input");
+    wrong.valid=true;
+    check(lease.controls(wrong,true).feet==0x4000,"original left-foot producer follows actual Tail entry");
+    lease.refresh(2017,true,false);
+    check(!lease.controls(wrong,true).feet,"owner loss withdraws the entire foot request");
 }
 void delayed_tap_and_controls() {
     for(unsigned hz:{30u,60u,120u}) {
@@ -470,4 +516,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();selected_native_families();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();selected_native_families();foot_setting_admission();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

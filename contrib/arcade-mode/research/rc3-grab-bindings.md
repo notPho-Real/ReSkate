@@ -27,7 +27,7 @@ the matching native detailed-grab tag is observed.
 R3 means clicking the right stick. Hold it when pressing B for the extended
 layer. Under Skater > Cheats > Arcade Mode, **R3+B grab** selects the neutral
 extended binding. Its default is Double Grab; the choice lasts until restart.
-All 43 actor profiles are selectable. R3 plus a direction keeps the shortcuts
+All 56 actor profiles are selectable. R3 plus a direction keeps the shortcuts
 above, regardless of the neutral selection. Direction, selection and modifier are taken
 from the physical B edge, including an edge buffered during state 200 to 201.
 Hold B to hold the grab. Release B to request the original native exit. A short
@@ -43,6 +43,40 @@ Native source: BS blendspace resource 27078, FS 22205, double 30219. BS uses the
 original right-hand trigger producer, FS the left hand, and double both hands.
 The adapter only writes the established TweakLeftRight/TweakFrontBack input slots;
 native StateFlow owns animation, hand state, exit, landing and scoring.
+
+## One-footers and two-foot releases
+
+All rows below are also selectable through neutral R3+B. Hold B through native
+entry to sustain the trick; release B for the original exit. The adapter first
+establishes the listed native grab, then supplies the original foot input. It
+does not request a second jump. Names are the native identities; Superdude uses
+the game's `double_superman` one-footer identity.
+
+| Trick | Additional shortcut | Required grab | Released foot | Native OneFooterType |
+| --- | --- | --- | --- | --- |
+| FS One Foot | Selected R3+B | FS | Left | 1 |
+| Frigid Air | Selected R3+B | FS | Right | 2 |
+| No Foot | Selected R3+B | FS | Both | 3 |
+| Judo | Up-right+B,B | BS | Left | 4 |
+| BS One Foot | Selected R3+B | BS | Right | 5 |
+| Christ Air | Down-right+B,B | BS | Both | 6 |
+| Benihana | Down-left+B | Tail | Left | 7 |
+| One Foot Tailgrab | Down+B,B | Tail | Right | 8 |
+| Tailwalk | Selected R3+B | Tail | Both | 9 |
+| Dog Piss | Selected R3+B | Nose | Left | 10 |
+| Nose Judo | Selected R3+B | Nose | Right | 11 |
+| Airwalk | Down-right+B | Nose | Both | 12 |
+| Superdude | Selected R3+B | Double | Both | 13 |
+
+Repeated B shortcuts use the existing 250 ms physical repetition window.
+These rows are **IMPLEMENTED — GAMEPLAY PENDING**. Exact actor initialization,
+positive advancement and the matching native OneFooterType are required by the
+runtime acknowledgment. The initial hand-grab tag cannot acknowledge a footer.
+Native hold, landing and numeric scoring still require hardware acceptance.
+Footplant-blend endpoint poses and fingerflip transitions remain separately
+accounted for in the coverage report.
+
+Source and control ownership details: [native one-footer entry](native-one-footer-entry.md).
 
 The new six families also use the original held right-stick input producer to
 establish their native family. These are the qualified inspected-stance inputs

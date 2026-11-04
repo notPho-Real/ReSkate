@@ -440,6 +440,11 @@ public:
                 output.action.pad.left_trigger=(hands&1u)?255:0;
                 output.action.pad.right_trigger=(hands&2u)?255:0;
                 output.action.native_grab_triggers=true;
+                if (controls.feet==0x1000 || controls.feet==0x2000 || controls.feet==0x4000) {
+                    output.action.pad.owns_face_buttons=true;
+                    output.action.pad.face_buttons=controls.feet;
+                    output.action.native_grab_feet=true;
+                }
                 if (controls.selector()) {
                     output.action.pad.owns_right_stick=true;
                     output.action.pad.right_x=controls.x;output.action.pad.right_y=controls.y;
@@ -742,7 +747,7 @@ private:
                 // identities. A callback receipt only acknowledges queuing.
                 const auto& native=admission.native_context;
                 const auto* profile=native_grab::pilot(out.trick);
-                if (!profile || (profile->control().selector() && !admission.normal_grab.controls) || request.nollie || admission.nollie ||
+                if (!profile || ((profile->control().selector() || profile->one_footer) && !admission.normal_grab.controls) || request.nollie || admission.nollie ||
                     !native.required || !native.fresh(now_) || !native.correlates_action(request.generations) ||
                     !admission.inspected_stance || admission.external_owner || physical_.lt>30 || physical_.rt>30 ||
                     (physical_.buttons & (classic_a | 0x8000u | 0x0010u))) {

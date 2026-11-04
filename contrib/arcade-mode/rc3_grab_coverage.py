@@ -36,6 +36,14 @@ GRAB_TO_DETAIL = {
     30: 14, 31: 13, 36: 16, 37: 20, 38: 19, 41: 24, 42: 23,
     46: 26, 47: 27, 48: 28, 49: 31, 52: 30, 58: 22, 59: 12, 60: 28,
 }
+GRAB_TO_FOOTER = {15: 6, 16: 4, 17: 5, 22: 2, 23: 1, 28: 13,
+                  32: 7, 33: 8, 34: 9, 39: 11, 40: 12, 44: 10, 57: 3}
+# Joined from CDB_OnBoard_OneFooters_Loop through the original wrappers and
+# blendspaces to their body actors. Footplant-blend endpoints remain separate.
+FOOT_LOOPS = {1: 7084, 2: 2535, 3: 5657, 4: 35019, 5: 23882, 6: 21785,
+              7: 21906, 8: 3855, 9: 26770, 10: 29635, 11: 30590, 12: 10763, 13: 20613}
+FOOT_BINDINGS = {4: "Up-right+B,B within 250ms", 6: "Down-right+B,B within 250ms",
+                 7: "Down-left+B", 8: "Down+B,B within 250ms", 12: "Down-right+B"}
 ENTRY_BLOCKER = (
     "No verified executable Arcade entry/transition for this specific original resource. "
     "BS/FS/Double and Nose/Tail/Crail/Seatbelt/Stale/Weddle input routes are implemented; "
@@ -43,9 +51,9 @@ ENTRY_BLOCKER = (
     "Resolve the resource's exact source owner, admission and destination before mapping it."
 )
 FOOT_BLOCKER = (
-    "Requires established native grab plus original foot-release admission and "
-    "one-footer Into/Loop/Exit ownership; the native foot-input producer and "
-    "transition acknowledgment are not verified. A hand-only lease cannot enter it."
+    "The 13 ordinary airborne one-footer loops have production bindings. This "
+    "specific transition or footplant-blend endpoint still requires its own "
+    "native context and lifecycle evidence; it is not another independent air grab."
 )
 FINGER_BLOCKER = (
     "Requires the matching established grab and original fingerflip/varial "
@@ -78,28 +86,39 @@ def build():
     source = json.loads((RESEARCH / "native-grab-source-catalog.json").read_text())
     lease = (ROOT / "Extension/ArcadeMode/arcade_native_grab_lease.h").read_text()
     profile_rows = re.findall(
-        r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+))?)?\}", lease)
+        r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+)(?:,\s*(\d+),\s*(\d+))?)?)?\}", lease)
     contract = (ROOT / "Engine/Game/Build/20260929/arcade_grab_transition.h").read_text()
     actors = re.findall(r'\{\{(0x[^}]+)\},\s*"([^"]+)"\}', contract)
-    assert len(profile_rows) == len(actors) == 43, "profile/actor coverage drift"
+    assert len(profile_rows) == len(actors) == 56, "profile/actor coverage drift"
     table = (ROOT / "Extension/ArcadeMode/arcade_trick_table.h").read_text()
     labels = dict(re.findall(r'case ArcadeTrick::(\w+): return "([^"]+)";', table))
     labels.update(dict(re.findall(r'TrickTableRow\{[^\n]*ArcadeTrick::(\w+), "([^"]+)"\}', table)))
     profiles = {}
     for row, (raw, name) in zip(profile_rows, actors):
-        trick, detail, x, y, family, hands, sx, sy = row
+        trick, detail, x, y, family, hands, sx, sy, footer, foot = row
         detail = int(detail)
+        footer, foot = int(footer or 0), int(foot or 0)
         guid = str(uuid.UUID(bytes_le=bytes(int(b.strip(), 16) for b in raw.split(","))))
         binding = 'Select "' + labels[trick] + '" in Arcade Mode > R3+B grab; center LS, hold R3 and press B'
         # Direct bindings describe the canonical pose, not an alternate actor sharing its native tag.
         if detail in BINDINGS and "alternate" not in trick:
             binding = BINDINGS[detail] + "; or " + binding
+        if footer in FOOT_BINDINGS:
+            binding = FOOT_BINDINGS[footer] + "; or " + binding
         profiles[trick] = dict(semantic=trick, native_name=labels[trick], detail=detail, native_actor=guid, actor_name=name,
                               family=int(family or 2), hands=int(hands or 2), tweak=[float(x), float(y)],
-                              selector_rs=[int(sx or 0), int(sy or 0)], arcade_binding=binding)
+                              selector_rs=[int(sx or 0), int(sy or 0)], one_footer=footer, foot_input=foot, arcade_binding=binding)
     detailed = {e["native_id"]: e for e in source["entries"] if e["id_namespace"] == "Enum.DetailedGrabType"}
+    footers = {e["native_id"]: e for e in source["entries"] if e["id_namespace"] == "Enum.OneFooterType"}
     for profile in profiles.values():
-        matches = [a for a in detailed[profile["detail"]]["animation_assets"]
+        identity = footers[profile["one_footer"]] if profile["one_footer"] else detailed[profile["detail"]]
+        if profile["one_footer"]:
+            seq = next(s for s in source["sequence_inventory"] if s["resource_index"] == FOOT_LOOPS[profile["one_footer"]])
+            profile["animation_asset"] = dict(resource_index=seq["resource_index"], name=seq["name"],
+                sequence_guid=seq["guid"], actors=[dict(guid=profile["native_actor"])],
+                compressed_sha1=seq["sha1"], decoded_sha256=seq["decoded_sha256"])
+            continue
+        matches = [a for a in identity["animation_assets"]
                    if any(actor["guid"] == profile["native_actor"] for actor in a["actors"])]
         assert len(matches) == 1, "native actor must have exactly one source sequence"
         profile["animation_asset"] = matches[0]
@@ -107,7 +126,8 @@ def build():
     for entry in source["entries"]:
         ns, value = entry["id_namespace"], entry["native_id"]
         detail = value if ns == "Enum.DetailedGrabType" else GRAB_TO_DETAIL.get(value) if ns == "Enum.GrabType" else None
-        variants = [p for p in profiles.values() if p["detail"] == detail]
+        footer = value if ns == "Enum.OneFooterType" else GRAB_TO_FOOTER.get(value) if ns == "Enum.GrabType" else None
+        variants = [p for p in profiles.values() if (not p["one_footer"] and p["detail"] == detail) or p["one_footer"] == footer]
         row = dict(native_name=entry["native_name"], native_identity={"namespace": ns, "value": value},
                    assets=entry["animation_assets"], native_gameplay_context=entry["context"],
                    original_mechanism=entry["native_transition"], arcade_binding=None,
@@ -116,16 +136,18 @@ def build():
                    remaining_blocker=blocker(entry), prior_evidence=entry["test_result"])
         if variants:
             row.update(assets=[p["animation_asset"] for p in variants], arcade_binding=[p["arcade_binding"] for p in variants],
-                       implementation_state=PENDING if ns == "Enum.DetailedGrabType" else DEPENDENT,
-                       native_gameplay_context="Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
+                       implementation_state=PENDING if ns in {"Enum.DetailedGrabType", "Enum.OneFooterType"} else DEPENDENT,
+                       native_gameplay_context=("Established native airborne grab, then original OneFoot.Into/Loop/Exit in the qualified inspected stance" if footer else
+                           "Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family"),
                        original_mechanism=[{"hand_inputs": p["hands"], "native_family": p["family"],
                                             "detailed_pose": detail, "tweak_xy": p["tweak"], "selector_rs": p["selector_rs"],
+                                            "one_footer": p["one_footer"], "foot_input": p["foot_input"],
                                             "ownership": "original native StateFlow and scoring; bounded grab lease"} for p in variants],
                        runtime_actor=[p["native_actor"] for p in variants], executable_variants=variants,
-                       native_animation_acknowledgment="Runtime requires exact actor initialization, positive advancement and matching native detail; tests inject observations only",
+                       native_animation_acknowledgment="Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
                        remaining_blocker="Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding")
             if ns == "Enum.GrabType":
-                row["dependency"] = {"namespace": "Enum.DetailedGrabType", "value": detail}
+                row["dependency"] = {"namespace": "Enum.OneFooterType" if footer else "Enum.DetailedGrabType", "value": footer or detail}
         entries.append(row)
     seq_rows = []
     for seq in source["sequence_inventory"]:
@@ -144,11 +166,12 @@ def build():
                        remaining_blocker="RC3 native lifecycle and scoring acceptance outstanding")
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
-    return dict(schema_version=2, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
+    return dict(schema_version=3, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
                 feature_complete=False, game_exe_sha256=source["game_exe_sha256"],
                 scope=source["scope"], independently_mapped_native_poses=len(profiles),
-                independently_mapped_detailed_identities=len({p["detail"] for p in profiles.values()}),
+                independently_mapped_detailed_identities=len({p["detail"] for p in profiles.values() if not p["one_footer"]}),
+                independently_mapped_one_footer_identities=len({p["one_footer"] for p in profiles.values() if p["one_footer"]}),
                 mapped_profiles=list(profiles.values()),
                 counts=dict(declarations=dict(Counter(e["implementation_state"] for e in entries)),
                             sequences=dict(Counter(e["implementation_state"] for e in seq_rows))),

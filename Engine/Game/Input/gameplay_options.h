@@ -17,14 +17,24 @@ public:
         auto at = entries_.find(name);
         if (at == entries_.end()) at = entries_.emplace(std::string(name), Entry{}).first;
         auto& entry = at->second; entry.original = original;
-        if (!editing && !entry.owner.empty() && now < entry.expires) return entry.value;
+        const bool effective = !editing && !entry.owner.empty() && now < entry.expires ? entry.value : original;
+        if (!editing) { entry.effective = effective; entry.observed_at = now; }
         if (now >= entry.expires) entry.owner.clear();
-        return original;
+        return effective;
     }
     std::optional<bool> get(std::string_view name) {
         std::lock_guard lock(mutex_);
         const auto at = entries_.find(name);
         return at == entries_.end() ? std::nullopt : std::optional<bool>{at->second.original};
+    }
+    // The value actually returned to gameplay, including temporary holds. UI
+    // reads cannot attest that the gameplay producer has consumed an override.
+    std::optional<bool> sampled(std::string_view name, std::uint64_t since, std::uint64_t now) {
+        std::lock_guard lock(mutex_);
+        const auto at = entries_.find(name);
+        if (at == entries_.end() || !at->second.observed_at || at->second.observed_at < since ||
+            now < at->second.observed_at || now - at->second.observed_at > 150) return std::nullopt;
+        return at->second.effective;
     }
     std::string hold(std::string_view owner, std::string_view name, std::optional<bool> value, std::uint64_t now) {
         std::lock_guard lock(mutex_);
@@ -44,7 +54,7 @@ public:
         for (auto& [name, e] : entries_) { (void)name; if (e.owner == owner) e.owner.clear(); }
     }
 private:
-    struct Entry { bool original{}, value{}; std::string owner; std::uint64_t expires{}; };
+    struct Entry { bool original{}, value{}, effective{}; std::string owner; std::uint64_t expires{}, observed_at{}; };
     std::mutex mutex_;
     std::map<std::string, Entry, std::less<>> entries_;
 };
