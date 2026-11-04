@@ -106,13 +106,27 @@ at 30/60/120 Hz. These are synthetic native observations, not rendered evidence.
 
 ## Repeated flips — unresolved
 
-The existing source audit resolves HeldFlip Into/Loop/Exit and 16 native base
-identities, including ordinary Kickflip and Heelflip. HeldTrick condition resource
-23124 and action 10792 own admission; the condition's compiled expression resource
-is `0x1de580b00d02aaed`. Decoding the EBX metadata resolves imports but does not
-resolve the compiled condition/input producer. Native tags own
-`Float.Anim.TrickHeldFlipCount`; the actual loop advancement, catch boundary and
-scoring amount must be established before a repeated-X adapter can safely use it.
+The source audit resolves HeldFlip Into/Loop/Exit and 16 native base identities,
+including ordinary Kickflip and Heelflip. HeldTrick condition resource 23124 and
+action 10792 own admission. The compiled condition (`0x1de580b00d02aaed`) has now
+been decoded and its native call registrations inspected. It requires a matching
+original gameplay-input gesture with its held flag, PrepareHeldFlip, enabled held
+flips, and the original catch/time-to-land/hand/dark-state checks. The ordinary
+Arcade bridge delivers flip intent without producing that matching native gesture.
+The push-button alternative applies to IDs 33/34, not ordinary Kickflip/Heelflip.
+
+Live ordinary StateFlow entries are 17680/14839. Earlier examples 33022/7770
+require Bool.Debug.False true and cannot justify normal runtime entry. Original
+Kickflip/Heelflip hold sectors are resolved from resources 38264/37949. The native
+EAT owns HeldFlip lifetime; original animation tags own TrickHeldFlipCount. Exact
+rotation units and native exit/catch timing still require runtime correlation.
+
+A bounded stock-control comparison on unchanged RC2 resolved the native state
+assets but did not reach a flip trial: the current session remained off-board in
+state 504 after board-toggle requests, including a neutral-baseline control. No
+counter change or actor advancement was observed or claimed. Input was neutralized,
+the virtual device closed, Arcade remained ON, and the DLL checksum was unchanged.
+The owner was asked to restore ordinary on-board gameplay for this prerequisite.
 
 No Double Kickflip or Double Heelflip execution is implemented here. No rotation
 counter, PrepareHeldFlip boolean, actor time or scoring ID is forced. Existing
@@ -162,10 +176,7 @@ only its manual-window expectations; it does not revert RC2's working flips to
 make that historical assertion pass.
 
 Windows runtime compilation, hosted Windows/Linux/macOS and upstream integration
-CI have not run for RC3. No RC3 DLL or DLL checksum is available yet. The installed
-publication guard only permits an existing development-branch fast-forward and
-requires a separate reviewed procedure for new branches. Its full-tree inventory
-also refuses the unchanged 27,951,721-byte `assets/builtin/throwdown_menu.zip`, above
-its 16 MiB per-blob limit. That blob is identical in RC2 and RC3:
-`5c0629f2e24604b1078b135e18de172cd050f0ff`. The guard has not been disabled or
-changed, and RC3 has not been published through an alternate writer.
+CI have not run for RC3. No RC3 DLL or DLL checksum is available yet. The owner has approved a separately reviewed RC3 publication procedure, including
+the unchanged baseline pack. Publication and staged DLL delivery remain pending
+the critical gameplay implementation and build gates. No acceptance build is
+offered while genuine Double Kickflip execution remains unimplemented.

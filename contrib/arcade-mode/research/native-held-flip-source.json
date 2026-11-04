@@ -1821,22 +1821,42 @@
     "loop_end": 170
   },
   "original_stateflow": {
-    "entry_resource": 33022,
+    "entry_resource": 17680,
     "into_to_loop_resource": 3652,
     "loop_to_exit_resource": 4815,
     "entry_conditions": [
-      "d119f91b-71e9-b210-d119-f91b71e9b210 true",
+      "Bool.Intent.HeldFlip true",
       "EBool.Anim.NewHeldTrickContent true",
-      "69603de6-0719-bda8-6960-3de60719bda8 true",
-      "native PopHeight enumerator match"
+      "native PopHeight enumerator mismatch (17680) or match (14839)"
     ],
-    "exit_condition": "d119f91b-71e9-b210-d119-f91b71e9b210 false, with native BranchWindow and PivotBlend"
+    "exit_condition": "d119f91b-71e9-b210-d119-f91b71e9b210 false, with native BranchWindow and PivotBlend",
+    "alternative_entry_resource": 14839,
+    "inactive_entry_resources": [
+      {
+        "resource": 33022,
+        "blocker": "Requires Bool.Debug.False true; not the live ordinary entry"
+      },
+      {
+        "resource": 7770,
+        "blocker": "Requires Bool.Debug.False true; not the live ordinary entry"
+      }
+    ]
   },
   "native_action_owner": {
     "condition_resource": 23124,
     "action_resource": 10792,
     "enabled_actions": true,
-    "condition_bytecode_and_input_producer": "not yet resolved; do not bypass this owner with a Boolean write"
+    "condition_bytecode_and_input_producer": "Compiled condition decoded against pinned native registrations. Requires PrepareHeldFlip, enabled held flips, matching original native gesture and its held flag, plus original catch/time-to-land/dark-state/hand vetoes. The ordinary Arcade flip bridge only writes flip intent; it does not create this matching native gesture. A validated Arcade held-input adapter remains missing.",
+    "on_begin": [
+      "original EAT SetBoolIntent action owns Bool.Intent.HeldFlip and resets it on action end",
+      "original EAT action also sets Bool.GP.DidInAirTuck"
+    ],
+    "gesture_query": {
+      "native_function_rva": "0x8312f0",
+      "expression_call_hash": "0x4ae62035",
+      "observations": "Reads original gameplay-input gesture map; returns recognized gesture, timing, weights and held flag. Caller compares the native/mirrored gesture enumeration with CurrentFlipTrick. This is input recognition, not a board rotation counter."
+    },
+    "push_button_shortcut": "Condition branch is limited to native IDs 33/34. It is not ordinary Kickflip/Heelflip (2/3)."
   },
   "scoring": {
     "existing_source": "Extension/Throwdowns/skate_trick_rule.cpp",
@@ -1865,5 +1885,41 @@
     "release selects original catch/exit with continuous flight",
     "native local scoring agrees with exact count",
     "physical repeat timing selects intended count at30/60/120Hz"
-  ]
+  ],
+  "native_authored_hold_inputs": [
+    {
+      "native_id": 2,
+      "name": "Kickflip",
+      "resource": 38264,
+      "hold_min_angle_degrees": 90,
+      "hold_max_angle_degrees": 180,
+      "hold_min_magnitude": 0.85,
+      "compressed_sha1": "1b596936e3440be99404dcb587ecb6544ef4682d"
+    },
+    {
+      "native_id": 3,
+      "name": "Heelflip",
+      "resource": 37949,
+      "hold_min_angle_degrees": 180,
+      "hold_max_angle_degrees": 270,
+      "hold_min_magnitude": 0.85,
+      "compressed_sha1": "7c439cfe6cd50a6147181eeb26b06fa511757b72"
+    }
+  ],
+  "rc3_native_control_preflight": {
+    "source_revision": "fe53fc538e1b88ea0e81a63ce56b1d502aa3a3d8",
+    "installed_dll_sha256": "420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676",
+    "native_flip_trial_executed": false,
+    "reason": "RC2 remained in native off-board state 504 after bounded board-toggle requests, including a neutral-baseline control. No on-board flip admission was established; the comparison refused to execute flip input.",
+    "native_state_assets_resolved": [
+      "CurrentFlipTrick",
+      "PrepareHeldFlip",
+      "Bool.Intent.HeldFlip",
+      "Bool.State.Is.HeldFlip",
+      "TrickHeldFlipCount"
+    ],
+    "native_intent_and_held_state_handles": "zero/unallocated in the observed off-board context; not treated as valid animation state",
+    "controller_cleanup": "neutral and device teardown; Arcade remained ON; DLL unchanged",
+    "private_result_sha256": "1d6428bffe28f89d013883923f8ddac3667a329bd3b8fd4165a9f13767f51a9e"
+  }
 }
