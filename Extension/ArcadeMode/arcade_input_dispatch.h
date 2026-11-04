@@ -320,7 +320,7 @@ private:
     std::array<InputRequest, capacity + 2> slots_{};
     std::size_t front_{}, size_{}, reserved_{};
     std::uint64_t epoch_{}, manual_epoch_{}, rail_epoch_{};
-    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::jump_variant) + 1> cancellations_{};
+    std::array<std::uint64_t, static_cast<std::size_t>(InputAction::ground_grab) + 1> cancellations_{};
     std::array<std::uint64_t, static_cast<std::size_t>(InputAirTableKind::count)> table_cancellations_{};
 };
 // Shared production recognition and dispatch. Native adapters remain responsible for
