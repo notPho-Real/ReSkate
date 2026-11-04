@@ -25,14 +25,18 @@ struct ActionInputOutput {
     // Current-poll delivery receipt from the qualified native grab lease.
     // This is channel ownership, never native animation acknowledgment.
     bool native_grab_triggers{};
+    bool native_grab_selector{};
     bool blocks_air_rotation(bool native_held_shoulder) const noexcept {
         // Only the existing single-held-shoulder native LS actuator may share
-        // a trigger-only grab. Tap/directional body-rate writers stay excluded.
-        const bool trigger_only_grab = native_grab_triggers && pad.owns_triggers &&
-            !pad.owns_left_stick && !pad.owns_right_stick && !pad.owns_face_buttons &&
+        // native grab controls. A qualified family selector owns RS separately;
+        // tap/directional body-rate writers and other RS owners stay excluded.
+        const bool selector = native_grab_selector && pad.owns_right_stick &&
+            ((pad.right_x==28000 && pad.right_y==0) || (pad.right_x==0 && (pad.right_y==28000 || pad.right_y==-28000)));
+        const bool grab_controls = native_grab_triggers && pad.owns_triggers &&
+            !pad.owns_left_stick && (!pad.owns_right_stick || selector) && !pad.owns_face_buttons &&
             (pad.left_trigger==0 || pad.left_trigger==255) &&
             (pad.right_trigger==0 || pad.right_trigger==255) && (pad.left_trigger || pad.right_trigger);
-        return owned && !(native_held_shoulder && trigger_only_grab);
+        return owned && !(native_held_shoulder && grab_controls);
     }
 };
 struct InputJumpEdge {
@@ -71,6 +75,8 @@ struct NativeGrabRequest {
     bool (*right_hand_input)(void*) noexcept{};
     bool (*continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
     unsigned (*hand_inputs)(void*) noexcept{}; // Native left/right trigger mask; zero withdraws both.
+    native_grab::Control (*controls)(void*) noexcept{}; // One qualified lease snapshot for hands and family selector.
+    ArcadeTrick selected{ArcadeTrick::double_grab}; // R3+B neutral selection, captured with the physical event.
 };
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;

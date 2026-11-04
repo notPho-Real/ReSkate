@@ -21,7 +21,9 @@ BINDINGS = {
     1: "B", 2: "Left+B,B within 250ms", 3: "Up-left+B", 4: "Left+B",
     5: "R3+Up-left+B", 6: "Right+B", 7: "R3+Up-right+B",
     8: "R3+Down-left+B", 9: "R3+Down-right+B", 10: "Right+B,B within 250ms",
-    33: "R3+B (neutral direction)", 34: "R3+Left+B", 35: "R3+Right+B",
+    11: "Down+B", 21: "Up+B",
+    38: "Up+B,B within 250ms",
+    33: "R3+B (default selection, neutral direction)", 34: "R3+Left+B", 35: "R3+Right+B",
     36: "R3+Up+B", 37: "R3+Down+B",
 }
 
@@ -29,12 +31,16 @@ BINDINGS = {
 GRAB_TO_DETAIL = {
     1: 6, 2: 1, 11: 4, 12: 5, 13: 2, 18: 9, 19: 7, 20: 8, 21: 10,
     9: 33, 24: 36, 25: 37, 26: 34, 27: 35,
+    3: 11, 4: 15, 5: 18, 6: 21, 7: 25, 8: 29,
+    10: 38,
+    30: 14, 31: 13, 36: 16, 37: 20, 38: 19, 41: 24, 42: 23,
+    46: 26, 47: 27, 48: 28, 49: 31, 52: 30, 58: 22, 59: 12, 60: 28,
 }
 ENTRY_BLOCKER = (
-    "Original family entry producer is not verified: selecting a point in its "
-    "blendspace cannot establish the required native hand/board state. Resolve "
-    "Input_GrabIntents_AG_B01C97F and Includes_UpdateGrabIntents_AG_9AED893 "
-    "through their compiled expression resources before adding an Arcade binding."
+    "No verified executable Arcade entry/transition for this specific original resource. "
+    "BS/FS/Double and Nose/Tail/Crail/Seatbelt/Stale/Weddle input routes are implemented; "
+    "that does not establish other variants, transition assets or scoring aliases. "
+    "Resolve the resource's exact source owner, admission and destination before mapping it."
 )
 FOOT_BLOCKER = (
     "Requires established native grab plus original foot-release admission and "
@@ -56,6 +62,8 @@ GROUND_BLOCKER = (
 
 def blocker(entry):
     ns, value = entry["id_namespace"], entry["native_id"]
+    if (ns == "Enum.DetailedGrabType" and value == 17) or (ns == "Enum.GrabType" and value == 35):
+        return "Original seatbelt BS-shifty sequence 15021 emits Nose BS Shifty detail 24; actual native scoring identity remains unverified. No substitute identity assigned."
     if ns == "Enum.OneFooterType" or (ns == "Enum.GrabType" and value in
             {15, 16, 17, 22, 23, 28, 32, 33, 34, 39, 40, 44, 57}):
         return FOOT_BLOCKER
@@ -70,21 +78,28 @@ def build():
     source = json.loads((RESEARCH / "native-grab-source-catalog.json").read_text())
     lease = (ROOT / "Extension/ArcadeMode/arcade_native_grab_lease.h").read_text()
     profile_rows = re.findall(
-        r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+))?\}", lease)
+        r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+))?)?\}", lease)
     contract = (ROOT / "Engine/Game/Build/20260929/arcade_grab_transition.h").read_text()
     actors = re.findall(r'\{\{(0x[^}]+)\},\s*"([^"]+)"\}', contract)
-    assert len(profile_rows) == len(actors) == len(BINDINGS), "profile/actor coverage drift"
+    assert len(profile_rows) == len(actors) == 43, "profile/actor coverage drift"
+    table = (ROOT / "Extension/ArcadeMode/arcade_trick_table.h").read_text()
+    labels = dict(re.findall(r'case ArcadeTrick::(\w+): return "([^"]+)";', table))
+    labels.update(dict(re.findall(r'TrickTableRow\{[^\n]*ArcadeTrick::(\w+), "([^"]+)"\}', table)))
     profiles = {}
     for row, (raw, name) in zip(profile_rows, actors):
-        trick, detail, x, y, family, hands = row
+        trick, detail, x, y, family, hands, sx, sy = row
         detail = int(detail)
         guid = str(uuid.UUID(bytes_le=bytes(int(b.strip(), 16) for b in raw.split(","))))
-        profiles[detail] = dict(semantic=trick, native_actor=guid, actor_name=name,
-                                family=int(family or 2), hands=int(hands or 2), tweak=[float(x), float(y)])
-    assert set(profiles) == set(BINDINGS)
+        binding = 'Select "' + labels[trick] + '" in Arcade Mode > R3+B grab; center LS, hold R3 and press B'
+        # Direct bindings describe the canonical pose, not an alternate actor sharing its native tag.
+        if detail in BINDINGS and "alternate" not in trick:
+            binding = BINDINGS[detail] + "; or " + binding
+        profiles[trick] = dict(semantic=trick, native_name=labels[trick], detail=detail, native_actor=guid, actor_name=name,
+                              family=int(family or 2), hands=int(hands or 2), tweak=[float(x), float(y)],
+                              selector_rs=[int(sx or 0), int(sy or 0)], arcade_binding=binding)
     detailed = {e["native_id"]: e for e in source["entries"] if e["id_namespace"] == "Enum.DetailedGrabType"}
-    for detail, profile in profiles.items():
-        matches = [a for a in detailed[detail]["animation_assets"]
+    for profile in profiles.values():
+        matches = [a for a in detailed[profile["detail"]]["animation_assets"]
                    if any(actor["guid"] == profile["native_actor"] for actor in a["actors"])]
         assert len(matches) == 1, "native actor must have exactly one source sequence"
         profile["animation_asset"] = matches[0]
@@ -92,21 +107,21 @@ def build():
     for entry in source["entries"]:
         ns, value = entry["id_namespace"], entry["native_id"]
         detail = value if ns == "Enum.DetailedGrabType" else GRAB_TO_DETAIL.get(value) if ns == "Enum.GrabType" else None
-        profile = profiles.get(detail)
+        variants = [p for p in profiles.values() if p["detail"] == detail]
         row = dict(native_name=entry["native_name"], native_identity={"namespace": ns, "value": value},
                    assets=entry["animation_assets"], native_gameplay_context=entry["context"],
                    original_mechanism=entry["native_transition"], arcade_binding=None,
                    implementation_state=BLOCKED, native_animation_acknowledgment="No RC3 native capture",
                    release_landing_evidence="No RC3 native capture", scoring_evidence="Native numeric scoring unverified",
                    remaining_blocker=blocker(entry), prior_evidence=entry["test_result"])
-        if profile:
-            row.update(assets=[profile["animation_asset"]], arcade_binding=BINDINGS[detail],
+        if variants:
+            row.update(assets=[p["animation_asset"] for p in variants], arcade_binding=[p["arcade_binding"] for p in variants],
                        implementation_state=PENDING if ns == "Enum.DetailedGrabType" else DEPENDENT,
-                       native_gameplay_context="Native airborne Grab.Into/Grab.Loop; regular BS/FS/double family",
-                       original_mechanism={"hand_inputs": profile["hands"], "native_family": profile["family"],
-                                           "detailed_pose": detail, "tweak_xy": profile["tweak"],
-                                           "ownership": "original native StateFlow and scoring; bounded grab lease"},
-                       runtime_actor=profile["native_actor"],
+                       native_gameplay_context="Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
+                       original_mechanism=[{"hand_inputs": p["hands"], "native_family": p["family"],
+                                            "detailed_pose": detail, "tweak_xy": p["tweak"], "selector_rs": p["selector_rs"],
+                                            "ownership": "original native StateFlow and scoring; bounded grab lease"} for p in variants],
+                       runtime_actor=[p["native_actor"] for p in variants], executable_variants=variants,
                        native_animation_acknowledgment="Runtime requires exact actor initialization, positive advancement and matching native detail; tests inject observations only",
                        remaining_blocker="Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding")
             if ns == "Enum.GrabType":
@@ -116,23 +131,25 @@ def build():
     for seq in source["sequence_inventory"]:
         links = [dict(namespace=e["id_namespace"], value=e["native_id"])
                  for e in source["entries"] if any(a["resource_index"] == seq["resource_index"] for a in e["animation_assets"])]
-        details = [d for d, p in profiles.items() if p["animation_asset"]["resource_index"] == seq["resource_index"]]
+        variants = [p for p in profiles.values() if p["animation_asset"]["resource_index"] == seq["resource_index"]]
         row = dict(seq, identity_links=links, implementation_state=BLOCKED,
                    arcade_binding=None, native_animation_acknowledgment="No RC3 capture",
                    release_landing_evidence="No RC3 capture", scoring_evidence="Unverified",
                    remaining_blocker=FINGER_BLOCKER if any(s in seq["name"] for s in ("fingerflip", "varial", "heel_finger")) else
                        FOOT_BLOCKER if any(s in seq["name"] for s in ("onefoot", "1ft", "nofoot", "christ", "judo", "frigid", "airwalk", "benih", "dogpiss", "tailwalk", "superman")) else
                        GROUND_BLOCKER if any(s in seq["name"] for s in ("ground", "coffin")) else ENTRY_BLOCKER)
-        if details:
-            assert len(details) == 1
-            row.update(implementation_state=PENDING, arcade_binding=BINDINGS[details[0]],
+        if variants:
+            assert len(variants) == 1
+            row.update(implementation_state=PENDING, arcade_binding=variants[0]["arcade_binding"],
                        remaining_blocker="RC3 native lifecycle and scoring acceptance outstanding")
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
-    return dict(schema_version=1, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
+    return dict(schema_version=2, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
                 feature_complete=False, game_exe_sha256=source["game_exe_sha256"],
                 scope=source["scope"], independently_mapped_native_poses=len(profiles),
+                independently_mapped_detailed_identities=len({p["detail"] for p in profiles.values()}),
+                mapped_profiles=list(profiles.values()),
                 counts=dict(declarations=dict(Counter(e["implementation_state"] for e in entries)),
                             sequences=dict(Counter(e["implementation_state"] for e in seq_rows))),
                 caveats=["Namespace counts overlap; never add them as a unique playable-trick count.",

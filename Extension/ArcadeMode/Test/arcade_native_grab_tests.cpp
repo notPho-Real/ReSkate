@@ -17,6 +17,7 @@ struct Route {
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
     bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
     bool selection_valid{true},client_action_ready{true};native_grab::RetargetObservation grab_observation{};
+    bool selector_available{true};ArcadeTrick selected{ArcadeTrick::double_grab};
     InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
@@ -35,6 +36,10 @@ struct Route {
         auto& self=*static_cast<Route*>(p);
         return right_hand_input(p)?self.lease.selected()->hands:0u;
     }
+    static native_grab::Control controls(void* p) noexcept {
+        auto& self=*static_cast<Route*>(p);
+        return right_hand_input(p)?self.lease.selected()->control():native_grab::Control{};
+    }
     static bool continues(void* p,InputGenerations origin,InputAirEpisode air) noexcept {
         auto& self=*static_cast<Route*>(p);
         return self.frame.valid && self.frame.airborne && self.owner==self.grab_owner &&
@@ -51,10 +56,13 @@ struct Route {
         input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
         const auto admission=readiness.sample(at,frame);
         lease.refresh(at,(buttons&0x2000)!=0,enabled && frame.airborne);
+        auto grab=client_action_ready?NativeGrabRequest{this,submit,right_hand_input,continues,hand_inputs,
+            selector_available?controls:nullptr}:NativeGrabRequest{};
+        grab.selected=selected;
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
             false,recipes,admission.mirror_x,false,frame.airborne&&client_action_ready?SkatePose::air:SkatePose::riding,
             false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action&&client_action_ready,
-            admission.mirror_x,false,{}, client_action_ready?NativeGrabRequest{this,submit,right_hand_input,continues,hand_inputs}:NativeGrabRequest{});
+            admission.mirror_x,false,{},grab);
     }
 };
 AirRotation::Output rotate(Route& route,AirRotation& rotation,const NativeGesture::Output& output,
@@ -202,6 +210,55 @@ void complete_direct_families() {
         check(!out.action.pad.owns_triggers,"landing cannot retain a native grab input owner");
     }
 }
+void selected_native_families() {
+    for(unsigned hz:{30u,60u,120u}) for(const auto& profile:native_grab::pilots) {
+        auto r=std::make_unique<Route>();r->selected=profile.trick;
+        const auto dt=(1000u+hz-1)/hz;r->poll(1000);
+        auto out=r->poll(1000+dt,0x2080);
+        check(r->tricks.size()==1 && r->tricks.back()==profile.trick,"each selectable native pose has a reachable R3+B binding");
+        const auto control=profile.control();
+        check(out.action.pad.left_trigger==((control.hands&1u)?255:0) && out.action.pad.right_trigger==((control.hands&2u)?255:0) &&
+            out.action.pad.right_x==control.x && out.action.pad.right_y==control.y,
+            "family admission receives the original paired hand and RS input from one lease");
+        check(!out.authored_playback && out.action.pad.owns_right_stick==control.selector() &&
+            out.action.native_grab_selector==control.selector() && !out.action.pad.owns_left_stick && !out.action.pad.owns_face_buttons,
+            "native family selection owns only its established channels and never creates a second Ollie");
+        check(!out.action.blocks_air_rotation(true) && out.action.blocks_air_rotation(false),
+            "only native held shoulders share the family selector; custom spin remains excluded");
+        check(!trick_name(profile.trick).empty(),"every selectable profile has a discoverable name");
+        check(!r->lease.acknowledge(profile.detail,1,0,1,true,false,true),"native tag alone never proves exact selected pose");
+        check(r->lease.acknowledge(profile.detail,1,0,1,true,true,true),"fixture supplies exact native actor advancement");
+        r->selected=ArcadeTrick::double_grab;
+        out=r->poll(1000+2*dt,0x2000);
+        check(r->tricks.size()==1 && r->lease.selected()->trick==profile.trick && out.action.pad.right_x==control.x && out.action.pad.right_y==control.y,
+            "changing the menu choice cannot mutate an already held grab");
+        out=r->poll(1000+3*dt);
+        check(!out.action.pad.owns_triggers && !out.action.pad.owns_right_stick,"acknowledged B release withdraws selector and both hands together");
+        out=r->poll(1000+4*dt,0,100);
+        check(!r->lease.selected() && !out.action.owned,"landing clears the complete native input lease");
+    }
+    auto buffered=std::make_unique<Route>();buffered->selected=ArcadeTrick::nosegrab;
+    buffered->poll(900,0,100);buffered->poll(1000,0,200,1);buffered->client_action_ready=false;
+    buffered->poll(1010,0x2080,200,1);buffered->selected=ArcadeTrick::tailgrab;
+    buffered->poll(1020,0,200,1);buffered->client_action_ready=true;
+    buffered->poll(1030,0,201,1);
+    check(buffered->tricks.size()==1 && buffered->tricks[0]==ArcadeTrick::nosegrab && buffered->requests[0].physical_pressed_at==1010,
+        "200-to-201 buffering retains the selected profile from the physical B event");
+    auto missing=std::make_unique<Route>();missing->selector_available=false;missing->selected=ArcadeTrick::nosegrab;
+    missing->poll(1000);auto out=missing->poll(1017,0x2080);
+    check(missing->requests.empty() && !out.action.owned,"a hand-only adapter cannot substitute BS for a family requiring native RS admission");
+    for(const auto binding:{std::uint16_t{0x2001},std::uint16_t{0x2002}}) {
+        auto r=std::make_unique<Route>();r->poll(1000);r->poll(1017,binding);
+        check(r->tricks.size()==1 && r->tricks[0]==(binding==0x2001?ArcadeTrick::nosegrab:ArcadeTrick::tailgrab),
+            "original Up+B and Down+B now reach genuine Nose and Tail profiles");
+    }
+    auto rocket=std::make_unique<Route>();rocket->poll(1000);rocket->poll(1017,0x2001);
+    rocket->poll(1034,0x0001);out=rocket->poll(1051,0x2001);
+    check(rocket->tricks.size()==2 && rocket->tricks.back()==ArcadeTrick::rocket_air &&
+        out.action.pad.left_trigger==255 && out.action.pad.right_trigger==255 && out.action.pad.right_y==-28000,
+        "Up+B,B enters original Rocket from Nose using both hands and original Nose admission");
+    check(!rocket->lease.acknowledge(21,1,0,1,true,true,true),"the preceding Nose actor cannot acknowledge Rocket");
+}
 void delayed_tap_and_controls() {
     for(unsigned hz:{30u,60u,120u}) {
         // Modifier/direction belong to the original press even if native AIR
@@ -239,7 +296,7 @@ void delayed_tap_and_controls() {
     check(!lease.selected(),"absent native evidence expires instead of fabricating success");
     lease.request(ArcadeTrick::melon,8000,true);lease.refresh(8200,true,true);
     check(!lease.selected(),"lost physical heartbeat cancels");
-    check(!lease.request(ArcadeTrick::nosegrab,9000,true),"unqualified named grab never aliases a supported pose");
+    check(!lease.request(ArcadeTrick::madonna,9000,true),"unqualified named grab never aliases a supported pose");
 }
 void repeated_grab_uses_physical_interval() {
     for (unsigned hz:{30u,60u,120u}) for (unsigned interval:{200u,300u}) {
@@ -413,4 +470,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();selected_native_families();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

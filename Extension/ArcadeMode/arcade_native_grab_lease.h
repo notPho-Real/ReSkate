@@ -6,7 +6,19 @@
 namespace dingosdk::arcade_mode::native_grab {
 // These are Enum.DetailedGrabType values emitted by the original loop actors,
 // not Enum.GrabType values and not requested animation IDs.
-struct Pilot { ArcadeTrick trick; std::int32_t detail; float x, y; std::int32_t family{2}; unsigned hands{2}; };
+struct Control {
+    unsigned hands{};
+    std::int16_t x{}, y{};
+    bool selector() const noexcept {return x!=0 || y!=0;}
+};
+struct Pilot {
+    ArcadeTrick trick; std::int32_t detail; float x, y; std::int32_t family{2}; unsigned hands{2};
+    std::int16_t selector_x{}, selector_y{};
+    constexpr Control control() const noexcept {return {hands,selector_x,selector_y};}
+};
+// Selector RS coordinates preserve the original qualified-stance producer.
+// They select the family before the original blendspace applies tweak X/Y;
+// no hand, family enum, animation ID or score is written by this control map.
 inline constexpr Pilot pilots[]{{ArcadeTrick::basic_bs_grab,1,0,0},
     {ArcadeTrick::melon,4,0,1},{ArcadeTrick::method,2,1,0},
     {ArcadeTrick::japan,3,0,-1},{ArcadeTrick::crossbone,5,-1,0},
@@ -15,15 +27,43 @@ inline constexpr Pilot pilots[]{{ArcadeTrick::basic_bs_grab,1,0,0},
     {ArcadeTrick::stiffy,10,-1,0,1,1},
     {ArcadeTrick::double_grab,33,0,0,9,3},{ArcadeTrick::double_grab_front,36,0,1,9,3},
     {ArcadeTrick::double_grab_back,37,0,-1,9,3},{ArcadeTrick::double_grab_left,34,-1,0,9,3},
-    {ArcadeTrick::double_grab_right,35,1,0,9,3}};
+    {ArcadeTrick::double_grab_right,35,1,0,9,3},
+    {ArcadeTrick::tail_bs_shifty,14,-1,-0.01f,3,1,0,28000},
+    {ArcadeTrick::tail_fs_shifty,13,1,0,3,1,0,28000},
+    {ArcadeTrick::tailgrab,11,0,0,3,1,0,28000},
+    {ArcadeTrick::tail_nosebone,12,0,1,3,1,0,28000},
+    {ArcadeTrick::nose_bs_shifty,24,-1,0,6,2,0,-28000},
+    {ArcadeTrick::nose_fs_shifty,23,1,0,6,2,0,-28000},
+    {ArcadeTrick::nosegrab,21,0,0,6,2,0,-28000},
+    {ArcadeTrick::nose_tailbone,22,0,-1,6,2,0,-28000},
+    {ArcadeTrick::nosegrab_alternate,21,0,-0.49f,6,2,0,-28000},
+    {ArcadeTrick::nose_crail_fs_shifty,19,0.5f,0,6,2,0,-28000},
+    {ArcadeTrick::seatbelt_fs_shifty,16,-1,0,4,2,0,28000},
+    {ArcadeTrick::seatbelt,15,0,0,4,2,0,28000},
+    {ArcadeTrick::crail,18,0,0,5,1,0,-28000},
+    {ArcadeTrick::crail_fs_shifty,19,1,0,5,1,0,-28000},
+    {ArcadeTrick::crail_bs_shifty,20,-1,0,5,1,0,-28000},
+    {ArcadeTrick::crail_bs_shifty_alternate,20,-0.5f,0,5,1,0,-28000},
+    {ArcadeTrick::stale_nosebone,27,0.01f,1,7,1,28000,0},
+    {ArcadeTrick::stale_tailbone,26,0,-1,7,1,28000,0},
+    {ArcadeTrick::stale_tuck_knee_right,28,1,0,7,1,28000,0},
+    {ArcadeTrick::stale_tuck_knee,28,-1,0,7,1,28000,0},
+    {ArcadeTrick::stale_tuck_knee_middle,28,-0.51f,0,7,1,28000,0},
+    {ArcadeTrick::stale,25,0,0,7,1,28000,0},
+    {ArcadeTrick::weddle_japan,32,-1,0,8,2,28000,0},
+    {ArcadeTrick::weddle,29,0,0,8,2,28000,0},
+    {ArcadeTrick::weddle_alternate,29,1,0,8,2,28000,0},
+    {ArcadeTrick::weddle_nose,31,0,1,8,2,28000,0},
+    {ArcadeTrick::weddle_tail,30,0,-1,8,2,28000,0},
+    {ArcadeTrick::rocket_air,38,0,0,10,3,0,-28000}};
 // R3 held at the physical B press selects this layer. No existing row moves.
-constexpr ArcadeTrick extended_grab(std::int16_t direction) noexcept {
+constexpr ArcadeTrick extended_grab(std::int16_t direction,ArcadeTrick selected=ArcadeTrick::double_grab) noexcept {
     switch(direction) {
     case 7:return ArcadeTrick::crossbone; case 9:return ArcadeTrick::fs_nosebone;
     case 1:return ArcadeTrick::fs_tailbone; case 3:return ArcadeTrick::tuck_knee;
     case 8:return ArcadeTrick::double_grab_front; case 2:return ArcadeTrick::double_grab_back;
     case 4:return ArcadeTrick::double_grab_left; case 6:return ArcadeTrick::double_grab_right;
-    default:return ArcadeTrick::double_grab;
+    default:return selected;
     }
 }
 constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {

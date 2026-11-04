@@ -26,11 +26,14 @@ acceptance remain outstanding.
 
 ## Native grabs
 
-The original adapter now describes 15 exact actors in BS, FS and double-grab
-blendspaces, adding 12 profiles to the three previously instrumented profiles.
+The original adapter now describes 43 exact actors in BS, FS, double, Rocket, Nose,
+Tail, Crail, Seatbelt, Stale and Weddle blendspaces. These cover 37 detailed
+identities and six additional original actor variants sharing those identities.
 `rc3-grab-bindings.md` lists all reachable controls. The extended layer is R3
 held at B press. The physical edge retains that modifier and direction through
-takeoff buffering. Original default, directional and repeated-B slots remain.
+takeoff buffering. A menu selector exposes every actor through neutral R3+B;
+its default retains Double Grab. Original default, directional and repeated-B
+slots remain; Up+B and Down+B now enter genuine Nose and Tail.
 
 The adapter delivers the correct original hand-trigger pair and the inspected
 blendspace tweak coordinates. It requires qualified local owner/air episode,
@@ -39,9 +42,10 @@ and matching native detail before acknowledging. Original animation cleanup and
 scoring remain authoritative. No jump/velocity writer or scoring writer was added.
 
 `rc3-grab-coverage.json` accounts for all 171 declarations and all 300 sequences
-in the existing inventory. The namespace counts overlap. Fifteen detailed poses
-are IMPLEMENTED — GAMEPLAY PENDING; 14 GrabType declarations refer to those same
-poses and are ALIAS/DEPENDENT. The remaining 142 declarations are BLOCKED. Every
+in the existing inventory. The namespace counts overlap. There are 37 detailed
+identities marked IMPLEMENTED — GAMEPLAY PENDING; 36 GrabType declarations
+refer to mapped poses and are ALIAS/DEPENDENT. The remaining 98 declarations
+are BLOCKED. Every
 sequence has an explicit status, identity links and blocker. Unknown execution is
 not classified as UNSUPPORTED. The original inventory itself does not prove that
 every executable game context has been discovered.
@@ -50,14 +54,19 @@ BS, Melon and Method retain prior controlled initialization/advancement and exit
 captures at measured 30 Hz, linked from the coverage file. Those captures do not
 establish which two grabs the owner currently finds reliable in RC2. No new native
 capture, numeric scoring evidence, or claim of current gameplay reliability is
-made here. Unit-test acknowledgments are injected observations, not game captures.
+made for RC3 here. Unit-test acknowledgments are injected observations, not game captures.
+New stock RC2 controls independently entered all six additional families through
+original RS and trigger inputs, observed native grab state/detail, original exit,
+released hands and return to ground. Measured physics and cached step were 1/30.
+`native-grab-family-rc2-controls.json` records that evidence and its limits.
 
 Remaining mechanisms:
 
-- Nose, tail, seatbelt, crail, stale and weddle blendspaces are resolved as original
-  resources 23974, 3230, 25388, 31357, 23252 and 33124. Their family-entry input
-  producer and hand/board state are not verified. Tweak coordinates alone cannot
-  legitimately select another family's actor.
+- Nose, tail, seatbelt, crail, stale and weddle now route original RS/trigger
+  family entry into resources 23974, 3230, 25388, 31357, 23252 and 33124.
+  Their 27 added actor profiles have production routing and lifecycle contract
+  tests; RC3 exact actor, rendered pose, native scoring and flight comparisons
+  remain pending. Other stance admission remains guarded.
 - One-footers require original foot release and their own Into/Loop/Exit path.
   Hand-only ownership does not establish those requirements.
 - Fingerflips, grab varials and cross-grab transitions require established source

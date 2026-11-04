@@ -314,10 +314,13 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
     return true;
 }
 unsigned hand_inputs(const NoBailSkater& owner,std::uint64_t episode) noexcept {
-    if (!active.load()) return 0;
+    return controls(owner,episode).hands;
+}
+Control controls(const NoBailSkater& owner,std::uint64_t episode) noexcept {
+    if (!active.load()) return {};
     std::lock_guard lock(mutex);
     return valid() && owner==session.owner && episode==session.episode &&
-        session.lease.intent(GetTickCount64()) ? session.lease.selected()->hands : 0;
+        session.lease.intent(GetTickCount64()) ? session.lease.selected()->control() : Control{};
 }
 bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept {
     return (hand_inputs(owner,episode)&2u)!=0;

@@ -47,7 +47,8 @@ enum class ArcadeTrick : std::uint8_t {
     hurricane, salad, hang_ten_nosegrind, crail_slide, double_blunt_slide, darkslide,
     basic_bs_grab, compact_grab, pressure_turn_flip,
     crossbone, fs_nosebone, fs_tailbone, tuck_knee,
-    double_grab, double_grab_front, double_grab_back, double_grab_left, double_grab_right
+    double_grab, double_grab_front, double_grab_back, double_grab_left, double_grab_right,
+    tail_bs_shifty, tail_fs_shifty, tail_nosebone, nose_bs_shifty, nose_fs_shifty, nose_tailbone, nosegrab_alternate, nose_crail_fs_shifty, seatbelt_fs_shifty, seatbelt, crail, crail_fs_shifty, crail_bs_shifty, crail_bs_shifty_alternate, stale_nosebone, stale_tailbone, stale_tuck_knee_right, stale_tuck_knee, stale_tuck_knee_middle, stale, weddle_japan, weddle, weddle_alternate, weddle_nose, weddle_tail
 };
 // Context-selected semantics; these identities do not name native methods.
 enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
@@ -144,6 +145,40 @@ constexpr std::string_view trick_name(ArcadeTrick trick) noexcept {
     for (const auto& row : literal_trick_table)
         if (row.trick == trick) return row.name;
     switch (trick) {
+    case ArcadeTrick::crossbone: return "Crossbone";
+    case ArcadeTrick::fs_nosebone: return "FS Nosebone";
+    case ArcadeTrick::fs_tailbone: return "FS Tailbone";
+    case ArcadeTrick::tuck_knee: return "Tuck Knee";
+    case ArcadeTrick::double_grab: return "Double Grab";
+    case ArcadeTrick::double_grab_front: return "Double Grab Front";
+    case ArcadeTrick::double_grab_back: return "Double Grab Back";
+    case ArcadeTrick::double_grab_left: return "Double Grab Left";
+    case ArcadeTrick::double_grab_right: return "Double Grab Right";
+    case ArcadeTrick::tail_bs_shifty: return "Tail BS Shifty";
+    case ArcadeTrick::tail_fs_shifty: return "Tail FS Shifty";
+    case ArcadeTrick::tail_nosebone: return "Tail NoseBone";
+    case ArcadeTrick::nose_bs_shifty: return "Nose BS Shifty";
+    case ArcadeTrick::nose_fs_shifty: return "Nose FS Shifty";
+    case ArcadeTrick::nose_tailbone: return "Nose Tailbone";
+    case ArcadeTrick::nosegrab_alternate: return "Nosegrab (alternate native pose)";
+    case ArcadeTrick::nose_crail_fs_shifty: return "Crail FS Shifty (from Nose)";
+    case ArcadeTrick::seatbelt_fs_shifty: return "Seatbelt FS Shifty";
+    case ArcadeTrick::seatbelt: return "Seatbelt";
+    case ArcadeTrick::crail: return "Crail";
+    case ArcadeTrick::crail_fs_shifty: return "Crail FS Shifty";
+    case ArcadeTrick::crail_bs_shifty: return "Crail BS Shifty";
+    case ArcadeTrick::crail_bs_shifty_alternate: return "Crail BS Shifty (alternate native pose)";
+    case ArcadeTrick::stale_nosebone: return "Stale Nosebone";
+    case ArcadeTrick::stale_tailbone: return "Stale Tailbone";
+    case ArcadeTrick::stale_tuck_knee_right: return "Stale Tuck Knee (right pose)";
+    case ArcadeTrick::stale_tuck_knee: return "Stale TuckKnee";
+    case ArcadeTrick::stale_tuck_knee_middle: return "Stale Tuck Knee (middle pose)";
+    case ArcadeTrick::stale: return "Stale";
+    case ArcadeTrick::weddle_japan: return "Weddle Japan";
+    case ArcadeTrick::weddle: return "Weddle";
+    case ArcadeTrick::weddle_alternate: return "Weddle (alternate native pose)";
+    case ArcadeTrick::weddle_nose: return "Weddle Nose";
+    case ArcadeTrick::weddle_tail: return "Weddle Tail";
     case ArcadeTrick::compact_grab: return "Compact Grab";
     case ArcadeTrick::pressure_turn_flip: return "Pressure Turn Flip";
     case ArcadeTrick::grind_50_50: return "50-50";

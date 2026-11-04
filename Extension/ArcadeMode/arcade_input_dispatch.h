@@ -125,6 +125,7 @@ struct InputEnvironment {
     void* native_grab_context{};
     bool (*native_grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
     bool native_held_flip{}; // Original held input and read-only native observation are available.
+    ArcadeTrick selected_grab{ArcadeTrick::double_grab};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -364,6 +365,7 @@ public:
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
         active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
+        grab_choice_event_=0;grab_choice_=ArcadeTrick::double_grab;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
     bool pending_stick() const noexcept {
@@ -574,6 +576,7 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
+            if (code==13) {grab_choice_event_=event.sequence;grab_choice_=environment.selected_grab;}
             if (environment.context == InputContext::air && (code == 14 || code == 13)) {
                 grab_pressed = grab_pressed || (code == 13 && environment.auxiliary_enabled);
             }
@@ -753,7 +756,7 @@ private:
                 request.air.trick = ArcadeTrick::basic_bs_grab; request.air.predicate = AirInputPredicate::primitive;
             }
             if(action==InputAction::grab && modifier==1)
-                request.air.trick=native_grab::extended_grab(request.direction);
+                request.air.trick=native_grab::extended_grab(request.direction,environment.selected_grab);
             // Original physical edges are evidence for the adapter; recognition
             // time cannot turn a released buffered tap into a newly held press.
             if (footprint) for (const auto& event : events_.history().events()) {
@@ -931,6 +934,8 @@ private:
         if(environment.native_grab_transition && physical_press) {
             for(const auto& event:events_.history().events())
                 if(event.sequence==physical_press.events[0] && (event.physical_buttons&0x80u)) {
+                    if (event.sequence!=grab_choice_event_) return;
+                    environment.selected_grab=grab_choice_;
                     extended=true; selected=event.physical_direction; break;
                 }
         }
@@ -1427,6 +1432,8 @@ private:
     std::uint64_t lip_generation_{}, manual_after_{}, air_face_after_{}, air_flip_after_{}, native_grab_after_{};
     std::uint64_t surface_generation_{}, surface_step_{}, crouch_at_{};
     std::uint64_t session_{1}, last_{}, last_event_{}, direction_at_{}, flip_started_{}, grab_pressed_at_{};
+    std::uint64_t grab_choice_event_{};
+    ArcadeTrick grab_choice_{ArcadeTrick::double_grab};
     std::int16_t direction_{}, flip_direction_{}, grab_direction_{};
     InputSource direction_source_{InputSource::stick}, flip_source_{InputSource::stick}, grab_source_{InputSource::stick};
     InputContext previous_context_{};

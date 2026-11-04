@@ -40,6 +40,9 @@ TrafficSurfaceMotion traffic_surface_observation(std::uint64_t now,double second
 // Development observer and guarded native-input gesture on this branch.
 bool start(std::uintptr_t image_base) noexcept;
 bool enabled() noexcept;
+// Unsaved neutral R3+B choice. Only profiles with a native execution adapter are selectable.
+ArcadeTrick selected_grab() noexcept;
+void set_selected_grab(ArcadeTrick) noexcept;
 // Saved ordinary-ground preference; the default retains automatic kicking.
 bool auto_kick_enabled() noexcept;
 void set_auto_kick(bool value, bool persist = true) noexcept;

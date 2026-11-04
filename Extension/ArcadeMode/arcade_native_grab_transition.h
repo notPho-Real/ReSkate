@@ -13,6 +13,7 @@ void refresh(const NoBailSkater&,std::uint64_t episode,bool held,bool permitted)
 bool request(const NoBailSkater&,std::uint64_t episode,const InputRequest&,ArcadeTrick,bool held) noexcept;
 bool right_hand_input(const NoBailSkater&,std::uint64_t episode) noexcept;
 unsigned hand_inputs(const NoBailSkater&,std::uint64_t episode) noexcept;
+Control controls(const NoBailSkater&,std::uint64_t episode) noexcept;
 bool continues(const NoBailSkater&,std::uint64_t episode,InputGenerations,InputAirEpisode) noexcept;
 // Bounded, capture-only observation; no native state or admission changes.
 void trace_input(std::uint64_t,const UnifiedInput::Diagnostic&,const ActionInputOutput&) noexcept;

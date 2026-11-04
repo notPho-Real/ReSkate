@@ -175,6 +175,19 @@ void cheats_tab(SkateMenu& menu, const Model& model, const CallbacksV3& callback
     if (toggle_row(menu, "Arcade Mode", "Use Arcade Controls. Changes apply immediately.", arcade,
             callbacks.queue_console_command != nullptr, arcade ? "ON" : "OFF"))
         send_console(menu, callbacks, arcade ? "arcademode on" : "arcademode off");
+    const auto grab=arcade_mode::selected_grab();
+    if (ImGui::BeginCombo("R3+B grab",arcade_mode::trick_name(grab).data())) {
+        for (const auto& profile:arcade_mode::native_grab::pilots) {
+            const auto selected=profile.trick==grab;
+            if (ImGui::Selectable(arcade_mode::trick_name(profile.trick).data(),selected))
+                arcade_mode::set_selected_grab(profile.trick);
+            if (selected) ImGui::SetItemDefaultFocus();
+        }
+        ImGui::EndCombo();
+    }
+    note("In the air, center the left stick, hold R3 and press B for the selected grab. "
+         "Hold B to hold; release B to exit. This choice lasts until restart. "
+         "B, direction+B and R3+direction+B keep their usual bindings.");
     end_card();
     begin_card(menu, "cheats", "NOCLIP AND NO BAIL");
     bool noclip = debug.noclip;

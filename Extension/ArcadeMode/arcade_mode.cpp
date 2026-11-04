@@ -135,6 +135,7 @@ void retire_playback_packets() noexcept {
 std::array<std::uint64_t, 4> playback_polls{};
 std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
+std::atomic<ArcadeTrick> grab_choice{ArcadeTrick::double_grab};
 SurfaceGeometrySample surface_geometry_snapshot;
 std::atomic<bool> surface_geometry_available{};
 TrafficSurfaceMotion traffic_surface_snapshot;
@@ -1589,6 +1590,10 @@ bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
         manual_balance_admitted.load(std::memory_order_relaxed) && proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
 }
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
+ArcadeTrick selected_grab() noexcept {return grab_choice.load(std::memory_order_relaxed);}
+void set_selected_grab(ArcadeTrick trick) noexcept {
+    if (native_grab::pilot(trick)) grab_choice.store(trick,std::memory_order_relaxed);
+}
 bool auto_kick_enabled() noexcept { return auto_kick.load(std::memory_order_acquire); }
 void set_auto_kick(bool value, bool persist) noexcept {
     auto_kick.store(value,std::memory_order_release);
@@ -2313,7 +2318,11 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             },[](void* context) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
                 return native_grab::hand_inputs(grab.owner,grab.episode);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::controls(grab.owner,grab.episode);
             }};
+        normal_grab.selected=selected_grab();
         const auto grind_frame=arcade_input.native_context(now);
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
