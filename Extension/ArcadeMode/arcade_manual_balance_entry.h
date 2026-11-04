@@ -44,7 +44,7 @@ public:
         if (command.from_air || (frame.contacts != 0xc000u && !linked)) return;
         owner_ = frame.owner; generation_ = frame.owner_generation;
         step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
-        // Already-present opposite contact is attributable only to this
+        // Already-present matching contact is attributable only to this
         // observed native transition link. Still require a subsequent real
         // physics step after owned RS delivery before admitting balance.
         if(linked) contact_generation_=revert.contact;

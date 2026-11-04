@@ -1,4 +1,5 @@
 #pragma once
+#include "Engine/Game/Skater/native_orientation.h"
 #include <cstdint>
 namespace dingosdk::arcade_mode {
 struct InputTiming {
@@ -42,6 +43,7 @@ struct InputNativeContext {
     bool airborne{};
     std::uint64_t airborne_episode{}, air_departure{};
     InputFlipObservation flip{};
+    NativeOrientation orientation{};
     InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
@@ -159,6 +161,7 @@ struct InputNativeContext {
             context.airborne = frame.airborne; context.airborne_episode = frame.airborne_episode;
             context.air_departure = frame.air_departure;
         }
+        if constexpr (requires { frame.orientation; }) context.orientation=frame.orientation;
         if constexpr (requires { frame.flip_known; frame.flip_id; frame.selection_object;
                                  frame.state; frame.mode; frame.stance_and_push; }) {
             context.flip = {frame.flip_known,frame.flip_id,frame.selection_object,

@@ -1152,6 +1152,8 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         return;
     }
     const auto flip = read_flip_selection([](auto address, auto& value) { return memory::peek(address, value); }, owner.core);
+    const auto orientation=read_native_orientation([](auto address,auto& value) { return memory::peek(address,value); },
+                                                   owner.core,owner.context);
     const bool offboard = sample.state == game::build::v20260929::no_bail::offboard_physics_state;
     // Same physics-step reader used by Hall of Meat; Trainer's position carries
     // separate provenance, just as it does for the existing fixture observer.
@@ -1177,7 +1179,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     {
         std::lock_guard lock(ollie_mutex);
         if (clock_valid) {
-            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds);
+            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds,orientation);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
             publish_input_context(frame);

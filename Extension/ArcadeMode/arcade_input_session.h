@@ -51,8 +51,9 @@ public:
         revert_link_={}; revert_trigger_owned_=false;
     }
     // A requested RT from verified manual ownership, followed by original native
-    // 101->100 observations, permits attempted successor pressure. Opposite
-    // contact on a later native step must still establish the successor.
+    // 101->100 observations and a native fakie change permit renewed ownership.
+    // The original manual pressure remains: native Manual/Nose each own their
+    // fakie pose. Changing pressure would select the other native manual.
     // 0x20 identifies the leading foot, not rotation into fakie: it need not
     // change during a native180 (see grind_exit.h). No score/FS/BS is inferred.
     void observe_manual_transition(const InputNativeContext& frame) noexcept {
@@ -69,8 +70,11 @@ public:
             frame.sampled_at<link.observed_at || frame.sampled_at-link.observed_at>150))link.transition_step=0;
         link.observed_step=frame.physics_step;link.observed_at=frame.sampled_at;
         if(frame.flip.state==101){link.native_started=true;link.transition_step=frame.physics_step;return;}
-        if(link.transition_step && frame.physics_step>link.transition_step)
-            link.confirmed_at=frame.sampled_at;
+        if(link.transition_step && frame.physics_step>link.transition_step) {
+            if(!link.returned_at)link.returned_at=frame.sampled_at;
+            if(link.orientation.valid && frame.orientation.valid &&
+                link.orientation.fakie!=frame.orientation.fakie)link.confirmed_at=frame.sampled_at;
+        }
         else if(link.native_started)
             link={}; // A return across an observation gap cannot fabricate acknowledgment.
     }
@@ -220,28 +224,22 @@ public:
             if(expired || !native.required || !native.fresh(now) || native.generations.owner!=revert_link_.owner ||
                 native.airborne || native.rail_family || admission.external_owner || physical.lt>30 ||
                 (physical.buttons & 0x9330u)) {
-                // An unfinished transfer cannot fall through to full opposite
-                // pressure when its provenance is lost or expires.
-                if(revert_link_.issued && revert_link_.pressure_ms<manual_transfer_ms)manual_.cancel();
                 revert_link_={};
             }
-            else if(revert_link_.issued && !auxiliary_.busy() && admission.manual_balance_admitted && manual_.established_balance() &&
-                manual_.requested()==revert_link_.direction &&
-                admission.pose==(revert_link_.direction<0?SkatePose::manual:SkatePose::nose_manual)) revert_link_={};
+            // The original manual can remain admitted while native contact
+            // settles. That same identity cannot prove the new contact pair;
+            // retain this bounded link for ManualEpisode's independent proof.
             else if(revert_link_.issued && !manual_.busy()) revert_link_={};
             else if(!revert_link_.issued && revert_link_.confirmed_at &&
-                (!manual_.busy() || manual_.requested()==-revert_link_.direction) && admission.manual_safe &&
+                (!manual_.busy() || manual_.requested()==revert_link_.direction) && admission.manual_safe &&
                 native.flip.state==100 && native.flip.mode==1) {
-                // The observed native return transfers only RS.
-                // The existing revert keeps its complete LS trajectory. Waiting
-                // for that actor to finish would keep pressing the old manual
-                // through the opposite contact, then emit an unowned neutral poll.
+                // Renew attribution without changing the original RS pressure.
+                // The native revert keeps its complete LS trajectory and the
+                // game's manual graph selects its own fakie loop.
                 manual_.cancel();
                 if(manual_.request(now,revert_link_.direction,false,true,false,
                     revert_link_.started,revert_link_.recognition)) {
                     revert_link_.issued=true;
-                    revert_link_.pressure_step=native.physics_step;
-                    revert_link_.pressure_at=native.sampled_at;
                 }
             }
         }
@@ -361,7 +359,7 @@ public:
             (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues());
         if (manual.owns_stick) {
             output.right_x = 0;
-            output.right_y = manual_revert_pressure(native,manual.y);
+            output.right_y = manual.y;
             output.phase = 1;
         }
         const auto& diagnostic = input_.diagnostic();
@@ -455,31 +453,12 @@ private:
         const auto& link=revert_link_;
         if(now<link.started)return true;
         if(link.confirmed_at)return now<link.confirmed_at || now-link.confirmed_at>1100;
+        if(link.returned_at)return now<link.returned_at || now-link.returned_at>1100;
         // The request deadline is retired by ORIGINAL native transition entry.
         // Its ongoing state still needs fresh same-owner observations at every
         // consumer. A long native revert is not an expired manual. Only the
         // observed return starts the separate successor-acquisition deadline.
         return !link.native_started && now-link.started>1500;
-    }
-    // Direct opposite partial pressure is a native flick/pop. The measured
-    // 200ms pressure crossing reaches opposite contact without changing the
-    // native LS revert recipe or the game's launch/flip machinery. This is an
-    // input trajectory, not balance integration or evidence of acquisition.
-    static constexpr unsigned manual_transfer_ms=200;
-    std::int16_t manual_revert_pressure(const InputNativeContext& frame,std::int16_t ordinary) noexcept {
-        auto& link=revert_link_;
-        if(!link.issued)return ordinary;
-        if(frame.physics_step>link.pressure_step) {
-            if(frame.physics_step==link.pressure_step+1 && frame.sampled_at>=link.pressure_at &&
-                frame.sampled_at-link.pressure_at<=150) {
-                const auto elapsed=frame.sampled_at-link.pressure_at;
-                link.pressure_ms+=static_cast<unsigned>(std::min<std::uint64_t>(elapsed,manual_transfer_ms-link.pressure_ms));
-            }
-            // Missing native intervals do not advance pressure. A fresh
-            // consecutive observation can resume from this new baseline.
-            link.pressure_step=frame.physics_step;link.pressure_at=frame.sampled_at;
-        }
-        return static_cast<std::int16_t>(link.direction*(static_cast<int>(link.pressure_ms)*200-20000));
     }
     static TrickDirection direction(std::int16_t code) noexcept {
         switch (code) {
@@ -735,10 +714,11 @@ private:
                      admission.mirror_x, false, static_cast<std::int16_t>(context.verified_manual ? (admission.pose==SkatePose::manual?-20000:20000) : 0)}, now_, context);
             if(out.result==DispatchResult::started) revert_trigger_owned_=physical_.rt>30;
             if(out.result==DispatchResult::started && context.verified_manual) {
-                revert_link_={admission.pose==SkatePose::manual?1:-1,now_,0,
+                revert_link_={admission.pose==SkatePose::manual?-1:1,now_,0,
                     admission.native_context.generations.owner,admission.native_context.flip.stance&0x20u,
                     request.recognition?request.recognition->sequence:0,
                     admission.native_context.physics_step,admission.native_context.generations.contact,false};
+                revert_link_.orientation=admission.native_context.orientation;
                 input_.reset_manual_continuity();
             }
         }
@@ -777,7 +757,7 @@ private:
     struct RevertLink {int direction{};std::uint64_t started{},confirmed_at{},owner{};
         std::uint32_t stance{};std::uint64_t recognition{},step{},contact{};bool issued{};
         std::uint64_t transition_step{},observed_step{},observed_at{};
-        std::uint64_t pressure_step{},pressure_at{};unsigned pressure_ms{};bool native_started{};} revert_link_;
+        bool native_started{};NativeOrientation orientation{};std::uint64_t returned_at{};} revert_link_;
     bool revert_trigger_owned_{};
     UnifiedInput input_{};
     AuthoredPlayback authored_{};

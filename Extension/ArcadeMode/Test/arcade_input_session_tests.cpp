@@ -1013,13 +1013,13 @@ void native_revert_stances() {
  }
 }
 void native_manual_revert_links() {
- for(bool nose:{false,true})for(unsigned fault=0;fault<7;++fault) {
+ for(bool nose:{false,true})for(bool initial_fakie:{false,true})for(unsigned fault=0;fault<9;++fault) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
   raw.valid=true;raw.crouch_mode=1;raw.words[1]=nose?0x8000u:0x4000u;
   auto poll=[&](std::uint64_t now,unsigned state,unsigned rt,bool switched){
    if(fault==3 && state==101)state=100; // Missing native transition, even if RT playback ran.
-   raw.state=state;raw.words[0]=switched?0x20u:0u;
-   auto f=producer.observe(now,owner,raw,{true,-1});
+   raw.state=state;raw.words[0]=(switched || (fault==7 && now>=1834))?0x20u:0u;
+   auto f=producer.observe(now,owner,raw,{true,-1},false,0,{fault!=8,initial_fakie!=(fault!=7 && now>=1834 && state==100)});
    h.admission.native_context=InputNativeContext::from_frame(f);
    h.admission.balance_generations=h.admission.native_context.generations;
    h.admission.manual_balance_admitted=state==100&&now<1300&&fault!=1;
@@ -1039,9 +1039,9 @@ void native_manual_revert_links() {
   for(unsigned t=1317;t<1800;t+=17)poll(t,101,0,false);
   out=poll(fault==5?2600u:1834u,100,0,false);
   if(fault!=5)for(unsigned t=1851;t<2200;t+=17)out=poll(t,100,0,false);
-  check(out.manual.owns==(fault==0),"opposite manual requires native transition, same owner and bounded grace; unchanged leading foot is valid");
-  if(fault==0)check(out.manual.request==(nose?-1:1)&&out.right_y==(nose?-20000:20000)&&!out.manual.confirmed,
-   "handoff requests opposite partial native RS without fabricating contact or balance confirmation");
+  check(out.manual.owns==(fault==0),"manual handoff requires native transition, changed corroborated fakie state, same owner and bounded grace; leading foot need not change");
+  if(fault==0)check(out.manual.request==(nose?1:-1)&&out.right_y==(nose?20000:-20000)&&!out.manual.confirmed,
+   "handoff preserves original partial native RS without fabricating contact or balance confirmation");
  }
  for(bool nose:{false,true}) {
   ComboSession combo(native_combo_tuning());

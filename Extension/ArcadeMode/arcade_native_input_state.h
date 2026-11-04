@@ -2,6 +2,7 @@
 #include "arcade_native_probe.h"
 #include "arcade_native_trick.h"
 #include "Engine/Game/Build/20260929/launches.h"
+#include "Engine/Game/Skater/native_orientation.h"
 #include <cmath>
 #include <cstdint>
 
@@ -35,6 +36,7 @@ struct NativeInputFrame {
     // Copied from this original physics callback, never a cached body clock
     // or a timestamp-derived interval. Zero means no qualified clock supplied.
     float physics_seconds{};
+    NativeOrientation orientation{};
     // Generations invalidate correlation; they are not action occurrences.
     // Rail family does not establish a named grind, slide, Lip, early/established
     // phase or geometry. Grab initialization/ForceInit remains unknown.
@@ -54,7 +56,7 @@ public:
     void invalidate() noexcept { frame_.valid = false; continuity_ = false; }
     NativeInputFrame observe(std::uint64_t now, NativeInputOwner owner,
             NativeRequestSample sample, NativeFlipSelection flip, bool wipeout = false,
-            float seconds = 0) noexcept {
+            float seconds = 0, NativeOrientation orientation = {}) noexcept {
         if (!owner.valid() || !sample.valid || !sample.state) { invalidate(); return {}; }
         const bool boundary = !continuity_ || owner != frame_.owner || wipeout ||
             now < frame_.sampled_at || now-frame_.sampled_at > 150;
@@ -96,6 +98,7 @@ public:
             flip.valid, owner, owner_generation_, contact_generation_, action_generation_, step_, now,
             sample.state, sample.crouch_mode, contacts, stance_and_push, flip.valid ? flip.id : -1, flip.valid ? flip.object : 0, airborne, airborne_episode_, air_departure_,airborne_started_at_,airborne,mode_generation_,flip_wait_generation_};
         if (std::isfinite(seconds) && seconds >= .001f && seconds <= .1f) frame_.physics_seconds = seconds;
+        frame_.orientation=orientation;
         continuity_ = true;
         return frame_;
     }

@@ -50,7 +50,7 @@ public:
         if(release_step_ && d.request_at<=command_.request_at)return;
         release_step_=0;owned_=true;delivery_at_=f.sampled_at;command_=d;
         if(transitioning() && d.revert.owner==generation_ && d.revert.ack_at &&
-            d.revert.step>=entry_step_ && d.request==(pose_==SkatePose::manual?1:-1)) {
+            d.revert.step>=entry_step_ && d.request==(pose_==SkatePose::manual?-1:1)) {
             successor_=d.revert; successor_step_=f.physics_step; successor_direction_=d.request;
         }
     }
@@ -99,7 +99,7 @@ public:
                 f.sampled_at-successor_.ack_at<=1100 && f.physics_step>successor_step_ && f.physics_step>successor_.step &&
                 f.contact_generation>successor_.contact &&
                 f.state==100 && f.mode==1 && f.contacts==(successor_direction_<0?0x4000u:0x8000u);
-            // A first opposite-wheel touch is provisional: the native board
+            // A first returning wheel touch is provisional: the native board
             // can rebound to both trucks while the delivered pressure settles.
             // Complete only when another consecutive ORIGINAL observation
             // confirms that contact. Client/input duplicates cannot establish

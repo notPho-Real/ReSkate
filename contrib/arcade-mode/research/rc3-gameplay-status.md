@@ -71,21 +71,38 @@ Remaining mechanisms:
   (Nose BS Shifty), rather than the expected 17. Preserve that source anomaly
   until its actual runtime selection/scoring is established.
 
-## Fakie manual posture — unresolved
+## Fakie manual posture — correction awaiting native acceptance
 
 The native game has distinct `OnBoard.Manual.T.Fakie.Loop` (33850) and
-`OnBoard.Manual.N.Fakie.Loop` (25379) nodes and native revert-to-fakie transitions.
-Both depend on condition GUID `f9a95db4-e022-f765-f9a9-5db4e022f765` and the native
-`Enum.Intent.Manual` value. Their entry condition is not equivalent to the RC2
-leading-foot bit. The exact condition producer/actor ownership still needs to be
-correlated with heading, travel and wheel contact in a native capture.
+`OnBoard.Manual.N.Fakie.Loop` (25379) nodes. The formerly unresolved condition
+`f9a95db4-e022-f765-f9a9-5db4e022f765` is `Bool.Physics.RidingFakie`.
+`Enum.Intent.Manual` selects Tail=1 or Nose=2 independently of that condition.
+The original manual intent conditions read `Input_BoardAdjust`; their Tail/Nose
+identity is not exchanged merely because native travel becomes fakie.
 
-RC2 already transfers opposite pressure after observed 101-to-100 and requires
-two consecutive opposite-wheel contacts. Repeating that inversion or changing a
-HUD label would not repair native posture. No posture correction is claimed or
-implemented in this candidate. The existing upstream `skater_frame()` reader in
-`Extension/Plugins/plugin_game_runtime.cpp` corroborates cached fakie flags with
-native context flags and is the source-first starting point for that correlation.
+RC2 explicitly inverted RS pressure following native 101-to-100. RC3 removes
+that inversion and its 200 ms crossing. The original Manual or Nose Manual
+pressure continues while the original native graph selects its fakie pose.
+No animation, stance Boolean, physical heading, contact bit or HUD label is
+forced. This corrects the input routing mismatch; rendered posture acceptance
+is still outstanding.
+
+The handoff now requires the original and returning corroborated native fakie
+observations to differ. The general SDK reader uses the same native frame,
+physics-context and exported stance agreement checks as upstream
+`plugin_game_runtime.cpp::skater_frame`. Leading foot alone is insufficient.
+An unknown or unchanged fakie state cannot acknowledge the handoff. A return
+without orientation proof expires after 1100 ms, rather than keeping a pending
+manual transition indefinitely. Consecutive original physics contacts still
+establish completion independently of input and score-label delivery.
+
+The portable orientation reader has negative controls for missing sources,
+contradictory native/export flags, invalid pointers and offboard flags. Session
+tests cover both initial orientations and both manual types, unchanged native
+fakie despite changed leading foot, unknown stance, missing 101, owner change and
+observation gaps. The composed lifecycle tests cover chained reversions, native
+LS trajectory preservation, contact bounce, delivery gaps and ten-second holds
+at 30/60/120 Hz. These are synthetic native observations, not rendered evidence.
 
 ## Repeated flips — unresolved
 
@@ -118,7 +135,7 @@ installation. This task does not install the candidate on Steam Deck.
    and combo ownership separately. A displayed name is insufficient.
 3. Verify Manual/RT and Nose Manual/RT, chained reverts and ten-second holds with
    body/board heading, travel, wheel contact and active native pose captured.
-   The known fakie posture defect is still expected to require correction.
+   The pressure routing correction still needs rendered native pose acceptance.
 4. Verify single X Kickflip and directional Pop Shove-it during ascent, original
    Ollie trajectory, ground RT, grind entry/first HUD/Ollie-out, auto-push, camera,
    shoulder spin, board toggle, ground X/B suppression, controller ownership and
@@ -129,7 +146,7 @@ artifact manifest. Green CI alone cannot close any native gameplay item above.
 
 ## Local validation and build gate
 
-On macOS with AppleClang 15, the 13 targeted tests pass with warnings as errors.
+On macOS with AppleClang 15, the 14 targeted tests pass with warnings as errors.
 The production-composed manual lifecycle suite passes all 18 tests, including
 rollback controls, HUD ownership, landing, chained reverts and simulated
 ten-second holds. The controller route test and generated production publication

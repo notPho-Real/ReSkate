@@ -21,7 +21,7 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
 }
 // Internal physical handoff proof: verified original balance, native101 followed
 // by100/1 under the same owner. ack_at timestamps that native
-// transition, not a score-label event or an award. Opposite contact must still
+// transition, not a score-label event or an award. Matching contact must still
 // corroborate successor delivery; this cannot adopt generic one-wheel contact.
 struct ManualRevertContact {
     std::uint64_t owner{},step{},contact{},ack_at{};
