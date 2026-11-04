@@ -46,6 +46,10 @@ struct PadEvidence {
 struct RemapEvidence {
     bool ollie{}, flip{}, unsupported{};
     unsigned started{}, requested_id{};
+    std::uint64_t held_ms{};
+    std::int32_t held_request{}, held_native_id{};
+    float held_extra_rotations{};
+    bool held_released{}, held_acknowledged{};
 };
 struct PadTelemetry {
     PadEvidence pad{};

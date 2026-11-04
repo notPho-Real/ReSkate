@@ -48,7 +48,7 @@ struct Route {
         AuthoredGesture kick{2,false,GestureContext::ground,90,180,.85f,{{280,30,.5f,1,0},{90,150,.5f,1,.1f}}};
         AuthoredGesture heel{3,false,GestureContext::ground,180,270,.85f,{{330,80,.5f,1,0},{210,270,.5f,1,.1f}}};
         const std::array catalog{kick,heel};recipes=prepare_gestures(catalog);
-        recipes.emplace_back(1,false,GestureContext::ground,std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
+        recipes.emplace_back(std::uint8_t{1},false,GestureContext::ground,std::vector<AuthoredStickStep>{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}});
         admission.gameplay=admission.authored=admission.action_fresh=true;
         admission.may_start=admission.inspected_stance=true;admission.action_mode=ActionExperiment::classic;
         admission.catalog=recipes;admission.held_flip.available=true;

@@ -1051,6 +1051,9 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
                     "ARCADE FLIP: X started candidate={} (experimental).", d.started);
                 if (d.requested_id || d.unsupported) logging::log(logging::Level::info, logging::Channel::skater,
                     "ARCADE AUTHORED REQUEST: id={} unsupported={}.", d.requested_id, d.unsupported);
+                if (d.held_request || d.held_released) logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE HELD FLIP INPUT: ms={} requested_id={} input_released={} native_id={} extra_rotations={} loop_acknowledged={} landing_scoring_acceptance=unverified.",
+                    d.held_ms,d.held_request,d.held_released,d.held_native_id,d.held_extra_rotations,d.held_acknowledged);
                 continue;
             }
             const auto& p = row.pad;
@@ -2342,10 +2345,13 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             action_experiment, action_safe, admission.mirror_x,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
             held_flip);
-        if (result.held_flip_request || result.held_input_released)
-            logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE HELD FLIP INPUT: ms={} requested_id={} input_released={} native_id={} extra_rotations={} loop_acknowledged={} landing_scoring_acceptance=unverified.",
-                now,result.held_flip_request,result.held_input_released,held_flip.id,held_flip.extra_rotations,result.held_actor_acknowledged);
+        if (result.held_flip_request || result.held_input_released) {
+            RemapEvidence evidence{};
+            evidence.held_ms=now;evidence.held_request=result.held_flip_request;evidence.held_released=result.held_input_released;
+            evidence.held_native_id=held_flip.id;evidence.held_extra_rotations=held_flip.extra_rotations;
+            evidence.held_acknowledged=result.held_actor_acknowledged;
+            input_telemetry.pad({{},evidence,true});
+        }
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){
