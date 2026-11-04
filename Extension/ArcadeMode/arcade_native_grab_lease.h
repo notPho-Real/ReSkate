@@ -93,6 +93,7 @@ constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {
 struct RetargetObservation {
     bool valid{},grabbing{},can_grab{},left{},right{};
     std::int32_t family{};
+    bool selector_ready{}; // Original input producer has observed this lease's family selector.
     bool eligible(const Pilot* selected=nullptr) const noexcept {
         const auto hands=selected?selected->hands:2u;
         return valid && grabbing && can_grab && left==((hands&1u)!=0) &&
@@ -144,6 +145,13 @@ public:
     Control controls(const RetargetObservation& native,bool settings_applied) noexcept {
         if (!selected_) return {};
         auto out=selected_->control();
+        // The native hand producer can run before its RS selector producer.
+        // Wait for the actual selector, not an elapsed controller-frame delay.
+        // An established matching family already proves selection.
+        if (out.selector() && !native.selector_ready &&
+            !(native.valid && native.grabbing && native.family==selected_->family)) {
+            out.hands=0;return out;
+        }
         if (selected_->one_footer && settings_applied) {
             // CanOneFoot is owned by the original foot producer and may depend
             // on this input. Require the established grab, not that result.

@@ -218,6 +218,13 @@ void selected_native_families() {
         auto out=r->poll(1000+dt,0x2080);
         check(r->tricks.size()==1 && r->tricks.back()==profile.trick,"each selectable native pose has a reachable R3+B binding");
         const auto control=profile.control();
+        if (control.selector()) {
+            check(!out.action.pad.left_trigger && !out.action.pad.right_trigger &&
+                out.action.pad.right_x==control.x && out.action.pad.right_y==control.y,
+                "every directional family publishes its selector before a hand");
+            r->grab_observation.selector_ready=true;
+            out=r->poll(1000+dt+1,0x2080);
+        }
         check(out.action.pad.left_trigger==((control.hands&1u)?255:0) && out.action.pad.right_trigger==((control.hands&2u)?255:0) &&
             out.action.pad.right_x==control.x && out.action.pad.right_y==control.y,
             "family admission receives the original paired hand and RS input from one lease");
@@ -271,6 +278,7 @@ void selected_native_families() {
             "original Up+B and Down+B now reach genuine Nose and Tail profiles");
     }
     auto rocket=std::make_unique<Route>();rocket->poll(1000);rocket->poll(1017,0x2001);
+    rocket->grab_observation.selector_ready=true;
     rocket->poll(1034,0x0001);out=rocket->poll(1051,0x2001);
     check(rocket->tricks.size()==2 && rocket->tricks.back()==ArcadeTrick::rocket_air &&
         out.action.pad.left_trigger==255 && out.action.pad.right_trigger==255 && out.action.pad.right_y==-28000,
@@ -306,6 +314,18 @@ void foot_setting_admission() {
     check(!lease.controls(wrong,true).feet,"owner loss withdraws the entire foot request");
 }
 void delayed_tap_and_controls() {
+    {
+        auto route=std::make_unique<Route>();route->selected=ArcadeTrick::nosegrab;
+        route->poll(900,0,100);route->poll(1000,0,201,1);
+        const auto out=route->poll(1010,0x2080,201,1);
+        check(out.action.pad.owns_right_stick && out.action.pad.right_y==-28000 &&
+            out.action.pad.owns_triggers && !out.action.pad.left_trigger && !out.action.pad.right_trigger,
+            "Nosegrab must deliver selector before either hand when native selector is not yet observed");
+        route->grab_observation.selector_ready=true;
+        const auto admitted=route->poll(1020,0x2080,201,1);
+        check(admitted.action.pad.right_trigger==255 && admitted.action.pad.right_y==-28000,
+            "original selector acknowledgment admits the same retained physical grab");
+    }
     for(unsigned hz:{30u,60u,120u}) {
         // Modifier/direction belong to the original press even if native AIR
         // readiness arrives after both controls have physically been released.

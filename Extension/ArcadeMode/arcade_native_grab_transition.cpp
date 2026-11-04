@@ -28,7 +28,7 @@ contract::Evaluate original_evaluate{};
 std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
 std::mutex mutex;
 struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
-std::array<Asset,11> assets{{
+std::array<Asset,15> assets{{
     {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
     {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
     {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
@@ -39,7 +39,11 @@ std::array<Asset,11> assets{{
     {"Animation/Dingo/Bool.GP.CanGrab",contract::can_grab},
     {"Animation/Dingo/EnumGS.OneFooterType",contract::one_footer},
     {"Animation/Dingo/Bool.State.Is.FingerFlip",finger_contract::state},
-    {"Animation/Dingo/Enum.GS.FingerFlipType",finger_contract::identity}
+    {"Animation/Dingo/Enum.GS.FingerFlipType",finger_contract::identity},
+    {"Animation/Dingo/Bool.Intent.GrabNose",contract::nose},
+    {"Animation/Dingo/Bool.Intent.GrabTail",contract::tail},
+    {"Animation/Dingo/Bool.Intent.GrabStale",contract::stale},
+    {"Animation/Dingo/Bool.Intent.GrabWeddle",contract::weddle}
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
@@ -232,6 +236,14 @@ RetargetObservation retarget_observation() noexcept {
     out.valid=left && right && grabbing && family && can_grab &&
         read(left,out.left) && read(right,out.right) && read(grabbing,out.grabbing) &&
         read(family,out.family) && read(can_grab,out.can_grab);
+    if (const auto* selected=session.lease.selected()) {
+        const auto index=selected->selector_y<0?11u:selected->selector_y>0?12u:
+            selected->selector_x!=0?(selected->hands==1?13u:14u):0u;
+        if (index) {
+            const auto selector=address(index);
+            out.selector_ready=selector && read(selector,out.selector_ready) && out.selector_ready;
+        }
+    }
     return out;
 }
 FingerflipObservation finger_observation() noexcept {
@@ -345,8 +357,9 @@ void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     if (!gameplay) {cancel();return;}
     if (!hooks_ready.load()) return;
-    if ((!assets_ready.load() || !guid_is(assets[8].object,assets[8].guid) ||
-         !guid_is(assets[9].object,assets[9].guid) || !guid_is(assets[10].object,assets[10].guid)) && GetTickCount64()>=retry_at) {
+    bool missing_assets=!assets_ready.load();
+    for (std::size_t i=8;i<assets.size();++i) missing_assets=missing_assets || !guid_is(assets[i].object,assets[i].guid);
+    if (missing_assets && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
         if (find) {
             bool complete=true;

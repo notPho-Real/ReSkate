@@ -481,7 +481,7 @@ public:
                 native_grab::Control{admission.normal_grab.hand_inputs ? admission.normal_grab.hand_inputs(admission.normal_grab.context) :
                     admission.normal_grab.right_hand_input(admission.normal_grab.context)?2u:0u};
             const auto hands=controls.hands;
-            if(hands && hands<=3) {
+            if(hands<=3 && (hands || controls.selector())) {
                 output.action.pad.owns_triggers=true;
                 output.action.pad.left_trigger=(hands&1u)?255:0;
                 output.action.pad.right_trigger=(hands&2u)?255:0;

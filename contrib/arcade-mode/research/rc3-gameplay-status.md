@@ -37,6 +37,43 @@ in gameplay. Native fakie posture, double rotations and added-grab execution
 remain unresolved acceptance requirements; no additional success is inferred
 from the existing software tests.
 
+### Controlled reproduction and source corrections
+
+The owner authorized direct Deck testing. On the same installed RC3-02 DLL,
+four controlled trials on clear pavement independently observed these results:
+
+- Single X entered native animation Kickflip, retained zero extra rotations,
+  and returned to ground.
+- Two X edges also retained zero extra rotations. Native PrepareHeldFlip was
+  true, but Arcade never started its held-input actuator. The native animation
+  reported Kickflip while the physics selector correctly retained Ollie. The
+  repeat path incorrectly demanded Kickflip from both. It now admits the
+  verified animation identity while retaining the separate physics-owner and
+  flight-continuity checks. The state-200/mode-0 takeoff corridor also no longer
+  cancels this owned follow-up before state201.
+- Default B initialized and advanced the exact Basic BS actor, released, and
+  returned to ground. This is evidence for that tested default binding only.
+- Up+B requested Nosegrab but initialized Basic BS. The original Nose selector
+  became true one physics step after hand admission had already chosen BS.
+
+An Arcade-OFF comparison varied only selector/trigger ordering. Simultaneous
+input reproduced family2. Selector-first input observed the original Nose flag
+before the hand, entered native family6, released, and returned to ground.
+Both native physics and cached step were 1/30 second. The correction now sends
+RS first and waits for the original family-selector acknowledgment before the
+hand trigger. Nose, Tail, Crail, Seatbelt, Stale, Weddle, Rocket and dependent
+one-footer profiles share this mechanism; an unknown selector cannot admit a
+hand. Existing hand-only families retain their original immediate input.
+
+The new regression tests fail against the previous implementation and pass with
+the corrections. They include each selectable profile at 30/60/120Hz and the
+animation/physics identity disagreement captured above. These corrections are
+source changes awaiting a newly built DLL. The original-control comparison
+does not prove the corrected Arcade Nosegrab actor or any new grab's scoring.
+Actual repeated-X extra rotation, fakie posture, ground-manual reliability and
+all new grab lifecycles remain gameplay acceptance requirements. Capture hashes
+and limitations are in `rc3-gameplay-reproduction.json`.
+
 ## Manual recognition
 
 Production uses a 450 ms opposite-stroke window on ground and in airborne
