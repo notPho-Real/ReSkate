@@ -3,8 +3,13 @@
 RC2 rollback source is `2ffb006c73671466bfcdc15395ba96939de44f7d`.
 Its preserved DLL SHA-256 is
 `420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676`.
-RC3 branches from that revision without updating upstream. RC2 and the installed
-game are unchanged. This candidate does **not** satisfy the full RC3 mission and
+RC3 branches from that revision without updating upstream. RC2 remains unchanged.
+The owner subsequently authorized Deck installation. An earlier RC3 candidate,
+source `7126426c5922a8589b094d9a4cdd479f9469739b`, was installed with DLL SHA-256
+`25d0c9bd8793fa17bbe9532000a86ebb5a5271470fb154dc7aa5a22d44cc35f4`;
+the separate RC2 rollback remains preserved. The footer, ground-grab, footplant
+and fingerflip additions described below have not yet been installed.
+This candidate does **not** satisfy the full RC3 mission and
 must not be promoted as the accepted baseline.
 
 ## Manual recognition
@@ -26,9 +31,10 @@ acceptance remain outstanding.
 
 ## Native grabs
 
-The original adapter now describes 43 exact actors in BS, FS, double, Rocket, Nose,
-Tail, Crail, Seatbelt, Stale and Weddle blendspaces. These cover 37 detailed
-identities and six additional original actor variants sharing those identities.
+The airborne adapter now describes 56 exact actors: the original 43 in BS, FS,
+double, Rocket, Nose, Tail, Crail, Seatbelt, Stale and Weddle blendspaces plus all
+13 native one-footer identities. The blendspaces cover 37 detailed identities
+and six additional original actor variants sharing those identities.
 `rc3-grab-bindings.md` lists all reachable controls. The extended layer is R3
 held at B press. The physical edge retains that modifier and direction through
 takeoff buffering. A menu selector exposes every actor through neutral R3+B;
@@ -42,10 +48,12 @@ and matching native detail before acknowledging. Original animation cleanup and
 scoring remain authoritative. No jump/velocity writer or scoring writer was added.
 
 `rc3-grab-coverage.json` accounts for all 171 declarations and all 300 sequences
-in the existing inventory. The namespace counts overlap. There are 37 detailed
-identities marked IMPLEMENTED — GAMEPLAY PENDING; 36 GrabType declarations
-refer to mapped poses and are ALIAS/DEPENDENT. The remaining 98 declarations
-are BLOCKED. Every
+in the existing inventory. The namespace counts overlap. There are 80 declarations
+marked IMPLEMENTED — GAMEPLAY PENDING: 37 detailed identities, 13 one-footers,
+four ground grabs and 26 fingerflips/varials. Another 75 declarations are
+ALIAS/DEPENDENT, and 16 remain BLOCKED. These are declaration counts, not a sum
+of unique tricks. Of the original 300 sequences, 82 have mapped entry/loop
+mechanisms and 218 retain specific context or lifecycle blockers. Every
 sequence has an explicit status, identity links and blocker. Unknown execution is
 not classified as UNSUPPORTED. The original inventory itself does not prove that
 every executable game context has been discovered.
@@ -67,12 +75,18 @@ Remaining mechanisms:
   Their 27 added actor profiles have production routing and lifecycle contract
   tests; RC3 exact actor, rendered pose, native scoring and flight comparisons
   remain pending. Other stance admission remains guarded.
-- One-footers require original foot release and their own Into/Loop/Exit path.
-  Hand-only ownership does not establish those requirements.
-- Fingerflips, grab varials and cross-grab transitions require established source
-  grab, transition/catch and destination-grab ownership. Their enum declarations
-  do not authorize arbitrary animation selection.
-- Ground grabs and Coffin require separate grounded admission and lifetime.
+- All 13 one-footer identities now establish their native grab and then deliver
+  original left/right/both-foot input, with observed preference settings and
+  exact original loop actor acknowledgment. All are available in the R3+B
+  selector; existing repeated-B shortcuts remain. Gameplay acceptance is pending.
+- The 26 non-Coffin fingerflip and varial identities use hold B plus X with the
+  current direction. Original Input_TrickGesture and EAT LateFlipBuffer own entry;
+  exact original actor and native destination observations govern the handoff.
+  See `native-fingerflip-entry.md`. All four airborne Coffin fingerflip variants
+  remain blocked on a verified Coffin handoff; they cannot borrow ordinary double grabs.
+- Ground FS, BS, Double and Coffin use a separate native input owner and exact
+  actor checks. Bindings are R3+Right+B, R3+Left+B, R3+B and R3+Down+B. Their
+  native exit/scoring and ground-to-air handoff acceptance remain outstanding.
 - The existing names Madonna, One Foot Japan and Sacktap have no established
   independent native identity in the inspected catalog. They remain blocked;
   another trick's animation has not been substituted.
@@ -179,8 +193,9 @@ stock-control captures establish the native mechanism, not RC3 X/X acceptance.
 
 ## Focused owner acceptance
 
-After a candidate DLL has passed its build gates, test on an owner-selected test
-installation. This task does not install the candidate on Steam Deck.
+After the exact candidate passes its build gates, the owner has authorized its
+Deck installation while preserving RC2 rollback. Installation is separate from
+gameplay acceptance and never promotes the accepted development baseline.
 
 1. At each measured 30/60/120 Hz, attempt 20 Up-to-Down Manuals and 20 Down-to-Up
    Nose Manuals. Include short neutral crossings, diagonals, moderate gestures,
@@ -199,13 +214,30 @@ installation. This task does not install the candidate on Steam Deck.
    shoulder spin, board toggle, ground X/B suppression, controller ownership and
    Arcade OFF. Verify X/X and Right+X/X against the exact native loop actor, two
    board rotations, original catch, landing and scoring; the RC3 path is pending acceptance.
+5. Test all 13 footer selections, all four ground grabs and each cell of the
+   fingerflip/varial mapping. For transitions hold B through catch, then release
+   and land; verify native destination, exit and score. Early X, held X, Rocket
+   Air and footers must not fall back to an ordinary flip.
+6. Test Up→A No Comply and Up→release→Up→A Boneless against original native
+   push/grab admission, animation and one launch. Plain A must remain Ollie.
+
+## No Comply and Boneless
+
+Up→A within 300 ms requests No Comply. Two Up strokes, separated by release,
+then A within 500 ms of the first Up request Boneless. No Comply supplies the
+original front-foot push and waits for native CanNoComply in a later physics
+step before the original flick input. Boneless establishes the original front
+hand grab before issuing its fresh native A input. The settings getter must
+observe the required original foot-control preferences first. Native intent or
+entry state withdraws preparation; the game owns launch and cleanup. No second
+Ollie impulse is added. See `native-footplant-entry.md`; gameplay acceptance is pending.
 
 CI and DLL identity belong to the exact staged source revision and accompanying
 artifact manifest. Green CI alone cannot close any native gameplay item above.
 
 ## Local validation and build gate
 
-On macOS with AppleClang 15, the 16 targeted tests pass with warnings as errors.
+On macOS with AppleClang 15, all 20 targeted tests pass with warnings as errors.
 The production-composed manual lifecycle suite passes all 18 tests, including
 rollback controls, HUD ownership, landing, chained reverts and simulated
 ten-second holds. The controller route test and generated production publication
@@ -213,6 +245,9 @@ checks pass. Existing input handoff, action dispatch, control state, manual
 lifecycle, manual observation, manual history and acquisition-boundary suites
 also pass. The native grab suite passes 1013 source/composition checks; the new
 manual suite covers 240 trajectories and 17544 assertions.
+The 12 manual reservation checks also pass. Ground-grab and fingerflip tests
+pass with address and undefined-behavior sanitizers. The 459 Python tests pass
+with one optional CMake integration test skipped in that invocation.
 
 The wider input-events suite retains a pre-existing failure at
 `face-first unmatched flip owns no adapter`, reproduced against unchanged RC2.
@@ -220,8 +255,12 @@ That expectation conflicts with RC2's immediate neutral-X behavior. RC3 updates
 only its manual-window expectations; it does not revert RC2's working flips to
 make that historical assertion pass.
 
-Windows runtime compilation, hosted Windows/Linux/macOS and upstream integration
-CI have not run for RC3. No RC3 DLL or DLL checksum is available yet. The owner has approved a separately reviewed RC3 publication procedure, including
-the unchanged baseline pack. Publication and staged DLL delivery remain pending
-the critical gameplay implementation and build gates. No acceptance build is
-offered before the new repeated-flip runtime and fakie posture are verified.
+Hosted Windows, Linux, macOS and upstream integration CI run on the isolated RC3
+branch. The earlier installed candidate has its own artifact receipt. Newer
+candidate builds remain subject to their exact revision's gates. The source
+through `5c6bf1444894157b4682a3625a4618c6832278f8` includes the Windows test-target
+list correction and the strict MSVC fixture type correction. Consult the staged
+artifact manifest for final source, run links and DLL SHA-256; do not reuse the
+earlier installed DLL's identity for these additions. No candidate is gameplay
+accepted solely because CI passes. Fakie posture and physical X-X rotations
+remain mandatory owner acceptance items.

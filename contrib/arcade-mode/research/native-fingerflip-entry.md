@@ -12,6 +12,10 @@ identity or rotation count, or creates an animation. This implementation is
   appropriate hand intent, no DangerZone, InAirState and sufficient native
   TimeToLand. Double-hand admission excludes Rocket Air. Airborne Coffin has a
   separate entry path; its four fingerflip identities remain blocked.
+  The original intent tree (13508) places Coffin (607) under GroundTricks (274),
+  GroundStates (388), OnGround (469). Fingerflips (432) belongs to AirStates (202)
+  under InAir (242). Original airborne Coffin Into (15254) requires RideCoffin;
+  finding that actor alone does not establish a safe handoff from the ground action.
 - `Includes_UpdateBufferedLateFlipLogic` (AG 388, update 11394 / expression 11776)
   consumes original `Input_TrickGesture` (39367). The original gesture producer
   and EAT own the buffer, its trick enum and speed. Arcade never writes these.
