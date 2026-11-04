@@ -71,7 +71,7 @@ struct Route {
     unsigned requests{},ordinary{};std::uint8_t selected{};
     std::vector<PreparedGesture> gestures;
     Route() {
-        for(std::uint8_t id:{2,3,4,7})gestures.emplace_back(id,false,GestureContext::ground,
+        for(const auto id:std::array<std::uint8_t,4>{2,3,4,7})gestures.emplace_back(id,false,GestureContext::ground,
             std::vector<AuthoredStickStep>{{0,0,-28000},{18,28000,28000},{21,0,0},{24,0,0}});
         env.gameplay=env.authored=env.action_fresh=env.inspected_stance=true;env.action_mode=ActionExperiment::classic;
         env.catalog=gestures;
