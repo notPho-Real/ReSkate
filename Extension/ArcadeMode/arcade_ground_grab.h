@@ -4,7 +4,7 @@
 namespace dingosdk::arcade_mode {
 enum class GroundGrab : std::uint8_t { none, frontside, backside, double_grab, coffin };
 struct GroundGrabObservation {
-    bool valid{}, can_grab{}, left{}, right{}, coffin{};
+    bool valid{}, can_grab{}, left{}, right{}, coffin{}, actor_advanced{};
     unsigned state{};
     std::uint64_t sampled_at{},step{};
     bool fresh(std::uint64_t now) const noexcept {
@@ -37,13 +37,13 @@ public:
         const bool hands=native.can_grab && native.left==left && native.right==right;
         if (native.sampled_at>prepared_at_ && native.step>prepared_step_ && hands) {
             if (kind_==GroundGrab::coffin) issued_=true;
-            else acknowledged_=true;
+            else acknowledged_=native.actor_advanced;
         }
         if (kind_==GroundGrab::coffin && issued_) {
             // Input_Coffin is the original A+X+both triggers producer. Delaying
             // feet until both native hands exist avoids an ordinary hippy jump.
             out.buttons=0x5000;
-            if(native.coffin)acknowledged_=true;
+            if(native.coffin && native.actor_advanced)acknowledged_=true;
         }
         return out;
     }

@@ -8,6 +8,7 @@
 #include "Engine/Game/Build/20260929/arcade_ground_grab.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
 #include <atomic>
+#include <cmath>
 #include <mutex>
 #include <Windows.h>
 
@@ -30,7 +31,7 @@ std::array<Asset,10> assets{{
 }};
 constexpr auto option_owner="arcade-native-footplant";
 constexpr std::array option_keys{"egf_invertxaonboard","egf_frontbackfoot","nocomply"};
-std::atomic<bool> permitted{},ready{},grab_ready{};
+std::atomic<bool> permitted{},ready{},grab_ready{},grab_active{};
 std::uintptr_t image{};
 std::uint64_t retry_at{},settings_since{},last_poll{},last_step{},serial{};
 std::mutex mutex;
@@ -40,7 +41,14 @@ struct Evidence {std::uint64_t serial{};Footplant kind{};bool entered{};unsigned
 GroundGrabInput grab_lease;
 NoBailSkater grab_owner;
 std::uint64_t grab_poll{},grab_serial{};
-struct GrabEvidence {std::uint64_t serial{};GroundGrab kind{};bool prerequisite{};} grab_evidence;
+struct GrabEvidence {std::uint64_t serial{};GroundGrab kind{};bool acknowledged{};} grab_evidence;
+struct GrabActor {
+    std::uintptr_t object{};
+    std::uint64_t advanced_at{};
+    float before{},after{},delta{};
+    bool initialized{},reported{};
+} grab_actor;
+struct GrabAnimationEvidence {std::uint64_t serial{};GroundGrab kind{};GrabActor actor{};} grab_animation;
 template<class T> bool read(std::uintptr_t at,T& value) noexcept {return memory::peek(at,value);}
 std::uintptr_t pointer(std::uintptr_t at) noexcept {std::uintptr_t value{};return read(at,value)?value:0;}
 bool guid_is(std::uintptr_t object,const contract::Guid& expected) noexcept {
@@ -96,11 +104,26 @@ GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,
         can>1 || left>1 || right>1 || coffin>1) return out;
     out.valid=true;out.sampled_at=now;out.step=step;
     out.can_grab=can!=0;out.left=left!=0;out.right=right!=0;out.coffin=coffin!=0;
+    out.actor_advanced=grab_actor.initialized && grab_actor.advanced_at && now>=grab_actor.advanced_at &&
+        now-grab_actor.advanced_at<=150 && grab_actor.delta>0 && grab_actor.after>grab_actor.before;
     return out;
 }
 void retire_grab() noexcept {
     if(grab_lease.active())grab_evidence={grab_serial,grab_lease.kind(),grab_lease.acknowledged()};
-    grab_lease.cancel();grab_owner={};grab_poll=0;
+    grab_active.store(false);grab_lease.cancel();grab_owner={};grab_poll=0;grab_actor={};
+}
+bool ground_actor_is(std::uintptr_t actor) noexcept {
+    const auto kind=static_cast<unsigned>(grab_lease.kind());
+    return grab_lease.active() && kind>=1 && kind<=grab_contract::actors.size() &&
+        pointer(actor)==image+contract::actor_type &&
+        guid_is(pointer(actor+contract::actor_asset),grab_contract::actors[kind-1]);
+}
+bool ground_actor_owner(std::uintptr_t view) noexcept {
+    NoBailSkater current{};unsigned state{};
+    if(!permitted.load() || !grab_ready.load() || !grab_lease.active() ||
+        !no_bail_skater(current) || current!=grab_owner ||
+        !read(current.context+contract::physics_state,state) || state!=100)return false;
+    const auto block=block_for(current);return block && view==block+contract::state_view;
 }
 bool settings(std::uint64_t now,bool require_sample) noexcept {
     try {
@@ -135,20 +158,25 @@ void cancel() noexcept {
 }
 void tick(std::uintptr_t base,bool gameplay) noexcept {
     permitted.store(gameplay);
-    Evidence pending{};GrabEvidence pending_grab{};
+    Evidence pending{};GrabEvidence pending_grab{};GrabAnimationEvidence animation{};
     {
         std::lock_guard lock(mutex);pending=evidence;evidence={};
         const auto now=GetTickCount64();
         if (!gameplay || (lease.active() && (now<last_poll || now-last_poll>150))) retire();
         if (!gameplay || (grab_lease.active() && (now<grab_poll || now-grab_poll>150))) retire_grab();
         pending_grab=grab_evidence;grab_evidence={};
+        animation=grab_animation;grab_animation={};
     }
     if (pending.serial) logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE NATIVE FOOTPLANT END: serial={} kind={} native_entry={} state={} animation_acceptance=unverified launch_scoring_acceptance=unverified.",
         pending.serial,static_cast<unsigned>(pending.kind),pending.entered,pending.state);
     if(pending_grab.serial)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_prerequisite={} animation_scoring_exit_acceptance=unverified.",
-        pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.prerequisite);
+        "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_animation_acknowledged={} scoring_exit_acceptance=unverified.",
+        pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.acknowledged);
+    if(animation.serial)logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GROUND GRAB: serial={} kind={} actor={} initialized=true before={} after={} delta={} native_evaluation=true scoring_exit_acceptance=unverified.",
+        animation.serial,static_cast<unsigned>(animation.kind),animation.actor.object,
+        animation.actor.before,animation.actor.after,animation.actor.delta);
     if (!gameplay || !base || (image && image!=base)) return;
     if (!image) image=base;
     if ((!ready.load() || !grab_ready.load()) && GetTickCount64()>=retry_at) {
@@ -192,7 +220,7 @@ bool available() noexcept {return permitted.load() && grab_ready.load();}
 bool request(const NoBailSkater& skater,std::uint64_t step,GroundGrab kind) noexcept {
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
     if(lease.active() || !grab_lease.start(kind,now,observe_grab(skater,now,step)))return false;
-    grab_owner=skater;grab_poll=now;++grab_serial;return true;
+    grab_owner=skater;grab_poll=now;++grab_serial;grab_active.store(true);return true;
 }
 GroundGrabControl controls(const NoBailSkater& skater,std::uint64_t step,bool held) noexcept {
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
@@ -204,5 +232,30 @@ GroundGrabControl controls(const NoBailSkater& skater,std::uint64_t step,bool he
     return out;
 }
 void cancel() noexcept {std::lock_guard lock(mutex);retire_grab();}
+void initialized(std::uintptr_t actor,std::uintptr_t context) noexcept {
+    if(!grab_active.load())return;
+    std::lock_guard lock(mutex);float duration{};
+    if(ground_actor_owner(context) && ground_actor_is(actor) &&
+        read(actor+contract::actor_duration,duration) && std::isfinite(duration) && duration>0 && duration<10000)
+        grab_actor={actor,0,0,0,0,true,false};
+}
+Evaluation before_evaluate(std::uintptr_t actor,std::uintptr_t context,float delta) noexcept {
+    if(!grab_active.load())return {};
+    std::lock_guard lock(mutex);float before{};
+    if(!std::isfinite(delta) || delta<=0 || !ground_actor_owner(pointer(context+contract::evaluation_view)) ||
+        !ground_actor_is(actor) || !grab_actor.initialized || grab_actor.object!=actor ||
+        !read(actor+contract::actor_time,before) || !std::isfinite(before))return {};
+    return {grab_serial,actor,before};
+}
+void after_evaluate(Evaluation token,std::uintptr_t context,float delta) noexcept {
+    if(!token.serial)return;
+    std::lock_guard lock(mutex);float after{};
+    if(token.serial!=grab_serial || !ground_actor_owner(pointer(context+contract::evaluation_view)) ||
+        !ground_actor_is(token.actor) || !grab_actor.initialized || grab_actor.object!=token.actor ||
+        !read(token.actor+contract::actor_time,after) || !std::isfinite(after) || after<=token.before ||
+        !std::isfinite(delta) || delta<=0)return;
+    grab_actor.before=token.before;grab_actor.after=after;grab_actor.delta=delta;grab_actor.advanced_at=GetTickCount64();
+    if(!grab_actor.reported) {grab_actor.reported=true;grab_animation={grab_serial,grab_lease.kind(),grab_actor};}
+}
 }
 }

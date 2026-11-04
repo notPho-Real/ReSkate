@@ -1,6 +1,7 @@
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grab_lease.h"
 #include "arcade_native_held_flip.h"
+#include "arcade_native_ground_grab.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -244,6 +245,7 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
     }
     original_initialize(actor,context,parameters);
     native_held_flip::initialized(actor,context);
+    native_ground_grab::initialized(actor,context);
     if (index>=0) {
         std::lock_guard lock(mutex);float duration{};
         if (session.serial==occurrence && valid() && actor_index(actor)==index &&
@@ -257,6 +259,7 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
 }
 std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,std::uintptr_t context) {
     const auto held=native_held_flip::before_evaluate(actor,context,delta);
+    const auto ground=native_ground_grab::before_evaluate(actor,context,delta);
     std::uint64_t occurrence{};int index=-1;float before{};
     if (active.load() && std::isfinite(delta) && delta>0) {
         std::lock_guard lock(mutex);
@@ -266,6 +269,7 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
     }
     const auto result=original_evaluate(actor,output,delta,context);
     native_held_flip::after_evaluate(held,context,delta);
+    native_ground_grab::after_evaluate(ground,context,delta);
     if (index>=0) {
         std::lock_guard lock(mutex);float after{};
         if (session.serial==occurrence && valid() && read(actor+0x1c,after)) {

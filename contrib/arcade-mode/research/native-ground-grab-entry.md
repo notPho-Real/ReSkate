@@ -43,6 +43,20 @@ clock/step, another owner, leaving state100, mode/focus loss or B release all
 withdraw controls. Heartbeat withdrawal also occurs in the client tick.
 
 The shared ground-input reader uses GUID-checked original game-state assets.
+The existing ActorController hooks also observe the four original loop body
+actors, in FS/BS/Double/Coffin order:
+
+- `44c08c5d-685f-5fdf-44c0-8c5d685f5fdf`
+- `8a7797d8-9d9c-83a6-8a77-97d89d9c83a6`
+- `ef77c2be-aa08-41af-ef77-c2beaa0841af`
+- `e2ffe68e-3c21-2199-e2ff-e68e3c212199`
+
+Acknowledgment requires the matching actor to initialize in the same local
+skater's state view, then advance with positive delta through the original
+evaluate call. The request serial, actor object, GUID and context must still
+match afterward. Hand or Coffin flags alone cannot remove the entry deadline.
+These hooks only observe; they do not initialize or advance actors themselves.
+
 Footplants and ground grabs retain separate readiness and leases, and cannot
 acquire concurrently. Footplant settings remain scoped to footplants; ground
 grabs do not alter gameplay options.
@@ -52,9 +66,10 @@ grabs do not alter gameplay options.
 Status: IMPLEMENTED — GAMEPLAY PENDING. The tests exercise production input
 recognition, session composition and the bounded native input owner at
 30/60/120Hz, including ten-second holds and negative controls. Injected state
-observations do not prove native animation or scoring. The runtime end record
-explicitly reports native prerequisites separately from unverified animation,
-scoring and exit acceptance.
+observations do not prove native animation or scoring. Runtime animation records
+contain initialization and positive advancement evidence when observed; end
+records distinguish that acknowledgment from still-unverified scoring and exit
+acceptance. No such RC3 ground-grab gameplay capture is claimed yet.
 
 Hardware acceptance must record original actor initialization and positive
 advancement for each binding, hold, B release, cleanup and native history/score.

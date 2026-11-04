@@ -9,8 +9,8 @@ the matching native detailed-grab tag is observed.
 Ordinary ground now has a separate original-input path: **R3+B** for Double
 Ground Grab, **R3+Left+B** for BS Ground Grab, **R3+Right+B** for FS Ground Grab,
 and **R3+Down+B** for Coffin. Hold B; release B to exit. Ground B without R3
-still cannot brake. These four paths have software tests and native prerequisite
-readback, but their actor advancement, exit and scoring are gameplay pending.
+still cannot brake. These four paths have software tests and exact native actor
+acknowledgment, but their animation, exit and scoring captures are gameplay pending.
 See [native-ground-grab-entry.md](native-ground-grab-entry.md) for the distinct
 ground ownership and acceptance requirements. The airborne selector is unchanged.
 

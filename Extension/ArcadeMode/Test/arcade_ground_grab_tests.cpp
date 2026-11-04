@@ -19,6 +19,7 @@ void native_entry() {
         for(unsigned step=2;step<hz*10;++step) {
             const auto now=100+step*1000/hz;native.sampled_at=now;native.step=step;
             native.coffin=kind==GroundGrab::coffin && step>2;
+            native.actor_advanced=step>2;
             control=input.poll(now,native,true);
             check(control.owned,"native acknowledgment sustains a ten-second held grab");
             check(control.left_trigger==(native.left?255:0) && control.right_trigger==(native.right?255:0),"hold preserves native hand selection");
@@ -38,6 +39,14 @@ void native_entry() {
         check(!input.poll(150,native,failure!=6).buttons,"unqualified or released Coffin cannot produce a hippy-jump chord");
         native=observation(1400,80);
         check(!input.poll(1400,native,true).owned,"missing native admission times out without fallback or fake scoring");
+    }
+    for(auto kind:{GroundGrab::frontside,GroundGrab::coffin}) {
+        GroundGrabInput input;auto native=observation(100,1);input.start(kind,100,native);input.poll(100,native,true);
+        native=observation(200,2);native.can_grab=true;native.left=true;native.right=native.coffin=kind==GroundGrab::coffin;
+        input.poll(200,native,true);
+        check(!input.acknowledged(),"matching native hand or Coffin flags cannot replace initialized advancing actor proof");
+        native=observation(1400,80);
+        check(!input.poll(1400,native,true).owned,"an unacknowledged native actor still expires");
     }
 }
 struct Native {

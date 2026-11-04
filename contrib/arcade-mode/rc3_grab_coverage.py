@@ -166,7 +166,7 @@ def build():
                        assets=[dict(resource_index=resource, name=name, sequence_guid=guid)],
                        native_gameplay_context="Ordinary native ground state100; separate input owner; never the airborne grab lease",
                        original_mechanism=mechanism,
-                       native_animation_acknowledgment="Native prerequisite readback only; actor initialization and positive advancement remain unverified in gameplay",
+                       native_animation_acknowledgment="Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
                        release_landing_evidence="Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
                        remaining_blocker="Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers")
         entries.append(row)
