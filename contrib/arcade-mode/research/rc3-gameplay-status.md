@@ -104,7 +104,7 @@ observation gaps. The composed lifecycle tests cover chained reversions, native
 LS trajectory preservation, contact bounce, delivery gaps and ten-second holds
 at 30/60/120 Hz. These are synthetic native observations, not rendered evidence.
 
-## Repeated flips — unresolved
+## Repeated flips — production input path awaiting runtime acceptance
 
 The source audit resolves HeldFlip Into/Loop/Exit and 16 native base identities,
 including ordinary Kickflip and Heelflip. HeldTrick condition resource 23124 and
@@ -118,8 +118,9 @@ The push-button alternative applies to IDs 33/34, not ordinary Kickflip/Heelflip
 Live ordinary StateFlow entries are 17680/14839. Earlier examples 33022/7770
 require Bool.Debug.False true and cannot justify normal runtime entry. Original
 Kickflip/Heelflip hold sectors are resolved from resources 38264/37949. The native
-EAT owns HeldFlip lifetime; original animation tags own TrickHeldFlipCount. Exact
-rotation units and native exit/catch timing still require runtime correlation.
+EAT owns HeldFlip lifetime; original animation tags own TrickHeldFlipCount. The
+stock-control captures below establish its units; RC3 exit/catch timing still
+requires runtime correlation.
 
 The native-control setup is now repaired. With Arcade temporarily OFF, native Y
 first recovered the fallen skater, then mounted the board. Separate stock single
@@ -142,10 +143,30 @@ withdraw it for native catch. It preserves the existing airborne reset, flick,
 mirror mapping and absolute safety bound. Missing/mismatched hold sectors fail
 closed. Tests cover 30/60/120 Hz input playback; they do not prove native rotations.
 
-No Double Kickflip or Double Heelflip execution is implemented here. No rotation
-counter, PrepareHeldFlip boolean, actor time or scoring ID is forced. Existing
-single-flip execution remains unchanged. FingerflipType.DoubleKickflip is not
-ordinary Double Kickflip and cannot be used as a substitute.
+The production second-X route is now connected for Kickflip and Heelflip. A fresh
+second press within 300 ms of the original physical press retains that flight and
+base trick. The request waits up to the existing 200 ms readiness deadline for
+native PrepareHeldFlip. It submits the validated original held gesture, reusing
+the existing delivered-neutral proof when available, and withdraws RS at one
+additional native rotation. It never calls the single-flip bridge a second time.
+Missing/stale state, another owner, landing, a different base trick, competing
+input or the bounded failure deadline withdraws input. Each flight admits at most
+one such repeat. Single-X mappings and the original Ollie bridge are preserved.
+
+Read-only native observation resolves the original state assets and watches the
+exact Kickflip/Heelflip loop actors through the existing fingerprinted shared
+ActorController hooks. A counter alone cannot acknowledge animation execution:
+initialization and positive native advancement are also required. Native input
+withdrawal, actor acknowledgment and landing/scoring acceptance have separate
+diagnostics. No rotation counter, PrepareHeldFlip boolean, actor time or scoring
+ID is written. FingerflipType.DoubleKickflip is not used.
+
+The composed input tests exercise physical A/X/X, neutral/directional Kickflip,
+Heelflip, admission delay, native count withdrawal and landing at 30/60/120 Hz,
+plus stale/foreign/unknown/overshot negative controls. Their native observations
+are fixtures. The new runtime module still requires Windows compilation and an
+RC3 native capture before this is classified as gameplay accepted. The successful
+stock-control captures establish the native mechanism, not RC3 X/X acceptance.
 
 ## Focused owner acceptance
 
@@ -167,14 +188,15 @@ installation. This task does not install the candidate on Steam Deck.
 4. Verify single X Kickflip and directional Pop Shove-it during ascent, original
    Ollie trajectory, ground RT, grind entry/first HUD/Ollie-out, auto-push, camera,
    shoulder spin, board toggle, ground X/B suppression, controller ownership and
-   Arcade OFF. Repeated-X double rotations remain an unimplemented acceptance item.
+   Arcade OFF. Verify X/X and Right+X/X against the exact native loop actor, two
+   board rotations, original catch, landing and scoring; the RC3 path is pending acceptance.
 
 CI and DLL identity belong to the exact staged source revision and accompanying
 artifact manifest. Green CI alone cannot close any native gameplay item above.
 
 ## Local validation and build gate
 
-On macOS with AppleClang 15, the 15 targeted tests pass with warnings as errors.
+On macOS with AppleClang 15, the 16 targeted tests pass with warnings as errors.
 The production-composed manual lifecycle suite passes all 18 tests, including
 rollback controls, HUD ownership, landing, chained reverts and simulated
 ten-second holds. The controller route test and generated production publication
@@ -193,4 +215,4 @@ Windows runtime compilation, hosted Windows/Linux/macOS and upstream integration
 CI have not run for RC3. No RC3 DLL or DLL checksum is available yet. The owner has approved a separately reviewed RC3 publication procedure, including
 the unchanged baseline pack. Publication and staged DLL delivery remain pending
 the critical gameplay implementation and build gates. No acceptance build is
-offered while genuine Double Kickflip execution remains unimplemented.
+offered before the new repeated-flip runtime and fakie posture are verified.

@@ -103,6 +103,7 @@ NativeGrabRequest normal_grab{};
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 GrindChange grind_change;
 InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
+HeldFlipObservation held_flip{}; // No native held-flip evidence is supplied by manual tests.
 namespace dingosdk::arcade_mode::native_grind {void cancel()noexcept{}}
 namespace dingosdk::logging{
 enum class Level{info};enum class Channel{skater};

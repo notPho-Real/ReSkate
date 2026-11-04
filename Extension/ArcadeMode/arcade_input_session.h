@@ -7,6 +7,7 @@
 #include "arcade_native_flip_entry.h"
 #include "arcade_native_grab_lease.h"
 #include "arcade_rail_pop.h"
+#include "arcade_held_flip.h"
 
 namespace dingosdk::arcade_mode {
 struct InputAdmission {
@@ -36,6 +37,7 @@ struct InputAdmission {
     NativeFlipRequest normal_flip{};
     NativeGrabRequest normal_grab{};
     bool manual_contact_only{}; // Physical admission without matching native history.
+    HeldFlipObservation held_flip{};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -43,6 +45,7 @@ class InputSession {
 public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
+        held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
@@ -199,6 +202,24 @@ public:
         }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
+        if (!air_action_) {held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};}
+        else if ((air_followup_id_==2 || air_followup_id_==3) && (!held_flip_used_ || held_flip_.active())) {
+            if (!held_flip_continues(held_flip_lineage_,native,now,air_followup_id_)) {
+                held_flip_used_=true;
+                if (held_flip_.active()) {held_flip_.cancel();authored_.release(admission.tick);output.held_input_released=true;}
+            } else held_flip_lineage_=native;
+        }
+        if (held_flip_.active()) {
+            const bool same_flight=air_action_ && native.required && native.fresh(now) &&
+                native.airborne && native.air_episode()==air_actor_episode_ &&
+                admission.pose==SkatePose::air && !admission.external_owner && !auxiliary_.busy() &&
+                admission.action_mode==ActionExperiment::classic && physical.lt<=30 && physical.rt<=30 &&
+                !(physical.buttons&0xb030u);
+            if (!held_flip_.hold(now,admission.held_flip,same_flight)) {
+                authored_.release(admission.tick);output.held_input_released=true;
+                output.held_actor_acknowledged=held_flip_.acknowledged();
+            }
+        }
         authored_.finish_neutral_tail();
         if (air_action_ && admission.pose != SkatePose::air) { authored_.cancel(); air_action_ = false; }
         if (admission.external_owner || auxiliary_.busy()) { authored_.cancel(); holding_ = false; }
@@ -321,6 +342,7 @@ public:
         environment.native_grab_transition=admission.normal_grab.submit!=nullptr;
         environment.native_grab_context=admission.normal_grab.context;
         environment.native_grab_continues=admission.normal_grab.continues;
+        environment.native_held_flip=admission.held_flip.available;
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers
@@ -514,6 +536,37 @@ private:
             if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
                 out.unsupported = true; return InputDisposition::unsupported;
             }
+            if (request.form==InputForm::held_repeat) {
+                const auto id=request.air.trick==ArcadeTrick::double_kickflip?2:
+                    request.air.trick==ArcadeTrick::double_heelflip?3:0;
+                if (!id || request.presses!=2 || request.nollie || held_flip_used_ || !air_action_ ||
+                    air_followup_id_!=id || launch_context_!=GestureContext::ground ||
+                    !admission.native_context.required || !admission.native_context.fresh(now_) ||
+                    admission.native_context.air_episode()!=air_actor_episode_ || admission.external_owner ||
+                    admission.action_mode!=ActionExperiment::classic || physical_.lt>30 || physical_.rt>30 ||
+                    (physical_.buttons&0xb030u) || manual_.busy() || auxiliary_.busy()) return InputDisposition::cancelled;
+                if (authored_.busy() || !admission.held_flip.fresh(now_) ||
+                    admission.held_flip.id!=id || !admission.held_flip.prepare) return InputDisposition::waiting;
+                if (!admission.native_context.flip.valid || admission.native_context.flip.id!=id ||
+                    admission.held_flip.holding || admission.held_flip.extra_rotations!=0) return InputDisposition::cancelled;
+                for (const auto& gesture:admission.catalog) {
+                    if (gesture.native_id!=id || gesture.nollie || gesture.context!=GestureContext::ground ||
+                        gesture.held_air_steps.empty()) continue;
+                    if (!held_flip_.start(now_,id,admission.held_flip)) return InputDisposition::cancelled;
+                    // The bridge has normally delivered neutral RS throughout
+                    // the first flip. Reuse the existing measured neutral proof
+                    // to avoid spending its short native hold window resetting
+                    // a stick that was already neutral.
+                    const auto& steps=admission.neutral_ready?gesture.ready_air_steps:gesture.held_air_steps;
+                    if (!authored_.start_endpoint_hold(steps,admission.tick,admission.mirror_x)) {
+                        held_flip_.cancel();return InputDisposition::unsupported;
+                    }
+                    held_flip_used_=true;
+                    out.held_flip_request=id;
+                    return InputDisposition::started;
+                }
+                out.unsupported=true;return InputDisposition::unsupported;
+            }
             // A released, independently observed Ollie may hand its
             // completed RS flick to another native gesture during ascent. The
             // selection ID describes the current trick, not a pad-input lock.
@@ -549,11 +602,12 @@ private:
                     if (!admission.normal_flip.submit(admission.normal_flip.context,id)) return InputDisposition::waiting;
                     out.native_flip_request=id;native_followup_=true;
                     air_action_=true;air_actor_episode_=admission.native_context.air_episode();air_followup_id_=id;
+                    held_flip_lineage_=admission.native_context;
                     return InputDisposition::started;
                 }
                 native_followup_=false;
                 air_action_ = start(id, request.nollie, false, context, true);
-                if (air_action_) { air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id; }
+                if (air_action_) { air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id;held_flip_lineage_=admission.native_context; }
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;
             }
         }
@@ -761,6 +815,9 @@ private:
     bool revert_trigger_owned_{};
     UnifiedInput input_{};
     AuthoredPlayback authored_{};
+    HeldFlipInput held_flip_{};
+    bool held_flip_used_{};
+    InputNativeContext held_flip_lineage_{};
     ManualActuation manual_{};
     ActionDispatch auxiliary_{};
     AutomaticPush push_{};

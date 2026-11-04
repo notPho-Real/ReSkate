@@ -88,6 +88,8 @@ struct NativeGesture {
         GroundTurnCommand ground_turn{};
         std::int32_t native_flip_request{}; // Queued intent, never an animation acknowledgment.
         bool automatic_push{}; // Receipt from AutomaticPush, never inferred from physical X.
+        std::int32_t held_flip_request{}; // Physical repeat accepted by input playback, not native execution.
+        bool held_input_released{},held_actor_acknowledged{};
     };
 };
 }

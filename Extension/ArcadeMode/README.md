@@ -5,6 +5,11 @@ preference is available at **Pause → Mod Options → Player → Arcade Mode** 
 through `arcademode`, `arcademode on`, and `arcademode off`. It defaults OFF and
 persists through the normal local preference store.
 
+RC3 candidate control references: [extended native grabs](../../contrib/arcade-mode/research/rc3-grab-bindings.md)
+and [repeated native flips](../../contrib/arcade-mode/research/rc3-flip-bindings.md).
+The repeated-X runtime and fakie posture changes still require native gameplay
+acceptance; see the [RC3 status](../../contrib/arcade-mode/research/rc3-gameplay-status.md).
+
 `arcadecameracapture <1..3000>` provides a separate finite camera observation;
 zero requests its end. It changes no camera policy and remains observable across
 OFF. See the [camera evidence contract](Test/camera_diagnostics/README.md) for

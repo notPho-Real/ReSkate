@@ -16,7 +16,7 @@ enum class InputDisposition : std::uint8_t { waiting, started, unsupported, canc
 // The caller selects one installed release table only after establishing its
 // exact native actor. Disabled preserves the ordinary jump path.
 enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
-enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release, neutral_press };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release, neutral_press, held_repeat };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
 // generations below are eligibility lineage, not this original observation.
@@ -124,6 +124,7 @@ struct InputEnvironment {
     bool native_grab_transition{}; // Qualified grab adapter, separate from flip ownership.
     void* native_grab_context{};
     bool (*native_grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
+    bool native_held_flip{}; // Original held input and read-only native observation are available.
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -610,8 +611,11 @@ public:
                 pending_.cancel(InputAction::lip_select); pending_.cancel(InputAction::rail_select);
             }
             if (event.disposition == InputDisposition::started && event.request.action == InputAction::flip) {
-                active_flip_ = event.request.form == InputForm::ordinary;
+                active_flip_ = event.request.form == InputForm::ordinary || (environment.native_held_flip &&
+                    (event.request.form == InputForm::neutral_press || event.request.form == InputForm::neutral_release));
                 active_flip_count_ = active_flip_ ? event.request.presses : 0; flip_started_ = now;
+                if (environment.native_held_flip && active_flip_count_==1)
+                    flip_started_=event.request.physical_pressed_at;
                 flip_direction_ = event.request.direction; flip_source_ = event.request.direction_source; flip_nollie_ = event.request.nollie;
                 flip_generations_ = event.request.generations;
                 diagnostic_.flip_table_at = now;
@@ -696,6 +700,10 @@ private:
             if (action == InputAction::flip || action == InputAction::grab)
                 request.air_episode = environment.native_context.air_episode();
             if (action == InputAction::flip) request.waiting_flip = environment.native_context.flip;
+            // The first flip legitimately changes the action generation.
+            // The held adapter additionally proves its own first flip and exact
+            // current base ID; owner and airborne episode remain mandatory here.
+            if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
         if (action == InputAction::rail_request || action == InputAction::lip_request) {
             request.control = 0x8000;
@@ -727,6 +735,10 @@ private:
             }
             request.air = air_selection(action == InputAction::flip ? TrickFamily::flip : TrickFamily::grab,
                 request.direction,presses);
+            if (action==InputAction::flip && form==InputForm::held_repeat && !request.direction) {
+                request.air=air_selection(TrickFamily::flip,4,2);
+                request.direction_source=InputSource::buttons;
+            }
             if (action == InputAction::flip && (form == InputForm::neutral_release || form == InputForm::neutral_press)) {
                 // Basic selection comes from the physical button release, not
                 // an invented Left event or a previously cached direction.
@@ -992,9 +1004,18 @@ private:
         const InputToken face{InputSource::buttons,14,InputEdge::press};
         InputMatch match{}; unsigned presses = 1;
         InputForm form{}; std::int16_t defined_direction{};
+        const bool held_child=environment.native_held_flip && active_flip_ && active_flip_count_==1 &&
+            !flip_nollie_ && (flip_direction_==0 || flip_direction_==4 || flip_direction_==6) &&
+            now>=flip_started_ && now-flip_started_<=InputTiming::extra_press_ms;
+        if (held_child) {
+            const std::array tokens{face};
+            match=events_.history().match({tokens,InputTiming::extra_press_ms,ordinary_reject},now);
+            if (match && match.first_at>flip_started_) {presses=2;form=InputForm::held_repeat;}
+            else match={};
+        }
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
-        if (active_flip_ && child && now - flip_started_ <= 233) {
+        if (!match && active_flip_ && child && now - flip_started_ <= 233) {
             const auto definition = air_selection(TrickFamily::flip,flip_direction_,active_flip_count_ + 1);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);

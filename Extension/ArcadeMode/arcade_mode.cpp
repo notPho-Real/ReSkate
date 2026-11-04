@@ -22,6 +22,7 @@
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
+#include "arcade_native_held_flip.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grind_transition.h"
 #include "arcade_grind_change.h"
@@ -1969,6 +1970,7 @@ void on_client_tick() noexcept {
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
         native_flip::tick(gameplay && focus_available);
         native_grab::tick(gameplay && focus_available);
+        native_held_flip::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_grind::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
@@ -2329,6 +2331,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline,control);
             });
         }};
+        const auto held_flip=native_held_flip::observe(native_flip_owner,now);
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2337,7 +2340,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter);
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
+            held_flip);
+        if (result.held_flip_request || result.held_input_released)
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE HELD FLIP INPUT: ms={} requested_id={} input_released={} native_id={} extra_rotations={} loop_acknowledged={} landing_scoring_acceptance=unverified.",
+                now,result.held_flip_request,result.held_input_released,held_flip.id,held_flip.extra_rotations,result.held_actor_acknowledged);
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){

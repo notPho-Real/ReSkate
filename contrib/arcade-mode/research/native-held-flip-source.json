@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "Native authored mechanism discovered; Arcade execution and exact counts unverified",
+  "status": "Native stock controls verified for held action and additional-count units; RC3 repeated-X input connected, runtime actor/rotation acceptance pending",
   "source_archive_capture_sha256": "a9403f1a1a972eb07d1100b4b82bb315554bf029bc86d081d95664506d46479b",
   "prior_source": "TRICK_FINDINGS.md: held flips and native composite held-flip amount already identified",
   "supported_base_native_ids": [
@@ -1869,7 +1869,7 @@
       "scorable",
       "held_category"
     ],
-    "exact_held_flip_units_and_local_owner": "unverified"
+    "exact_held_flip_units_and_local_owner": "Additional-count units corroborated by native state and stock Double/Triple Kickflip HUD in native-held-flip-rc2-controls.json. Independent local scoring-owner capture remains unverified."
   },
   "prohibits": [
     "No manually incremented native counter",
