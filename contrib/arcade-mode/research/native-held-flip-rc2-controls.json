@@ -1,0 +1,669 @@
+{
+  "schema_version": 1,
+  "kind": "unchanged RC2 native-control comparison; not RC3 Arcade acceptance",
+  "native_counter_units": "Additional rotations: ordinary Kickflip=0; native Double Kickflip=1; native Triple Kickflip=2.",
+  "displayed_native_results": [
+    {
+      "name": "Kickflip",
+      "held_counter": 0,
+      "displayed_score": 15
+    },
+    {
+      "name": "Double Kickflip",
+      "held_counter": 1,
+      "displayed_score": 33
+    },
+    {
+      "name": "Triple Kickflip",
+      "held_counter": 2,
+      "displayed_score": 33
+    }
+  ],
+  "limitations": [
+    "Native HUD score is corroboration, not an independent scoring-owner capture.",
+    "Exact original actor initialization/advancement and board rotation trace remain required.",
+    "Original native controls were used with Arcade OFF; this does not demonstrate physical X repetition in RC3.",
+    "No gameplay acceptance at 60/120 Hz is claimed."
+  ],
+  "captures": [
+    {
+      "private_capture_sha256": "569e84e74b9e590f0ffaf3a2e3fd920b7beda77436113571186a1115a63a5d24",
+      "control": "Heelflip single/held",
+      "native_changes": [
+        {
+          "seconds": 0.0,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 0.987,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.046,
+          "state": 103,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.147,
+          "state": 200,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.181,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.32,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.448,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 1.953,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.321,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.389,
+          "state": 103,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.484,
+          "state": 200,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.518,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.647,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": null,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": null
+          }
+        },
+        {
+          "seconds": 4.681,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 4.888,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 5.121,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 5.181,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.249,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.284,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.318,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 3,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.354,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        }
+      ],
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "after_native_state": 100,
+      "arcade_restored": true,
+      "dll_sha256": "420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676",
+      "screenshots": []
+    },
+    {
+      "private_capture_sha256": "e6a117053b388013860efa56b242d65dd1cbf867f22c477eefefce0ed85b5a43",
+      "control": "Kickflip single/short hold/long hold",
+      "native_changes": [
+        {
+          "seconds": 0.0,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 0.966,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.025,
+          "state": 103,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.127,
+          "state": 200,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.161,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.29,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.358,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 1.932,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.267,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.329,
+          "state": 103,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.433,
+          "state": 200,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.466,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.595,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.629,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 4.826,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 4.894,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 4.997,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.031,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.065,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 5.264,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.594,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.663,
+          "state": 103,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.758,
+          "state": 200,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.792,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.93,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 7.964,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 8.168,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 1.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 8.4,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": true,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": true
+          }
+        },
+        {
+          "seconds": 8.459,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 8.566,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 8.599,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": true,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 8.625,
+          "state": 201,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 2,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 2.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        },
+        {
+          "seconds": 8.667,
+          "state": 100,
+          "native": {
+            "EnumGS.Anim.CurrentFlipTrick": 0,
+            "Bool.Anim.PrepareHeldFlip": false,
+            "Bool.State.Is.HeldFlip": false,
+            "Float.Anim.TrickHeldFlipCount": 0.0,
+            "Bool.Intent.HeldFlip": false
+          }
+        }
+      ],
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "after_native_state": 100,
+      "arcade_restored": true,
+      "dll_sha256": "420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676",
+      "screenshots": [
+        {
+          "name": "native-single",
+          "sha256": "5cec814181673ee4a54e902adb806e0002572008fcf85f931fd611a532330f26"
+        },
+        {
+          "name": "native-held-short",
+          "sha256": "1265f34fc4cbca52ffce534c5b5d6cd6f6ece1a8ca823cb58c3020e6677568a7"
+        },
+        {
+          "name": "native-held-long",
+          "sha256": "071947facbaaa60fb63ce93b474804c3f369ddf511ba3dfae7f6c42cd68b99aa"
+        }
+      ]
+    }
+  ]
+}

@@ -121,12 +121,26 @@ Kickflip/Heelflip hold sectors are resolved from resources 38264/37949. The nati
 EAT owns HeldFlip lifetime; original animation tags own TrickHeldFlipCount. Exact
 rotation units and native exit/catch timing still require runtime correlation.
 
-A bounded stock-control comparison on unchanged RC2 resolved the native state
-assets but did not reach a flip trial: the current session remained off-board in
-state 504 after board-toggle requests, including a neutral-baseline control. No
-counter change or actor advancement was observed or claimed. Input was neutralized,
-the virtual device closed, Arcade remained ON, and the DLL checksum was unchanged.
-The owner was asked to restore ordinary on-board gameplay for this prerequisite.
+The native-control setup is now repaired. With Arcade temporarily OFF, native Y
+first recovered the fallen skater, then mounted the board. Separate stock single
+and held comparisons reached native airborne states 200/201 and landed in 100.
+Both native physics delta and cached step were 1/30 second. The native held action
+and held state became true only in the held trials; the original counter advanced.
+`native-held-flip-rc2-controls.json` records the changes and private capture hashes.
+
+The counter measures **additional** rotations: ordinary Kickflip remained zero,
+the short hold reached one and the native HUD displayed Double Kickflip, and the
+long hold reached two and displayed Triple Kickflip. Native HUD scores were 15,
+33 and 33 respectively, within one ongoing line; these are observations, not a
+general score formula or an independent scoring-owner capture. Exact actor and
+board rotation trace acceptance remains outstanding. All trials neutralized and
+closed the virtual controller, restored Arcade ON and preserved the RC2 DLL hash.
+
+Prepared gestures now retain a validated native Kickflip/Heelflip held endpoint.
+Playback can hold that endpoint through the ordinary neutral deadline, then
+withdraw it for native catch. It preserves the existing airborne reset, flick,
+mirror mapping and absolute safety bound. Missing/mismatched hold sectors fail
+closed. Tests cover 30/60/120 Hz input playback; they do not prove native rotations.
 
 No Double Kickflip or Double Heelflip execution is implemented here. No rotation
 counter, PrepareHeldFlip boolean, actor time or scoring ID is forced. Existing
@@ -160,7 +174,7 @@ artifact manifest. Green CI alone cannot close any native gameplay item above.
 
 ## Local validation and build gate
 
-On macOS with AppleClang 15, the 14 targeted tests pass with warnings as errors.
+On macOS with AppleClang 15, the 15 targeted tests pass with warnings as errors.
 The production-composed manual lifecycle suite passes all 18 tests, including
 rollback controls, HUD ownership, landing, chained reverts and simulated
 ten-second holds. The controller route test and generated production publication

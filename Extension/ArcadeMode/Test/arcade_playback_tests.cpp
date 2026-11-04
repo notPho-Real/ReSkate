@@ -102,6 +102,42 @@ int run_arcade_playback_tests() {
     check(std::hypot(full_range[1].x, full_range[1].y) > 32765 &&
           std::hypot(normal_range[1].x, normal_range[1].y) < 24576,
           "fast native flick uses the authored allowed maximum rather than a weaker midpoint");
+    {
+        auto held = native;
+        held.hold_start = 90; held.hold_end = 180; held.hold_minimum = .85f;
+        const auto path = compile_held_flick(held);
+        check(!path.empty(), "original Kickflip endpoint satisfies its authored hold sector");
+        for (unsigned rate : {30u, 60u, 120u}) {
+            AuthoredPlayback playback;
+            AuthoredTickClock clock;
+            check(playback.start_endpoint_hold(path, 0), "held native input begins with airborne reset and flick");
+            AuthoredPlayback::Output output{};
+            for (unsigned frame = 0; frame <= rate; ++frame) {
+                const auto tick = clock.advance(rate);
+                output = playback.sample(tick, frame * 1000 / rate);
+                check(!playback.handoff_delivered_pop(tick, frame * 1000 / rate), "held air flick never becomes another pop");
+            }
+            check(output.owns_stick && output.x == path[path.size()-3].x && output.y == path[path.size()-3].y,
+                "native hold endpoint survives ordinary flick neutral deadline at each cadence");
+            check(!playback.finish_neutral_tail(), "held endpoint cannot masquerade as delivered neutral");
+            playback.release(clock.advance(rate));
+            check(!playback.sample(clock.advance(rate), 1100).owns_stick && !playback.busy(),
+                "release withdraws held input immediately for native catch ownership");
+        }
+        AuthoredPlayback bounded;
+        check(bounded.start_endpoint_hold(path, 0, true), "held endpoint supports existing native mirror mapping");
+        for (unsigned tick = 0; tick <= 60; ++tick) bounded.sample(tick, tick * 17);
+        check(bounded.sample(61, 1037).x == -path[path.size()-3].x, "mirroring changes input only, never authored shared data");
+        check(!bounded.sample(180, 3060).owns_stick, "held endpoint retains the existing absolute safety bound");
+        held.hold_start = 180; held.hold_end = 270;
+        check(compile_held_flick(held).empty(), "mismatched native hold sector is refused");
+        held.native_id = 3; held.arcs.back().start = 210; held.arcs.back().end = 270;
+        check(!compile_held_flick(held).empty(), "original Heelflip endpoint satisfies its own hold sector");
+        held.hold_minimum = 0;
+        check(compile_held_flick(held).empty(), "missing hold metadata never creates held input");
+        held.hold_minimum = .85f; held.nollie = true;
+        check(compile_held_flick(held).empty(), "unverified nollie path is not substituted");
+    }
     check(delivered.schedule() == AuthoredPlaybackSchedule::delivery_relative,
         "existing delivery schedule remains the default");
     absolute.set_schedule(AuthoredPlaybackSchedule::absolute_ticks);
