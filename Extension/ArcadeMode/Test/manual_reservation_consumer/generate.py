@@ -24,9 +24,6 @@ def generate(root,variant='current'):
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     generated=module.generated(TREE)
     source=generated['current.cpp']
-    if variant=='rollback-revert-delivery':
-        source=module.replace_once(source,'(!action.owned || linked_manual_delivery)',
-                                   '(!action.owned || (false && linked_manual_delivery))')
     mode=(TREE/'Extension/ArcadeMode/arcade_mode.cpp').read_text()
     reverse_mask=module.between(mode,'        if (result.suppress_reverse) left_y = 0;',
                                '        // The inspected guide stance')
@@ -44,6 +41,11 @@ def generate(root,variant='current'):
                                  '        const auto release_deadline = manual_release_until.load')
     final_controls=module.between(mode,'        // Controller route final_controls publication begin.',
                                   '        // Controller route final_controls publication end.')
+    if variant=='rollback-revert-delivery':
+        # RC3 preserves native pressure rather than exchanging manual identity.
+        # Removing acquisition observation alone no longer corrupts that pose.
+        # Exercise the actual competing final writer losing RS during a revert.
+        final_controls+='\nif(result.manual.owns && result.manual.revert.ack_at && action.pad.owns_left_stick)result.right_y=0;\n'
     action_delivery=module.between(mode,'        result.buttons &= ~action.consume_buttons;',
                                    '        // Neutral is the existing native manual release recipe.')
     native_current=module.function(mode,'bool native_manual_contact_current(')
@@ -467,7 +469,7 @@ def generate(root,variant='current'):
      }
      // First Down reserves returned LSY only. The current physical carrier
      // remains Down for scalar braking and cannot acquire automatic push.
-     for(unsigned hz:{30u,60u})for(unsigned age:{0u,250u,275u,276u}){
+     for(unsigned hz:{30u,60u})for(unsigned age:{0u,250u,450u,451u}){
       reset_case();source_step=0;automatic_kick=true;competing_left_owner=false;
       physical_step(hz,0xc000);remap();
       physical_step(hz,0xc000);const auto first_at=clock_ms;remap(0,-20000);
@@ -479,7 +481,7 @@ def generate(root,variant='current'):
        delta=current_scalar(scalar);
       }
       const auto controls=writer_intent.ground_controls;
-      expect(last_pad.y==(age<=275?0:-20000),"actual first-Down return mask ends only after275ms");
+      expect(last_pad.y==(age<=450?0:-20000),"actual first-Down return mask ends only after450ms");
       expect(controls.known&&controls.down&&controls.trying_to_brake(5.f,1.f)&&!controls.can_kick(5.f,false),
              "returned-axis reservation preserves physical Down braking and push veto");
       expect(!writer_manual_hold&&!controls.manual_vertical_reserved&&!last_pad.drive&&!(last_pad.buttons&0x4000u),
@@ -572,9 +574,9 @@ def main():
         if not args.binary:parser.error('--verify-control requires --binary')
         expected={'rollback-no-reservation':'production reservation grants no linear write during unresolved Manual hold',
                   'rollback-admitted-only':'new acquisition RS ownership must withdraw ordinary Down brake before balance admission',
-                  'rollback-first-down-mask':'actual first-Down return mask ends only after275ms',
+                  'rollback-first-down-mask':'actual first-Down return mask ends only after450ms',
                   'rollback-native-axis':'owned manual correction must not also send native locomotion LSY',
-                  'rollback-revert-delivery':'delivered successor owns opposite balance and HUD after consecutive original contact while native LS may still run'}[args.verify_control]
+                  'rollback-revert-delivery':'final native packet retains the measured successor pressure trajectory during LS revert playback'}[args.verify_control]
         result=subprocess.run([str(args.binary.resolve())],capture_output=True,text=True)
         if result.returncode!=1 or result.stderr.strip()!=expected:
             raise ValueError('rollback did not fail at its intended assertion: '+result.stderr)

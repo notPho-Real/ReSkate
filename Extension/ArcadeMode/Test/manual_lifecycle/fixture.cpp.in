@@ -62,7 +62,7 @@ std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_r
 @@PACKET_RETIRE@@
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
-struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
+struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}bool client_dropped()const{return false;}}input_telemetry;
 NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
 struct Correlation{bool schema4_enabled{};bool observational()const{return false;}bool schema4()const{return schema4_enabled;}std::uint64_t capture_id()const{return 7;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}template<class Sink>void event(CaptureCorrelationEvidence,const NativeInputFrame&,std::uint64_t,Sink){}}input_capture_correlation;
 struct CaptureManualJoinFixture{std::uint64_t request{},owner_generation{},publication{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{};unsigned route{},exit_reason{};NativeInputOwner owner{};}capture_manual_join;
