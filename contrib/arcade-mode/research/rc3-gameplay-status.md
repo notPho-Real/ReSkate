@@ -4,13 +4,38 @@ RC2 rollback source is `2ffb006c73671466bfcdc15395ba96939de44f7d`.
 Its preserved DLL SHA-256 is
 `420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676`.
 RC3 branches from that revision without updating upstream. RC2 remains unchanged.
-The owner subsequently authorized Deck installation. An earlier RC3 candidate,
-source `7126426c5922a8589b094d9a4cdd479f9469739b`, was installed with DLL SHA-256
-`25d0c9bd8793fa17bbe9532000a86ebb5a5271470fb154dc7aa5a22d44cc35f4`;
-the separate RC2 rollback remains preserved. The footer, ground-grab, footplant
-and fingerflip additions described below have not yet been installed.
+The owner subsequently authorized Deck installation. RC3-02 source
+`0747f57991a3d2dea2101c595e000256d4ebe087` was installed with DLL SHA-256
+`89f9f391f8991008d048cbdeabf5d50f134fde549ede447528c050be289e61a3`.
+The running process's mapped file identity and hash were independently verified
+after installation. The separate RC2 rollback remains preserved.
 This candidate does **not** satisfy the full RC3 mission and
 must not be promoted as the accepted baseline.
+
+## Owner gameplay rejection, 2026-11-04
+
+The owner reports that repeated X does not produce Double Kickflip, added grabs
+do not work, grounded opposite-stick gestures fail, and RT ends an established
+manual. This is feedback on the verified current DLL, not a stale installation.
+The mechanism and coverage descriptions below are not acceptance evidence.
+
+The captured manual revert drops the existing actuator about150ms into native
+state101, before returning to100. Two production defects were reproduced:
+
+- The ordinary contact-loss timeout also ran during the separately admitted
+  native revert lease. It now retains original partial RS pressure for that
+  bounded transition, without renewing contact evidence or inventing a pose.
+- Client cleanup used the persistent ended-episode state to cancel input every
+  tick. New grounded first strokes were erased before the opposite stroke.
+  Cleanup now consumes the terminal observation once. New physical gestures
+  can open acquisition; new native wheel contact still admits the next episode.
+
+Both new regressions fail before their respective fixes. The second executes
+the extracted production client update, native observer and input facade at
+30/60/120Hz. These source corrections have not yet been installed or accepted
+in gameplay. Native fakie posture, double rotations and added-grab execution
+remain unresolved acceptance requirements; no additional success is inferred
+from the existing software tests.
 
 ## Manual recognition
 

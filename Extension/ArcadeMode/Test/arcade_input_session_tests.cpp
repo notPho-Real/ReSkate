@@ -1012,6 +1012,38 @@ void native_revert_stances() {
   poll(2400,101,0);check(!poll(2417,101,255).action.owned,"transitional slide does not admit a new revert");
  }
 }
+void established_manual_revert_retains_pressure() {
+ for(bool nose:{false,true})for(unsigned cadence:{8u,17u,33u}) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.crouch_mode=1;
+  auto poll=[&](std::uint64_t now,unsigned state,short y=0,unsigned rt=0) {
+   const bool established=now>=1000 && state==100 && now<1200;
+   raw.state=state;raw.words[1]=established?(nose?0x8000u:0x4000u):0xc000u;
+   const auto f=producer.observe(now,owner,raw,{true,-1},false,0,{true,now>=1800});
+   h.admission.native_context=InputNativeContext::from_frame(f);
+   h.admission.balance_generations=h.admission.native_context.generations;
+   h.admission.manual_balance_admitted=established;
+   h.admission.pose=established?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
+   h.admission.manual_safe=h.admission.action_fresh=state==100;
+   h.session.observe_manual_transition(h.admission.native_context);
+   return h.poll(now,{0,0,y,0,static_cast<std::uint8_t>(rt)});
+  };
+  poll(900,100);poll(920,100,static_cast<short>(nose?-25000:25000));
+  check(poll(940,100,static_cast<short>(nose?25000:-25000)).manual.owns,"physical pair begins the manual before revert");
+  check(poll(1000,100).manual.confirmed,"original contact confirms the owned manual");
+  check(poll(1100,100,0,255).action.owned,"verified manual starts RT");
+  for(unsigned now=1200;now<1800;now+=cadence) {
+   const auto out=poll(now,101);
+   check(out.manual.owns && out.manual.request==(nose?1:-1),
+    "native revert retains the manual actuator beyond the ordinary150ms contact timeout");
+   check(out.right_y==(nose?20000:-20000),"native revert preserves original partial pressure");
+  }
+  const auto returned=poll(1800,100);
+  check(returned.manual.owns && !returned.manual.confirmed,"return renews delivery while awaiting genuine successor contact");
+  // Without successor contact, the transition lease must still expire.
+  check(!poll(3001,100).manual.owns,"missing successor cannot retain manual pressure indefinitely");
+ }
+}
 void native_manual_revert_links() {
  for(bool nose:{false,true})for(bool initial_fakie:{false,true})for(unsigned fault=0;fault<9;++fault) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
@@ -1092,6 +1124,7 @@ void revert_crouch_ownership() {
  }
 }
 int main() {
+    established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();

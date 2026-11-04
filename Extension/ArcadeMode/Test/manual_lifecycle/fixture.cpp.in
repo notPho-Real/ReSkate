@@ -1364,6 +1364,26 @@ void episode_buffered_endpoint(){
   check(!manual_release.pending(),"original observed physical completion between clients must retire old pending release before recovery contact");
  }
 }
+void ground_manual_after_completed_exit(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);
+  const auto previous=manual_episode.serial();
+  check(remap(12u).manual.release_requested,"explicit release ends the first manual");
+  for(unsigned i=0;i<hz/4;++i){tick(dt,100,0xc000);remap();}
+  check(manual_episode.ended(),"native two-truck completion ends the old episode");
+  const short first=nose?-25000:25000,second=nose?25000:-25000;
+  tick(dt,100,0xc000);remap(0,first);
+  // Several real client publications separate ordinary human stick strokes.
+  // An ended episode must not repeatedly clear these new physical edges.
+  for(unsigned elapsed=dt;elapsed<150;elapsed+=dt){tick(dt,100,0xc000);remap(0,first);}
+  tick(dt,100,0xc000);
+  check(remap(0,second).manual.owns,"a fresh grounded pair survives old episode cleanup without an Ollie");
+  tick(dt,100,wanted);const auto acquired=remap();
+  check(acquired.manual.owns&&manual_episode.serial()>previous&&manual_balance_admitted.load(),
+    "only new original wheel contact admits the replacement manual episode");
+ }
+}
 int main(){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
@@ -1389,6 +1409,7 @@ int main(){
  manual_observation_continuity();
  early_air_manual_landing();analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
  episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
+ ground_manual_after_completed_exit();
  camera_lifecycle();camera_routing_lifecycle();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
  std::cout<<checks<<" production-composed manual episode checks passed\n";
 }

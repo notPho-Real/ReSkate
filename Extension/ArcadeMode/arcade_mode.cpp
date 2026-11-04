@@ -707,9 +707,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             !(native.words[0] & 0x40u) &&
             arcade_input.initial_ground_acquisition(NativeControllerRoute::session,now);
         if (owner_changed || bail || (!valid && !episode_live) ||
-            manual_closed || episode.ended() ||
+            manual_closed || episode_termination ||
             (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual && !initial_acquisition && !episode_live))
             arcade_input.cancel_manuals();
+        // The terminal observation revokes the old request once. An ended
+        // episode remains available for diagnostics; cancelling on every later
+        // client tick would erase each new grounded gesture before its reversal.
         if (manual_closed) manual_hop.reset();
         // An admitted endpoint already owns its safe-putdown or bail path.
         // Unadmitted cleanup must never substitute a putdown for a failed bail.

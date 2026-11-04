@@ -92,7 +92,7 @@ public:
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
                   bool conflicting, std::uint16_t buttons, bool balance_admitted = false,
                   bool trigger_only_conflict = false, bool contact_only = false, bool held_air=false,
-                  bool flight_continues=false) noexcept {
+                  bool flight_continues=false, bool native_revert_pending=false) noexcept {
         // Typed, independently admitted balance owns these configured vertical
         // held controls. Opposed command recognition remains a separate guard;
         // it must not drop the established native RS balance hold.
@@ -168,8 +168,12 @@ public:
             // Acquisition ends once matching contact and independent balance are admitted.
             // A one-poll balance-publication gap must use the continuation
             // lease below, not re-enter an already expired acquisition timer.
+            // A verified manual's native RT transition owns a separate bounded
+            // lease. Its temporary wheel-contact loss must not expire this RS
+            // actuator after150ms. Do not renew contact or admit a new balance;
+            // the session still requires original successor observations.
             if (((!air_prepared_ || landed_) && (!confirmed_ || !balance_established_) && now - requested_at_ >= acquisition_ms) ||
-                (confirmed_ && !initial_ground_acquisition(now) &&
+                (confirmed_ && !native_revert_pending && !initial_ground_acquisition(now) &&
                  now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }

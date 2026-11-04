@@ -325,7 +325,7 @@ public:
         const bool manual_was_active = manual_.busy();
         auto manual = manual_.sample(now, true, manual_safe(), actuator_pose,
             authored_.busy() || (auxiliary_.busy() && !manual_revert_owner()) || admission.external_owner ||
-            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues());
+            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues(),manual_revert_owner());
         const bool reset_manual = manual_was_active && !manual_.busy() && manual_.hard_reset();
         const bool manual_contact = admission.pose == SkatePose::manual || admission.pose == SkatePose::nose_manual;
         const bool awaiting_admission = manual_contact && !admission.manual_balance_admitted && !manual_.busy() &&
@@ -425,7 +425,7 @@ public:
         }
         manual = manual_.sample(now, true, manual_safe(), actuator_pose,
             authored_.busy() || (auxiliary_.busy() && !manual_revert_owner()) || admission.external_owner ||
-            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues());
+            (triggers && !manual_revert_owner()), manual_buttons, admission.manual_balance_admitted,manual_trigger_only,admission.manual_contact_only,held_air_manual(),manual_flight_continues(),manual_revert_owner());
         if (manual.owns_stick) {
             output.right_x = 0;
             output.right_y = manual.y;
