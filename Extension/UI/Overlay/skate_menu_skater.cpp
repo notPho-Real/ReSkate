@@ -188,6 +188,8 @@ void cheats_tab(SkateMenu& menu, const Model& model, const CallbacksV3& callback
     note("In the air, center the left stick, hold R3 and press B for the selected grab. "
          "Hold B to hold; release B to exit. This choice lasts until restart. "
          "One-footers establish their required grab before releasing a foot. "
+         "During an established airborne grab, hold B and press X: neutral/Left for a fingerflip, Right for a finger heelflip, Down for a BS varial, Up for an FS varial. "
+         "The current native grab determines the transition and its catch. One-footers and Rocket Air do not accept this input. "
          "On the ground: Up then A requests No Comply; Up, Up then A requests Boneless. "
          "The original push or grab must be available. "
          "Ground grabs: R3+B holds Double Grab; add Left for BS, Right for FS, Down for Coffin. Release B to exit. "

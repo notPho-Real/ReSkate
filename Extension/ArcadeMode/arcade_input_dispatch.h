@@ -16,7 +16,7 @@ enum class InputDisposition : std::uint8_t { waiting, started, unsupported, canc
 // The caller selects one installed release table only after establishing its
 // exact native actor. Disabled preserves the ordinary jump path.
 enum class InputJumpBinding : std::uint8_t { disabled, single_release, repeated_release };
-enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release, neutral_press, held_repeat };
+enum class InputForm : std::uint8_t { ordinary, repeated_direction, contextual, neutral_release, neutral_press, held_repeat, grab_transition };
 enum class InputFootprintKind : std::uint8_t { unknown, events, input_free };
 // Recognition identity travels unchanged with the request. Semantic parent
 // generations below are eligibility lineage, not this original observation.
@@ -128,6 +128,7 @@ struct InputEnvironment {
     ArcadeTrick selected_grab{ArcadeTrick::double_grab};
     bool native_footplants{};
     bool native_ground_grabs{};
+    bool native_fingerflips{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -580,6 +581,20 @@ public:
                 }
             }
             if (event.token.edge != InputEdge::press) continue;
+            if(code==14 && environment.context==InputContext::air && environment.native_fingerflips &&
+                (physical.buttons&0x2000u)) {
+                // The original physical X edge belongs to the held grab, even
+                // if its native entry is not ready. Never fall back to an Ollie
+                // bridge or an ordinary flip after this contextual request.
+                const auto direction=events_.held_direction();
+                const auto variant=direction==6?3u:direction==2?4u:direction==8?7u:
+                    direction==0 || direction==4?2u:0u;
+                const auto match=consume(event);
+                pending_.cancel(InputAction::flip);
+                if(variant)enqueue(InputAction::flip,now,1,environment,1,static_cast<std::uint8_t>(variant),
+                    0,0,{},&match,InputForm::grab_transition);
+                continue;
+            }
             if(code==13 && environment.native_ground_grabs && environment.context==InputContext::ground &&
                 (physical.buttons&0x2080u)==0x2080u) {
                 const auto direction=events_.held_direction();
@@ -609,7 +624,8 @@ public:
         // ordinary match; observed context transitions still cancel it.
         if (environment.context == InputContext::air) {
             if (environment.auxiliary_enabled) recognize_contextual(now,environment,InputAirTableKind::grab_extra);
-            if (!recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment, flip_release);
+            if (!(environment.native_fingerflips && (physical.buttons&0x2000u)) &&
+                !recognize_contextual(now,environment,InputAirTableKind::pressure)) recognize_flip(now, environment, flip_release);
             if (environment.auxiliary_enabled && (grab_pressed || (environment.named_grabs && !environment.deferred_grabs)))
                 recognize_grab(now, environment);
         }
@@ -745,7 +761,7 @@ private:
             request.direction = defined_direction; request.direction_source = InputSource::direction;
             request.direction_inherited = false;
         }
-        if (action == InputAction::flip || action == InputAction::grab) {
+        if ((action == InputAction::flip || action == InputAction::grab) && form!=InputForm::grab_transition) {
             if(action==InputAction::grab && modifier==1) {
                 request.direction=defined_direction;request.direction_source=InputSource::direction;
                 request.direction_inherited=false;

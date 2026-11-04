@@ -2305,8 +2305,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
             return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
         }};
-        struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode;};
-        GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode};
+        struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode,tick;};
+        GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode,tick};
         const bool grab_permitted=game_input && action_safe && action_experiment==ActionExperiment::classic &&
             !offboard && observed==SkatePose::air && left_trigger<=30 && right_trigger<=30 &&
             !(physical_buttons & (classic_a | 0x8000u | 0x0030u));
@@ -2327,9 +2327,14 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 return native_grab::hand_inputs(grab.owner,grab.episode);
             },[](void* context) noexcept {
                 const auto& grab=*static_cast<GrabRequestContext*>(context);
-                return native_grab::controls(grab.owner,grab.episode);
+                return native_grab::controls(grab.owner,grab.episode,grab.tick);
             }};
         normal_grab.selected=selected_grab();
+        if(normal_grab.submit)normal_grab.fingerflip=[](void* context,std::uint8_t id,
+            std::span<const AuthoredStickStep> steps,std::uint64_t tick,bool mirror) noexcept {
+            const auto& grab=*static_cast<GrabRequestContext*>(context);
+            return native_grab::fingerflip(grab.owner,grab.episode,id,steps,tick,mirror);
+        };
         const auto grind_frame=arcade_input.native_context(now);
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;

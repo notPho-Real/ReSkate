@@ -10,6 +10,7 @@ struct Control {
     unsigned hands{};
     std::int16_t x{}, y{};
     std::uint16_t feet{}; // Original face-button foot input, only after native grab entry.
+    bool transition{}; // Original grab-to-flip input owns neutral RS during catch too.
     bool selector() const noexcept {return x!=0 || y!=0;}
 };
 struct Pilot {

@@ -1,0 +1,83 @@
+# Native grab fingerflips and varials
+
+RC3 supplies the original right-stick gesture while maintaining an established
+native grab. It never calls the ordinary Ollie-to-flip bridge, writes a trick
+identity or rotation count, or creates an animation. This implementation is
+**GAMEPLAY PENDING**, including native catch, landing and scoring acceptance.
+
+## Source and ownership
+
+- `AirStates_Fingerflips_CG_B32A9E8` (EBX 23264, expression 7633) requires
+  `egf_enablefingerflips`, a positive original `EATVariable_Onboard_LateFlipBuffer`,
+  appropriate hand intent, no DangerZone, InAirState and sufficient native
+  TimeToLand. Double-hand admission excludes Rocket Air. Airborne Coffin has a
+  separate entry path; its four fingerflip identities remain blocked.
+- `Includes_UpdateBufferedLateFlipLogic` (AG 388, update 11394 / expression 11776)
+  consumes original `Input_TrickGesture` (39367). The original gesture producer
+  and EAT own the buffer, its trick enum and speed. Arcade never writes these.
+- Fingerflips AG 2186 sets `Enum.GS.Intent.FliptrickTypeForFingerflip` in original
+  OnBegin 20033 / 5360. Update 15727 / 13347 consumes the buffer once native
+  `Bool.State.Is.FingerFlip` is established.
+- `CDB_OnBoard_Grab_FingerFlip_Into` (6479) has 26 non-Coffin entry rows. Source
+  grab and original gesture determine FingerFlipType, GrabSwitch and destination.
+  [Machine-readable joins](native-fingerflip-transitions.json) record every row,
+  original sequence and original body actor. FS Varial uses sequence 33917;
+  filtering filenames for `fingerflip` alone misses it.
+
+The adapter accepts a fresh physical X press only from an acknowledged native
+grab with matching hand intent, CanGrab and family. It rejects footers, Rocket
+Air, nollie, ground, another stick owner and conflicting controls. It delivers
+the existing source-authored regular Kickflip, Heelflip, BS Pop Shuvit or FS Pop
+Shuvit gesture. A temporary settings owner waits for the original getter to
+observe EnableFingerflips first. Saved preferences and the settings UI are unchanged.
+
+During entry the old grab's tweak writes are restored and suspended. The native
+fingerflip can leave IsGrabbing without ending its input owner. Acknowledgment
+requires the exact initialized body actor, positive animation advancement and
+matching native FingerFlipType. The adapter follows the native destination
+family, supplies its hand input and holds RS neutral during the catch. Return
+requires FingerFlip to end, the expected destination, IsGrabbing and CanGrab
+before resuming the ordinary grab lease. Neither input nor an enum alone is success.
+
+B release, landing, owner loss, Arcade OFF and stale input withdraw controls;
+original StateFlow performs cleanup. Bounds are 800 ms for unacknowledged entry,
+2500 ms total and a 150 ms input heartbeat. These are failure bounds, not
+animation durations or fabricated completion times.
+
+## Controls
+
+Establish the source grab and keep B held. Press X with the **current** direction:
+neutral or Left = native kick gesture, Right = heel, Down = BS shuv, Up = FS shuv.
+Centering the stick removes the direction that originally selected the grab.
+Release X before another transition. A rejected X is consumed without fallback.
+
+| Held grab | Neutral / Left + X | Right + X | Down + X | Up + X |
+| --- | --- | --- | --- | --- |
+| BS | BS Fingerflip | BS Finger Heelflip | BS Varial | BS to Weddle |
+| FS | FS Fingerflip | FS Finger Heelflip | FS Varial | FS to Stale |
+| Nose | Fingerflip | Finger Heelflip | Nose to Seatbelt | Nose to Seatbelt |
+| Tail | Tail Flip | Tail Heelflip | Tail to Crail | Tail to Crail |
+| Stale | Stale Flip | Stale Heelflip | Stale to FS | Stale to FS |
+| Weddle | Weddle Flip | Weddle Heelflip | Weddle to BS | Weddle to BS |
+| Seatbelt | Seatbelt to Nose | Seatbelt to Nose | Seatbelt to Nose | Seatbelt to Nose |
+| Crail | Crail to Tail | Crail to Tail | Crail to Tail | Crail to Tail |
+| Double | Double Grab Fingerflip | Double Grab Heelflip | Double Grab BS Varial | Double Grab FS Varial |
+
+The last row uses the native double-**grab** family. FingerFlipType names
+`DoubleKickflip` and `DoubleHeelflip` do not demonstrate two ordinary rotations.
+Ordinary X-X has a separate held-flip owner.
+
+## Acceptance
+
+Production-header tests cover all 26 identities at 30/60/120 Hz, delayed
+settings, gesture delivery, wrong/absent/nonadvancing actors, native destination
+return, clock/owner withdrawal, startup-held and grounded input, single physical
+dispatch and rejection without ordinary-flip fallback. Injected observations
+are not gameplay evidence.
+
+For each table cell capture the request, exact native actor advancement,
+FingerFlipType and catch/destination. Hold B through return, try a second
+transition, release B and land. Repeat with B released during entry and near
+landing. Verify native combo/score and original vertical trajectory. Held X,
+X before grab acknowledgment, footers, Rocket Air and ground B+X must not start
+a substitute flip or another Ollie. No RC3 hardware capture is yet claimed.

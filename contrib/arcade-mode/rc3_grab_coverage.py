@@ -38,6 +38,10 @@ GRAB_TO_DETAIL = {
 }
 GRAB_TO_FOOTER = {15: 6, 16: 4, 17: 5, 22: 2, 23: 1, 28: 13,
                   32: 7, 33: 8, 34: 9, 39: 11, 40: 12, 44: 10, 57: 3}
+GRAB_TO_FINGER = {61: 11, 62: 14, 63: 13, 64: 10, 65: 9, 66: 12, 67: 1,
+                  68: 7, 69: 6, 70: 2, 71: 3, 72: 8, 73: 4, 74: 5,
+                  75: 23, 76: 24, 77: 25, 78: 26, 79: 28, 80: 27,
+                  85: 19, 86: 20, 87: 22, 88: 21, 89: 29, 90: 30}
 # Joined from CDB_OnBoard_OneFooters_Loop through the original wrappers and
 # blendspaces to their body actors. Footplant-blend endpoints remain separate.
 FOOT_LOOPS = {1: 7084, 2: 2535, 3: 5657, 4: 35019, 5: 23882, 6: 21785,
@@ -56,10 +60,10 @@ FOOT_BLOCKER = (
     "native context and lifecycle evidence; it is not another independent air grab."
 )
 FINGER_BLOCKER = (
-    "Requires the matching established grab and original fingerflip/varial "
-    "transition, catch and destination-grab owner. No verified Arcade adapter "
-    "for that transition; Enum.FingerflipType.DoubleKickflip is a double-grab "
-    "fingerflip identity, not ordinary repeated Kickflip execution."
+    "26 non-Coffin fingerflip/varial entries now use the original gesture buffer. "
+    "This specific Coffin context or dependent transition resource still needs "
+    "its own entry/exit evidence. Airborne Coffin admission is not implemented. "
+    "Enum.FingerflipType.DoubleKickflip is a double-grab fingerflip, not an ordinary repeated Kickflip."
 )
 GROUND_BLOCKER = (
     "Ground FS/BS/Double/Coffin now have a separate original-input owner. "
@@ -96,6 +100,22 @@ def blocker(entry):
 
 def build():
     source = json.loads((RESEARCH / "native-grab-source-catalog.json").read_text())
+    finger_rows = json.loads((RESEARCH / "native-fingerflip-transitions.json").read_text())["transitions"]
+    finger_code = (ROOT / "Extension/ArcadeMode/arcade_fingerflip.h").read_text()
+    declarations = re.findall(r"\{(\d+),(\d+),(\d+),(\d+)\}", finger_code)
+    assert [tuple(map(int, r)) for r in declarations] == [
+        (r["native_id"], r["family"], r["input_bitmap"], r["destination"]) for r in finger_rows]
+    finger_actors = re.findall(r"\{(0x[^}]+)\}[^\n]*// \d+ ",
+        (ROOT / "Engine/Game/Build/20260929/arcade_fingerflip.h").read_text())
+    assert [str(uuid.UUID(bytes_le=bytes(int(b.strip(), 16) for b in raw.split(","))))
+            for raw in finger_actors] == [r["actor_guid"] for r in finger_rows]
+    family_names = {1: "FS", 2: "BS", 3: "Tail", 4: "Seatbelt", 5: "Crail", 6: "Nose", 7: "Stale", 8: "Weddle", 9: "Double"}
+    for finger in finger_rows:
+        directions = [name for bit, name in [(2, "neutral or Left"), (4, "Right"), (8, "Down"), (16, "Up")]
+                      if finger["input_bitmap"] & bit]
+        finger["arcade_binding"] = ("Establish " + family_names[finger["family"]] + " Grab, keep B held, then " +
+            " / ".join(directions) + "+X; release B for native exit")
+    fingers = {r["native_id"]: r for r in finger_rows}
     lease = (ROOT / "Extension/ArcadeMode/arcade_native_grab_lease.h").read_text()
     profile_rows = re.findall(
         r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+)(?:,\s*(\d+),\s*(\d+))?)?)?\}", lease)
@@ -169,6 +189,19 @@ def build():
                        native_animation_acknowledgment="Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
                        release_landing_evidence="Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
                        remaining_blocker="Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers")
+        finger = fingers.get(value if ns == "Enum.FingerflipType" else GRAB_TO_FINGER.get(value) if ns == "Enum.GrabType" else None)
+        if finger:
+            row.update(implementation_state=PENDING if ns == "Enum.FingerflipType" else DEPENDENT,
+                       assets=[dict(resource_index=finger["resource"], name=finger["sequence"],
+                           sequence_guid=finger["sequence_guid"], actors=[dict(guid=finger["actor_guid"])])],
+                       arcade_binding=[finger["arcade_binding"]],
+                       native_gameplay_context="Established, acknowledged airborne grab family " + str(finger["family"]) + "; no one-footer or Rocket Air",
+                       original_mechanism="Original Input_TrickGesture -> EAT LateFlipBuffer -> Fingerflips action -> CDB entry -> native catch/destination " + str(finger["destination"]),
+                       native_animation_acknowledgment="Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
+                       release_landing_evidence="Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+                       remaining_blocker="Owner gameplay and native catch, landing and scoring acceptance outstanding")
+            if ns == "Enum.GrabType":
+                row["dependency"] = dict(namespace="Enum.FingerflipType", value=finger["native_id"])
         entries.append(row)
     seq_rows = []
     for seq in source["sequence_inventory"]:
@@ -185,15 +218,22 @@ def build():
             assert len(variants) == 1
             row.update(implementation_state=PENDING, arcade_binding=variants[0]["arcade_binding"],
                        remaining_blocker="RC3 native lifecycle and scoring acceptance outstanding")
+        finger = next((f for f in finger_rows if f["resource"] == seq["resource_index"]), None)
+        if finger:
+            row.update(implementation_state=PENDING, arcade_binding=finger["arcade_binding"],
+                       identity_links=[dict(namespace="Enum.FingerflipType", value=finger["native_id"])],
+                       remaining_blocker="RC3 native animation/catch/landing/scoring acceptance outstanding")
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
-    return dict(schema_version=4, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
+    return dict(schema_version=5, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
                 feature_complete=False, game_exe_sha256=source["game_exe_sha256"],
                 scope=source["scope"], independently_mapped_native_poses=len(profiles),
                 independently_mapped_detailed_identities=len({p["detail"] for p in profiles.values() if not p["one_footer"]}),
                 independently_mapped_one_footer_identities=len({p["one_footer"] for p in profiles.values() if p["one_footer"]}),
                 independently_mapped_ground_identities=len(GROUND_PROFILES),
+                independently_mapped_fingerflip_identities=len(fingers),
+                mapped_fingerflip_transitions=finger_rows,
                 mapped_profiles=list(profiles.values()),
                 counts=dict(declarations=dict(Counter(e["implementation_state"] for e in entries)),
                             sequences=dict(Counter(e["implementation_state"] for e in seq_rows))),

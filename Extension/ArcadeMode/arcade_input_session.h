@@ -371,6 +371,7 @@ public:
         environment.native_grab_continues=admission.normal_grab.continues;
         environment.native_held_flip=admission.held_flip.available;
         environment.selected_grab=admission.normal_grab.selected;
+        environment.native_fingerflips=admission.normal_grab.fingerflip!=nullptr;
         environment.native_footplants=admission.footplant.submit && admission.footplant.controls &&
             admission.action_mode==ActionExperiment::classic && !authored_.busy() && !auxiliary_.busy() &&
             !manual_.busy() && !rail_ && !board_active_ && !triggers && !(physical.buttons&0xe3f0u);
@@ -490,10 +491,10 @@ public:
                     output.action.pad.face_buttons=controls.feet;
                     output.action.native_grab_feet=true;
                 }
-                if (controls.selector()) {
+                if (controls.selector() || controls.transition) {
                     output.action.pad.owns_right_stick=true;
                     output.action.pad.right_x=controls.x;output.action.pad.right_y=controls.y;
-                    output.action.native_grab_selector=true;
+                    output.action.native_grab_selector=!controls.transition;
                 }
             }
         }
@@ -624,6 +625,21 @@ private:
             if (holding_) authored_.release(admission.tick);
             holding_ = false; return InputDisposition::started;
         case InputAction::flip: {
+            if(request.form==InputForm::grab_transition) {
+                if(!airborne || !admission.normal_grab.fingerflip || !admission.native_context.fresh(now_) ||
+                    !admission.native_context.airborne || request.nollie || admission.nollie ||
+                    admission.action_mode!=ActionExperiment::classic || admission.external_owner ||
+                    authored_.busy() || manual_.busy() || auxiliary_.busy() || rail_ || board_active_ ||
+                    physical_.lt>30 || physical_.rt>30 || (physical_.buttons&0x9370u) ||
+                    !(physical_.buttons&0x2000u))return InputDisposition::cancelled;
+                for(const auto& gesture:admission.catalog) {
+                    if(gesture.native_id!=request.variant || gesture.nollie || gesture.context!=GestureContext::ground ||
+                        gesture.air_steps.empty())continue;
+                    return admission.normal_grab.fingerflip(admission.normal_grab.context,request.variant,
+                        gesture.air_steps,admission.tick,admission.mirror_x)?InputDisposition::started:InputDisposition::cancelled;
+                }
+                return InputDisposition::unsupported;
+            }
             if (!airborne) return request.pop_release_at ? InputDisposition::waiting : InputDisposition::cancelled;
             if (admission.native_context.required && (!admission.native_context.airborne || !admission.native_context.airborne_episode)) {
                 out.unsupported = true; return InputDisposition::unsupported;

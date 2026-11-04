@@ -14,6 +14,13 @@ acknowledgment, but their animation, exit and scoring captures are gameplay pend
 See [native-ground-grab-entry.md](native-ground-grab-entry.md) for the distinct
 ground ownership and acceptance requirements. The airborne selector is unchanged.
 
+Established airborne grabs also accept **hold B, then X** for native fingerflips
+and varials. Current LS direction selects the original gesture: neutral/Left
+for kick, Right for heel, Down for BS shuv and Up for FS shuv. The held grab
+determines the native trick and destination. [All 26 bindings and their native
+ownership](native-fingerflip-entry.md) are documented separately. Footers,
+Rocket Air and airborne Coffin do not accept this path. Gameplay acceptance is pending.
+
 | Native pose | Arcade binding | Native family / detailed pose | Tweak X,Y |
 | --- | --- | --- | --- |
 | BS Grab | B | 2 / 1 | 0,0 |

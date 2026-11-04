@@ -2,6 +2,7 @@
 #include "arcade_native_grab_lease.h"
 #include "arcade_native_held_flip.h"
 #include "arcade_native_ground_grab.h"
+#include "arcade_fingerflip.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -10,6 +11,7 @@
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/20260929/arcade_grab_transition.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
+#include "Engine/Game/Build/20260929/arcade_fingerflip.h"
 #include <atomic>
 #include <bit>
 #include <mutex>
@@ -18,6 +20,7 @@
 namespace dingosdk::arcade_mode::native_grab {
 namespace {
 namespace contract=game::build::v20260929::arcade_grab_transition;
+namespace finger_contract=game::build::v20260929::arcade_fingerflip;
 using Guid=std::array<std::uint8_t,16>;
 std::uintptr_t image{};
 contract::Initialize original_initialize{};
@@ -25,7 +28,7 @@ contract::Evaluate original_evaluate{};
 std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
 std::mutex mutex;
 struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
-std::array<Asset,9> assets{{
+std::array<Asset,11> assets{{
     {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
     {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
     {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
@@ -34,9 +37,12 @@ std::array<Asset,9> assets{{
     {"Animation/Dingo/Enum.GS.DetailedGrabType",contract::detail},
     {"Animation/Dingo/EnumGS.GrabType",contract::family},
     {"Animation/Dingo/Bool.GP.CanGrab",contract::can_grab},
-    {"Animation/Dingo/EnumGS.OneFooterType",contract::one_footer}
+    {"Animation/Dingo/EnumGS.OneFooterType",contract::one_footer},
+    {"Animation/Dingo/Bool.State.Is.FingerFlip",finger_contract::state},
+    {"Animation/Dingo/Enum.GS.FingerFlipType",finger_contract::identity}
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
+static_assert(std::size(fingerflips)==finger_contract::actors.size());
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
 struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
 // Observation only: distinguish a failed owner proof from a native landing.
@@ -53,13 +59,31 @@ struct Session {
     std::uint64_t episode{},serial{};
     InputGenerations lineage{};InputAirEpisode air{};
     std::array<Written,4> writes{};
-    std::array<Actor,contract::actor_assets.size()> actors{};
+    std::array<Actor,contract::actor_assets.size()+finger_contract::actors.size()> actors{};
+    FingerflipInput finger{};
+    std::uint64_t finger_settings_since{};
     bool reported{};
     std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
 } session;
 std::uint64_t serial{},retry_at{};
 constexpr auto foot_settings_owner="arcade-native-foot-input";
+constexpr auto finger_settings_owner="arcade-native-finger-input";
+constexpr auto finger_setting="egf_enablefingerflips";
+void refresh_finger_settings(std::uint64_t now) noexcept {
+    if(!session.finger.active())return;
+    try {
+        if(input::gameplay_options().hold(finger_settings_owner,finger_setting,true,now).empty() && !session.finger_settings_since)
+            session.finger_settings_since=now+1;
+    } catch(...) { }
+}
+bool finger_settings_applied(std::uint64_t now) noexcept {
+    if(!session.finger_settings_since)return false;
+    try {
+        const auto value=input::gameplay_options().sampled(finger_setting,session.finger_settings_since,now);
+        return value && *value;
+    } catch(...) {return false;}
+}
 constexpr std::array foot_settings{"egf_invertxaonboard","egf_frontbackfoot"};
 bool foot_settings_applied(std::uint64_t now) noexcept {
     if (!session.foot_settings_since) return false;
@@ -190,6 +214,7 @@ void retire(const char* reason) noexcept {
         event.last_invalid=session.last_invalid;enqueue(event);
     }
     input::gameplay_options().release(foot_settings_owner);
+    input::gameplay_options().release(finger_settings_owner);
     restore();session={};active.store(false);
 }
 bool valid() noexcept {
@@ -209,13 +234,35 @@ RetargetObservation retarget_observation() noexcept {
         read(family,out.family) && read(can_grab,out.can_grab);
     return out;
 }
+FingerflipObservation finger_observation() noexcept {
+    FingerflipObservation out{};
+    out.valid=address(9) && address(10) && address(4) && address(6) && address(7) &&
+        read(address(9),out.in_fingerflip) && read(address(10),out.identity) &&
+        read(address(4),out.grabbing) && read(address(6),out.family) && read(address(7),out.can_grab);
+    return out;
+}
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);
     if (pointer(asset)!=image+0x61ba838) return -1;
     for (unsigned i=0;i<contract::actor_assets.size();++i) if (guid_is(asset,contract::actor_assets[i].guid)) return static_cast<int>(i);
+    for(unsigned i=0;i<finger_contract::actors.size();++i)
+        if(guid_is(asset,finger_contract::actors[i]))return static_cast<int>(contract::actor_assets.size()+i);
     return -1;
 }
 void acknowledge(std::uint64_t now) noexcept {
+    if(session.finger.active()) {
+        const auto native=finger_observation();
+        if(!native.valid || session.finger.acknowledged())return;
+        for(unsigned i=0;i<finger_contract::actors.size();++i) {
+            const auto index=contract::actor_assets.size()+i;const auto& a=session.actors[index];
+            if(&fingerflips[i]!=session.finger.row() || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms)continue;
+            if(session.finger.acknowledge(native.identity,a.initialized,a.object && actor_index(a.object)==static_cast<int>(index),a.delta,a.before,a.after))
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE NATIVE FINGERFLIP: serial={} episode={} identity={} actor={} before={} after={} delta={} initialized=true destination={} scoring_acceptance=unverified.",
+                    session.serial,session.episode,native.identity,a.object,a.before,a.after,a.delta,session.finger.row()->destination);
+        }
+        return;
+    }
     const auto* selected=session.lease.selected();if (!selected || session.lease.acknowledged()) return;
     std::int32_t detail{},one_footer{};bool grabbing{};
     const auto detail_at=address(5),grabbing_at=address(4);
@@ -251,7 +298,7 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
         if (session.serial==occurrence && valid() && actor_index(actor)==index &&
             read(actor+0x20,duration) && std::isfinite(duration) && duration>0 && duration<10000) {
             session.actors[index]={actor,0,0,0,0,true};
-            logging::log(logging::Level::info,logging::Channel::skater,
+            if(static_cast<unsigned>(index)<contract::actor_assets.size())logging::log(logging::Level::info,logging::Channel::skater,
                 "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} actor_asset={} duration={}.",
                 occurrence,session.episode,pilots[index].detail,actor,contract::actor_assets[index].name,duration);
         }
@@ -298,7 +345,8 @@ void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     if (!gameplay) {cancel();return;}
     if (!hooks_ready.load()) return;
-    if ((!assets_ready.load() || !guid_is(assets[8].object,assets[8].guid)) && GetTickCount64()>=retry_at) {
+    if ((!assets_ready.load() || !guid_is(assets[8].object,assets[8].guid) ||
+         !guid_is(assets[9].object,assets[9].guid) || !guid_is(assets[10].object,assets[10].guid)) && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
         if (find) {
             bool complete=true;
@@ -310,7 +358,7 @@ void tick(bool gameplay) noexcept {
                     const auto object=find(domain,a.name);
                     if (guid_is(object,a.guid)) {a.object=object;break;}
                 }
-                if (&a!=&assets[8]) complete=complete && a.object;
+                if (&a<&assets[8]) complete=complete && a.object;
             }
             assets_ready.store(complete);
         }
@@ -325,13 +373,14 @@ void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool perm
     std::lock_guard lock(mutex);
     session.lease.refresh(GetTickCount64(),held,permitted && owner==session.owner && episode && episode==session.episode && valid());
     if (!session.lease.selected()) retire("refresh");
-    else refresh_foot_settings(GetTickCount64());
+    else {refresh_foot_settings(GetTickCount64());refresh_finger_settings(GetTickCount64());}
 }
 bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest& physical,ArcadeTrick trick,bool held) noexcept {
     if (!available() || !episode || !pilot(trick)) return false;
     const auto block=state_block(owner);if (!block) return false;
     if (pilot(trick)->one_footer && !address_at(block,8)) return false;
     std::lock_guard lock(mutex);
+    if(session.finger.active())return false;
     if (session.serial && (owner!=session.owner || episode!=session.episode)) retire("request_owner_episode");
     // A changed native action lineage needs the same independent grab-owner
     // proof at dispatch too. Never borrow a retired flip selector as permission.
@@ -350,12 +399,44 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
 unsigned hand_inputs(const NoBailSkater& owner,std::uint64_t episode) noexcept {
     return controls(owner,episode).hands;
 }
-Control controls(const NoBailSkater& owner,std::uint64_t episode) noexcept {
+Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t tick) noexcept {
     if (!active.load()) return {};
     std::lock_guard lock(mutex);
     const auto now=GetTickCount64();
-    return valid() && owner==session.owner && episode==session.episode && session.lease.intent(now) ?
-        session.lease.controls(retarget_observation(),foot_settings_applied(now)) : Control{};
+    if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.intent(now))return {};
+    if(session.finger.active()) {
+        if(!tick)return session.finger.control(); // Legacy hand-only reads cannot advance a gesture.
+        auto result=session.finger.poll(now,tick,finger_settings_applied(now),finger_observation());
+        if(!session.finger.active()) {retire("fingerflip_timeout_or_owner");return {};}
+        if(session.finger.completed()) {
+            const auto destination=session.finger.row()->destination;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE FINGERFLIP RETURN: serial={} identity={} destination={} native_grabbing=true scoring_acceptance=unverified.",
+                session.serial,session.finger.row()->identity,destination);
+            session.lease.request(grab_family_trick(destination),now,true);session.reported=false;
+            session.finger.cancel();session.finger_settings_since=0;
+            input::gameplay_options().release(finger_settings_owner);
+        }
+        return result;
+    }
+    return session.lease.controls(retarget_observation(),foot_settings_applied(now));
+}
+bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
+               std::span<const AuthoredStickStep> steps,std::uint64_t tick,bool mirror) noexcept {
+    if(!active.load())return false;
+    std::lock_guard lock(mutex);const auto now=GetTickCount64();
+    if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.intent(now) ||
+        !session.lease.selected() || !address(9) || !address(10))return false;
+    const auto observed=finger_observation();
+    if(!observed.valid || observed.in_fingerflip || !session.finger.start(*session.lease.selected(),
+        session.lease.acknowledged(),retarget_observation(),id,steps,now,tick,mirror))return false;
+    session.serial=++serial;
+    for(std::size_t i=contract::actor_assets.size();i<session.actors.size();++i)session.actors[i]={};
+    restore();refresh_finger_settings(now);
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE FINGERFLIP REQUEST: serial={} episode={} gesture={} expected_identity={} source_family={} destination={} animation_acknowledged=false.",
+        session.serial,episode,id,session.finger.row()->identity,session.finger.row()->family,session.finger.row()->destination);
+    return true;
 }
 bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept {
     return (hand_inputs(owner,episode)&2u)!=0;
@@ -406,6 +487,9 @@ void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!valid()) {retire("transition_owner");return;}
     if (view!=session.block+0x48) return;
     const auto now=GetTickCount64();acknowledge(now);
+    // Native fingerflip entry temporarily leaves IsGrabbing. Its actor and
+    // destination own this handoff; the old pose must not be reasserted here.
+    if(session.finger.active()) {restore();return;}
     if (session.lease.acknowledged()) {
         bool grabbing{};const auto at=address(4);
         if (!at || !read(at,grabbing) || !grabbing) {retire("native_exit");return;}

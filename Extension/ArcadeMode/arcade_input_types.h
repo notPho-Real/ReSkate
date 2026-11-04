@@ -5,6 +5,7 @@
 #include "arcade_launch_descriptor.h"
 #include "arcade_footplant.h"
 #include "arcade_ground_grab.h"
+#include "arcade_authored_playback.h"
 namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
@@ -82,6 +83,7 @@ struct NativeGrabRequest {
     unsigned (*hand_inputs)(void*) noexcept{}; // Native left/right trigger mask; zero withdraws both.
     native_grab::Control (*controls)(void*) noexcept{}; // One qualified lease snapshot for hands and family selector.
     ArcadeTrick selected{ArcadeTrick::double_grab}; // R3+B neutral selection, captured with the physical event.
+    bool (*fingerflip)(void*,std::uint8_t,std::span<const AuthoredStickStep>,std::uint64_t,bool) noexcept{};
 };
 struct NativeFootplantRequest {
     void* context{};
