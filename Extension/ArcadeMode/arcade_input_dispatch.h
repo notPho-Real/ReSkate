@@ -126,6 +126,7 @@ struct InputEnvironment {
     bool (*native_grab_continues)(void*,InputGenerations,InputAirEpisode) noexcept{};
     bool native_held_flip{}; // Original held input and read-only native observation are available.
     ArcadeTrick selected_grab{ArcadeTrick::double_grab};
+    bool native_footplants{};
 };
 struct InputRecognitionAttempt { InputRequest request{}; bool queued{}; };
 struct InputDispatchEvent { InputRequest request{}; InputDisposition disposition{}; };
@@ -562,6 +563,8 @@ public:
             if (code == 14 && event.token.edge == InputEdge::release) flip_release = event.sequence;
             if (code == 12) {
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
+                    if (environment.native_footplants && environment.context==InputContext::ground &&
+                        !environment.nollie && recognize_footplant(now,environment,event)) continue;
                     const auto match=consume(event);crouched_=true;crouch_nollie_=environment.nollie;crouch_at_=event.at;
                     crouch_sequence_=event.sequence;
                     enqueue(InputAction::crouch, now, 1, environment,1,0,0,0,{},&match);
@@ -806,6 +809,28 @@ private:
                 if(!cumulative||!current)diagnostic_.recognition_overflow=true;
             }
         }
+    }
+    bool recognize_footplant(std::uint64_t now,InputEnvironment environment,const InputEvent& terminal) noexcept {
+        const InputToken up{InputSource::direction,8,InputEdge::press};
+        const InputToken a{InputSource::buttons,12,InputEdge::press};
+        for (const unsigned count:{2u,1u}) {
+            const std::array double_steps{up,up,a};
+            const std::array single_steps{up,a};
+            const auto steps=count==2 ? std::span<const InputToken>(double_steps) : std::span<const InputToken>(single_steps);
+            auto match=events_.history().match({steps,count==2?500u:300u,ordinary_reject},now);
+            if (!match || match.events[match.count-1]!=terminal.sequence) continue;
+            bool conflict=false;
+            for (const auto& edge:events_.history().events()) {
+                if (edge.sequence<=match.events[0] || edge.sequence>=terminal.sequence) continue;
+                if (edge.token.source==InputSource::buttons || edge.token.source==InputSource::triggers ||
+                    (InputHistory::direction_token(edge.token) && edge.token.edge==InputEdge::press && edge.token.code!=8)) conflict=true;
+            }
+            if (conflict || !events_.history().consume(match,InputConsumption::regular,ordinary_reject)) continue;
+            crouched_=false;crouch_at_=terminal.at;crouch_sequence_=terminal.sequence;
+            enqueue(InputAction::crouch,now,1,environment,count,static_cast<std::uint8_t>(count),0,0,{},&match);
+            return true;
+        }
+        return false;
     }
     bool recognize_jump_release(std::uint64_t now, InputEnvironment environment) noexcept {
         if (environment.context != InputContext::ground || !environment.jump_generation) return false;

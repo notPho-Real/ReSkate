@@ -52,6 +52,6 @@ exit, landing and numeric scoring. The previously staged DLL at source
 No Comply and Boneless use separate native entry mechanisms. The pinned input
 producer gates NoComply with the `nocomply` preference (default false) and a
 right-stick region. Boneless requires one hand-grab input with a foot-plant or
-Ollie-button input and the allowed native GrabType. They are not implemented
-by this one-footer change. Ground/coffin and fingerflip/varial transitions are
+Ollie-button input and the allowed native GrabType. Their separate input adapter is described in
+[native-footplant-entry.md](native-footplant-entry.md). Ground/coffin and fingerflip/varial transitions are
 also separate owners and remain blocked in catalog accounting.

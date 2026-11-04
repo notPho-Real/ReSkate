@@ -23,6 +23,7 @@
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
 #include "arcade_native_held_flip.h"
+#include "arcade_native_footplant.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grind_transition.h"
 #include "arcade_grind_change.h"
@@ -1737,6 +1738,7 @@ static void withdraw_controller_authority() noexcept {
     native_grind::cancel();
     native_flip::cancel();
     native_grab::cancel();
+    native_footplant::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1770,6 +1772,7 @@ void set_enabled(bool value, bool persist) noexcept {
     native_grind::cancel();
     native_flip::cancel();
     native_grab::cancel();
+    native_footplant::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -1979,6 +1982,7 @@ void on_client_tick() noexcept {
         native_flip::tick(gameplay && focus_available);
         native_grab::tick(gameplay && focus_available);
         native_held_flip::tick(score_probe_base,gameplay && focus_available && native_grab::available());
+        native_footplant::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_grind::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
@@ -2344,6 +2348,17 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             });
         }};
         const auto held_flip=native_held_flip::observe(native_flip_owner,now);
+        struct FootplantContext {NoBailSkater owner;std::uint64_t step;};
+        FootplantContext footplant_context{native_flip_owner,grind_frame.physics_step};
+        NativeFootplantRequest footplant{};
+        if (game_input && !offboard && action_experiment==ActionExperiment::classic && native_footplant::available())
+            footplant={&footplant_context,[](void* context,Footplant kind) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_footplant::request(c.owner,c.step,kind);
+            },[](void* context) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_footplant::controls(c.owner,c.step);
+            }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
@@ -2353,7 +2368,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.mirror_x,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
-            held_flip);
+            held_flip,footplant);
+        if (!result.footplant_owned) native_footplant::cancel();
         if (result.held_flip_request || result.held_input_released) {
             RemapEvidence evidence{};
             evidence.held_ms=now;evidence.held_request=result.held_flip_request;evidence.held_released=result.held_input_released;

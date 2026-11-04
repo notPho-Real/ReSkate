@@ -3,6 +3,7 @@
 #include "arcade_action_dispatch.h"
 #include "arcade_input_dispatch.h"
 #include "arcade_launch_descriptor.h"
+#include "arcade_footplant.h"
 namespace dingosdk::arcade_mode {
 enum class NativeTrick : unsigned { none, ollie, kickflip, heelflip };
 enum class ActionExperiment : unsigned { off, observe, grabs, revert_frontside, revert_backside, classic };
@@ -81,6 +82,11 @@ struct NativeGrabRequest {
     native_grab::Control (*controls)(void*) noexcept{}; // One qualified lease snapshot for hands and family selector.
     ArcadeTrick selected{ArcadeTrick::double_grab}; // R3+B neutral selection, captured with the physical event.
 };
+struct NativeFootplantRequest {
+    void* context{};
+    bool (*submit)(void*,Footplant) noexcept{};
+    FootplantControl (*controls)(void*) noexcept{};
+};
 struct NativeGesture {
     static constexpr std::uint16_t a = 0x1000, x = 0x4000;
     struct Output {
@@ -99,6 +105,7 @@ struct NativeGesture {
         bool automatic_push{}; // Receipt from AutomaticPush, never inferred from physical X.
         std::int32_t held_flip_request{}; // Physical repeat accepted by input playback, not native execution.
         bool held_input_released{},held_actor_acknowledged{};
+        bool footplant_owned{};
     };
 };
 }

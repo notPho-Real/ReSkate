@@ -38,6 +38,7 @@ struct InputAdmission {
     NativeGrabRequest normal_grab{};
     bool manual_contact_only{}; // Physical admission without matching native history.
     HeldFlipObservation held_flip{};
+    NativeFootplantRequest footplant{};
 };
 // One per-controller journal and one dispatch path. Native playback objects have
 // no physical edge buffers; their only inputs are admitted semantic requests.
@@ -46,6 +47,7 @@ public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
+        footplant_=false;
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
         air_actor_episode_ = grab_actor_episode_ = manual_air_episode_ = {}; grab_actor_ = false; rail_request_ = {};
@@ -132,7 +134,7 @@ public:
         reset(); authored_.set_schedule(schedule);
     }
     void set_recognition_capture(bool enabled) noexcept {input_.set_recognition_capture(enabled);}
-    bool busy() const noexcept { return auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
+    bool busy() const noexcept { return footplant_ || auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
     const UnifiedInput::Diagnostic& diagnostic() const noexcept { return input_.diagnostic(); }
     const InputHistory& history() const noexcept { return input_.history(); }
     InputRequest pending_manual() const noexcept { return input_.pending_manual(); }
@@ -192,6 +194,19 @@ public:
         }
         clocked_ = true; last_ = now; last_tick_ = admission.tick;
         now_ = now; physical_ = physical; admission_ = admission; current_ = &output; extension_started_ = false;
+        if (footplant_) {
+            output.right_x=output.right_y=0;
+            // Journal physical edges without recognizing another action or
+            // replaying A when the native entry ends.
+            input_.poll(now,physical,{InputContext::unknown,true,true},{});
+            if (!admission.external_owner && admission.action_mode==ActionExperiment::classic &&
+                physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xe3f0u) &&
+                admission.footplant.controls) {
+                const auto control=admission.footplant.controls(admission.footplant.context);
+                if (control.owned) {apply_footplant(output,control);current_=nullptr;return output;}
+            }
+            footplant_=false;current_=nullptr;return output;
+        }
         if (takeoff_release_at_) {
             if (admission.external_owner || (physical.buttons & (takeoff_from_rail_?0x2000u:0xa000u)) ||
                 (takeoff_from_rail_ && (rail_ || now-takeoff_release_at_>2500)) ||
@@ -344,6 +359,9 @@ public:
         environment.native_grab_continues=admission.normal_grab.continues;
         environment.native_held_flip=admission.held_flip.available;
         environment.selected_grab=admission.normal_grab.selected;
+        environment.native_footplants=admission.footplant.submit && admission.footplant.controls &&
+            admission.action_mode==ActionExperiment::classic && !authored_.busy() && !auxiliary_.busy() &&
+            !manual_.busy() && !rail_ && !board_active_ && !triggers && !(physical.buttons&0xe3f0u);
         environment.takeoff_release_at=takeoff_jump_observed_ ? takeoff_release_at_ : 0;
         // A released owned setup with an independently selected native Ollie
         // may SELECT X in this poll; the actual release below still delivers
@@ -354,6 +372,12 @@ public:
             (native.flip.state==100 || native.flip.state==103)) environment.takeoff_release_at=now;
         environment.takeoff_actor_busy=authored_.busy() || auxiliary_.busy();
         input_.poll(now, physical, environment, {this, &receive});
+        if (footplant_) {
+            const auto control=admission.footplant.controls(admission.footplant.context);
+            footplant_=control.owned;
+            if (control.owned) apply_footplant(output,control);
+            current_=nullptr;return output;
+        }
         if (reset_manual) input_.reset_manual_continuity();
         // A released A ends native setup even when another request superseded
         // recognition in this poll. No new edge or jump is synthesized here.
@@ -484,6 +508,15 @@ public:
         return output;
     }
 private:
+    static void apply_footplant(NativeGesture::Output& out,FootplantControl control) noexcept {
+        out.buttons=static_cast<std::uint16_t>(out.buttons&~0xf00fu);
+        out.right_x=out.right_y=0;
+        out.action.pad.owns_face_buttons=true;out.action.pad.face_buttons=control.buttons;
+        out.action.pad.owns_triggers=true;out.action.pad.left_trigger=control.left_trigger;
+        out.action.pad.right_trigger=0;
+        out.action.pad.owns_right_stick=true;out.action.pad.right_y=control.right_y;
+        out.action.owned=true;out.command_busy=true;out.footplant_owned=true;
+    }
     bool manual_revert_expired(std::uint64_t now) const noexcept {
         const auto& link=revert_link_;
         if(now<link.started)return true;
@@ -506,7 +539,7 @@ private:
     static InputDisposition receive(void* self, const InputRequest& request) noexcept {
         return static_cast<InputSession*>(self)->request(request);
     }
-    bool native_followup_{};
+    bool native_followup_{},footplant_{};
     InputDisposition request(const InputRequest& request) noexcept {
         if (!current_) return InputDisposition::cancelled;
         auto& out = *current_;
@@ -521,6 +554,14 @@ private:
             board_.reset(); board_.poll(now_,0,true,true); board_active_ = true;
             board_at_ = now_; board_control_ = board_consumed_ = request.control; return InputDisposition::started;
         case InputAction::crouch:
+            if (request.variant) {
+                if (admission.pose!=SkatePose::riding || !admission.may_start || admission.nollie ||
+                    busy() || !admission.footplant.submit || !admission.footplant.controls ||
+                    request.variant>2) return InputDisposition::unsupported;
+                footplant_=admission.footplant.submit(admission.footplant.context,
+                    request.variant==1?Footplant::no_comply:Footplant::boneless);
+                return footplant_?InputDisposition::started:InputDisposition::unsupported;
+            }
             // Lip exits require their own admitted actor and release policy.
             if (admission.observed_lip) { out.unsupported = true; return InputDisposition::unsupported; }
             if (admission.pose==SkatePose::grind && admission.native_context.required ?
