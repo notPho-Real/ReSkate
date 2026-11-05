@@ -1,5 +1,29 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-04 live follow-up
+
+Source `baf44ab2c908dd49fc1acd2676b149d5df1f5845` passed all required
+Windows, Linux, macOS, integration, targeted and Deck packaging gates. Its
+DLL `f0f1fefc4614d029cbd195007802d9bdc3f3cbbbfe8a9b1dff1139b6a4054e07`
+was installed after normal UI shutdown and independently verified loaded.
+All earlier rollback copies remain preserved.
+
+At measured native/cached 1/30-second steps, a single X retained zero extra
+rotations and landed. X/X entered original held intent/state, reached one extra
+rotation, withdrew input and landed without an off-board state. The exact held
+loop actor was not acknowledged, so this is not yet accepted Double Kickflip
+animation or scoring evidence. The original Kickflip/Heelflip loop actor GUIDs
+were rechecked against the original source records; they match the contracts.
+Bounded initialization diagnostics now distinguish missing tracking, ownership,
+state-view and duration proof for these exact actors, without admitting any
+unproven animation or changing the native rotation counter.
+
+Default B and Up+B again initialized/advanced their exact BS and Nosegrab actors,
+with air release and return to ground. A moving manual trial crossed a curb and
+lost contact before its revert; it is excluded from fakie posture acceptance.
+The four original manual loop actors receive the same bounded initialization
+diagnostics. Local native captures remain separate from software fixtures.
+
 ## RC3-03 native follow-up
 
 Candidate `de837990737f202658540839e621b2e2179b1372` passed its exact-source

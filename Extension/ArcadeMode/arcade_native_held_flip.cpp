@@ -24,6 +24,7 @@ std::uintptr_t image{};
 std::uint64_t retry_at{},next_serial{};
 std::atomic<bool> permitted{},ready{},tracking{};
 std::mutex mutex;
+unsigned initialization_reports{};
 struct Observation {
     NoBailSkater owner{};
     std::uintptr_t block{},actor{};
@@ -70,10 +71,14 @@ bool current() noexcept {
         block_for(owner)==observation.block && read(owner.context+contract::physics_state,state) &&
         (state==200 || state==201);
 }
-bool exact_actor(std::uintptr_t actor) noexcept {
+std::int32_t actor_identity(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+contract::actor_asset);
-    return pointer(asset)==image+contract::actor_type &&
-        guid_is(asset,observation.id==2?contract::kickflip_loop:contract::heelflip_loop);
+    if(pointer(asset)!=image+contract::actor_type)return 0;
+    if(guid_is(asset,contract::kickflip_loop))return 2;
+    return guid_is(asset,contract::heelflip_loop)?3:0;
+}
+bool exact_actor(std::uintptr_t actor) noexcept {
+    return observation.id && actor_identity(actor)==observation.id;
 }
 }
 void tick(std::uintptr_t base,bool gameplay) noexcept {
@@ -126,10 +131,24 @@ HeldFlipObservation observe(const NoBailSkater& owner,std::uint64_t now) noexcep
     return out;
 }
 void initialized(std::uintptr_t actor,std::uintptr_t view) noexcept {
-    if (!tracking.load()) return;
+    if (!permitted.load()) return;
     std::lock_guard lock(mutex);float duration{};
-    if (!current() || view!=observation.block+contract::state_view || !exact_actor(actor) ||
-        !read(actor+contract::actor_duration,duration) || !std::isfinite(duration) || duration<=0 || duration>10000) return;
+    const auto id=actor_identity(actor);
+    if(!id)return;
+    const bool owner_current=current(),view_matches=view==observation.block+contract::state_view;
+    const bool duration_valid=read(actor+contract::actor_duration,duration) &&
+        std::isfinite(duration) && duration>0 && duration<=10000;
+    const bool admitted=tracking.load() && owner_current && view_matches && exact_actor(actor) && duration_valid;
+    // A counter without the original actor is insufficient acceptance evidence.
+    // Bound diagnostics for matching actors so missed ownership/initialization
+    // can be distinguished from a different native animation selection.
+    if(initialization_reports<32) {
+        ++initialization_reports;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE HELD INIT: native_id={} sampled_id={} tracking={} owner_current={} view_matches={} duration_valid={} admitted={}.",
+            id,observation.id,tracking.load(),owner_current,view_matches,duration_valid,admitted);
+    }
+    if(!admitted)return;
     observation.actor=actor;observation.initialized=true;observation.advanced=false;observation.reported=false;
 }
 Evaluation before_evaluate(std::uintptr_t actor,std::uintptr_t context,float delta) noexcept {

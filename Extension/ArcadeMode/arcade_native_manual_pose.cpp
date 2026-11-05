@@ -19,6 +19,7 @@ NoBailSkater owner{};
 std::uint64_t serial{},sampled_at{};
 struct Actor {std::uintptr_t object{};std::uint64_t reported_at{};bool initialized{};};
 std::array<Actor,4> actors{};
+unsigned initialization_reports{};
 template<class T> bool read(std::uintptr_t at,T& value) noexcept {return memory::peek(at,value);}
 std::uintptr_t pointer(std::uintptr_t at) noexcept {std::uintptr_t p{};return read(at,p)?p:0;}
 std::uintptr_t block_for(const NoBailSkater& skater) noexcept {
@@ -61,8 +62,18 @@ void initialized(std::uintptr_t actor,std::uintptr_t view) noexcept {
     if(!permitted.load())return;
     std::lock_guard lock(mutex);float duration{};
     const auto index=actor_index(actor);
-    if(index<0 || !current() || view!=block+contract::state_view || !read(actor+contract::actor_duration,duration) ||
-        !std::isfinite(duration) || duration<=0 || duration>10000)return;
+    if(index<0)return;
+    const bool owner_current=current(),view_matches=view==block+contract::state_view;
+    const bool duration_valid=read(actor+contract::actor_duration,duration) &&
+        std::isfinite(duration) && duration>0 && duration<=10000;
+    if(initialization_reports<32) {
+        ++initialization_reports;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE MANUAL INIT: pose={} owner_current={} view_matches={} duration_valid={} admitted={}.",
+            contract::actors[static_cast<unsigned>(index)].name,owner_current,view_matches,duration_valid,
+            owner_current && view_matches && duration_valid);
+    }
+    if(!owner_current || !view_matches || !duration_valid)return;
     actors[static_cast<unsigned>(index)]={actor,0,true};
 }
 Evaluation before_evaluate(std::uintptr_t actor,std::uintptr_t context,float delta) noexcept {
