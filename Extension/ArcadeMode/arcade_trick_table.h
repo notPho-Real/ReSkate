@@ -49,7 +49,8 @@ enum class ArcadeTrick : std::uint8_t {
     crossbone, fs_nosebone, fs_tailbone, tuck_knee,
     double_grab, double_grab_front, double_grab_back, double_grab_left, double_grab_right,
     tail_bs_shifty, tail_fs_shifty, tail_nosebone, nose_bs_shifty, nose_fs_shifty, nose_tailbone, nosegrab_alternate, nose_crail_fs_shifty, seatbelt_fs_shifty, seatbelt, crail, crail_fs_shifty, crail_bs_shifty, crail_bs_shifty_alternate, stale_nosebone, stale_tailbone, stale_tuck_knee_right, stale_tuck_knee, stale_tuck_knee_middle, stale, weddle_japan, weddle, weddle_alternate, weddle_nose, weddle_tail,
-    fs_one_foot, frigid_air, no_foot, bs_one_foot, tailwalk, dog_piss, nose_judo, superdude
+    fs_one_foot, frigid_air, no_foot, bs_one_foot, tailwalk, dog_piss, nose_judo, superdude,
+    seatbelt_bs_shifty
 };
 // Context-selected semantics; these identities do not name native methods.
 enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
@@ -154,6 +155,7 @@ constexpr std::string_view trick_name(ArcadeTrick trick) noexcept {
     case ArcadeTrick::dog_piss: return "Dog Piss";
     case ArcadeTrick::nose_judo: return "Nose Judo";
     case ArcadeTrick::superdude: return "Superdude";
+    case ArcadeTrick::seatbelt_bs_shifty: return "Seatbelt BS Shifty";
     case ArcadeTrick::crossbone: return "Crossbone";
     case ArcadeTrick::fs_nosebone: return "FS Nosebone";
     case ArcadeTrick::fs_tailbone: return "FS Tailbone";

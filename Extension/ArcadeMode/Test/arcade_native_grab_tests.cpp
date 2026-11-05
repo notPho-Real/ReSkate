@@ -212,6 +212,10 @@ void complete_direct_families() {
     }
 }
 void selected_native_families() {
+    const auto* seatbelt=native_grab::pilot(ArcadeTrick::seatbelt_bs_shifty);
+    check(seatbelt && seatbelt->family==4 && seatbelt->detail==24 && seatbelt->x==1 && seatbelt->y==0 &&
+        seatbelt->hands==2 && seatbelt->selector_y==28000,
+        "Seatbelt BS uses the original family/blend endpoint and actual emitted tag, never declaration17 or the Nose family");
     for(unsigned hz:{30u,60u,120u}) for(const auto& profile:native_grab::pilots) {
         auto r=std::make_unique<Route>();r->selected=profile.trick;
         const auto dt=(1000u+hz-1)/hz;r->poll(1000);

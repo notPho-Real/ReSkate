@@ -42,7 +42,7 @@ Rocket Air and airborne Coffin do not accept this path. Gameplay acceptance is p
 R3 means clicking the right stick. Hold it when pressing B for the extended
 layer. Under Skater > Cheats > Arcade Mode, **R3+B grab** selects the neutral
 extended binding. Its default is Double Grab; the choice lasts until restart.
-All 56 actor profiles are selectable. R3 plus a direction keeps the shortcuts
+All 57 actor profiles are selectable. R3 plus a direction keeps the shortcuts
 above, regardless of the neutral selection. Direction, selection and modifier are taken
 from the physical B edge, including an edge buffered during state 200 to 201.
 Hold B to hold the grab. Release B to request the original native exit. A short
@@ -121,7 +121,7 @@ holding R3 and pressing B:
 | --- | --- |
 | Tail | Tailgrab, Tail NoseBone, Tail FS Shifty, Tail BS Shifty |
 | Nose | Nosegrab, Nose Tailbone, Nose FS Shifty, Nose BS Shifty, Nosegrab (alternate native pose), Crail FS Shifty (from Nose) |
-| Seatbelt | Seatbelt, Seatbelt FS Shifty |
+| Seatbelt | Seatbelt, Seatbelt FS Shifty, Seatbelt BS Shifty |
 | Crail | Crail, Crail FS Shifty, Crail BS Shifty, Crail BS Shifty (alternate native pose) |
 | Stale | Stale, Stale Tailbone, Stale Nosebone, Stale TuckKnee, Stale Tuck Knee (right pose), Stale Tuck Knee (middle pose) |
 | Rocket | Rocket Air (also Up+B,B within 250 ms) |
@@ -130,8 +130,12 @@ holding R3 and pressing B:
 Alternate pose descriptions identify different original actors within the same
 native trick identity; they do not invent additional scoring identities. The
 machine-readable coverage file gives each actor, source resource, family,
-coordinates and exact binding. The Seatbelt BS asset's inconsistent native tag
-is still blocked rather than silently relabeled.
+coordinates and exact binding. Seatbelt BS Shifty uses the original Seatbelt
+actor at blend coordinate X=+1, Y=0. Its source emits native detail24 (Nose BS
+Shifty); declaration17 is not forced. Select **Seatbelt BS Shifty** under
+**Arcade Mode > R3+B grab**, then center LS, hold R3 and press/hold B in the air.
+Release B for native exit. The original scoring label remains game-owned.
+Native animation, exit and scoring acceptance for this entry remains pending.
 
 The original six-family input/exit observations are recorded in
 `native-grab-family-rc2-controls.json`. They prove stock native admission and

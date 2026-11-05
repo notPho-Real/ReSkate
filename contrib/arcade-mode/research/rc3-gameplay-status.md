@@ -174,10 +174,10 @@ acceptance remain outstanding.
 
 ## Native grabs
 
-The airborne adapter now describes 56 exact actors: the original 43 in BS, FS,
+The airborne adapter now describes 57 exact actors: the original 44 in BS, FS,
 double, Rocket, Nose, Tail, Crail, Seatbelt, Stale and Weddle blendspaces plus all
 13 native one-footer identities. The blendspaces cover 37 detailed identities
-and six additional original actor variants sharing those identities.
+and seven additional original actor variants sharing those identities.
 `rc3-grab-bindings.md` lists all reachable controls. The extended layer is R3
 held at B press. The physical edge retains that modifier and direction through
 takeoff buffering. A menu selector exposes every actor through neutral R3+B;
@@ -193,10 +193,10 @@ scoring remain authoritative. No jump/velocity writer or scoring writer was adde
 `rc3-grab-coverage.json` accounts for all 171 declarations and all 300 sequences
 in the existing inventory. The namespace counts overlap. There are 80 declarations
 marked IMPLEMENTED — GAMEPLAY PENDING: 37 detailed identities, 13 one-footers,
-four ground grabs and 26 fingerflips/varials. Another 75 declarations are
-ALIAS/DEPENDENT, and 16 remain BLOCKED. These are declaration counts, not a sum
-of unique tricks. Of the original 300 sequences, 82 have mapped entry/loop
-mechanisms and 218 retain specific context or lifecycle blockers. Every
+four ground grabs and 26 fingerflips/varials. Another 77 declarations are
+ALIAS/DEPENDENT, and 14 remain BLOCKED. These are declaration counts, not a sum
+of unique tricks. Of the original 300 sequences, 83 have mapped entry/loop
+mechanisms and 217 retain specific context or lifecycle blockers. Every
 sequence has an explicit status, identity links and blocker. Unknown execution is
 not classified as UNSUPPORTED. The original inventory itself does not prove that
 every executable game context has been discovered.
@@ -234,8 +234,10 @@ Remaining mechanisms:
   independent native identity in the inspected catalog. They remain blocked;
   another trick's animation has not been substituted.
 - Resource 15021's seatbelt BS-shifty sequence emits native detailed tag 24
-  (Nose BS Shifty), rather than the expected 17. Preserve that source anomaly
-  until its actual runtime selection/scoring is established.
+  (Nose BS Shifty), rather than the expected 17. Its original Seatbelt blendspace
+  places that exact actor at X=+1, Y=0. The selector now exposes this native pose
+  through R3+B without manufacturing tag17 or replacing the actor with Nose.
+  Runtime animation, exit and scoring acceptance remain pending.
 
 ## Fakie manual posture — correction awaiting native acceptance
 

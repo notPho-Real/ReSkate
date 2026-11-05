@@ -120,8 +120,11 @@ def build():
     profile_rows = re.findall(
         r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+)(?:,\s*(\d+),\s*(\d+))?)?)?\}", lease)
     contract = (ROOT / "Engine/Game/Build/20260929/arcade_grab_transition.h").read_text()
-    actors = re.findall(r'\{\{(0x[^}]+)\},\s*"([^"]+)"\}', contract)
-    assert len(profile_rows) == len(actors) == 56, "profile/actor coverage drift"
+    # Entry actors share this header but are lifecycle dependencies, not new
+    # selectable profiles. Join only the ordered loop/profile array here.
+    profile_actors = contract.split("actor_assets{{", 1)[1].split("}};", 1)[0]
+    actors = re.findall(r'\{\{(0x[^}]+)\},\s*"([^"]+)"\}', profile_actors)
+    assert len(profile_rows) == len(actors) == 57, "profile/actor coverage drift"
     table = (ROOT / "Extension/ArcadeMode/arcade_trick_table.h").read_text()
     labels = dict(re.findall(r'case ArcadeTrick::(\w+): return "([^"]+)";', table))
     labels.update(dict(re.findall(r'TrickTableRow\{[^\n]*ArcadeTrick::(\w+), "([^"]+)"\}', table)))
@@ -160,6 +163,12 @@ def build():
         detail = value if ns == "Enum.DetailedGrabType" else GRAB_TO_DETAIL.get(value) if ns == "Enum.GrabType" else None
         footer = value if ns == "Enum.OneFooterType" else GRAB_TO_FOOTER.get(value) if ns == "Enum.GrabType" else None
         variants = [p for p in profiles.values() if (not p["one_footer"] and p["detail"] == detail) or p["one_footer"] == footer]
+        seatbelt_declaration = (ns == "Enum.DetailedGrabType" and value == 17) or (ns == "Enum.GrabType" and value == 35)
+        if seatbelt_declaration:
+            # The source declaration is not the emitted tag. Account for its
+            # actual original Seatbelt actor without manufacturing detail17.
+            variants = [profiles["seatbelt_bs_shifty"]]
+            detail = 24
         row = dict(native_name=entry["native_name"], native_identity={"namespace": ns, "value": value},
                    assets=entry["animation_assets"], native_gameplay_context=entry["context"],
                    original_mechanism=entry["native_transition"], arcade_binding=None,
@@ -180,6 +189,10 @@ def build():
                        remaining_blocker="Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding")
             if ns == "Enum.GrabType":
                 row["dependency"] = {"namespace": "Enum.OneFooterType" if footer else "Enum.DetailedGrabType", "value": footer or detail}
+            if seatbelt_declaration:
+                row["implementation_state"] = DEPENDENT
+                row["dependency"] = {"namespace": "Enum.DetailedGrabType", "value": 24}
+                row["source_identity_note"] = "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged."
         if ns == "Enum.GrabType" and value in GROUND_PROFILES:
             binding, resource, name, guid, mechanism = GROUND_PROFILES[value]
             row.update(arcade_binding=[binding], implementation_state=PENDING,

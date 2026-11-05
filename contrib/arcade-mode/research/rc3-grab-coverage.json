@@ -17,7 +17,7 @@
       "LoopingControllerAsset": 16
     }
   },
-  "independently_mapped_native_poses": 56,
+  "independently_mapped_native_poses": 57,
   "independently_mapped_detailed_identities": 37,
   "independently_mapped_one_footer_identities": 13,
   "independently_mapped_ground_identities": 4,
@@ -2197,17 +2197,50 @@
         "compressed_sha1": "553dfa61584283c35746ed254c107db98a71f20c",
         "decoded_sha256": "6cc1cd79feeb745ebfd4a1c758963ce20ed93c0f52cd9685680ce4fead19bb1e"
       }
+    },
+    {
+      "semantic": "seatbelt_bs_shifty",
+      "native_name": "Seatbelt BS Shifty",
+      "detail": 24,
+      "native_actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+      "actor_name": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+      "family": 4,
+      "hands": 2,
+      "tweak": [
+        1.0,
+        0.0
+      ],
+      "selector_rs": [
+        0,
+        28000
+      ],
+      "one_footer": 0,
+      "foot_input": 0,
+      "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+      "animation_asset": {
+        "resource_index": 15021,
+        "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+        "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+        "actors": [
+          {
+            "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+            "duration_ticks": 305.0
+          }
+        ],
+        "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+        "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
+      }
     }
   ],
   "counts": {
     "declarations": {
-      "ALIAS/DEPENDENT": 75,
-      "BLOCKED": 16,
+      "ALIAS/DEPENDENT": 77,
+      "BLOCKED": 14,
       "IMPLEMENTED — GAMEPLAY PENDING": 80
     },
     "sequences": {
-      "BLOCKED": 218,
-      "IMPLEMENTED — GAMEPLAY PENDING": 82
+      "BLOCKED": 217,
+      "IMPLEMENTED — GAMEPLAY PENDING": 83
     }
   },
   "caveats": [
@@ -5499,21 +5532,97 @@
         "namespace": "Enum.GrabType",
         "value": 35
       },
-      "assets": [],
-      "native_gameplay_context": "native grab identity declaration; selector/scoring route not fully resolved",
-      "original_mechanism": "Unresolved for this identity; declaration or tag alone does not prove native transition closure",
-      "arcade_binding": null,
-      "implementation_state": "BLOCKED",
-      "native_animation_acknowledgment": "No RC3 native capture",
+      "assets": [
+        {
+          "resource_index": 15021,
+          "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+          "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+          "actors": [
+            {
+              "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+              "duration_ticks": 305.0
+            }
+          ],
+          "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+          "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
+        }
+      ],
+      "native_gameplay_context": "Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
+      "original_mechanism": [
+        {
+          "hand_inputs": 2,
+          "native_family": 4,
+          "detailed_pose": 24,
+          "tweak_xy": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "ownership": "original native StateFlow and scoring; bounded grab lease"
+        }
+      ],
+      "arcade_binding": [
+        "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
+      ],
+      "implementation_state": "ALIAS/DEPENDENT",
+      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
       "release_landing_evidence": "No RC3 native capture",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Original seatbelt BS-shifty sequence 15021 emits Nose BS Shifty detail 24; actual native scoring identity remains unverified. No substitute identity assigned.",
+      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "b3afe5de-54e7-f94e-b3af-e5de54e7f94e"
+      ],
+      "executable_variants": [
+        {
+          "semantic": "seatbelt_bs_shifty",
+          "native_name": "Seatbelt BS Shifty",
+          "detail": 24,
+          "native_actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "actor_name": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "family": 4,
+          "hands": 2,
+          "tweak": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "animation_asset": {
+            "resource_index": 15021,
+            "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+            "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+            "actors": [
+              {
+                "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+                "duration_ticks": 305.0
+              }
+            ],
+            "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+            "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
+          }
+        }
+      ],
+      "dependency": {
+        "namespace": "Enum.DetailedGrabType",
+        "value": 24
+      },
+      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged."
     },
     {
       "native_name": "FSShiftySeatbelt",
@@ -6143,6 +6252,19 @@
           ],
           "compressed_sha1": "279b388f125b1fb23ac9b102e404ecfa4c6662f3",
           "decoded_sha256": "c5474f05617478d9b289106b920ec9a9b23b012d124c471fb15780bd1a700ddd"
+        },
+        {
+          "resource_index": 15021,
+          "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+          "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+          "actors": [
+            {
+              "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+              "duration_ticks": 305.0
+            }
+          ],
+          "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+          "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
         }
       ],
       "native_gameplay_context": "Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
@@ -6162,10 +6284,27 @@
           "one_footer": 0,
           "foot_input": 0,
           "ownership": "original native StateFlow and scoring; bounded grab lease"
+        },
+        {
+          "hand_inputs": 2,
+          "native_family": 4,
+          "detailed_pose": 24,
+          "tweak_xy": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "ownership": "original native StateFlow and scoring; bounded grab lease"
         }
       ],
       "arcade_binding": [
-        "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
+        "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+        "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
@@ -6179,7 +6318,8 @@
         "landing_scoring": "unverified"
       },
       "runtime_actor": [
-        "a36fc67c-7a5e-f416-a36f-c67c7a5ef416"
+        "a36fc67c-7a5e-f416-a36f-c67c7a5ef416",
+        "b3afe5de-54e7-f94e-b3af-e5de54e7f94e"
       ],
       "executable_variants": [
         {
@@ -6213,6 +6353,39 @@
             ],
             "compressed_sha1": "279b388f125b1fb23ac9b102e404ecfa4c6662f3",
             "decoded_sha256": "c5474f05617478d9b289106b920ec9a9b23b012d124c471fb15780bd1a700ddd"
+          }
+        },
+        {
+          "semantic": "seatbelt_bs_shifty",
+          "native_name": "Seatbelt BS Shifty",
+          "detail": 24,
+          "native_actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "actor_name": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "family": 4,
+          "hands": 2,
+          "tweak": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "animation_asset": {
+            "resource_index": 15021,
+            "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+            "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+            "actors": [
+              {
+                "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+                "duration_ticks": 305.0
+              }
+            ],
+            "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+            "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
           }
         }
       ],
@@ -10385,21 +10558,97 @@
         "namespace": "Enum.DetailedGrabType",
         "value": 17
       },
-      "assets": [],
-      "native_gameplay_context": "native grab pose tag; native entry/blendspace eligibility required",
-      "original_mechanism": "Unresolved for this identity; declaration or tag alone does not prove native transition closure",
-      "arcade_binding": null,
-      "implementation_state": "BLOCKED",
-      "native_animation_acknowledgment": "No RC3 native capture",
+      "assets": [
+        {
+          "resource_index": 15021,
+          "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+          "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+          "actors": [
+            {
+              "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+              "duration_ticks": 305.0
+            }
+          ],
+          "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+          "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
+        }
+      ],
+      "native_gameplay_context": "Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
+      "original_mechanism": [
+        {
+          "hand_inputs": 2,
+          "native_family": 4,
+          "detailed_pose": 24,
+          "tweak_xy": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "ownership": "original native StateFlow and scoring; bounded grab lease"
+        }
+      ],
+      "arcade_binding": [
+        "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
+      ],
+      "implementation_state": "ALIAS/DEPENDENT",
+      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
       "release_landing_evidence": "No RC3 native capture",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Original seatbelt BS-shifty sequence 15021 emits Nose BS Shifty detail 24; actual native scoring identity remains unverified. No substitute identity assigned.",
+      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "b3afe5de-54e7-f94e-b3af-e5de54e7f94e"
+      ],
+      "executable_variants": [
+        {
+          "semantic": "seatbelt_bs_shifty",
+          "native_name": "Seatbelt BS Shifty",
+          "detail": 24,
+          "native_actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "actor_name": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "family": 4,
+          "hands": 2,
+          "tweak": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "animation_asset": {
+            "resource_index": 15021,
+            "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+            "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+            "actors": [
+              {
+                "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+                "duration_ticks": 305.0
+              }
+            ],
+            "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+            "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
+          }
+        }
+      ],
+      "dependency": {
+        "namespace": "Enum.DetailedGrabType",
+        "value": 24
+      },
+      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged."
     },
     {
       "native_name": "Crail",
@@ -11170,6 +11419,19 @@
           ],
           "compressed_sha1": "279b388f125b1fb23ac9b102e404ecfa4c6662f3",
           "decoded_sha256": "c5474f05617478d9b289106b920ec9a9b23b012d124c471fb15780bd1a700ddd"
+        },
+        {
+          "resource_index": 15021,
+          "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+          "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+          "actors": [
+            {
+              "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+              "duration_ticks": 305.0
+            }
+          ],
+          "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+          "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
         }
       ],
       "native_gameplay_context": "Native airborne Grab.Into/Grab.Loop in the qualified inspected stance; each variant records its original family",
@@ -11189,10 +11451,27 @@
           "one_footer": 0,
           "foot_input": 0,
           "ownership": "original native StateFlow and scoring; bounded grab lease"
+        },
+        {
+          "hand_inputs": 2,
+          "native_family": 4,
+          "detailed_pose": 24,
+          "tweak_xy": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "ownership": "original native StateFlow and scoring; bounded grab lease"
         }
       ],
       "arcade_binding": [
-        "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
+        "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+        "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
@@ -11206,7 +11485,8 @@
         "landing_scoring": "unverified"
       },
       "runtime_actor": [
-        "a36fc67c-7a5e-f416-a36f-c67c7a5ef416"
+        "a36fc67c-7a5e-f416-a36f-c67c7a5ef416",
+        "b3afe5de-54e7-f94e-b3af-e5de54e7f94e"
       ],
       "executable_variants": [
         {
@@ -11240,6 +11520,39 @@
             ],
             "compressed_sha1": "279b388f125b1fb23ac9b102e404ecfa4c6662f3",
             "decoded_sha256": "c5474f05617478d9b289106b920ec9a9b23b012d124c471fb15780bd1a700ddd"
+          }
+        },
+        {
+          "semantic": "seatbelt_bs_shifty",
+          "native_name": "Seatbelt BS Shifty",
+          "detail": 24,
+          "native_actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "actor_name": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+          "family": 4,
+          "hands": 2,
+          "tweak": [
+            1.0,
+            0.0
+          ],
+          "selector_rs": [
+            0,
+            28000
+          ],
+          "one_footer": 0,
+          "foot_input": 0,
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "animation_asset": {
+            "resource_index": 15021,
+            "name": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_bs_shifty_loop",
+            "sequence_guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+            "actors": [
+              {
+                "guid": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e",
+                "duration_ticks": 305.0
+              }
+            ],
+            "compressed_sha1": "d17baa4fd9d5603cba64e61a76319fe10013d423",
+            "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
           }
         }
       ]
@@ -16774,12 +17087,12 @@
           "value": 24
         }
       ],
-      "implementation_state": "BLOCKED",
-      "arcade_binding": null,
+      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "No verified executable Arcade entry/transition for this specific original resource. BS/FS/Double and Nose/Tail/Crail/Seatbelt/Stale/Weddle input routes are implemented; that does not establish other variants, transition assets or scoring aliases. Resolve the resource's exact source owner, admission and destination before mapping it."
+      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
     },
     {
       "resource_index": 15032,

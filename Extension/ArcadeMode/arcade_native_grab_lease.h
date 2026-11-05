@@ -72,7 +72,10 @@ inline constexpr Pilot pilots[]{{ArcadeTrick::basic_bs_grab,1,0,0},
     {ArcadeTrick::dog_piss,0,0,0,6,2,0,-28000,10,1},
     {ArcadeTrick::nose_judo,0,0,0,6,2,0,-28000,11,2},
     {ArcadeTrick::airwalk,0,0,0,6,2,0,-28000,12,3},
-    {ArcadeTrick::superdude,0,0,0,9,3,0,0,13,3}};
+    {ArcadeTrick::superdude,0,0,0,9,3,0,0,13,3},
+    // Original Seatbelt blendspace X=+1 selects its BS shifty actor. That
+    // asset emits detail24 (Nose BS Shifty), not the unused declaration17.
+    {ArcadeTrick::seatbelt_bs_shifty,24,1,0,4,2,0,28000}};
 // R3 held at the physical B press selects this layer. No existing row moves.
 constexpr ArcadeTrick extended_grab(std::int16_t direction,ArcadeTrick selected=ArcadeTrick::double_grab) noexcept {
     switch(direction) {
