@@ -62,6 +62,8 @@ public:
     Footplant kind() const noexcept {return kind_;}
     bool active() const noexcept {return kind_!=Footplant::none;}
     bool entered() const noexcept {return entered_;}
+    bool preparation_started() const noexcept {return prepared_;}
+    bool entry_issued() const noexcept {return issued_;}
     void cancel() noexcept {*this={};}
 private:
     Footplant kind_{};

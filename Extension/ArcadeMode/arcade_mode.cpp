@@ -853,8 +853,8 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.valid, r.state, r.changes, r.wipeouts);
         else if constexpr (std::is_same_v<T, ControllerRouteEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={}.",
-                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding);
+                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={} binding_failure={}.",
+                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding,static_cast<unsigned>(r.binding_failure));
         else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",

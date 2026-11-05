@@ -77,3 +77,14 @@ or scoring evidence.
 One-footers remain a separate implementation. Fingerflip/varial transitions
 and ground-specific grab poses still require their original owners; this
 change does not count them as complete.
+
+RC3-10 Mega Park capture
+`044613996a45b3c43040c35db4411665a8fe9de5c714f8681fa45092a67904e9`
+observed the original Boneless prerequisite, intent, state602, flight and
+ground return. Exact PTM animation and scoring acceptance remain open.
+No Comply did not enter, and both of its observed state handles remained
+unallocated. End diagnostics now distinguish preparation output from an
+issued entry input and report the successfully sampled settings prefix.
+The prefix bits follow `egf_invertxaonboard`, `egf_frontbackfoot`, `nocomply`;
+mask7 means all three were sampled with the requested values. Missing reads
+do not become native prerequisite proof.

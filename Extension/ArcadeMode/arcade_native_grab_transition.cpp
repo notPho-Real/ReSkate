@@ -14,6 +14,7 @@
 #include "Engine/Game/Build/20260929/arcade_grab_transition.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
 #include "Engine/Game/Build/20260929/arcade_fingerflip.h"
+#include "Engine/Game/Build/20260929/arcade_held_flip.h"
 #include <atomic>
 #include <bit>
 #include <mutex>
@@ -22,6 +23,7 @@
 namespace dingosdk::arcade_mode::native_grab {
 namespace {
 namespace contract=game::build::v20260929::arcade_grab_transition;
+namespace actor_contract=game::build::v20260929::arcade_held_flip;
 namespace finger_contract=game::build::v20260929::arcade_fingerflip;
 using Guid=std::array<std::uint8_t,16>;
 std::uintptr_t image{};
@@ -69,7 +71,7 @@ const contract::GrabActorAsset& grab_actor_asset(unsigned index) noexcept {
         contract::footer_entry_actors[index-contract::actor_assets.size()].actor;
 }
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
-struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
+struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{},missing_initialization_reported{};};
 // Observation only: distinguish a failed owner proof from a native landing.
 // Missing reads remain unknown; these fields never grant permission.
 struct OwnershipObservation {
@@ -90,8 +92,10 @@ struct Session {
     bool reported{};
     std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
+    unsigned other_actor_reports{};
 } session;
 std::uint64_t serial{},retry_at{};
+unsigned other_actor_reports{};
 constexpr auto foot_settings_owner="arcade-native-foot-input";
 constexpr auto finger_settings_owner="arcade-native-finger-input";
 constexpr auto finger_setting="egf_enablefingerflips";
@@ -329,6 +333,23 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
     native_held_flip::initialized(actor,context);
     native_manual_pose::initialized(actor,context);
     native_ground_grab::initialized(actor,context);
+    if (occurrence && index<0) {
+        std::lock_guard lock(mutex);
+        const auto* selected=session.lease.selected();
+        if(session.serial==occurrence && selected && selected->one_footer && valid() &&
+            context==session.block+actor_contract::state_view &&
+            session.other_actor_reports<8 && other_actor_reports<32) {
+            const auto asset=pointer(actor+actor_contract::actor_asset);
+            std::array<std::uint32_t,4> words{};
+            if(asset>=0x10000+actor_contract::asset_guid_prefix &&
+                pointer(asset)==image+actor_contract::actor_type && read(asset-actor_contract::asset_guid_prefix,words)) {
+                ++session.other_actor_reports;++other_actor_reports;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE NATIVE FOOTER OTHER ACTOR: serial={} expected_footer={} guid_words_le={:08x},{:08x},{:08x},{:08x} acceptance=false.",
+                    occurrence,selected->one_footer,words[0],words[1],words[2],words[3]);
+            }
+        }
+    }
     if (index>=0) {
         std::lock_guard lock(mutex);float duration{};
         if (session.serial==occurrence && valid() && actor_index(actor)==index &&
@@ -362,6 +383,13 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
             if (a.initialized && a.object==actor) {
                 a.before=before;a.after=after;a.delta=delta;a.advanced_at=GetTickCount64();
                 acknowledge(a.advanced_at);
+            } else if (!a.missing_initialization_reported) {
+                // A reused native actor may advance without an initialization
+                // observed in this lease. Record that gap, never acknowledge it.
+                a.missing_initialization_reported=true;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE NATIVE GRAB UNTRACKED ADVANCE: serial={} actor_index={} before={} after={} delta={} initialized={} same_actor={} acceptance=false.",
+                    occurrence,index,before,after,delta,a.initialized,a.object==actor);
             }
         }
     }

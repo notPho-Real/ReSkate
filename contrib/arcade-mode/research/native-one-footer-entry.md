@@ -87,3 +87,23 @@ temporary controller binding was revoked before landing and the skater bailed.
 It provided no exact actor acknowledgment. Its uncompressed SHA-256 is
 `05bf35eb440c4dbd64aa2f26bb940708a98535a351b93be5333659ca44041cad`.
 Do not count the native identity alone as successful one-footer acceptance.
+
+RC3-10 repeated that failure on Mega Park in the changed leading-foot stance:
+OneFooterType7 appeared at1.000s, returned to0 at1.226s, and the original
+physics entered504 at1.425s. The controller route was revoked near the end
+of flight. This ordering does not prove revocation caused the bail: the
+original wipeout observer can also invalidate the owner before state504.
+Capture SHA-256:
+`c67bfe41916dec4eaf79f3408a8ab43f7421a53864b946c9c2a5dbfffe0f6b1f`.
+The loaded Benihana entry asset was inspected read-only and contains the
+same ActorControllerAsset GUID as the source contract. Missing asset identity
+is therefore excluded for that process.
+
+Follow-up diagnostics preserve all admission rules. Controller binding
+failure codes1–14 distinguish deadline, source, physical sample, selection,
+native proof, owner, owner generation, physics step, native clock, contact
+generation, action generation, disconnect, capture and explicit clear.
+Footer initialization records at most8 other actor identities per lease and
+32 per process. A known actor advancing without initialization in the current
+lease is reported separately and never acknowledged. These diagnostics must
+identify the missing native transition/ownership evidence before another fix.

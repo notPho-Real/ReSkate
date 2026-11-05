@@ -38,7 +38,11 @@ std::uint64_t retry_at{},settings_since{},last_poll{},last_step{},serial{};
 std::mutex mutex;
 FootplantInput lease;
 NoBailSkater owner;
-struct Evidence {std::uint64_t serial{};Footplant kind{};bool entered{};unsigned state{};} evidence;
+struct Evidence {
+    std::uint64_t serial{};Footplant kind{};bool entered{};unsigned state{};
+    bool prepared{},issued{},can_no_comply{};unsigned settings_mask{};
+} evidence;
+unsigned settings_mask{};
 GroundGrabInput grab_lease;
 NoBailSkater grab_owner;
 std::uint64_t grab_poll{},grab_serial{};
@@ -92,7 +96,7 @@ FootplantObservation observe(const NoBailSkater& skater,std::uint64_t now,std::u
     return out;
 }
 void retire() noexcept {
-    lease.cancel();owner={};settings_since=last_poll=last_step=0;
+    lease.cancel();owner={};settings_since=last_poll=last_step=0;settings_mask=0;
     try {input::gameplay_options().release(option_owner);} catch (...) { }
 }
 GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,std::uint64_t step) noexcept {
@@ -135,6 +139,7 @@ bool ground_actor_owner(std::uintptr_t view) noexcept {
     const auto block=block_for(current);return block && view==block+contract::state_view;
 }
 bool settings(std::uint64_t now,bool require_sample) noexcept {
+    if(require_sample)settings_mask=0;
     try {
         auto& options=input::gameplay_options();
         const bool no_comply=lease.kind()==Footplant::no_comply;
@@ -145,6 +150,7 @@ bool settings(std::uint64_t now,bool require_sample) noexcept {
         if (require_sample) for (unsigned i=0;i<option_keys.size();++i) {
             const auto sample=options.sampled(option_keys[i],settings_since,now);
             if (!sample || *sample!=values[i]) return false;
+            settings_mask|=1u<<i;
         }
         return true;
     } catch (...) {return false;}
@@ -157,11 +163,12 @@ void cancel() noexcept {
     if (lease.active()) {
         const auto kind=lease.kind();const auto now=GetTickCount64();
         const auto native=observe(owner,now,last_step);
+        const bool prepared=lease.preparation_started(),issued=lease.entry_issued();
         // The controller facade intentionally excludes the PTM state from
         // ordinary gameplay admission. Record its original entry before
         // retiring controls; never broaden admission to keep this lease alive.
         lease.poll(now,native,false);
-        evidence={serial,kind,lease.entered(),native.state};
+        evidence={serial,kind,lease.entered(),native.state,prepared,issued,native.can_no_comply,settings_mask};
     }
     retire();
 }
@@ -177,8 +184,9 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
         animation=grab_animation;grab_animation={};
     }
     if (pending.serial) logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE FOOTPLANT END: serial={} kind={} native_entry={} state={} animation_acceptance=unverified launch_scoring_acceptance=unverified.",
-        pending.serial,static_cast<unsigned>(pending.kind),pending.entered,pending.state);
+        "ARCADE NATIVE FOOTPLANT END: serial={} kind={} native_entry={} state={} preparation_started={} entry_issued={} can_no_comply={} settings_prefix_mask={} animation_acceptance=unverified launch_scoring_acceptance=unverified.",
+        pending.serial,static_cast<unsigned>(pending.kind),pending.entered,pending.state,
+        pending.prepared,pending.issued,pending.can_no_comply,pending.settings_mask);
     if(pending_grab.serial)logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_animation_acknowledged={} scoring_exit_acceptance=unverified.",
         pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.acknowledged);
@@ -229,8 +237,13 @@ FootplantControl controls(const NoBailSkater& skater,std::uint64_t step) noexcep
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
     if (!lease.active() || skater!=owner) {retire();return {};}
     last_poll=now;last_step=step;const auto kind=lease.kind();const auto native=observe(skater,now,step);
+    const bool prepared=lease.preparation_started(),issued=lease.entry_issued();
     const auto out=lease.poll(now,native,settings(now,true));
-    if (!out.owned) {evidence={serial,kind,lease.entered(),native.state};retire();}
+    if (!out.owned) {
+        evidence={serial,kind,lease.entered(),native.state,prepared||lease.preparation_started(),
+            issued||lease.entry_issued(),native.can_no_comply,settings_mask};
+        retire();
+    }
     return out;
 }
 }

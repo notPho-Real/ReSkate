@@ -25,18 +25,19 @@ public:
     // sample and independent original-physics owner proof must arrive within5s.
     bool arm(unsigned user, std::uint64_t now, unsigned duration_ms) noexcept {
         if(user>=4 || duration_ms<1000 || duration_ms>300000 || now>UINT64_MAX-duration_ms)return false;
-        explicit_=true; revoked_=bound_=false; requested_=user; armed_at_=now;
+        explicit_=true; revoked_=bound_=false; failure_=ControllerBindingFailure::none; requested_=user; armed_at_=now;
         deadline_=now+duration_ms; proof_={}; pads_[user]=raw_pads_[user]={}; selected_=unavailable; ++generation_;
         return true;
     }
     void clear() noexcept {
+        failure_=ControllerBindingFailure::cleared;
         explicit_=revoked_=true;bound_=false;selected_=unavailable;proof_={};++generation_;
     }
     bool disconnected(unsigned user) noexcept {
         if(user>=4)return false;
         pads_[user]=raw_pads_[user]={};
         if((explicit_ && requested_==user && !revoked_) || selected_==user){
-            if(explicit_)revoked_=true;
+            if(explicit_){revoked_=true;failure_=ControllerBindingFailure::disconnected;}
             selected_=unavailable;++generation_;return true;
         }
         return false;
@@ -44,7 +45,7 @@ public:
     bool captured(unsigned user) noexcept {
         if(user>=4)return false;
         pads_[user]=raw_pads_[user]={};
-        if(explicit_ && bound_ && selected_==user){clear();return true;}
+        if(explicit_ && bound_ && selected_==user){clear();failure_=ControllerBindingFailure::captured;return true;}
         return false;
     }
     bool explicit_selection() const noexcept {return explicit_;}
@@ -53,13 +54,24 @@ public:
         if(explicit_){
             const bool source_ok=available && connected<16 && requested_<4 && (connected&(1u<<requested_));
             if(!revoked_){
-                if(now<armed_at_ || now>=deadline_ || (!bound_ && now-armed_at_>5000))revoked_=true;
+                if(now<armed_at_ || now>=deadline_ || (!bound_ && now-armed_at_>5000)){
+                    revoked_=true;failure_=ControllerBindingFailure::deadline;
+                }
                 else if(bound_){
-                    if(!source_ok || !fresh(pads_[requested_],now) || !current(now) ||
-                        !fresh_proof(proof,now) || proof.owner!=proof_.owner ||
-                        proof.owner_generation!=proof_.owner_generation || proof.physics_step<proof_.physics_step ||
-                        proof.sampled_at<proof_.sampled_at || proof.contact_generation<proof_.contact_generation ||
-                        proof.action_generation<proof_.action_generation)revoked_=true;
+                    // Preserve the existing rejection order and authority. The
+                    // first failed predicate is diagnostic evidence only.
+                    using Failure=ControllerBindingFailure;
+                    const auto failure=!source_ok?Failure::source:
+                        !fresh(pads_[requested_],now)?Failure::physical_sample:
+                        !current(now)?Failure::selection:
+                        !fresh_proof(proof,now)?Failure::native_proof:
+                        proof.owner!=proof_.owner?Failure::owner:
+                        proof.owner_generation!=proof_.owner_generation?Failure::owner_generation:
+                        proof.physics_step<proof_.physics_step?Failure::physics_step:
+                        proof.sampled_at<proof_.sampled_at?Failure::native_clock:
+                        proof.contact_generation<proof_.contact_generation?Failure::contact_generation:
+                        proof.action_generation<proof_.action_generation?Failure::action_generation:Failure::none;
+                    if(failure!=Failure::none){revoked_=true;failure_=failure;}
                     else {next=requested_;proof_=proof;}
                 }else if(source_ok && fresh(pads_[requested_],now) && fresh(raw_pads_[requested_],now) && neutral(raw_pads_[requested_]) && neutral(pads_[requested_]) && fresh_proof(proof,now)){
                     bound_=true;proof_=proof;next=requested_;
@@ -109,6 +121,7 @@ public:
             else {r.reason=ControllerRouteReason::ready;r.logical_actor=session;}
         }
         r.explicit_binding=explicit_;
+        r.binding_failure=failure_;
         return r;
     }
     NativeInputFrame binding_observation()const noexcept{return proof_;}
@@ -117,7 +130,7 @@ public:
     std::uint64_t binding_armed()const noexcept{return explicit_?armed_at_:0;}
     unsigned selected_slot()const noexcept{return selected_;}
     std::uint64_t generation() const noexcept { return generation_; }
-    void reset() noexcept { explicit_=revoked_=bound_=false;requested_=unavailable;proof_={}; pads_ = raw_pads_ = {}; selected_ = unavailable; connected_ = 0; selected_at_ = 0; ++generation_; }
+    void reset() noexcept { explicit_=revoked_=bound_=false;failure_=ControllerBindingFailure::none;requested_=unavailable;proof_={}; pads_ = raw_pads_ = {}; selected_ = unavailable; connected_ = 0; selected_at_ = 0; ++generation_; }
 private:
     static bool neutral(const ArcadeInput::Physical& pad) noexcept {
         // Reuse the shared digital thresholds for both sticks and triggers.
@@ -137,6 +150,7 @@ private:
             selected_ != unavailable && now >= selected_at_ && now-selected_at_ <= 150;
     }
     bool explicit_{},revoked_{},bound_{};
+    ControllerBindingFailure failure_{};
     unsigned requested_{unavailable};
     std::uint64_t armed_at_{},deadline_{};
     NativeInputFrame proof_{};
