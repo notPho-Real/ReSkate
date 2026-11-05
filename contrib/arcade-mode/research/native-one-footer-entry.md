@@ -55,3 +55,16 @@ right-stick region. Boneless requires one hand-grab input with a foot-plant or
 Ollie-button input and the allowed native GrabType. Their separate input adapter is described in
 [native-footplant-entry.md](native-footplant-entry.md). Ground/coffin and fingerflip/varial transitions are
 also separate owners and remain blocked in catalog accounting.
+
+## Entry actor follow-up
+
+The RC3-03 Benihana trial reached native OneFooterType7 during its Into
+sequence, but never reached the previously tracked loop before the landing
+ended in a bail. Entry bodies are distinct original actors: all13 exact
+Into actors are now observed as well as their loops. A matching original
+entry actor must initialize and advance with positive delta in the owned
+local state view while the corresponding OneFooterType and IsGrabbing
+are present. Only then can a released physical B request withdraw the native
+input without waiting for a loop. No transition or animation clock is forced.
+The actor receipt distinguishes Into from Loop; neither substitutes for
+held-loop, release/landing or scoring acceptance. The bail cause remains open.

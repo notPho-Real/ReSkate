@@ -48,6 +48,18 @@ std::array<Asset,15> assets{{
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
+constexpr auto grab_actor_count=contract::actor_assets.size()+contract::footer_entry_actors.size();
+const Pilot* actor_profile(unsigned index) noexcept {
+    if(index<contract::actor_assets.size())return &pilots[index];
+    if(index>=grab_actor_count)return nullptr;
+    const auto foot=contract::footer_entry_actors[index-contract::actor_assets.size()].one_footer;
+    for(const auto& profile:pilots)if(profile.one_footer==foot)return &profile;
+    return nullptr;
+}
+const contract::GrabActorAsset& grab_actor_asset(unsigned index) noexcept {
+    return index<contract::actor_assets.size()?contract::actor_assets[index]:
+        contract::footer_entry_actors[index-contract::actor_assets.size()].actor;
+}
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
 struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{};};
 // Observation only: distinguish a failed owner proof from a native landing.
@@ -64,7 +76,7 @@ struct Session {
     std::uint64_t episode{},serial{};
     InputGenerations lineage{};InputAirEpisode air{};
     std::array<Written,4> writes{};
-    std::array<Actor,contract::actor_assets.size()+finger_contract::actors.size()> actors{};
+    std::array<Actor,grab_actor_count+finger_contract::actors.size()> actors{};
     FingerflipInput finger{};
     std::uint64_t finger_settings_since{};
     bool reported{};
@@ -257,9 +269,9 @@ FingerflipObservation finger_observation() noexcept {
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);
     if (pointer(asset)!=image+0x61ba838) return -1;
-    for (unsigned i=0;i<contract::actor_assets.size();++i) if (guid_is(asset,contract::actor_assets[i].guid)) return static_cast<int>(i);
+    for (unsigned i=0;i<grab_actor_count;++i) if (guid_is(asset,grab_actor_asset(i).guid)) return static_cast<int>(i);
     for(unsigned i=0;i<finger_contract::actors.size();++i)
-        if(guid_is(asset,finger_contract::actors[i]))return static_cast<int>(contract::actor_assets.size()+i);
+        if(guid_is(asset,finger_contract::actors[i]))return static_cast<int>(grab_actor_count+i);
     return -1;
 }
 void acknowledge(std::uint64_t now) noexcept {
@@ -267,7 +279,7 @@ void acknowledge(std::uint64_t now) noexcept {
         const auto native=finger_observation();
         if(!native.valid || session.finger.acknowledged())return;
         for(unsigned i=0;i<finger_contract::actors.size();++i) {
-            const auto index=contract::actor_assets.size()+i;const auto& a=session.actors[index];
+            const auto index=grab_actor_count+i;const auto& a=session.actors[index];
             if(&fingerflips[i]!=session.finger.row() || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms)continue;
             if(session.finger.acknowledge(native.identity,a.initialized,a.object && actor_index(a.object)==static_cast<int>(index),a.delta,a.before,a.after))
                 logging::log(logging::Level::info,logging::Channel::skater,
@@ -281,9 +293,10 @@ void acknowledge(std::uint64_t now) noexcept {
     const auto detail_at=address(5),grabbing_at=address(4);
     if (!detail_at || !grabbing_at || !read(detail_at,detail) || !read(grabbing_at,grabbing)) return;
     if (selected->one_footer && (!address(8) || !read(address(8),one_footer))) return;
-    for (unsigned i=0;i<contract::actor_assets.size();++i) {
+    for (unsigned i=0;i<grab_actor_count;++i) {
         const auto& a=session.actors[i];
-        if (pilots[i].trick!=selected->trick || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms) continue;
+        const auto* profile=actor_profile(i);
+        if (!profile || profile->trick!=selected->trick || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms) continue;
         if (session.lease.acknowledge(detail,a.delta,a.before,a.after,a.initialized,
                                     a.object && actor_index(a.object)==static_cast<int>(i),grabbing,one_footer) && !session.reported) {
             session.reported=true;
@@ -292,8 +305,9 @@ void acknowledge(std::uint64_t now) noexcept {
             const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
                 read(bodies,count) && count==9 && read(bodies+0x74,vy) && std::isfinite(vy);
             logging::log(logging::Level::info,logging::Channel::skater,
-                "ARCADE NATIVE GRAB: serial={} episode={} detail={} one_footer={} actor={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={}.",
-                session.serial,session.episode,detail,one_footer,a.object,contract::actor_assets[i].name,a.before,a.after,a.delta,velocity_known,vy);
+                "ARCADE NATIVE GRAB: serial={} episode={} detail={} one_footer={} actor={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true velocity_known={} vertical_velocity={} phase={}.",
+                session.serial,session.episode,detail,one_footer,a.object,grab_actor_asset(i).name,a.before,a.after,a.delta,velocity_known,vy,
+                i<contract::actor_assets.size()?"loop":"into");
         }
     }
 }
@@ -312,9 +326,9 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
         if (session.serial==occurrence && valid() && actor_index(actor)==index &&
             read(actor+0x20,duration) && std::isfinite(duration) && duration>0 && duration<10000) {
             session.actors[index]={actor,0,0,0,0,true};
-            if(static_cast<unsigned>(index)<contract::actor_assets.size())logging::log(logging::Level::info,logging::Channel::skater,
+            if(const auto* profile=actor_profile(static_cast<unsigned>(index)))logging::log(logging::Level::info,logging::Channel::skater,
                 "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} actor_asset={} duration={}.",
-                occurrence,session.episode,pilots[index].detail,actor,contract::actor_assets[index].name,duration);
+                occurrence,session.episode,profile->detail,actor,grab_actor_asset(static_cast<unsigned>(index)).name,duration);
         }
     }
 }
@@ -448,7 +462,7 @@ bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
     if(!observed.valid || observed.in_fingerflip || !session.finger.start(*session.lease.selected(),
         session.lease.acknowledged(),retarget_observation(),id,steps,now,tick,mirror))return false;
     session.serial=++serial;
-    for(std::size_t i=contract::actor_assets.size();i<session.actors.size();++i)session.actors[i]={};
+    for(std::size_t i=grab_actor_count;i<session.actors.size();++i)session.actors[i]={};
     restore();refresh_finger_settings(now);
     logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE NATIVE FINGERFLIP REQUEST: serial={} episode={} gesture={} expected_identity={} source_family={} destination={} animation_acknowledged=false.",
