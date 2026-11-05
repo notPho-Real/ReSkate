@@ -21,13 +21,16 @@ NativeOrientation read_native_orientation(Reader&& read, std::uintptr_t core,
     std::uint32_t native{},basis{};
     if (!pointer(core) || !pointer(context) || !read(core+layout::frame_source,source) || !pointer(source) ||
         !read(source+layout::frame_flags,flags) || flags[0]>1 || flags[2]>1 || flags[3]>1 || flags[4]>1 ||
-        flags[2]+flags[3]!=1 || !read(context+layout::frame_context,native) ||
+        !read(context+layout::frame_context,native) ||
         (flags[4]!=0)!=((native&layout::native_mask)!=0) ||
         !read(context+layout::basis_context,basis) || (flags[0]!=0)!=((basis&layout::basis_mask)!=0) ||
         !read(core+layout::state_root,root) || !pointer(root) ||
         !read(root+layout::export_state,exported) || !pointer(exported) ||
         !read(exported+layout::exported_flags,exports) || exports[0]!=flags[4] ||
         exports[1]!=flags[2] || exports[2]!=flags[3]) return {};
+    // The native frame and export can both publish the two adjacent flags as
+    // true while riding. They are not an exclusive stance enumeration. Fakie
+    // is the separate flag corroborated by the physics word and export above.
     return {true,flags[4]!=0};
 }
 }

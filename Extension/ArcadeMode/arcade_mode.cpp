@@ -23,6 +23,7 @@
 #include "arcade_native_trick.h"
 #include "arcade_native_flip_transition.h"
 #include "arcade_native_held_flip.h"
+#include "arcade_native_manual_pose.h"
 #include "arcade_native_footplant.h"
 #include "arcade_native_ground_grab.h"
 #include "arcade_native_grab_transition.h"
@@ -1988,6 +1989,7 @@ void on_client_tick() noexcept {
         native_flip::tick(gameplay && focus_available);
         native_grab::tick(gameplay && focus_available);
         native_held_flip::tick(score_probe_base,gameplay && focus_available && native_grab::available());
+        native_manual_pose::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_footplant::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_grind::tick(gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);

@@ -196,6 +196,23 @@ Remaining mechanisms:
 
 ## Fakie manual posture — correction awaiting native acceptance
 
+The RC3-03 follow-up exposed a rejected native observation: adjacent frame flags
+were both1 while riding and both0 after another native stance change, with the
+exports agreeing. The inherited upstream exclusivity test rejected both cases.
+The orientation reader now validates their Boolean range and export agreement
+without assuming they are exclusive. Fakie still requires the separate frame
+flag, physics bit and export to agree. The revised regression fails before this
+correction and passes afterward. No native stance value is written.
+
+A moving Manual-to-RT capture then observed original RidingFakie become true,
+the corroborating physics/frame flags change, and Manual contact0x4000 persist
+through state101-to100. A slower trial nearly stopped and did not set native
+fakie; this is not interchangeable with the moving case. Exact pose acceptance
+now also has a read-only observer for the four original medium-speed manual
+body actors, using the existing fingerprinted ActorController callbacks and
+local-player state-view ownership. It records initialization and positive
+advancement alongside contact and orientation; it never selects a pose.
+
 The native game has distinct `OnBoard.Manual.T.Fakie.Loop` (33850) and
 `OnBoard.Manual.N.Fakie.Loop` (25379) nodes. The formerly unresolved condition
 `f9a95db4-e022-f765-f9a9-5db4e022f765` is `Bool.Physics.RidingFakie`.

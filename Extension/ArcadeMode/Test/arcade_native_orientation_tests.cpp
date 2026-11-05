@@ -22,11 +22,11 @@ struct Memory {
 };
 int main(){
     constexpr std::uintptr_t core=0x10000,context=0x20000,source=0x30000,root=0x40000,exported=0x50000;
-    for(bool fakie:{false,true})for(bool basis:{false,true})for(bool foot:{false,true}){
+    for(bool fakie:{false,true})for(bool basis:{false,true})for(bool foot:{false,true})for(bool adjacent:{false,true}){
         Memory memory;
         memory.put(core+layout::frame_source,source);memory.put(core+layout::state_root,root);
         memory.put(root+layout::export_state,exported);
-        std::array<std::uint8_t,5> flags{static_cast<std::uint8_t>(basis),0,static_cast<std::uint8_t>(foot),static_cast<std::uint8_t>(!foot),static_cast<std::uint8_t>(fakie)};
+        std::array<std::uint8_t,5> flags{static_cast<std::uint8_t>(basis),0,static_cast<std::uint8_t>(foot),static_cast<std::uint8_t>(adjacent),static_cast<std::uint8_t>(fakie)};
         std::array<std::uint8_t,3> exports{flags[4],flags[2],flags[3]};
         memory.put(source+layout::frame_flags,flags);memory.put(exported+layout::exported_flags,exports);
         memory.put(context+layout::frame_context,fakie?layout::native_mask:0u);
@@ -44,7 +44,10 @@ int main(){
         check(!read_native_orientation(read,core,context).valid);
         memory=original;exports[0]=!exports[0];memory.put(exported+layout::exported_flags,exports);
         check(!read_native_orientation(read,core,context).valid);
-        memory=original;flags[2]=flags[3]=0;memory.put(source+layout::frame_flags,flags);
+        memory=original;flags[2]=2;memory.put(source+layout::frame_flags,flags);
+        check(!read_native_orientation(read,core,context).valid);
+        memory=original;exports={static_cast<std::uint8_t>(fakie),static_cast<std::uint8_t>(!foot),static_cast<std::uint8_t>(adjacent)};
+        memory.put(exported+layout::exported_flags,exports);
         check(!read_native_orientation(read,core,context).valid);
         memory=original;memory.put(core+layout::frame_source,std::uintptr_t{3});
         check(!read_native_orientation(read,core,context).valid);
