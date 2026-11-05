@@ -98,9 +98,16 @@ GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,
     GroundGrabObservation out{};NoBailSkater current{};
     if (!permitted.load() || !grab_ready.load() || !no_bail_skater(current) || current!=skater) return out;
     const auto block=block_for(skater);
-    std::uint8_t can{},left{},right{},coffin{};
+    std::uint8_t can{},left{},right{},coffin{};std::uint32_t coffin_handle{};
+    // Before the first Coffin, the original asset has no allocated state
+    // handle. That is not a corrupt read and must not prevent every ordinary
+    // ground grab from starting. Once allocated, require the normal valid slot;
+    // missing pages or failed reads never become a false Coffin observation.
+    const bool coffin_unallocated=guid_is(assets[9].object,assets[9].guid) &&
+        read(assets[9].object+contract::handle,coffin_handle) && !coffin_handle;
     if (!block || !read(skater.context+contract::physics_state,out.state) ||
-        !state(block,6,can) || !state(block,7,left) || !state(block,8,right) || !state(block,9,coffin) ||
+        !state(block,6,can) || !state(block,7,left) || !state(block,8,right) ||
+        (!coffin_unallocated && !state(block,9,coffin)) ||
         can>1 || left>1 || right>1 || coffin>1) return out;
     out.valid=true;out.sampled_at=now;out.step=step;
     out.can_grab=can!=0;out.left=left!=0;out.right=right!=0;out.coffin=coffin!=0;
@@ -114,9 +121,10 @@ void retire_grab() noexcept {
 }
 bool ground_actor_is(std::uintptr_t actor) noexcept {
     const auto kind=static_cast<unsigned>(grab_lease.kind());
+    const auto asset=pointer(actor+contract::actor_asset);
     return grab_lease.active() && kind>=1 && kind<=grab_contract::actors.size() &&
-        pointer(actor)==image+contract::actor_type &&
-        guid_is(pointer(actor+contract::actor_asset),grab_contract::actors[kind-1]);
+        pointer(asset)==image+contract::actor_type &&
+        guid_is(asset,grab_contract::actors[kind-1]);
 }
 bool ground_actor_owner(std::uintptr_t view) noexcept {
     NoBailSkater current{};unsigned state{};

@@ -381,3 +381,33 @@ artifact manifest for final source, run links and DLL SHA-256; do not reuse the
 earlier installed DLL's identity for these additions. No candidate is gameplay
 accepted solely because CI passes. Fakie posture and physical X-X rotations
 remain mandatory owner acceptance items.
+
+## Follow-up from controlled RC3-03 trials
+
+The pinned installed RC3-03 DLL exposed a routing gap in Up-right+B,B: the
+unsupported first Madonna slot discarded repetition provenance, so the supported
+Judo binding never reached its native adapter. The recognizer now retains that
+physical prefix only when its native first profile is absent and its second
+profile exists. It does not execute a substitute first grab. The unchanged
+action-generation, owner, airborne-episode and 250ms physical-edge guards still
+apply. A production-composed regression failed before the fix and passes after
+at30/60/120Hz, including owner, landing and timeout rejection.
+
+All four ground-grab trials were also refused before native input: the original
+Coffin state asset had handle0 before its first use. The ground observer had
+required an allocated Coffin slot even for FS/BS grabs. Only that verified
+unallocated handle now permits initial observation; nonzero invalid handles,
+missing pages and failed reads still reject. Ground actor verification also
+now checks the original actor asset type at the asset pointer, matching the
+working airborne/held-flip observer, rather than comparing the runtime actor
+object to the asset type. Native entry/lifecycle acceptance remains pending.
+
+On RC3-03, exact native actors initialized/advanced for Melon, FS Grab, Japan,
+Tailgrab, Crossbone, Tuck Knee, Double Front, Double Back, Method and Stiffy.
+Their scoring remains unverified. Rocket repetition delivered both hands but
+remained in Nose family6/detail21; it did not initialize the Rocket actor.
+The independent Melon trace entered IsGrabbing while ascending approximately
+70ms after B; the named hold actor followed the original entry transition.
+Do not mistake the later loop acknowledgment for proof that entry waited for
+descent. Local raw captures and hashes are retained in the RC3 native-followup
+artifact receipt. These findings do not close full catalog acceptance.

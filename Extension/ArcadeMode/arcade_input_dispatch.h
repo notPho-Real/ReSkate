@@ -366,7 +366,7 @@ public:
         // Current-poll attempts cannot survive a session/authority reset.
         // Keep cumulative recognition identity and loss counters monotonic.
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
-        active_flip_ = active_grab_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
+        active_flip_ = grab_repeat_available_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
         grab_choice_event_=0;grab_choice_=ArcadeTrick::double_grab;
     }
@@ -386,11 +386,11 @@ public:
     }
     void acknowledge_jump_release() noexcept { pending_.cancel(InputAction::ollie_release); }
     void cancel_auxiliary() noexcept {
-        pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); active_grab_ = false;
+        pending_.cancel(InputAction::grab); pending_.cancel(InputAction::revert); grab_repeat_available_ = false;
     }
     void cancel_air_episode(bool preserve_history = false) noexcept {
         pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
-        active_flip_ = active_grab_ = false; direction_ = 0;
+        active_flip_ = grab_repeat_available_ = false; direction_ = 0;
         // Keep physical held state and independently queued Manual/rail intent.
         if (!preserve_history) events_.discard_intent();
     }
@@ -430,7 +430,7 @@ public:
                     if (takeoff && !native_.airborne && native.airborne) {
                         // The ground-selected flip remains tied to this exact
                         // released pop; eligibility rejects any other release.
-                        pending_.cancel(InputAction::grab); active_flip_=active_grab_=false;
+                        pending_.cancel(InputAction::grab); active_flip_=grab_repeat_available_=false;
                     } else cancel_air_episode(takeoff || native.ordinary_air_transition(native_,now));
                 }
                 if (native.generations.action != native_.generations.action) {
@@ -518,7 +518,7 @@ public:
             events_.discard_intent(); pending_.clear(); crouched_ = false;
             diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
-            direction_ = 0; active_flip_ = active_grab_ = false;
+            direction_ = 0; active_flip_ = grab_repeat_available_ = false;
             previous_context_ = environment.context;
             return;
         }
@@ -526,7 +526,7 @@ public:
             now >= direction_at_ && now - direction_at_ > InputTiming::takeoff_preload_ms) direction_ = 0;
         if (previous_context_ == InputContext::air && environment.context != InputContext::air) {
             pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
-            direction_ = 0; active_flip_ = active_grab_ = false;
+            direction_ = 0; active_flip_ = grab_repeat_available_ = false;
         }
         previous_context_ = environment.context;
         const auto held_direction = events_.held_direction();
@@ -653,9 +653,21 @@ public:
                 flip_generations_ = event.request.generations;
                 diagnostic_.flip_table_at = now;
             }
-            if (event.disposition == InputDisposition::started && event.request.action == InputAction::grab) {
-                active_grab_ = !event.request.modifier && event.request.named_binding && event.request.form == InputForm::ordinary;
-                active_grab_count_ = active_grab_ ? event.request.presses : 0;
+            // A repeated binding belongs to physical B edges. Some original
+            // names have no independent actor, but their second-press binding
+            // does (Madonna -> Judo). Remember that prefix without submitting
+            // a substitute grab or claiming native ownership. The second
+            // request still passes the ordinary native generation/admission gates.
+            const bool unsupported_grab_prefix=environment.native_grab_transition &&
+                event.disposition==InputDisposition::unsupported && event.request.action==InputAction::grab &&
+                event.request.presses==1 && !event.request.modifier && event.request.named_binding &&
+                event.request.form==InputForm::ordinary && native.required && native.fresh(now) && native.airborne &&
+                native.correlates_action(event.request.generations) &&
+                !native_grab::pilot(event.request.air.trick) &&
+                native_grab::pilot(air_selection(TrickFamily::grab,event.request.direction,2).trick);
+            if ((event.disposition == InputDisposition::started || unsupported_grab_prefix) && event.request.action == InputAction::grab) {
+                grab_repeat_available_ = !event.request.modifier && event.request.named_binding && event.request.form == InputForm::ordinary;
+                active_grab_count_ = grab_repeat_available_ ? event.request.presses : 0;
                 grab_pressed_at_ = event.request.physical_pressed_at;
                 grab_direction_ = event.request.direction; grab_source_ = event.request.direction_source; diagnostic_.grab_table_at = now;
                 grab_generations_ = event.request.generations;
@@ -996,7 +1008,7 @@ private:
         if(extended) {
             match=physical_press;
         }
-        if (!extended && !environment.deferred_grabs && active_grab_ && active_grab_count_ == 1 && grab_direction_) {
+        if (!extended && !environment.deferred_grabs && grab_repeat_available_ && active_grab_count_ == 1 && grab_direction_) {
             const auto definition = air_selection(TrickFamily::grab,grab_direction_,2);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
@@ -1015,7 +1027,7 @@ private:
                 match = binding.match; selected = binding.direction;
                 // A neutral first grab is valid. An expired named-grab extra
                 // remains buffered for a genuine direction; never relabel it.
-                if (!match && !selected && (!active_grab_ || !grab_direction_)) {
+                if (!match && !selected && (!grab_repeat_available_ || !grab_direction_)) {
                     const std::array tokens{face};
                     match=events_.history().match({tokens,500,ordinary_reject},now);
                 }
@@ -1492,7 +1504,7 @@ private:
     InputJumpBinding jump_binding_{};
     std::uint64_t jump_generation_{};
     unsigned active_flip_count_{}, active_grab_count_{}, previous_balance_branch_{};
-    bool active_flip_{}, active_grab_{};
+    bool active_flip_{}, grab_repeat_available_{};
     bool clocked_{}, crouched_{}, crouch_nollie_{}, flip_nollie_{}, manual_unknown_{};
 };
 }

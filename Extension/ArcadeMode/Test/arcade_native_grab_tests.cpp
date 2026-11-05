@@ -364,6 +364,27 @@ void delayed_tap_and_controls() {
     check(!lease.selected(),"lost physical heartbeat cancels");
     check(!lease.request(ArcadeTrick::madonna,9000,true),"unqualified named grab never aliases a supported pose");
 }
+void repeated_grab_after_unsupported_first_binding() {
+    for (unsigned hz:{30u,60u,120u}) {
+        const auto dt=1000u/hz;
+        auto r=std::make_unique<Route>();r->poll(900,0,100);r->poll(1000);
+        r->poll(1000+dt,0x2009);
+        check(r->requests.empty(),"unsupported Madonna never substitutes another native grab");
+        r->poll(1000+2*dt,0x0009);
+        r->poll(1000+3*dt,0x2009);
+        check(r->requests.size()==1 && r->tricks.back()==ArcadeTrick::judo,
+            "physical second B reaches supported Judo despite unsupported first binding");
+        check(r->requests.back().presses==2 && r->requests.back().physical_pressed_at==1000+3*dt,
+            "Judo retains second physical edge rather than executing a substitute first grab");
+        for(unsigned fault=0;fault<3;++fault) {
+            auto bad=std::make_unique<Route>();bad->poll(900,0,100);bad->poll(1000);
+            bad->poll(1000+dt,0x2009);bad->poll(1000+2*dt,0x0009);
+            if(fault==0)++bad->owner.entity;
+            bad->poll(fault==2?1300:1000+3*dt,0x2009,fault==1?100:201);
+            check(bad->requests.empty(),"unsupported-prefix repeat cannot survive owner replacement, landing or timeout");
+        }
+    }
+}
 void repeated_grab_uses_physical_interval() {
     for (unsigned hz:{30u,60u,120u}) for (unsigned interval:{200u,300u}) {
         auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
@@ -536,4 +557,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();selected_native_families();foot_setting_admission();delayed_tap_and_controls();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();selected_native_families();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
