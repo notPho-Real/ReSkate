@@ -68,3 +68,22 @@ are present. Only then can a released physical B request withdraw the native
 input without waiting for a loop. No transition or animation clock is forced.
 The actor receipt distinguishes Into from Loop; neither substitutes for
 held-loop, release/landing or scoring acceptance. The bail cause remains open.
+
+## Repeated entry after Ollie retirement
+
+The physical Up-Right+B,B binding has an unsupported first name (Madonna)
+and a supported second native action (Judo). The first press deliberately
+submits no substitute actor. A portable reproduction found that retirement
+of the original Ollie selector between these presses rejected the second
+request's old action generation. The dispatcher now accepts the existing
+independent `jump_selection_retired` proof for this unsupported prefix only.
+Established grabs still require their own native owner proof. Owner or
+selector replacement, landing, another flip and an expired repetition remain
+rejected. The reproduction failed before the change and passes at 30/60/120 Hz.
+This fixes request routing; Judo actor and landing acceptance remain pending.
+
+The RC3-09 Mega Park Benihana capture reached native OneFooterType7, but the
+temporary controller binding was revoked before landing and the skater bailed.
+It provided no exact actor acknowledgment. Its uncompressed SHA-256 is
+`05bf35eb440c4dbd64aa2f26bb940708a98535a351b93be5333659ca44041cad`.
+Do not count the native identity alone as successful one-footer acceptance.

@@ -407,6 +407,24 @@ void repeated_grab_after_unsupported_first_binding() {
             "physical second B reaches supported Judo despite unsupported first binding");
         check(r->requests.back().presses==2 && r->requests.back().physical_pressed_at==1000+3*dt,
             "Judo retains second physical edge rather than executing a substitute first grab");
+        auto retired=std::make_unique<Route>();
+        retired->poll(900,0,100);retired->poll(1000,0,201,1);
+        retired->poll(1000+dt,0x2009,201,1);
+        retired->poll(1000+2*dt,0x0009,201,-1);
+        retired->poll(1000+3*dt,0x2009,201,-1);
+        check(retired->requests.size()==1 && retired->tricks.back()==ArcadeTrick::judo,
+            "unsupported first grab keeps its physical repeat through observed Ollie selection retirement");
+        for(unsigned fault=0;fault<5;++fault) {
+            auto bad=std::make_unique<Route>();
+            bad->poll(900,0,100);bad->poll(1000,0,201,1);
+            bad->poll(1000+dt,0x2009,201,1);
+            if(fault==0)++bad->owner.entity;
+            if(fault==1)++bad->selection_object;
+            bad->poll(1000+2*dt,0x0009,fault==2?100:201,fault==3?2:-1);
+            bad->poll(fault==4?1300:1000+3*dt,0x2009,fault==2?100:201,fault==3?2:-1);
+            check(bad->requests.empty(),
+                "retired unsupported prefix rejects owner/selector replacement, landing, another flip and timeout");
+        }
         for(unsigned fault=0;fault<3;++fault) {
             auto bad=std::make_unique<Route>();bad->poll(900,0,100);bad->poll(1000);
             bad->poll(1000+dt,0x2009);bad->poll(1000+2*dt,0x0009);

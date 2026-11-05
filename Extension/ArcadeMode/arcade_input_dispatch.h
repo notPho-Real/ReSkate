@@ -1059,7 +1059,14 @@ private:
             grab_generations_,grab_native_.air_episode(),grab_native_.flip);
         if (recognition_capture_) diagnostic_.grab_repeat = {true,extra,environment.native_grab_transition,
             retired,native_owner,grab_generations_,grab_native_,environment.native_context};
-        if (native_owner)
+        // An unsupported first name (Madonna) never acquired a grab owner.
+        // Its physical second press (Judo) can still follow the independently
+        // observed Ollie-to-idle retirement in this exact flight. Supported
+        // first grabs must keep using their own native ownership proof.
+        const bool unsupported_prefix_retired = extra && retired &&
+            !native_grab::pilot(air_selection(TrickFamily::grab,grab_direction_,1).trick) &&
+            native_grab::pilot(air_selection(TrickFamily::grab,grab_direction_,2).trick);
+        if (native_owner || unsupported_prefix_retired)
             lineage = &environment.native_context.generations;
         enqueue(InputAction::grab, now, InputTiming::readiness_ms + (environment.deferred_grabs ? 180u : 0u),
             environment, presses, 0, environment.deferred_grabs ? 180u : 0u, extended?1u:0u,
