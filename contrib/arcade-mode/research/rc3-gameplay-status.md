@@ -1,5 +1,24 @@
 # RC3 implementation status — incomplete candidate
 
+## Mega Park follow-up
+
+The owner-selected `skate3_megapark` is the required gameplay test map. On the
+installed RC3-04 DLL, a grounded Up/Down gesture entered native Manual, retained
+tail contact through state101-to100, and observed native fakie after RT. The
+neutral-stick trial then reached the Arcade balance endpoint and bailed; the
+balance failure was logged explicitly. This is neither a ten-second hold nor
+proof of the final native posture. Future sustained trials must provide ordinary
+physical balance correction and record it.
+
+Tracing the original Manual SuperLayers subjects found a gap in the pose
+observer: each of four native balance/turn blendspaces references nine original
+pose actors, separate from the four medium loop actors previously watched.
+`native-manual-pose-observation.json` records the source links and exact actors.
+Observation now includes these36 actors with the same local-owner, state-view,
+initialization and positive-advancement requirements. Blend contribution remains
+unverified; observing an actor is not proof it supplies the final rendered pose.
+No native pose, contact, orientation, animation time or blend weight is written.
+
 ## RC3-04 live follow-up
 
 Source `baf44ab2c908dd49fc1acd2676b149d5df1f5845` passed all required

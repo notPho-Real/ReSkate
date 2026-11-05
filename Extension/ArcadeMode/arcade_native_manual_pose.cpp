@@ -18,7 +18,7 @@ std::uintptr_t image{},block{};
 NoBailSkater owner{};
 std::uint64_t serial{},sampled_at{};
 struct Actor {std::uintptr_t object{};std::uint64_t reported_at{};bool initialized{};};
-std::array<Actor,4> actors{};
+std::array<Actor,contract::actors.size()> actors{};
 unsigned initialization_reports{};
 template<class T> bool read(std::uintptr_t at,T& value) noexcept {return memory::peek(at,value);}
 std::uintptr_t pointer(std::uintptr_t at) noexcept {std::uintptr_t p{};return read(at,p)?p:0;}
@@ -99,7 +99,7 @@ void after_evaluate(Evaluation token,std::uintptr_t context,float delta) noexcep
     const auto orientation=read_native_orientation([](auto at,auto& value){return memory::peek(at,value);},owner.core,owner.context);
     actor.reported_at=now;
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE MANUAL POSE: ms={} serial={} pose={} initialized=true before={} after={} delta={} state={} contacts={} orientation_valid={} fakie={} scoring_acceptance=unverified.",
+        "ARCADE NATIVE MANUAL POSE: ms={} serial={} pose={} initialized=true before={} after={} delta={} state={} contacts={} orientation_valid={} fakie={} blend_weight=unverified scoring_acceptance=unverified.",
         now,serial,contract::actors[token.index].name,token.before,after,delta,state,contacts&0xc000u,orientation.valid,orientation.fakie);
 }
 }
