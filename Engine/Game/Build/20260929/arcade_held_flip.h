@@ -17,5 +17,6 @@ inline constexpr std::uintptr_t animatable=0x68, holder=0xe8, state_block=8, blo
 inline constexpr std::uintptr_t handle=0x28, pages=0x60, valid_words=0x71c, state_view=0x48;
 inline constexpr std::uintptr_t physics_state=0x1414, actor_asset=0x60, actor_type=0x61ba838;
 inline constexpr std::uintptr_t actor_time=0x1c, actor_duration=0x20, evaluation_view=8;
+inline constexpr std::uintptr_t asset_guid_prefix=16;
 }
 

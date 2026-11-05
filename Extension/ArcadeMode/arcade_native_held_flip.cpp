@@ -26,6 +26,7 @@ std::uint64_t retry_at{},next_serial{};
 std::atomic<bool> permitted{},ready{},tracking{};
 std::mutex mutex;
 unsigned initialization_reports{};
+unsigned other_actor_reports{};
 struct Observation {
     NoBailSkater owner{};
     std::uintptr_t block{},actor{};
@@ -141,7 +142,25 @@ void initialized(std::uintptr_t actor,std::uintptr_t view) noexcept {
     if (!permitted.load()) return;
     std::lock_guard lock(mutex);float duration{};
     const auto id=actor_identity(actor);
-    if(!id)return;
+    if(!id) {
+        // Native board-axis captures prove the extra rotation, but neither
+        // expected loop actor reached this callback. Record the original
+        // actor selected in this same live owner/view instead of admitting an
+        // unknown clip or treating the rotation counter as actor evidence.
+        if(other_actor_reports<32 && tracking.load() && current() &&
+            view==observation.block+contract::state_view) {
+            const auto asset=pointer(actor+contract::actor_asset);
+            std::array<std::uint32_t,4> guid_words{};
+            if(asset>=0x10000+contract::asset_guid_prefix && pointer(asset)==image+contract::actor_type &&
+                read(asset-contract::asset_guid_prefix,guid_words)) {
+                ++other_actor_reports;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE NATIVE HELD OTHER ACTOR: serial={} native_id={} guid_words_le={:08x},{:08x},{:08x},{:08x} known_loop=false acceptance=false.",
+                    observation.serial,observation.id,guid_words[0],guid_words[1],guid_words[2],guid_words[3]);
+            }
+        }
+        return;
+    }
     const bool owner_current=current(),view_matches=view==observation.block+contract::state_view;
     const bool duration_valid=read(actor+contract::actor_duration,duration) &&
         std::isfinite(duration) && duration>0 && duration<=10000;
