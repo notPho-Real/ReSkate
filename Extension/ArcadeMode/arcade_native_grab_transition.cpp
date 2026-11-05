@@ -49,15 +49,22 @@ std::array<Asset,15> assets{{
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
-constexpr auto grab_actor_count=contract::actor_assets.size()+contract::footer_entry_actors.size();
+constexpr auto footer_actor_end=contract::actor_assets.size()+contract::footer_entry_actors.size();
+constexpr auto grab_actor_count=footer_actor_end+contract::grab_entry_actors.size();
 const Pilot* actor_profile(unsigned index) noexcept {
     if(index<contract::actor_assets.size())return &pilots[index];
     if(index>=grab_actor_count)return nullptr;
+    if(index>=footer_actor_end) {
+        const auto detail=contract::grab_entry_actors[index-footer_actor_end].detail;
+        for(const auto& profile:pilots)if(!profile.one_footer && profile.detail==detail)return &profile;
+        return nullptr;
+    }
     const auto foot=contract::footer_entry_actors[index-contract::actor_assets.size()].one_footer;
     for(const auto& profile:pilots)if(profile.one_footer==foot)return &profile;
     return nullptr;
 }
 const contract::GrabActorAsset& grab_actor_asset(unsigned index) noexcept {
+    if(index>=footer_actor_end)return contract::grab_entry_actors[index-footer_actor_end].actor;
     return index<contract::actor_assets.size()?contract::actor_assets[index]:
         contract::footer_entry_actors[index-contract::actor_assets.size()].actor;
 }

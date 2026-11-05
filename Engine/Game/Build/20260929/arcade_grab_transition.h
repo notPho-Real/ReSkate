@@ -97,6 +97,12 @@ inline constexpr std::array<FooterEntryActor,13> footer_entry_actors{{
     {12,{{0xe8,0x83,0xf8,0x31,0x24,0xdf,0xc3,0x3c,0x31,0xf8,0x83,0xe8,0xdf,0x24,0x3c,0xc3},"31f883e8-df24-3cc3-31f8-83e8df243cc3"}},
     {13,{{0x57,0x43,0x53,0xf4,0x9e,0x55,0x76,0x60,0xf4,0x53,0x43,0x57,0x55,0x9e,0x60,0x76},"f4534357-559e-6076-f453-4357559e6076"}}
 }};
+// Original Rocket entry body, resource31585. Its 20-tick Into can occupy a
+// short jump before the separate loop starts; observing it never proves a loop.
+struct GrabEntryActor { std::int32_t detail; GrabActorAsset actor; };
+inline constexpr std::array<GrabEntryActor,1> grab_entry_actors{{
+    {38,{{0x0e,0x39,0x83,0x81,0x15,0x8e,0xaa,0x4a,0x81,0x83,0x39,0x0e,0x8e,0x15,0x4a,0xaa},"8183390e-8e15-4aaa-8183-390e8e154aaa"}}
+}};
 // ActorController virtual initialize (slot 0x30) and evaluate (slot 0x58).
 // Shared evaluate 1278770 calls 127a200 to advance ticks at +0x1c and native tracks.
 // Initialize receives the state view directly in RDX. 127b090 constructs the
