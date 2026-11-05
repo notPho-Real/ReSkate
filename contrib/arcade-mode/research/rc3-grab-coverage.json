@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 16,
+  "native_actor_evidence_count": 17,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -2248,7 +2248,7 @@
     "Namespace counts overlap; never add them as a unique playable-trick count.",
     "All 171 declarations and all 300 sequences are accounted for; unresolved assets are BLOCKED, never inferred UNSUPPORTED.",
     "Source catalog itself does not prove exhaustive discovery of every original executable context.",
-    "Per-actor RC3-09 initialization/advancement receipts are included; no complete lifecycle or numeric scoring acceptance is claimed.",
+    "Per-actor initialization/advancement receipts identify their exact source. Into evidence does not prove the separate Loop; no complete lifecycle or numeric scoring acceptance is claimed.",
     "Indy slot resolves to native FS. Madonna, One Foot Japan and Sacktap remain unresolved catalog names; no substitute actor is assigned."
   ],
   "source_anomalies": [
@@ -2313,7 +2313,7 @@
         "Right+B; or Select \"FS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -2426,7 +2426,7 @@
         "B; or Select \"BS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -2539,7 +2539,7 @@
         "Down+B; or Select \"Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -2876,7 +2876,7 @@
         "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -3475,7 +3475,7 @@
         "Left+B; or Select \"Melon\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -3588,7 +3588,7 @@
         "R3+Up-left+B; or Select \"Crossbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -3701,7 +3701,7 @@
         "Left+B,B within 250ms; or Select \"Method\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -3930,7 +3930,7 @@
         "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
       "release_landing_evidence": "No RC3 native capture",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
@@ -3980,7 +3980,34 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 4
-      }
+      },
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 4,
+            "resource": 20566,
+            "actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+            "sequence": "Animation/Dingo/seq_onb_grab_bs_1ft_judo_into"
+          },
+          "evidence": {
+            "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+            "map": "skate3_megapark",
+            "capture": "ready-native-repeated_grabs-result.json.gz",
+            "uncompressed_sha256": "05dc351bee2f5328e54dcad164a951a61d95da5f27fc69df6b8f016bd708b578",
+            "serial": 7,
+            "episode": 4,
+            "native_detail": 0,
+            "native_one_footer": 4,
+            "phase": "into",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "intent_withdrawal_observed": true,
+            "native_exit_actor_verified": false,
+            "landing_scoring_verified": false,
+            "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
+          }
+        }
+      ]
     },
     {
       "native_name": "BSOneFootAir",
@@ -4121,7 +4148,7 @@
         "R3+Down-right+B; or Select \"Tuck Knee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4234,7 +4261,7 @@
         "R3+Up-right+B; or Select \"FS Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4347,7 +4374,7 @@
         "R3+Down-left+B; or Select \"FS Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4460,7 +4487,7 @@
         "Right+B,B within 250ms; or Select \"Stiffy\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4763,7 +4790,7 @@
         "R3+Up+B; or Select \"Double Grab Front\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4876,7 +4903,7 @@
         "R3+Down+B; or Select \"Double Grab Back\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -4989,7 +5016,7 @@
         "R3+Left+B; or Select \"Double Grab Left\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -5102,7 +5129,7 @@
         "R3+Right+B; or Select \"Double Grab Right\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9308,7 +9335,7 @@
         "B; or Select \"BS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9430,7 +9457,7 @@
         "Left+B,B within 250ms; or Select \"Method\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9553,7 +9580,7 @@
         "Up-left+B; or Select \"Japan\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9662,7 +9689,7 @@
         "Left+B; or Select \"Melon\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9785,7 +9812,7 @@
         "R3+Up-left+B; or Select \"Crossbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -9894,7 +9921,7 @@
         "Right+B; or Select \"FS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -10003,7 +10030,7 @@
         "R3+Up-right+B; or Select \"FS Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -10112,7 +10139,7 @@
         "R3+Down-left+B; or Select \"FS Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -10221,7 +10248,7 @@
         "R3+Down-right+B; or Select \"Tuck Knee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -10330,7 +10357,7 @@
         "Right+B,B within 250ms; or Select \"Stiffy\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -10439,7 +10466,7 @@
         "Down+B; or Select \"Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -11548,7 +11575,7 @@
         "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -13063,7 +13090,7 @@
         "R3+Left+B; or Select \"Double Grab Left\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -13172,7 +13199,7 @@
         "R3+Right+B; or Select \"Double Grab Right\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -13281,7 +13308,7 @@
         "R3+Up+B; or Select \"Double Grab Front\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -13390,7 +13417,7 @@
         "R3+Down+B; or Select \"Double Grab Back\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
@@ -13864,7 +13891,7 @@
         "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
       "release_landing_evidence": "No RC3 native capture",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
@@ -13908,6 +13935,33 @@
             ],
             "compressed_sha1": "4e543b70d743e347a89cf7a7201f8426e1f2fd8f",
             "decoded_sha256": "dc5551ea0995f4da03453498a854af74d0a9b538a5b03e3718473e9b25cfa90b"
+          }
+        }
+      ],
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 4,
+            "resource": 20566,
+            "actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+            "sequence": "Animation/Dingo/seq_onb_grab_bs_1ft_judo_into"
+          },
+          "evidence": {
+            "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+            "map": "skate3_megapark",
+            "capture": "ready-native-repeated_grabs-result.json.gz",
+            "uncompressed_sha256": "05dc351bee2f5328e54dcad164a951a61d95da5f27fc69df6b8f016bd708b578",
+            "serial": 7,
+            "episode": 4,
+            "native_detail": 0,
+            "native_one_footer": 4,
+            "phase": "into",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "intent_withdrawal_observed": true,
+            "native_exit_actor_verified": false,
+            "landing_scoring_verified": false,
+            "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
           }
         }
       ]

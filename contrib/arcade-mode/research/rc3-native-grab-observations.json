@@ -222,5 +222,22 @@
     "intent_withdrawal_observed": true,
     "native_exit_actor_verified": false,
     "landing_scoring_verified": false
+  },
+  "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0": {
+    "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+    "map": "skate3_megapark",
+    "capture": "ready-native-repeated_grabs-result.json.gz",
+    "uncompressed_sha256": "05dc351bee2f5328e54dcad164a951a61d95da5f27fc69df6b8f016bd708b578",
+    "serial": 7,
+    "episode": 4,
+    "native_detail": 0,
+    "native_one_footer": 4,
+    "phase": "into",
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "intent_withdrawal_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false,
+    "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
   }
 }

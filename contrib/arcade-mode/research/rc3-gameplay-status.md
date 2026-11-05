@@ -1,5 +1,50 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-11 Mega Park tests
+
+Source `01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0`, DLL
+`ecdc25a2a3c07a0ec23548d740a20d7a70652c89dce3ce7ebe202adb18cba984`,
+passed all its CI gates, was installed after normal game/launcher closure,
+and was verified loaded by file hash and mapped inode/device. All trials used
+`skate3_megapark`. The earlier supposed DayZ blocker was Steam artwork;
+process inspection found no running DayZ game. No other game was interrupted.
+
+Repeated-B capture
+`05dc351bee2f5328e54dcad164a951a61d95da5f27fc69df6b8f016bd708b578`
+initialized and advanced the correct Method and Stiffy actors and returned
+to ground. Judo now reached OneFooterType4 and initialized/advanced its
+original Into actor. After input withdrawal, however, it entered state601
+footplant and a second200/201 flight before ground100. Its clean release and
+landing are not accepted. Rocket's repeated-B request still selected native
+Nosegrab21, not Rocket38. These results do not establish catalog completion.
+Coverage now includes17 exact actor receipts, explicitly separating the Judo
+Into receipt from unverified Loop and exit behavior.
+
+Flip capture
+`5975d948a8da18dc293e699df09d743361eed86c08e77a4160a55b64f3205441`
+measured0.9911 actual board rotations for single X and1.9916 for X/X. Single
+landed; double bailed. The double's original held intent remained unallocated,
+its extra-rotation count stayed0, and no expected loop actor was acknowledged.
+Its input was withdrawn when PrepareHeldFlip closed before held state appeared.
+This is a failed admission/catch/landing case despite the visible two rotations;
+do not extrapolate RC3-09's successful count/catch capture to every attempt.
+
+Grounded Up/Down entered Manual without Ollie, retained native contact through
+RT, and initialized/advanced original tail-fakie pose actors. Capture
+`18c06ead380770cdb7277707cf8f9283fd5dd07f051eac6dde90c01d2509f8d2`
+stopped on stale balance telemetry while the manual remained active. The
+reader now distinguishes reused log inodes by record prefix. Retry
+`299533bc472605776fef5ab0fc858854eb3697d2efa8872bc7c05a11064ae96c`
+retained the manual through RT but reached an obstacle and bailed.
+
+Down/Up also entered Nose Manual without Ollie and retained nose contact
+through RT, with original nose-fakie pose actors advancing. Capture
+`82b49d9554e8d0c19dec0a732cdda728c94f304b5759be448a2b3493b22e2b90`
+used a shorter approach. The native fakie indication changed during the hold;
+later balance corrections failed and the skater bailed. Neither this nor the
+Manual retries establishes a fresh ten-second fakie hold or final rendered
+blend acceptance. Numeric scoring remains unverified throughout these trials.
+
 ## RC3-10 native follow-up
 
 Source `9a2d5ba63d0cb3c8c3ea85d22399c4efacfefbcc`, DLL

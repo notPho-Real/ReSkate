@@ -239,6 +239,8 @@ def build():
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
     observed = json.loads((RESEARCH / "rc3-native-grab-observations.json").read_text())
+    footer_entries = {a["one_footer"]: a for a in json.loads(
+        (RESEARCH / "native-one-footer-entry-actors.json").read_text())}
     for actor, evidence in observed.items():
         uuid.UUID(actor)
         assert evidence["actor_initialized"] and evidence["positive_advancement"]
@@ -246,9 +248,21 @@ def build():
         assert not evidence["landing_scoring_verified"]
     for entry in entries:
         matches = [observed[a] for a in entry.get("runtime_actor", []) if a in observed]
+        # An Into actor proves entry, not advancement of the separate Loop.
+        # Keep that distinction when joining hardware receipts to declarations.
+        entry_matches = []
+        for variant in entry.get("executable_variants", []):
+            actor = footer_entries.get(variant["one_footer"])
+            if actor and actor["actor"] in observed:
+                entry_matches.append(dict(asset=actor, evidence=observed[actor["actor"]]))
+        if entry_matches:
+            entry["rc3_native_entry_evidence"] = entry_matches
+            entry["native_animation_acknowledgment"] = (
+                "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. "
+                "See rc3_native_entry_evidence, including failed lifecycle observations.")
         if matches:
             entry.update(rc3_native_evidence=matches,
-                         native_animation_acknowledgment="Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+                         native_animation_acknowledgment="Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
                          release_landing_evidence="Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
                          remaining_blocker="Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.")
     return dict(schema_version=6, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
@@ -267,7 +281,7 @@ def build():
                 caveats=["Namespace counts overlap; never add them as a unique playable-trick count.",
                          "All 171 declarations and all 300 sequences are accounted for; unresolved assets are BLOCKED, never inferred UNSUPPORTED.",
                          "Source catalog itself does not prove exhaustive discovery of every original executable context.",
-                         "Per-actor RC3-09 initialization/advancement receipts are included; no complete lifecycle or numeric scoring acceptance is claimed.",
+                         "Per-actor initialization/advancement receipts identify their exact source. Into evidence does not prove the separate Loop; no complete lifecycle or numeric scoring acceptance is claimed.",
                          "Indy slot resolves to native FS. Madonna, One Foot Japan and Sacktap remain unresolved catalog names; no substitute actor is assigned."],
                 source_anomalies=source["source_anomalies"], entries=entries, sequence_inventory=seq_rows)
 
