@@ -1,5 +1,43 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-03 native follow-up
+
+Candidate `de837990737f202658540839e621b2e2179b1372` passed its exact-source
+Windows, Linux, macOS, upstream integration and targeted CI gates. Its installed
+and loaded DLL SHA-256 is
+`2e65b3cd7fbe68ded45f8e707bd3fb0d643af80532a3cd25690dd75dd08100e2`.
+Controlled trials at measured native/cached 1/30-second steps established:
+
+- Default B and Up+B initialized and positively advanced their exact native
+  Basic BS and Nosegrab actors, withdrew intent in air and returned to ground.
+  Up+B now selects family6/detail21 rather than the previous BS actor. Scoring
+  and the rest of the catalog are not accepted by those two trials.
+- Ground Up-to-Down entered a native manual without Ollie. The actuator stayed
+  confirmed through native101-to100 during RT. The neutral-balance trial ended
+  off-board afterward; rendered fakie posture and ten-second balance acceptance
+  remain open. The second Nose Manual trial correctly refused off-board entry.
+- Single X remained native Kickflip and landed. X/X entered a held animation
+  state but completed zero extra rotations and ended off-board. This remains a
+  failed Double Kickflip, not a successful feature.
+
+The repeated-input route waited for PrepareHeldFlip before beginning the
+original stick gesture. In the failed capture, its window lasted roughly74ms;
+input was withdrawn before original held intent became available. Existing
+stock-control captures establish the gesture before this window. The next
+correction starts gesture preparation at the second physical X once the first
+native animation identity is verified. Original EAT still admits the held
+action; preparation without its window expires after200ms. Closing the window
+without admission, owner/flight loss and the existing1200ms maximum still
+withdraw input. No native intent, rotation count, actor time or physics is
+written. A new regression fails against RC3-03 and passes with this correction.
+Native repeat/catch acceptance of this timing correction is still pending.
+
+This is an input-ordering correction using the existing source mechanism:
+`native-held-flip-source.json` identifies original EAT condition23124,
+action10792 and gesture query0x8312f0. The pinned upstream tree contains
+held-flip scoring/Trainer reads but no repeated-X adapter; the existing fork
+survey supplies no alternate verified adapter. No upstream revision changed.
+
 RC2 rollback source is `2ffb006c73671466bfcdc15395ba96939de44f7d`.
 Its preserved DLL SHA-256 is
 `420cdfae31b76522ccb97f962a2ed288b787e854161c054ad6ddb71e8d144676`.

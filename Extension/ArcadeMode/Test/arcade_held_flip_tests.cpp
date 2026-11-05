@@ -23,6 +23,18 @@ void native_boundaries() {
         native.sampled_at=2068;native.extra_rotations=1;
         check(!input.hold(2068,native,true) && input.acknowledged(),"one extra native rotation requests double catch");
         check(!input.hold(2102,native,true),"completed hold cannot restart itself");
+        native={true,true,false,false,false,id,0,3000};
+        check(input.start(3000,id,native),"second physical press can prepare the original gesture before its native admission window");
+        native.sampled_at=3034;
+        check(input.hold(3034,native,true),"preparation retains input while the original animation approaches its admission window");
+        native.sampled_at=3100;native.prepare=true;native.holding=true;native.actor_advanced=true;
+        check(input.hold(3100,native,true),"native window and original held actor admit the prepared gesture");
+        native.sampled_at=3300;native.extra_rotations=1;
+        check(!input.hold(3300,native,true) && input.acknowledged(),"prepared gesture still catches only at the independently observed extra rotation");
+        native={true,true,false,false,false,id,0,4000};
+        check(input.start(4000,id,native),"unadmitted preparation starts bounded input only");
+        native.sampled_at=4201;
+        check(!input.hold(4201,native,true) && !input.acknowledged(),"missing native window withdraws preparation at the input deadline");
     }
     for (unsigned failure=0;failure<9;++failure) {
         HeldFlipInput input;HeldFlipObservation native{true,true,true,false,false,2,0,1000};
@@ -104,10 +116,10 @@ void physical_repetition() {
     for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{-25000},std::int16_t{25000}}) {
         auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
         h->poll(1204,{0x4000},201,id,false);
-        check(!h->repeats,"second physical press waits for original native held admission");
+        check(h->repeats==1,"second physical press prepares native gesture before the short held admission window");
         h->poll(1220,{},201,id,false);
         auto out=h->poll(1237,{},201,id,true);
-        check(h->repeats==1 && out.authored_playback && out.held_flip_request==id,"same physical repetition starts one held native input path");
+        check(h->repeats==1 && out.authored_playback,"same physical repetition keeps one prepared input path through native admission");
         bool endpoint=false;
         for(unsigned n=1;n<=hz/3;++n) {
             const auto now=1237+std::uint64_t{n}*1000/hz;

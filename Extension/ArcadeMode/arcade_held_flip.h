@@ -39,8 +39,8 @@ class HeldFlipInput {
 public:
     bool start(std::uint64_t now,std::int32_t id,const HeldFlipObservation& native) noexcept {
         if (active_ || (id!=2 && id!=3) || !native.fresh(now) || native.id!=id ||
-            !native.prepare || native.holding || native.extra_rotations!=0) return false;
-        *this={};active_=true;id_=id;began_=now;return true;
+            native.holding || native.extra_rotations!=0) return false;
+        *this={};active_=true;id_=id;began_=now;prepared_=native.prepare;return true;
     }
     bool hold(std::uint64_t now,const HeldFlipObservation& native,bool same_flight) noexcept {
         if (!active_) return false;
@@ -48,6 +48,7 @@ public:
             active_=false;return false;
         }
         entered_=entered_ || native.holding;
+        prepared_=prepared_ || native.prepare;
         actor_=actor_ || native.actor_advanced;
         // The original native counter counts EXTRA rotations. Withdrawal at
         // one requests the game's normal double catch, never writes a count.
@@ -55,7 +56,13 @@ public:
             acknowledged_=native.extra_rotations==1 && entered_ && actor_;
             active_=false;return false;
         }
-        if ((!native.prepare && !native.holding) || (entered_ && !native.holding)) active_=false;
+        // The original gesture must be recognized before EAT tests PrepareHeldFlip.
+        // Starting the flick only when that short window opens misses admission.
+        // Preparation gets the existing 200ms input-readiness bound, never an
+        // animation extension. A window that closes without admission still ends.
+        if ((!prepared_ && now-began_>200) ||
+            (prepared_ && !native.prepare && !native.holding) ||
+            (entered_ && !native.holding)) active_=false;
         return active_;
     }
     bool active() const noexcept {return active_;}
@@ -64,6 +71,6 @@ public:
 private:
     std::uint64_t began_{};
     std::int32_t id_{};
-    bool active_{},entered_{},actor_{},acknowledged_{};
+    bool active_{},prepared_{},entered_{},actor_{},acknowledged_{};
 };
 }

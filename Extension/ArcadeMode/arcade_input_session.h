@@ -654,7 +654,7 @@ private:
                     admission.action_mode!=ActionExperiment::classic || physical_.lt>30 || physical_.rt>30 ||
                     (physical_.buttons&0xb030u) || manual_.busy() || auxiliary_.busy()) return InputDisposition::cancelled;
                 if (authored_.busy() || !admission.held_flip.fresh(now_) ||
-                    admission.held_flip.id!=id || !admission.held_flip.prepare) return InputDisposition::waiting;
+                    admission.held_flip.id!=id) return InputDisposition::waiting;
                 // The animation bridge preserves the physics Ollie selection.
                 // CurrentFlipTrick above proves the actual native flip; requiring
                 // the physics selector to change rejects the working bridge.
