@@ -13,6 +13,18 @@ struct Control {
     bool transition{}; // Original grab-to-flip input owns neutral RS during catch too.
     bool selector() const noexcept {return x!=0 || y!=0;}
 };
+// Profiles describe native hand/selector semantics in the original stance.
+// After a leading-foot change, the game's producer swaps the trigger hands
+// and horizontal selector. Vertical selectors and anatomical foot buttons
+// retain their existing convention. Authored fingerflip X is already mirrored
+// by its own playback and must not be mirrored a second time here.
+constexpr Control physical_control(Control control,bool mirror_x) noexcept {
+    if (!mirror_x) {
+        control.hands=((control.hands&1u)<<1)|((control.hands&2u)>>1);
+        if (!control.transition) control.x=static_cast<std::int16_t>(-control.x);
+    }
+    return control;
+}
 struct Pilot {
     ArcadeTrick trick; std::int32_t detail; float x, y; std::int32_t family{2}; unsigned hands{2};
     std::int16_t selector_x{}, selector_y{};

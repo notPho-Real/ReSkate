@@ -2388,7 +2388,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
-            action_experiment, action_safe, admission.mirror_x,
+            action_experiment, action_safe, admission.stance_known,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
             held_flip,footplant,ground_grab);
         if (!result.footplant_owned) native_footplant::cancel();

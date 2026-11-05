@@ -18,7 +18,7 @@ struct Route {
     native_grab::Lease lease;std::vector<InputRequest> requests;std::vector<ArcadeTrick> tricks;
     bool accept{true};std::uint64_t now{};std::uintptr_t selection_object{16};
     bool selection_valid{true},client_action_ready{true};native_grab::RetargetObservation grab_observation{};
-    bool selector_available{true},foot_settings_ready{true};ArcadeTrick selected{ArcadeTrick::double_grab};
+    bool selector_available{true},foot_settings_ready{true},switched{};ArcadeTrick selected{ArcadeTrick::double_grab};
     InputGenerations grab_lineage{};InputAirEpisode grab_air{};NativeInputOwner grab_owner{};
     std::vector<PreparedGesture> recipes{{1,false,GestureContext::ground,{{0,0,-32767},{18,28000,28000},{21,0,0},{24,0,0}}}};
     Route(){input.enable(true);input.set_recognition_capture(0,true);}
@@ -52,6 +52,7 @@ struct Route {
                               std::int32_t selection=-1,bool enabled=true) {
         now=at;NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==100?1:state==200?0:2;
         sample.words[1]=state==100?0xc000u:0;
+        sample.words[0]=switched?0x20u:0;
         frame=producer.observe(at,owner,sample,{selection_valid,selection,selection_object});
         readiness.publish(frame,{true,state==100,false,false,false,false,false,false,true,0});
         input.publish_native_context(frame);input.publish_authority(at,frame.owner_generation,1,true);
@@ -63,7 +64,7 @@ struct Route {
         return input.poll(0,at,buttons,0,0,0,0,enabled,admission.start,false,0,false,false,true,at*60/1000,
             false,recipes,admission.mirror_x,false,frame.airborne&&client_action_ready?SkatePose::air:SkatePose::riding,
             false,false,false,false,admission.flip_ready,false,0,0,ActionExperiment::classic,admission.action&&client_action_ready,
-            admission.mirror_x,false,{},grab);
+            admission.stance_known,false,{},grab);
     }
 };
 AirRotation::Output rotate(Route& route,AirRotation& rotation,const NativeGesture::Output& output,
@@ -288,6 +289,32 @@ void selected_native_families() {
         out.action.pad.left_trigger==255 && out.action.pad.right_trigger==255 && out.action.pad.right_y==-28000,
         "Up+B,B enters original Rocket from Nose using both hands and original Nose admission");
     check(!rocket->lease.acknowledge(21,1,0,1,true,true,true),"the preceding Nose actor cannot acknowledge Rocket");
+}
+void native_grab_after_stance_change() {
+    // Captured original controls in leading-foot stance 0x20: RT -> FS,
+    // LT -> BS, RS negative X -> Stale/Weddle; nose selector keeps Y.
+    for (bool switched:{false,true}) for (const auto& profile:native_grab::pilots) {
+        auto r=std::make_unique<Route>();r->switched=switched;r->selected=profile.trick;
+        r->poll(1000);auto out=r->poll(1034,0x2080);
+        check(r->requests.size()==1 && r->tricks.back()==profile.trick,
+            "known native stance admits the same catalog entry regardless of mirror direction");
+        r->grab_observation.selector_ready=true;out=r->poll(1035,0x2080);
+        const auto c=profile.control();
+        check(out.action.pad.left_trigger==((c.hands&(switched?2u:1u))?255:0) &&
+              out.action.pad.right_trigger==((c.hands&(switched?1u:2u))?255:0),
+              "native hand semantics survive a leading-foot change without relabeling the trick");
+        check(out.action.pad.right_x==(switched?-c.x:c.x) && out.action.pad.right_y==c.y,
+              "horizontal family selectors mirror once while nose/tail keep their native direction");
+        out=r->poll(1068,0,100);
+        check(!out.action.pad.owns_triggers && !out.action.pad.owns_right_stick,
+              "landing retires the changed-stance grab controls");
+    }
+    const native_grab::Control finger{1,12000,-23000,0,true};
+    const auto result=native_grab::physical_control(finger,false);
+    check(result.hands==2 && result.x==finger.x && result.y==finger.y,
+          "an authored fingerflip already mirrored by playback is not mirrored twice");
+    NativeInputReadiness readiness;
+    check(!readiness.sample(1000,{}).stance_known,"missing native owner evidence never grants stance admission");
 }
 void foot_setting_admission() {
     dingosdk::input::GameplayOptions options;
@@ -561,4 +588,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();selected_native_families();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

@@ -9,7 +9,7 @@ struct NativeInputPermissions {
     float speed{};
 };
 struct NativeInputAdmission : NativeInputPermissions {
-    bool mirror_x{}, offboard{}, flip_ready{}, matched{};
+    bool mirror_x{}, offboard{}, flip_ready{}, matched{}, stance_known{};
 };
 // Publish/consume under the existing input mutex. A client-derived permission
 // keeps the physical frame that justified it, rather than borrowing a new owner
@@ -43,6 +43,7 @@ public:
         // Stance and immediate native exclusions always come from the same
         // current owner frame used by the facade, including between client ticks.
         out.mirror_x = !(current.stance_and_push & game::build::v20260929::launches::stance_switch_mask);
+        out.stance_known = true;
         out.offboard = current.state == game::build::v20260929::arcade_native_probe::offboard_state;
         // This is the existing native action predicate, not clip readiness. It
         // can be reevaluated from the current frame so own selection/crouch

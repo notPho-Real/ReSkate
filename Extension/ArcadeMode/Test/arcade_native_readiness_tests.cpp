@@ -108,19 +108,21 @@ int main(){control_ownership();
         const auto admitted=readiness.sample(110,unchanged);
         check(admitted.gameplay&&admitted.matched&&admitted.start&&admitted.push&&admitted.board&&admitted.drive&&
             admitted.manual&&admitted.prepare&&admitted.releasing&&admitted.action&&admitted.speed==7,"unchanged generation retains all permissions without requiring a new client tick");
-        check(admitted.mirror_x==!bool(bit&0x20u),"stance comes from the same validated frame as current authority");
+        check(admitted.stance_known&&admitted.mirror_x==!bool(bit&0x20u),"stance validity is independent of the validated mirror direction");
         const auto opposite=source.observe(120,owner,sample(100,bit^0x20u),{true,-1});
         const auto pending=readiness.sample(120,opposite);
         check(pending.gameplay&&!pending.matched&&!pending.start&&!pending.push&&!pending.board&&!pending.drive&&
             pending.manual&&!pending.prepare&&!pending.releasing&&pending.speed==0,"changed native stance cannot inherit old client-derived permissions");
-        check(pending.mirror_x==bool(bit&0x20u),"opposite current stance cannot be paired with the old stance");
+        check(pending.stance_known&&pending.mirror_x==bool(bit&0x20u),"opposite current stance cannot be paired with the old stance");
         readiness.publish(opposite,{true,false,false,false,false,false,false,false,true,0});
         check(!readiness.sample(121,opposite).start,"explicit new not-ready publication replaces old ready within its time lease");
         auto changed=owner;++changed.entity;
         const auto replacement=source.observe(125,changed,sample(100,bit),{true,-1});
         check(!readiness.sample(125,replacement).gameplay,"new owner authority cannot borrow old owner readiness or stance");
+        check(!readiness.sample(125,replacement).stance_known,"owner replacement withdraws stance admission");
         readiness.publish(replacement,all);
         check(readiness.sample(275,replacement).gameplay&&!readiness.sample(276,replacement).gameplay,"original physical observation retains inclusive150ms lease");
+        check(!readiness.sample(276,replacement).stance_known&&!readiness.sample(124,replacement).stance_known,"expired or future evidence cannot admit either stance");
         check(!readiness.sample(124,replacement).gameplay,"future-dated proof fails closed");
         readiness.reset();check(!readiness.sample(125,replacement).gameplay,"OFF invalidation removes the permission snapshot");
     }
@@ -144,7 +146,7 @@ int main(){control_ownership();
             input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
             const auto a=gate.sample(now,frame);
             return input.poll(0,now,0,0,y,0,0,a.gameplay,a.start,false,0,false,false,false,now/17,false,{},a.mirror_x,
-                a.manual,SkatePose::air,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,a.mirror_x);
+                a.manual,SkatePose::air,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,a.stance_known);
         };
         poll(100,0);poll(110,25000);check(poll(120,-25000).manual.owns,"real facade admits airborne direction-pair preparation");
         physics.observe(130,owner,sample(100),{true,-1});frame=physics.observe(140,owner,sample(200),{true,-1});
@@ -165,7 +167,7 @@ int main(){control_ownership();
             const auto a=gate.sample(now,frame);
             return input.poll(0,now,buttons,0,0,0,0,a.gameplay,a.start,a.push,a.speed,false,a.board,true,now/17,false,
                 prepared,a.mirror_x,a.manual,SkatePose::riding,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,
-                ActionExperiment::classic,a.action,a.mirror_x);
+                ActionExperiment::classic,a.action,a.stance_known);
         };
         poll(1000,0);check(poll(1017,classic_a).authored_playback,"fresh authorized press starts actual facade crouch");
         ++current_owner.rig;frame=observer.observe(1034,current_owner,sample(100,stance^0x20u),{true,-1});

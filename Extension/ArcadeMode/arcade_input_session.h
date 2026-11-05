@@ -480,7 +480,8 @@ public:
             const auto controls=admission.normal_grab.controls ? admission.normal_grab.controls(admission.normal_grab.context) :
                 native_grab::Control{admission.normal_grab.hand_inputs ? admission.normal_grab.hand_inputs(admission.normal_grab.context) :
                     admission.normal_grab.right_hand_input(admission.normal_grab.context)?2u:0u};
-            const auto hands=controls.hands;
+            const auto physical_control=native_grab::physical_control(controls,admission.mirror_x);
+            const auto hands=physical_control.hands;
             if(hands<=3 && (hands || controls.selector())) {
                 output.action.pad.owns_triggers=true;
                 output.action.pad.left_trigger=(hands&1u)?255:0;
@@ -493,7 +494,7 @@ public:
                 }
                 if (controls.selector() || controls.transition) {
                     output.action.pad.owns_right_stick=true;
-                    output.action.pad.right_x=controls.x;output.action.pad.right_y=controls.y;
+                    output.action.pad.right_x=physical_control.x;output.action.pad.right_y=physical_control.y;
                     output.action.native_grab_selector=!controls.transition;
                 }
             }
