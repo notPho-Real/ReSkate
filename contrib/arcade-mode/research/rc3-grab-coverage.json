@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "rc2_source": "2ffb006c73671466bfcdc15395ba96939de44f7d",
   "accounting_complete_for_input_inventory": true,
   "native_catalog_exhaustiveness_proven": false,
@@ -2232,6 +2232,7 @@
       }
     }
   ],
+  "native_actor_evidence_count": 12,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -2247,7 +2248,7 @@
     "Namespace counts overlap; never add them as a unique playable-trick count.",
     "All 171 declarations and all 300 sequences are accounted for; unresolved assets are BLOCKED, never inferred UNSUPPORTED.",
     "Source catalog itself does not prove exhaustive discovery of every original executable context.",
-    "No new native hardware acceptance or numeric scoring evidence is claimed.",
+    "Per-actor RC3-09 initialization/advancement receipts are included; no complete lifecycle or numeric scoring acceptance is claimed.",
     "Indy slot resolves to native FS. Madonna, One Foot Japan and Sacktap remain unresolved catalog names; no substitute actor is assigned."
   ],
   "source_anomalies": [
@@ -2312,10 +2313,10 @@
         "Right+B; or Select \"FS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2363,7 +2364,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 6
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 4,
+          "episode": 6,
+          "native_detail": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Backside",
@@ -2409,10 +2426,10 @@
         "B; or Select \"BS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2460,7 +2477,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 1
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-grabs-result.json.gz",
+          "uncompressed_sha256": "60f54028bb73c9d8396d0114b0a19d1ddd9c8c8111f62b063e3dedf920e4f4af",
+          "serial": 1,
+          "episode": 3,
+          "native_detail": 1,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Tail",
@@ -2506,10 +2539,10 @@
         "Down+B; or Select \"Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2557,7 +2590,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 11
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 6,
+          "episode": 8,
+          "native_detail": 11,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Seatbelt",
@@ -2827,10 +2876,10 @@
         "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2912,7 +2961,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 21
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-grabs-result.json.gz",
+          "uncompressed_sha256": "60f54028bb73c9d8396d0114b0a19d1ddd9c8c8111f62b063e3dedf920e4f4af",
+          "serial": 2,
+          "episode": 4,
+          "native_detail": 21,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Stale",
@@ -3410,10 +3475,10 @@
         "Left+B; or Select \"Melon\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3461,7 +3526,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 4
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 3,
+          "episode": 5,
+          "native_detail": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "CrossBone",
@@ -3507,10 +3588,10 @@
         "R3+Up-left+B; or Select \"Crossbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3558,7 +3639,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 5
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 7,
+          "episode": 9,
+          "native_detail": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Method",
@@ -3604,10 +3701,10 @@
         "Left+B,B within 250ms; or Select \"Method\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3655,7 +3752,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 2
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "ready-native-repeated_grabs-result.json.gz",
+          "uncompressed_sha256": "6ceeb291c995ab558862d92f09c5a63e3cc53e987aed09f491808b0e92635499",
+          "serial": 12,
+          "episode": 237,
+          "native_detail": 2,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "BSTweak",
@@ -4008,10 +4121,10 @@
         "R3+Down-right+B; or Select \"Tuck Knee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4059,7 +4172,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 9
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 8,
+          "episode": 10,
+          "native_detail": 9,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "Nosebone",
@@ -4299,10 +4428,10 @@
         "Right+B,B within 250ms; or Select \"Stiffy\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4350,7 +4479,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 10
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "ready-native-repeated_grabs-result.json.gz",
+          "uncompressed_sha256": "6ceeb291c995ab558862d92f09c5a63e3cc53e987aed09f491808b0e92635499",
+          "serial": 14,
+          "episode": 238,
+          "native_detail": 10,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "FrigidAir",
@@ -4586,10 +4731,10 @@
         "R3+Up+B; or Select \"Double Grab Front\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4637,7 +4782,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 36
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 9,
+          "episode": 11,
+          "native_detail": 36,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "DoubleModTail",
@@ -4683,10 +4844,10 @@
         "R3+Down+B; or Select \"Double Grab Back\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4734,7 +4895,23 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 37
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 10,
+          "episode": 12,
+          "native_detail": 37,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
+      ]
     },
     {
       "native_name": "DoubleModLeft",
@@ -9067,10 +9244,10 @@
         "B; or Select \"BS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "source_contract": "c69 pilot305 checks; be22b1a470 production-composed grab checks at30/60/120Hz (not native rate acceptance)",
         "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
@@ -9127,6 +9304,22 @@
             "decoded_sha256": "ea37358a3baab6500636e96662ee2a132a23ab26c3bf14e927928e45402854e5"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-grabs-result.json.gz",
+          "uncompressed_sha256": "60f54028bb73c9d8396d0114b0a19d1ddd9c8c8111f62b063e3dedf920e4f4af",
+          "serial": 1,
+          "episode": 3,
+          "native_detail": 1,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
       ]
     },
     {
@@ -9173,10 +9366,10 @@
         "Left+B,B within 250ms; or Select \"Method\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "source_contract": "c69 pilot305 checks; be22b1a470 production-composed grab checks at30/60/120Hz (not native rate acceptance)",
         "native_action": "c69dd24: second B admitted through native_owner=true; IsGrabbing and DetailedGrabType2 observed",
@@ -9234,6 +9427,22 @@
             "decoded_sha256": "1e8a4949347b415c710682e941e17f693a0d847a1341476b316c7046ccd4a5d5"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "ready-native-repeated_grabs-result.json.gz",
+          "uncompressed_sha256": "6ceeb291c995ab558862d92f09c5a63e3cc53e987aed09f491808b0e92635499",
+          "serial": 12,
+          "episode": 237,
+          "native_detail": 2,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
       ]
     },
     {
@@ -9280,10 +9489,10 @@
         "Up-left+B; or Select \"Japan\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -9326,6 +9535,22 @@
             "compressed_sha1": "91d270e83a9b84fe18b71f5e9f5890f7baa98ed7",
             "decoded_sha256": "338cb4b5be5c4f64812b8d21b70a5725c995e46faec8bc091d6e1eb9f34a1bcb"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 5,
+          "episode": 7,
+          "native_detail": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -9373,10 +9598,10 @@
         "Left+B; or Select \"Melon\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "source_contract": "c69 pilot305 checks; be22b1a470 production-composed grab checks at30/60/120Hz (not native rate acceptance)",
         "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
@@ -9434,6 +9659,22 @@
             "decoded_sha256": "6e5190a88798a8f1ee08461eebc38a772717df1d80de69eabe30447a7786bb3b"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 3,
+          "episode": 5,
+          "native_detail": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
+        }
       ]
     },
     {
@@ -9480,10 +9721,10 @@
         "R3+Up-left+B; or Select \"Crossbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -9526,6 +9767,22 @@
             "compressed_sha1": "73b39f805a313eb3690908bdf99e10b80342aad3",
             "decoded_sha256": "58014d1d952a9fe8e744956c3b51d0364d2a0a80a97aae20b5894879e1a1e6a6"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 7,
+          "episode": 9,
+          "native_detail": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -9573,10 +9830,10 @@
         "Right+B; or Select \"FS Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -9619,6 +9876,22 @@
             "compressed_sha1": "1c7573ba4eb5e763a4139506626fb58df89370d0",
             "decoded_sha256": "25e14a570684158ea1c870d9d18a5c6f8806468d2806e955aa84365f16af6780"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 4,
+          "episode": 6,
+          "native_detail": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -9852,10 +10125,10 @@
         "R3+Down-right+B; or Select \"Tuck Knee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -9898,6 +10171,22 @@
             "compressed_sha1": "1c53ad6022211a377284b95eea1f105514fad4ed",
             "decoded_sha256": "3ed4af329013c72a77eb2626a0824265bc6117f4ff5db58e5fe66908399aff00"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 8,
+          "episode": 10,
+          "native_detail": 9,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -9945,10 +10234,10 @@
         "Right+B,B within 250ms; or Select \"Stiffy\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -9991,6 +10280,22 @@
             "compressed_sha1": "eb72118f5cbe37a3c0bf29b40068ab6a8ee2eb32",
             "decoded_sha256": "de15a4e9911004e5eb9563e4a03407d4edb5467739211fe3ca87ff42f94ec631"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "ready-native-repeated_grabs-result.json.gz",
+          "uncompressed_sha256": "6ceeb291c995ab558862d92f09c5a63e3cc53e987aed09f491808b0e92635499",
+          "serial": 14,
+          "episode": 238,
+          "native_detail": 10,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -10038,10 +10343,10 @@
         "Down+B; or Select \"Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -10084,6 +10389,22 @@
             "compressed_sha1": "eb281e2112e88fdd2af30eb0bc37f3f556fe4946",
             "decoded_sha256": "7ff3b40c572e637545a819be59ce2b5dbfa0c6f3cc19302b1f3b53757b8be608"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-families-result.json.gz",
+          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+          "serial": 6,
+          "episode": 8,
+          "native_detail": 11,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -11131,10 +11452,10 @@
         "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11211,6 +11532,22 @@
             "compressed_sha1": "9fc2b311d085697076d2c15bb52c7696037d6a52",
             "decoded_sha256": "2a9b8e2a12c825ede262942845896bd8029d7cafd3406e20cd2faba6f1335deb"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-grabs-result.json.gz",
+          "uncompressed_sha256": "60f54028bb73c9d8396d0114b0a19d1ddd9c8c8111f62b063e3dedf920e4f4af",
+          "serial": 2,
+          "episode": 4,
+          "native_detail": 21,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -12816,10 +13153,10 @@
         "R3+Up+B; or Select \"Double Grab Front\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12862,6 +13199,22 @@
             "compressed_sha1": "f1c98af08c7e811abbc1182aeecd41824bdf1999",
             "decoded_sha256": "a716ab345d3d029f335113ecb845b4aa6a0914de43ea123e9746dc4a887e6ef7"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 9,
+          "episode": 11,
+          "native_detail": 36,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
@@ -12909,10 +13262,10 @@
         "R3+Down+B; or Select \"Double Grab Back\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced in RC3-09; see per-actor rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12955,6 +13308,22 @@
             "compressed_sha1": "8569adb3fb16f68cf0dc6c65a14821750a06d2f5",
             "decoded_sha256": "cfb867e7acd220e39e1aa64d43915018aa4f110973186f2a4ad8d6ed314a96d0"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "map": "skate3_megapark",
+          "capture": "mega-native-extended-result.json.gz",
+          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+          "serial": 10,
+          "episode": 12,
+          "native_detail": 37,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false
         }
       ]
     },
