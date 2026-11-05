@@ -1,4 +1,5 @@
 #include "arcade_native_grab_transition.h"
+#include "arcade_native_asset_cache.h"
 #include "arcade_native_grab_lease.h"
 #include "arcade_native_held_flip.h"
 #include "arcade_native_manual_pose.h"
@@ -375,8 +376,14 @@ void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     if (!gameplay) {cancel();return;}
     if (!hooks_ready.load()) return;
-    bool missing_assets=!assets_ready.load();
-    for (std::size_t i=8;i<assets.size();++i) missing_assets=missing_assets || !guid_is(assets[i].object,assets[i].guid);
+    if (assets_ready.load() && !native_assets_current(std::span{assets}.first<8>(),guid_is)) {
+        assets_ready.store(false);
+        cancel();
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE ASSET CACHE: family=grab invalidated=true.");
+    }
+    const bool missing_assets=!assets_ready.load() ||
+        !native_assets_current(std::span{assets}.subspan<8>(),guid_is);
     if (missing_assets && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
         if (find) {

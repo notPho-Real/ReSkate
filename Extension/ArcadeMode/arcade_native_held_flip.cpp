@@ -1,4 +1,5 @@
 #include "arcade_native_held_flip.h"
+#include "arcade_native_asset_cache.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
@@ -86,6 +87,12 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     if (!gameplay) {tracking.store(false);std::lock_guard lock(mutex);observation={};return;}
     if (!base || (image && image!=base)) return;
     if (!image) image=base;
+    if (ready.load() && !native_assets_current(std::span{assets},guid_is)) {
+        ready.store(false);tracking.store(false);
+        std::lock_guard lock(mutex);observation={};
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE ASSET CACHE: family=held_flip invalidated=true.");
+    }
     if (!ready.load() && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;
         if (!find) return;

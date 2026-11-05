@@ -1,5 +1,6 @@
 #pragma once
 #include "Extension/ArcadeMode/arcade_native_flip_entry.h"
+#include "Extension/ArcadeMode/arcade_native_asset_cache.h"
 #include <cstring>
 #include <type_traits>
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
@@ -46,6 +47,28 @@ struct Memory {
 };
 inline void check(bool ok,const char* why) { if(!ok){std::cerr<<"FAIL native entry: "<<why<<'\n';std::exit(1);} }
 inline void run() {
+    {
+        // Reproduce the map-load failure: the same readable address now holds
+        // another original resource. A non-null pointer alone is not current.
+        using dingosdk::arcade_mode::native_assets_current;
+        struct Asset { Guid guid;std::uintptr_t object; };
+        std::array<Asset,2> assets{{{pop_guid,0x10f10},{jump_guid,0x11010}}};
+        Memory memory;
+        auto matches=[&](std::uintptr_t object,const Guid& guid) {
+            Guid actual{};return memory.read(object-16,actual) && actual==guid;
+        };
+        check(native_assets_current(std::span{assets},matches),"original registered cache is current");
+        memory.put(0x10f00,jump_guid);
+        check(!native_assets_current(std::span{assets},matches),"map reuse invalidates an already resolved required asset");
+        memory.put(0x11200,pop_guid);assets[0].object=0x11210;
+        check(native_assets_current(std::span{assets},matches),"lookup at the new native address restores readiness");
+        memory.put(0x11000,pop_guid);
+        check(!native_assets_current(std::span{assets},matches),"every asset is revalidated, not just the first one");
+        check(native_assets_current(std::span{assets}.first<1>(),matches),"missing optional family leaves the independent required range available");
+        check(!native_assets_current(std::span{assets}.subspan<1>(),matches),"optional family still requests rediscovery");
+        assets[0].object=0;
+        check(!native_assets_current(std::span{assets}.first<1>(),matches),"unresolved cache cannot become ready");
+    }
     // Native arrays can retain address bit 2; only object references tag it.
     for(bool four_byte_arrays:{false,true}) for(unsigned initial:{0u,3u,5u,6u,7u}) {
         Memory m(four_byte_arrays);m.put(0x10000,0x8400000du|(initial<<12));const auto out=m.entry();

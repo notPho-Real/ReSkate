@@ -1,6 +1,7 @@
 #include "arcade_native_flip_transition.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_flip_entry.h"
+#include "arcade_native_asset_cache.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
@@ -182,6 +183,12 @@ void tick(bool gameplay) noexcept {
     gameplay_allowed.store(gameplay);
     if (!gameplay) { cancel();return; }
     if (!hooks_ready.load()) return;
+    if (assets_ready.load() && !native_assets_current(std::span{assets},guid_is)) {
+        assets_ready.store(false);
+        cancel();
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE ASSET CACHE: family=flip invalidated=true.");
+    }
     if (!assets_ready.load() && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;
         const auto find=game::native_data().find_asset;

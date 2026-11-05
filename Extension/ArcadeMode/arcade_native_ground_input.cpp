@@ -1,5 +1,6 @@
 #include "arcade_native_footplant.h"
 #include "arcade_native_ground_grab.h"
+#include "arcade_native_asset_cache.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
@@ -187,6 +188,16 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
         animation.actor.before,animation.actor.after,animation.actor.delta);
     if (!gameplay || !base || (image && image!=base)) return;
     if (!image) image=base;
+    if (ready.load() && !native_assets_current(std::span{assets}.first<6>(),guid_is)) {
+        ready.store(false);std::lock_guard lock(mutex);retire();
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE ASSET CACHE: family=footplant invalidated=true.");
+    }
+    if (grab_ready.load() && !native_assets_current(std::span{assets}.subspan<6>(),guid_is)) {
+        grab_ready.store(false);std::lock_guard lock(mutex);retire_grab();
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE ASSET CACHE: family=ground_grab invalidated=true.");
+    }
     if ((!ready.load() || !grab_ready.load()) && GetTickCount64()>=retry_at) {
         retry_at=GetTickCount64()+1000;const auto find=game::native_data().find_asset;if(!find)return;
         bool complete=true,ground_complete=true;

@@ -454,3 +454,24 @@ The independent Melon trace entered IsGrabbing while ascending approximately
 Do not mistake the later loop acknowledgment for proof that entry waited for
 descent. Local raw captures and hashes are retained in the RC3 native-followup
 artifact receipt. These findings do not close full catalog acceptance.
+
+## Mega Park map-change failure
+
+The installed RC3-04 failed both single X and X/X after loading the owner's
+selected `skate3_megapark`: first X at 520ms or 720ms after A press remained in
+the original Ollie animation. A bounded read-only comparison found that the
+previous CurrentFlipTrick asset address now held a different resource GUID;
+the live registry supplied a new address with the correct GUID and owner slot.
+See `native-asset-reload.json` for identities and capture hashes.
+
+The flip and held-flip bridges had permanently latched their initial asset
+readiness. Grabs rechecked only optional assets, and ground inputs also latched
+readiness. Per-read GUID checks correctly refused stale resources, but required
+assets were never rediscovered. All four caches now revalidate their required
+GUIDs before the existing bounded lookup. Lost identity withdraws the affected
+lease or observation; optional grab entries remain independently discoverable.
+No native handle, animation, rotation count, impulse or scoring value is changed.
+
+The relocated-resource regression and five affected portable suites pass.
+Compiled CI and native map-reload acceptance remain pending. Earlier actor
+evidence from a different loaded-map lifetime does not establish recovery here.
