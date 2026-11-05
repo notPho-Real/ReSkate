@@ -1,5 +1,43 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-10 native follow-up
+
+Source `9a2d5ba63d0cb3c8c3ea85d22399c4efacfefbcc`, DLL
+`2b176ac71f7161a7bd3fcc59b6feeb1f20432671726a6bee7424ccb31d480aa6`,
+passed all required CI gates and was independently verified loaded. Tests used
+`skate3_megapark` and ordinary physical controller input.
+
+A rolling ground RT changed native stance from bit0 to bit0x20 and heading by
+about175 degrees. Default BS Grab then initialized and advanced its original
+actor in the changed stance. That trial subsequently collided with the park
+wall and bailed; it does not establish a successful landing. After ordinary
+on-foot recovery onto clear ground, Melon, FS/Indy, Japan and Tailgrab each
+initialized and advanced the correct actor with stance bit0x20, withdrew
+intent and returned to state100. The initial stationary RT attempt did not
+complete a half-turn and is excluded from stance-change acceptance.
+
+The rolling capture's uncompressed SHA-256 is
+`abdbc5829fabd1d96696f520e8a125744118e56cc140b853a58449e41da2cc5b`.
+The separate four-grab capture's uncompressed SHA-256 is
+`228017e834ed36eaf40664050562d5ea235edfbc1346bc06e87007d619d92d49`.
+These tests do not establish numeric scoring, every grab's changed-stance
+behavior, prompt ascent entry, or the full native exit lifecycle.
+
+Footplant capture
+`044613996a45b3c43040c35db4411665a8fe9de5c714f8681fa45092a67904e9`
+observed Boneless establishing native left-hand/family1, original Boneless
+intent, state602, then states200/201 and ground100. Board height reached0.868m.
+This is native entry and launch evidence, not exact PTM animation or scoring
+acceptance. An earlier attempt failed and remains recorded. No Comply failed
+in both attempts: its original CanNoComply and Is.NoComply state handles were
+unallocated in the observed owner, and no launch occurred. The adapter must
+resolve the original prerequisite producer; tests are not a substitute for it.
+
+RC3-09's exact grab actor receipts now cover16 distinct actors. The four added
+receipts are FS Nosebone, FS Tailbone, Double Grab Left and Double Grab Right.
+Their correct actors advanced and matching intent withdrawal was observed;
+the coverage generator retains gameplay-pending status and scoring limits.
+
 ## Mega Park follow-up
 
 The owner-selected `skate3_megapark` is the required gameplay test map. On the

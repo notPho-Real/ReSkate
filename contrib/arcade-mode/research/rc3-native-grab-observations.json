@@ -166,5 +166,61 @@
     "intent_withdrawal_observed": true,
     "native_exit_actor_verified": false,
     "landing_scoring_verified": false
+  },
+  "d0b47f64-7ba8-9a94-d0b4-7f647ba89a94": {
+    "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+    "map": "skate3_megapark",
+    "capture": "more-native-extended-result.json.gz",
+    "uncompressed_sha256": "d532499b6f2e643c5a66aa124c8eaea5f642d97efbaa8e73883cb8591162554f",
+    "serial": 19,
+    "episode": 322,
+    "native_detail": 7,
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "intent_withdrawal_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false
+  },
+  "81a45ffe-5e97-616c-81a4-5ffe5e97616c": {
+    "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+    "map": "skate3_megapark",
+    "capture": "more-native-extended-result.json.gz",
+    "uncompressed_sha256": "d532499b6f2e643c5a66aa124c8eaea5f642d97efbaa8e73883cb8591162554f",
+    "serial": 20,
+    "episode": 323,
+    "native_detail": 8,
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "intent_withdrawal_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false
+  },
+  "823a92b2-22c6-fe5a-823a-92b222c6fe5a": {
+    "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+    "map": "skate3_megapark",
+    "capture": "more-native-extended-result.json.gz",
+    "uncompressed_sha256": "d532499b6f2e643c5a66aa124c8eaea5f642d97efbaa8e73883cb8591162554f",
+    "serial": 21,
+    "episode": 324,
+    "native_detail": 34,
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "intent_withdrawal_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false
+  },
+  "73ca8095-60e3-dcfc-73ca-809560e3dcfc": {
+    "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+    "map": "skate3_megapark",
+    "capture": "more-native-extended-result.json.gz",
+    "uncompressed_sha256": "d532499b6f2e643c5a66aa124c8eaea5f642d97efbaa8e73883cb8591162554f",
+    "serial": 22,
+    "episode": 325,
+    "native_detail": 35,
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "intent_withdrawal_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false
   }
 }
