@@ -52,8 +52,9 @@ execution and launch; they are not airborne one-footer ActorControllers.
 All option changes use the temporary gameplay-option owner. Each value must
 have been returned by the gameplay getter after the request before any
 preparation control is supplied. Another option owner cannot be displaced,
-and profile/UI values remain original. Entry is bounded to one second, with
-at most 300 ms of entry input after its prerequisite. Stale ownership, step
+and profile/UI values remain original. No Comply allows two seconds for native
+preparation; Boneless retains one second. Entry input remains bounded to300ms
+after its prerequisite. Stale ownership, step
 rollback, unexpected state, lost settings, conflicting controls, focus loss,
 disconnection and Arcade OFF withdraw ownership. The 300 ms settings expiry
 covers a missing heartbeat.
@@ -116,3 +117,17 @@ No Comply now keeps the native swapped preset true for its A preparation.
 Boneless retains its independently verified false/false/false settings.
 This fixes the settings/output mismatch; native No Comply entry, launch,
 animation and scoring still require acceptance on the resulting build.
+
+The regular push caused by the Up prefix is a separate timing constraint.
+Native control capture
+`dad345855f127cd79f88b766e1a4503b1f5b5b8e9a26b7647963b8f6f9ee8647`
+delivered front-foot intent from0.204s but released it before the regular
+push finished, so no mongo prerequisite appeared. Capture
+`a987f1ce50d6d12d549880c768809370c91bf018b93e0e14c0e566ab144610b1`
+held that input through the original transition: regular push ended at1.385s
+and CanNoComply was true from1.426s through1.844s. No entry input was issued
+in either control. The former one-second preparation deadline could never
+reach that window; the two-second bound accommodates it without changing
+auto-push, writing a prerequisite, or issuing an Ollie fallback. Production
+tests cover the delayed native prerequisite at30/60/120Hz, the unchanged
+300ms entry deadline, and expiry when the native prerequisite never arrives.

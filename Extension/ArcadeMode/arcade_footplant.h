@@ -30,7 +30,11 @@ public:
     }
     FootplantControl poll(std::uint64_t now,const FootplantObservation& native,bool settings) noexcept {
         if (!active()) return {};
-        if (!native.fresh(now) || native.step<last_step_ || now<started_ || now-started_>1000 ||
+        // Up may already have started a regular push. The original animation
+        // finishes that push before changing feet (measured at about1.43s),
+        // so No Comply must allow its native mongo prerequisite to arrive.
+        const auto preparation_limit=kind_==Footplant::no_comply?2000u:1000u;
+        if (!native.fresh(now) || native.step<last_step_ || now<started_ || now-started_>preparation_limit ||
             (native.state!=100 && native.state!=103 && native.state!=602)) {cancel();return {};}
         last_step_=native.step;
         if ((kind_==Footplant::no_comply && native.no_comply) ||

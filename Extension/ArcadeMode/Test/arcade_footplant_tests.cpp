@@ -61,6 +61,24 @@ void native_entry() {
         check(!out.owned && input.entered(),"original entry withdraws input and leaves native launch/cleanup ownership");
         check(!input.poll(native.sampled_at+20,native,true).owned,"no replay from one command");
     }
+    for(unsigned hz:{30u,60u,120u}) {
+        FootplantInput input;auto native=observation(100,1);
+        check(input.start(Footplant::no_comply,100,native),"No Comply starts while the original push finishes");
+        for(unsigned tick=0;tick<=hz*3/2;++tick) {
+            const auto now=100+tick*1000/hz;native=observation(now,tick+1);
+            const auto out=input.poll(now,native,true);
+            check(out.owned && out.buttons==0x1000 && !out.right_y,
+                "regular push completion may exceed one second without fabricating the mongo prerequisite");
+        }
+        native=observation(1650,hz*2);native.can_no_comply=true;
+        check(input.poll(1650,native,true).right_y==-28000,
+            "late native mongo tag admits the original No Comply entry input");
+        native=observation(1951,hz*3);
+        check(!input.poll(1951,native,true).owned,"issued No Comply entry remains bounded to300ms");
+        native=observation(3000,hz*4);check(input.start(Footplant::no_comply,3000,native),"new bounded request starts");
+        input.poll(3000,native,true);native=observation(5001,hz*7);
+        check(!input.poll(5001,native,true).owned,"missing native prerequisite still expires at two seconds");
+    }
     for(unsigned test=0;test<7;++test) {
         FootplantInput input;auto native=observation(100,1);input.start(Footplant::boneless,100,native);
         input.poll(100,native,true);native.sampled_at=120;native.step=2;
