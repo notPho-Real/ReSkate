@@ -33,6 +33,14 @@ int main() {
     changed[0].bindings[0].direction=TrickDirection::none;
     require(select_registry_trick(changed,TrickFamily::flip,TrickDirection::left,1)==ArcadeTrick::none,"old gameplay binding survived edit");
     require(trickpedia::diagram_text(trickpedia::diagram(changed[0],changed[0].bindings[0]),label)=="X","guide did not follow edited binding");
+    changed=trick_registry;
+    for(auto& t:changed)if(t.id==ArcadeTrick::crossbone)for(unsigned i=0;i<t.binding_count;++i)
+        if(t.bindings[i].pattern==BindingPattern::extended_grab) {
+            t.bindings[i].direction=TrickDirection::none;
+            require(extended_grab_binding(changed,0,ArcadeTrick::double_grab)==t.id,"extended gameplay binding did not follow direction edit");
+            const auto d=trickpedia::diagram(t,t.bindings[i]);
+            require(trickpedia::diagram_text(d,label).find("Up-left")==std::string::npos,"extended guide retained old direction");
+        }
     changed=trick_registry;changed[1].id=changed[0].id;
     require(!validate_registry(changed).empty(),"duplicate identity/status accepted");
     changed=trick_registry;changed[1].bindings[0]=changed[0].bindings[0];

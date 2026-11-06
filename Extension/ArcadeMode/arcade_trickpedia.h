@@ -101,6 +101,8 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         step(StepKind::hold,TrickControls::mask(TrickControls::grab));
         if(b.pattern==BindingPattern::selected_grab) {
             out.condition+="; neutral direction; choose this pose below";
+            if(trick.grab_variant_count>1)for(unsigned i=0;i<trick.grab_variant_count;++i)
+                if(trick.grab_variants[i].trick==b.variant)out.condition+="; pose "+std::to_string(i+1)+" of "+std::to_string(trick.grab_variant_count);
             if(selected==b.variant)out.condition+=" (currently selected)";
             else out.condition+=" (not currently selected)";
         }

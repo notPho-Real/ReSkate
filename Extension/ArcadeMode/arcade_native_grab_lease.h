@@ -31,10 +31,7 @@ inline constexpr auto pilots=[] {
     return result;
 }();
 constexpr ArcadeTrick extended_grab(std::int16_t direction,ArcadeTrick selected=ArcadeTrick::double_grab) noexcept {
-    for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i) {
-        const auto& b=t.bindings[i];if(b.pattern==BindingPattern::extended_grab && b.parameter==static_cast<unsigned>(direction))return b.variant;
-    }
-    return selected;
+    return extended_grab_binding(trick_registry,direction,selected);
 }
 constexpr const Pilot* pilot(ArcadeTrick trick) noexcept {
     for (const auto& p:pilots) if (p.trick==trick) return &p;

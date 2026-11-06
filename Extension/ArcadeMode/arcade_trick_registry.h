@@ -516,6 +516,13 @@ constexpr std::int16_t direction_code(TrickDirection direction) noexcept {
     constexpr std::array<std::int16_t,10> codes{0,4,8,6,2,7,9,1,3,0};
     return codes[static_cast<unsigned>(direction)];
 }
+constexpr ArcadeTrick extended_grab_binding(std::span<const TrickDefinition> catalog,std::int16_t direction,ArcadeTrick selected) noexcept {
+    for(const auto& t:catalog)for(unsigned i=0;i<t.binding_count;++i) {
+        const auto& b=t.bindings[i];
+        if(b.pattern==BindingPattern::extended_grab && direction_code(b.direction)==direction)return b.variant;
+    }
+    return selected;
+}
 constexpr ArcadeTrick manual_pair_trick(int first,int second) noexcept {
     if(!first || first!=-second)return ArcadeTrick::none;
     for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i) {

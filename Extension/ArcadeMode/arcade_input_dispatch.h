@@ -1218,7 +1218,7 @@ private:
             enqueue(action, now, 0, environment, 1, pair.target,0,0,{},&match); return true;
         };
         if (rail.phase == InputRailPhase::established) {
-            for (auto pair : rail.frontside ? front : back) if (query(pair, 300, InputAction::rail_change)) return;
+            for (auto pair : rail.frontside ? front : back) if (query(pair, InputTiming::extra_press_ms, InputAction::rail_change)) return;
         } else if (rail.phase == InputRailPhase::lip_established) {
             if (rail.lip_table == 0) { for (auto pair : lips) if (query(pair, 300, InputAction::lip_change)) return; }
             else if (rail.lip_table == 1) { for (auto pair : inverted) if (query(pair, 300, InputAction::lip_change)) return; }
