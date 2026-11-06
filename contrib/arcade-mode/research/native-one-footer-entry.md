@@ -144,3 +144,22 @@ Footer initialization records at most8 other actor identities per lease and
 32 per process. A known actor advancing without initialization in the current
 lease is reported separately and never acknowledged. These diagnostics must
 identify the missing native transition/ownership evidence before another fix.
+
+## RC3-20 entry and stale-family reproduction
+
+On skate3_megapark, sourceae52b74c67e3f8b90439473066140760efa417cc
+initialized and advanced Benihana Into199d8b43-b79f-9aab-199d-8b43b79f9aab
+from0 to3 with positive vertical velocity. The separate Loop initialized but
+did not receive positive-advancement acknowledgment. OneFooterType7 cleared,
+then physics entered504; GrabType3 remained after recovery. Capture raw SHA-256:
+4dba8593eceafbe474d7678bd50e3b4d58d5a8107cc2702224d1b3599fc40369.
+
+An ordinary BS grab's native exit cleared the stale family. A following
+Benihana with earlier B release reached OneFooterType7 at1.591s, cleared it
+at1.762s and returned to ground100 at2.030s without an observed bail, but
+GrabType3 still remained. Capture raw SHA-256:
+5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90.
+Later footer requests without their requested footer identities are failed
+entries, even when the skater lands. The original Grab_Into CDB requires
+GrabType0 for these advanced families. Native exit ownership remains the
+blocker; clearing the enum by hand would conceal it and is not implemented.

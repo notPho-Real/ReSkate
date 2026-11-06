@@ -79,6 +79,21 @@ One-footers remain a separate implementation. Fingerflip/varial transitions
 and ground-specific grab poses still require their original owners; this
 change does not count them as complete.
 
+## RC3-22 native No Comply entry
+
+Source92b727f92da5331713367f8a3136d623f8df98e9 was built through all three
+required CI workflows and its installed and loaded DLL identity was verified.
+On skate3_megapark at the observed native1/30 step, Up, neutral100ms, then
+A160–260ms produced CanNoComply at1.427s and original Is.NoComply at1.465s.
+Physics then entered103 at1.532s,200 at1.764s,201 at1.832s and returned to100
+at2.332s. No bail was observed through the4.5-second trial. This demonstrates
+native entry and a flight/ground return, not the exact animation, launch-call
+classification or scoring. Those acceptance items remain open.
+
+Retained capture `artifacts/RC3-22/nocomply-push-trials-result.json.gz`:
+compressed SHA-256 ba3be7d711af5bce5378fdc4aa447372eb643af23b305b4f049c409eab32178e;
+uncompressed SHA-256 37a49aa0fd0160b8f6230e479900958f0e0316baf6d4348c6e2a3ee797c130c4.
+
 RC3-10 Mega Park capture
 `044613996a45b3c43040c35db4411665a8fe9de5c714f8681fa45092a67904e9`
 observed the original Boneless prerequisite, intent, state602, flight and

@@ -2367,18 +2367,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 4,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 8,
           "episode": 6,
           "native_detail": 6,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 4,
+              "episode": 6,
+              "native_detail": 6,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -2593,18 +2613,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 6,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 10,
           "episode": 8,
           "native_detail": 11,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 6,
+              "episode": 8,
+              "native_detail": 11,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -3529,18 +3569,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 3,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 7,
           "episode": 5,
           "native_detail": 4,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 3,
+              "episode": 5,
+              "native_detail": 4,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -3642,18 +3702,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 7,
-          "episode": 9,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 22,
+          "episode": 21,
           "native_detail": 5,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 7,
+              "episode": 9,
+              "native_detail": 5,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -4202,18 +4282,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 8,
-          "episode": 10,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 23,
+          "episode": 22,
           "native_detail": 9,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 8,
+              "episode": 10,
+              "native_detail": 9,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -4844,18 +4944,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 9,
-          "episode": 11,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 24,
+          "episode": 23,
           "native_detail": 36,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 9,
+              "episode": 11,
+              "native_detail": 36,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -4957,18 +5077,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 10,
-          "episode": 12,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 25,
+          "episode": 24,
           "native_detail": 37,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 10,
+              "episode": 12,
+              "native_detail": 37,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -9718,18 +9858,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 5,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 9,
           "episode": 7,
           "native_detail": 3,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 5,
+              "episode": 7,
+              "native_detail": 3,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -9841,18 +10001,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 3,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 7,
           "episode": 5,
           "native_detail": 4,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 3,
+              "episode": 5,
+              "native_detail": 4,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -9950,18 +10130,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 7,
-          "episode": 9,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 22,
+          "episode": 21,
           "native_detail": 5,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 7,
+              "episode": 9,
+              "native_detail": 5,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10059,18 +10259,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 4,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 8,
           "episode": 6,
           "native_detail": 6,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 4,
+              "episode": 6,
+              "native_detail": 6,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10386,18 +10606,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 8,
-          "episode": 10,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 23,
+          "episode": 22,
           "native_detail": 9,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 8,
+              "episode": 10,
+              "native_detail": 9,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10604,18 +10844,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 6,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 10,
           "episode": 8,
           "native_detail": 11,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 6,
+              "episode": 8,
+              "native_detail": 11,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -13446,18 +13706,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 9,
-          "episode": 11,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 24,
+          "episode": 23,
           "native_detail": 36,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 9,
+              "episode": 11,
+              "native_detail": 36,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -13555,18 +13835,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 10,
-          "episode": 12,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 25,
+          "episode": 24,
           "native_detail": 37,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 10,
+              "episode": 12,
+              "native_detail": 37,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
