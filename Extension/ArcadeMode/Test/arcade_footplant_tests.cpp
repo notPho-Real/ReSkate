@@ -43,6 +43,9 @@ void native_entry() {
     for (unsigned hz:{30u,60u,120u}) for (Footplant kind:{Footplant::no_comply,Footplant::boneless}) {
         FootplantInput input;auto native=observation(100,1);
         check(input.start(kind,100,native),"ground request starts");
+        check(input.native_options()==(kind==Footplant::no_comply?
+            std::array{true,true,true}:std::array{false,false,false}),
+            "A preparation uses the native mongo push preset; Boneless retains absolute-foot plant controls");
         auto out=input.poll(100,native,false);
         check(out.owned && !out.buttons && !out.left_trigger && !out.right_y,"wait for actual settings consumption before native output");
         native=observation(120,2);out=input.poll(120,native,true);

@@ -27,7 +27,7 @@ radians. GroundTricks_NoComply condition 14074 / expression 10960 requires
 presenting the stick input is insufficient.
 
 The adapter temporarily selects original front/back push controls with
-`egf_frontbackfoot=true`, `egf_invertxaonboard=false` and `nocomply=true`.
+`egf_frontbackfoot=true`, `egf_invertxaonboard=true` and `nocomply=true`.
 It presents A for the native front-foot push, then waits for native
 `Bool.GP.CanNoComply` and a later physics step before presenting RS down at
 28000. It withdraws when original `Bool.Anim.Is.NoComply` is observed.
@@ -88,3 +88,31 @@ issued entry input and report the successfully sampled settings prefix.
 The prefix bits follow `egf_invertxaonboard`, `egf_frontbackfoot`, `nocomply`;
 mask7 means all three were sampled with the requested values. Missing reads
 do not become native prerequisite proof.
+
+RC3-18 capture
+`acb6c406bf456c58dfd17057860fcca96de1946bdee57d63b243aba9744c6bcc`
+observed settings mask7 and preparation output, but no CanNoComply or native
+entry. This rules out waiting for an unsampled option in that attempt.
+
+The original prerequisite producer is now resolved in the mongo full-push
+sequences: EBX7413, 30864, 31286, 29787, 29575, 12548 and 27735. For example,
+7413's BoolGameStateTagAsset26 sets the original CanNoComply asset true over
+the sequence's start0/end30 tag interval, with ResetOnLeaveMode1. The regular
+full-push sequences in the same bounded survey do not carry that tag. The
+next native check must establish the mongo push actor and its tag window;
+delivering A or observing a push request alone is insufficient. Do not set
+CanNoComply directly or treat a regular push as equivalent preparation.
+
+RC3-18 push capture
+`fb9ee5368bff908b13cf53d95eb01f3d82604a713fd79401a133c0b8df18b49f`
+isolated a routing defect: the former false A/X override delivered left-foot
+intent and regular push throughout preparation, with no mongo state or
+CanNoComply allocation. An Arcade-OFF A-then-X control subsequently observed
+A select right-foot intent, mongo push and a true CanNoComply window; X selected
+regular push. The original invert-A/X asset38291 defaults true; gamepad
+expression7573 uses that asset at constant offsets0xf0 and0x110 for both push
+branches, and front/back asset39466 at0x108 selects the stance-aware routing.
+No Comply now keeps the native swapped preset true for its A preparation.
+Boneless retains its independently verified false/false/false settings.
+This fixes the settings/output mismatch; native No Comply entry, launch,
+animation and scoring still require acceptance on the resulting build.

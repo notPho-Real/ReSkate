@@ -145,8 +145,7 @@ bool settings(std::uint64_t now,bool require_sample) noexcept {
     if(require_sample)settings_mask=0;
     try {
         auto& options=input::gameplay_options();
-        const bool no_comply=lease.kind()==Footplant::no_comply;
-        const std::array values{false,no_comply,no_comply};
+        const auto values=lease.native_options();
         for (unsigned i=0;i<option_keys.size();++i)
             if (!options.hold(option_owner,option_keys[i],values[i],now).empty()) return false;
         if (!settings_since) settings_since=now+1;

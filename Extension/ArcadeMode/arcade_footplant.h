@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
@@ -60,6 +61,13 @@ public:
         return out;
     }
     Footplant kind() const noexcept {return kind_;}
+    std::array<bool,3> native_options() const noexcept {
+        // The original swapped A/X preset makes A the front-foot push when
+        // front/back controls are enabled. Without it A starts a regular push,
+        // whose animation never opens the native CanNoComply tag window.
+        const bool no_comply=kind_==Footplant::no_comply;
+        return {no_comply,no_comply,no_comply};
+    }
     bool active() const noexcept {return kind_!=Footplant::none;}
     bool entered() const noexcept {return entered_;}
     bool preparation_started() const noexcept {return prepared_;}
