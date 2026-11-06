@@ -1,6 +1,6 @@
 # Arcade RC4: wallplant gameplay milestone
 
-**Status:** SPECIFIED, NOT IMPLEMENTED. This file is a milestone contract for the isolated `arcade-stage-wallplant-rc4` branch; it is not gameplay/CI/hardware acceptance evidence. Do not promote this branch or communicate a finished feature before a testable build exists.
+**Status:** EXPERIMENTAL IMPLEMENTATION, BUILD AND HARDWARE VALIDATION PENDING. This file remains the milestone contract for the isolated `arcade-stage-wallplant-rc4` branch; it is not gameplay/CI/hardware acceptance evidence. The guarded rebound and native-asset visual approximation are described in `rc4-wallplant-implementation.md`. Do not promote this branch or communicate a finished feature before a testable build and native acceptance evidence exist.
 
 ## Requested gameplay
 
@@ -23,7 +23,7 @@ Read `AGENTS.md`, `.codex/README.md`, `STRUCTURE.md`, and the existing `Extensio
 
 ### No Comply must be actually understood and repaired
 
-The No Comply path in `contrib/arcade-mode/research/native-footplant-entry.md` is **not accepted**. RC3 hardware found the original `CanNoComply` and `Is.NoComply` handles unallocated and no native launch despite simulated tests. Find the **original prerequisite producer** and distinguish: wrong/missing asset, original settings-owner/getter sampling, incomplete front-foot push publication, input-edge sequencing, owner/stance/ground context, or a genuinely unsupported path. Use bounded stock Arcade-OFF positive controls versus Arcade ON on clear ground; record original option readback, request vs source delivery, state allocation, native intent/action, unique launch, return/landing and scoring separately.
+The No Comply path in `contrib/arcade-mode/research/native-footplant-entry.md` is **not accepted**. The earlier missing-prerequisite failure was resolved in RC3: the original mongo full-push animation produces `CanNoComply`, and subsequent hardware captures observed `Is.NoComply`, native entry, flight and return to ground without bail. RC4 retains that implementation. Complete the remaining original animation, unique launch, landing and scoring verification; do not restart the prerequisite investigation or treat simulated tests as native acceptance. Keep bounded stock Arcade-OFF positive controls versus Arcade ON on clear ground, and record original option readback, request vs source delivery, native intent/action, launch, return/landing and scoring separately.
 
 Do not substitute a normal Ollie or force a No Comply boolean/animation/velocity. Existing controls stay: **Up→A within 300 ms** for No Comply, **Up→release→Up→A** for Boneless and plain A for Ollie. Preserve the demonstrated Boneless native launch. If stock control never executes in this pinned build, provide reproducible native-negative evidence and explain the exact capability barrier; a guess is not an accepted No Comply implementation.
 

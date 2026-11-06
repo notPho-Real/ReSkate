@@ -152,9 +152,12 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
     const auto now=api.now(api.user);
     if(!source.valid || !identity || !fresh(f,now) || source.owner!=skater(f.owner) ||
        (source.state!=200 && source.state!=201) || now<source.sampled_at ||
-       now-source.sampled_at>InputTiming::native_sample_lease_ms || !ctx.fresh(now) ||
-       !ground.fresh_for(ctx,now) || !revalidate_surface_geometry(api,ctx,ground))return;
-    const float clearance=root[1]-ground.point[1];
+       now-source.sampled_at>InputTiming::native_sample_lease_ms || !ctx.fresh(now))return;
+    auto clearance_ground=ground;
+    if(!clearance_ground.fresh_for(ctx,now))
+        clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root));
+    if(!clearance_ground.fresh_for(ctx,now) || !revalidate_surface_geometry(api,ctx,clearance_ground))return;
+    const float clearance=root[1]-clearance_ground.point[1];
     if(!surface_geometry_detail::finite(root) || !std::isfinite(clearance) ||
        clearance<WallplantParameters::reference_prototype().minimum_height)return;
     for(std::size_t i=0;i<source.count;++i) {
@@ -167,7 +170,7 @@ void publish_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryC
         const SurfaceGeometryBody shape{hit.shape.world,hit.shape.index,hit.shape.generation};
         const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal);
         if(!wall.valid || !native_wall_contact::current(hit,ctx.world) || !api.current(api.user,ctx))continue;
-        Candidate result{};result.hit=hit;result.wall=wall;result.ground=ground;result.root=root;
+        Candidate result{};result.hit=hit;result.wall=wall;result.ground=clearance_ground;result.root=root;
         result.clearance=clearance;result.published_at=now;result.valid=true;
         auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=hit.point;
         c.normal=hit.normal;c.approach_velocity=source.velocity;c.identity=identity;

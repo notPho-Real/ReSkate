@@ -59,6 +59,20 @@ struct WallplantCommand {
     std::uint64_t contact{}, input_sequence{}, issued_at{};
     explicit operator bool() const noexcept { return motion.ready; }
 };
+// Read-only clearance query used only after an independently observed airborne
+// wall collision. Reach covers the existing maximum ordinary launch apex plus
+// The reference minimum plant height; it does not enlarge ordinary support probes.
+inline SurfaceGeometryRequest wallplant_clearance_request(SurfaceGeometryVector root,
+        WallplantParameters parameters=WallplantParameters::reference_prototype()) noexcept {
+    const float reach=std::min(19.25f,parameters.maximum_vertical_speed*parameters.maximum_vertical_speed/
+        (2*AirMotion::ordinary_gravity)+parameters.minimum_height);
+    constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
+    SurfaceGeometryRequest request{};
+    for(std::size_t i=0;i<offsets.size();++i)
+        request.segments[i]={{root[0]+offsets[i][0],root[1]+.75f,root[2]+offsets[i][1]},
+            {root[0]+offsets[i][0],root[1]-reach,root[2]+offsets[i][1]}};
+    return request;
+}
 // Admission and a single velocity transaction only. This owns no animation,
 // combo settlement, score credit, airborne state, or subsequent physics step.
 class WallplantPolicy {

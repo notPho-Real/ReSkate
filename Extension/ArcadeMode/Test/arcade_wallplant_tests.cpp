@@ -43,6 +43,18 @@ struct Fixture {
 };
 }
 int main() {
+    {
+        const auto parameters=WallplantParameters::reference_prototype();
+        const float apex=parameters.maximum_vertical_speed*parameters.maximum_vertical_speed/(2*AirMotion::ordinary_gravity);
+        const SurfaceGeometryVector root{10,apex,20};
+        const auto query=wallplant_clearance_request(root,parameters);
+        for(const auto& segment:query.segments) {
+            check(segment.end[1]<=0 && segment.start[1]-segment.end[1]<=20,
+                  "wallplant-only clearance ray covers existing launch apex within native query safety bound");
+            check(segment.start[0]==segment.end[0] && segment.start[2]==segment.end[2],
+                  "clearance footprint remains downward and does not query a competing support direction");
+        }
+    }
     for(unsigned rate:{30u,60u,120u})for(float side:{-1.0f,1.0f})for(float tangent:{0.0f,7.0f}) {
         Fixture f;f.frame.native.physics_seconds=1.0f/static_cast<float>(rate);
         f.contact.normal={side,0,0};f.frame.velocity={-12*side,-2,tangent};f.sync();
