@@ -93,6 +93,10 @@ reference and context, matching game build and implementation fingerprint, and n
 invalidation. Missing or stale evidence falls back to Experimental; no handler
 means Planned. Each acceptance criterion needs its own capture and native
 observation. A success bitmask alone cannot produce Verified.
+Source-asset and automated-test records are explicitly different evidence kinds
+and cannot satisfy gameplay acceptance. Each required native criterion needs at
+least two documented repetitions; a single successful input or capture cannot
+promote the canonical record.
 
 The runtime and overlay receive a SHA-256 fingerprint of the gameplay and engine
 sources from CMake. A receipt records both its tested source revision and that

@@ -54,10 +54,18 @@ int main() {
     changed=trick_registry;changed[0].evidence.observations[0]={Acceptance::action,"capture-a","native actor"};
     changed[0].evidence.observations[1]={Acceptance::action,"capture-b","conflicting action record"};
     require(!validate_registry(changed).empty(),"conflicting evidence records accepted");
-    auto receipt=trick_registry[0];receipt.evidence.accepted=31;receipt.evidence.implementation_fingerprint="tested-source";
-    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"success flag alone was treated as gameplay evidence");
-    for(unsigned i=0;i<5;++i)receipt.evidence.observations[i]={static_cast<Acceptance>(1u<<i),"test-fixture/capture","independent native observation"};
+    auto receipt=trick_registry[0];receipt.evidence.implementation_fingerprint="tested-source";
+    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"source match alone was treated as gameplay evidence");
+    for(unsigned i=0;i<5;++i)receipt.evidence.observations[i]={static_cast<Acceptance>(1u<<i),"test-fixture/capture","independent native observation",false,EvidenceKind::native_gameplay,2};
     require(trick_status(receipt,20260929,"tested-source")==TrickStatus::verified,"complete pinned receipt rejected");
+    for(const auto kind:{EvidenceKind::none,EvidenceKind::source_asset,EvidenceKind::automated_test}) {
+        receipt.evidence.observations[0].kind=kind;
+        require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"asset/CI evidence granted gameplay verification");
+    }
+    receipt.evidence.observations[0].kind=EvidenceKind::native_gameplay;
+    receipt.evidence.observations[0].repeat_count=1;
+    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"single observation granted repeatable verification");
+    receipt.evidence.observations[0].repeat_count=2;
     require(trick_status(receipt,20260930,"tested-source")==TrickStatus::experimental,"wrong build verified");
     require(trick_status(receipt,20260929,"other revision")==TrickStatus::experimental,"stale revision verified");
     receipt.evidence.invalidated=true;

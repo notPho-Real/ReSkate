@@ -44,7 +44,6 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
             fail("unsupported trick retains an executable native mapping");
         if(t.executor!=TrickExecutor::none && !t.binding_count)fail("orphaned executable definition");
         if(t.evidence.reference.empty() || t.evidence.revision.size()!=40 || t.evidence.context.empty())fail("missing evidence provenance");
-        if(t.executor==TrickExecutor::none && t.evidence.accepted)fail("unsupported trick claims acceptance");
         for(std::size_t j=i+1;j<catalog.size();++j)
             if(t.id==catalog[j].id || t.key==catalog[j].key)fail("duplicate canonical identity/status record");
         for(unsigned x=0;x<t.binding_count;++x) {
@@ -69,6 +68,8 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
             if(!bit || (bit&(bit-1)) || bit>16 || (criteria&bit) || item.capture.empty() || item.observation.empty())
                 fail("conflicting or incomplete native evidence record");
             criteria|=bit;
+            if(t.executor==TrickExecutor::none && item.kind==EvidenceKind::native_gameplay)
+                fail("unsupported trick claims native gameplay acceptance");
         }
         for(unsigned v=0;v<t.grab_variant_count;++v) {
             const auto& variant=t.grab_variants[v];
