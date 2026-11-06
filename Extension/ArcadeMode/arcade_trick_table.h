@@ -1,29 +1,6 @@
 #pragma once
 #include "arcade_trick_registry.h"
 namespace dingosdk::arcade_mode {
-// Context-selected semantics; these identities do not name native methods.
-enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
-enum class ContextualPredicate : std::uint8_t { press, air_direction };
-enum ContextualTrickFlags : std::uint8_t { contextual_extra = 1, contextual_board_rotation = 2, contextual_followup_flip = 4 };
-struct ContextualTrickRow {
-    InputAirTableKind table{};
-    ArcadeTrick trick{};
-    TrickFamily family{};
-    ContextualPredicate predicate{};
-    std::uint16_t query_ms{};
-    std::int16_t face{}, direction{};
-    std::uint8_t flags{};
-    bool operator==(const ContextualTrickRow&) const = default;
-};
-inline constexpr std::array contextual_trick_table{
-    ContextualTrickRow{InputAirTableKind::grab_extra,ArcadeTrick::compact_grab,TrickFamily::grab,
-        ContextualPredicate::press,300,13,0,contextual_extra},
-    ContextualTrickRow{InputAirTableKind::pressure,ArcadeTrick::pressure_turn_flip,TrickFamily::flip,
-        ContextualPredicate::air_direction,300,14,6,contextual_board_rotation|contextual_followup_flip}};
-constexpr const ContextualTrickRow* contextual_trick(InputAirTableKind table) noexcept {
-    for (const auto& row : contextual_trick_table) if (row.table == table) return &row;
-    return nullptr;
-}
 struct TrickTableRow { TrickFamily family; TrickDirection direction; unsigned presses; ArcadeTrick trick; std::string_view name; };
 // Compatibility view, generated from the canonical registry; never edit bindings here.
 inline constexpr auto literal_trick_table=[] {

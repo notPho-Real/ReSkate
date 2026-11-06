@@ -717,7 +717,7 @@ private:
                      request.air.trick != ArcadeTrick::kickflip || request.air.predicate != AirInputPredicate::face)) {
                     out.unsupported = true; return InputDisposition::unsupported;
                 }
-                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? ArcadeTrick::kickflip :
+                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? neutral_flip_trick() :
                     select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
                 if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
                     out.unsupported=true;return InputDisposition::unsupported;

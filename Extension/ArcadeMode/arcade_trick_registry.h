@@ -5,6 +5,20 @@
 #include <span>
 
 namespace dingosdk::arcade_mode {
+// Physical control ABI and recognizer timing shared by runtime and presentation.
+// These are pattern descriptors, not a second per-trick binding table.
+struct TrickControls {
+    static constexpr std::int16_t ollie=12, grab=13, flip=14, grind=15, grab_layer=7, revert_trigger=1;
+    static constexpr std::uint32_t mask(std::int16_t code) noexcept {return 1u<<code;}
+    static constexpr std::uint32_t trigger_mask(std::int16_t code) noexcept {return 1u<<(16+code);}
+};
+struct InputTiming {
+    static constexpr std::uint64_t manual_throw_pair_ms=450;
+    static constexpr std::uint64_t ground_pair_ms=220, ground_sample_slack_ms=55;
+    static constexpr std::uint64_t air_pair_ms=400, air_request_ms=700;
+    static constexpr std::uint64_t direction_ms=500, extra_press_ms=300;
+    static constexpr std::uint64_t takeoff_preload_ms=160, readiness_ms=200, native_sample_lease_ms=150;
+};
 // Semantic requests only. A native adapter must separately establish exact support.
 enum class TrickDirection : std::uint8_t { none, left, up, right, down, up_left, up_right, down_left, down_right, invalid };
 enum class TrickFamily : std::uint8_t { flip, grab, grind };
@@ -19,20 +33,6 @@ constexpr std::uint8_t grind_change_variant(GrindChangeTarget target) noexcept {
 }
 constexpr GrindChangeTarget grind_change_target(std::uint8_t variant) noexcept {
     return variant >= 1 && variant <= 9 ? static_cast<GrindChangeTarget>(variant) : GrindChangeTarget::none;
-}
-constexpr std::string_view grind_change_name(GrindChangeTarget target) noexcept {
-    switch (target) {
-    case GrindChangeTarget::grind_50_50: return "50-50";
-    case GrindChangeTarget::noseslide: return "Noseslide";
-    case GrindChangeTarget::nosegrind: return "Nosegrind";
-    case GrindChangeTarget::crooked: return "Crooked";
-    case GrindChangeTarget::bluntslide: return "Bluntslide";
-    case GrindChangeTarget::nosebluntslide: return "Nosebluntslide";
-    case GrindChangeTarget::smith: return "Smith";
-    case GrindChangeTarget::grind_5_0: return "5-0";
-    case GrindChangeTarget::tailslide: return "Tailslide";
-    default: return {};
-    }
 }
 enum class ArcadeTrick : std::uint8_t {
     none, kickflip, impossible, heelflip, pop_shove_it,
@@ -53,7 +53,7 @@ enum class ArcadeTrick : std::uint8_t {
     fs_one_foot, frigid_air, no_foot, bs_one_foot, tailwalk, dog_piss, nose_judo, superdude,
     seatbelt_bs_shifty, ollie, manual, nose_manual, revert, no_comply, boneless, coffin,
     spin_900, wallplant, special_grab, special_grind, flatground_special,
-    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30
+    finger_1, finger_2, finger_3, finger_4, finger_5, finger_6, finger_7, finger_8, finger_9, finger_10, finger_11, finger_12, finger_13, finger_14, finger_19, finger_20, finger_21, finger_22, finger_23, finger_24, finger_25, finger_26, finger_27, finger_28, finger_29, finger_30, boardslide, lipslide, noseslide, tailslide, crooked, overcrook, smith, feeble
 };
 
 }
@@ -91,10 +91,22 @@ namespace dingosdk::arcade_mode {
 enum class TrickCategory : std::uint8_t { flips, grabs, grinds, manuals, footplants, walls, flatground, specials };
 enum class TrickStatus : std::uint8_t { verified, experimental, planned };
 enum class TrickExecutor : std::uint8_t { none, native_flip, native_grab, held_flip, native_ollie, native_manual, native_revert, native_footplant, native_ground_grab, native_rail, native_fingerflip };
-enum class BindingPattern : std::uint8_t { named, extended_grab, selected_grab, neutral_flip, held_repeat, ollie_release, manual_pair, footplant, ground_grab, revert, rail_entry, fingerflip, rail_change };
+enum class BindingPattern : std::uint8_t { named, extended_grab, selected_grab, neutral_flip, held_repeat, ollie_release, manual_pair, footplant, ground_grab, revert, rail_entry, fingerflip, rail_change, sequence };
 enum class BindingContext : std::uint8_t { air, ground, ground_or_air, rail_approach, established_rail };
 inline constexpr unsigned footplant_single_ms=300, footplant_repeat_ms=500;
 inline constexpr unsigned grab_repeat_ms=250, flip_repeat_ms=233;
+enum class StepKind : std::uint8_t { press, hold, release, direction, release_direction, then, together };
+struct InputStep {
+    StepKind kind{};
+    std::uint32_t buttons{};
+    TrickDirection direction{};
+    bool operator==(const InputStep&) const = default;
+};
+struct BindingSequence {
+    std::array<InputStep,16> steps{};
+    unsigned count{}, window_ms{};
+    bool operator==(const BindingSequence&) const = default;
+};
 struct TrickBinding {
     BindingPattern pattern{};
     TrickDirection direction{};
@@ -103,14 +115,61 @@ struct TrickBinding {
     BindingContext context{BindingContext::air};
     unsigned parameter{};
     std::int16_t first_button{}, second_button{};
+    BindingSequence sequence{};
     bool operator==(const TrickBinding&) const = default;
 };
 enum class Acceptance : unsigned { action=1, physics=2, recognition=4, exit_landing=8, scoring_combo=16 };
+struct NativeEvidence {
+    Acceptance criterion{};
+    std::string_view capture, observation;
+    bool invalidated{};
+};
 struct TrickEvidence {
     std::string_view revision, context, reference, remaining;
     unsigned game_build{20260929}, accepted{}, required{31};
     bool invalidated{};
+    std::array<NativeEvidence,5> observations{};
+    std::string_view implementation_fingerprint{};
 };
+// Context-selected semantics; these identities do not name native methods.
+enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
+enum class ContextualPredicate : std::uint8_t { press, air_direction };
+enum ContextualTrickFlags : std::uint8_t { contextual_extra = 1, contextual_board_rotation = 2, contextual_followup_flip = 4 };
+struct ContextualTrickRow {
+    InputAirTableKind table{};
+    ArcadeTrick trick{};
+    TrickFamily family{};
+    ContextualPredicate predicate{};
+    std::uint16_t query_ms{};
+    std::int16_t face{}, direction{};
+    std::uint8_t flags{};
+    bool operator==(const ContextualTrickRow&) const = default;
+};
+inline constexpr std::array contextual_trick_table{
+    ContextualTrickRow{InputAirTableKind::grab_extra,ArcadeTrick::compact_grab,TrickFamily::grab,
+        ContextualPredicate::press,static_cast<std::uint16_t>(InputTiming::extra_press_ms),TrickControls::grab,0,contextual_extra},
+    ContextualTrickRow{InputAirTableKind::pressure,ArcadeTrick::pressure_turn_flip,TrickFamily::flip,
+        ContextualPredicate::air_direction,static_cast<std::uint16_t>(InputTiming::extra_press_ms),TrickControls::flip,6,contextual_board_rotation|contextual_followup_flip}};
+constexpr const ContextualTrickRow* contextual_trick(InputAirTableKind table) noexcept {
+    for (const auto& row : contextual_trick_table) if (row.table == table) return &row;
+    return nullptr;
+}
+struct SpecialMetadata {
+    ArcadeTrick preceding_trick{};
+    std::string_view required_state, native_animation, combo_requirement;
+};
+// Legacy geometry requests are selector identities, not independently executable tricks.
+// Keep their original enum ABI while giving each possible outcome a canonical record.
+struct RailSelector {
+    ArcadeTrick request;
+    std::array<TrickDirection,2> directions;
+    std::array<ArcadeTrick,2> outcomes;
+};
+inline constexpr std::array rail_selectors{
+    RailSelector{ArcadeTrick::boardslide_or_lipslide,{TrickDirection::none,TrickDirection::invalid},{ArcadeTrick::boardslide,ArcadeTrick::lipslide}},
+    RailSelector{ArcadeTrick::noseslide_or_tailslide,{TrickDirection::left,TrickDirection::right},{ArcadeTrick::noseslide,ArcadeTrick::tailslide}},
+    RailSelector{ArcadeTrick::crooked_or_overcrook,{TrickDirection::up_left,TrickDirection::up_right},{ArcadeTrick::crooked,ArcadeTrick::overcrook}},
+    RailSelector{ArcadeTrick::smith_or_feeble,{TrickDirection::down_left,TrickDirection::down_right},{ArcadeTrick::smith,ArcadeTrick::feeble}}};
 struct FingerflipBinding { int identity{}, family{}; unsigned gestures{}; int destination{}; unsigned actor_index{}; };
 struct TrickDefinition {
     ArcadeTrick id;
@@ -124,13 +183,11 @@ struct TrickDefinition {
     unsigned grab_variant_count{};
     TrickEvidence evidence{};
     FingerflipBinding fingerflip{};
+    SpecialMetadata special{};
 };
-// RC3's report explicitly leaves full gameplay acceptance open. It is not a verified receipt.
-inline constexpr TrickEvidence rc3_evidence{
-    "9906af3b5d4816c15d4506430d51afb7d860b970", "Pinned 20260929; RC3 candidate; see individual captures",
-    "contrib/arcade-mode/research/rc3-gameplay-status.md",
-    "Full native action, exit/landing, scoring and combo acceptance remains open."};
-inline constexpr std::array trick_registry{
+#include "arcade_trick_evidence.inl"
+inline constexpr auto trick_registry=[] {
+std::array entries{
     TrickDefinition{ArcadeTrick::kickflip,"kickflip","Kickflip",TrickCategory::flips,TrickExecutor::native_flip,
         {{{BindingPattern::named,TrickDirection::left,1,ArcadeTrick::kickflip,BindingContext::air,0}, {BindingPattern::neutral_flip,TrickDirection::none,1,ArcadeTrick::kickflip,BindingContext::air,0}}},2,2,17,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::impossible,"impossible","Impossible",TrickCategory::flips,TrickExecutor::native_flip,
@@ -150,7 +207,7 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::double_kickflip,"double_kickflip","Double Kickflip",TrickCategory::flips,TrickExecutor::held_flip,
         {{{BindingPattern::named,TrickDirection::left,2,ArcadeTrick::double_kickflip,BindingContext::air,0}, {BindingPattern::held_repeat,TrickDirection::none,2,ArcadeTrick::double_kickflip,BindingContext::air,0}}},2,0,0,2,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::double_impossible,"double_impossible","Double Impossible",TrickCategory::flips,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up,2,ArcadeTrick::double_impossible,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up,2,ArcadeTrick::double_impossible,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::double_heelflip,"double_heelflip","Double Heelflip",TrickCategory::flips,TrickExecutor::held_flip,
         {{{BindingPattern::named,TrickDirection::right,2,ArcadeTrick::double_heelflip,BindingContext::air,0}}},1,0,0,3,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::shove_it_360,"shove_it_360","360 Shove-It",TrickCategory::flips,TrickExecutor::native_flip,
@@ -164,13 +221,13 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::heelflip_360,"heelflip_360","360 Heelflip",TrickCategory::flips,TrickExecutor::native_flip,
         {{{BindingPattern::named,TrickDirection::down_right,2,ArcadeTrick::heelflip_360,BindingContext::air,0}}},1,14,27,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::triple_kickflip,"triple_kickflip","Triple Kickflip",TrickCategory::flips,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::left,3,ArcadeTrick::triple_kickflip,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::left,3,ArcadeTrick::triple_kickflip,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::triple_impossible,"triple_impossible","Triple Impossible",TrickCategory::flips,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up,3,ArcadeTrick::triple_impossible,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up,3,ArcadeTrick::triple_impossible,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::triple_heelflip,"triple_heelflip","Triple Heelflip",TrickCategory::flips,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::right,3,ArcadeTrick::triple_heelflip,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::right,3,ArcadeTrick::triple_heelflip,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::shove_it_540,"shove_it_540","540 Shove-It",TrickCategory::flips,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::down,3,ArcadeTrick::shove_it_540,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::down,3,ArcadeTrick::shove_it_540,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::melon,"melon","Melon",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::left,1,ArcadeTrick::melon,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::melon,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::melon,4,0,1,2,2,0,0,0,0,1}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::nosegrab,"nosegrab","Nosegrab",TrickCategory::grabs,TrickExecutor::native_grab,
@@ -182,7 +239,7 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::japan,"japan","Japan",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::up_left,1,ArcadeTrick::japan,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::japan,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::japan,3,0,-1,2,2,0,0,0,0,3}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::madonna,"madonna","Madonna",TrickCategory::grabs,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up_right,1,ArcadeTrick::madonna,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up_right,1,ArcadeTrick::madonna,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::benihana,"benihana","Benihana",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::down_left,1,ArcadeTrick::benihana,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::benihana,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::benihana,0,0,0,3,1,0,28000,7,1,49}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::airwalk,"airwalk","Airwalk",TrickCategory::grabs,TrickExecutor::native_grab,
@@ -196,53 +253,61 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::one_foot_tailgrab,"one_foot_tailgrab","One Foot Tailgrab",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::down,2,ArcadeTrick::one_foot_tailgrab,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::one_foot_tailgrab,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::one_foot_tailgrab,0,0,0,3,1,0,28000,8,2,50}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::one_foot_japan,"one_foot_japan","One Foot Japan",TrickCategory::grabs,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up_left,2,ArcadeTrick::one_foot_japan,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up_left,2,ArcadeTrick::one_foot_japan,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::judo,"judo","Judo",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::up_right,2,ArcadeTrick::judo,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::judo,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::judo,0,0,0,2,2,0,0,4,1,46}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::sacktap,"sacktap","Sacktap",TrickCategory::grabs,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::down_left,2,ArcadeTrick::sacktap,BindingContext::air,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::down_left,2,ArcadeTrick::sacktap,BindingContext::air,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::christ_air,"christ_air","Christ Air",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::down_right,2,ArcadeTrick::christ_air,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::christ_air,BindingContext::air,0}}},2,0,0,0,{{{ArcadeTrick::christ_air,0,0,0,2,2,0,0,6,3,48}}},1,rc3_evidence},
-    TrickDefinition{ArcadeTrick::grind_50_50,"grind_50_50","50-50",TrickCategory::specials,TrickExecutor::native_rail,
+    TrickDefinition{ArcadeTrick::grind_50_50,"grind_50_50","50-50",TrickCategory::grinds,TrickExecutor::native_rail,
         {{{BindingPattern::rail_entry,TrickDirection::none,1,ArcadeTrick::grind_50_50,BindingContext::rail_approach,1}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::grind_50_50,BindingContext::established_rail,1,15,15}}},2,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::boardslide_or_lipslide,"boardslide_or_lipslide","Boardslide / Lipslide",TrickCategory::specials,TrickExecutor::none,
-        {{{BindingPattern::rail_entry,TrickDirection::none,1,ArcadeTrick::boardslide_or_lipslide,BindingContext::rail_approach,1}}},1,0,0,0,{{}},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::boardslide,"boardslide","Boardslide",TrickCategory::grinds,TrickExecutor::none,
+        {{}},0,0,0,0,{{}},0,planned_evidence},
+    TrickDefinition{ArcadeTrick::lipslide,"lipslide","Lipslide",TrickCategory::grinds,TrickExecutor::none,
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::nosegrind,"nosegrind","Nosegrind",TrickCategory::grinds,TrickExecutor::native_rail,
         {{{BindingPattern::named,TrickDirection::up,1,ArcadeTrick::nosegrind,BindingContext::rail_approach,0}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::nosegrind,BindingContext::established_rail,3,15,13}}},2,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::grind_5_0,"grind_5_0","5-0",TrickCategory::grinds,TrickExecutor::native_rail,
         {{{BindingPattern::named,TrickDirection::down,1,ArcadeTrick::grind_5_0,BindingContext::rail_approach,0}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::grind_5_0,BindingContext::established_rail,8,14,13}}},2,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::noseslide_or_tailslide,"noseslide_or_tailslide","Noseslide / Tailslide",TrickCategory::grinds,TrickExecutor::native_rail,
-        {{{BindingPattern::named,TrickDirection::left,1,ArcadeTrick::noseslide_or_tailslide,BindingContext::rail_approach,0}, {BindingPattern::named,TrickDirection::right,1,ArcadeTrick::noseslide_or_tailslide,BindingContext::rail_approach,0}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::noseslide_or_tailslide,BindingContext::established_rail,2,15,14}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::noseslide_or_tailslide,BindingContext::established_rail,9,14,15}}},4,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::crooked_or_overcrook,"crooked_or_overcrook","Crooked / Overcrook",TrickCategory::grinds,TrickExecutor::native_rail,
-        {{{BindingPattern::named,TrickDirection::up_left,1,ArcadeTrick::crooked_or_overcrook,BindingContext::rail_approach,0}, {BindingPattern::named,TrickDirection::up_right,1,ArcadeTrick::crooked_or_overcrook,BindingContext::rail_approach,0}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::crooked_or_overcrook,BindingContext::established_rail,4,13,13}}},3,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::smith_or_feeble,"smith_or_feeble","Smith / Feeble",TrickCategory::grinds,TrickExecutor::native_rail,
-        {{{BindingPattern::named,TrickDirection::down_left,1,ArcadeTrick::smith_or_feeble,BindingContext::rail_approach,0}, {BindingPattern::named,TrickDirection::down_right,1,ArcadeTrick::smith_or_feeble,BindingContext::rail_approach,0}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::smith_or_feeble,BindingContext::established_rail,7,14,14}}},3,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::nosebluntslide,"nosebluntslide","Nosebluntslide",TrickCategory::specials,TrickExecutor::native_rail,
+    TrickDefinition{ArcadeTrick::noseslide,"noseslide","Noseslide",TrickCategory::grinds,TrickExecutor::native_rail,
+        {{{BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::noseslide,BindingContext::established_rail,2,15,14}}},1,0,0,0,{{}},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::tailslide,"tailslide","Tailslide",TrickCategory::grinds,TrickExecutor::native_rail,
+        {{{BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::tailslide,BindingContext::established_rail,9,14,15}}},1,0,0,0,{{}},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::crooked,"crooked","Crooked",TrickCategory::grinds,TrickExecutor::native_rail,
+        {{{BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::crooked,BindingContext::established_rail,4,13,13}}},1,0,0,0,{{}},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::overcrook,"overcrook","Overcrook",TrickCategory::grinds,TrickExecutor::none,
+        {{}},0,0,0,0,{{}},0,planned_evidence},
+    TrickDefinition{ArcadeTrick::smith,"smith","Smith",TrickCategory::grinds,TrickExecutor::native_rail,
+        {{{BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::smith,BindingContext::established_rail,7,14,14}}},1,0,0,0,{{}},0,rc3_evidence},
+    TrickDefinition{ArcadeTrick::feeble,"feeble","Feeble",TrickCategory::grinds,TrickExecutor::none,
+        {{}},0,0,0,0,{{}},0,planned_evidence},
+    TrickDefinition{ArcadeTrick::nosebluntslide,"nosebluntslide","Nosebluntslide",TrickCategory::grinds,TrickExecutor::native_rail,
         {{{BindingPattern::rail_entry,TrickDirection::up,1,ArcadeTrick::nosebluntslide,BindingContext::rail_approach,2}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::nosebluntslide,BindingContext::established_rail,6,13,15}}},2,0,0,0,{{}},0,rc3_evidence},
-    TrickDefinition{ArcadeTrick::bluntslide,"bluntslide","Bluntslide",TrickCategory::specials,TrickExecutor::native_rail,
+    TrickDefinition{ArcadeTrick::bluntslide,"bluntslide","Bluntslide",TrickCategory::grinds,TrickExecutor::native_rail,
         {{{BindingPattern::rail_entry,TrickDirection::down,1,ArcadeTrick::bluntslide,BindingContext::rail_approach,2}, {BindingPattern::rail_change,TrickDirection::none,2,ArcadeTrick::bluntslide,BindingContext::established_rail,5,13,14}}},2,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::nosegrind_to_pivot,"nosegrind_to_pivot","Nosegrind to Pivot",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up,2,ArcadeTrick::nosegrind_to_pivot,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up,2,ArcadeTrick::nosegrind_to_pivot,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::grind_5_0_overturn,"grind_5_0_overturn","5-0 Overturn",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::down,2,ArcadeTrick::grind_5_0_overturn,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::down,2,ArcadeTrick::grind_5_0_overturn,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::hurricane,"hurricane","Hurricane",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::left,2,ArcadeTrick::hurricane,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::left,2,ArcadeTrick::hurricane,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::salad,"salad","Salad",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::right,2,ArcadeTrick::salad,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::right,2,ArcadeTrick::salad,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::hang_ten_nosegrind,"hang_ten_nosegrind","Hang Ten Nosegrind",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up_left,2,ArcadeTrick::hang_ten_nosegrind,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up_left,2,ArcadeTrick::hang_ten_nosegrind,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::crail_slide,"crail_slide","Crail Slide",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::up_right,2,ArcadeTrick::crail_slide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::up_right,2,ArcadeTrick::crail_slide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::double_blunt_slide,"double_blunt_slide","Double Blunt Slide",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::down_left,2,ArcadeTrick::double_blunt_slide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::down_left,2,ArcadeTrick::double_blunt_slide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::darkslide,"darkslide","Darkslide",TrickCategory::grinds,TrickExecutor::none,
-        {{{BindingPattern::named,TrickDirection::down_right,2,ArcadeTrick::darkslide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,rc3_evidence},
+        {{{BindingPattern::named,TrickDirection::down_right,2,ArcadeTrick::darkslide,BindingContext::rail_approach,0}}},1,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::basic_bs_grab,"basic_bs_grab","BS Grab",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::named,TrickDirection::none,1,ArcadeTrick::basic_bs_grab,BindingContext::air,0}, {BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::basic_bs_grab,BindingContext::air,0}, {BindingPattern::ground_grab,TrickDirection::left,1,ArcadeTrick::basic_bs_grab,BindingContext::ground,2}}},3,0,0,0,{{{ArcadeTrick::basic_bs_grab,1,0,0,2,2,0,0,0,0,0}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::compact_grab,"compact_grab","Compact Grab",TrickCategory::specials,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::pressure_turn_flip,"pressure_turn_flip","Pressure Turn Flip",TrickCategory::specials,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::crossbone,"crossbone","Crossbone",TrickCategory::grabs,TrickExecutor::native_grab,
         {{{BindingPattern::selected_grab,TrickDirection::none,1,ArcadeTrick::crossbone,BindingContext::air,0}, {BindingPattern::extended_grab,TrickDirection::up_left,1,ArcadeTrick::crossbone,BindingContext::air,7}}},2,0,0,0,{{{ArcadeTrick::crossbone,5,-1,0,2,2,0,0,0,0,4}}},1,rc3_evidence},
     TrickDefinition{ArcadeTrick::fs_nosebone,"fs_nosebone","FS Nosebone",TrickCategory::grabs,TrickExecutor::native_grab,
@@ -332,15 +397,15 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::coffin,"coffin","Coffin",TrickCategory::flatground,TrickExecutor::native_ground_grab,
         {{{BindingPattern::ground_grab,TrickDirection::down,1,ArcadeTrick::coffin,BindingContext::ground,4}}},1,0,0,0,{{}},0,rc3_evidence},
     TrickDefinition{ArcadeTrick::spin_900,"spin_900","The 900",TrickCategory::specials,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::wallplant,"wallplant","Wallplant",TrickCategory::walls,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::special_grab,"special_grab","Special Grab",TrickCategory::specials,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::special_grind,"special_grind","Special Grind",TrickCategory::specials,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::flatground_special,"flatground_special","Advanced Flatground",TrickCategory::flatground,TrickExecutor::none,
-        {{}},0,0,0,0,{{}},0,rc3_evidence},
+        {{}},0,0,0,0,{{}},0,planned_evidence},
     TrickDefinition{ArcadeTrick::finger_1,"finger_1","Fingerflip",TrickCategory::grabs,TrickExecutor::native_fingerflip,
         {{{BindingPattern::fingerflip,TrickDirection::none,1,ArcadeTrick::finger_1,BindingContext::air,2},{BindingPattern::fingerflip,TrickDirection::left,1,ArcadeTrick::finger_1,BindingContext::air,2}}},2,0,0,0,{},0,rc3_evidence,{1,6,2,6,0}},
     TrickDefinition{ArcadeTrick::finger_2,"finger_2","Weddleflip",TrickCategory::grabs,TrickExecutor::native_fingerflip,
@@ -394,6 +459,9 @@ inline constexpr std::array trick_registry{
     TrickDefinition{ArcadeTrick::finger_30,"finger_30","Nose To Seatbelt",TrickCategory::grabs,TrickExecutor::native_fingerflip,
         {{{BindingPattern::fingerflip,TrickDirection::down,1,ArcadeTrick::finger_30,BindingContext::air,4},{BindingPattern::fingerflip,TrickDirection::up,1,ArcadeTrick::finger_30,BindingContext::air,7}}},2,0,0,0,{},0,rc3_evidence,{30,6,56,4,25}}
 };
+for(auto& t:entries)t.evidence=apply_trick_evidence(t.id,t.evidence);
+return entries;
+}();
 struct GrindBindingPair { std::int16_t first{},second{}; std::uint8_t target{}; };
 inline constexpr auto grind_change_bindings=[] {
     std::array<GrindBindingPair,9> out{};
@@ -411,17 +479,31 @@ constexpr const TrickDefinition* trick_definition(ArcadeTrick id) noexcept {
     return nullptr;
 }
 constexpr std::string_view trick_name(ArcadeTrick id) noexcept {
+    for(const auto& selector:rail_selectors)if(selector.request==id)return "Rail approach selection";
     const auto* trick=trick_definition(id); return trick?trick->name:std::string_view{};
+}
+constexpr std::string_view grind_change_name(GrindChangeTarget target) noexcept {
+    for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i)
+        if(t.bindings[i].pattern==BindingPattern::rail_change && t.bindings[i].parameter==grind_change_variant(target))return t.name;
+    return {};
 }
 constexpr unsigned held_flip_base(ArcadeTrick id) noexcept {
     const auto* trick=trick_definition(id);return trick?trick->held_base:0;
 }
+#ifdef DINGOSDK_ARCADE_GAMEPLAY_FINGERPRINT
+inline constexpr std::string_view gameplay_fingerprint=DINGOSDK_ARCADE_GAMEPLAY_FINGERPRINT;
+#else
+inline constexpr std::string_view gameplay_fingerprint{};
+#endif
 constexpr TrickStatus trick_status(const TrickDefinition& trick,unsigned game_build=20260929,
-                                  std::string_view revision={}) noexcept {
+                                  std::string_view implementation=gameplay_fingerprint) noexcept {
     if(trick.executor==TrickExecutor::none)return TrickStatus::planned;
     const auto& e=trick.evidence;
-    if(!e.invalidated && e.game_build==game_build && !revision.empty() && e.revision==revision &&
-       !e.context.empty() && !e.reference.empty() && e.required && (e.accepted&e.required)==e.required)
+    unsigned observed{};
+    for(const auto& item:e.observations)if(!item.invalidated && !item.capture.empty() && !item.observation.empty())
+        observed|=static_cast<unsigned>(item.criterion);
+    if(!e.invalidated && e.game_build==game_build && e.revision.size()==40 && !implementation.empty() && e.implementation_fingerprint==implementation &&
+       !e.context.empty() && !e.reference.empty() && e.required && (observed&e.required)==e.required)
         return TrickStatus::verified;
     return TrickStatus::experimental;
 }
@@ -429,6 +511,24 @@ constexpr const TrickBinding* binding_for(ArcadeTrick id,BindingPattern pattern)
     const auto* trick=trick_definition(id);if(!trick)return nullptr;
     for(unsigned i=0;i<trick->binding_count;++i)if(trick->bindings[i].pattern==pattern)return &trick->bindings[i];
     return nullptr;
+}
+constexpr std::int16_t direction_code(TrickDirection direction) noexcept {
+    constexpr std::array<std::int16_t,10> codes{0,4,8,6,2,7,9,1,3,0};
+    return codes[static_cast<unsigned>(direction)];
+}
+constexpr ArcadeTrick manual_pair_trick(int first,int second) noexcept {
+    if(!first || first!=-second)return ArcadeTrick::none;
+    for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i) {
+        const auto& b=t.bindings[i];
+        if(b.pattern==BindingPattern::manual_pair &&
+           b.direction==(first>0?TrickDirection::up:TrickDirection::down))return t.id;
+    }
+    return ArcadeTrick::none;
+}
+constexpr ArcadeTrick neutral_flip_trick() noexcept {
+    for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i)
+        if(t.bindings[i].pattern==BindingPattern::neutral_flip)return t.id;
+    return ArcadeTrick::none;
 }
 constexpr unsigned fingerflip_input(TrickDirection direction) noexcept {
     for(const auto& t:trick_registry)for(unsigned i=0;i<t.binding_count;++i) {
@@ -444,6 +544,9 @@ constexpr unsigned ground_grab_variant(TrickDirection direction) noexcept {
 }
 constexpr ArcadeTrick select_registry_trick(std::span<const TrickDefinition> catalog,TrickFamily family,
                                            TrickDirection direction,unsigned presses) noexcept {
+    if(family==TrickFamily::grind && presses==1 && direction!=TrickDirection::none)
+        for(const auto& selector:rail_selectors)for(const auto d:selector.directions)
+            if(d!=TrickDirection::invalid && d==direction)return selector.request;
     const auto category=family==TrickFamily::flip?TrickCategory::flips:family==TrickFamily::grab?TrickCategory::grabs:TrickCategory::grinds;
     for(const auto& t:catalog)if(t.category==category)for(unsigned i=0;i<t.binding_count;++i) {
         const auto& b=t.bindings[i];

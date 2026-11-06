@@ -1,5 +1,6 @@
 #pragma once
 #include "arcade_trick_registry.h"
+#include "arcade_fingerflip.h"
 #include <string>
 #include <vector>
 
@@ -39,6 +40,8 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
         if(t.id==ArcadeTrick::none || t.key.empty() || t.name.empty())fail("missing display metadata or identity");
         if(t.binding_count>t.bindings.size() || t.grab_variant_count>t.grab_variants.size()){fail("descriptor capacity exceeded");continue;}
         if(!registry_handler_present(t))fail("missing production handler");
+        if(t.executor==TrickExecutor::none && (t.native_flip || t.nollie_flip || t.held_base || t.grab_variant_count || t.fingerflip.identity))
+            fail("unsupported trick retains an executable native mapping");
         if(t.executor!=TrickExecutor::none && !t.binding_count)fail("orphaned executable definition");
         if(t.evidence.reference.empty() || t.evidence.revision.size()!=40 || t.evidence.context.empty())fail("missing evidence provenance");
         if(t.executor==TrickExecutor::none && t.evidence.accepted)fail("unsupported trick claims acceptance");
@@ -46,6 +49,12 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
             if(t.id==catalog[j].id || t.key==catalog[j].key)fail("duplicate canonical identity/status record");
         for(unsigned x=0;x<t.binding_count;++x) {
             const auto& bind=t.bindings[x];bool owned=bind.variant==t.id;
+            if(bind.pattern==BindingPattern::fingerflip &&
+               (bind.parameter!=fingerflip_input(bind.direction) || !(native_grab::finger_gesture(static_cast<int>(bind.parameter))&t.fingerflip.gestures)))
+                fail("fingerflip diagram differs from production input or native transition");
+            if(bind.pattern==BindingPattern::sequence &&
+               (!bind.sequence.count || bind.sequence.count>bind.sequence.steps.size() || t.executor!=TrickExecutor::none))
+                fail("sequence lacks an executable specialized handler or valid proposed steps");
             for(unsigned v=0;v<t.grab_variant_count;++v)owned=owned || t.grab_variants[v].trick==bind.variant;
             if(!owned)fail("orphaned binding variant");
             for(std::size_t j=i;j<catalog.size();++j) {
@@ -54,13 +63,39 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
                     if(conflicting_bindings(t,bind,other,other.bindings[y]))fail("conflicting binding in same context");
             }
         }
+        unsigned criteria{};
+        for(const auto& item:t.evidence.observations)if(!item.capture.empty() || !item.observation.empty()) {
+            const auto bit=static_cast<unsigned>(item.criterion);
+            if(!bit || (bit&(bit-1)) || bit>16 || (criteria&bit) || item.capture.empty() || item.observation.empty())
+                fail("conflicting or incomplete native evidence record");
+            criteria|=bit;
+        }
         for(unsigned v=0;v<t.grab_variant_count;++v) {
             const auto& variant=t.grab_variants[v];
+            if(variant.actor_index>=native_grab::pilots.size())fail("orphaned native actor slot");
             for(std::size_t j=i;j<catalog.size();++j)for(unsigned w=j==i?v+1:0;w<catalog[j].grab_variant_count && w<3;++w) {
                 const auto& other=catalog[j].grab_variants[w];
                 if(variant.trick==other.trick || variant.actor_index==other.actor_index)fail("duplicate pose/animation association");
             }
         }
+    }
+    for(unsigned id=1;id<=static_cast<unsigned>(ArcadeTrick::feeble);++id) {
+        bool found{};
+        for(const auto& t:catalog) {
+            found=found || static_cast<unsigned>(t.id)==id;
+            for(unsigned v=0;v<t.grab_variant_count && v<t.grab_variants.size();++v)
+                found=found || static_cast<unsigned>(t.grab_variants[v].trick)==id;
+        }
+        for(const auto& selector:rail_selectors)found=found || static_cast<unsigned>(selector.request)==id;
+        if(!found)errors.emplace_back("orphaned Arcade identity");
+    }
+    for(const auto& selector:rail_selectors)for(const auto outcome:selector.outcomes) {
+        bool found{};for(const auto& t:catalog)found=found || t.id==outcome;
+        if(!found)errors.emplace_back("orphaned rail selector outcome");
+    }
+    for(const auto& context:contextual_trick_table) {
+        bool found{};for(const auto& t:catalog)found=found || t.id==context.trick;
+        if(!found)errors.emplace_back("orphaned contextual prototype definition");
     }
     return errors;
 }

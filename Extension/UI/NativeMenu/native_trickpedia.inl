@@ -20,7 +20,7 @@ bool restore_trickpedia(const Context& c) {
 }
 void update_trickpedia(const Context& c,std::uint64_t now) {
     auto& lease=trickpedia_page;
-    if(lease.manager && lease.manager!=c.manager)lease={};
+    if(lease.manager && lease.manager!=c.manager){lease={};trickpedia_seen.store(0,std::memory_order_release);}
     if(!arcade_mode::enabled()) {restore_trickpedia(c);return;}
     if(lease.manager) {
         if(c.type_of(lease.root.handle)!=lease.root.type || c.type_of(lease.target.handle)!=lease.target.type) {
@@ -28,6 +28,7 @@ void update_trickpedia(const Context& c,std::uint64_t now) {
         }
         const auto focus=c.path(lease.target,{0xfafda1a6,0x20a39d92,0x6b01fd01});
         const bool shown=game_in_menu.load(std::memory_order_relaxed) && read<int>(c.address(focus))>=0;
+        if(!shown){restore_trickpedia(c);return;}
         trickpedia_seen.store(shown?now:0,std::memory_order_release);
         return;
     }

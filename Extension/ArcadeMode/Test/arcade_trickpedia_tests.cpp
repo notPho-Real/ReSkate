@@ -41,18 +41,39 @@ int main() {
     require(!validate_registry(changed).empty(),"missing native handler accepted");
     changed=trick_registry;changed[0].name={};
     require(!validate_registry(changed).empty(),"missing name accepted");
-    auto receipt=trick_registry[0];receipt.evidence.accepted=31;
-    require(trick_status(receipt,20260929,receipt.evidence.revision)==TrickStatus::verified,"complete pinned receipt rejected");
-    require(trick_status(receipt,20260930,receipt.evidence.revision)==TrickStatus::experimental,"wrong build verified");
+    changed=trick_registry;changed[0].executor=TrickExecutor::none;
+    require(!validate_registry(changed).empty(),"Planned entry retained executable mapping");
+    changed=trick_registry;changed[0].evidence.observations[0]={Acceptance::action,"capture-a","native actor"};
+    changed[0].evidence.observations[1]={Acceptance::action,"capture-b","conflicting action record"};
+    require(!validate_registry(changed).empty(),"conflicting evidence records accepted");
+    auto receipt=trick_registry[0];receipt.evidence.accepted=31;receipt.evidence.implementation_fingerprint="tested-source";
+    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"success flag alone was treated as gameplay evidence");
+    for(unsigned i=0;i<5;++i)receipt.evidence.observations[i]={static_cast<Acceptance>(1u<<i),"test-fixture/capture","independent native observation"};
+    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::verified,"complete pinned receipt rejected");
+    require(trick_status(receipt,20260930,"tested-source")==TrickStatus::experimental,"wrong build verified");
     require(trick_status(receipt,20260929,"other revision")==TrickStatus::experimental,"stale revision verified");
     receipt.evidence.invalidated=true;
-    require(trick_status(receipt,20260929,receipt.evidence.revision)==TrickStatus::experimental,"regression verified");
+    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"regression verified");
     for(bool enabled:{false,true,false,true,false})require(trickpedia::show_arcade(enabled,true)==enabled,"same-session OFF restoration policy");
     require(!trickpedia::show_arcade(true,false) && !trickpedia::show_arcade(true,true,true),"focus/load leak");
     require(trickpedia::browse({"kickflip",-1,-1}).size()>=3,"search");
     require(trickpedia::browse({"",-1,0}).empty(),"unverified family advertised verified");
     const auto specials=trickpedia::browse({"",7,2});require(specials.size()>=3,"planned specials missing");
     for(const auto* t:specials)require(t->executor==TrickExecutor::none,"planned special substitutes handler");
+    auto proposed=*specials.front();proposed.binding_count=1;
+    auto& sequence=proposed.bindings[0];sequence.pattern=BindingPattern::sequence;sequence.variant=proposed.id;
+    sequence.sequence={{{{StepKind::direction,0,TrickDirection::down},{StepKind::then},
+        {StepKind::hold,TrickControls::mask(TrickControls::grab)},{StepKind::together},
+        {StepKind::press,TrickControls::mask(TrickControls::flip)},{StepKind::then},
+        {StepKind::release,TrickControls::mask(TrickControls::grab)}}},7,350};
+    proposed.special={ArcadeTrick::ollie,"airborne","","continue the current combo"};
+    const auto special_diagram=trickpedia::diagram(proposed,sequence);
+    require(special_diagram.proposed && special_diagram.window_ms==350 &&
+        trickpedia::diagram_text(special_diagram,label)=="Down -> hold B + X -> release B","special sequence diagram");
+    require(special_diagram.condition.find("after Ollie")!=std::string::npos,"preceding trick missing");
+    require(trick_status(proposed)==TrickStatus::planned && registry_handler_present(proposed),"proposed sequence became executable");
+    require(manual_pair_trick(1,-1)==ArcadeTrick::manual && manual_pair_trick(-1,1)==ArcadeTrick::nose_manual,"manual registry binding");
+    require(neutral_flip_trick()==ArcadeTrick::kickflip,"neutral production binding");
     const auto* boneless=trick_definition(ArcadeTrick::boneless);
     const auto steps=trickpedia::diagram(*boneless,boneless->bindings[0]);
     require(steps.window_ms==footplant_repeat_ms && trickpedia::diagram_text(steps,label)=="Up -> release direction -> Up -> A","multi-stage diagram");

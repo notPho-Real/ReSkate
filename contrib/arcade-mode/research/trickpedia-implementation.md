@@ -54,8 +54,10 @@ established-rail selectors consume the registry or its descriptors.
 The catalog distinguishes original ordinary flip IDs from fingerflip IDs and
 native grab details. Recognized but unsupported legacy rail-approach bindings
 are shown as proposed, even where the same destination has an executable
-established-rail transition. Those legacy grouped rail selectors still describe
-geometry-dependent alternatives; they are not evidence that both members work.
+established-rail transition. Grouped legacy rail requests are separate selector
+identities referencing individual canonical outcomes. Noseslide, Tailslide,
+Crooked, Overcrook, Smith, Feeble, Boardslide and Lipslide each have their own
+record and status; the grouped request never grants acceptance to its outcomes.
 Prototype contextual pressure/lip adapters without native producers are Planned.
 
 ## Native integration and fallback
@@ -87,10 +89,24 @@ Every record resolves to exactly Verified, Experimental or Planned. Executable
 RC3 paths remain Experimental because the cited RC3 report leaves full acceptance
 open. No family-wide Verified claim is made. Verified requires complete action,
 physics/contact, recognition, exit/landing and scoring/combo coverage, a capture
-reference and context, matching game build and exact source revision, and no
+reference and context, matching game build and implementation fingerprint, and no
 invalidation. Missing or stale evidence falls back to Experimental; no handler
-means Planned. The current UI intentionally supplies no verified candidate
-revision and therefore cannot accidentally inherit a previous build's acceptance.
+means Planned. Each acceptance criterion needs its own capture and native
+observation. A success bitmask alone cannot produce Verified.
+
+The runtime and overlay receive a SHA-256 fingerprint of the gameplay and engine
+sources from CMake. A receipt records both its tested source revision and that
+fingerprint. Editing gameplay, engine code or canonical bindings invalidates
+previous receipts automatically. Evidence-only updates live in
+`arcade_trick_evidence.inl`, so documenting a tested implementation does not
+invalidate its own source fingerprint. New receipts must refer to that trick's
+independent native observations; there are no accepted receipts in this candidate.
+
+Special bindings accept structured ordered/simultaneous presses, holds, releases,
+directions and a timing window, with optional preceding trick, required state,
+native animation reference and combo requirement. Proposed sequences have no
+executor. Adding a real specialized executor requires a corresponding validation
+case; a sequence cannot borrow an unrelated existing handler.
 
 Independent hardware acceptance must establish installed and mapped DLL identity,
 original Skatepedia navigation with Arcade OFF, Arcade ON replacement, controller

@@ -65,6 +65,5 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     line("Direction: left stick / D-pad. Release between repeated presses.",theme::muted);
     if(t->nollie_flip)line("Native regular and nollie variants; live stance admission applies.",theme::muted);
     line(std::string(t->evidence.remaining),theme::muted);
-    line("Evidence: "+std::string(t->evidence.reference),theme::muted);
     detail.end();
 }

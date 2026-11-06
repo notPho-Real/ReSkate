@@ -11,12 +11,6 @@ namespace dingosdk::arcade_mode::trickpedia {
 inline constexpr std::array category_names{"Flip Tricks", "Grab Tricks", "Grinds and Slides",
     "Manuals and Reverts", "Footplants", "Wall Tricks", "Flatground Tricks", "Special Tricks"};
 inline constexpr std::array status_names{"Verified", "Experimental", "Planned"};
-enum class StepKind : std::uint8_t { press, hold, release, direction, release_direction, then, together };
-struct InputStep {
-    StepKind kind{};
-    std::uint32_t buttons{};
-    TrickDirection direction{};
-};
 struct InputDiagram {
     std::vector<InputStep> steps;
     std::uint64_t window_ms{};
@@ -56,6 +50,19 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
     const auto then=[&]{step(StepKind::then);};
     const auto together=[&]{step(StepKind::together);};
     switch(b.pattern) {
+    case BindingPattern::rail_entry:
+        if(b.direction!=TrickDirection::none){direction(b.direction);then();}
+        if(b.parameter==2){step(StepKind::release_direction);then();direction(b.direction);then();}
+        step(StepKind::press,TrickControls::mask(TrickControls::grind));
+        out.window_ms=InputTiming::direction_ms;
+        break;
+    case BindingPattern::sequence:
+        out.steps.assign(b.sequence.steps.begin(),b.sequence.steps.begin()+std::min<std::size_t>(b.sequence.count,b.sequence.steps.size()));
+        out.window_ms=b.sequence.window_ms;
+        if(trick.special.preceding_trick!=ArcadeTrick::none)out.condition+="; after "+std::string(trick_name(trick.special.preceding_trick));
+        if(!trick.special.required_state.empty())out.condition+="; "+std::string(trick.special.required_state);
+        if(!trick.special.combo_requirement.empty())out.condition+="; "+std::string(trick.special.combo_requirement);
+        break;
     case BindingPattern::rail_change:
         step(StepKind::press,1u<<b.first_button);then();
         if(b.first_button==b.second_button){step(StepKind::release,1u<<b.first_button);then();}
@@ -63,13 +70,13 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         out.condition+="; destination: "+std::string(grind_change_name(grind_change_target(static_cast<std::uint8_t>(b.parameter))))+"; original rail geometry and source contact gate execution";
         break;
     case BindingPattern::fingerflip:
-        step(StepKind::hold,0x2000);together();
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab));together();
         if(b.direction!=TrickDirection::none){direction(b.direction);together();}
-        step(StepKind::press,0x4000);
+        step(StepKind::press,TrickControls::mask(TrickControls::flip));
         out.condition+="; already holding "+grab_family_name(trick.fingerflip.family)+"; both feet on board; keep B through catch, then release";
         break;
     case BindingPattern::ollie_release:
-        step(StepKind::hold,0x1000);then();step(StepKind::release,0x1000);
+        step(StepKind::hold,TrickControls::mask(TrickControls::ollie));then();step(StepKind::release,TrickControls::mask(TrickControls::ollie));
         out.condition+="; release launches; hold controls crouch";break;
     case BindingPattern::manual_pair:
         direction(b.direction);then();direction(b.direction==TrickDirection::up?TrickDirection::down:TrickDirection::up);
@@ -78,20 +85,20 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
     case BindingPattern::footplant:
         direction(b.direction);
         if(b.presses==2){then();step(StepKind::release_direction);then();direction(b.direction);}
-        then();step(StepKind::press,0x1000);
+        then();step(StepKind::press,TrickControls::mask(TrickControls::ollie));
         out.window_ms=b.presses==2?footplant_repeat_ms:footplant_single_ms;
         out.condition+="; ordinary stance; native push/grab preparation must complete";break;
     case BindingPattern::revert:
-        step(StepKind::press,0x20000);out.condition+="; also during an admitted manual";break;
+        step(StepKind::press,TrickControls::trigger_mask(TrickControls::revert_trigger));out.condition+="; also during an admitted manual";break;
     case BindingPattern::ground_grab:
-        step(StepKind::hold,0x80);together();
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab_layer));together();
         if(b.direction!=TrickDirection::none){direction(b.direction);together();}
-        step(StepKind::hold,0x2000);out.condition+="; release B to exit";break;
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab));out.condition+="; release B to exit";break;
     case BindingPattern::selected_grab:
     case BindingPattern::extended_grab:
-        step(StepKind::hold,0x80);together();
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab_layer));together();
         if(b.direction!=TrickDirection::none){direction(b.direction);together();}
-        step(StepKind::hold,0x2000);
+        step(StepKind::hold,TrickControls::mask(TrickControls::grab));
         if(b.pattern==BindingPattern::selected_grab) {
             out.condition+="; neutral direction; choose this pose below";
             if(selected==b.variant)out.condition+=" (currently selected)";
@@ -100,7 +107,7 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
         out.condition+="; release B to exit";break;
     default: {
         const bool grab=trick.category==TrickCategory::grabs;
-        const auto face=grab?0x2000u:trick.category==TrickCategory::grinds?0x8000u:0x4000u;
+        const auto face=grab?TrickControls::mask(TrickControls::grab):trick.category==TrickCategory::grinds?TrickControls::mask(TrickControls::grind):TrickControls::mask(TrickControls::flip);
         if(b.direction!=TrickDirection::none){direction(b.direction);together();}
         step(grab?StepKind::hold:StepKind::press,face);
         for(unsigned i=1;i<b.presses;++i){then();step(StepKind::release,face);then();step(grab?StepKind::hold:StepKind::press,face);}
@@ -133,11 +140,11 @@ inline std::string fold(std::string_view text) {
     std::string out(text);for(auto& c:out)c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));return out;
 }
 struct Query { std::string search; int category{-1}, status{-1}; };
-inline std::vector<const TrickDefinition*> browse(const Query& query,unsigned game_build=20260929,std::string_view revision={}) {
+inline std::vector<const TrickDefinition*> browse(const Query& query,unsigned game_build=20260929,std::string_view implementation=gameplay_fingerprint) {
     std::vector<const TrickDefinition*> out;const auto search=fold(query.search);
     for(const auto& t:trick_registry) {
         if(query.category>=0 && query.category!=static_cast<int>(t.category))continue;
-        if(query.status>=0 && query.status!=static_cast<int>(trick_status(t,game_build,revision)))continue;
+        if(query.status>=0 && query.status!=static_cast<int>(trick_status(t,game_build,implementation)))continue;
         if(!search.empty() && fold(std::string(t.name)+" "+std::string(t.key)+" "+category_names[static_cast<unsigned>(t.category)]).find(search)==std::string::npos)continue;
         out.push_back(&t);
     }
