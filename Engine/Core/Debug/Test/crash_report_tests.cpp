@@ -376,6 +376,14 @@ void stuck_check(const std::filesystem::path& root) {
         }
         if (stuck.empty() || crash.empty()) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    if (stuck.empty() || crash.empty()) {
+        std::cerr << read(queue / L"stuck-capture-diagnostic.txt") << read(queue / L"capture-diagnostic.txt")
+                  << read(queue / L"capture-status.txt") << read(queue / L"status.txt");
+        for (const auto& entry : std::filesystem::directory_iterator(queue)) {
+            if (entry.is_regular_file())
+                std::cerr << entry.path().filename().string() << " bytes=" << entry.file_size() << '\n';
+        }
+    }
     check(!stuck.empty(), "No stuck-load dump captured");
     check(!crash.empty(), "The crash after a stuck-load capture was not captured");
     check(Json::parse(read(crash.wstring() + L".json")).at("capture.source").string() == "unhandled-exception", "Wrong capture source after a stuck load");
