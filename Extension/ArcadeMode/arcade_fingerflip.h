@@ -3,19 +3,14 @@
 #include "arcade_native_grab_lease.h"
 
 namespace dingosdk::arcade_mode::native_grab {
-struct FingerflipRow {
-    int identity, family; unsigned gestures; int destination;
-};
-// CDB_OnBoard_Grab_FingerFlip_Into. The bitmap uses the original
-// FliptrickTypeForFingerflip enum, not ordinary flip or grab IDs.
-inline constexpr FingerflipRow fingerflips[]{
-    {1,6,2,6},{2,8,2,8},{3,8,56,2},{4,4,62,6},{5,7,56,1},{6,7,2,7},
-    {7,3,2,3},{8,5,62,3},{9,2,16,8},{10,2,40,2},{11,2,2,2},
-    {12,1,16,7},{13,1,40,1},{14,1,2,1},
-    {19,9,2,9},{20,9,4,9},{21,9,16,9},{22,9,40,9},
-    {23,2,4,2},{24,1,4,1},{25,6,4,6},{26,3,4,3},{27,8,4,8},
-    {28,7,4,7},{29,3,56,5},{30,6,56,4}
-};
+using FingerflipRow=FingerflipBinding;
+// Native animation observer order is explicit, independent of catalog sorting.
+inline constexpr auto fingerflips=[] {
+    constexpr auto count=[] {std::size_t n=0;for(const auto& t:trick_registry)if(t.fingerflip.identity)++n;return n;}();
+    std::array<FingerflipRow,count> result{};
+    for(const auto& t:trick_registry)if(t.fingerflip.identity)result[t.fingerflip.actor_index]=t.fingerflip;
+    return result;
+}();
 constexpr unsigned finger_gesture(int native_flip) noexcept {
     return native_flip==2?2u:native_flip==3?4u:native_flip==4?8u:native_flip==7?16u:0u;
 }

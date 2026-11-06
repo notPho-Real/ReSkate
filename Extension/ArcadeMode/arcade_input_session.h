@@ -660,8 +660,7 @@ private:
                 out.unsupported = true; return InputDisposition::unsupported;
             }
             if (request.form==InputForm::held_repeat) {
-                const auto id=request.air.trick==ArcadeTrick::double_kickflip?2:
-                    request.air.trick==ArcadeTrick::double_heelflip?3:0;
+                const auto id=static_cast<int>(held_flip_base(request.air.trick));
                 if (!id || request.presses!=2 || request.nollie || held_flip_used_ || held_prepare_retired_ || !air_action_ ||
                     air_followup_id_!=id || launch_context_!=GestureContext::ground ||
                     !admission.native_context.required || !admission.native_context.fresh(now_) ||

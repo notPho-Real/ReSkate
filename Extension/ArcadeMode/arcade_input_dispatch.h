@@ -587,8 +587,7 @@ public:
                 // if its native entry is not ready. Never fall back to an Ollie
                 // bridge or an ordinary flip after this contextual request.
                 const auto direction=events_.held_direction();
-                const auto variant=direction==6?3u:direction==2?4u:direction==8?7u:
-                    direction==0 || direction==4?2u:0u;
+                const auto variant=fingerflip_input(air_trick_direction(direction));
                 const auto match=consume(event);
                 pending_.cancel(InputAction::flip);
                 if(variant)enqueue(InputAction::flip,now,1,environment,1,static_cast<std::uint8_t>(variant),
@@ -598,7 +597,7 @@ public:
             if(code==13 && environment.native_ground_grabs && environment.context==InputContext::ground &&
                 (physical.buttons&0x2080u)==0x2080u) {
                 const auto direction=events_.held_direction();
-                const unsigned variant=direction==4?2u:direction==6?1u:direction==2?4u:direction==0?3u:0u;
+                const unsigned variant=ground_grab_variant(air_trick_direction(direction));
                 if(variant) {
                     const auto match=consume(event);
                     enqueue(InputAction::ground_grab,now,1,environment,1,static_cast<std::uint8_t>(variant),0,0,{},&match);
@@ -850,13 +849,14 @@ private:
         }
     }
     bool recognize_footplant(std::uint64_t now,InputEnvironment environment,const InputEvent& terminal) noexcept {
-        const InputToken up{InputSource::direction,8,InputEdge::press};
+        const auto* definition=binding_for(ArcadeTrick::no_comply,BindingPattern::footplant);
+        const InputToken up{InputSource::direction,definition && definition->direction==TrickDirection::up?std::int16_t{8}:std::int16_t{2},InputEdge::press};
         const InputToken a{InputSource::buttons,12,InputEdge::press};
         for (const unsigned count:{2u,1u}) {
             const std::array double_steps{up,up,a};
             const std::array single_steps{up,a};
             const auto steps=count==2 ? std::span<const InputToken>(double_steps) : std::span<const InputToken>(single_steps);
-            auto match=events_.history().match({steps,count==2?500u:300u,ordinary_reject},now);
+            auto match=events_.history().match({steps,count==2?footplant_repeat_ms:footplant_single_ms,ordinary_reject},now);
             if (!match || match.events[match.count-1]!=terminal.sequence) continue;
             bool conflict=false;
             for (const auto& edge:events_.history().events()) {
@@ -1014,7 +1014,7 @@ private:
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
             // Native admission may wait after recognition. Repetition belongs
             // to the two physical B edges, never to either dispatch timestamp.
-            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > 250)) match = {};
+            if (match && (match.last_at < grab_pressed_at_ || match.last_at-grab_pressed_at_ > grab_repeat_ms)) match = {};
             if (match) presses = active_grab_count_ < std::numeric_limits<unsigned>::max() ? active_grab_count_ + 1 : active_grab_count_;
         }
         if (!match && !environment.deferred_grabs) {
@@ -1091,7 +1091,7 @@ private:
         }
         const bool child = active_flip_count_ == 1 || (active_flip_count_ == 2 &&
             (flip_direction_ == 2 || flip_direction_ == 4 || flip_direction_ == 6 || flip_direction_ == 8));
-        if (!match && active_flip_ && child && now - flip_started_ <= 233) {
+        if (!match && active_flip_ && child && now - flip_started_ <= flip_repeat_ms) {
             const auto definition = air_selection(TrickFamily::flip,flip_direction_,active_flip_count_ + 1);
             const std::array tokens{face};
             match = events_.history().match({tokens,definition.query_ms(),ordinary_reject},now);
@@ -1186,15 +1186,9 @@ private:
                 }
             }
         }
-        struct Pair { std::int16_t first, second; std::uint8_t target; };
-        constexpr auto named = [](std::int16_t first,std::int16_t second,GrindChangeTarget target) {
-            return Pair{first,second,grind_change_variant(target)};
-        };
-        using Target = GrindChangeTarget;
-        constexpr std::array front{
-            named(15,15,Target::grind_50_50), named(15,14,Target::noseslide), named(15,13,Target::nosegrind),
-            named(13,13,Target::crooked), named(13,14,Target::bluntslide), named(13,15,Target::nosebluntslide),
-            named(14,14,Target::smith), named(14,13,Target::grind_5_0), named(14,15,Target::tailslide)};
+        using Pair=GrindBindingPair;
+        using Target=GrindChangeTarget;
+        constexpr auto front=grind_change_bindings;
         constexpr std::array back{front[0],front[1],front[2],front[3],front[4],front[5],front[8],front[6],front[7]};
         constexpr std::array lips{Pair{13,13,40}, Pair{13,14,41}, Pair{14,14,42}, Pair{14,13,43},
             Pair{15,15,44}, Pair{15,14,45}, Pair{15,13,46}};

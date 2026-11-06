@@ -1,5 +1,6 @@
 #include "overlay_internal.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
+#include "Extension/ArcadeMode/arcade_trickpedia.h"
 #include "skate_style.h"
 #include "skate_menu_internal.h"
 #include "cursor.h"
@@ -115,6 +116,8 @@ struct Hub {
     // Mod Options: the same rows and actions the page has always had (native_tools_view.h).
     native_tools::State tools;
     int tools_tab{};
+    arcade_mode::trickpedia::Query trick_query;
+    arcade_mode::ArcadeTrick selected_trick{arcade_mode::ArcadeTrick::ollie};
     // Recording a bind (the BINDS tab): which action (0: none), what has been pressed so far,
     // and when it gives up (GetTickCount64).
     int recording_bind{};
@@ -976,7 +979,7 @@ void failed_page(Ui &ui, ImVec2 a, ImVec2 z) {
 
 // ---------------------------------------------------------------- Mod Options
 
-enum ToolsTab : int { official_tab, custom_tab, world_tab, parks_tab, player_tab, online_tab, visuals_tab, binds_tab };
+enum ToolsTab : int { official_tab, custom_tab, world_tab, parks_tab, player_tab, online_tab, visuals_tab, binds_tab, trickpedia_tab };
 
 // The next (or the one before) of a setting's steps from where it is now; it stops at the ends.
 template<std::size_t N> float stepped(float current, const std::array<float, N> &steps, int direction) {
@@ -1049,8 +1052,14 @@ struct Column {
 // The page's tabs. What a control does, and when it can, is the same as on ReSkate's own menu
 // (native_tools_view.h for travel, parks and the world; the same requests and commands that
 // menu sends for the rest); how it is laid out is here.
+#include "trickpedia_page.inl"
 void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
     auto &h = ui.h;
+    if(h.tools_tab==trickpedia_tab) {
+        if(arcade_mode::enabled()){trickpedia_page(ui,a,z);return;}
+        h.tools_tab=player_tab;h.trick_query={};h.selected_trick=arcade_mode::ArcadeTrick::ollie;
+        set_typing(h,0);h.focus=0;h.last.clear();
+    }
     const auto &m = h.full;
     const auto &mp = m.multiplayer;
     const auto &cb = h.callbacks;
@@ -1228,6 +1237,8 @@ void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
         list.heading("SKATE YOUR WAY");
         if (list.setting("Arcade Mode", arcade_mode::enabled() ? "ON" : "OFF", console))
             run(arcade_mode::enabled() ? "arcademode off" : "arcademode on");
+        if(arcade_mode::enabled() && list.setting("Arcade Trickpedia", "OPEN", true))
+            h.tools_tab=trickpedia_tab;
         if (list.setting("Noclip", on_off(d.noclip), (d.noclip_available || d.noclip) && debugging)) debug({DebugAction::set_noclip, !d.noclip});
         if (list.setting("No bail", on_off(d.no_bail), (d.no_bail_available || d.no_bail) && debugging)) debug({DebugAction::set_no_bail, !d.no_bail});
         const auto &wear = m.offline.board_wear;
@@ -1476,6 +1487,7 @@ bool hub_page_pending() {
     auto &h = hub();
     auto &s = state();
     const auto now = Clock::now();
+    const auto previous_section = h.page.section;
     if (now >= h.next_page) {
         h.next_page = now + 40ms;
         h.page = {};
@@ -1491,11 +1503,13 @@ bool hub_page_pending() {
         mods.visited = false;
         offer_apply(mods);
     }
-    if (shown != h.shown) {
+    if (shown != h.shown || (shown && previous_section != h.page.section)) {
         h.shown = shown;
         h.next_model = {};
         h.searched = false;
         h.last.clear();
+        h.focus = 0;
+        set_typing(h, 0);
         if (!shown) {
             dingosdk::multiplayer::hold_native_menu_back(false);
             if (!mod_page().leaving) mod_page().declined = false;
@@ -1670,7 +1684,8 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
     h.items.clear();
 
     // ---- the page's tabs
-    const bool tools = !embedded && h.page.section == 1;
+    const bool trickpedia = !embedded && h.page.section == 3;
+    const bool tools = !embedded && (h.page.section == 1 || trickpedia);
     const bool mods = !embedded && h.page.section == 2;
     {
         // (Each page keeps the tab it was left on.)
@@ -1679,10 +1694,13 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         int &open = tools ? h.tools_tab : mods ? mod_page().tab : multiplayer_tab;
         if (mods) {
             tabs = {{browse_tab, "BROWSE"}, {installed_tab, "MY MODS"}, {updates_tab, "UPDATES"}};
+        } else if (trickpedia) {
+            tabs={{trickpedia_tab,"ARCADE CONTROLS"}};h.tools_tab=trickpedia_tab;
         } else if (tools) {
             if (h.tools_tab == custom_tab) h.tools_tab = official_tab;
             tabs = {{official_tab, "MAPS"}, {world_tab, "WORLD"}, {parks_tab, "PARKS"},
                     {player_tab, "PLAYER"}, {online_tab, "ONLINE"}, {visuals_tab, "VISUALS"}, {binds_tab, "BINDS"}};
+            if(arcade_mode::enabled())tabs.emplace_back(trickpedia_tab,"TRICKS");
         } else {
             tabs = {{static_cast<int>(Tab::browser), "SERVER BROWSER"}, {static_cast<int>(Tab::host), "HOST LOBBY"}};
             // The session and its voice chat are only there in one.
