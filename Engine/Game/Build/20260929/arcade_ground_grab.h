@@ -24,12 +24,23 @@ inline constexpr std::array<Guid,6> turn_actors{{
     {0xf5,0x1a,0x32,0x87,0xc3,0x93,0x5f,0x72,0x87,0x32,0x1a,0xf5,0x93,0xc3,0x72,0x5f}, // resource 35073
     {0xa6,0x6f,0x98,0xe7,0x81,0xc5,0xb6,0xe5,0xe7,0x98,0x6f,0xa6,0xc5,0x81,0xe5,0xb6} // resource 13465
 }};
-inline constexpr unsigned actor_count=static_cast<unsigned>(actors.size()+turn_actors.size());
+// Original FS/BS/Double Into bodies from sequence resources6291/30264/17958,
+// instance1. Their lengths33/40/31 are native ticks, not software deadlines.
+inline constexpr std::array<Guid,3> entry_actors{{
+    {0xcf,0x57,0x9b,0x66,0xb0,0xd9,0xb5,0x01,0x66,0x9b,0x57,0xcf,0xd9,0xb0,0x01,0xb5},
+    {0xf0,0xac,0x0c,0xaf,0x53,0xbd,0xed,0x1b,0xaf,0x0c,0xac,0xf0,0xbd,0x53,0x1b,0xed},
+    {0xf1,0x96,0xe6,0xb0,0x4d,0x23,0x9a,0xbe,0xb0,0xe6,0x96,0xf1,0x23,0x4d,0xbe,0x9a}
+}};
+inline constexpr unsigned loop_actor_count=static_cast<unsigned>(actors.size()+turn_actors.size());
+inline constexpr unsigned actor_count=loop_actor_count+static_cast<unsigned>(entry_actors.size());
+constexpr bool actor_is_entry(unsigned index) noexcept {return index>=loop_actor_count && index<actor_count;}
 constexpr const Guid& actor_guid(unsigned index) noexcept {
-    return index<actors.size()?actors[index]:turn_actors[index-actors.size()];
+    return index<actors.size()?actors[index]:index<loop_actor_count?
+        turn_actors[index-actors.size()]:entry_actors[index-loop_actor_count];
 }
 constexpr unsigned actor_kind(unsigned index) noexcept {
-    return index<actors.size()?index+1:1+(index-static_cast<unsigned>(actors.size()))/2;
+    return index<actors.size()?index+1:index<loop_actor_count?
+        1+(index-static_cast<unsigned>(actors.size()))/2:1+index-loop_actor_count;
 }
 constexpr int actor_index(unsigned kind,const Guid& guid) noexcept {
     if(kind<1 || kind>4)return -1;

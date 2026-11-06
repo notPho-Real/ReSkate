@@ -46,7 +46,7 @@ unsigned settings_mask{};
 GroundGrabInput grab_lease;
 NoBailSkater grab_owner;
 std::uint64_t grab_poll{},grab_serial{};
-struct GrabEvidence {std::uint64_t serial{};GroundGrab kind{};bool acknowledged{};} grab_evidence;
+struct GrabEvidence {std::uint64_t serial{};GroundGrab kind{};bool acknowledged{},entered{};} grab_evidence;
 struct GrabActor {
     std::uintptr_t object{};
     std::uint64_t advanced_at{};
@@ -117,13 +117,17 @@ GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,
         can>1 || left>1 || right>1 || coffin>1) return out;
     out.valid=true;out.sampled_at=now;out.step=step;
     out.can_grab=can!=0;out.left=left!=0;out.right=right!=0;out.coffin=coffin!=0;
-    for(const auto& actor:grab_actors)
-        out.actor_advanced=out.actor_advanced || (actor.initialized && actor.advanced_at && now>=actor.advanced_at &&
-            now-actor.advanced_at<=150 && actor.delta>0 && actor.after>actor.before);
+    for(unsigned i=0;i<grab_actors.size();++i) {
+        const auto& actor=grab_actors[i];
+        const bool advanced=actor.initialized && actor.advanced_at && now>=actor.advanced_at &&
+            now-actor.advanced_at<=150 && actor.delta>0 && actor.after>actor.before;
+        if(grab_contract::actor_is_entry(i))out.entry_actor_advanced=out.entry_actor_advanced || advanced;
+        else out.actor_advanced=out.actor_advanced || advanced;
+    }
     return out;
 }
 void retire_grab() noexcept {
-    if(grab_lease.active())grab_evidence={grab_serial,grab_lease.kind(),grab_lease.acknowledged()};
+    if(grab_lease.active())grab_evidence={grab_serial,grab_lease.kind(),grab_lease.acknowledged(),grab_lease.entered()};
     grab_active.store(false);grab_lease.cancel();grab_owner={};grab_poll=0;grab_actors={};
 }
 int ground_actor_index(std::uintptr_t actor) noexcept {
@@ -190,12 +194,13 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
         pending.serial,static_cast<unsigned>(pending.kind),pending.entered,pending.state,
         pending.prepared,pending.issued,pending.can_no_comply,pending.settings_mask);
     if(pending_grab.serial)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_animation_acknowledged={} scoring_exit_acceptance=unverified.",
-        pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.acknowledged);
+        "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_animation_acknowledged={} native_into_acknowledged={} scoring_exit_acceptance=unverified.",
+        pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.acknowledged,pending_grab.entered);
     if(animation.serial)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE GROUND GRAB: serial={} kind={} actor={} initialized=true before={} after={} delta={} actor_index={} native_evaluation=true scoring_exit_acceptance=unverified.",
+        "ARCADE NATIVE GROUND GRAB: serial={} kind={} actor={} initialized=true before={} after={} delta={} actor_index={} native_evaluation=true phase={} scoring_exit_acceptance=unverified.",
         animation.serial,static_cast<unsigned>(animation.kind),animation.actor.object,
-        animation.actor.before,animation.actor.after,animation.actor.delta,animation.index);
+        animation.actor.before,animation.actor.after,animation.actor.delta,animation.index,
+        grab_contract::actor_is_entry(animation.index)?"into":"loop");
     if (!gameplay || !base || (image && image!=base)) return;
     if (!image) image=base;
     if (ready.load() && !native_assets_current(std::span{assets}.first<6>(),guid_is)) {
@@ -260,7 +265,7 @@ GroundGrabControl controls(const NoBailSkater& skater,std::uint64_t step,bool he
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
     if(!grab_lease.active() || skater!=grab_owner){retire_grab();return {};}
     grab_poll=now;
-    const GrabEvidence ending{grab_serial,grab_lease.kind(),grab_lease.acknowledged()};
+    const GrabEvidence ending{grab_serial,grab_lease.kind(),grab_lease.acknowledged(),grab_lease.entered()};
     const auto out=grab_lease.poll(now,observe_grab(skater,now,step),held);
     if(!out.owned){grab_evidence=ending;retire_grab();}
     return out;

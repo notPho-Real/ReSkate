@@ -1,0 +1,221 @@
+{
+  "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+  "map": "skate3_megapark",
+  "capture": "artifacts/RC3-24/ground-validation-native-ground_grabs-result.json.gz",
+  "uncompressed_sha256": "c101d9eb786bb8f4429ae652b253a8b781516a4be9de6abd96398dec654e8b9c",
+  "compressed_sha256": "07013e8a40eb22bdad6f626d4c48a85d55f2cc4a4634cac14fdb23761b8c7446",
+  "trials": [
+    {
+      "name": "ground_fs",
+      "states": [
+        100
+      ],
+      "max_board_height": 0.04624948278069496,
+      "native_changes": [
+        {
+          "seconds": 0.010263175,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 0.126092613,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 1.196683613,
+          "values": {
+            "EnumGS.GrabType": 1,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": false,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 1.363788898,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": false,
+            "Bool.State.Is.Coffin": null
+          }
+        }
+      ],
+      "final_grab": 0
+    },
+    {
+      "name": "ground_bs",
+      "states": [
+        100
+      ],
+      "max_board_height": 0.056148700416088104,
+      "native_changes": [
+        {
+          "seconds": 0.0063714,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": false,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 0.135862924,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": false,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 1.064445226,
+          "values": {
+            "EnumGS.GrabType": 2,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": false,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 1.339517416,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": false,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        }
+      ],
+      "final_grab": 0
+    },
+    {
+      "name": "ground_double",
+      "states": [
+        100
+      ],
+      "max_board_height": 0.028993261978030205,
+      "native_changes": [
+        {
+          "seconds": 0.005702562,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": false,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 0.14045614,
+          "values": {
+            "EnumGS.GrabType": 9,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 1.837608924,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        }
+      ],
+      "final_grab": 0
+    },
+    {
+      "name": "coffin",
+      "states": [
+        100
+      ],
+      "max_board_height": 0.028993263840675354,
+      "native_changes": [
+        {
+          "seconds": 0.005787469,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 0.141068668,
+          "values": {
+            "EnumGS.GrabType": 9,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": null
+          }
+        },
+        {
+          "seconds": 0.66840606,
+          "values": {
+            "EnumGS.GrabType": 9,
+            "Bool.GP.CanGroundGrab": true,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": true
+          }
+        },
+        {
+          "seconds": 1.839788607,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": true
+          }
+        },
+        {
+          "seconds": 2.807485338,
+          "values": {
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGroundGrab": false,
+            "Bool.GP.Grab.LeftHand": true,
+            "Bool.GP.Grab.RightHand": true,
+            "Bool.State.Is.Coffin": false
+          }
+        }
+      ],
+      "final_grab": 0
+    }
+  ],
+  "scoring_verified": false,
+  "exact_exit_actor_verified": false,
+  "native_logs": [
+    "[2026-11-06 14:39:12.340] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB END: serial=1 kind=1 native_animation_acknowledged=false scoring_exit_acceptance=unverified.",
+    "[2026-11-06 14:39:15.643] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB END: serial=2 kind=2 native_animation_acknowledged=false scoring_exit_acceptance=unverified.",
+    "[2026-11-06 14:39:18.274] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB: serial=3 kind=3 actor=1075399104 initialized=true before=0 after=1 delta=1 actor_index=2 native_evaluation=true scoring_exit_acceptance=unverified.",
+    "[2026-11-06 14:39:19.474] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB END: serial=3 kind=3 native_animation_acknowledged=true scoring_exit_acceptance=unverified.",
+    "[2026-11-06 14:39:21.674] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB: serial=4 kind=4 actor=1075399264 initialized=true before=0 after=2 delta=2 actor_index=3 native_evaluation=true scoring_exit_acceptance=unverified.",
+    "[2026-11-06 14:39:22.807] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GROUND GRAB END: serial=4 kind=4 native_animation_acknowledged=true scoring_exit_acceptance=unverified."
+  ],
+  "result": "Double and Coffin Loop actors initialized/advanced and acknowledged. FS and BS reached the original family/hand states but expired without Loop acknowledgment. All four remained state100 and cleared grab identity. Into acceptance and subsequent Loop/exit for FS/BS remain unverified."
+}

@@ -122,3 +122,39 @@ The observer does not change the1200ms entry deadline, inputs, StateFlow,
 cleanup or scoring. Tests reject wrong-family and unknown actor identities.
 The analog-versus-D-pad Mega Park capture must be repeated on the new build;
 no turning sequence is promoted to accepted coverage from this source change.
+
+## Original Into admission before the Loop
+
+RC3-24 capture `c101d9eb786bb8f4429ae652b253a8b781516a4be9de6abd96398dec654e8b9c`
+retested all four analog bindings on Mega Park. Double and Coffin acknowledged
+their exact Loop actors. FS/BS stayed in100 and reached native family/hand
+states, but expired without a Loop receipt. Their native hand/family changes
+arrived at1.197s and1.064s respectively after trial start; B had been pressed
+at0.100s. GrabType cleared around1.36s and1.34s despite B remaining held until
+1.8s. This reproduces the earlier analog failure with the turning observer present.
+
+The existing Ground.Into StateFlow node4952 delegates to the original ground
+entry database12559. Its FS, BS and Double sequences6291,30264,17958 contain
+body actors `669b57cf-d9b0-01b5-669b-57cfd9b001b5`,
+`af0cacf0-bd53-1bed-af0c-acf0bd531bed` and
+`b0e696f1-234d-be9a-b0e6-96f1234dbe9a`, each at instance1. Their authored lengths
+are33,40,31 ticks. A1200ms deadline conditioned only on later Loop advancement
+can withdraw input while the original entry still owns the animation. This is
+an admission-observation/timing defect. The existing air-grab Into observer
+provides the pattern; the frozen official upstream and existing fork survey
+provide no equivalent Arcade ground input owner to substitute.
+
+The adapter now recognizes these exact original Into actors through the same
+local owner/view, initialization and positive-delta checks. A fresh advancing
+Into after preparation, while CanGroundGrab is true, proves entry and retires
+the unacknowledged-entry deadline. It does not claim a Loop, native hand tags,
+an exit, a completed Coffin or scoring. Into and Loop receipts remain separate.
+Existing initialized/advancing Loop acknowledgment is retained once observed.
+Release, invalid ownership/readback, non-ground state, stale heartbeat, backward
+step/clock and Arcade OFF still withdraw the input immediately.
+
+The observed late-Loop regression failed before the change. Production-header
+tests cover30/60/120Hz entry-to-Loop gaps plus missing actor, stale preparation,
+Coffin exclusion and all existing cancellation guards; all20 targeted suites
+pass. Exact-source Windows build and new native FS/BS Into/Loop/hold/release
+acceptance remain required. No timeout increase, pose or scoring write was added.

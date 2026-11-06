@@ -10,7 +10,8 @@ void native_actor_families() {
     for(unsigned i=0;i<contract::actor_count;++i)for(unsigned kind=0;kind<=5;++kind) {
         const auto found=contract::actor_index(kind,contract::actor_guid(i));
         check(found==(kind==contract::actor_kind(i)?static_cast<int>(i):-1),
-            "straight and turning actors acknowledge only their original ground family");
+            "entry, straight and turning actors acknowledge only their original ground family");
+        check(contract::actor_is_entry(i)==(i>=10),"Into evidence remains separate from every Loop actor");
     }
     for(unsigned kind=1;kind<=4;++kind)check(contract::actor_index(kind,{})==-1,
         "unknown actor cannot acknowledge ground input");
@@ -60,6 +61,48 @@ void native_entry() {
         check(!input.poll(1400,native,true).owned,"an unacknowledged native actor still expires");
     }
 }
+void original_entry_before_loop() {
+    for(unsigned hz:{30u,60u,120u})for(auto kind:{GroundGrab::frontside,GroundGrab::backside,GroundGrab::double_grab}) {
+        GroundGrabInput input;auto native=observation(100,1);
+        check(input.start(kind,100,native),"ground entry starts");input.poll(100,native,true);
+        for(unsigned step=2;step<hz*2;++step) {
+            const auto now=100+step*1000/hz;native=observation(now,step);native.can_grab=true;
+            // The original Into advances before its final hand tags and Loop.
+            native.entry_actor_advanced=now>=200 && now<1200;
+            native.left=kind!=GroundGrab::backside;native.right=kind!=GroundGrab::frontside;
+            native.actor_advanced=now>=1500;
+            check(input.poll(now,native,true).owned,"verified original Into survives the former 1200ms loop-only deadline");
+            check(input.acknowledged()==(now>=1500),"Into cannot claim separate Loop acknowledgment");
+        }
+        check(!input.poll(native.sampled_at,native,false).owned,"release during native ground lifecycle withdraws inputs");
+    }
+    for(unsigned failure=0;failure<5;++failure) {
+        GroundGrabInput input;auto native=observation(100,1);
+        const auto kind=failure==0?GroundGrab::coffin:GroundGrab::frontside;
+        input.start(kind,100,native);input.poll(100,native,true);
+        native=observation(200,2);native.can_grab=true;native.entry_actor_advanced=true;
+        if(failure==1)native.can_grab=false;
+        if(failure==2)native.step=1;
+        if(failure==3)native.sampled_at=100;
+        if(failure==4)native.entry_actor_advanced=false;
+        input.poll(200,native,true);
+        check(!input.entered() && !input.acknowledged(),"Coffin, stale preparation and missing original actor cannot bypass entry deadline");
+        native=observation(1400,90);
+        check(!input.poll(1400,native,true).owned,"unverified Into still expires");
+    }
+    for(unsigned failure=0;failure<5;++failure) {
+        GroundGrabInput input;auto native=observation(100,1);
+        input.start(GroundGrab::frontside,100,native);input.poll(100,native,true);
+        native=observation(200,2);native.can_grab=true;native.entry_actor_advanced=true;
+        input.poll(200,native,true);check(input.entered(),"original Into was accepted");
+        native=observation(1500,90);
+        if(failure==0)native.valid=false;
+        if(failure==1)native.state=200;
+        if(failure==2)native.step=1;
+        if(failure==3)native.sampled_at=1000;
+        check(!input.poll(1500,native,failure!=4).owned,"entry evidence never overrides owner, state, step, freshness or release guards");
+    }
+}
 struct Native {
     unsigned requests{};GroundGrab kind{};bool active{};
     NativeGroundGrabRequest adapter(){return {this,[](void* p,GroundGrab k) noexcept {
@@ -104,4 +147,4 @@ void session() {
     }
 }
 }
-int main(){native_entry();native_actor_families();session();std::cout<<"Native ground grab input tests passed\n";}
+int main(){native_entry();original_entry_before_loop();native_actor_families();session();std::cout<<"Native ground grab input tests passed\n";}
