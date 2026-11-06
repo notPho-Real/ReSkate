@@ -1,8 +1,22 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <cstddef>
 namespace dingosdk::game::build::v20260929::arcade_fingerflip {
 using Guid=std::array<std::uint8_t,16>;
+// Original EAT buffered-flip condition (RES14806) and fingerflip admission
+// condition (RES7633). Both read EnableFingerflips through the boxed profile
+// option reader, not the legacy gameplay cache getter.
+struct SettingExpression { std::uint32_t key; std::array<std::uint32_t,10> layout; };
+inline constexpr std::array setting_expressions{
+    SettingExpression{0x21921d23,{48,24,8,51,3,0,0,4,0,66048}},
+    SettingExpression{0x1df2607e,{64,368,43,273,5,0,0,26,0,66048}}
+};
+inline constexpr std::uintptr_t context_registry=0x73c5e80;
+inline constexpr std::size_t vm_instance=0x30, vm_resource=0x38,
+    resource_key=0x10, resource_layout=0x20, argument_page=8,
+    context_argument=8, registry_entries=32, registry_mask=16,
+    registry_entry_size=320, registry_entity=8;
 // Original CDB_OnBoard_Grab_FingerFlip_Into body actors, ordered by the
 // distinct Enum.FingerFlipType identities. No asset is instantiated here.
 inline constexpr Guid state={0x8b,0x5f,0x1e,0x34,0xf8,0xda,0x19,0xa4,0x34,0x1e,0x5f,0x8b,0xda,0xf8,0xa4,0x19};

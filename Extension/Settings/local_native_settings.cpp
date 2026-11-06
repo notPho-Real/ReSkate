@@ -5,6 +5,7 @@
 #include "Engine/Game/Build/20260929/engine.h"
 #include "Engine/Game/Build/20260929/local_native_settings.h"
 #include "Engine/Game/Build/20260929/named_settings.h"
+#include "Engine/Game/Settings/native_boolean_read.h"
 #include "local_user_settings.h"
 #include "Extension/Profile/local_profile_runtime.h"
 #include <atomic>
@@ -191,16 +192,38 @@ const NativeSettingValue* native_setting_get(std::uintptr_t group, const char* k
             return result;
         }
         const auto* saved = saved_native_option(location, key);
-        if (!saved) return result;
-        const auto current = native_setting_json(result);
-        if (!current || *current == *saved) return result;
-        // Copied before the restore: a get it causes on this thread reuses the cache.
-        const auto wanted = *saved;
-        std::string name;
-        (void)identifier(&key, name);
+        if (saved) {
+            const auto current = native_setting_json(result);
+            if (current && *current != *saved) {
+                // Copied before the restore: a get it causes on this thread reuses the cache.
+                const auto wanted = *saved;
+                std::string name;
+                (void)identifier(&key, name);
+                NativeSettingValue native{};
+                if (memory::peek(reinterpret_cast<std::uintptr_t>(result), native) && restore_native_setting(group, key, native.type, wanted))
+                    dingosdk::logging::event(dingosdk::logging::Channel::settings, dingosdk::Json{{"event","local_native_setting_restored"},{"location",location},{"key",name}}.dump().c_str());
+            }
+        }
         NativeSettingValue native{};
-        if (memory::peek(reinterpret_cast<std::uintptr_t>(result), native) && restore_native_setting(group, key, native.type, wanted))
-            dingosdk::logging::event(dingosdk::logging::Channel::settings, dingosdk::Json{{"event","local_native_setting_restored"},{"location",location},{"key",name}}.dump().c_str());
+        std::uint8_t original{};
+        char text[256];
+        if (memory::peek(reinterpret_cast<std::uintptr_t>(result), native) &&
+            native.type == local_runtime().base + native_types::native_bool &&
+            memory::peek(reinterpret_cast<std::uintptr_t>(native.data), original) && original <= 1) {
+            const auto length = memory::peek_cstring(reinterpret_cast<std::uintptr_t>(key), text, sizeof(text));
+            if (length > 0) {
+                const auto held = settings::native_boolean_read().apply(location,
+                    std::string_view(text, static_cast<std::size_t>(length)), original != 0);
+                if (held && *held != (original != 0)) {
+                    // The expression reader clones this box immediately. Both choices
+                    // have stable storage, so nested reads cannot mutate an earlier result.
+                    static constexpr bool values[]{false, true};
+                    static const NativeSettingValue borrowed[]{
+                        {native.type, &values[0]}, {native.type, &values[1]}};
+                    return &borrowed[*held ? 1 : 0];
+                }
+            }
+        }
     } catch (...) { dingosdk::logging::event(dingosdk::logging::Channel::settings, "{\"event\":\"local_native_setting_restore_failed\"}"); }
     return result;
 }

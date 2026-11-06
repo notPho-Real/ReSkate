@@ -1,4 +1,7 @@
 #include "Extension/ArcadeMode/arcade_fingerflip.h"
+#include "Extension/ArcadeMode/arcade_finger_setting_scope.h"
+#include "Engine/Game/Input/gameplay_options.h"
+#include "Engine/Game/Settings/native_boolean_read.h"
 #include "Extension/ArcadeMode/arcade_input_session.h"
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Engine/Game/Build/20260929/arcade_fingerflip.h"
@@ -7,9 +10,85 @@
 #include <cstdlib>
 #include <iostream>
 #include <set>
+#include <map>
+#include <cstring>
 using namespace dingosdk::arcade_mode;
 namespace {
 void check(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
+struct SettingMemory {
+    std::map<std::uintptr_t,std::uint8_t> bytes;
+    template<class T> void put(std::uintptr_t at,const T& value) {
+        const auto* data=reinterpret_cast<const std::uint8_t*>(&value);
+        for(std::size_t i=0;i<sizeof(T);++i)bytes[at+i]=data[i];
+    }
+    template<class T> bool read(std::uintptr_t at,T& value) const {
+        auto* data=reinterpret_cast<std::uint8_t*>(&value);
+        for(std::size_t i=0;i<sizeof(T);++i) {
+            const auto found=bytes.find(at+i);if(found==bytes.end())return false;
+            data[i]=found->second;
+        }
+        return true;
+    }
+};
+void setting_scope() {
+    namespace c=dingosdk::game::build::v20260929::arcade_fingerflip;
+    constexpr std::uintptr_t image=0x10000000,vm=0x2000,instance=0x3000,resource=0x4000,
+        arguments=0x5000,reference=0x6000,key=0x12340001,registry=0x7000,entries=0x8000,entity=0x9000;
+    for(const auto& expected:c::setting_expressions)for(unsigned failure=0;failure<9;++failure) {
+        SettingMemory memory;
+        memory.put(vm+c::vm_instance,instance);memory.put(vm+c::vm_resource,resource);
+        memory.put(instance,resource);memory.put(resource+c::resource_key,expected.key);
+        memory.put(resource+c::resource_layout,expected.layout);
+        const auto pages=instance+((expected.layout[0]+15u)&~std::uintptr_t{15});
+        memory.put(pages+c::argument_page,arguments);memory.put(arguments+c::context_argument,reference);
+        memory.put(reference,key);memory.put(image+c::context_registry,registry);
+        memory.put(registry+c::registry_entries,entries);memory.put(registry+c::registry_mask,std::uint32_t{15});
+        const auto entry=entries+(key&15)*c::registry_entry_size;
+        memory.put(entry,key);memory.put(entry+c::registry_entity,entity);
+        if(failure==1)memory.put(resource+c::resource_key,expected.key+1);
+        if(failure==2){auto layout=expected.layout;++layout[1];memory.put(resource+c::resource_layout,layout);}
+        if(failure==3)memory.put(instance,resource+8);
+        if(failure==4)memory.put(entry+c::registry_entity,entity+8);
+        if(failure==5)memory.put(entry,key+16);
+        if(failure==6)memory.put(registry+c::registry_mask,std::uint32_t{0xffffffff});
+        if(failure==7)memory.bytes.erase(reference);
+        if(failure==8)memory.put(arguments+c::context_argument,std::uintptr_t{});
+        const auto accepted=native_grab::finger_setting_scope([&](auto at,auto& value){return memory.read(at,value);},image,vm,entity);
+        check(accepted==(failure==0),"boxed preference needs exact EAT expression, argument, registry generation and local entity");
+    }
+}
+dingosdk::input::GameplayOptions setting_options;
+std::uint64_t setting_time{};
+bool setting_context{};
+std::optional<bool> scoped_setting_read(unsigned location,std::string_view key,bool original) noexcept {
+    if(!setting_context || location!=2 || key!="egf_enablefingerflips")return {};
+    return setting_options.observe(key,original,setting_time,false);
+}
+std::optional<bool> other_setting_read(unsigned,std::string_view,bool) noexcept {return true;}
+void boxed_setting_handoff() {
+    dingosdk::settings::NativeBooleanRead bridge;
+    constexpr auto key="egf_enablefingerflips";
+    check(!bridge.apply(2,key,false),"unregistered native reads stay original");
+    check(bridge.attach(scoped_setting_read) && bridge.attach(scoped_setting_read) &&
+        !bridge.attach(other_setting_read),"another consumer cannot replace the scoped reader");
+    setting_time=1000;setting_context=true;
+    check(!setting_options.hold("finger",key,true,setting_time).empty(),"unobserved modern option reproduces the missing lease");
+    check(bridge.apply(2,key,false)==false,"original boxed read seeds the existing option owner");
+    check(setting_options.hold("finger",key,true,setting_time).empty(),"observed boxed option accepts the same temporary lease");
+    ++setting_time;
+    check(bridge.apply(2,key,false)==true && setting_options.sampled(key,1001,1001)==true,
+        "actual scoped native read supplies fresh effective evidence before gesture playback");
+    setting_context=false;
+    check(!bridge.apply(2,key,false) && setting_options.get(key)==false,"UI and unrelated contexts retain the saved original");
+    setting_context=true;
+    check(!bridge.apply(1,key,false) && !bridge.apply(2,"entitlement",false),"unrelated namespaces and keys are never exposed");
+    setting_time=1301;
+    check(bridge.apply(2,key,false)==false,"missing heartbeat restores original through native getter");
+    bridge.detach(other_setting_read);
+    check(bridge.apply(2,key,false)==false,"another consumer cannot detach the registered reader");
+    bridge.detach(scoped_setting_read);
+    check(!bridge.apply(2,key,false),"detached reader has no effect");
+}
 const std::array<AuthoredStickStep,5> steps{{{0,0,0},{2,0,-28000},{4,28000,28000},{7,0,0},{9,0,0}}};
 native_grab::RetargetObservation parent(const native_grab::Pilot& p) {
     return {true,true,true,(p.hands&1u)!=0,(p.hands&2u)!=0,p.family};
@@ -205,4 +284,4 @@ void routing() {
     {Route r;r.poll(1000,0,100);r.poll(1017,0x6000,100);check(!r.requests,"ground B plus X cannot borrow airborne admission");}
 }
 }
-int main(){family_entry();transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}
+int main(){setting_scope();boxed_setting_handoff();family_entry();transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}

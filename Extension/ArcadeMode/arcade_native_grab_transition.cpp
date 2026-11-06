@@ -5,11 +5,14 @@
 #include "arcade_native_manual_pose.h"
 #include "arcade_native_ground_grab.h"
 #include "arcade_fingerflip.h"
+#include "arcade_finger_setting_scope.h"
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Platform/memory.h"
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Game/Abi/native_data.h"
 #include "Engine/Game/Input/gameplay_options.h"
+#include "Engine/Game/Settings/native_boolean_read.h"
+#include "Extension/Progression/local_entitlement_trigger_runtime.h"
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/20260929/arcade_grab_transition.h"
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
@@ -93,6 +96,7 @@ struct Session {
     FingerflipInput finger{};
     std::uint64_t finger_settings_since{};
     unsigned finger_settings_evidence{},finger_settings_reports{};
+    unsigned finger_native_setting_evidence{},finger_native_setting_reports{};
     bool reported{};
     std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
@@ -226,6 +230,25 @@ bool airborne(OwnershipObservation* observation=nullptr) noexcept {
     const bool known=read(session.owner.context+0x1414,state);
     if (observation) {observation->state_read=known;observation->state=state;}
     return known && (state==200 || state==201);
+}
+std::optional<bool> finger_setting_read(unsigned location,std::string_view name,bool original) noexcept {
+    if(location!=2 || name!=finger_setting || !active.load() || !gameplay_allowed.load())return {};
+    // The settings reader also serves menus and other skaters. Only the two
+    // original EAT conditions belonging to this airborne owner may see a hold.
+    std::unique_lock lock(mutex,std::try_to_lock);
+    if(!lock.owns_lock() || !session.finger.active() || !same_owner() || !airborne())return {};
+    const bool scoped=finger_setting_scope([](auto at,auto& value){return read(at,value);},image,
+        profile_runtime::executing_expression,session.owner.entity);
+    const unsigned evidence=1u | (scoped?2u:0u) | (original?4u:0u);
+    if(evidence!=session.finger_native_setting_evidence && session.finger_native_setting_reports<4) {
+        session.finger_native_setting_evidence=evidence;++session.finger_native_setting_reports;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE FINGERFLIP PROFILE READ: serial={} scoped={} original={} animation_acknowledged=false.",
+            session.serial,scoped,original);
+    }
+    if(!scoped)return {};
+    try {return input::gameplay_options().observe(name,original,GetTickCount64(),false);}
+    catch(...) {return {};}
 }
 std::uintptr_t address_at(std::uintptr_t block,unsigned index) noexcept {
     const auto& a=assets[index];std::uint32_t handle{},valid{};
@@ -535,6 +558,7 @@ Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t t
             session.lease.request(grab_family_trick(destination),now,true);session.reported=false;
             session.finger.cancel();session.finger_settings_since=0;
             session.finger_settings_evidence=session.finger_settings_reports=0;
+            session.finger_native_setting_evidence=session.finger_native_setting_reports=0;
             input::gameplay_options().release(finger_settings_owner);
         }
         return result;
@@ -656,6 +680,7 @@ bool start(std::uintptr_t base) noexcept {
     original_evaluate=reinterpret_cast<contract::Evaluate>(originals[1]);
     for (auto target:targets) if (hook_queue_enable(target)!=HookOk) {rollback();return false;}
     if (hook_apply_queued()!=HookOk) {rollback();return false;}
+    if(!settings::native_boolean_read().attach(&finger_setting_read)) {rollback();return false;}
     hooks_ready.store(true);return true;
 }
 }

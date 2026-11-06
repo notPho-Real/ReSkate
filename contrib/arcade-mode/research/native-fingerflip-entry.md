@@ -140,3 +140,33 @@ an absent getter read nor a setting conflict has yet been established. Bounded
 setting evidence now distinguishes original-value availability, lease acquisition
 and fresh effective-value observation, with at most eight changes per transition.
 It does not change gameplay admission, profile preferences or native predicates.
+
+## Boxed preference handoff
+
+RC3-23 capture16bcc75f51a693a2839aceac43e6a39abfc0c33bf7ed4f0d2ebb97f0606b05da
+on skate3_megapark accepts the advancing BS family Into and identity11 request,
+but reports original_known=false, hold_acquired=false and sampled=false.
+The setting lease never acquires because this preference does not pass through
+the legacy gameplay getter. The trial returns to100 without a fingerflip.
+
+The pinned source identifies DingoProfileOptionAsset_EnableFingerflips
+6dbd2a8b-92f6-45e5-871b-bab6be82fe25, key egf_enablefingerflips, location2.
+Both original conditions, RES14806 and7633, use native expression operation25
+hash4451ac4b. Its descriptor at RVA6f7cd38 points to853420. That function reads
+the original profile-settings manager, resolves the option group through5c4390,
+calls the already-hooked boxed getter5c4860 and clones the returned value.
+This is distinct from both legacy gameplay-cache getter804f60 and legacy
+profile boolean getter86b1c0. No additional game hook or durable setting write
+is needed.
+
+The scoped adapter borrows a stable boolean box through that existing getter.
+Only the exact two compiled EAT condition layouts, the verified context-registry
+generation and the active local airborne owner can observe the existing
+temporary gameplay-option hold. UI, unrelated keys, other option groups,
+other skaters, lost ownership and Arcade OFF retain the original value.
+The original store restoration runs first; the hold never reaches a setter.
+The same fresh native-read requirement still gates gesture playback. Portable
+tests reject wrong layouts, missing arguments, mismatched context generations
+and nonlocal owners and exercise lease acquisition, expiry and reader ownership.
+These guards and the borrowed return path still need native acceptance in the
+next Windows candidate; they do not establish a successful fingerflip.
