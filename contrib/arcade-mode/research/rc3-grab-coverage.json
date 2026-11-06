@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 22,
+  "native_actor_evidence_count": 23,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -5711,7 +5711,7 @@
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -5765,7 +5765,36 @@
         "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
         "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
         "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
-        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
       }
     },
     {
@@ -8466,7 +8495,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -8487,11 +8516,11 @@
           "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
           "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
           "map": "skate3_megapark",
-          "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
-          "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
-          "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
-          "serial": 2,
-          "episode": 1,
+          "capture": "artifacts/RC3-24/ramp-bs-finger-trials-result.json.gz",
+          "uncompressed_sha256": "33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7",
+          "compressed_sha256": "e9999ebe3fc438cb919746592b2f1b2434599910bfbf2b6b2d5f4f8cf9769981",
+          "serial": 8,
+          "episode": 5,
           "native_fingerflip_identity": 11,
           "native_name": "BsFingerflip",
           "actor_initialized": true,
@@ -8502,12 +8531,32 @@
           "scoped_original_profile_read": true,
           "original_preference": true,
           "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 2,
+          "destination_actor_guid": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
           "ground_return_observed": true,
-          "airborne_catch_verified": false,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
           "native_exit_actor_verified": false,
           "landing_scoring_verified": false,
-          "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
-          "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
+          "timeline_seconds": {
+            "entered": 2.289138676,
+            "caught": 2.924731529,
+            "released": 3.086042683,
+            "landed": 3.621009801
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType11 remains stored while its active state is false; no counter or enum was cleared by the adapter."
         }
       ]
     },
@@ -8745,10 +8794,10 @@
         "Establish Nose Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -8761,7 +8810,55 @@
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 1
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-finger-trials-result.json.gz",
+          "uncompressed_sha256": "7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471",
+          "compressed_sha256": "3dc4cdac21aa9589db8e3b09a331219012c1688dd2d988f476675f52e88706ad",
+          "serial": 6,
+          "episode": 4,
+          "native_fingerflip_identity": 1,
+          "native_name": "Fingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 6,
+          "destination_actor_guid": "373592a2-c4b8-1678-3735-92a2c4b81678",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.310960825,
+            "caught": 2.94957894,
+            "released": 3.109473602,
+            "landed": 3.342581211
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType1 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
+      ]
     },
     {
       "native_name": "TailFlip",
@@ -14728,7 +14825,7 @@
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14778,7 +14875,36 @@
         "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
         "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
         "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
-        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
       }
     },
     {
@@ -15351,10 +15477,10 @@
         "Establish Nose Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -15363,6 +15489,54 @@
       },
       "runtime_actor": [
         "edbd1421-1fc0-5996-edbd-14211fc05996"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-finger-trials-result.json.gz",
+          "uncompressed_sha256": "7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471",
+          "compressed_sha256": "3dc4cdac21aa9589db8e3b09a331219012c1688dd2d988f476675f52e88706ad",
+          "serial": 6,
+          "episode": 4,
+          "native_fingerflip_identity": 1,
+          "native_name": "Fingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 6,
+          "destination_actor_guid": "373592a2-c4b8-1678-3735-92a2c4b81678",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.310960825,
+            "caught": 2.94957894,
+            "released": 3.109473602,
+            "landed": 3.342581211
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType1 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
       ]
     },
     {
@@ -15732,7 +15906,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -15749,11 +15923,11 @@
           "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
           "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
           "map": "skate3_megapark",
-          "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
-          "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
-          "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
-          "serial": 2,
-          "episode": 1,
+          "capture": "artifacts/RC3-24/ramp-bs-finger-trials-result.json.gz",
+          "uncompressed_sha256": "33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7",
+          "compressed_sha256": "e9999ebe3fc438cb919746592b2f1b2434599910bfbf2b6b2d5f4f8cf9769981",
+          "serial": 8,
+          "episode": 5,
           "native_fingerflip_identity": 11,
           "native_name": "BsFingerflip",
           "actor_initialized": true,
@@ -15764,12 +15938,32 @@
           "scoped_original_profile_read": true,
           "original_preference": true,
           "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 2,
+          "destination_actor_guid": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
           "ground_return_observed": true,
-          "airborne_catch_verified": false,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
           "native_exit_actor_verified": false,
           "landing_scoring_verified": false,
-          "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
-          "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
+          "timeline_seconds": {
+            "entered": 2.289138676,
+            "caught": 2.924731529,
+            "released": 3.086042683,
+            "landed": 3.621009801
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType11 remains stored while its active state is false; no counter or enum was cleared by the adapter."
         }
       ]
     },
@@ -19314,14 +19508,43 @@
       "native_animation_acknowledgment": "No RC3 capture",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "native_lifecycle_failure": {
         "native_id": 7,
         "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
         "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
         "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
         "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
-        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
       }
     },
     {

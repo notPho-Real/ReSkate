@@ -184,3 +184,33 @@ Receipts are in rc3-native-grab-observations.json. This proves the missing
 reader route and genuine entry, not every family, complete exit or scoring.
 The original preference was already true in these trials, so a false saved
 preference with a temporary true borrow still needs native verification.
+
+### Native ramp catch and release
+
+The installed Mega Park README identifies an intentionally empty Create-a-Park
+arena. A single original Quarter Pipe L Black at (146,0,-99), scale1, provided
+native airtime without changing gravity, jump impulses or animation playback.
+The no-trick approach entered200 at1.648s,201 at1.750s and returned100 at3.413s.
+Ground setup used the existing native teleport manager before each separate
+trial; no teleport or transform write occurred during measured flight.
+
+Nose Fingerflip identity1 used original actor
+edbd1421-1fc0-5996-edbd-14211fc05996, initialized and advanced0→2.
+Capture7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471
+entered at2.311s, returned to native family6 at2.950s, cleared GrabType during
+native exit at3.109s and landed100 at3.343s. The destination Nosegrab actor
+373592a2-c4b8-1678-3735-92a2c4b81678 also initialized and advanced0→2.
+
+BS Fingerflip identity11 repeated the complete transition in
+capture33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7:
+entry2.289s, native family2 return2.925s, release/GrabType0 at3.086s and ground100
+at3.621s. Its original finger actor and destination BS actor
+e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb both advanced0→2.
+
+These captures establish native airborne catch, destination actor advancement,
+release state and ground return in this ramp context. They do not prove the
+exact exit actor, numeric scoring, all26 transitions or the failed flat-ground
+context. FingerFlipType remains stored after its active state ends, including
+after successful native cleanup; its nonzero value alone is not an active
+trick. GrabType clearance and active state/actor evidence distinguish this
+successful return from the earlier interrupted flat-ground transition.

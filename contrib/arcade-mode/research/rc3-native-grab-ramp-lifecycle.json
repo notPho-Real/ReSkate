@@ -1,0 +1,40 @@
+{
+  "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+  "map": "skate3_megapark",
+  "fixture": {
+    "item": "own_bkvert_generic_quarterpipelarge_00002",
+    "position": [146, 0, -99],
+    "scale": 1,
+    "mechanism": "Original Park Editor placement on native collision surface; native ground teleport before separate trials; no airborne transforms, impulses or tuning changes"
+  },
+  "one_footers": [
+    {
+      "native_id": 7,
+      "name": "Benihana",
+      "binding": "Down-Left+B, hold then release B while airborne",
+      "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+      "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+      "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+      "serial": 9,
+      "episode": 6,
+      "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+      "into_initialized": true,
+      "into_before": 0,
+      "into_after": 3,
+      "into_delta": 3,
+      "native_footer_entry_seconds": 2.215,
+      "native_grabbing_loop_seconds": 2.418,
+      "physical_release_seconds": 2.8,
+      "footer_and_foot_intent_cleared_seconds": 2.846,
+      "grab_identity_cleared_and_exit_state_seconds": 3.243,
+      "ground_return_seconds": 3.616,
+      "footplant_or_second_flight_observed": false,
+      "bail_before_landing_observed": false,
+      "exact_loop_advancement_verified": false,
+      "exact_exit_actor_verified": false,
+      "numeric_scoring_verified": false,
+      "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+    }
+  ]
+}

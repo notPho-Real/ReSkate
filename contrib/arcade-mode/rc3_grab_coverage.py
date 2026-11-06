@@ -272,12 +272,23 @@ def build():
                          native_animation_acknowledgment="Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
                          release_landing_evidence="SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
                          remaining_blocker="Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.")
+            if any(e.get("airborne_catch_verified") and e.get("grab_identity_cleared_before_landing")
+                   and e.get("ground_return_observed") for e in matches):
+                entry["release_landing_evidence"] = (
+                    "Native airborne catch, destination grab actor advancement, release/exit state, "
+                    "grab identity clearance and ground return observed in the recorded ramp context. "
+                    "Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.")
     # A known failed lifecycle is a blocker, not merely an outstanding owner
     # confirmation. Preserve entry evidence and reachable bindings alongside it.
     failures = json.loads((RESEARCH / "rc3-native-grab-lifecycle-failures.json").read_text())["one_footers"]
+    ramp_lifecycles = json.loads((RESEARCH / "rc3-native-grab-ramp-lifecycle.json").read_text())
     assert len({f["native_id"] for f in failures}) == len(failures)
     for failure in failures:
         footer = failure["native_id"]
+        ramp_matches = [row for row in ramp_lifecycles["one_footers"] if row["native_id"] == footer]
+        if ramp_matches:
+            failure = dict(failure, additional_native_context_evidence=ramp_matches,
+                           blocker="The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.")
         assert footer in FOOT_LOOPS and re.fullmatch(r"[0-9a-f]{64}", failure["capture_sha256"])
         for row in entries:
             identity = row["native_identity"]

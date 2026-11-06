@@ -176,3 +176,18 @@ Exact capture hashes, timings and unresolved requirements are recorded in
 The coverage generator marks these known failures and Benihana stale-family
 cleanup BLOCKED while retaining their bindings and any valid entry evidence.
 No identity reset or footplant suppression is applied.
+# RC3-24 ramp lifecycle follow-up
+
+Benihana's original Into actor199d8b43-b79f-9aab-199d-8b43b79f9aab advanced0→3
+after Down-Left+B on an original quarter pipe in Mega Park. Native footer7 and
+grabbing-loop state followed. Releasing B at2.800s cleared footer and foot
+intent at2.846s; GrabType cleared with native exit state at3.243s, before a
+ground100 landing at3.616s. No footplant, second flight or bail occurred before
+that landing. The machine-readable receipt is
+[rc3-native-grab-ramp-lifecycle.json](rc3-native-grab-ramp-lifecycle.json).
+
+This demonstrates a clean release in a longer native airtime context, without
+counter resets, animation replacement or physics changes. It does not erase
+the earlier flat-ground failure or establish the exact Loop/Exit actors and
+numeric scoring. The catalog retains the specific unresolved context alongside
+this successful ramp evidence.

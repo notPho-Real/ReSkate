@@ -472,11 +472,11 @@
     "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
     "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
     "map": "skate3_megapark",
-    "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
-    "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
-    "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
-    "serial": 2,
-    "episode": 1,
+    "capture": "artifacts/RC3-24/ramp-bs-finger-trials-result.json.gz",
+    "uncompressed_sha256": "33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7",
+    "compressed_sha256": "e9999ebe3fc438cb919746592b2f1b2434599910bfbf2b6b2d5f4f8cf9769981",
+    "serial": 8,
+    "episode": 5,
     "native_fingerflip_identity": 11,
     "native_name": "BsFingerflip",
     "actor_initialized": true,
@@ -487,11 +487,77 @@
     "scoped_original_profile_read": true,
     "original_preference": true,
     "fresh_effective_read": true,
+    "airborne_catch_verified": true,
+    "native_destination_family": 2,
+    "destination_actor_guid": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+    "destination_actor_positive_advancement": true,
+    "release_observed": true,
     "ground_return_observed": true,
-    "airborne_catch_verified": false,
+    "grab_identity_cleared_before_landing": true,
+    "native_exit_state_observed": true,
     "native_exit_actor_verified": false,
     "landing_scoring_verified": false,
-    "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
-    "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
+    "timeline_seconds": {
+      "entered": 2.289138676,
+      "caught": 2.924731529,
+      "released": 3.086042683,
+      "landed": 3.621009801
+    },
+    "fixture": {
+      "item": "own_bkvert_generic_quarterpipelarge_00002",
+      "position": [
+        146,
+        0,
+        -99
+      ],
+      "scale": 1
+    },
+    "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType11 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+  },
+  "edbd1421-1fc0-5996-edbd-14211fc05996": {
+    "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+    "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-24/ramp-finger-trials-result.json.gz",
+    "uncompressed_sha256": "7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471",
+    "compressed_sha256": "3dc4cdac21aa9589db8e3b09a331219012c1688dd2d988f476675f52e88706ad",
+    "serial": 6,
+    "episode": 4,
+    "native_fingerflip_identity": 1,
+    "native_name": "Fingerflip",
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "before": 0,
+    "after": 2,
+    "delta": 2,
+    "scoped_original_profile_read": true,
+    "original_preference": true,
+    "fresh_effective_read": true,
+    "airborne_catch_verified": true,
+    "native_destination_family": 6,
+    "destination_actor_guid": "373592a2-c4b8-1678-3735-92a2c4b81678",
+    "destination_actor_positive_advancement": true,
+    "release_observed": true,
+    "ground_return_observed": true,
+    "grab_identity_cleared_before_landing": true,
+    "native_exit_state_observed": true,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false,
+    "timeline_seconds": {
+      "entered": 2.310960825,
+      "caught": 2.94957894,
+      "released": 3.109473602,
+      "landed": 3.342581211
+    },
+    "fixture": {
+      "item": "own_bkvert_generic_quarterpipelarge_00002",
+      "position": [
+        146,
+        0,
+        -99
+      ],
+      "scale": 1
+    },
+    "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType1 remains stored while its active state is false; no counter or enum was cleared by the adapter."
   }
 }
