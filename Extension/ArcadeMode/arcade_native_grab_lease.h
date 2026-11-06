@@ -32,6 +32,19 @@ struct Pilot {
     unsigned foot{}; // 1 left, 2 right, 3 both; not an animation identity.
     constexpr Control control() const noexcept {return {hands,selector_x,selector_y};}
 };
+struct IdentityObservation {
+    std::int32_t detail{},one_footer{};
+    bool valid{};
+};
+template<class ReadIdentity>
+IdentityObservation observe_identity(const Pilot& profile,ReadIdentity&& read_identity) noexcept {
+    IdentityObservation out{};
+    const bool footer=profile.one_footer!=0;
+    // OneFooterType is independent of DetailedGrabType. A first one-footer
+    // can initialize before the ordinary detailed-grab field is allocated.
+    out.valid=read_identity(footer,footer?out.one_footer:out.detail);
+    return out;
+}
 // Selector RS coordinates preserve the original qualified-stance producer.
 // They select the family before the original blendspace applies tweak X/Y;
 // no hand, family enum, animation ID or score is written by this control map.

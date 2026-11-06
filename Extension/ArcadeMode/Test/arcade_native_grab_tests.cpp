@@ -578,6 +578,27 @@ void repeated_grab_after_native_jump_retirement() {
               "replacement selection identity is observable and still rejected before the adapter");
     }
 }
+void independent_native_identity_fields() {
+    for(const auto& profile:native_grab::pilots) for(bool available:{false,true}) {
+        native_grab::Lease lease;
+        check(lease.request(profile.trick,1000,true),"native identity regression starts a known profile");
+        if(profile.one_footer)lease.controls({true,true,true,(profile.hands&1)!=0,(profile.hands&2)!=0,profile.family},true);
+        unsigned reads{};
+        const auto identity=native_grab::observe_identity(profile,[&](bool footer,std::int32_t& value) noexcept {
+            ++reads;
+            check(footer==(profile.one_footer!=0),"one-footer observation never requires the unallocated ordinary detail field");
+            if(!available)return false;
+            value=footer?profile.one_footer:profile.detail;
+            return true;
+        });
+        check(reads==1 && identity.valid==available,"only the selected native identity is required; missing remains unknown");
+        lease.refresh(1033,false,true);
+        check(lease.intent(1033),"released input waits for independent actor evidence");
+        const bool acknowledged=identity.valid && lease.acknowledge(identity.detail,1,0,1,true,true,true,identity.one_footer);
+        check(acknowledged==available && lease.intent(1033)==!available,
+            "exact advancing footer actor withdraws released input without an unrelated detail allocation");
+    }
+}
 void repeated_grab_without_flip_selection() {
     for (unsigned hz:{30u,60u,120u}) for (unsigned failed=0;failed<9;++failed) {
         auto r=std::make_unique<Route>();const auto dt=(1000u+hz-1)/hz;
@@ -606,4 +627,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

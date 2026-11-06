@@ -1,5 +1,25 @@
 # Native one-footer entry in RC3
 
+## Independent identity correction
+
+RC3-11 Mega Park capture
+`608b1dd6d21f10144d331962bc9f37afcbc327df4d33b8aedc62e0fad750a6e4`
+pressed Up-Right+B at 550 ms and again at 690 ms after A, releasing B at
+960 ms. Original OneFooterType4 appeared at 928 ms. Judo's exact Into actor
+initialized, followed by its Loop actor. DetailedGrabType remained unallocated
+throughout. No actor acknowledgment was issued: the runtime incorrectly
+required that unrelated detail read before examining any footer actor.
+Consequently the released input stayed active until state601 invalidated the
+air owner at 1.297 seconds; the native footplant produced another flight.
+
+The correction reads only OneFooterType for footer profiles and only
+DetailedGrabType for ordinary profiles. IsGrabbing, exact actor identity,
+initialization, positive advancement and native ownership remain required.
+Missing identity reads still fail closed. The shared observation path is
+tested with the unrelated field unavailable for every profile, including B
+release before acknowledgment. This fixes an observed acknowledgment gate;
+clean Judo release and landing still require a new installed-build trial.
+
 Scope: pinned build 20260929, existing airborne grab owner. No extracted game
 assets or decompiled code are distributed with this implementation.
 

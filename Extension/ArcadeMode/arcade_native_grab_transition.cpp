@@ -301,10 +301,15 @@ void acknowledge(std::uint64_t now) noexcept {
         return;
     }
     const auto* selected=session.lease.selected();if (!selected || session.lease.acknowledged()) return;
-    std::int32_t detail{},one_footer{};bool grabbing{};
-    const auto detail_at=address(5),grabbing_at=address(4);
-    if (!detail_at || !grabbing_at || !read(detail_at,detail) || !read(grabbing_at,grabbing)) return;
-    if (selected->one_footer && (!address(8) || !read(address(8),one_footer))) return;
+    bool grabbing{};
+    const auto grabbing_at=address(4);
+    if (!grabbing_at || !read(grabbing_at,grabbing)) return;
+    const auto identity=observe_identity(*selected,[](bool footer,std::int32_t& value) noexcept {
+        const auto at=address(footer?8:5);
+        return at && read(at,value);
+    });
+    if (!identity.valid) return;
+    const auto detail=identity.detail,one_footer=identity.one_footer;
     for (unsigned i=0;i<grab_actor_count;++i) {
         const auto& a=session.actors[i];
         const auto* profile=actor_profile(i);
