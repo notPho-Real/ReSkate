@@ -37,6 +37,11 @@ Grab_Into rows and their12 distinct body actors. Eleven non-Rocket actors cover
 the nine fingerflip source families, including FS/BS-to-double transitions.
 The runtime checks the same local owner/view, exact actor asset, positive
 advancement and150ms freshness; a new grab request clears earlier Into receipts.
+After admission, the fingerflip's existing800ms entry and2500ms lifetime bounds
+replace the old pose's initialization deadline. This transfers only the held
+physical input, without acknowledging the old pose. B must still be held at
+entry, release immediately withdraws it, and owner/heartbeat checks remain.
+The native destination starts a fresh ordinary pose lease after a verified catch.
 It rejects footers, Rocket
 Air, nollie, ground, another stick owner and conflicting controls. It delivers
 the existing source-authored regular Kickflip, Heelflip, BS Pop Shuvit or FS Pop

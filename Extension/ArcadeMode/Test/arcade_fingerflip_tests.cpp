@@ -47,6 +47,19 @@ void family_entry() {
     const auto* footer=native_grab::pilot(ArcadeTrick::airwalk);
     check(!native_grab::GrabFamilyEntryObservation{footer->family,true,true,1,0,1,1000}.eligible(*footer,parent(*footer),1010),
           "a family Into actor does not make a one-footer eligible for fingerflips");
+    native_grab::Lease hold;
+    check(hold.request(ArcadeTrick::basic_bs_grab,1000,true) && hold.physical_hold(1000),"physical B holds the transition source");
+    hold.begin_transition();
+    for(std::uint64_t now=1050;now<=2800;now+=50) {
+        hold.refresh(now,true,true);
+        check(hold.intent(now) && !hold.acknowledged(),"accepted fingerflip owns its lifetime without old-pose timeout or false acknowledgment");
+    }
+    hold.refresh(2810,false,true);
+    check(!hold.intent(2810) && !hold.physical_hold(2810),"B release withdraws a transition even before old-pose acknowledgment");
+    check(hold.request(ArcadeTrick::basic_bs_grab,3000,false) && !hold.physical_hold(3000),"a pending B tap cannot start a held-grab fingerflip");
+    check(hold.request(ArcadeTrick::basic_bs_grab,4000,true),"destination starts a fresh ordinary grab occurrence");
+    for(std::uint64_t now=4050;now<=5600;now+=50)hold.refresh(now,true,true);
+    check(!hold.intent(5600),"a new ordinary request restores its native initialization deadline");
 }
 void transitions() {
     std::set<int> covered;

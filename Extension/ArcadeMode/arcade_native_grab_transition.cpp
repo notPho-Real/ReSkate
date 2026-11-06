@@ -528,7 +528,7 @@ bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
                std::span<const AuthoredStickStep> steps,std::uint64_t tick,bool mirror) noexcept {
     if(!active.load())return false;
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
-    if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.intent(now) ||
+    if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.physical_hold(now) ||
         !session.lease.selected() || !guid_is(assets[9].object,assets[9].guid) ||
         !guid_is(assets[10].object,assets[10].guid))return false;
     const auto observed=finger_observation();
@@ -536,6 +536,7 @@ bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
     const auto source_into=family_entry_index(*session.lease.selected(),source,now);
     if(!observed.valid || (observed.state_known && observed.in_fingerflip) || !session.finger.start(*session.lease.selected(),
         session.lease.acknowledged() || source_into>=0,source,id,steps,now,tick,mirror))return false;
+    session.lease.begin_transition();
     session.serial=++serial;
     for(std::size_t i=grab_actor_count;i<session.actors.size();++i)session.actors[i]={};
     restore();refresh_finger_settings(now);
