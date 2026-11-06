@@ -1,5 +1,26 @@
 # RC3 implementation status — incomplete candidate
 
+## Rocket reselection timing
+
+RC3-11 Mega Park capture
+`07f579fd1a2ef387671e22aa15af37007a6a77d6a2eba1dc5e1558393a950e81`
+pressed B at550 and640ms after A while holding Up. Requests13 and14 in
+episode117 recorded88ms between physical B edges. The original
+GrabIntoReChoose flag became true; native family6 changed to10, detail38
+followed, and ground100 returned at1.327s. Neither expected Rocket Into nor
+Loop actor callback was captured. Animation, native exit and scoring remain
+unaccepted; this is not a new complete actor receipt.
+
+The original Loop-to-Into transition25340 requires CanGrabDouble and excludes
+active GrabNose. The early Into self-transition2343 instead requires the
+original GrabIntoReChoose signal. This distinguishes the successful early
+native identity change from the later repeated-B failures. A first B at480ms
+preceded state200 and produced only one dispatched request in capture
+`659910b80c679f462e1eace702f4ed33e996c9eb90ad5c7672f1482dc1c9bde6`;
+it does not prove supported aerial repetition. The next observer revision
+extends the existing bounded unknown-actor diagnostic to Rocket, retaining
+the same local owner/view checks and no acknowledgment of unknown assets.
+
 ## Repeated-flip timing correction
 
 RC3-11 comparison capture

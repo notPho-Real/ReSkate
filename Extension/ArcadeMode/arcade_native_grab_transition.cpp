@@ -341,7 +341,11 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
     if (occurrence && index<0) {
         std::lock_guard lock(mutex);
         const auto* selected=session.lease.selected();
-        if(session.serial==occurrence && selected && selected->one_footer && valid() &&
+        // Rocket can reach its native identity through Into reselection while
+        // neither expected actor is observed. Record the selected original
+        // asset under the same bounded owner checks; never acknowledge it here.
+        if(session.serial==occurrence && selected &&
+            (selected->one_footer || selected->trick==ArcadeTrick::rocket_air) && valid() &&
             context==session.block+actor_contract::state_view &&
             session.other_actor_reports<8 && other_actor_reports<32) {
             const auto asset=pointer(actor+actor_contract::actor_asset);
@@ -350,8 +354,9 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
                 pointer(asset)==image+actor_contract::actor_type && read(asset-actor_contract::asset_guid_prefix,words)) {
                 ++session.other_actor_reports;++other_actor_reports;
                 logging::log(logging::Level::info,logging::Channel::skater,
-                    "ARCADE NATIVE FOOTER OTHER ACTOR: serial={} expected_footer={} guid_words_le={:08x},{:08x},{:08x},{:08x} acceptance=false.",
-                    occurrence,selected->one_footer,words[0],words[1],words[2],words[3]);
+                    "ARCADE NATIVE GRAB OTHER ACTOR: serial={} semantic={} expected_detail={} expected_footer={} guid_words_le={:08x},{:08x},{:08x},{:08x} acceptance=false.",
+                    occurrence,static_cast<unsigned>(selected->trick),selected->detail,
+                    selected->one_footer,words[0],words[1],words[2],words[3]);
             }
         }
     }
