@@ -191,3 +191,26 @@ counter resets, animation replacement or physics changes. It does not erase
 the earlier flat-ground failure or establish the exact Loop/Exit actors and
 numeric scoring. The catalog retains the specific unresolved context alongside
 this successful ramp evidence.
+
+Airwalk12 on the same original ramp entered and advanced its exact Into actor
+31f883e8-df24-3cc3-31f8-83e8df243cc3 in two trials. Both cleared footer and
+GrabType through native GrabExit before impact, but both landed in504.
+Releasing B at2.45s instead of2.80s did not prevent the failure. In the earlier
+release capture, native GrabExit ended around3.183s, roughly0.6s before the
+bail. The board remained substantially tilted during the final descent.
+This is not evidence that clearing a native enum or shortening the physical
+hold would fix landing. Exact Exit actor/pose ownership and an original-control
+comparison remain required. The timings and hashes are recorded in
+`rc3-native-grab-lifecycle-failures.json`; Airwalk is now explicitly BLOCKED
+for this observed landing failure, with its executable binding preserved.
+
+The same ramp's Judo4 capture initialized and advanced its exact Into actor,
+then the lease retired through `refresh` while physical B remained held.
+Its failed validity read reported state0; the immediately following retirement
+observation reported the same verified owner in201. Native foot intent cleared
+before the scheduled physical release, followed by footer/grab cleanup and a
+504 landing. The receipt is attached to Judo's existing lifecycle failure.
+The independent live reads are explicitly not a transactional physics snapshot.
+The next source investigation must distinguish native state publication timing
+from a real owner/state loss before changing cancellation. This observation
+does not authorize reusing old air state, bypassing guards or suppressing bail.

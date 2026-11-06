@@ -1,5 +1,40 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-24 installed-build verification
+
+Runtime source `5c841c20c82b5782f6ff4ac861aa0e9683159d97`, DLL
+`358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a`, passed
+development42277216301, integration42277216279 and targeted42277216560.
+The exact installed and loaded identity was verified on Mega Park. Later
+evidence commits do not change that runtime identity or promote the baseline.
+
+The current-build single-X control measured0.991478 board turns; two X presses
+150ms apart measured1.991346 turns. The original held loop initialized and
+advanced, extra-count became1, held state exited and both trials landed in100.
+There were no unknown state samples in this capture. The read-only measurement,
+raw capture hash and original actor records are in
+[rc3-native-repeated-flip-observations.json](rc3-native-repeated-flip-observations.json).
+Numeric scoring and the complete repetition window remain unverified.
+
+On the original quarter pipe placed in Mega Park, Nose Fingerflip1 and BS
+Fingerflip11 initialized and advanced their original actors, returned to
+advancing destination grab actors in air, released with GrabType0 and landed100.
+Benihana7 also cleared footer and grab identity before landing100. Exact Exit
+actor advancement and numeric scoring remain pending; earlier short-airtime
+failures remain recorded. See
+[rc3-native-grab-ramp-lifecycle.json](rc3-native-grab-ramp-lifecycle.json) and
+[rc3-native-grab-observations.json](rc3-native-grab-observations.json).
+
+Grounded Nose Manual entry had a brief native both-truck rebound before stable
+nose contact. An entry-only control retained the requested contact after
+settling; the first test driver's premature check was not proof of cancellation.
+The corrected trial completed RT through101→100 and advanced the original
+nose_fakie actor. Three brief raw state/contact gaps and a9.805s driver checkpoint
+prevent a continuous ten-second acceptance claim. Native fakie cleared as
+travel approached zero. The exact gaps and limits are retained in
+[rc3-native-manual-lifetime-observations.json](rc3-native-manual-lifetime-observations.json).
+No gameplay patch was made to conceal these observations.
+
 ## RC3-18 verification and earlier fingerflip admission
 
 Installed and loaded source `5a1ff185616ccf83e88d984fbc213c62dbb8fb53`, DLL

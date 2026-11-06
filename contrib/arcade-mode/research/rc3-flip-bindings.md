@@ -26,3 +26,9 @@ native held loop, extra-count1, catch and ground return. The single-X control
 retained one turn and extra-count0. The complete eligible window, higher-rate
 gameplay and scoring ownership remain pending. Portable tests use simulated
 native observations. See `rc3-gameplay-status.md` for capture hashes and limits.
+
+RC3-24 repeated the single-X and150ms double-X controls on Mega Park. They
+measured0.991478 and1.991346 native board turns, respectively, with original
+held-loop advancement, catch and ground return. The exact current-build receipt
+is in `rc3-native-repeated-flip-observations.json`. This does not extend the
+accepted timing window or establish numeric scoring.
