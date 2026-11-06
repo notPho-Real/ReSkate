@@ -120,3 +120,23 @@ landing. Verify native combo/score and original vertical trajectory. Held X,
 X before grab acknowledgment, footers, Rocket Air and ground B+X must not start
 a substitute flip or another Ollie. No successful RC3 fingerflip animation or
 scoring capture is yet claimed.
+
+## RC3-20 native failure isolation
+
+Exact-source development42260540430 and upstream integration42260540478 passed
+for ae52b74c67e3f8b90439473066140760efa417cc. Its loaded DLL was verified before
+testing on skate3_megapark. The earlier Into admission now works: capture
+85003e2777759695d2883e746cd1bdd14517329c7b101d814a24f62c391e6b26
+records the initialized BS family actor4fa44cca-8576-c46c-4fa4-4cca8576c46c
+advancing12→14 and accepts identity11 with source_into_verified=true.
+It returns to native ground100 without a fingerflip actor acknowledgment.
+
+A further ascent trial and finite input capture show physical B+X arriving,
+native BS hand output remaining held, but returned RS staying neutral from X
+through landing. Moving X earlier therefore does not resolve this failure.
+The adapter waits for a fresh applied EnableFingerflips setting before starting
+its authored gesture. The exact setting boundary remains unverified; neither
+an absent getter read nor a setting conflict has yet been established. Bounded
+setting evidence now distinguishes original-value availability, lease acquisition
+and fresh effective-value observation, with at most eight changes per transition.
+It does not change gameplay admission, profile preferences or native predicates.

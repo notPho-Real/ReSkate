@@ -92,6 +92,7 @@ struct Session {
     std::array<Actor,grab_actor_count+finger_contract::actors.size()> actors{};
     FingerflipInput finger{};
     std::uint64_t finger_settings_since{};
+    unsigned finger_settings_evidence{},finger_settings_reports{};
     bool reported{};
     std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
@@ -105,8 +106,23 @@ constexpr auto finger_setting="egf_enablefingerflips";
 void refresh_finger_settings(std::uint64_t now) noexcept {
     if(!session.finger.active())return;
     try {
-        if(input::gameplay_options().hold(finger_settings_owner,finger_setting,true,now).empty() && !session.finger_settings_since)
+        auto& options=input::gameplay_options();
+        const auto failure=options.hold(finger_settings_owner,finger_setting,true,now);
+        if(failure.empty() && !session.finger_settings_since)
             session.finger_settings_since=now+1;
+        // A request can be admitted while its gameplay-setting producer never
+        // runs. Record that boundary without relaxing the native entry gate.
+        const auto original=options.get(finger_setting);
+        const auto applied=options.sampled(finger_setting,session.finger_settings_since,now);
+        const unsigned evidence=1u | (failure.empty()?2u:0u) | (original?4u:0u) |
+            (original.value_or(false)?8u:0u) | (applied?16u:0u) | (applied.value_or(false)?32u:0u);
+        if(evidence!=session.finger_settings_evidence && session.finger_settings_reports<8) {
+            session.finger_settings_evidence=evidence;++session.finger_settings_reports;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE FINGERFLIP SETTING: serial={} ms={} since={} original_known={} original={} hold_acquired={} sampled={} effective={} failure={} animation_acknowledged=false.",
+                session.serial,now,session.finger_settings_since,original.has_value(),original.value_or(false),
+                failure.empty(),applied.has_value(),applied.value_or(false),failure);
+        }
     } catch(...) { }
 }
 bool finger_settings_applied(std::uint64_t now) noexcept {
@@ -518,6 +534,7 @@ Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t t
                 session.serial,session.finger.row()->identity,destination);
             session.lease.request(grab_family_trick(destination),now,true);session.reported=false;
             session.finger.cancel();session.finger_settings_since=0;
+            session.finger_settings_evidence=session.finger_settings_reports=0;
             input::gameplay_options().release(finger_settings_owner);
         }
         return result;
