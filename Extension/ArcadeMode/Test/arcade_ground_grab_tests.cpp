@@ -1,9 +1,20 @@
 #include "Extension/ArcadeMode/arcade_input_session.h"
+#include "Engine/Game/Build/20260929/arcade_ground_grab.h"
 #include <cstdlib>
 #include <iostream>
 using namespace dingosdk::arcade_mode;
 namespace {
 void check(bool value,const char* message){if(!value){std::cerr<<message<<'\n';std::exit(1);}}
+void native_actor_families() {
+    namespace contract=dingosdk::game::build::v20260929::arcade_ground_grab;
+    for(unsigned i=0;i<contract::actor_count;++i)for(unsigned kind=0;kind<=5;++kind) {
+        const auto found=contract::actor_index(kind,contract::actor_guid(i));
+        check(found==(kind==contract::actor_kind(i)?static_cast<int>(i):-1),
+            "straight and turning actors acknowledge only their original ground family");
+    }
+    for(unsigned kind=1;kind<=4;++kind)check(contract::actor_index(kind,{})==-1,
+        "unknown actor cannot acknowledge ground input");
+}
 GroundGrabObservation observation(std::uint64_t now,std::uint64_t step) {
     GroundGrabObservation out{};out.valid=true;out.state=100;out.sampled_at=now;out.step=step;return out;
 }
@@ -93,4 +104,4 @@ void session() {
     }
 }
 }
-int main(){native_entry();session();std::cout<<"Native ground grab input tests passed\n";}
+int main(){native_entry();native_actor_families();session();std::cout<<"Native ground grab input tests passed\n";}

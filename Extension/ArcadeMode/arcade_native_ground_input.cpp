@@ -52,8 +52,9 @@ struct GrabActor {
     std::uint64_t advanced_at{};
     float before{},after{},delta{};
     bool initialized{},reported{};
-} grab_actor;
-struct GrabAnimationEvidence {std::uint64_t serial{};GroundGrab kind{};GrabActor actor{};} grab_animation;
+};
+std::array<GrabActor,grab_contract::actor_count> grab_actors{};
+struct GrabAnimationEvidence {std::uint64_t serial{};GroundGrab kind{};GrabActor actor{};unsigned index{};} grab_animation;
 template<class T> bool read(std::uintptr_t at,T& value) noexcept {return memory::peek(at,value);}
 std::uintptr_t pointer(std::uintptr_t at) noexcept {std::uintptr_t value{};return read(at,value)?value:0;}
 bool guid_is(std::uintptr_t object,const contract::Guid& expected) noexcept {
@@ -116,20 +117,22 @@ GroundGrabObservation observe_grab(const NoBailSkater& skater,std::uint64_t now,
         can>1 || left>1 || right>1 || coffin>1) return out;
     out.valid=true;out.sampled_at=now;out.step=step;
     out.can_grab=can!=0;out.left=left!=0;out.right=right!=0;out.coffin=coffin!=0;
-    out.actor_advanced=grab_actor.initialized && grab_actor.advanced_at && now>=grab_actor.advanced_at &&
-        now-grab_actor.advanced_at<=150 && grab_actor.delta>0 && grab_actor.after>grab_actor.before;
+    for(const auto& actor:grab_actors)
+        out.actor_advanced=out.actor_advanced || (actor.initialized && actor.advanced_at && now>=actor.advanced_at &&
+            now-actor.advanced_at<=150 && actor.delta>0 && actor.after>actor.before);
     return out;
 }
 void retire_grab() noexcept {
     if(grab_lease.active())grab_evidence={grab_serial,grab_lease.kind(),grab_lease.acknowledged()};
-    grab_active.store(false);grab_lease.cancel();grab_owner={};grab_poll=0;grab_actor={};
+    grab_active.store(false);grab_lease.cancel();grab_owner={};grab_poll=0;grab_actors={};
 }
-bool ground_actor_is(std::uintptr_t actor) noexcept {
+int ground_actor_index(std::uintptr_t actor) noexcept {
     const auto kind=static_cast<unsigned>(grab_lease.kind());
     const auto asset=pointer(actor+contract::actor_asset);
-    return grab_lease.active() && kind>=1 && kind<=grab_contract::actors.size() &&
-        pointer(asset)==image+contract::actor_type &&
-        guid_is(asset,grab_contract::actors[kind-1]);
+    contract::Guid guid{};
+    if(!grab_lease.active() || pointer(asset)!=image+contract::actor_type ||
+        asset<contract::asset_guid_prefix || !read(asset-contract::asset_guid_prefix,guid))return -1;
+    return grab_contract::actor_index(kind,guid);
 }
 bool ground_actor_owner(std::uintptr_t view) noexcept {
     NoBailSkater current{};unsigned state{};
@@ -191,9 +194,9 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
         "ARCADE NATIVE GROUND GRAB END: serial={} kind={} native_animation_acknowledged={} scoring_exit_acceptance=unverified.",
         pending_grab.serial,static_cast<unsigned>(pending_grab.kind),pending_grab.acknowledged);
     if(animation.serial)logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE GROUND GRAB: serial={} kind={} actor={} initialized=true before={} after={} delta={} native_evaluation=true scoring_exit_acceptance=unverified.",
+        "ARCADE NATIVE GROUND GRAB: serial={} kind={} actor={} initialized=true before={} after={} delta={} actor_index={} native_evaluation=true scoring_exit_acceptance=unverified.",
         animation.serial,static_cast<unsigned>(animation.kind),animation.actor.object,
-        animation.actor.before,animation.actor.after,animation.actor.delta);
+        animation.actor.before,animation.actor.after,animation.actor.delta,animation.index);
     if (!gameplay || !base || (image && image!=base)) return;
     if (!image) image=base;
     if (ready.load() && !native_assets_current(std::span{assets}.first<6>(),guid_is)) {
@@ -267,27 +270,33 @@ void cancel() noexcept {std::lock_guard lock(mutex);retire_grab();}
 void initialized(std::uintptr_t actor,std::uintptr_t context) noexcept {
     if(!grab_active.load())return;
     std::lock_guard lock(mutex);float duration{};
-    if(ground_actor_owner(context) && ground_actor_is(actor) &&
+    const auto index=ground_actor_index(actor);
+    if(index>=0 && ground_actor_owner(context) &&
         read(actor+contract::actor_duration,duration) && std::isfinite(duration) && duration>0 && duration<10000)
-        grab_actor={actor,0,0,0,0,true,false};
+        grab_actors[static_cast<unsigned>(index)]={actor,0,0,0,0,true,false};
 }
 Evaluation before_evaluate(std::uintptr_t actor,std::uintptr_t context,float delta) noexcept {
     if(!grab_active.load())return {};
     std::lock_guard lock(mutex);float before{};
+    const auto index=ground_actor_index(actor);
+    if(index<0)return {};
+    const auto& observed=grab_actors[static_cast<unsigned>(index)];
     if(!std::isfinite(delta) || delta<=0 || !ground_actor_owner(pointer(context+contract::evaluation_view)) ||
-        !ground_actor_is(actor) || !grab_actor.initialized || grab_actor.object!=actor ||
+        !observed.initialized || observed.object!=actor ||
         !read(actor+contract::actor_time,before) || !std::isfinite(before))return {};
-    return {grab_serial,actor,before};
+    return {grab_serial,actor,before,static_cast<unsigned>(index)};
 }
 void after_evaluate(Evaluation token,std::uintptr_t context,float delta) noexcept {
     if(!token.serial)return;
     std::lock_guard lock(mutex);float after{};
+    if(token.index>=grab_actors.size())return;
+    auto& observed=grab_actors[token.index];
     if(token.serial!=grab_serial || !ground_actor_owner(pointer(context+contract::evaluation_view)) ||
-        !ground_actor_is(token.actor) || !grab_actor.initialized || grab_actor.object!=token.actor ||
+        ground_actor_index(token.actor)!=static_cast<int>(token.index) || !observed.initialized || observed.object!=token.actor ||
         !read(token.actor+contract::actor_time,after) || !std::isfinite(after) || after<=token.before ||
         !std::isfinite(delta) || delta<=0)return;
-    grab_actor.before=token.before;grab_actor.after=after;grab_actor.delta=delta;grab_actor.advanced_at=GetTickCount64();
-    if(!grab_actor.reported) {grab_actor.reported=true;grab_animation={grab_serial,grab_lease.kind(),grab_actor};}
+    observed.before=token.before;observed.after=after;observed.delta=delta;observed.advanced_at=GetTickCount64();
+    if(!observed.reported) {observed.reported=true;grab_animation={grab_serial,grab_lease.kind(),observed,token.index};}
 }
 }
 }

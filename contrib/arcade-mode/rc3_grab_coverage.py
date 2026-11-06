@@ -117,7 +117,7 @@ def build():
             " / ".join(directions) + "+X; release B for native exit")
     fingers = {r["native_id"]: r for r in finger_rows}
     ground_contract = (ROOT / "Engine/Game/Build/20260929/arcade_ground_grab.h").read_text()
-    ground_rows = re.findall(r"\{(0x[^}]+)\}", ground_contract.split("actors{{", 1)[1])
+    ground_rows = re.findall(r"\{(0x[^}]+)\}", ground_contract.split("actors{{", 1)[1].split("}};", 1)[0])
     assert len(ground_rows) == len(GROUND_PROFILES) == 4
     ground_actors = dict(zip(GROUND_PROFILES, [str(uuid.UUID(bytes_le=bytes(
         int(b.strip(), 16) for b in raw.split(",")))) for raw in ground_rows]))

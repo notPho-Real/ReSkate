@@ -78,9 +78,11 @@ then acknowledged exact FS and BS loop actors and SDK release while remaining
 in ground100. Repeating the analog selection afterward failed again in capture
 `40418a51b10f65b88a1890bb0042f6c03b862001bd0eb00276956f42a22cbb29`.
 The original ground loop blendspaces contain separate turning actors; the
-current observer recognizes only the four primary straight actors. Steering
-selection versus prior state is now isolated, but the actual turning actors
-must still be observed before extending acknowledgment. The D-pad result does
+RC3-11 observer recognizes only the four primary straight actors. Steering
+selection versus prior state is now isolated. The next observer revision adds
+the six exact original turning actors below, with separate initialization and
+advancement records for each blended actor. Hardware acknowledgment is still
+pending; source membership alone is not animation evidence. The D-pad result does
 not establish reliable analog hold or full stance/turn coverage.
 
 Status: IMPLEMENTED — GAMEPLAY PENDING. The tests exercise production input
@@ -97,3 +99,26 @@ Coffin must enter without a jump impulse. Also check both stances, ordinary
 ground B/X, RT revert, manual entry, auto-push, board toggle and Arcade OFF.
 Airborne Coffin, Coffin fingerflips, grab changes while held and landing into a
 ground grab are separate contexts still awaiting an adapter and acceptance.
+
+## Turning actor observation
+
+The FS, BS and Double ground loop blendspaces (resources23725,5604,5938)
+reference these original sequences. Bounded original sequence metadata joins
+identify their ActorController assets; no synthesized pose or animation is used.
+
+| Ground family | Turn | Sequence resource | Actor GUID |
+|---|---|---|---|
+| FS | Left | 6580 | `7584f4d2-f4ab-9f20-7584-f4d2f4ab9f20` |
+| FS | Right | 35124 | `eb7edd26-52cb-71b7-eb7e-dd2652cb71b7` |
+| BS | Left | 33922 | `8645468e-a411-e756-8645-468ea411e756` |
+| BS | Right | 27998 | `dba7155d-1180-ae8e-dba7-155d1180ae8e` |
+| Double | Left | 35073 | `87321af5-93c3-725f-8732-1af593c3725f` |
+| Double | Right | 13465 | `e7986fa6-c581-e5b6-e798-6fa6c581e5b6` |
+
+All ten straight/turning actors remain restricted to their original ground
+family, the current request serial, local owner and state100. One blended
+actor cannot replace another actor's initialization or advancement record.
+The observer does not change the1200ms entry deadline, inputs, StateFlow,
+cleanup or scoring. Tests reject wrong-family and unknown actor identities.
+The analog-versus-D-pad Mega Park capture must be repeated on the new build;
+no turning sequence is promoted to accepted coverage from this source change.
