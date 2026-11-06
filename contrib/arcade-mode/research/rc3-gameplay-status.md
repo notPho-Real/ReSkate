@@ -1,5 +1,70 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-17 native verification
+
+Source `2a3254a73f43b9950c39cae876027585e32331bf` passed development
+42150645408, integration42150645483 and targeted42150645538. The installed
+and loaded DLL hash is
+`bdaa02eeaef7d87141ce2a997632cad0dd6051a1a53ac33b0bb018250a1c1003`.
+All following trials used skate3_megapark at native/cached dt1/30.
+
+The first repeated-X attempt after launch, with90ms between physical presses,
+measured -1.99336437 board turns, extra-count1, the exact initialized and
+advancing native held loop, then native catch and ground100. Capture
+`160ab307a24437d60c727918ae413375dc29531af54a57bc4bbd117c957867b4`
+had no prior held-flip warm-up. A150ms repeat measured -1.99134584 turns;
+its single-X control measured -0.99148358, extra-count0. Capture
+`3c316a80b4ce9aeb9207458ad32f898f9cc305d9b7775c8993031cf2b5473fe8`
+contains one transient state0 sample, retained separately from known landing
+states. Double Heelflip measured +2.00566269 turns with exact native heel-loop
+initialization/advancement, extra-count1 and catch/ground return. Capture
+`72857e05a756655bb4cb20a8baf08c6166ab1421269df90ca88266679a4b609a`.
+These are actual native rotation observations for these timing cases;
+scoring ownership and the complete repetition window remain unaccepted.
+
+Airwalk at550ms after A reached native family6/OneFooterType12 and initialized
+its original Into actor `31f883e8-df24-3cc3-31f8-83e8df243cc3`, advancing
+0→2.4013953 at positive vertical velocity0.0963016. Its lease withdrew in air
+and the landing returned to100 without footplant or bail. Capture
+`40d0dc7da44f9c8cd5e8b763abe9c75e726280ed8d9cd918d2321413ac60d5bf`.
+This does not establish reliable repeated use: the later Benihana, Airwalk,
+One Foot Tailgrab and Christ Air batch selected basic families instead.
+
+The later Airwalk capture
+`93b2f0cd9ca7ce3ebdfebe07f7532996d426d9cc456a937e82f345c19cf295cf`
+shows RS nose selection before RT, native GrabNose before RightHandGrab,
+but family2 already present before takeoff and retained at entry. Original
+CDB_OnBoard_Grab_Into resource32512 explains the fallback: rows0–5 require
+old family0 for nose/tail/crail/seatbelt/stale/mute. Its basic hand rows14–15
+ignore old family and selector bits. The exit CDB34988 owns family cleanup.
+No enum write is an acceptable substitute for that lifecycle.
+
+Arcade-OFF comparison
+`72c365c024242aea3dc0fa1be59bfc3194a5dd4f397a2ffb03fab35923ccb275`
+reproduced the stale family: first native Nosegrab left family6 after landing;
+the second, selector-first Nose attempt chose BS2. That second attempt entered
+native GrabExit at1.136s and cleared family0. The next investigation must
+resolve the missing first exit, rather than add a selector delay or fabricate
+an identity. Full grab coverage and native scoring remain incomplete.
+
+Earlier Airwalk release at850ms also reproduced the missing exit. Capture
+`9c798906c9eab933c014554383d7ead22f98ae752a8ebed756716bd7d088c752`
+started with family0, reached family6/footer12, released native hand intent
+at942ms and returned footer0 at1.103s. The landing retained family6 without
+GrabExit. A second Airwalk in the same capture fell back to BS2. Shortening
+the physical B hold therefore does not by itself fix native family cleanup.
+
+Grounded Nose Manual→RT trials with balance correction retained nose contact
+throughout more than17seconds on clear Mega Park ground. Gentle and moderate
+push captures respectively sustained corroborated moving-fakie contact for
+4.784370381s and5.859932426s, then native fakie flags cleared as speed fell
+below the native threshold. Contact and balance remained intact to rest;
+regular pose selection at rest is not a moving-fakie pass. Capture hashes:
+`917246264454c08977621ceb55f538704f5ff4517cb90e33f9836dc5e08643ab` and
+`2b0e4a21a72e8f51c171ca19cb363779485f448551ce3567ce52e8941759798f`.
+Original nose_fakie and nose_regular actors initialized and advanced.
+Blend weights, visual posture and a ten-second moving-fakie hold remain pending.
+
 ## Fingerflip first-use admission
 
 RC3-15 read-only capture
