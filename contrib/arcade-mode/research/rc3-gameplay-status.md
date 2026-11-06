@@ -1,5 +1,33 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-15 first-use hardware verification
+
+Source `5fbf0c620cfe50b7356843ec8d59cbcd6d480765` passed development
+42144473783, integration42144473947 and targeted42144473777. Installed DLL
+`74adb391e8d3d9134d2e8e2447abe8566488526f301e1afa898f540cab89b235`
+was verified against the restarted process's mapped inode, device and hash.
+Testing used `skate3_megapark` with native and cached dt both1/30 second.
+
+First-flight Judo now enters without any previous grab. Capture
+`195f388cba4fbc546b0a2b39f335ce79e346518f122cbe33ecddd1af616b2539`
+shows OneFooterType unallocated, then0, then4. Original actor
+`5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0` initialized and advanced0→3 while
+vertical velocity was+1.1435483. The input lease ended airborne, but the
+landing bailed to504. This verifies the first-use admission fix, not release,
+landing or scoring acceptance.
+
+The first repeated-X trial after this launch also failed. Capture
+`42886854ca3f77a95ff693e5359458e1e7dbecfd2168e791b0575641117648fc`
+pressed X at520 and610ms. CurrentFlipTrick became2 at566.7ms, but
+PrepareHeldFlip remained unallocated until695.7ms; it closed at771.6ms.
+Held intent never allocated, the extra count stayed0, and the landing bailed.
+The adapter incorrectly required a readable Prepare value before starting
+the gesture, although that flag is not an input-preparation requirement.
+The correction permits missing native flags while still requiring the exact
+current flip and a valid native rotation count. Missing flags do not grant
+held ownership or actor acknowledgment. Fresh-process hardware verification
+is required; the previously successful warmed90ms trial is not a cold-start pass.
+
 ## RC3-14 exact-source Deck verification
 
 Source `c1658974816104a83be1cd382e52582829781398` passed development run

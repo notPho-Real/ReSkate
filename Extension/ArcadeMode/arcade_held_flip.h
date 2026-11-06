@@ -35,6 +35,19 @@ struct HeldFlipObservation {
             std::isfinite(extra_rotations) && extra_rotations>=0 && extra_rotations<=32;
     }
 };
+// Prepare/Held flags are native entry outputs and may have no state page yet.
+// Only the selected flip and native count are prerequisites for preparing input.
+// Missing flags never acknowledge native admission or animation ownership.
+template<class Read>
+bool sample_held_flip_state(HeldFlipObservation& out,Read&& read) noexcept {
+    if (!read(0,out.id) || (out.id!=2 && out.id!=3) ||
+        !read(4,out.extra_rotations) || !std::isfinite(out.extra_rotations) ||
+        out.extra_rotations<0 || out.extra_rotations>32) return false;
+    bool prepare{},intent{},active{};
+    out.prepare=read(1,prepare) && prepare;
+    out.holding=read(2,intent) && read(3,active) && intent && active;
+    return true;
+}
 class HeldFlipInput {
 public:
     bool start(std::uint64_t now,std::int32_t id,const HeldFlipObservation& native) noexcept {

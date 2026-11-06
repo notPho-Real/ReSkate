@@ -7,6 +7,7 @@
 #include "Engine/Game/Build/20260929/arcade_flip_transition.h"
 #include <atomic>
 #include <mutex>
+#include <type_traits>
 #include <Windows.h>
 
 namespace dingosdk::arcade_mode::native_held_flip {
@@ -118,15 +119,13 @@ HeldFlipObservation observe(const NoBailSkater& owner,std::uint64_t now) noexcep
     out.available=true;out.sampled_at=now;
     const auto block=block_for(owner);std::uint32_t phase{};
     if (!block || !read(owner.context+contract::physics_state,phase) || (phase!=200 && phase!=201) ||
-        !state(block,0,out.id) || (out.id!=2 && out.id!=3) ||
-        !state_bool(block,1,out.prepare) || !state(block,4,out.extra_rotations) ||
-        !std::isfinite(out.extra_rotations) || out.extra_rotations<0 || out.extra_rotations>32) {
+        !sample_held_flip_state(out,[&](unsigned index,auto& value) noexcept {
+            if constexpr (std::is_same_v<std::remove_reference_t<decltype(value)>,bool>)
+                return state_bool(block,index,value);
+            else return state(block,index,value);
+        })) {
         tracking.store(false);observation={};return out;
     }
-    // Held state pages are legitimately unallocated before the first native
-    // EAT entry. Unknown is never positive acknowledgment of held ownership.
-    bool intent{},active{};
-    out.holding=state_bool(block,2,intent) && state_bool(block,3,active) && intent && active;
     out.valid=true;
     if (!observation.serial || owner!=observation.owner || block!=observation.block || out.id!=observation.id ||
         now<observation.sampled_at || now-observation.sampled_at>150) {

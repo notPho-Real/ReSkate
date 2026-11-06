@@ -3,11 +3,26 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <type_traits>
 using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
 void check(bool value,const char* why) {++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 void native_boundaries() {
+    for (unsigned missing:{0u,1u,2u,3u,4u}) {
+        HeldFlipObservation native{};native.available=true;native.sampled_at=1000;
+        const auto sampled=sample_held_flip_state(native,[&](unsigned index,auto& value) noexcept {
+            if(index==missing)return false;
+            using T=std::remove_reference_t<decltype(value)>;
+            value=static_cast<T>(index==0?2:0);return true;
+        });
+        native.valid=sampled;
+        HeldFlipInput input;
+        check(input.start(1000,2,native)==(missing>=1 && missing<=3),
+            "first-use missing native flags permit gesture preparation; missing flip identity or rotation count still refuses input");
+        check(!native.prepare && !native.holding && !input.acknowledged(),
+            "unallocated flags cannot acknowledge a native held action or actor");
+    }
     for (int id:{2,3}) {
         HeldFlipInput input;
         HeldFlipObservation native{true,true,true,false,false,id,0,1000};
