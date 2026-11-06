@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 17,
+  "native_actor_evidence_count": 21,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -2314,7 +2314,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -2427,7 +2427,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -2540,7 +2540,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -2877,7 +2877,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -3476,7 +3476,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -3589,7 +3589,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -3702,7 +3702,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4149,7 +4149,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4262,7 +4262,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4375,7 +4375,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4488,7 +4488,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4791,7 +4791,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -4904,7 +4904,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -5017,7 +5017,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -5130,7 +5130,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -7574,16 +7574,38 @@
         "R3+Right+B on ordinary ground; hold B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
-      "release_landing_evidence": "Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "44c08c5d-685f-5fdf-44c0-8c5d685f5fdf"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+          "map": "skate3_megapark",
+          "capture": "dpad-ground-native-ground_grabs-result.json.gz",
+          "uncompressed_sha256": "069cd6559f01603dbf3fe06f443cb01b97ad656fb4a3bac6521d08e2bce4b069",
+          "serial": 5,
+          "native_grab_type": 53,
+          "context": "native ground state100; D-pad direction with R3+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "withdrawal_scope": "SDK input lease; native exit actor unverified",
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "maximum_board_height_m": 0.028994,
+          "lifecycle_limit": "Analog selection failed expected actor acknowledgment in both surrounding captures; native steering variants require investigation"
+        }
+      ]
     },
     {
       "native_name": "BSGroundGrab",
@@ -7604,16 +7626,38 @@
         "R3+Left+B on ordinary ground; hold B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
-      "release_landing_evidence": "Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "8a7797d8-9d9c-83a6-8a77-97d89d9c83a6"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+          "map": "skate3_megapark",
+          "capture": "dpad-ground-native-ground_grabs-result.json.gz",
+          "uncompressed_sha256": "069cd6559f01603dbf3fe06f443cb01b97ad656fb4a3bac6521d08e2bce4b069",
+          "serial": 6,
+          "native_grab_type": 54,
+          "context": "native ground state100; D-pad direction with R3+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "withdrawal_scope": "SDK input lease; native exit actor unverified",
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "maximum_board_height_m": 0.028994,
+          "lifecycle_limit": "Analog selection failed expected actor acknowledgment in both surrounding captures; native steering variants require investigation"
+        }
+      ]
     },
     {
       "native_name": "DoubleGroundGrab",
@@ -7634,16 +7678,38 @@
         "R3+B with neutral LS on ordinary ground; hold B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
-      "release_landing_evidence": "Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "ef77c2be-aa08-41af-ef77-c2beaa0841af"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+          "map": "skate3_megapark",
+          "capture": "comparison-native-ground_grabs-result.json.gz",
+          "uncompressed_sha256": "2de0529e039c66ae5852c09772661ae3100cd21853c92969fc81ea67478727c1",
+          "serial": 3,
+          "native_grab_type": 55,
+          "context": "native ground state100",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "withdrawal_scope": "SDK input lease; native exit actor unverified",
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "maximum_board_height_m": 0.028992,
+          "lifecycle_limit": "Ground-only capture; no airborne landing acceptance"
+        }
+      ]
     },
     {
       "native_name": "Coffin",
@@ -7664,16 +7730,38 @@
         "R3+Down+B on ordinary ground; hold B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact original loop actor initialization and positive advancement in the same owner/context/serial; no native gameplay capture yet",
-      "release_landing_evidence": "Software verifies release, timeout, owner loss and air withdrawal; native exit/landing still unverified",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and exact native animation/exit/scoring acceptance outstanding; airborne Coffin and grab changes while held remain separate blockers",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "e2ffe68e-3c21-2199-e2ff-e68e3c212199"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0",
+          "map": "skate3_megapark",
+          "capture": "comparison-native-ground_grabs-result.json.gz",
+          "uncompressed_sha256": "2de0529e039c66ae5852c09772661ae3100cd21853c92969fc81ea67478727c1",
+          "serial": 4,
+          "native_grab_type": 56,
+          "context": "native ground state100",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "intent_withdrawal_observed": true,
+          "withdrawal_scope": "SDK input lease; native exit actor unverified",
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "maximum_board_height_m": 0.028992,
+          "lifecycle_limit": "Ground-only capture; no airborne landing acceptance"
+        }
+      ]
     },
     {
       "native_name": "NoFootAir",
@@ -9336,7 +9424,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -9458,7 +9546,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -9581,7 +9669,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -9690,7 +9778,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -9813,7 +9901,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -9922,7 +10010,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -10031,7 +10119,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -10140,7 +10228,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -10249,7 +10337,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -10358,7 +10446,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -10467,7 +10555,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -11576,7 +11664,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -13091,7 +13179,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -13200,7 +13288,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -13309,7 +13397,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -13418,7 +13506,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {

@@ -20,6 +20,23 @@ tested with the unrelated field unavailable for every profile, including B
 release before acknowledgment. This fixes an observed acknowledgment gate;
 clean Judo release and landing still require a new installed-build trial.
 
+Comparison capture
+`0d215f938a3bb101f63dedde9205c5e0a28eb2b0ba251a52fbda7ba41aeca85a`
+first performed an ordinary BS Grab. With DetailedGrabType now allocated,
+the same Judo request acknowledged its exact Into actor and withdrew the SDK
+input while airborne, but still entered a footplant at landing. Expanded
+capture `1ee5a000e80039d05f4f177d6712bb2e9b0d1ead05bf0aa60eef9fb4bd0cf33d`
+showed original CanOneFoot, LeftFoot and hand intent persisting after neutral
+pad output until state601. SDK request withdrawal is not native exit proof.
+
+Original-controller capture
+`69f7101cd0673c00472c81d2dc44c70e0a7c824ba5edd1ad67ea1eb571e6db60`
+with Arcade OFF reproduced the same Judo footplant and second flight after
+physical release. The original AirStates Footplant condition (EBX4307,
+RES4771) consumes Bool.State.Is.Footplant; it does not produce that state.
+The remaining native airtime/context and footplant commitment requirements
+must be resolved without suppressing original physics or fabricating an exit.
+
 Scope: pinned build 20260929, existing airborne grab owner. No extracted game
 assets or decompiled code are distributed with this implementation.
 

@@ -63,13 +63,33 @@ grabs do not alter gameplay options.
 
 ## Evidence and remaining work
 
+RC3-11 source `01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0` was tested on
+Mega Park in capture
+`2de0529e039c66ae5852c09772661ae3100cd21853c92969fc81ea67478727c1`.
+Ground Double and Coffin initialized and positively advanced their exact
+original loop actors and acknowledged SDK input release. State remained100
+and board height remained below0.029m for both: no jump impulse was observed.
+Native exit actors and scoring remain unverified. Ground FS and BS reached
+their native hand/family states but did not acknowledge the expected actors;
+they remain failed animation-acceptance cases, not successful entries.
+
+D-pad comparison `069cd6559f01603dbf3fe06f443cb01b97ad656fb4a3bac6521d08e2bce4b069`
+then acknowledged exact FS and BS loop actors and SDK release while remaining
+in ground100. Repeating the analog selection afterward failed again in capture
+`40418a51b10f65b88a1890bb0042f6c03b862001bd0eb00276956f42a22cbb29`.
+The original ground loop blendspaces contain separate turning actors; the
+current observer recognizes only the four primary straight actors. Steering
+selection versus prior state is now isolated, but the actual turning actors
+must still be observed before extending acknowledgment. The D-pad result does
+not establish reliable analog hold or full stance/turn coverage.
+
 Status: IMPLEMENTED — GAMEPLAY PENDING. The tests exercise production input
 recognition, session composition and the bounded native input owner at
 30/60/120Hz, including ten-second holds and negative controls. Injected state
 observations do not prove native animation or scoring. Runtime animation records
 contain initialization and positive advancement evidence when observed; end
 records distinguish that acknowledgment from still-unverified scoring and exit
-acceptance. No such RC3 ground-grab gameplay capture is claimed yet.
+acceptance. The capture above covers only the explicitly observed actors.
 
 Hardware acceptance must record original actor initialization and positive
 advancement for each binding, hold, B release, cleanup and native history/score.

@@ -116,6 +116,11 @@ def build():
         finger["arcade_binding"] = ("Establish " + family_names[finger["family"]] + " Grab, keep B held, then " +
             " / ".join(directions) + "+X; release B for native exit")
     fingers = {r["native_id"]: r for r in finger_rows}
+    ground_contract = (ROOT / "Engine/Game/Build/20260929/arcade_ground_grab.h").read_text()
+    ground_rows = re.findall(r"\{(0x[^}]+)\}", ground_contract.split("actors{{", 1)[1])
+    assert len(ground_rows) == len(GROUND_PROFILES) == 4
+    ground_actors = dict(zip(GROUND_PROFILES, [str(uuid.UUID(bytes_le=bytes(
+        int(b.strip(), 16) for b in raw.split(",")))) for raw in ground_rows]))
     lease = (ROOT / "Extension/ArcadeMode/arcade_native_grab_lease.h").read_text()
     profile_rows = re.findall(
         r"\{ArcadeTrick::(\w+),\s*(\d+),\s*(-?[\d.]+)f?,\s*(-?[\d.]+)f?(?:,\s*(\d+),\s*(\d+)(?:,\s*(-?\d+),\s*(-?\d+)(?:,\s*(\d+),\s*(\d+))?)?)?\}", lease)
@@ -196,6 +201,7 @@ def build():
         if ns == "Enum.GrabType" and value in GROUND_PROFILES:
             binding, resource, name, guid, mechanism = GROUND_PROFILES[value]
             row.update(arcade_binding=[binding], implementation_state=PENDING,
+                       runtime_actor=[ground_actors[value]],
                        assets=[dict(resource_index=resource, name=name, sequence_guid=guid)],
                        native_gameplay_context="Ordinary native ground state100; separate input owner; never the airborne grab lease",
                        original_mechanism=mechanism,
@@ -263,7 +269,7 @@ def build():
         if matches:
             entry.update(rc3_native_evidence=matches,
                          native_animation_acknowledgment="Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-                         release_landing_evidence="Matching intent withdrawal is recorded where present. Captures include ground return; exact native exit actor and numeric landing/combo scoring remain unverified.",
+                         release_landing_evidence="SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
                          remaining_blocker="Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.")
     return dict(schema_version=6, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
