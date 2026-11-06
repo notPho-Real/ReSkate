@@ -2,6 +2,7 @@ name: Arcade upstream integration
 on:
   pull_request:
     branches: [main, arcade-mode, 'arcade-stage-*']
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     tags: ['arcade-rc-*', 'arcade-milestone-*']
   workflow_dispatch:
@@ -14,6 +15,9 @@ permissions:
   contents: read
 jobs:
   complete:
+    # Draft iteration gets the development graph on push. Request a milestone
+    # with a label, marker or dispatch instead of rebuilding all upstream targets.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'full-integration') || contains(github.event.pull_request.labels.*.name, 'release-candidate') || contains(github.event.pull_request.labels.*.name, 'milestone')
     uses: ./.github/workflows/arcade-validation.yml
     with:
       full_integration: true

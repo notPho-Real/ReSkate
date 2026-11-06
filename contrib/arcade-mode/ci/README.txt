@@ -17,7 +17,8 @@ development or integration-built; neither label declares hardware acceptance.
 Deck packaging downloads this run's exact artifact and checks source, checksum,
 run ID and compiler contract. Artifact upload alone is not a release gate.
 
-Complete integration runs for PRs targeting main, arcade-mode or arcade-stage-*,
+Complete integration runs for ready-for-review PRs targeting main, arcade-mode or arcade-stage-*,
+draft PRs explicitly labeled full-integration, release-candidate or milestone,
 manual development/integration dispatches, arcade-rc-* / arcade-milestone-* tags,
 main and arcade-mode pushes, and pushes containing [full integration] or
 [release candidate]. Explicit markers are case-insensitive GitHub expressions.
@@ -25,8 +26,8 @@ Use a manual dispatch or one of these markers for a milestone, not an informal
 commit title. Manual dispatch always performs full integration, even if its
 legacy full_integration boolean is unchecked.
 
-Full integration is one build graph: arcade-integration calls arcade-dev at the
-same revision. The build job enables all previous upstream groups, runs the
+Full integration is one build graph: arcade-dev and arcade-integration call the read-only arcade-validation graph
+at the same revision; only arcade-dev owns the guarded publication job. The build job enables all previous upstream groups, runs the
 crash test three times, builds ALL_BUILD, runs all hosted upstream CTest tests,
 and stages that very runtime. Independent Arcade Windows preflight and targeted
 tests still run. The existing trainer_tuning_names exclusion requires installed
