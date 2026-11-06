@@ -38,7 +38,7 @@ contract::Evaluate original_evaluate{};
 std::atomic<bool> hooks_ready{},assets_ready{},gameplay_allowed{},active{};
 std::mutex mutex;
 struct Asset {const char* name; Guid guid; std::uintptr_t object{};};
-std::array<Asset,15> assets{{
+std::array<Asset,17> assets{{
     {"Animation/Dingo/Bool.Intent.LeftHandGrab",contract::left},
     {"Animation/Dingo/Bool.Intent.RightHandGrab",contract::right},
     {"Animation/Dingo/Float.Intent.TweakLeftRight",contract::tweak_x},
@@ -53,7 +53,9 @@ std::array<Asset,15> assets{{
     {"Animation/Dingo/Bool.Intent.GrabNose",contract::nose},
     {"Animation/Dingo/Bool.Intent.GrabTail",contract::tail},
     {"Animation/Dingo/Bool.Intent.GrabStale",contract::stale},
-    {"Animation/Dingo/Bool.Intent.GrabWeddle",contract::weddle}
+    {"Animation/Dingo/Bool.Intent.GrabWeddle",contract::weddle},
+    {"Animation/Dingo/Bool.State.Is.OneFootAir",contract::one_foot_air},
+    {"Animation/Dingo/Bool.Anim.Is.OneFootExit",contract::one_foot_exit}
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
@@ -376,6 +378,14 @@ FingerflipObservation finger_observation() noexcept {
         return at && read(at,value);
     });
 }
+void observe_footer_release(std::uint64_t now) noexcept {
+    const auto* selected=session.lease.selected();
+    if(!selected || !selected->one_footer || session.finger.active())return;
+    bool air{},exit{};
+    const auto air_at=address(15),exit_at=address(16);
+    const bool known=air_at && exit_at && read(air_at,air) && read(exit_at,exit);
+    session.lease.observe_footer(now,known,air,exit);
+}
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);
     if (pointer(asset)!=image+0x61ba838) return -1;
@@ -608,6 +618,7 @@ void tick(bool gameplay) noexcept {
     if (active.load()) {
         std::lock_guard lock(mutex);
         const bool current=valid();
+        if(current)observe_footer_release(GetTickCount64());
         if(exit_observation.serial==session.serial && current)
             exit_observation.expires_at=GetTickCount64()+5000;
         if (!current || !session.lease.intent(GetTickCount64())) retire("tick");
@@ -621,6 +632,7 @@ void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool perm
     if (!active.load()) return;
     std::lock_guard lock(mutex);
     session.lease.refresh(GetTickCount64(),held,permitted && owner==session.owner && episode && episode==session.episode && valid());
+    observe_footer_release(GetTickCount64());
     if (!session.lease.selected()) retire("refresh");
     else {refresh_foot_settings(GetTickCount64());refresh_finger_settings(GetTickCount64());}
 }
@@ -667,7 +679,9 @@ Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t t
     if (!active.load()) return {};
     std::lock_guard lock(mutex);
     const auto now=GetTickCount64();
-    if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.intent(now))return {};
+    if(!valid() || owner!=session.owner || episode!=session.episode)return {};
+    observe_footer_release(now);
+    if(!session.lease.intent(now))return {};
     if(session.finger.active()) {
         if(!tick)return session.finger.control(); // Legacy hand-only reads cannot advance a gesture.
         auto result=session.finger.poll(now,tick,finger_settings_applied(now),finger_observation());
@@ -764,9 +778,11 @@ void before_transition(std::uintptr_t view,float delta) noexcept {
     if (!valid()) {retire("transition_owner");return;}
     if (view!=session.block+0x48) return;
     const auto now=GetTickCount64();acknowledge(now);
+    observe_footer_release(now);
     // Native fingerflip entry temporarily leaves IsGrabbing. Its actor and
     // destination own this handoff; the old pose must not be reasserted here.
     if(session.finger.active()) {restore();return;}
+    if(session.lease.releasing_footer()) {restore();return;}
     if (session.lease.acknowledged()) {
         bool grabbing{};const auto at=address(4);
         if (!at || !read(at,grabbing) || !grabbing) {retire("native_exit");return;}

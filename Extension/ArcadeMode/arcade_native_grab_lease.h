@@ -147,6 +147,7 @@ public:
         const auto* p=pilot(trick);
         if (!p) return false;
         selected_=p; requested_=refreshed_=now; released_=!held; acknowledged_=false; feet_started_=false; transition_=false;
+        footer_retained_=false;footer_observed_at_=0;
         return true;
     }
     void refresh(std::uint64_t now,bool held,bool same_air_owner) noexcept {
@@ -167,16 +168,29 @@ public:
     bool intent(std::uint64_t now) const noexcept {
         return selected_ && now>=refreshed_ && now-refreshed_<=heartbeat_ms &&
             (acknowledged_ || transition_ || (now>=requested_ && now-requested_<=initialization_limit_ms)) &&
-            !(released_ && (acknowledged_ || transition_));
+            (!(released_ && (acknowledged_ || transition_)) ||
+             (footer_retained_ && now>=footer_observed_at_ && now-footer_observed_at_<=heartbeat_ms));
     }
+    // The native OneFoot exit branches immediately to Grab.Loop.Exit when
+    // CanGrab is lost. Withdraw the foot first and keep the original hand
+    // through that native state, rather than truncating its catch animation.
+    void observe_footer(std::uint64_t now,bool valid,bool one_foot_air,bool one_foot_exit) noexcept {
+        footer_retained_=selected_ && selected_->one_footer && acknowledged_ && !transition_ &&
+            valid && (one_foot_air || one_foot_exit);
+        footer_observed_at_=now;
+        if(selected_ && selected_->one_footer && released_ && acknowledged_ && !transition_ && !footer_retained_)
+            cancel();
+    }
+    bool releasing_footer() const noexcept {return released_ && acknowledged_ && footer_retained_;}
     bool physical_hold(std::uint64_t now) const noexcept {return !released_ && intent(now);}
     // A separately verified native transition has its own admission deadline.
     // Keep only its physical hold, without falsely acknowledging the old pose.
-    void begin_transition() noexcept {transition_=true;}
+    void begin_transition() noexcept {transition_=true;footer_retained_=false;}
     bool acknowledged() const noexcept {return acknowledged_;}
     Control controls(const RetargetObservation& native,bool settings_applied) noexcept {
         if (!selected_) return {};
         auto out=selected_->control();
+        if(releasing_footer())return out;
         // The native hand producer can run before its RS selector producer.
         // Wait for the actual selector, not an elapsed controller-frame delay.
         // An established matching family already proves selection.
@@ -196,7 +210,7 @@ public:
     void cancel() noexcept {*this={};}
 private:
     const Pilot* selected_{};
-    std::uint64_t requested_{},refreshed_{};
-    bool released_{},acknowledged_{},feet_started_{},transition_{};
+    std::uint64_t requested_{},refreshed_{},footer_observed_at_{};
+    bool released_{},acknowledged_{},feet_started_{},transition_{},footer_retained_{};
 };
 }

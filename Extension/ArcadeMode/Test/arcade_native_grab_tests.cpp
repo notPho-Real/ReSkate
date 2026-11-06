@@ -15,6 +15,41 @@ namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 void native_footer_exit_contract() {
+    for(unsigned hz:{30u,60u,120u}) for(const auto& profile:native_grab::pilots) {
+        if(!profile.one_footer)continue;
+        const auto dt=(1000u+hz-1)/hz;
+        const native_grab::RetargetObservation native{true,true,true,
+            (profile.hands&1u)!=0,(profile.hands&2u)!=0,profile.family,true};
+        for(unsigned fault=0;fault<5;++fault) {
+            native_grab::Lease lease;
+            lease.request(profile.trick,1000,true);
+            check(lease.controls(native,true).feet==native_grab::foot_button(profile.foot),"native family admits original foot input");
+            check(lease.acknowledge(0,1,0,1,true,true,true,profile.one_footer),"exact original footer actor establishes ownership");
+            auto now=1000+dt;
+            lease.observe_footer(now,true,true,false);
+            lease.refresh(now,false,true);
+            const auto release=lease.controls(native,true);
+            check(lease.intent(now) && !lease.physical_hold(now) && release.hands==profile.hands &&
+                release.feet==0 && release.x==profile.selector_x && release.y==profile.selector_y,
+                "B release withdraws feet while preserving the established hand and selector for native exit");
+            // Exit clears the trick identity before its state tags. Neither
+            // controller cadence nor an elapsed animation timer ends the hold.
+            for(unsigned frame=0;frame<hz;++frame) {
+                now+=dt;lease.refresh(now,false,true);lease.observe_footer(now,true,true,true);
+                check(lease.intent(now) && lease.controls(native,true).feet==0,
+                    "native exit owns hand lifetime without retriggering a foot");
+            }
+            if(fault==0)lease.observe_footer(now,true,false,false);
+            if(fault==1)lease.observe_footer(now,false,true,true);
+            if(fault==2)lease.refresh(now+dt,false,false);
+            if(fault==3)now+=native_grab::Lease::heartbeat_ms+1;
+            if(fault==4)lease.cancel();
+            check(!lease.intent(now),"completion, missing tags, owner loss, stale heartbeat and OFF withdraw hands");
+            lease.refresh(now+dt,true,false);
+            lease.observe_footer(now+dt,true,true,true);
+            check(!lease.intent(now+dt),"later input cannot resurrect a retired occurrence");
+        }
+    }
     namespace contract=dingosdk::game::build::v20260929::arcade_grab_transition;
     check(contract::footer_exit_actors.size()==13,"all original footer exits have separate actor contracts");
     for(std::size_t i=0;i<contract::footer_exit_actors.size();++i) {
