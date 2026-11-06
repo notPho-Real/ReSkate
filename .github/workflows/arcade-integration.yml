@@ -20,7 +20,7 @@ jobs:
       - name: Build crash reporter regression before the full runtime
         run: cmake --build --preset release --parallel 4 --target dingosdk_crash_report_tests
       - name: Check crash capture and post-exit metadata
-        run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --output-on-failure --no-tests=error
+        run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --repeat until-fail:3 --output-on-failure --no-tests=error
       - name: Build all configured targets with upstream warning policy
         # A crash-fixture failure must still fail the job, but must not prevent
         # independent runtime compilation and regression evidence.

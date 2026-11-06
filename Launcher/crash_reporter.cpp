@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include "crash_reporter.h"
 #include "crash_capture_name.h"
+#include "crash_dump_retry.h"
 #include <DbgHelp.h>
 #include "Engine/Core/Debug/protocol.h"
 #include "Engine/Core/Debug/upload.h"
@@ -188,13 +189,22 @@ bool save_dump(HANDLE process, const std::filesystem::path& game_root,
     // object and the list it was found in, not just the registers (a few MB more a dump).
     constexpr auto flags = static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithThreadInfo |
         MiniDumpWithUnloadedModules | MiniDumpWithIndirectlyReferencedMemory);
-    const auto written = MiniDumpWriteDump(process, GetProcessId(process), file.value, flags, &exception, nullptr, nullptr);
-    const auto write_error = written ? ERROR_SUCCESS : GetLastError();
+    const auto result = write_dump_retry([&]() -> std::uint32_t {
+        if (MiniDumpWriteDump(process, GetProcessId(process), file.value, flags, &exception, nullptr, nullptr)) return ERROR_SUCCESS;
+        const auto error = GetLastError();
+        diagnostic("write", error);
+        return error;
+    }, [&]() -> std::uint32_t {
+        if (!SetFilePointerEx(file.value, LARGE_INTEGER{}, nullptr, FILE_BEGIN) || !SetEndOfFile(file.value)) return GetLastError();
+        return ERROR_SUCCESS;
+    }, static_cast<std::uint32_t>(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY)));
+    const auto written = result.error == ERROR_SUCCESS;
+    const auto write_error = result.error;
     const auto durable = written && FlushFileBuffers(file.value);
     const auto flush_error = durable || !written ? ERROR_SUCCESS : GetLastError();
     CloseHandle(file.release());
     if (!durable) {
-        diagnostic(written ? "flush" : "write", written ? flush_error : write_error);
+        diagnostic(written ? "flush" : result.reset_failed ? "reset" : "write", written ? flush_error : write_error);
         DeleteFileW(temporary.c_str());
         return false;
     }
