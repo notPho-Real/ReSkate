@@ -15,8 +15,8 @@ struct Root { Value model; };
 constexpr unsigned page=1,text_field=2;
 namespace arcade_mode { bool on{};bool enabled(){return on;} }
 namespace menu_view { constexpr unsigned tools_page=1; }
-struct State { Address manager{10};Value page{3,1}; } source;
-const State& page_state(unsigned){return source;}
+struct State { Address manager{10};Value page{3,1}; } fixture_page;
+const State& page_state(unsigned){return fixture_page;}
 std::atomic<bool> game_in_menu{true};
 struct Model {
     int focus{},back{};
@@ -63,7 +63,7 @@ struct Context {
 template<class T>T read(Address at){return *reinterpret_cast<const T*>(at);}
 #include "Extension/UI/NativeMenu/native_trickpedia.inl"
 void require(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
-void reset(){trickpedia_page={};trickpedia_seen=0;arcade_mode::on=true;game_in_menu=true;source.manager=10;}
+void reset(){trickpedia_page={};trickpedia_seen=0;arcade_mode::on=true;game_in_menu=true;fixture_page.manager=10;}
 }
 int main(){
     reset();Context context;const auto original=context.models.at(2);
