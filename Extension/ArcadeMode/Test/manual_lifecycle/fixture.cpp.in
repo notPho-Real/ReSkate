@@ -4,6 +4,7 @@
 #include "Extension/ArcadeMode/arcade_manual_step.h"
 #include "Extension/ArcadeMode/arcade_manual_labels.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
 @@ACQUISITION_INCLUDE@@
 #include "Extension/ArcadeMode/arcade_manual_balance_entry.h"
 #include "Extension/ArcadeMode/arcade_manual_episode.h"
@@ -100,6 +101,15 @@ namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
 namespace dingosdk::arcade_mode::native_grab {void cancel()noexcept{}} // Nonactuating grab boundary.
 namespace dingosdk::arcade_mode::native_footplant {void cancel()noexcept{}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel()noexcept{}}
+// No wall collision/physics is supplied by the manual fixture. Keep current
+// production observation, cancellation and surface-publication calls compiled.
+namespace dingosdk::arcade_mode::wallplant_runtime {
+void cancel()noexcept{}
+void interrupt_animation()noexcept{}
+void observe_physics(const NativeInputFrame&)noexcept{}
+InputSurfaceState surface(std::uint64_t,const NativeInputFrame&)noexcept{return {};}
+bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector)noexcept{return false;}
+}
 NativeFlipRequest normal_flip{};
 NativeGrabRequest normal_grab{};
 NativeGroundGrabRequest ground_grab{};
@@ -150,6 +160,7 @@ const std::optional<std::vector<PreparedGesture>> prepared{std::vector<PreparedG
  {16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}}};
 NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,unsigned char physical_rt=0){
  const unsigned user=0;const auto now=clock_ms;const auto tick=now/17;NativeGesture::Output result{};
+ const auto grind_frame=arcade_input.native_context(now);
  const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=physical_rt;
  const bool authored=true;
  arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});

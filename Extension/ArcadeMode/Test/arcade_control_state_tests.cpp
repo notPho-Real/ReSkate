@@ -187,7 +187,7 @@ void lip_extra_tables() {
     }
 }
 void wall_controls() {
-    for (unsigned step : {8u,17u,34u}) for (std::int16_t x : {-25000,0,25000}) {
+    for (unsigned step : {8u,17u,34u}) for (const auto x : std::array<std::int16_t,3>{-25000,0,25000}) {
         UnifiedInput input; Sink sink; InputEnvironment e{InputContext::air,true}; e.ollie_allowed=false;
         e.surface={3,1,true,true,false,false,0};
         input.poll(0,{},e,sink.adapter());
