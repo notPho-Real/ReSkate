@@ -1,0 +1,108 @@
+{
+  "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "capture_sha256": "73950d98e2ab6deda4695e529b276826bbd81ecafbda02e8c83bf6e46bb16db0",
+  "error": null,
+  "observer_error": null,
+  "trials": [
+    {
+      "name": "single",
+      "rotations_before_exit": 1.0150253346999607,
+      "max_excursion_turns": 1.0279836478446298,
+      "exit_state": 100,
+      "exit_seconds": 1.269502481,
+      "held_at_exit": false,
+      "states": [
+        100,
+        103,
+        200,
+        201
+      ],
+      "unknown_state_times_seconds": [],
+      "native_values": {
+        "EnumGS.Anim.CurrentFlipTrick": [
+          0,
+          1,
+          3
+        ],
+        "Bool.Anim.PrepareHeldFlip": [
+          false,
+          true
+        ],
+        "Bool.Intent.HeldFlip": [
+          false
+        ],
+        "Bool.State.Is.HeldFlip": [
+          false
+        ],
+        "Float.Anim.TrickHeldFlipCount": [
+          0.0
+        ]
+      },
+      "max_sample_gap_ms": 11.557006
+    },
+    {
+      "name": "double",
+      "rotations_before_exit": 2.0084234439777444,
+      "max_excursion_turns": 2.0429511795183557,
+      "exit_state": 100,
+      "exit_seconds": 1.377725387,
+      "held_at_exit": false,
+      "states": [
+        100,
+        103,
+        200,
+        201
+      ],
+      "unknown_state_times_seconds": [],
+      "native_values": {
+        "EnumGS.Anim.CurrentFlipTrick": [
+          0,
+          1,
+          3
+        ],
+        "Bool.Anim.PrepareHeldFlip": [
+          false,
+          true
+        ],
+        "Bool.Intent.HeldFlip": [
+          false,
+          true
+        ],
+        "Bool.State.Is.HeldFlip": [
+          false,
+          true
+        ],
+        "Float.Anim.TrickHeldFlipCount": [
+          0.0,
+          1.0
+        ]
+      },
+      "max_sample_gap_ms": 12.182457
+    }
+  ],
+  "method": "Read-only native board-up angle unwrapped in the initial skater right/up plane, from 450ms after A until first known ground/bail/offboard state. Transient unknown state samples are reported separately. No counter or animation writes.",
+  "scoring": "Unverified",
+  "actor_and_input_evidence": [
+    "[2026-11-06 13:53:33.351] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=2a705056,397b68d9,5650702a,7b39d968 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:33.352] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FLIP: serial=45 selected=3 ticks=18.001163 duration=120 native_evaluation=true.",
+    "[2026-11-06 13:53:33.617] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=b2bdfc11,481e64a6,11fcbdb2,1e48a664 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:33.618] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:33.619] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:33.649] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=ef009d3d,3fb342a1,3d9d00ef,b33fa142 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:33.685] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=a3c6712a,b6a43004,2a71c6a3,a4b60430 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:34.153] [624:968] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=2a705056,397b68d9,5650702a,7b39d968 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:35.232] [624:720] Native(C): [Skater] [INFO] Repeated 3 more times: ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=b2bdfc11,481e64a6,11fcbdb2,1e48a664 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:35.234] [624:968] Native(C): [Skater] [INFO] Repeated 2 more times: ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:35.235] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE HELD OTHER ACTOR: serial=3 native_id=3 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a known_loop=false acceptance=false.",
+    "[2026-11-06 13:53:36.685] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FLIP: serial=46 selected=3 ticks=18.001163 duration=120 native_evaluation=true.",
+    "[2026-11-06 13:53:36.794] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746450225 requested_id=3 input_released=false native_id=3 extra_rotations=0 loop_acknowledged=false landing_scoring_acceptance=unverified.",
+    "[2026-11-06 13:53:37.048] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD INIT: native_id=3 sampled_id=3 tracking=true owner_current=true view_matches=true duration_valid=true admitted=true.",
+    "[2026-11-06 13:53:37.049] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD FLIP: serial=4 native_id=3 loop_initialized=true before=0 after=2.0011625 delta=2.0011625 extra_rotations=0 scoring_acceptance=unverified.",
+    "[2026-11-06 13:53:37.055] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746450509 requested_id=0 input_released=true native_id=3 extra_rotations=1 loop_acknowledged=true landing_scoring_acceptance=unverified."
+  ],
+  "binding": "A to Ollie; Right+X once or twice 150 ms apart",
+  "map": "skate3_megapark",
+  "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+  "trajectory_acceptance": "One native 103 launch per trial; exact trajectory equality not established.",
+  "full_gameplay_acceptance": false
+}

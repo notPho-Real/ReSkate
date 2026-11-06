@@ -16,6 +16,13 @@ raw capture hash and original actor records are in
 [rc3-native-repeated-flip-observations.json](rc3-native-repeated-flip-observations.json).
 Numeric scoring and the complete repetition window remain unverified.
 
+The same-build Right+X comparison measured1.015025 board turns for a single
+press and2.008423 for two presses150ms apart. The original Heelflip held loop
+initialized and advanced; extra-count became1 and both trials caught and
+landed100 without unknown state samples. Each trial had one native103 launch.
+Exact trajectory equality and numeric scoring are not established. See
+[rc3-native-heelflip-24.json](rc3-native-heelflip-24.json).
+
 On the original quarter pipe placed in Mega Park, Nose Fingerflip1 and BS
 Fingerflip11 initialized and advanced their original actors, returned to
 advancing destination grab actors in air, released with GrabType0 and landed100.
@@ -34,6 +41,15 @@ prevent a continuous ten-second acceptance claim. Native fakie cleared as
 travel approached zero. The exact gaps and limits are retained in
 [rc3-native-manual-lifetime-observations.json](rc3-native-manual-lifetime-observations.json).
 No gameplay patch was made to conceal these observations.
+
+A follow-up with1.6s of normal auto-push before the grounded gesture retained
+state100, physical nose contact0x8000 and native fakie continuously for
+11.17226789s after RT, with original nose_fakie actor advancement. The native
+HUD displayed Fakie Nose Manual. A slower control retained its isolated
+state0 gap and low-speed fakie change as a separate incomplete trial. Both
+captures are included in the lifetime observations above. This establishes
+the ten-second native contact/stance hold in that context; final animation
+blend weight and numeric score attribution remain unverified.
 
 ## RC3-18 verification and earlier fingerflip admission
 
