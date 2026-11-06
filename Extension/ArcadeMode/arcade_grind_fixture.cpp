@@ -174,7 +174,7 @@ std::string fixture_rate(unsigned rate, const trainer::Telemetry& skater, bool e
     std::array<std::uint32_t, 8> words{};
     std::uint32_t state{}, mode{};
     const auto now = GetTickCount64();
-    if ((rate != 30 && rate != 60) || editing || multiplayer_session_active() ||
+    if ((rate != 30 && rate != 60 && rate != 120) || editing || multiplayer_session_active() ||
         !skater_physics::available() || !no_bail_skater(owner) || !skater.skater ||
         skater.sampled_entity != owner.entity || !skater.sampled_ms || now < skater.sampled_ms ||
         now - skater.sampled_ms > 150 || !std::isfinite(skater.speed) || skater.speed > .1f ||
@@ -210,16 +210,16 @@ std::string fixture_rate(unsigned rate, const trainer::Telemetry& skater, bool e
 }
 }
 void register_arcade_fixture_commands(Commands& registry) {
-    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel|trajectory|trajectory-status|trajectory-cancel|rate-30|rate-60", Type::text);
+    auto operation = argument("status|place|relocate|turn|reset|save|adopt|geometry|geometry-status|geometry-cancel|trajectory|trajectory-status|trajectory-cancel|rate-30|rate-60|rate-120", Type::text);
     operation.choices = {"status", "place", "relocate", "turn", "reset", "save", "adopt",
-        "geometry", "geometry-status", "geometry-cancel", "trajectory", "trajectory-status", "trajectory-cancel", "rate-30", "rate-60"};
+        "geometry", "geometry-status", "geometry-cancel", "trajectory", "trajectory-status", "trajectory-cancel", "rate-30", "rate-60", "rate-120"};
     auto entry = action("arcadefixture", "Single native flat-rail practice fixture", Group::objects, {operation});
     entry.run = [](const Model& model, const Values& values, const Output& out) {
         const auto& op = std::get<std::string>(values[0]);
         const auto editor = local_park_editor();
         const auto skater = trainer::telemetry();
-        if (op == "rate-30" || op == "rate-60") {
-            out(fixture_rate(op == "rate-30" ? 30u : 60u, skater, model.debug.park_editor)); return;
+        if (op == "rate-30" || op == "rate-60" || op == "rate-120") {
+            out(fixture_rate(op == "rate-30" ? 30u : op == "rate-60" ? 60u : 120u, skater, model.debug.park_editor)); return;
         }
         const auto count = std::count_if(editor.objects.begin(), editor.objects.end(), same_rail);
         const auto found = std::find_if(editor.objects.begin(), editor.objects.end(), same_rail);

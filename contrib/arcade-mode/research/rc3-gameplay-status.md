@@ -145,6 +145,21 @@ at30/60/120Hz; Windows and native gameplay acceptance remain pending.
 
 ## Grounded manual entry matrix
 
+The RC3-24 follow-up completed20 Manual and20 Nose Manual attempts at measured
+59.788–60.012 native steps/second, with both native/cached dt1/60. All40 reached
+the requested native contact in100 before physical A and later returned100.
+Three isolated0-state samples remain unknown;37/40 observation windows contain
+only100. No known air/offboard state appeared before A. The full receipt is
+[rc3-manual-entry-60hz.json](rc3-manual-entry-60hz.json). The native rate was
+restored to30Hz and the test pad detached with ArcadeON. This establishes entry
+at60Hz, not continuous balance, scoring or120Hz acceptance.
+
+The guarded fixture rate command is being extended to120 using the same
+existing native clock and skater step APIs already used for30/60. It retains
+the stopped local owner, two-truck contact, editor, multiplayer, readback and
+failure-restoration guards. No default gameplay rate changes. A120 command
+readback alone will not count; native cadence and both step values must agree.
+
 RC3-15 completed20 Manual and20 Nose Manual entries on Mega Park with four
 physical-stick trajectories: rapid reversal, diagonal travel, unequal throws
 and moderate pacing. Every valid attempt reached the requested native tail/nose
