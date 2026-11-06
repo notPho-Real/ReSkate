@@ -36,7 +36,18 @@ constexpr ArcadeTrick grab_family_trick(int family) noexcept {
 struct FingerflipObservation {
     bool valid{},in_fingerflip{},grabbing{},can_grab{};
     int identity{},family{};
+    bool state_known{},identity_known{};
 };
+// The native fingerflip state and identity are created by entry. A first
+// gesture can prepare them, but unread fields cannot prove entry or catch.
+template<class Read>
+FingerflipObservation sample_fingerflip_state(Read&& read) noexcept {
+    FingerflipObservation out{};
+    out.valid=read(4,out.grabbing) && read(6,out.family) && read(7,out.can_grab);
+    out.state_known=read(9,out.in_fingerflip);
+    out.identity_known=read(10,out.identity);
+    return out;
+}
 // Own only the original gesture and hand inputs. EAT owns its late-flip
 // buffer, the CDB owns the identity/destination, and StateFlow owns the actor.
 class FingerflipInput {
@@ -51,24 +62,27 @@ public:
         playback_.cancel();row_=row;parent_=&parent;began_=last_=now;last_tick_=tick;
         control_={parent.hands,0,0,0,true};return true;
     }
-    bool acknowledge(int identity,bool initialized,bool exact,float delta,float before,float after) noexcept {
-        if(!row_ || identity!=row_->identity || !initialized || !exact ||
+    bool acknowledge(const FingerflipObservation& observed,bool initialized,bool exact,float delta,float before,float after) noexcept {
+        if(!row_ || !observed.valid || !observed.state_known || !observed.in_fingerflip ||
+            !observed.identity_known || observed.identity!=row_->identity || !initialized || !exact ||
             !std::isfinite(delta) || delta<=0 || !std::isfinite(before) || !std::isfinite(after) || after<=before)return false;
         acknowledged_=true;return true;
     }
     Control poll(std::uint64_t now,std::uint64_t tick,bool settings,const FingerflipObservation& observed) noexcept {
         if(!row_)return {};
-        if(!observed.valid || now<last_ || now-last_>heartbeat_ms || tick<last_tick_ ||
+        if(!observed.valid || (entered_ && !observed.state_known) ||
+            now<last_ || now-last_>heartbeat_ms || tick<last_tick_ ||
             now-began_>lifetime_ms || (!acknowledged_ && now-began_>entry_ms)) {cancel();return {};}
         last_=now;last_tick_=tick;
-        if(observed.in_fingerflip)entered_=true;
+        if(observed.state_known && observed.in_fingerflip)entered_=true;
         if(started_ && !entered_ && !settings) {cancel();return {};}
-        if(observed.in_fingerflip && observed.identity && observed.identity!=row_->identity) {cancel();return {};}
+        if(observed.state_known && observed.in_fingerflip && observed.identity_known &&
+            observed.identity && observed.identity!=row_->identity) {cancel();return {};}
         // Stop the gesture as soon as the native actor accepts it, avoiding
         // another buffer entry. Neutral is explicitly owned during the catch.
         if(entered_)playback_.cancel();
         if(acknowledged_ && observed.family==row_->destination)destination_seen_=true;
-        if(entered_ && acknowledged_ && destination_seen_ && !observed.in_fingerflip &&
+        if(entered_ && acknowledged_ && destination_seen_ && observed.state_known && !observed.in_fingerflip &&
             observed.grabbing && observed.can_grab)completed_=true;
         const auto* hold=destination_seen_?pilot(grab_family_trick(row_->destination)):parent_;
         Control out{};out.hands=hold->hands;out.transition=true;

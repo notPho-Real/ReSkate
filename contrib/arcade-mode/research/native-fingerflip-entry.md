@@ -35,6 +35,19 @@ the existing source-authored regular Kickflip, Heelflip, BS Pop Shuvit or FS Pop
 Shuvit gesture. A temporary settings owner waits for the original getter to
 observe EnableFingerflips first. Saved preferences and the settings UI are unchanged.
 
+First use requires the verified original state and identity assets, not already
+allocated state pages. RC3-15 read-only capture
+`11af1d8978bcfc6e7fdac2f4616f77feffa89072a6b9ff90b11f74ed93a205d6`
+found both handles0 before any fingerflip. Requiring their values before sending
+the original gesture made entry circular. The adapter now records state and
+identity availability independently from the required source-grab observations.
+Unknown values permit preparation only: native entry must be observed, and
+acknowledgment requires known active state, exact identity and actor advancement.
+Losing the state after entry withdraws input rather than treating it as a catch.
+The original native entry predicates and failure deadlines remain unchanged.
+This correction has portable regressions but still needs Windows and hardware
+verification; the unallocated-field capture is not successful trick evidence.
+
 During entry the old grab's tweak writes are restored and suspended. The native
 fingerflip can leave IsGrabbing without ending its input owner. Acknowledgment
 requires the exact initialized body actor, positive animation advancement and

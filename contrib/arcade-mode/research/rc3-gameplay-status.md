@@ -1,5 +1,35 @@
 # RC3 implementation status — incomplete candidate
 
+## Fingerflip first-use admission
+
+RC3-15 read-only capture
+`11af1d8978bcfc6e7fdac2f4616f77feffa89072a6b9ff90b11f74ed93a205d6`
+found Bool.State.Is.FingerFlip and Enum.GS.FingerFlipType both unallocated
+(handle0). The runtime required both before preparing the gesture that enters
+their native owner. Admission now requires their original verified assets and
+the acknowledged source grab; missing values cannot acknowledge entry, identity,
+actor or catch. Known active state and exact identity are required for actor
+acceptance. State loss after entry cancels. Existing source CDB/gesture/settings
+mechanisms are reused. All20 portable suites pass, including first-use regression
+at30/60/120Hz; Windows and native gameplay acceptance remain pending.
+
+## Grounded manual entry matrix
+
+RC3-15 completed20 Manual and20 Nose Manual entries on Mega Park with four
+physical-stick trajectories: rapid reversal, diagonal travel, unequal throws
+and moderate pacing. Every valid attempt reached the requested native tail/nose
+contact in state100 before any A input. Each then exited with normal A and
+returned to ground. The capture receipts and exact attempt accounting are in
+the local RC3-15/manual-entry-matrix.json. Three attempts after the test pad's
+60-second deadline are excluded as invalid harness operation and were replaced
+with a fresh bounded batch, not counted as gameplay failures or passes.
+
+Native and cached dt were1/30 second. Independent same-session native clock
+capture `edbea437d9afe944fffaee3adf7327adf36d65cbe664b6f6580e4e93525c34c2`
+measured30.00126 steps/second. Its grab attempt was invalid due to console
+ownership withdrawal and supports clock evidence only. This is no claim for
+60/120Hz gameplay, continuous ten-second Nose Manual contact or scoring.
+
 ## Shared actor initialization coverage
 
 RC3-15 Benihana capture

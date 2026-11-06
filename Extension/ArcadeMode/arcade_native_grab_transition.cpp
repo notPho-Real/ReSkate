@@ -211,7 +211,8 @@ bool airborne(OwnershipObservation* observation=nullptr) noexcept {
 }
 std::uintptr_t address_at(std::uintptr_t block,unsigned index) noexcept {
     const auto& a=assets[index];std::uint32_t handle{},valid{};
-    if (!guid_is(a.object,a.guid) || !read(a.object+0x28,handle)) return 0;
+    if (!guid_is(a.object,a.guid) || !read(a.object+0x28,handle) ||
+        !(handle>>24) || (handle&4095)>=16) return 0;
     const auto page=pointer(block+0x60+8*(handle&4095));const auto offset=(handle>>12)&2047;
     if (!page || !read(page+0x71c+4*(offset>>5),valid) || !(valid&(1u<<(offset&31)))) return 0;
     return page+offset;
@@ -273,11 +274,10 @@ RetargetObservation retarget_observation() noexcept {
     return out;
 }
 FingerflipObservation finger_observation() noexcept {
-    FingerflipObservation out{};
-    out.valid=address(9) && address(10) && address(4) && address(6) && address(7) &&
-        read(address(9),out.in_fingerflip) && read(address(10),out.identity) &&
-        read(address(4),out.grabbing) && read(address(6),out.family) && read(address(7),out.can_grab);
-    return out;
+    return sample_fingerflip_state([](unsigned index,auto& value) noexcept {
+        const auto at=address(index);
+        return at && read(at,value);
+    });
 }
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);
@@ -294,7 +294,7 @@ void acknowledge(std::uint64_t now) noexcept {
         for(unsigned i=0;i<finger_contract::actors.size();++i) {
             const auto index=grab_actor_count+i;const auto& a=session.actors[index];
             if(&fingerflips[i]!=session.finger.row() || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms)continue;
-            if(session.finger.acknowledge(native.identity,a.initialized,a.object && actor_index(a.object)==static_cast<int>(index),a.delta,a.before,a.after))
+            if(session.finger.acknowledge(native,a.initialized,a.object && actor_index(a.object)==static_cast<int>(index),a.delta,a.before,a.after))
                 logging::log(logging::Level::info,logging::Channel::skater,
                     "ARCADE NATIVE FINGERFLIP: serial={} episode={} identity={} actor={} before={} after={} delta={} initialized=true destination={} scoring_acceptance=unverified.",
                     session.serial,session.episode,native.identity,a.object,a.before,a.after,a.delta,session.finger.row()->destination);
@@ -515,9 +515,10 @@ bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
     if(!active.load())return false;
     std::lock_guard lock(mutex);const auto now=GetTickCount64();
     if(!valid() || owner!=session.owner || episode!=session.episode || !session.lease.intent(now) ||
-        !session.lease.selected() || !address(9) || !address(10))return false;
+        !session.lease.selected() || !guid_is(assets[9].object,assets[9].guid) ||
+        !guid_is(assets[10].object,assets[10].guid))return false;
     const auto observed=finger_observation();
-    if(!observed.valid || observed.in_fingerflip || !session.finger.start(*session.lease.selected(),
+    if(!observed.valid || (observed.state_known && observed.in_fingerflip) || !session.finger.start(*session.lease.selected(),
         session.lease.acknowledged(),retarget_observation(),id,steps,now,tick,mirror))return false;
     session.serial=++serial;
     for(std::size_t i=grab_actor_count;i<session.actors.size();++i)session.actors[i]={};

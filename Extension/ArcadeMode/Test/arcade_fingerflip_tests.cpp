@@ -21,7 +21,7 @@ void transitions() {
             native_grab::FingerflipInput input;
             check(input.start(*p,true,parent(*p),gesture,steps,1000,60,false),"each source-qualified row has a gesture entry");
             check(input.row()==&row,"gesture maps to the source CDB row without confusing namespaces");
-            native_grab::FingerflipObservation observed{true,false,true,true,0,row.family};
+            native_grab::FingerflipObservation observed{true,false,true,true,0,row.family,true,true};
             auto control=input.poll(1000,60,false,observed);
             check(control.hands==p->hands && control.transition && !control.feet && !control.x && !control.y,"unobserved setting cannot emit a gesture or foot/jump input");
             bool delivered=false;
@@ -32,11 +32,14 @@ void transitions() {
                 check(control.hands==p->hands && !control.feet,"source hand stays held throughout original gesture delivery");
             }
             check(delivered,"original authored gesture advances at every tested sampling cadence");
-            check(!input.acknowledge(row.identity,true,true,0,0,1),"zero delta is not native animation acceptance");
-            check(!input.acknowledge(row.identity,false,true,1,0,1),"uninitialized actor is not native acceptance");
-            check(!input.acknowledge(row.identity,true,false,1,0,1),"a different original actor cannot acknowledge this row");
-            check(!input.acknowledge(row.identity+1,true,true,1,0,1),"a stale or different identity cannot acknowledge this row");
-            check(input.acknowledge(row.identity,true,true,1,0,1),"matching initialized advancing actor acknowledges the input");
+            observed.in_fingerflip=true;observed.identity=row.identity;
+            check(!input.acknowledge(observed,true,true,0,0,1),"zero delta is not native animation acceptance");
+            check(!input.acknowledge(observed,false,true,1,0,1),"uninitialized actor is not native acceptance");
+            check(!input.acknowledge(observed,true,false,1,0,1),"a different original actor cannot acknowledge this row");
+            ++observed.identity;
+            check(!input.acknowledge(observed,true,true,1,0,1),"a stale or different identity cannot acknowledge this row");
+            --observed.identity;
+            check(input.acknowledge(observed,true,true,1,0,1),"matching initialized advancing actor acknowledges the input");
             observed.in_fingerflip=true;observed.identity=row.identity;observed.family=row.destination;
             auto now=1000+8*1000/hz;
             control=input.poll(now,now*60/1000,true,observed);
@@ -59,7 +62,7 @@ void transitions() {
         if(failure==2)observed.right=false;
         const bool started=input.start(*p,failure!=3,observed,failure==4?36:2,steps,1000,60,false);
         if(failure<5){check(!started,"unqualified parent or unsupported gesture cannot enter");continue;}
-        native_grab::FingerflipObservation state{true,false,true,true,0,2};
+        native_grab::FingerflipObservation state{true,false,true,true,0,2,true,true};
         input.poll(1000,60,true,state);
         if(failure==5)state.valid=false;
         input.poll(failure==6?1200:1017,61,true,state);
@@ -93,6 +96,49 @@ struct Route {
         return session.poll(now,{buttons},0,0,env);
     }
 };
+void first_use() {
+    const auto* p=native_grab::pilot(ArcadeTrick::basic_bs_grab);
+    for(unsigned hz:{30u,60u,120u}) {
+        bool state_exists=false,identity_exists=false,base_exists=true;
+        bool native_active=false;int identity=0;
+        auto sample=[&] {
+            return native_grab::sample_fingerflip_state([&](unsigned index,auto& value) {
+                if(index==9) {value=static_cast<decltype(value+0)>(native_active);return state_exists;}
+                if(index==10) {value=static_cast<decltype(value+0)>(identity);return identity_exists;}
+                value=static_cast<decltype(value+0)>(index==6?2:1);return base_exists;
+            });
+        };
+        auto observed=sample();
+        check(observed.valid && !observed.state_known && !observed.identity_known,
+            "unallocated entry outputs do not invalidate an observed source grab");
+        native_grab::FingerflipInput input;
+        check(input.start(*p,true,parent(*p),2,steps,1000,60,false),"first use retains verified parent admission");
+        bool delivered=false;std::uint64_t now=1000;
+        for(unsigned n=0;n<8;++n) {
+            now=1000+n*1000/hz;
+            const auto control=input.poll(now,now*60/1000,true,observed);
+            delivered=delivered || control.x || control.y;
+            check(!input.acknowledge(observed,true,true,1,0,1),"unallocated native outputs never acknowledge an actor");
+        }
+        check(delivered && input.active() && !input.completed(),"cold gesture reaches native input without invented entry or catch");
+        state_exists=true;native_active=true;observed=sample();
+        now+=1000/hz;const auto control=input.poll(now,now*60/1000,true,observed);
+        check(!control.x && !control.y,"observed native entry stops gesture replay before identity allocation");
+        check(!input.acknowledge(observed,true,true,1,0,1),"state alone is insufficient for acceptance");
+        identity_exists=true;identity=11;observed=sample();
+        check(input.acknowledge(observed,true,true,1,0,1),"known identity and exact advancing actor acknowledge first use");
+        state_exists=false;observed=sample();now+=1000/hz;
+        input.poll(now,now*60/1000,true,observed);
+        check(!input.active() && !input.completed(),"lost state after entry is not a successful catch");
+        base_exists=false;
+        check(!sample().valid,"missing native parent remains invalid even before first use");
+    }
+    native_grab::FingerflipInput input;
+    check(input.start(*p,true,parent(*p),2,steps,1000,60,false),"timeout case starts from a qualified grab");
+    const native_grab::FingerflipObservation unknown{true,false,true,true,0,2,false,false};
+    for(std::uint64_t now=1000;now<=1900;now+=100)input.poll(now,now*60/1000,true,unknown);
+    check(!input.active() && !input.completed(),"unallocated outputs cannot extend the native entry deadline");
+}
 void routing() {
     for(unsigned direction:{0u,4u,8u,2u,1u}) {
         Route r;r.poll(1000,0,100);r.poll(1017,0x2000);r.poll(1034,0x2000);
@@ -110,4 +156,4 @@ void routing() {
     {Route r;r.poll(1000,0,100);r.poll(1017,0x6000,100);check(!r.requests,"ground B plus X cannot borrow airborne admission");}
 }
 }
-int main(){transitions();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}
+int main(){transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}
