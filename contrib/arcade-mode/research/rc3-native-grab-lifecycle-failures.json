@@ -1,0 +1,29 @@
+{
+  "scope": "Observed native failures; bindings and entry evidence remain recorded. These receipts do not classify untested contexts as unsupported.",
+  "one_footers": [
+    {
+      "native_id": 1,
+      "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+      "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+      "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+      "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+      "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+    },
+    {
+      "native_id": 4,
+      "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+      "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+      "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+      "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+      "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup."
+    },
+    {
+      "native_id": 7,
+      "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+      "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+      "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+      "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+      "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+    }
+  ]
+}

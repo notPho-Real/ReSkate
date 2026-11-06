@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "rc2_source": "2ffb006c73671466bfcdc15395ba96939de44f7d",
   "accounting_complete_for_input_inventory": true,
   "native_catalog_exhaustiveness_proven": false,
@@ -2236,12 +2236,12 @@
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
-      "BLOCKED": 14,
-      "IMPLEMENTED — GAMEPLAY PENDING": 80
+      "BLOCKED": 17,
+      "IMPLEMENTED — GAMEPLAY PENDING": 77
     },
     "sequences": {
-      "BLOCKED": 217,
-      "IMPLEMENTED — GAMEPLAY PENDING": 83
+      "BLOCKED": 220,
+      "IMPLEMENTED — GAMEPLAY PENDING": 80
     }
   },
   "caveats": [
@@ -4011,9 +4011,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4087,7 +4087,15 @@
             "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup."
+      }
     },
     {
       "native_name": "BSOneFootAir",
@@ -4795,9 +4803,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4844,6 +4852,14 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 1
+      },
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
       }
     },
     {
@@ -5693,9 +5709,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -5742,6 +5758,14 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 7
+      },
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
       }
     },
     {
@@ -14005,11 +14029,11 @@
       "arcade_binding": [
         "Select \"FS One Foot\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14052,7 +14076,15 @@
             "decoded_sha256": "fbe92515228ebd0c38607c3f295a825227527309d8fa0065802a16f6ac41b28f"
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+      }
     },
     {
       "native_name": "fs_frigid",
@@ -14278,11 +14310,11 @@
       "arcade_binding": [
         "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14352,7 +14384,15 @@
             "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup."
+      }
     },
     {
       "native_name": "bs_onefoot",
@@ -14578,11 +14618,11 @@
       "arcade_binding": [
         "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14625,7 +14665,15 @@
             "decoded_sha256": "f2a23b5c24f4f5243e9d54d607eddb21381060a88c07aa4fb6a3af8272a1049f"
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+      }
     },
     {
       "native_name": "taiil_onefoot",
@@ -17151,12 +17199,20 @@
       "decoded_sha256": "fbe92515228ebd0c38607c3f295a825227527309d8fa0065802a16f6ac41b28f",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Select \"FS One Foot\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+      }
     },
     {
       "resource_index": 7305,
@@ -19041,12 +19097,20 @@
       "decoded_sha256": "f2a23b5c24f4f5243e9d54d607eddb21381060a88c07aa4fb6a3af8272a1049f",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted.",
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+      }
     },
     {
       "resource_index": 21972,
@@ -20931,12 +20995,20 @@
       "decoded_sha256": "dc5551ea0995f4da03453498a854af74d0a9b538a5b03e3718473e9b25cfa90b",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup.",
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup."
+      }
     },
     {
       "resource_index": 35030,

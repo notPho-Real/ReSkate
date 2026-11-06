@@ -1,0 +1,21 @@
+[
+  {
+    "source": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+    "dll_sha256": "a7c8e54dbc4d588a0b7cccc7771da47c861a0ece6c17b5e7584bf9192be5b5af",
+    "map": "skate3_megapark",
+    "raw_sha256": "1ae6aab2e145b8848172340ddcf471fe7afa15ff61576116aabefba20a709ded",
+    "gzip_sha256": "311d2cbd7c5c74cae760c8752eec0ab32a0d5cf464fd57876dc6fa1aff41da58",
+    "samples": 1464,
+    "native_fakie_tail_contact_continuous_seconds": 11.176352249,
+    "grounded_entry_without_ollie": true,
+    "actor": "tail_fakie",
+    "actor_initialized_and_advanced": true,
+    "pose_blend_weight_verified": false,
+    "scoring_verified": false,
+    "low_speed_acceptance": false,
+    "physics_dt": 0.03333333134651184,
+    "cached_dt": 0.03333333134651184,
+    "input": "Up to neutral to Down for grounded entry, then RT; physical vertical balance corrections during hold",
+    "acceptance_limit": "This moving tail-contact trial verifies lifetime and native actor advancement, not blend weight, final pose correctness, low-speed reverts, nose-contact or chained-revert acceptance."
+  }
+]

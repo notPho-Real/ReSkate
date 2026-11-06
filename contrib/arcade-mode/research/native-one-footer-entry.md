@@ -163,3 +163,16 @@ Later footer requests without their requested footer identities are failed
 entries, even when the skater lands. The original Grab_Into CDB requires
 GrabType0 for these advanced families. Native exit ownership remains the
 blocker; clearing the enum by hand would conceal it and is not implemented.
+
+## Original-control release comparisons
+
+RC3-23 tested sequential foot-button then hand-trigger release on
+skate3_megapark with Arcade OFF. Native OneFooterType1 and4 both entered,
+but foot intent remained set after release, followed by state601, a second
+flight and eventual ground100. Earlier release did not remove that failure.
+The short comparison never entered a one-footer and is not exit evidence.
+Exact capture hashes, timings and unresolved requirements are recorded in
+[rc3-native-grab-lifecycle-failures.json](rc3-native-grab-lifecycle-failures.json).
+The coverage generator marks these known failures and Benihana stale-family
+cleanup BLOCKED while retaining their bindings and any valid entry evidence.
+No identity reset or footplant suppression is applied.
