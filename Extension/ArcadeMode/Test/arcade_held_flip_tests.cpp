@@ -35,6 +35,14 @@ void native_boundaries() {
         check(input.start(4000,id,native),"unadmitted preparation starts bounded input only");
         native.sampled_at=4201;
         check(!input.hold(4201,native,true) && !input.acknowledged(),"missing native window withdraws preparation at the input deadline");
+        native={true,true,true,false,false,id,0,5000};
+        check(input.start(5000,id,native),"late physical repetition starts only matching native input");
+        native.sampled_at=5088;native.prepare=false;
+        check(input.hold(5088,native,true) && !input.acknowledged(),
+            "the observed short Prepare window cannot prematurely withdraw an unfinished gesture or acknowledge admission");
+        native.sampled_at=5201;
+        check(!input.hold(5201,native,true) && !input.acknowledged(),
+            "seeing a Prepare window cannot grant an unadmitted gesture the longer held-actor lifetime");
     }
     for (unsigned failure=0;failure<9;++failure) {
         HeldFlipInput input;HeldFlipObservation native{true,true,true,false,false,2,0,1000};
@@ -45,7 +53,7 @@ void native_boundaries() {
         if(failure==2)flight=false;
         if(failure==3)now=999;
         if(failure==4)native.sampled_at=800;
-        if(failure==5)native.prepare=false;
+        if(failure==5){native.prepare=false;now=1201;native.sampled_at=1201;}
         if(failure==6)native.extra_rotations=2;
         if(failure==7)native.extra_rotations=std::nanf("");
         if(failure==8){now=2201;native.sampled_at=2201;}

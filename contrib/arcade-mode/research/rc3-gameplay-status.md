@@ -1,5 +1,31 @@
 # RC3 implementation status — incomplete candidate
 
+## Repeated-flip timing correction
+
+RC3-11 comparison capture
+`8020ed494b0ea45894543218c30003693c9b4654198b3c86c84eed82365d0438`
+used original stick controls with Arcade OFF. The held Heelflip established
+the original held intent, advanced its extra-rotation count, withdrew intent
+and returned to ground. The single control did not enter held intent.
+
+Earlier repeated-X capture
+`e2829dd7808d488d0dee4101e1b462098cbfd8077f33c6ce353a823dde340912`
+used presses at 520 and 610 ms after A on Mega Park. Native board axes measured
+1.99135 rotations, original held intent became true, the extra-rotation count
+reached one, and the skater returned to ground at 1.39448 seconds. Heading
+changed only 1.53 degrees. The exact held-loop callback and scoring remain
+unverified. This successful earlier input does not erase the later failure.
+
+The candidate correction gives every unadmitted repeat the existing 200 ms
+input-readiness budget. Previously, seeing PrepareHeldFlip once allowed its
+next false sample to withdraw input after only 88 ms, before admission. The
+native predicate still gates the original action; this changes no animation,
+counter, physics or admission window. An unadmitted input expires at 200 ms;
+an admitted input still withdraws at one native extra rotation or native exit.
+The observed boundary regression fails with the previous implementation and
+passes with this correction. All 20 local targeted suites pass. Windows CI
+and a repeated late-input Deck trial are required before accepting this fix.
+
 ## RC3-11 Mega Park tests
 
 Source `01ecfd50aaf66e5e1bcccfbe750efec24f9ee5b0`, DLL
