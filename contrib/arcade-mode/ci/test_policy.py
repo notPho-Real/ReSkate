@@ -21,7 +21,8 @@ def workflow(name):
     return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
 
 
-DEV = workflow("arcade-dev.yml")
+ENTRY = workflow("arcade-dev.yml")
+DEV = workflow("arcade-validation.yml")
 FAST = workflow("arcade-fast.yml")
 INTEGRATION = workflow("arcade-integration.yml")
 
@@ -78,7 +79,7 @@ class SchedulingTests(unittest.TestCase):
         self.assertEqual(len(set(groups)), len(groups))
         self.assertNotIn("concurrency", DEV)
         self.assertNotIn("concurrency", DEV["jobs"]["deck"])
-        self.assertEqual(DEV["jobs"]["publish"]["concurrency"]["cancel-in-progress"], "false")
+        self.assertEqual(ENTRY["jobs"]["publish"]["concurrency"]["cancel-in-progress"], "false")
 
     def test_full_policy_and_triggers(self):
         policy = DEV["jobs"]["policy"]["steps"][0]["env"]["FULL"]
@@ -88,7 +89,7 @@ class SchedulingTests(unittest.TestCase):
                        dict(message="[release candidate]"), dict(message="[full integration]"),
                        dict(branch="arcade-mode"), dict(branch="main")):
             self.assertTrue(expression(policy, context(**kwargs)))
-        self.assertIn("arcade-stage-*", DEV["on"]["push"]["branches"])
+        self.assertIn("arcade-stage-*", ENTRY["on"]["push"]["branches"])
         self.assertNotIn("branches", INTEGRATION["on"]["push"])
         self.assertEqual(INTEGRATION["jobs"]["complete"]["with"]["full_integration"], "true")
         self.assertIn("pull_request", INTEGRATION["on"])
@@ -106,7 +107,8 @@ class SchedulingTests(unittest.TestCase):
                 with patch.dict(os.environ, RESULTS=json.dumps(needs)):
                     with self.assertRaises(AssertionError):
                         exec(script, {})
-        self.assertIn("release-eligibility", DEV["jobs"]["publish"]["needs"])
+        self.assertEqual(ENTRY["jobs"]["publish"]["needs"], ["validation"])
+        self.assertIn("needs.validation.outputs.full", ENTRY["jobs"]["publish"]["if"])
         self.assertIn("targeted", DEV["jobs"]["deck"]["needs"])
         self.assertNotIn("continue-on-error", json.dumps(DEV))
         self.assertNotIn("workflow_run", DEV["on"])

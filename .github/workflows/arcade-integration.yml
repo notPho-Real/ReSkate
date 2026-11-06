@@ -14,9 +14,7 @@ permissions:
   contents: read
 jobs:
   complete:
-    permissions:
-      contents: write
-    uses: ./.github/workflows/arcade-dev.yml
+    uses: ./.github/workflows/arcade-validation.yml
     with:
       full_integration: true
       benchmark: true
