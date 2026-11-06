@@ -1,5 +1,35 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-18 verification and earlier fingerflip admission
+
+Installed and loaded source `5a1ff185616ccf83e88d984fbc213c62dbb8fb53`, DLL
+`4d5de27217ee199139ec02907c140dacf92b5f847f3c0b1ef78469d3ccd338f2`, passed
+development42155278109, integration42155278125 and targeted42155278175.
+RC2 and all earlier rollback identities were preserved. Mega Park remains the
+test map. No baseline promotion or release occurred.
+
+The first fingerflip request after launch now passes admission with initially
+unallocated state/identity fields, but did not enter a native fingerflip actor.
+The late BS loop acknowledgment leaves too little native TimeToLand for this
+flat-ground gesture timing. The next correction observes all11 non-Rocket
+original Grab_Into body actors and admits the transition from fresh family
+entry evidence. Detailed pose acknowledgment and fingerflip animation/catch
+requirements remain separate. All20 portable suites pass. New runtime/CI and
+native execution are still pending; no fingerflip gameplay completion is claimed.
+
+Cross-platform grounded Nose Manual→RT capture
+`bf0b5612e94a03abefb8b08bffc18e86e22dba6a0f091c9428231235aad5fc58`
+retained nose contact and moving-fakie orientation across11.388s, with one
+transient state0 sample between known state100 samples19ms apart. The strict
+uninterrupted trace therefore records7.084785434s then4.283709610s; bounded
+controller checkpoints measured10.098790388s without interruption. No observer
+or controller error occurred. A captured moving frame shows the native fakie
+nose-manual pose and HUD. This is stronger lifetime evidence but is not a clean
+ten-second continuous-state acceptance or verified blend-weight/scoring proof.
+Native and cached dt remained1/30. The setup Trainer teleport replaced the
+offboard owner, so its old observer was discarded and a fresh owner was resolved
+after normal board mounting. No test input was sent using the stale owner.
+
 ## RC3-17 native verification
 
 Source `2a3254a73f43b9950c39cae876027585e32331bf` passed development

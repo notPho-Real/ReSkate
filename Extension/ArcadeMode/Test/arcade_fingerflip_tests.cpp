@@ -2,6 +2,8 @@
 #include "Extension/ArcadeMode/arcade_input_session.h"
 #include "Extension/ArcadeMode/arcade_native_input_state.h"
 #include "Engine/Game/Build/20260929/arcade_fingerflip.h"
+#include "Engine/Game/Build/20260929/arcade_grab_transition.h"
+#include <limits>
 #include <cstdlib>
 #include <iostream>
 #include <set>
@@ -11,6 +13,40 @@ void check(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit
 const std::array<AuthoredStickStep,5> steps{{{0,0,0},{2,0,-28000},{4,28000,28000},{7,0,0},{9,0,0}}};
 native_grab::RetargetObservation parent(const native_grab::Pilot& p) {
     return {true,true,true,(p.hands&1u)!=0,(p.hands&2u)!=0,p.family};
+}
+void family_entry() {
+    namespace contract=dingosdk::game::build::v20260929::arcade_grab_transition;
+    std::set<int> families;
+    for(const auto& actor:contract::family_entry_actors) {
+        const auto* p=native_grab::pilot(native_grab::grab_family_trick(actor.family));
+        check(p!=nullptr,"every original family entry has a transition source");
+        families.insert(actor.family);
+        const native_grab::GrabFamilyEntryObservation good{actor.family,true,true,1,0,1,1000};
+        native_grab::Lease pose;
+        check(pose.request(p->trick,1000,true) && !pose.acknowledged(),"Into must not claim a detailed pose loop");
+        for(unsigned failure=0;failure<12;++failure) {
+            auto entry=good;auto observed=parent(*p);std::uint64_t now=1010;
+            if(failure==1)entry.family=actor.family%9+1;
+            if(failure==2)entry.initialized=false;
+            if(failure==3)entry.exact=false;
+            if(failure==4)entry.delta=0;
+            if(failure==5)entry.after=entry.before;
+            if(failure==6)entry.before=std::numeric_limits<float>::quiet_NaN();
+            if(failure==7)now=1000+native_grab::Lease::heartbeat_ms+1;
+            if(failure==8)now=999;
+            if(failure==9)observed.grabbing=false;
+            if(failure==10)observed.can_grab=false;
+            if(failure==11)observed.left=observed.right=false;
+            native_grab::FingerflipInput input;
+            check(input.start(*p,entry.eligible(*p,observed,now),observed,2,steps,now,60,false)==(failure==0),
+                  "only a fresh exact advancing family actor admits transition before the pose loop");
+            check(!pose.acknowledged(),"family transition admission never upgrades detailed-pose acceptance");
+        }
+    }
+    check(families.size()==9,"all nine native fingerflip source families have Into evidence");
+    const auto* footer=native_grab::pilot(ArcadeTrick::airwalk);
+    check(!native_grab::GrabFamilyEntryObservation{footer->family,true,true,1,0,1,1000}.eligible(*footer,parent(*footer),1010),
+          "a family Into actor does not make a one-footer eligible for fingerflips");
 }
 void transitions() {
     std::set<int> covered;
@@ -156,4 +192,4 @@ void routing() {
     {Route r;r.poll(1000,0,100);r.poll(1017,0x6000,100);check(!r.requests,"ground B plus X cannot borrow airborne admission");}
 }
 }
-int main(){transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}
+int main(){family_entry();transitions();first_use();routing();std::cout<<"Native fingerflip routing and lifecycle tests passed\n";}

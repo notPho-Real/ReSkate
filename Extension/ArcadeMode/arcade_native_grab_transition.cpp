@@ -53,10 +53,11 @@ std::array<Asset,15> assets{{
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
 constexpr auto footer_actor_end=contract::actor_assets.size()+contract::footer_entry_actors.size();
-constexpr auto grab_actor_count=footer_actor_end+contract::grab_entry_actors.size();
+constexpr auto pose_actor_end=footer_actor_end+contract::grab_entry_actors.size();
+constexpr auto grab_actor_count=pose_actor_end+contract::family_entry_actors.size();
 const Pilot* actor_profile(unsigned index) noexcept {
     if(index<contract::actor_assets.size())return &pilots[index];
-    if(index>=grab_actor_count)return nullptr;
+    if(index>=pose_actor_end)return nullptr;
     if(index>=footer_actor_end) {
         const auto detail=contract::grab_entry_actors[index-footer_actor_end].detail;
         for(const auto& profile:pilots)if(!profile.one_footer && profile.detail==detail)return &profile;
@@ -67,6 +68,7 @@ const Pilot* actor_profile(unsigned index) noexcept {
     return nullptr;
 }
 const contract::GrabActorAsset& grab_actor_asset(unsigned index) noexcept {
+    if(index>=pose_actor_end)return contract::family_entry_actors[index-pose_actor_end].actor;
     if(index>=footer_actor_end)return contract::grab_entry_actors[index-footer_actor_end].actor;
     return index<contract::actor_assets.size()?contract::actor_assets[index]:
         contract::footer_entry_actors[index-contract::actor_assets.size()].actor;
@@ -287,6 +289,16 @@ int actor_index(std::uintptr_t actor) noexcept {
         if(guid_is(asset,finger_contract::actors[i]))return static_cast<int>(grab_actor_count+i);
     return -1;
 }
+int family_entry_index(const Pilot& parent,const RetargetObservation& observed,std::uint64_t now) noexcept {
+    for(unsigned i=0;i<contract::family_entry_actors.size();++i) {
+        const auto index=pose_actor_end+i;const auto& a=session.actors[index];
+        const GrabFamilyEntryObservation entry{contract::family_entry_actors[i].family,
+            a.initialized,a.object && actor_index(a.object)==static_cast<int>(index),
+            a.delta,a.before,a.after,a.advanced_at};
+        if(entry.eligible(parent,observed,now))return static_cast<int>(index);
+    }
+    return -1;
+}
 void acknowledge(std::uint64_t now) noexcept {
     if(session.finger.active()) {
         const auto native=finger_observation();
@@ -477,6 +489,8 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
         (!valid() || !session.lease.intent(GetTickCount64()) || !retarget_observation().eligible(session.lease.selected()))) return false;
     if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
     session.serial=++serial;session.reported=false;
+    // A previous requested pose cannot lend its Into receipt to this request.
+    for(std::size_t i=pose_actor_end;i<grab_actor_count;++i)session.actors[i]={};
     if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire("request");return false;}
     input::gameplay_options().release(foot_settings_owner);session.foot_settings_since=0;
     refresh_foot_settings(GetTickCount64());
@@ -518,14 +532,22 @@ bool fingerflip(const NoBailSkater& owner,std::uint64_t episode,std::uint8_t id,
         !session.lease.selected() || !guid_is(assets[9].object,assets[9].guid) ||
         !guid_is(assets[10].object,assets[10].guid))return false;
     const auto observed=finger_observation();
+    const auto source=retarget_observation();
+    const auto source_into=family_entry_index(*session.lease.selected(),source,now);
     if(!observed.valid || (observed.state_known && observed.in_fingerflip) || !session.finger.start(*session.lease.selected(),
-        session.lease.acknowledged(),retarget_observation(),id,steps,now,tick,mirror))return false;
+        session.lease.acknowledged() || source_into>=0,source,id,steps,now,tick,mirror))return false;
     session.serial=++serial;
     for(std::size_t i=grab_actor_count;i<session.actors.size();++i)session.actors[i]={};
     restore();refresh_finger_settings(now);
+    if(source_into>=0) {
+        const auto index=static_cast<unsigned>(source_into);const auto& a=session.actors[index];
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE GRAB FAMILY ENTRY: serial={} family={} actor={} actor_asset={} before={} after={} delta={} initialized=true detailed_pose_acceptance=false.",
+            session.serial,source.family,a.object,grab_actor_asset(index).name,a.before,a.after,a.delta);
+    }
     logging::log(logging::Level::info,logging::Channel::skater,
-        "ARCADE NATIVE FINGERFLIP REQUEST: serial={} episode={} gesture={} expected_identity={} source_family={} destination={} animation_acknowledged=false.",
-        session.serial,episode,id,session.finger.row()->identity,session.finger.row()->family,session.finger.row()->destination);
+        "ARCADE NATIVE FINGERFLIP REQUEST: serial={} episode={} gesture={} expected_identity={} source_family={} destination={} source_into_verified={} animation_acknowledged=false.",
+        session.serial,episode,id,session.finger.row()->identity,session.finger.row()->family,session.finger.row()->destination,source_into>=0);
     return true;
 }
 bool right_hand_input(const NoBailSkater& owner,std::uint64_t episode) noexcept {

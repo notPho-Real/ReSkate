@@ -38,6 +38,20 @@ struct FingerflipObservation {
     int identity{},family{};
     bool state_known{},identity_known{};
 };
+// Into proves the established hand/family needed by the native fingerflip
+// CDB, not a detailed tweak pose or its later hold loop.
+struct GrabFamilyEntryObservation {
+    int family{};
+    bool initialized{},exact{};
+    float delta{},before{},after{};
+    std::uint64_t advanced_at{};
+    bool eligible(const Pilot& parent,const RetargetObservation& observed,std::uint64_t now) const noexcept {
+        return !parent.one_footer && family==parent.family && observed.eligible(&parent) &&
+            initialized && exact && std::isfinite(delta) && delta>0 &&
+            std::isfinite(before) && std::isfinite(after) && after>before &&
+            now>=advanced_at && now-advanced_at<=Lease::heartbeat_ms;
+    }
+};
 // The native fingerflip state and identity are created by entry. A first
 // gesture can prepare them, but unread fields cannot prove entry or catch.
 template<class Read>
@@ -53,9 +67,9 @@ FingerflipObservation sample_fingerflip_state(Read&& read) noexcept {
 class FingerflipInput {
 public:
     static constexpr std::uint64_t entry_ms=800, lifetime_ms=2500, heartbeat_ms=150;
-    bool start(const Pilot& parent,bool parent_acknowledged,const RetargetObservation& observed,
+    bool start(const Pilot& parent,bool parent_established,const RetargetObservation& observed,
                int flip,std::span<const AuthoredStickStep> steps,std::uint64_t now,std::uint64_t tick,bool mirror) noexcept {
-        if(active() || parent.one_footer || !parent_acknowledged || !observed.eligible(&parent))return false;
+        if(active() || parent.one_footer || !parent_established || !observed.eligible(&parent))return false;
         const auto* row=fingerflip_row(parent.family,flip);
         if(!row || !playback_.start(steps,tick,false,mirror,true))return false;
         std::copy(steps.begin(),steps.end(),steps_.begin());size_=steps.size();mirror_=mirror;

@@ -28,8 +28,16 @@ identity or rotation count, or creates an animation. This implementation is
   original sequence and original body actor. FS Varial uses sequence 33917;
   filtering filenames for `fingerflip` alone misses it.
 
-The adapter accepts a fresh physical X press only from an acknowledged native
-grab with matching hand intent, CanGrab and family. It rejects footers, Rocket
+The adapter accepts a fresh physical X press from either the acknowledged
+native grab pose or a freshly initialized and advancing original family Into
+actor, with matching hand intent, CanGrab and family. The latter proves only
+the family required by the original fingerflip CDB, not a detailed tweak pose.
+The [original family joins](native-grab-family-entries.json) account for all16
+Grab_Into rows and their12 distinct body actors. Eleven non-Rocket actors cover
+the nine fingerflip source families, including FS/BS-to-double transitions.
+The runtime checks the same local owner/view, exact actor asset, positive
+advancement and150ms freshness; a new grab request clears earlier Into receipts.
+It rejects footers, Rocket
 Air, nollie, ground, another stick owner and conflicting controls. It delivers
 the existing source-authored regular Kickflip, Heelflip, BS Pop Shuvit or FS Pop
 Shuvit gesture. A temporary settings owner waits for the original getter to
@@ -45,8 +53,16 @@ Unknown values permit preparation only: native entry must be observed, and
 acknowledgment requires known active state, exact identity and actor advancement.
 Losing the state after entry withdraws input rather than treating it as a catch.
 The original native entry predicates and failure deadlines remain unchanged.
-This correction has portable regressions but still needs Windows and hardware
-verification; the unallocated-field capture is not successful trick evidence.
+The first-use allocation correction passed Windows and RC3-18 hardware
+admission. Capture
+`7e4b9df898e3ab2952a7d9578d2a9442b6a25073efb2e3a5e1ade54200384f70`
+accepted BS Fingerflip identity11 input on the first attempt after launch, but
+never entered the native fingerflip actor. Its BS hold loop was acknowledged
+at1.576s, X arrived at1.60s, and native TimeToLand fell from0.31 at1.611s to0.24
+at1.679s while the authored gesture was still being delivered. The native
+time-to-land predicate remains unchanged. Earlier family-Into admission removes
+the artificial wait for the hold loop; its Windows build and native execution
+remain pending. Request admission is not successful trick evidence.
 
 During entry the old grab's tweak writes are restored and suspended. The native
 fingerflip can leave IsGrabbing without ending its input owner. Acknowledgment
@@ -97,4 +113,5 @@ FingerFlipType and catch/destination. Hold B through return, try a second
 transition, release B and land. Repeat with B released during entry and near
 landing. Verify native combo/score and original vertical trajectory. Held X,
 X before grab acknowledgment, footers, Rocket Air and ground B+X must not start
-a substitute flip or another Ollie. No RC3 hardware capture is yet claimed.
+a substitute flip or another Ollie. No successful RC3 fingerflip animation or
+scoring capture is yet claimed.
