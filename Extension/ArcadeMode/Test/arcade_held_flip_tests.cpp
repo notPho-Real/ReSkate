@@ -115,6 +115,20 @@ struct Route {
     }
 };
 void physical_repetition() {
+    for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{25000}}) {
+        auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
+        const auto step=1000/hz;
+        h->poll(1200,{},201,id,true);
+        h->poll(1200+step,{},201,id,false);
+        const auto out=h->poll(1200+2*step,{0x4000},201,id,false);
+        check(!h->repeats && h->bridge_calls==1 && !out.authored_playback &&
+            !out.right_x && !out.right_y,
+            "a second X after the observed native preparation window cannot start a disconnected gesture");
+        h->poll(1300,{},201,id,true);
+        h->poll(1317,{0x4000},201,id,true);
+        check(!h->repeats && h->bridge_calls==1,
+            "a later native flag cannot reopen the first flip repetition window");
+    }
     for(bool takeoff:{false,true}) {
         auto h=std::make_unique<Route>();
         h->poll(1000,{},100,-1);h->poll(1017,{0x1000},100,-1);h->poll(1051,{0x1000},100,1);

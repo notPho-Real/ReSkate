@@ -48,6 +48,7 @@ public:
     void reset() noexcept {
         input_.reset(); authored_.cancel(); manual_.cancel(); auxiliary_.cancel();
         held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
+        held_prepare_seen_=held_prepare_retired_=false;
         footplant_=ground_grab_=false;
         push_.reset(); board_.reset(); board_active_ = false; board_consumed_ = 0; rail_ = holding_ = air_action_ = false; air_followup_id_=0;
         clocked_ = false; extension_started_ = false; grab_hold_button_ = 0; current_ = nullptr; jump_launch_ = {};
@@ -229,12 +230,25 @@ public:
         }
         if (!admission.offboard) output.buttons &= static_cast<std::uint16_t>(~0xf00fu);
         output.right_x = output.right_y = 0; // Physical right stick belongs to the camera.
-        if (!air_action_) {held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};}
+        if (!air_action_) {
+            held_flip_.cancel();held_flip_used_=false;held_flip_lineage_={};
+            held_prepare_seen_=held_prepare_retired_=false;
+        }
         else if ((air_followup_id_==2 || air_followup_id_==3) && (!held_flip_used_ || held_flip_.active())) {
             if (!held_flip_continues(held_flip_lineage_,native,now,air_followup_id_)) {
                 held_flip_used_=true;
                 if (held_flip_.active()) {held_flip_.cancel();authored_.release(admission.tick);output.held_input_released=true;}
             } else held_flip_lineage_=native;
+        }
+        if (air_action_ && !held_flip_used_ && admission.held_flip.fresh(now) &&
+            admission.held_flip.id==air_followup_id_) {
+            // A late physical repeat can still match the Arcade 300ms history
+            // after the original EAT preparation window has ended. Starting
+            // its stick gesture then can rotate without the native held action
+            // and catch. Retire only new requests after that observed window;
+            // an already prepared gesture retains its existing admission rules.
+            if (admission.held_flip.prepare) held_prepare_seen_=true;
+            else if (held_prepare_seen_) held_prepare_retired_=true;
         }
         if (held_flip_.active()) {
             const bool same_flight=air_action_ && native.required && native.fresh(now) &&
@@ -648,7 +662,7 @@ private:
             if (request.form==InputForm::held_repeat) {
                 const auto id=request.air.trick==ArcadeTrick::double_kickflip?2:
                     request.air.trick==ArcadeTrick::double_heelflip?3:0;
-                if (!id || request.presses!=2 || request.nollie || held_flip_used_ || !air_action_ ||
+                if (!id || request.presses!=2 || request.nollie || held_flip_used_ || held_prepare_retired_ || !air_action_ ||
                     air_followup_id_!=id || launch_context_!=GestureContext::ground ||
                     !admission.native_context.required || !admission.native_context.fresh(now_) ||
                     admission.native_context.air_episode()!=air_actor_episode_ || admission.external_owner ||
@@ -715,11 +729,15 @@ private:
                     out.native_flip_request=id;native_followup_=true;
                     air_action_=true;air_actor_episode_=admission.native_context.air_episode();air_followup_id_=id;
                     held_flip_lineage_=admission.native_context;
+                    held_prepare_seen_=held_prepare_retired_=false;
                     return InputDisposition::started;
                 }
                 native_followup_=false;
                 air_action_ = start(id, request.nollie, false, context, true);
-                if (air_action_) { air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id;held_flip_lineage_=admission.native_context; }
+                if (air_action_) {
+                    air_actor_episode_ = admission.native_context.air_episode(); air_followup_id_=id;held_flip_lineage_=admission.native_context;
+                    held_prepare_seen_=held_prepare_retired_=false;
+                }
                 return air_action_ ? InputDisposition::started : InputDisposition::unsupported;
             }
         }
@@ -930,6 +948,7 @@ private:
     AuthoredPlayback authored_{};
     HeldFlipInput held_flip_{};
     bool held_flip_used_{};
+    bool held_prepare_seen_{},held_prepare_retired_{};
     InputNativeContext held_flip_lineage_{};
     ManualActuation manual_{};
     ActionDispatch auxiliary_{};
