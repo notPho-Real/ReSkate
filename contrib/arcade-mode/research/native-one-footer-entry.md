@@ -144,3 +144,85 @@ Footer initialization records at most8 other actor identities per lease and
 32 per process. A known actor advancing without initialization in the current
 lease is reported separately and never acknowledged. These diagnostics must
 identify the missing native transition/ownership evidence before another fix.
+
+## RC3-20 entry and stale-family reproduction
+
+On skate3_megapark, sourceae52b74c67e3f8b90439473066140760efa417cc
+initialized and advanced Benihana Into199d8b43-b79f-9aab-199d-8b43b79f9aab
+from0 to3 with positive vertical velocity. The separate Loop initialized but
+did not receive positive-advancement acknowledgment. OneFooterType7 cleared,
+then physics entered504; GrabType3 remained after recovery. Capture raw SHA-256:
+4dba8593eceafbe474d7678bd50e3b4d58d5a8107cc2702224d1b3599fc40369.
+
+An ordinary BS grab's native exit cleared the stale family. A following
+Benihana with earlier B release reached OneFooterType7 at1.591s, cleared it
+at1.762s and returned to ground100 at2.030s without an observed bail, but
+GrabType3 still remained. Capture raw SHA-256:
+5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90.
+Later footer requests without their requested footer identities are failed
+entries, even when the skater lands. The original Grab_Into CDB requires
+GrabType0 for these advanced families. Native exit ownership remains the
+blocker; clearing the enum by hand would conceal it and is not implemented.
+
+## Original-control release comparisons
+
+RC3-23 tested sequential foot-button then hand-trigger release on
+skate3_megapark with Arcade OFF. Native OneFooterType1 and4 both entered,
+but foot intent remained set after release, followed by state601, a second
+flight and eventual ground100. Earlier release did not remove that failure.
+The short comparison never entered a one-footer and is not exit evidence.
+Exact capture hashes, timings and unresolved requirements are recorded in
+[rc3-native-grab-lifecycle-failures.json](rc3-native-grab-lifecycle-failures.json).
+The coverage generator marks these known failures and Benihana stale-family
+cleanup BLOCKED while retaining their bindings and any valid entry evidence.
+No identity reset or footplant suppression is applied.
+# RC3-24 ramp lifecycle follow-up
+
+Benihana's original Into actor199d8b43-b79f-9aab-199d-8b43b79f9aab advanced0→3
+after Down-Left+B on an original quarter pipe in Mega Park. Native footer7 and
+grabbing-loop state followed. Releasing B at2.800s cleared footer and foot
+intent at2.846s; GrabType cleared with native exit state at3.243s, before a
+ground100 landing at3.616s. No footplant, second flight or bail occurred before
+that landing. The machine-readable receipt is
+[rc3-native-grab-ramp-lifecycle.json](rc3-native-grab-ramp-lifecycle.json).
+
+This demonstrates a clean release in a longer native airtime context, without
+counter resets, animation replacement or physics changes. It does not erase
+the earlier flat-ground failure or establish the exact Loop/Exit actors and
+numeric scoring. The catalog retains the specific unresolved context alongside
+this successful ramp evidence.
+
+Airwalk12 on the same original ramp entered and advanced its exact Into actor
+31f883e8-df24-3cc3-31f8-83e8df243cc3 in two trials. Both cleared footer and
+GrabType through native GrabExit before impact, but both landed in504.
+Releasing B at2.45s instead of2.80s did not prevent the failure. In the earlier
+release capture, native GrabExit ended around3.183s, roughly0.6s before the
+bail. The board remained substantially tilted during the final descent.
+This is not evidence that clearing a native enum or shortening the physical
+hold would fix landing. Exact Exit actor/pose ownership and an original-control
+comparison remain required. The timings and hashes are recorded in
+`rc3-native-grab-lifecycle-failures.json`; Airwalk is now explicitly BLOCKED
+for this observed landing failure, with its executable binding preserved.
+
+The same ramp's Judo4 capture initialized and advanced its exact Into actor,
+then the lease retired through `refresh` while physical B remained held.
+Its failed validity read reported state0; the immediately following retirement
+observation reported the same verified owner in201. Native foot intent cleared
+before the scheduled physical release, followed by footer/grab cleanup and a
+504 landing. The receipt is attached to Judo's existing lifecycle failure.
+The independent live reads are explicitly not a transactional physics snapshot.
+The next source investigation must distinguish native state publication timing
+from a real owner/state loss before changing cancellation. This observation
+does not authorize reusing old air state, bypassing guards or suppressing bail.
+
+The follow-up uses a single bounded fresh read after zero. It revalidates the
+same complete owner and state block before and after that read. Only an actual
+new200/201 result satisfies airborne admission. Persistent zero, failed reads,
+owner replacement and every non-air state still cancel; no cached state is
+substituted and no polling delay is introduced. Nonzero state reads retain the
+previous path. A bounded diagnostic records the initial zero and actual recheck
+result. Portable regression coverage exercises the observed held-Judo case and
+those rejection paths at30/60/120Hz. This addresses inconsistent observation;
+it does not establish native catch, landing or scoring acceptance, and it cannot
+repair a zero that persists through the recheck. A new exact-source native trial
+must show whether the observed premature cancellation is resolved.

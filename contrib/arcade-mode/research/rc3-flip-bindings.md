@@ -1,4 +1,4 @@
-# RC3 repeated flip controls — native acceptance pending
+# RC3 repeated flip controls — partial native acceptance
 
 | Control after A / Ollie | Requested native action |
 | --- | --- |
@@ -18,6 +18,17 @@ and animation own looping, catch, count, landing and scoring. Native held count
 one means one additional rotation, as corroborated by the unchanged RC2 stock
 control captures in `native-held-flip-rc2-controls.json`.
 
-RC3 X/X execution still needs a Windows runtime build and native actor/rotation
-acceptance. Portable tests use explicit simulated native observations and are
-not a substitute for that capture. See `rc3-gameplay-status.md` for current limits.
+RC3-17 passed its Windows runtime build and exact-source integration gates.
+On Mega Park at30Hz, the first repeated-X attempt after launch produced two
+measured board turns with90ms between presses; a150ms repeat and Double Heelflip
+also produced two turns. All three observed the correct initialized/advancing
+native held loop, extra-count1, catch and ground return. The single-X control
+retained one turn and extra-count0. The complete eligible window, higher-rate
+gameplay and scoring ownership remain pending. Portable tests use simulated
+native observations. See `rc3-gameplay-status.md` for capture hashes and limits.
+
+RC3-24 repeated the single-X and150ms double-X controls on Mega Park. They
+measured0.991478 and1.991346 native board turns, respectively, with original
+held-loop advancement, catch and ground return. The exact current-build receipt
+is in `rc3-native-repeated-flip-observations.json`. This does not extend the
+accepted timing window or establish numeric scoring.

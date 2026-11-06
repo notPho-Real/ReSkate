@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "rc2_source": "2ffb006c73671466bfcdc15395ba96939de44f7d",
   "accounting_complete_for_input_inventory": true,
   "native_catalog_exhaustiveness_proven": false,
@@ -2232,16 +2232,16 @@
       }
     }
   ],
-  "native_actor_evidence_count": 21,
+  "native_actor_evidence_count": 23,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
-      "BLOCKED": 14,
-      "IMPLEMENTED — GAMEPLAY PENDING": 80
+      "BLOCKED": 18,
+      "IMPLEMENTED — GAMEPLAY PENDING": 76
     },
     "sequences": {
-      "BLOCKED": 217,
-      "IMPLEMENTED — GAMEPLAY PENDING": 83
+      "BLOCKED": 221,
+      "IMPLEMENTED — GAMEPLAY PENDING": 79
     }
   },
   "caveats": [
@@ -2367,18 +2367,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 4,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 8,
           "episode": 6,
           "native_detail": 6,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 4,
+              "episode": 6,
+              "native_detail": 6,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -2593,18 +2613,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 6,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 10,
           "episode": 8,
           "native_detail": 11,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 6,
+              "episode": 8,
+              "native_detail": 11,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -3529,18 +3569,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 3,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 7,
           "episode": 5,
           "native_detail": 4,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 3,
+              "episode": 5,
+              "native_detail": 4,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -3642,18 +3702,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 7,
-          "episode": 9,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 22,
+          "episode": 21,
           "native_detail": 5,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 7,
+              "episode": 9,
+              "native_detail": 5,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -3931,9 +4011,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4007,7 +4087,42 @@
             "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
+        "ramp_followup": {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "capture": "artifacts/RC3-24/ramp-judo-trials-result.json.gz",
+          "capture_sha256": "4fc18a611c3913735d6a547d5efa1e78c1c6ffa16601767a15557ac12cfb4174",
+          "compressed_sha256": "39ccf0476c7480bfc8f5d2f1bd3d574b5c831f8d98ef2321d60a12bcdca8171d",
+          "native_id": 4,
+          "binding": "Up-Right+B,B within250ms; hold second B",
+          "into_actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+          "into_initialized_and_advanced": true,
+          "into_before": 0,
+          "into_after": 3,
+          "native_entry_seconds": 2.2758,
+          "native_loop_state_seconds": 2.515,
+          "foot_intent_cleared_seconds": 2.6713,
+          "footer_cleared_seconds": 2.6801,
+          "physical_b_release_seconds": 2.8,
+          "grab_cleared_with_exit_seconds": 3.076,
+          "bail_seconds": 3.6424,
+          "lease_cancellation": {
+            "reason": "refresh",
+            "failed_state_read_value": 0,
+            "owner_verified": true,
+            "immediately_following_state": 201,
+            "physical_b_still_held": true
+          },
+          "diagnosis": "Observed inconsistent independent state reads caused premature grab retirement. This is not proof that every state0 is transient or permission to bypass owner/state guards. Trace native publication and existing physics observation before changing cancellation. Bail causality and exact Exit actor remain unverified."
+        }
+      }
     },
     {
       "native_name": "BSOneFootAir",
@@ -4202,18 +4317,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 8,
-          "episode": 10,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 23,
+          "episode": 22,
           "native_detail": 9,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 8,
+              "episode": 10,
+              "native_detail": 9,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -4695,9 +4830,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -4744,6 +4879,14 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 1
+      },
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
       }
     },
     {
@@ -4844,18 +4987,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 9,
-          "episode": 11,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 24,
+          "episode": 23,
           "native_detail": 36,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 9,
+              "episode": 11,
+              "native_detail": 36,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -4957,18 +5120,38 @@
       },
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 10,
-          "episode": 12,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 25,
+          "episode": 24,
           "native_detail": 37,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 10,
+              "episode": 12,
+              "native_detail": 37,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -5553,9 +5736,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -5602,6 +5785,43 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 7
+      },
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
       }
     },
     {
@@ -6450,9 +6670,9 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6499,6 +6719,48 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 12
+      },
+      "native_lifecycle_failure": {
+        "native_id": 12,
+        "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+        "capture_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+        "context": "skate3_megapark; original quarter pipe; Arcade Down-Right+B; normal and earlier B-release comparison",
+        "observation": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
+        "blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
+        "comparisons": [
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-trials-result.json.gz",
+            "raw_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+            "gzip_sha256": "48bcadaaa0728904c6da32ab0c5f53dd138c967f5cb4578ed84c7132026a0c02",
+            "serial": 10,
+            "entry_seconds": 2.191358376,
+            "physical_release_seconds": 2.8,
+            "footer_cleared_seconds": 2.828181453,
+            "grab_cleared_with_exit_seconds": 3.225978277,
+            "bail_seconds": 3.461762141,
+            "last_airborne_board_tilt_degrees": 55.904526239726245,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          },
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-early-trials-result.json.gz",
+            "raw_sha256": "38d218d071fb88b0f2ad822ea929a910c45fbb147ac98da8c8681438a5ee41d5",
+            "gzip_sha256": "758cff672e77d3267d621b1bcd38f1383b8e850a777249d543a75d930fdba89e",
+            "serial": 11,
+            "entry_seconds": 2.215982859,
+            "physical_release_seconds": 2.45,
+            "footer_cleared_seconds": 2.524899054,
+            "grab_cleared_with_exit_seconds": 2.920200419,
+            "bail_seconds": 3.783999929,
+            "last_airborne_board_tilt_degrees": 34.4867094095646,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          }
+        ]
       }
     },
     {
@@ -8301,20 +8563,71 @@
         "Establish BS Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "6920b836-af5d-55cd-6920-b836af5d55cd"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 11
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-bs-finger-trials-result.json.gz",
+          "uncompressed_sha256": "33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7",
+          "compressed_sha256": "e9999ebe3fc438cb919746592b2f1b2434599910bfbf2b6b2d5f4f8cf9769981",
+          "serial": 8,
+          "episode": 5,
+          "native_fingerflip_identity": 11,
+          "native_name": "BsFingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 2,
+          "destination_actor_guid": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.289138676,
+            "caught": 2.924731529,
+            "released": 3.086042683,
+            "landed": 3.621009801
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType11 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
+      ]
     },
     {
       "native_name": "FSFingerflip",
@@ -8350,6 +8663,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "31d833f5-9c8d-4692-31d8-33f59c8d4692"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 14
@@ -8389,6 +8705,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "0e473e6e-2328-9645-0e47-3e6e23289645"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 13
@@ -8428,6 +8747,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "e7464a06-3d3f-3dbd-e746-4a063d3f3dbd"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 10
@@ -8467,6 +8789,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "11bc8118-ac1a-1792-11bc-8118ac1a1792"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 9
@@ -8506,6 +8831,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "f10c7f7a-f524-7cdc-f10c-7f7af5247cdc"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 12
@@ -8535,20 +8863,71 @@
         "Establish Nose Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "edbd1421-1fc0-5996-edbd-14211fc05996"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 1
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-finger-trials-result.json.gz",
+          "uncompressed_sha256": "7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471",
+          "compressed_sha256": "3dc4cdac21aa9589db8e3b09a331219012c1688dd2d988f476675f52e88706ad",
+          "serial": 6,
+          "episode": 4,
+          "native_fingerflip_identity": 1,
+          "native_name": "Fingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 6,
+          "destination_actor_guid": "373592a2-c4b8-1678-3735-92a2c4b81678",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.310960825,
+            "caught": 2.94957894,
+            "released": 3.109473602,
+            "landed": 3.342581211
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType1 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
+      ]
     },
     {
       "native_name": "TailFlip",
@@ -8584,6 +8963,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "534829e3-b2a6-6a33-5348-29e3b2a66a33"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 7
@@ -8623,6 +9005,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "23faf164-3a34-05aa-23fa-f1643a3405aa"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 6
@@ -8662,6 +9047,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "3c3c8ff5-a88e-8400-3c3c-8ff5a88e8400"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 2
@@ -8701,6 +9089,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "1c03b497-6ee3-32a8-1c03-b4976ee332a8"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 3
@@ -8740,6 +9131,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "4d0d7811-2676-34bb-4d0d-7811267634bb"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 8
@@ -8779,6 +9173,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "ad402b40-552c-ea44-ad40-2b40552cea44"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 4
@@ -8818,6 +9215,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "8dbd3efb-3f4b-e79f-8dbd-3efb3f4be79f"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 5
@@ -8857,6 +9257,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "1929fca6-e045-dfe2-1929-fca6e045dfe2"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 23
@@ -8896,6 +9299,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "41e07a8f-7902-1964-41e0-7a8f79021964"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 24
@@ -8935,6 +9341,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "078eeb7f-6227-665c-078e-eb7f6227665c"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 25
@@ -8974,6 +9383,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "3e758231-7d4b-9dac-3e75-82317d4b9dac"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 26
@@ -9013,6 +9425,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "fd34817d-287e-7557-fd34-817d287e7557"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 28
@@ -9052,6 +9467,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "aab2b832-c8ae-e0ab-aab2-b832c8aee0ab"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 27
@@ -9179,6 +9597,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "0f119d7c-e87e-8e7b-0f11-9d7ce87e8e7b"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 19
@@ -9218,6 +9639,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "6d5195bb-9bf7-44af-6d51-95bb9bf744af"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 20
@@ -9257,6 +9681,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "b3d059ee-52e9-ee6b-b3d0-59ee52e9ee6b"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 22
@@ -9296,6 +9723,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "2f60d208-b58c-a4b6-2f60-d208b58ca4b6"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 21
@@ -9335,6 +9765,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "39d6dbbc-f658-708f-39d6-dbbcf658708f"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 29
@@ -9374,6 +9807,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "f39f97d6-c0ff-9e11-f39f-97d6c0ff9e11"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 30
@@ -9718,18 +10154,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 5,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 9,
           "episode": 7,
           "native_detail": 3,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 5,
+              "episode": 7,
+              "native_detail": 3,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -9841,18 +10297,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 3,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 7,
           "episode": 5,
           "native_detail": 4,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 3,
+              "episode": 5,
+              "native_detail": 4,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -9950,18 +10426,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 7,
-          "episode": 9,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 22,
+          "episode": 21,
           "native_detail": 5,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 7,
+              "episode": 9,
+              "native_detail": 5,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10059,18 +10555,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 4,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 8,
           "episode": 6,
           "native_detail": 6,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 4,
+              "episode": 6,
+              "native_detail": 6,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10386,18 +10902,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 8,
-          "episode": 10,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 23,
+          "episode": 22,
           "native_detail": 9,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 8,
+              "episode": 10,
+              "native_detail": 9,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -10604,18 +11140,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-families-result.json.gz",
-          "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
-          "serial": 6,
+          "capture": "artifacts/RC3-20/first-finger-native-families-result.json.gz",
+          "uncompressed_sha256": "cb08699e23ec6627f850bad4a30356b4a8d73844b1e081604887b29edf5a4f2b",
+          "compressed_sha256": "ba679545f98b7486eb4a8261d1a63b18b166837978e6c5f163eaccac48fd6efc",
+          "serial": 10,
           "episode": 8,
           "native_detail": 11,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-families-result.json.gz",
+              "uncompressed_sha256": "11d01c37799ed1ab0a4cdbdf9e7f684691f8216d3a9b37e85656bb47c111a4af",
+              "serial": 6,
+              "episode": 8,
+              "native_detail": 11,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -13446,18 +14002,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 9,
-          "episode": 11,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 24,
+          "episode": 23,
           "native_detail": 36,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 9,
+              "episode": 11,
+              "native_detail": 36,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -13555,18 +14131,38 @@
       ],
       "rc3_native_evidence": [
         {
-          "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+          "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
           "map": "skate3_megapark",
-          "capture": "mega-native-extended-result.json.gz",
-          "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
-          "serial": 10,
-          "episode": 12,
+          "capture": "artifacts/RC3-20/first-finger-native-extended-result.json.gz",
+          "uncompressed_sha256": "0cfc15d36227466db65df4bd5b2572e53103912ce401fbe06204c3a49fbd27ed",
+          "compressed_sha256": "ab6311cbb034aea3a6b95d8a226031b6a04f9c251b975d33fab12afe26d9f08e",
+          "serial": 25,
+          "episode": 24,
           "native_detail": 37,
           "actor_initialized": true,
           "positive_advancement": true,
           "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
           "native_exit_actor_verified": false,
-          "landing_scoring_verified": false
+          "landing_scoring_verified": false,
+          "native_cached_step": "1/30",
+          "earlier_receipts": [
+            {
+              "source_sha": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+              "map": "skate3_megapark",
+              "capture": "mega-native-extended-result.json.gz",
+              "uncompressed_sha256": "66043b5dc092b8501ffd770dda18517f85617718a94caf7d20a5ad5ef4429c6a",
+              "serial": 10,
+              "episode": 12,
+              "native_detail": 37,
+              "actor_initialized": true,
+              "positive_advancement": true,
+              "intent_withdrawal_observed": true,
+              "native_exit_actor_verified": false,
+              "landing_scoring_verified": false
+            }
+          ]
         }
       ]
     },
@@ -13705,11 +14301,11 @@
       "arcade_binding": [
         "Select \"FS One Foot\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13752,7 +14348,15 @@
             "decoded_sha256": "fbe92515228ebd0c38607c3f295a825227527309d8fa0065802a16f6ac41b28f"
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+      }
     },
     {
       "native_name": "fs_frigid",
@@ -13978,11 +14582,11 @@
       "arcade_binding": [
         "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Exact original Into actor initialized and advanced; separate Loop, exit and scoring remain unverified. See rc3_native_entry_evidence, including failed lifecycle observations.",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14052,7 +14656,42 @@
             "lifecycle_blocker": "After intent withdrawal, native state601 footplant led to a second200/201 flight before ground100. Clean air-release/landing is not accepted."
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
+        "ramp_followup": {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "capture": "artifacts/RC3-24/ramp-judo-trials-result.json.gz",
+          "capture_sha256": "4fc18a611c3913735d6a547d5efa1e78c1c6ffa16601767a15557ac12cfb4174",
+          "compressed_sha256": "39ccf0476c7480bfc8f5d2f1bd3d574b5c831f8d98ef2321d60a12bcdca8171d",
+          "native_id": 4,
+          "binding": "Up-Right+B,B within250ms; hold second B",
+          "into_actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+          "into_initialized_and_advanced": true,
+          "into_before": 0,
+          "into_after": 3,
+          "native_entry_seconds": 2.2758,
+          "native_loop_state_seconds": 2.515,
+          "foot_intent_cleared_seconds": 2.6713,
+          "footer_cleared_seconds": 2.6801,
+          "physical_b_release_seconds": 2.8,
+          "grab_cleared_with_exit_seconds": 3.076,
+          "bail_seconds": 3.6424,
+          "lease_cancellation": {
+            "reason": "refresh",
+            "failed_state_read_value": 0,
+            "owner_verified": true,
+            "immediately_following_state": 201,
+            "physical_b_still_held": true
+          },
+          "diagnosis": "Observed inconsistent independent state reads caused premature grab retirement. This is not proof that every state0 is transient or permission to bypass owner/state guards. Trace native publication and existing physics observation before changing cancellation. Bail causality and exact Exit actor remain unverified."
+        }
+      }
     },
     {
       "native_name": "bs_onefoot",
@@ -14278,11 +14917,11 @@
       "arcade_binding": [
         "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14325,7 +14964,44 @@
             "decoded_sha256": "f2a23b5c24f4f5243e9d54d607eddb21381060a88c07aa4fb6a3af8272a1049f"
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
+      }
     },
     {
       "native_name": "taiil_onefoot",
@@ -14733,11 +15409,11 @@
       "arcade_binding": [
         "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14780,7 +15456,49 @@
             "decoded_sha256": "23d19b788909738e7b07ae61aff2c698da7885826508af3ebff1463e89c91bd0"
           }
         }
-      ]
+      ],
+      "native_lifecycle_failure": {
+        "native_id": 12,
+        "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+        "capture_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+        "context": "skate3_megapark; original quarter pipe; Arcade Down-Right+B; normal and earlier B-release comparison",
+        "observation": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
+        "blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
+        "comparisons": [
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-trials-result.json.gz",
+            "raw_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+            "gzip_sha256": "48bcadaaa0728904c6da32ab0c5f53dd138c967f5cb4578ed84c7132026a0c02",
+            "serial": 10,
+            "entry_seconds": 2.191358376,
+            "physical_release_seconds": 2.8,
+            "footer_cleared_seconds": 2.828181453,
+            "grab_cleared_with_exit_seconds": 3.225978277,
+            "bail_seconds": 3.461762141,
+            "last_airborne_board_tilt_degrees": 55.904526239726245,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          },
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-early-trials-result.json.gz",
+            "raw_sha256": "38d218d071fb88b0f2ad822ea929a910c45fbb147ac98da8c8681438a5ee41d5",
+            "gzip_sha256": "758cff672e77d3267d621b1bcd38f1383b8e850a777249d543a75d930fdba89e",
+            "serial": 11,
+            "entry_seconds": 2.215982859,
+            "physical_release_seconds": 2.45,
+            "footer_cleared_seconds": 2.524899054,
+            "grab_cleared_with_exit_seconds": 2.920200419,
+            "bail_seconds": 3.783999929,
+            "last_airborne_board_tilt_degrees": 34.4867094095646,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          }
+        ]
+      }
     },
     {
       "native_name": "double_superman",
@@ -14897,16 +15615,67 @@
         "Establish Nose Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "edbd1421-1fc0-5996-edbd-14211fc05996"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-finger-trials-result.json.gz",
+          "uncompressed_sha256": "7364da517e6597393dc4dc76308a06e487b646c18d5a5afe8858d5067e54e471",
+          "compressed_sha256": "3dc4cdac21aa9589db8e3b09a331219012c1688dd2d988f476675f52e88706ad",
+          "serial": 6,
+          "episode": 4,
+          "native_fingerflip_identity": 1,
+          "native_name": "Fingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 6,
+          "destination_actor_guid": "373592a2-c4b8-1678-3735-92a2c4b81678",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.310960825,
+            "caught": 2.94957894,
+            "released": 3.109473602,
+            "landed": 3.342581211
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType1 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
+      ]
     },
     {
       "native_name": "Weddleflip",
@@ -14941,7 +15710,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "3c3c8ff5-a88e-8400-3c3c-8ff5a88e8400"
+      ]
     },
     {
       "native_name": "WeddleToBs",
@@ -14976,7 +15748,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "1c03b497-6ee3-32a8-1c03-b4976ee332a8"
+      ]
     },
     {
       "native_name": "SeatbeltToNose",
@@ -15011,7 +15786,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "ad402b40-552c-ea44-ad40-2b40552cea44"
+      ]
     },
     {
       "native_name": "StaleToFs",
@@ -15046,7 +15824,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "8dbd3efb-3f4b-e79f-8dbd-3efb3f4be79f"
+      ]
     },
     {
       "native_name": "StaleFlip",
@@ -15081,7 +15862,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "23faf164-3a34-05aa-23fa-f1643a3405aa"
+      ]
     },
     {
       "native_name": "TailFlip",
@@ -15116,7 +15900,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "534829e3-b2a6-6a33-5348-29e3b2a66a33"
+      ]
     },
     {
       "native_name": "CrailToTail",
@@ -15151,7 +15938,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "4d0d7811-2676-34bb-4d0d-7811267634bb"
+      ]
     },
     {
       "native_name": "BsToWeddle",
@@ -15186,7 +15976,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "11bc8118-ac1a-1792-11bc-8118ac1a1792"
+      ]
     },
     {
       "native_name": "BsVarial",
@@ -15221,7 +16014,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "e7464a06-3d3f-3dbd-e746-4a063d3f3dbd"
+      ]
     },
     {
       "native_name": "BsFingerflip",
@@ -15247,16 +16043,67 @@
         "Establish BS Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native airborne catch, destination grab actor advancement, release/exit state, grab identity clearance and ground return observed in the recorded ramp context. Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "6920b836-af5d-55cd-6920-b836af5d55cd"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/ramp-bs-finger-trials-result.json.gz",
+          "uncompressed_sha256": "33d453df7adc2775dd7e62b59b8b2b79f6d3e5424b4c271916e879a652701fe7",
+          "compressed_sha256": "e9999ebe3fc438cb919746592b2f1b2434599910bfbf2b6b2d5f4f8cf9769981",
+          "serial": 8,
+          "episode": 5,
+          "native_fingerflip_identity": 11,
+          "native_name": "BsFingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "airborne_catch_verified": true,
+          "native_destination_family": 2,
+          "destination_actor_guid": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "destination_actor_positive_advancement": true,
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 2.289138676,
+            "caught": 2.924731529,
+            "released": 3.086042683,
+            "landed": 3.621009801
+          },
+          "fixture": {
+            "item": "own_bkvert_generic_quarterpipelarge_00002",
+            "position": [
+              146,
+              0,
+              -99
+            ],
+            "scale": 1
+          },
+          "lifecycle_limit": "Native catch, destination actor advancement, release and ground return observed. Exact exit actor and numeric scoring remain unverified. A later wall encounter after capture is not part of this landing receipt. FingerFlipType11 remains stored while its active state is false; no counter or enum was cleared by the adapter."
+        }
+      ]
     },
     {
       "native_name": "FsToStale",
@@ -15291,7 +16138,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "f10c7f7a-f524-7cdc-f10c-7f7af5247cdc"
+      ]
     },
     {
       "native_name": "FsVarial",
@@ -15326,7 +16176,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "0e473e6e-2328-9645-0e47-3e6e23289645"
+      ]
     },
     {
       "native_name": "FsFingerflip",
@@ -15361,7 +16214,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "31d833f5-9c8d-4692-31d8-33f59c8d4692"
+      ]
     },
     {
       "native_name": "CoffinKickflip",
@@ -15484,7 +16340,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "0f119d7c-e87e-8e7b-0f11-9d7ce87e8e7b"
+      ]
     },
     {
       "native_name": "DoubleHeelflip",
@@ -15519,7 +16378,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "6d5195bb-9bf7-44af-6d51-95bb9bf744af"
+      ]
     },
     {
       "native_name": "DoubleFsShuv",
@@ -15554,7 +16416,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "2f60d208-b58c-a4b6-2f60-d208b58ca4b6"
+      ]
     },
     {
       "native_name": "DoubleBsShuv",
@@ -15589,7 +16454,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "b3d059ee-52e9-ee6b-b3d0-59ee52e9ee6b"
+      ]
     },
     {
       "native_name": "BsFingerHeelflip",
@@ -15624,7 +16492,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "1929fca6-e045-dfe2-1929-fca6e045dfe2"
+      ]
     },
     {
       "native_name": "FsFingerHeelflip",
@@ -15659,7 +16530,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "41e07a8f-7902-1964-41e0-7a8f79021964"
+      ]
     },
     {
       "native_name": "FingerHeelflip",
@@ -15694,7 +16568,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "078eeb7f-6227-665c-078e-eb7f6227665c"
+      ]
     },
     {
       "native_name": "TailHeelflip",
@@ -15729,7 +16606,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "3e758231-7d4b-9dac-3e75-82317d4b9dac"
+      ]
     },
     {
       "native_name": "WeddleHeelflip",
@@ -15764,7 +16644,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "aab2b832-c8ae-e0ab-aab2-b832c8aee0ab"
+      ]
     },
     {
       "native_name": "StaleHeelflip",
@@ -15799,7 +16682,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "fd34817d-287e-7557-fd34-817d287e7557"
+      ]
     },
     {
       "native_name": "TailToCrail",
@@ -15834,7 +16720,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "39d6dbbc-f658-708f-39d6-dbbcf658708f"
+      ]
     },
     {
       "native_name": "NoseToSeatbelt",
@@ -15869,7 +16758,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "f39f97d6-c0ff-9e11-f39f-97d6c0ff9e11"
+      ]
     }
   ],
   "sequence_inventory": [
@@ -16851,12 +17743,20 @@
       "decoded_sha256": "fbe92515228ebd0c38607c3f295a825227527309d8fa0065802a16f6ac41b28f",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Select \"FS One Foot\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding.",
+      "native_lifecycle_failure": {
+        "native_id": 1,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+        "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+        "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+        "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+      }
     },
     {
       "resource_index": 7305,
@@ -17211,12 +18111,54 @@
       "decoded_sha256": "23d19b788909738e7b07ae61aff2c698da7885826508af3ebff1463e89c91bd0",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
+      "native_lifecycle_failure": {
+        "native_id": 12,
+        "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+        "capture_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+        "context": "skate3_megapark; original quarter pipe; Arcade Down-Right+B; normal and earlier B-release comparison",
+        "observation": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
+        "blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
+        "comparisons": [
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-trials-result.json.gz",
+            "raw_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+            "gzip_sha256": "48bcadaaa0728904c6da32ab0c5f53dd138c967f5cb4578ed84c7132026a0c02",
+            "serial": 10,
+            "entry_seconds": 2.191358376,
+            "physical_release_seconds": 2.8,
+            "footer_cleared_seconds": 2.828181453,
+            "grab_cleared_with_exit_seconds": 3.225978277,
+            "bail_seconds": 3.461762141,
+            "last_airborne_board_tilt_degrees": 55.904526239726245,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          },
+          {
+            "capture": "artifacts/RC3-24/ramp-airwalk-early-trials-result.json.gz",
+            "raw_sha256": "38d218d071fb88b0f2ad822ea929a910c45fbb147ac98da8c8681438a5ee41d5",
+            "gzip_sha256": "758cff672e77d3267d621b1bcd38f1383b8e850a777249d543a75d930fdba89e",
+            "serial": 11,
+            "entry_seconds": 2.215982859,
+            "physical_release_seconds": 2.45,
+            "footer_cleared_seconds": 2.524899054,
+            "grab_cleared_with_exit_seconds": 2.920200419,
+            "bail_seconds": 3.783999929,
+            "last_airborne_board_tilt_degrees": 34.4867094095646,
+            "actor_initialized_and_advanced": true,
+            "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "exact_exit_actor_verified": false,
+            "scoring_verified": false
+          }
+        ]
+      }
     },
     {
       "resource_index": 10778,
@@ -18741,12 +19683,49 @@
       "decoded_sha256": "f2a23b5c24f4f5243e9d54d607eddb21381060a88c07aa4fb6a3af8272a1049f",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+      "native_lifecycle_failure": {
+        "native_id": 7,
+        "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+        "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+        "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+        "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+        "blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
+        "additional_native_context_evidence": [
+          {
+            "native_id": 7,
+            "name": "Benihana",
+            "binding": "Down-Left+B, hold then release B while airborne",
+            "capture": "artifacts/RC3-24/ramp-benihana-trials-result.json.gz",
+            "capture_sha256": "a2ccbd7bdcb9a1f54fd7a48b496c71fb18a371134ba918b11bda4d07a660cc12",
+            "compressed_sha256": "b22fd37ccafba641863be73b916b1bbc721770b38dfd622b7b8762fa1fde6be6",
+            "serial": 9,
+            "episode": 6,
+            "into_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "into_initialized": true,
+            "into_before": 0,
+            "into_after": 3,
+            "into_delta": 3,
+            "native_footer_entry_seconds": 2.215,
+            "native_grabbing_loop_seconds": 2.418,
+            "physical_release_seconds": 2.8,
+            "footer_and_foot_intent_cleared_seconds": 2.846,
+            "grab_identity_cleared_and_exit_state_seconds": 3.243,
+            "ground_return_seconds": 3.616,
+            "footplant_or_second_flight_observed": false,
+            "bail_before_landing_observed": false,
+            "exact_loop_advancement_verified": false,
+            "exact_exit_actor_verified": false,
+            "numeric_scoring_verified": false,
+            "limit": "Clean native release and landing in this ramp context do not resolve the earlier interrupted flat-ground lifecycle or prove exact Loop/Exit actor advancement. Those remain explicitly pending."
+          }
+        ]
+      }
     },
     {
       "resource_index": 21972,
@@ -20631,12 +21610,47 @@
       "decoded_sha256": "dc5551ea0995f4da03453498a854af74d0a9b538a5b03e3718473e9b25cfa90b",
       "execution_verified": false,
       "identity_links": [],
-      "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
+      "implementation_state": "BLOCKED",
       "arcade_binding": "Up-right+B,B within 250ms; or Select \"Judo\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
       "native_animation_acknowledgment": "No RC3 capture",
-      "release_landing_evidence": "No RC3 capture",
+      "release_landing_evidence": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
       "scoring_evidence": "Unverified",
-      "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding"
+      "remaining_blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
+      "native_lifecycle_failure": {
+        "native_id": 4,
+        "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+        "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+        "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+        "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+        "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
+        "ramp_followup": {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "capture": "artifacts/RC3-24/ramp-judo-trials-result.json.gz",
+          "capture_sha256": "4fc18a611c3913735d6a547d5efa1e78c1c6ffa16601767a15557ac12cfb4174",
+          "compressed_sha256": "39ccf0476c7480bfc8f5d2f1bd3d574b5c831f8d98ef2321d60a12bcdca8171d",
+          "native_id": 4,
+          "binding": "Up-Right+B,B within250ms; hold second B",
+          "into_actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+          "into_initialized_and_advanced": true,
+          "into_before": 0,
+          "into_after": 3,
+          "native_entry_seconds": 2.2758,
+          "native_loop_state_seconds": 2.515,
+          "foot_intent_cleared_seconds": 2.6713,
+          "footer_cleared_seconds": 2.6801,
+          "physical_b_release_seconds": 2.8,
+          "grab_cleared_with_exit_seconds": 3.076,
+          "bail_seconds": 3.6424,
+          "lease_cancellation": {
+            "reason": "refresh",
+            "failed_state_read_value": 0,
+            "owner_verified": true,
+            "immediately_following_state": 201,
+            "physical_b_still_held": true
+          },
+          "diagnosis": "Observed inconsistent independent state reads caused premature grab retirement. This is not proof that every state0 is transient or permission to bypass owner/state guards. Trace native publication and existing physics observation before changing cancellation. Bail causality and exact Exit actor remain unverified."
+        }
+      }
     },
     {
       "resource_index": 35030,

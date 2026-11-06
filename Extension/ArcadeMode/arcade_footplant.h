@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
@@ -29,7 +30,11 @@ public:
     }
     FootplantControl poll(std::uint64_t now,const FootplantObservation& native,bool settings) noexcept {
         if (!active()) return {};
-        if (!native.fresh(now) || native.step<last_step_ || now<started_ || now-started_>1000 ||
+        // Up may already have started a regular push. The original animation
+        // finishes that push before changing feet (measured at about1.43s),
+        // so No Comply must allow its native mongo prerequisite to arrive.
+        const auto preparation_limit=kind_==Footplant::no_comply?2000u:1000u;
+        if (!native.fresh(now) || native.step<last_step_ || now<started_ || now-started_>preparation_limit ||
             (native.state!=100 && native.state!=103 && native.state!=602)) {cancel();return {};}
         last_step_=native.step;
         if ((kind_==Footplant::no_comply && native.no_comply) ||
@@ -60,6 +65,13 @@ public:
         return out;
     }
     Footplant kind() const noexcept {return kind_;}
+    std::array<bool,3> native_options() const noexcept {
+        // The original swapped A/X preset makes A the front-foot push when
+        // front/back controls are enabled. Without it A starts a regular push,
+        // whose animation never opens the native CanNoComply tag window.
+        const bool no_comply=kind_==Footplant::no_comply;
+        return {no_comply,no_comply,no_comply};
+    }
     bool active() const noexcept {return kind_!=Footplant::none;}
     bool entered() const noexcept {return entered_;}
     bool preparation_started() const noexcept {return prepared_;}

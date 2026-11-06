@@ -27,7 +27,7 @@ radians. GroundTricks_NoComply condition 14074 / expression 10960 requires
 presenting the stick input is insufficient.
 
 The adapter temporarily selects original front/back push controls with
-`egf_frontbackfoot=true`, `egf_invertxaonboard=false` and `nocomply=true`.
+`egf_frontbackfoot=true`, `egf_invertxaonboard=true` and `nocomply=true`.
 It presents A for the native front-foot push, then waits for native
 `Bool.GP.CanNoComply` and a later physics step before presenting RS down at
 28000. It withdraws when original `Bool.Anim.Is.NoComply` is observed.
@@ -52,8 +52,9 @@ execution and launch; they are not airborne one-footer ActorControllers.
 All option changes use the temporary gameplay-option owner. Each value must
 have been returned by the gameplay getter after the request before any
 preparation control is supplied. Another option owner cannot be displaced,
-and profile/UI values remain original. Entry is bounded to one second, with
-at most 300 ms of entry input after its prerequisite. Stale ownership, step
+and profile/UI values remain original. No Comply allows two seconds for native
+preparation; Boneless retains one second. Entry input remains bounded to300ms
+after its prerequisite. Stale ownership, step
 rollback, unexpected state, lost settings, conflicting controls, focus loss,
 disconnection and Arcade OFF withdraw ownership. The 300 ms settings expiry
 covers a missing heartbeat.
@@ -78,6 +79,21 @@ One-footers remain a separate implementation. Fingerflip/varial transitions
 and ground-specific grab poses still require their original owners; this
 change does not count them as complete.
 
+## RC3-22 native No Comply entry
+
+Source92b727f92da5331713367f8a3136d623f8df98e9 was built through all three
+required CI workflows and its installed and loaded DLL identity was verified.
+On skate3_megapark at the observed native1/30 step, Up, neutral100ms, then
+A160–260ms produced CanNoComply at1.427s and original Is.NoComply at1.465s.
+Physics then entered103 at1.532s,200 at1.764s,201 at1.832s and returned to100
+at2.332s. No bail was observed through the4.5-second trial. This demonstrates
+native entry and a flight/ground return, not the exact animation, launch-call
+classification or scoring. Those acceptance items remain open.
+
+Retained capture `artifacts/RC3-22/nocomply-push-trials-result.json.gz`:
+compressed SHA-256 ba3be7d711af5bce5378fdc4aa447372eb643af23b305b4f049c409eab32178e;
+uncompressed SHA-256 37a49aa0fd0160b8f6230e479900958f0e0316baf6d4348c6e2a3ee797c130c4.
+
 RC3-10 Mega Park capture
 `044613996a45b3c43040c35db4411665a8fe9de5c714f8681fa45092a67904e9`
 observed the original Boneless prerequisite, intent, state602, flight and
@@ -88,3 +104,45 @@ issued entry input and report the successfully sampled settings prefix.
 The prefix bits follow `egf_invertxaonboard`, `egf_frontbackfoot`, `nocomply`;
 mask7 means all three were sampled with the requested values. Missing reads
 do not become native prerequisite proof.
+
+RC3-18 capture
+`acb6c406bf456c58dfd17057860fcca96de1946bdee57d63b243aba9744c6bcc`
+observed settings mask7 and preparation output, but no CanNoComply or native
+entry. This rules out waiting for an unsampled option in that attempt.
+
+The original prerequisite producer is now resolved in the mongo full-push
+sequences: EBX7413, 30864, 31286, 29787, 29575, 12548 and 27735. For example,
+7413's BoolGameStateTagAsset26 sets the original CanNoComply asset true over
+the sequence's start0/end30 tag interval, with ResetOnLeaveMode1. The regular
+full-push sequences in the same bounded survey do not carry that tag. The
+next native check must establish the mongo push actor and its tag window;
+delivering A or observing a push request alone is insufficient. Do not set
+CanNoComply directly or treat a regular push as equivalent preparation.
+
+RC3-18 push capture
+`fb9ee5368bff908b13cf53d95eb01f3d82604a713fd79401a133c0b8df18b49f`
+isolated a routing defect: the former false A/X override delivered left-foot
+intent and regular push throughout preparation, with no mongo state or
+CanNoComply allocation. An Arcade-OFF A-then-X control subsequently observed
+A select right-foot intent, mongo push and a true CanNoComply window; X selected
+regular push. The original invert-A/X asset38291 defaults true; gamepad
+expression7573 uses that asset at constant offsets0xf0 and0x110 for both push
+branches, and front/back asset39466 at0x108 selects the stance-aware routing.
+No Comply now keeps the native swapped preset true for its A preparation.
+Boneless retains its independently verified false/false/false settings.
+This fixes the settings/output mismatch; native No Comply entry, launch,
+animation and scoring still require acceptance on the resulting build.
+
+The regular push caused by the Up prefix is a separate timing constraint.
+Native control capture
+`dad345855f127cd79f88b766e1a4503b1f5b5b8e9a26b7647963b8f6f9ee8647`
+delivered front-foot intent from0.204s but released it before the regular
+push finished, so no mongo prerequisite appeared. Capture
+`a987f1ce50d6d12d549880c768809370c91bf018b93e0e14c0e566ab144610b1`
+held that input through the original transition: regular push ended at1.385s
+and CanNoComply was true from1.426s through1.844s. No entry input was issued
+in either control. The former one-second preparation deadline could never
+reach that window; the two-second bound accommodates it without changing
+auto-push, writing a prerequisite, or issuing an Ollie fallback. Production
+tests cover the delayed native prerequisite at30/60/120Hz, the unchanged
+300ms entry deadline, and expiry when the native prerequisite never arrives.

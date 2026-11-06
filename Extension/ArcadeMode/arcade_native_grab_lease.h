@@ -146,7 +146,7 @@ public:
     bool request(ArcadeTrick trick,std::uint64_t now,bool held) noexcept {
         const auto* p=pilot(trick);
         if (!p) return false;
-        selected_=p; requested_=refreshed_=now; released_=!held; acknowledged_=false; feet_started_=false;
+        selected_=p; requested_=refreshed_=now; released_=!held; acknowledged_=false; feet_started_=false; transition_=false;
         return true;
     }
     void refresh(std::uint64_t now,bool held,bool same_air_owner) noexcept {
@@ -155,7 +155,7 @@ public:
         refreshed_=now;
         // A subsequent physical hold cannot resurrect this physical occurrence.
         released_=released_ || !held;
-        if (!acknowledged_ && now-requested_>initialization_limit_ms) cancel();
+        if (!acknowledged_ && !transition_ && now-requested_>initialization_limit_ms) cancel();
     }
     bool acknowledge(std::int32_t detail,float delta,float before,float after,
                      bool initialized,bool exact_actor,bool native_grabbing,std::int32_t one_footer=0) noexcept {
@@ -166,9 +166,13 @@ public:
     }
     bool intent(std::uint64_t now) const noexcept {
         return selected_ && now>=refreshed_ && now-refreshed_<=heartbeat_ms &&
-            (acknowledged_ || (now>=requested_ && now-requested_<=initialization_limit_ms)) &&
-            !(released_ && acknowledged_);
+            (acknowledged_ || transition_ || (now>=requested_ && now-requested_<=initialization_limit_ms)) &&
+            !(released_ && (acknowledged_ || transition_));
     }
+    bool physical_hold(std::uint64_t now) const noexcept {return !released_ && intent(now);}
+    // A separately verified native transition has its own admission deadline.
+    // Keep only its physical hold, without falsely acknowledging the old pose.
+    void begin_transition() noexcept {transition_=true;}
     bool acknowledged() const noexcept {return acknowledged_;}
     Control controls(const RetargetObservation& native,bool settings_applied) noexcept {
         if (!selected_) return {};
@@ -193,6 +197,6 @@ public:
 private:
     const Pilot* selected_{};
     std::uint64_t requested_{},refreshed_{};
-    bool released_{},acknowledged_{},feet_started_{};
+    bool released_{},acknowledged_{},feet_started_{},transition_{};
 };
 }

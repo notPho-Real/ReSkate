@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include "crash_reporter.h"
 #include "crash_capture_name.h"
+#include "crash_dump_retry.h"
 #include <DbgHelp.h>
 #include "Engine/Core/Debug/protocol.h"
 #include "Engine/Core/Debug/upload.h"
@@ -164,22 +165,54 @@ bool publish_dump(HANDLE process, const std::filesystem::path& game_root,
 }
 bool save_dump(HANDLE process, const std::filesystem::path& game_root,
     const SharedReport& report, const std::filesystem::path& directory) {
+    // Retain the failing Windows operation before cleanup changes GetLastError.
+    // A capture acknowledgment only releases the parent; it does not prove that
+    // the dump was saved. Keep evidence for that distinction beside the queue.
+    const auto diagnostic = [&](const char* stage, DWORD error) noexcept {
+        try {
+            const auto name = report.source == CaptureSource::stuck_load
+                ? L"stuck-capture-diagnostic.txt" : L"capture-diagnostic.txt";
+            std::ofstream(directory / name)
+                << "source=" << static_cast<DWORD>(report.source) << " stage=" << stage
+                << " windows_error=" << error << '\n';
+        } catch (...) {}
+    };
     const auto id = capture_file_stem(GetCurrentProcessId(), GetTickCount64(), report.thread_id);
     const auto temporary = directory / (id + L".tmp");
     Handle file(CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr));
-    if (file.value == INVALID_HANDLE_VALUE) return false;
+    if (file.value == INVALID_HANDLE_VALUE) {
+        diagnostic("create", GetLastError());
+        return false;
+    }
     MINIDUMP_EXCEPTION_INFORMATION exception{report.thread_id, report.exception, TRUE};
     // With the memory the stacks point at, so a crash on a freed or overwritten object shows that
     // object and the list it was found in, not just the registers (a few MB more a dump).
     constexpr auto flags = static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithThreadInfo |
         MiniDumpWithUnloadedModules | MiniDumpWithIndirectlyReferencedMemory);
-    const auto written = MiniDumpWriteDump(process, GetProcessId(process), file.value, flags, &exception, nullptr, nullptr);
+    const auto result = write_dump_retry([&]() -> std::uint32_t {
+        if (MiniDumpWriteDump(process, GetProcessId(process), file.value, flags, &exception, nullptr, nullptr)) return ERROR_SUCCESS;
+        const auto error = GetLastError();
+        diagnostic("write", error);
+        return error;
+    }, [&]() -> std::uint32_t {
+        if (!SetFilePointerEx(file.value, LARGE_INTEGER{}, nullptr, FILE_BEGIN) || !SetEndOfFile(file.value)) return GetLastError();
+        return ERROR_SUCCESS;
+    }, static_cast<std::uint32_t>(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY)));
+    const auto written = result.error == ERROR_SUCCESS;
+    const auto write_error = result.error;
     const auto durable = written && FlushFileBuffers(file.value);
+    const auto flush_error = durable || !written ? ERROR_SUCCESS : GetLastError();
     CloseHandle(file.release());
-    if (!durable) { DeleteFileW(temporary.c_str()); return false; }
-    return publish_dump(process, game_root, temporary, report,
+    if (!durable) {
+        diagnostic(written ? "flush" : result.reset_failed ? "reset" : "write", written ? flush_error : write_error);
+        DeleteFileW(temporary.c_str());
+        return false;
+    }
+    const auto published = publish_dump(process, game_root, temporary, report,
         report.source == CaptureSource::game_fatal_handler ? "game-fatal-handler" :
         report.source == CaptureSource::stuck_load ? "stuck-load" : "unhandled-exception");
+    diagnostic(published ? "published" : "publish-failed", ERROR_SUCCESS);
+    return published;
 }
 bool collect_native_dump(HANDLE process, const std::filesystem::path& game_root,
     const SharedReport& report, const std::filesystem::path& directory) {

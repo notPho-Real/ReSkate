@@ -10,6 +10,7 @@
 #include "crash_report_config.h"
 #include "Engine/Core/Log/logging.h"
 #include "Launcher/crash_capture_name.h"
+#include "Launcher/crash_dump_retry.h"
 #include <array>
 #include <fstream>
 #include <format>
@@ -74,6 +75,32 @@ void endpoint_checks() {
         "Crash envelope endpoint not derived from the minidump endpoint");
     check(!accepted_response(429, receipt, id), "Rate limited submission accepted");
     check(!accepted_response(500, receipt, id), "Failed submission accepted");
+}
+void dump_retry_checks() {
+    constexpr auto partial = static_cast<std::uint32_t>(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY));
+    for (unsigned failures : {0u, 1u, 2u, 3u}) {
+        unsigned writes{}, resets{};
+        std::string file;
+        const auto result = write_dump_retry([&]() -> std::uint32_t {
+            check(file.empty(), "A retry retained partial dump bytes");
+            file = ++writes <= failures ? "partial bytes" : "complete dump";
+            return writes <= failures ? partial : ERROR_SUCCESS;
+        }, [&]() -> std::uint32_t { ++resets; file.clear(); return ERROR_SUCCESS; }, partial);
+        check(writes == (failures < 3 ? failures + 1 : 3) && result.attempts == writes &&
+            resets == writes - 1, "Dump retry exceeded its bound or skipped cleanup");
+        check(!result.reset_failed && result.error == (failures < 3 ? ERROR_SUCCESS : partial),
+            "Persistent partial copy was treated as success");
+        check(file == (failures < 3 ? "complete dump" : "partial bytes"), "Dump result does not match its bytes");
+    }
+    unsigned writes{}, resets{};
+    auto result = write_dump_retry([&]() -> std::uint32_t { ++writes; return ERROR_ACCESS_DENIED; },
+        [&]() -> std::uint32_t { ++resets; return ERROR_SUCCESS; }, partial);
+    check(result.error == ERROR_ACCESS_DENIED && writes == 1 && resets == 0, "Unrelated dump failure was retried");
+    writes = resets = 0;
+    result = write_dump_retry([&]() -> std::uint32_t { ++writes; return partial; },
+        [&]() -> std::uint32_t { ++resets; return ERROR_DISK_FULL; }, partial);
+    check(result.error == ERROR_DISK_FULL && result.reset_failed && writes == 1 && resets == 1,
+        "Failed partial-file cleanup allowed another write");
 }
 void trace_checks() {
     check(trace::envelope_url(L"https://sentry.example.com/api/2/minidump/?sentry_key=0123abcd") ==
@@ -376,6 +403,14 @@ void stuck_check(const std::filesystem::path& root) {
         }
         if (stuck.empty() || crash.empty()) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    if (stuck.empty() || crash.empty()) {
+        std::cerr << read(queue / L"stuck-capture-diagnostic.txt") << read(queue / L"capture-diagnostic.txt")
+                  << read(queue / L"capture-status.txt") << read(queue / L"status.txt");
+        for (const auto& entry : std::filesystem::directory_iterator(queue)) {
+            if (entry.is_regular_file())
+                std::cerr << entry.path().filename().string() << " bytes=" << entry.file_size() << '\n';
+        }
+    }
     check(!stuck.empty(), "No stuck-load dump captured");
     check(!crash.empty(), "The crash after a stuck-load capture was not captured");
     check(Json::parse(read(crash.wstring() + L".json")).at("capture.source").string() == "unhandled-exception", "Wrong capture source after a stuck load");
@@ -491,6 +526,7 @@ int wmain(int argc, wchar_t** argv) {
         SetEnvironmentVariableW(L"RESKATE_CRASH_REPORT_URL", L"http://invalid/post");
         check(start(root) == StartResult::failed, "Invalid endpoint enabled reporter");
         endpoint_checks();
+        dump_retry_checks();
         attachment_checks(root);
         details_checks(root);
         queue_checks(root);

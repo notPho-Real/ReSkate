@@ -43,6 +43,9 @@ void native_entry() {
     for (unsigned hz:{30u,60u,120u}) for (Footplant kind:{Footplant::no_comply,Footplant::boneless}) {
         FootplantInput input;auto native=observation(100,1);
         check(input.start(kind,100,native),"ground request starts");
+        check(input.native_options()==(kind==Footplant::no_comply?
+            std::array{true,true,true}:std::array{false,false,false}),
+            "A preparation uses the native mongo push preset; Boneless retains absolute-foot plant controls");
         auto out=input.poll(100,native,false);
         check(out.owned && !out.buttons && !out.left_trigger && !out.right_y,"wait for actual settings consumption before native output");
         native=observation(120,2);out=input.poll(120,native,true);
@@ -57,6 +60,24 @@ void native_entry() {
         out=input.poll(native.sampled_at,native,true);
         check(!out.owned && input.entered(),"original entry withdraws input and leaves native launch/cleanup ownership");
         check(!input.poll(native.sampled_at+20,native,true).owned,"no replay from one command");
+    }
+    for(unsigned hz:{30u,60u,120u}) {
+        FootplantInput input;auto native=observation(100,1);
+        check(input.start(Footplant::no_comply,100,native),"No Comply starts while the original push finishes");
+        for(unsigned tick=0;tick<=hz*3/2;++tick) {
+            const auto now=100+tick*1000/hz;native=observation(now,tick+1);
+            const auto out=input.poll(now,native,true);
+            check(out.owned && out.buttons==0x1000 && !out.right_y,
+                "regular push completion may exceed one second without fabricating the mongo prerequisite");
+        }
+        native=observation(1650,hz*2);native.can_no_comply=true;
+        check(input.poll(1650,native,true).right_y==-28000,
+            "late native mongo tag admits the original No Comply entry input");
+        native=observation(1951,hz*3);
+        check(!input.poll(1951,native,true).owned,"issued No Comply entry remains bounded to300ms");
+        native=observation(3000,hz*4);check(input.start(Footplant::no_comply,3000,native),"new bounded request starts");
+        input.poll(3000,native,true);native=observation(5001,hz*7);
+        check(!input.poll(5001,native,true).owned,"missing native prerequisite still expires at two seconds");
     }
     for(unsigned test=0;test<7;++test) {
         FootplantInput input;auto native=observation(100,1);input.start(Footplant::boneless,100,native);

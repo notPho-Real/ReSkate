@@ -211,6 +211,7 @@ def build():
         finger = fingers.get(value if ns == "Enum.FingerflipType" else GRAB_TO_FINGER.get(value) if ns == "Enum.GrabType" else None)
         if finger:
             row.update(implementation_state=PENDING if ns == "Enum.FingerflipType" else DEPENDENT,
+                       runtime_actor=[finger["actor_guid"]],
                        assets=[dict(resource_index=finger["resource"], name=finger["sequence"],
                            sequence_guid=finger["sequence_guid"], actors=[dict(guid=finger["actor_guid"])])],
                        arcade_binding=[finger["arcade_binding"]],
@@ -271,7 +272,39 @@ def build():
                          native_animation_acknowledgment="Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
                          release_landing_evidence="SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
                          remaining_blocker="Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.")
-    return dict(schema_version=6, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
+            if any(e.get("airborne_catch_verified") and e.get("grab_identity_cleared_before_landing")
+                   and e.get("ground_return_observed") for e in matches):
+                entry["release_landing_evidence"] = (
+                    "Native airborne catch, destination grab actor advancement, release/exit state, "
+                    "grab identity clearance and ground return observed in the recorded ramp context. "
+                    "Exact exit actor, numeric scoring, other contexts and owner visual acceptance remain pending.")
+    # A known failed lifecycle is a blocker, not merely an outstanding owner
+    # confirmation. Preserve entry evidence and reachable bindings alongside it.
+    failures = json.loads((RESEARCH / "rc3-native-grab-lifecycle-failures.json").read_text())["one_footers"]
+    ramp_lifecycles = json.loads((RESEARCH / "rc3-native-grab-ramp-lifecycle.json").read_text())
+    assert len({f["native_id"] for f in failures}) == len(failures)
+    for failure in failures:
+        footer = failure["native_id"]
+        ramp_matches = [row for row in ramp_lifecycles["one_footers"] if row["native_id"] == footer]
+        if ramp_matches:
+            failure = dict(failure, additional_native_context_evidence=ramp_matches,
+                           blocker="The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.")
+        assert footer in FOOT_LOOPS and re.fullmatch(r"[0-9a-f]{64}", failure["capture_sha256"])
+        for row in entries:
+            identity = row["native_identity"]
+            value = identity["value"]
+            matches = (identity["namespace"] == "Enum.OneFooterType" and value == footer) or (
+                identity["namespace"] == "Enum.GrabType" and GRAB_TO_FOOTER.get(value) == footer)
+            if matches:
+                if identity["namespace"] == "Enum.OneFooterType":
+                    row["implementation_state"] = BLOCKED
+                row.update(native_lifecycle_failure=failure,
+                           release_landing_evidence=failure["observation"], remaining_blocker=failure["blocker"])
+        for row in seq_rows:
+            if row["resource_index"] == FOOT_LOOPS[footer]:
+                row.update(implementation_state=BLOCKED, native_lifecycle_failure=failure,
+                           release_landing_evidence=failure["observation"], remaining_blocker=failure["blocker"])
+    return dict(schema_version=7, rc2_source="2ffb006c73671466bfcdc15395ba96939de44f7d",
                 accounting_complete_for_input_inventory=True, native_catalog_exhaustiveness_proven=False,
                 feature_complete=False, game_exe_sha256=source["game_exe_sha256"],
                 scope=source["scope"], independently_mapped_native_poses=len(profiles),
