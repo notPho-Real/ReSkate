@@ -394,6 +394,13 @@ public:
         // Keep physical held state and independently queued Manual/rail intent.
         if (!preserve_history) events_.discard_intent();
     }
+    // A completed wall rebound retires only air intent. Keep the journal and
+    // physical held controls, but never reinterpret an earlier face press.
+    void retire_air_actions() noexcept {
+        cancel_air_episode(true);
+        air_face_after_=air_flip_after_=native_grab_after_=last_event_;
+        takeoff_release_at_=0;
+    }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
         cancel_manual(); manual_unknown_ = true;
@@ -564,6 +571,16 @@ public:
             const auto code = event.token.code;
             if (code == 14 && event.token.edge == InputEdge::release) flip_release = event.sequence;
             if (code == 12) {
+                // Contact admission is supplied by the native surface owner.
+                // Only this newly sampled A edge can request a plant: an older
+                // A, held A or a later contact must never revive the request.
+                if (event.token.edge == InputEdge::press && environment.context == InputContext::air &&
+                    environment.surface.fresh && environment.surface.can_plant &&
+                    environment.surface.generation && environment.surface.physics_step) {
+                    const auto match = consume(event);
+                    enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match);
+                    continue;
+                }
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
                     if (environment.native_footplants && environment.context==InputContext::ground &&
                         !environment.nollie && recognize_footplant(now,environment,event)) continue;
@@ -742,7 +759,7 @@ private:
         if (environment.native_context.required) {
             request.generations = lineage ? *lineage : environment.native_context.generations;
             request.generation_mask = generation_dependencies(action,environment.context);
-            if (action == InputAction::flip || action == InputAction::grab)
+            if (action == InputAction::flip || action == InputAction::grab || (action==InputAction::wall_command && variant==1))
                 request.air_episode = environment.native_context.air_episode();
             if (action == InputAction::flip) request.waiting_flip = environment.native_context.flip;
             // The first flip legitimately changes the action generation.
@@ -750,8 +767,8 @@ private:
             // current base ID; owner and airborne episode remain mandatory here.
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
-        if (action == InputAction::rail_request || action == InputAction::lip_request) {
-            request.control = 0x8000;
+        if (action == InputAction::rail_request || action == InputAction::lip_request || (action==InputAction::wall_command && variant==1)) {
+            request.control = action==InputAction::wall_command ? 0x1000 : 0x8000;
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
         }
@@ -1143,18 +1160,6 @@ private:
         if (!surface.fresh || environment.context == InputContext::foot) return;
         if (surface_clocked_ && surface.generation == surface_generation_ && surface.physics_step == surface_step_) return;
         surface_clocked_ = true; surface_generation_ = surface.generation; surface_step_ = surface.physics_step;
-        const InputToken jump{InputSource::buttons,12,InputEdge::press};
-        if (surface.can_plant) {
-            for (auto code : {std::int16_t{2},std::int16_t{1},std::int16_t{3}})
-                for (bool reverse : {false,true}) {
-                    const InputToken direction{InputSource::direction,code,InputEdge::press};
-                    const std::array tokens{reverse ? jump : direction, reverse ? direction : jump};
-                    const auto match = events_.history().match({tokens,450},now);
-                    if (match && events_.history().consume(match,InputConsumption::regular)) {
-                        enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match); return;
-                    }
-                }
-        }
         if (surface.can_push && events_.held({InputSource::buttons,15,InputEdge::press})) {
             enqueue(InputAction::wall_command,now,1,environment,1,2); return;
         }

@@ -187,17 +187,34 @@ void lip_extra_tables() {
     }
 }
 void wall_controls() {
-    for(auto direction:{std::int16_t{2},std::int16_t{1},std::int16_t{3}})for(bool reverse:{false,true})for(unsigned age:{449u,450u,451u}){
-        UnifiedInput input;Sink sink;InputEnvironment e{InputContext::air,true};e.policy=InputPolicy::strict();e.ollie_allowed=false;
-        e.surface.fresh=e.surface.can_plant=true;e.surface.generation=3;
-        input.poll(0,{},e,sink.adapter());e.surface.physics_step=1;
-        const auto x=direction==1?-25000:direction==3?25000:0;
-        const PhysicalInputSample down{0,static_cast<std::int16_t>(x),-25000};
-        input.poll(10,reverse?PhysicalInputSample{0x1000}:down,e,sink.adapter());e.surface.physics_step=2;
-        input.poll(10+age,reverse?down:PhysicalInputSample{0x1000},e,sink.adapter());
-        check((sink.calls!=0)==(age<450),"all six plant orders use the source450ms window after geometry admission");
-        if(sink.calls)check(sink.last.action==InputAction::wall_command && sink.last.variant==1 && sink.last.surface_generation==3,
-            "wall recognition retains native surface provenance and never writes geometry or velocity");
+    for (unsigned step : {8u,17u,34u}) for (std::int16_t x : {-25000,0,25000}) {
+        UnifiedInput input; Sink sink; InputEnvironment e{InputContext::air,true}; e.ollie_allowed=false;
+        e.surface={3,1,true,true,false,false,0};
+        input.poll(0,{},e,sink.adapter());
+        // A between physics steps must not be lost to the wall-push sampler.
+        input.poll(step,{0x1000,x,0},e,sink.adapter());
+        check(sink.calls==1 && sink.last.action==InputAction::wall_command && sink.last.variant==1 &&
+            sink.last.surface_generation==3 && sink.last.first_input_at==step && sink.last.last_input_at==step,
+            "fresh airborne A preserves its sole physical edge and contact provenance");
+        e.surface.physics_step=2; input.poll(step*2,{0x1000,x,0},e,sink.adapter());
+        check(sink.calls==1,"held A and fresh physics cannot repeat a wallplant");
+        input.poll(step*3,{},e,sink.adapter());
+        check(sink.calls==1,"wallplant release does not launch an Ollie");
+    }
+    for (unsigned missing=0;missing<6;++missing) {
+        UnifiedInput input; Sink sink; InputEnvironment e{InputContext::air,true}; e.ollie_allowed=false;
+        e.surface={3,1,true,true,false,false,0};
+        input.poll(0,{},e,sink.adapter());
+        if(missing==0)e.surface.fresh=false;
+        if(missing==1)e.surface.can_plant=false;
+        if(missing==2)e.surface.generation=0;
+        if(missing==3)e.surface.physics_step=0;
+        if(missing==4)e.context=InputContext::ground;
+        if(missing==5)e.conflict=true;
+        input.poll(10,{0x1000},e,sink.adapter());
+        e.surface={3,2,true,true,false,false,0}; e.context=InputContext::air;e.conflict=false;
+        input.poll(20,{0x1000},e,sink.adapter());
+        check(sink.calls==0,"unqualified A cannot be promoted when a later wall becomes available");
     }
     UnifiedInput input;Sink sink;InputEnvironment e{InputContext::ground,true};e.policy=InputPolicy::strict();
     e.surface.fresh=e.surface.can_push=true;e.surface.generation=1;e.surface.physics_step=1;

@@ -97,6 +97,28 @@ public:
         return air_action_ && frame.required && frame.fresh(now) && frame.airborne &&
             frame.air_episode()==air_actor_episode_ && (native_followup_ ? native_flip::ordinary_flip(air_followup_id_) : ordinary_ollie_followup(air_followup_id_)) ? air_followup_id_ : 0;
     }
+    // Called only for the motion adapter's completed body transaction. This
+    // retires input lineage, never creates a native jump, air episode or score.
+    bool acknowledge_wallplant(std::uint64_t now,const InputNativeContext& proof,
+                               std::uint64_t input_sequence) noexcept {
+        if (!input_sequence || !clocked_ || !proof.required || !proof.fresh(now) ||
+            !native_.required || !native_.fresh(now) || !proof.airborne || !native_.airborne ||
+            !proof.airborne_episode || proof.rail_family || native_.rail_family ||
+            proof.generations.owner!=native_.generations.owner || proof.air_episode()!=native_.air_episode() ||
+            (wallplant_owner_==proof.generations.owner && input_sequence<=wallplant_sequence_) ||
+            footplant_ || ground_grab_ || rail_ || holding_ || board_active_ || manual_.busy()) return false;
+        bool physical_press=false;
+        for (const auto& event:input_.history().events())
+            if (event.sequence==input_sequence && event.token==InputToken{InputSource::buttons,12,InputEdge::press} &&
+                now>=event.at && now-event.at<=150) physical_press=true;
+        if (!physical_press) return false;
+        wallplant_owner_=proof.generations.owner;wallplant_sequence_=input_sequence;
+        input_.retire_air_actions();authored_.cancel();auxiliary_.cancel();held_flip_.cancel();
+        held_flip_used_=false;held_flip_lineage_={};air_action_=native_followup_=false;
+        air_followup_id_=0;air_actor_episode_={};grab_actor_=false;grab_actor_episode_={};grab_hold_button_=0;
+        takeoff_release_at_=0;takeoff_native_={};takeoff_jump_observed_=takeoff_from_rail_=false;
+        return true;
+    }
     void resume_manual_episode(const ManualInputDiagnostic& command,const InputNativeContext& native) noexcept {
         if(authored_.busy() || auxiliary_.busy() || rail_ || holding_ || board_active_)return;
         native_=native;native_required_=native.required;
@@ -372,6 +394,12 @@ public:
         environment.native_held_flip=admission.held_flip.available;
         environment.selected_grab=admission.normal_grab.selected;
         environment.native_fingerflips=admission.normal_grab.fingerflip!=nullptr;
+        // A wall contact cannot steal a live native input lease. The collision
+        // provider owns geometry; this session owns physical command admission.
+        environment.surface.can_plant = environment.surface.can_plant &&
+            admission.pose==SkatePose::air && admission.extensions.request &&
+            admission.action_mode==ActionExperiment::classic && !admission.external_owner &&
+            !busy() && !holding_ && !triggers && !(physical.buttons&0xe030u);
         environment.native_footplants=admission.footplant.submit && admission.footplant.controls &&
             admission.action_mode==ActionExperiment::classic && !authored_.busy() && !auxiliary_.busy() &&
             !manual_.busy() && !rail_ && !board_active_ && !triggers && !(physical.buttons&0xe3f0u);
@@ -763,6 +791,10 @@ private:
         case InputAction::wall_command: case InputAction::transfer_command:
             if (!admission.surface.fresh || request.surface_generation != admission.surface.generation) return InputDisposition::cancelled;
             if (request.action == InputAction::wall_command && !(request.variant == 1 ? admission.surface.can_plant : admission.surface.can_push)) return InputDisposition::cancelled;
+            if (request.action == InputAction::wall_command && request.variant==1 &&
+                (request.context!=InputContext::air || admission.pose!=SkatePose::air ||
+                 admission.external_owner || busy() || holding_ || physical_.lt>30 || physical_.rt>30 ||
+                 !(physical_.buttons&classic_a) || (physical_.buttons&0xe030u))) return InputDisposition::cancelled;
             if (request.action == InputAction::transfer_command && !admission.surface.can_transfer) return InputDisposition::cancelled;
             return request_extension(request);
         case InputAction::balance_branch_one: case InputAction::balance_branch_two: case InputAction::balance_variant: case InputAction::balance_return: {
@@ -931,6 +963,7 @@ private:
     HeldFlipInput held_flip_{};
     bool held_flip_used_{};
     InputNativeContext held_flip_lineage_{};
+    std::uint64_t wallplant_owner_{},wallplant_sequence_{}; // Receipt dedupe survives cancellation.
     ManualActuation manual_{};
     ActionDispatch auxiliary_{};
     AutomaticPush push_{};

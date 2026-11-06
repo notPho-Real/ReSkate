@@ -144,4 +144,38 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
         return sample;
     } catch (...) { return {}; }
 }
+SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+        SurfaceGeometryBody body,SurfaceGeometryVector point,SurfaceGeometryVector normal) noexcept {
+    try {
+        if(!current(api,ctx) || !finite(point) || !finite(normal) ||
+            std::abs(dot(normal,normal)-1.f)>.02f || !unit(normal) || std::abs(normal[1])>.1f) return {};
+        // A broad patch excludes narrow rails/poles and corner contacts. Half
+        // width/height use the retained classic arcade minimum plant height (24 inches).
+        constexpr float extent=24.f*.0254f;
+        constexpr float depth=.1f; // Query reach only, never a displacement.
+        const SurfaceGeometryVector right{-normal[2],0,normal[0]};
+        auto up=cross(right,normal);
+        if(!unit(up))return {};
+        constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-extent,0},{extent,0},{0,-extent},{0,extent}}};
+        SurfaceGeometrySample sample;sample.context=ctx;sample.body=body;sample.queried_at=api.now(api.user);
+        Exclusions excluded;std::array<SurfaceGeometryVector,5> points{};
+        for(std::size_t i=0;i<points.size();++i) {
+            SurfaceGeometrySegment segment;
+            for(unsigned axis=0;axis<3;++axis) {
+                const float center=point[axis]+right[axis]*offsets[i][0]+up[axis]*offsets[i][1];
+                segment.start[axis]=center+normal[axis]*depth;
+                segment.end[axis]=center-normal[axis]*depth;
+            }
+            const auto hit=cast(api,ctx,segment,excluded);
+            if(!hit || hit->body!=body || (i && hit->owner!=sample.body_owner))return {};
+            sample.body_owner=hit->owner;points[i]=hit->point;
+            if(std::abs(dot(sub(hit->point,point),normal))>.005f)return {};
+        }
+        auto measured=cross(sub(points[4],points[3]),sub(points[2],points[1]));
+        if(!unit(measured) || dot(measured,normal)<.995f)return {};
+        sample.point=points[0];sample.query_normal=measured;sample.valid=true;
+        if(!exclusions_current(api,ctx,excluded) || !revalidate_surface_geometry(api,ctx,sample))return {};
+        return sample;
+    } catch(...) {return {};}
+}
 }

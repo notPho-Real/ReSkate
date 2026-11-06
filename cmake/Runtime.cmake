@@ -209,6 +209,9 @@ add_library(dingosdk_runtime SHARED
     Extension/ArcadeMode/arcade_native_held_flip.cpp
     Extension/ArcadeMode/arcade_native_manual_pose.cpp
     Extension/ArcadeMode/arcade_native_ground_input.cpp
+    Extension/ArcadeMode/arcade_native_wall_contact.cpp
+    Extension/ArcadeMode/arcade_wallplant_animation.cpp
+    Extension/ArcadeMode/arcade_wallplant_runtime.cpp
     Extension/ArcadeMode/arcade_native_grind_transition.cpp
     Extension/ArcadeMode/arcade_authored_gestures.cpp
     Extension/ArcadeMode/arcade_score_probe.cpp

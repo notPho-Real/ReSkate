@@ -17,6 +17,7 @@
 #include "Extension/ArcadeMode/arcade_ground_motion_step.h"
 #include "Extension/ArcadeMode/arcade_ground_writer_observation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_wallplant_runtime.h"
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "free_flight.h"
 #include "Engine/Game/Multiplayer/session_competition.h"
@@ -572,6 +573,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
     arcade_mode::AirMotionIntent intent{};
     arcade_mode::NativeManualContact manual{};
     arcade_mode::GroundTurnCommand ground_turn{};
+    arcade_mode::WallplantCommand wallplant{};
     const auto now = GetTickCount64();
     auto& state = source_state();
     if (!state.initialized.load(std::memory_order_acquire) || !state.velocity_guard_active.load(std::memory_order_acquire) ||
@@ -662,6 +664,8 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             if (!linear && !angular) return;
             reader.verify(); NoBailSkater after{};
             source_require(no_bail_skater(after) && after==owner, "Arcade motion ownership changed before writing.");
+            if(wallplant)source_require(arcade_mode::wallplant_runtime::current(wallplant,now,native_frame,wallplant.before),
+                "Wall contact changed before rebound.");
             writer_observation.validated(); // Ground writer observation.
             angular_observation.validated(); // Angular writer observation.
             writer_observation.writing(); // Ground writer observation.
@@ -711,6 +715,8 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             }
             release_turn(!manual.admitted,true);
         }
+        wallplant=arcade_mode::wallplant_runtime::consume(now,native_frame,velocities[0]);
+        if(wallplant)a.controller.yield_ordinary_motion();
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
             bodies.root[1], velocities[0][1], spins[0][1], ordinary, velocities[0][0], velocities[0][2],true,
             arcade_mode::NativeAirSpinProof::from_frame(native_frame),
@@ -765,6 +771,13 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         } else if (ground_step.status == arcade_mode::GroundStepStatus::unavailable) a.ground_resistance.reset();
         a.ground_output=a.ground_yaw.step(intent,native_frame,now,bodies.seconds,velocities[0],ordinary,manual.admitted,&ground_turn);
         auto applied=a.ground_output.ready ? arcade_mode::GroundYaw::body_output(a.ground_output) : output;
+        if(wallplant) {
+            // One velocity transaction. Do not publish a cached vertical target
+            // or replace native collision/trajectory physics on later steps.
+            applied.ready=applied.vertical=applied.horizontal=true;
+            applied.velocity_y=wallplant.motion.velocity_y;
+            applied.delta_x=wallplant.motion.delta_x;applied.delta_z=wallplant.motion.delta_z;
+        }
         angular_row.ground_selected=a.ground_output.ready; // Angular writer observation.
         // Neutral is a withdrawal of our previous ground rate, not permission
         // to overwrite a new native impulse with an unconditional zero.
@@ -782,6 +795,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
         if (applied.vertical || applied.angular || applied.horizontal)
             source_require(arcade_mode::AirMotion::apply_bodies(applied, velocities, spins, bodies.up), "Arcade motion result is invalid.");
         commit_motion(resistance_change<0 || applied.vertical || applied.horizontal,applied.angular || angular_release);
+        if(wallplant)arcade_mode::wallplant_runtime::completed(wallplant,true);
         // Ordinary steering needs the same conditional withdrawal handoff as
         // a half-turn; neither may leave a still-owned rate after cancellation.
         if (a.ground_output.ready && applied.angular)
@@ -790,7 +804,10 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             a.turn_write.clear();
             a.air_write.record(native_frame,bodies.parts,spins,bodies.up,cleanup);
         } else if (cleanup.inspected || !a.air_write.pending()) a.air_write.clear();
-    } catch (...) { a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release); }
+    } catch (...) {
+        if(wallplant)arcade_mode::wallplant_runtime::completed(wallplant,false);
+        a.controller.reset(); a.ground_resistance.reset(); a.ground_yaw.reset(); a.ground_output={}; a.output = {}; a.turn_write.clear(); a.air_write.clear(); a.ready_until.store(0, std::memory_order_release);
+    }
 }
 bool arcade_air_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float, 16>* supplied, std::array<float, 16>& target) {

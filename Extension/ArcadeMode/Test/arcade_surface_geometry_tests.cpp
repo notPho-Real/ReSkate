@@ -30,6 +30,8 @@ struct Fixture {
     std::uintptr_t allocator{};
     float last_x{};
     bool self_hit{};
+    bool wall{}, upper_gap{}, lower_gap{};
+    SurfaceGeometryVector wall_normal{0,0,1}, wall_point{0,1.5f,0};
     Fixture() { running=this; table[1]=reinterpret_cast<std::uintptr_t>(&pop); allocator=reinterpret_cast<std::uintptr_t>(table.data()); }
     static std::uint64_t now(void* user) noexcept { return static_cast<Fixture*>(user)->time; }
     static bool current(void* user,const SurfaceGeometryContext& context) noexcept {
@@ -75,7 +77,15 @@ struct Fixture {
             const auto* b=reinterpret_cast<const SurfaceGeometryBody*>(ray_value->ignored_bodies[0]);
             check(b->world==f.live.world && b->generation==f.generation && b->index>=100,"native exclusions retain full body token");
         }
-        f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
+        if (f.wall) {
+            SurfaceGeometryVector start{}, end{};
+            for (unsigned axis=0;axis<3;++axis) { start[axis]=ray_value->start[axis]; end[axis]=ray_value->end[axis]; }
+            const float distance=surface_geometry_detail::dot(surface_geometry_detail::sub(start,f.wall_point),f.wall_normal);
+            const float length=surface_geometry_detail::dot(surface_geometry_detail::sub(start,end),f.wall_normal);
+            f.fractions[f.first]=f.self_hit ? .1f : distance/length;
+            if ((f.upper_gap && start[1]>f.wall_point[1]+.1f) ||
+                (f.lower_gap && start[1]<f.wall_point[1]-.1f)) result->count=0;
+        } else f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
         f.fractions[f.first+1]=.9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
@@ -104,6 +114,15 @@ struct Fixture {
         check(calls==pops && calls==frees,"all result scopes released on every path");
         return result;
     }
+    SurfaceGeometrySample query_wall(SurfaceGeometryVector point,SurfaceGeometryVector normal,
+                                     SurfaceGeometryBody body={7,1,9}) {
+        wall=true;
+        const auto context=live;
+        const auto result=query_wall_geometry(api(),context,body,point,normal);
+        check(calls==pops && calls==frees,"wall query releases every native result scope");
+        return result;
+    }
+    SurfaceGeometrySample query_wall() {return query_wall(wall_point,wall_normal);}
 };
 }
 namespace dingosdk {
@@ -185,5 +204,60 @@ int main() {
     { Fixture f; f.live.phase=SurfaceGeometryPhase::unavailable; check(!f.query().valid && f.calls==0,"wrong phase fails closed"); }
     { Fixture f; auto api=f.api(); api.surface.ready=false; check(!query_surface_geometry(api,f.live,f.request()).valid && f.calls==0,"unknown collision API unavailable"); }
     { Fixture f; auto api=f.api(); ++api.base; check(!query_surface_geometry(api,f.live,f.request()).valid && f.calls==0,"API build owner mismatch is not callable"); }
+    // Geometry corroborates an independently supplied contact. These fixtures
+    // exercise actual production casts; a query hit is never contact evidence.
+    for (const auto normal : {SurfaceGeometryVector{0,0,1},SurfaceGeometryVector{1,0,0},
+                              SurfaceGeometryVector{-.6f,0,.8f},SurfaceGeometryVector{0,0,-1}}) {
+        Fixture f; f.wall_normal=normal;
+        const auto sample=f.query_wall();
+        check(sample.valid && f.calls==5,"vertical walls at head-on and oblique headings need all five hits");
+        check(sample.body==SurfaceGeometryBody{7,1,9} && sample.body_owner==20,"wall keeps exact collision body and owner");
+        check(surface_geometry_detail::dot(sample.query_normal,normal)>.9999f,"measured wall normal retains contact orientation");
+        check(sample.point==f.wall_point,"wall center agrees with real contact point");
+        check(sample.context==f.live && sample.queried_at==1000,"wall preserves original context and clock");
+        check(revalidate_surface_geometry(f.api(),f.live,sample),"wall can revalidate through existing native callback");
+    }
+    for (unsigned gap=0;gap<3;++gap) {
+        Fixture f; f.upper_gap=gap!=1; f.lower_gap=gap!=0;
+        check(!f.query_wall().valid,"thin rail or missing upper/lower face cannot corroborate broad wall");
+    }
+    { Fixture f; f.edge=true; check(!f.query_wall().valid,"wall edge missing a side sample rejects"); }
+    { Fixture f; f.seam=true; check(!f.query_wall().valid,"wall seam cannot join different collision bodies"); }
+    { Fixture f; auto point=f.wall_point; point[2]+=.02f; check(!f.query_wall(point,f.wall_normal).valid,"nearby parallel plane cannot replace real contact point"); }
+    { Fixture f; f.wall_normal={.02f,0,std::sqrt(1.f-.02f*.02f)};
+      check(!f.query_wall(f.wall_point,{0,0,1}).valid,"contact normal and intersected plane must agree across broad patch"); }
+    for (const auto normal : {SurfaceGeometryVector{0,1,0},SurfaceGeometryVector{0,-1,0},
+                              SurfaceGeometryVector{0,.6f,.8f},SurfaceGeometryVector{0,0,.9f},
+                              SurfaceGeometryVector{0,0,0},
+                              SurfaceGeometryVector{0,0,std::numeric_limits<float>::infinity()},
+                              SurfaceGeometryVector{0,0,std::numeric_limits<float>::quiet_NaN()}}) {
+        Fixture f;
+        check(!f.query_wall(f.wall_point,normal).valid && f.calls==0,"floor/ceiling/ramp/nonunit/invalid normal is rejected before native calls");
+    }
+    { Fixture f; auto point=f.wall_point; point[0]=std::numeric_limits<float>::quiet_NaN();
+      check(!f.query_wall(point,f.wall_normal).valid && f.calls==0,"invalid real contact point is rejected before native calls"); }
+    for (unsigned failure=0;failure<14;++failure) {
+        Fixture f;
+        switch(failure) {
+        case 0:f.unknown=true;break; case 1:f.changed_owner=true;break;
+        case 2:f.changed_context=true;break; case 3:f.bad_body=true;break;
+        case 4:f.no_context=true;break; case 5:f.live.world_generation=0;break;
+        case 6:f.live.owner[2]=0;break; case 7:f.time=1151;break;
+        case 8:f.bad_fraction=true;break; case 9:f.read_fail=true;break;
+        case 10:f.throw_query=true;break; case 11:f.throw_pop=true;break;
+        case 12:f.throw_free=true;break; case 13:f.live.phase=SurfaceGeometryPhase::unavailable;break;
+        }
+        check(!f.query_wall().valid,"wall requires live context, stable owner/body, readable hits and complete cleanup");
+    }
+    for (const auto body : {SurfaceGeometryBody{8,1,9},SurfaceGeometryBody{7,2,9},
+                           SurfaceGeometryBody{7,1,10},SurfaceGeometryBody{7,UINT32_MAX,9}}) {
+        Fixture f;
+        check(!f.query_wall(f.wall_point,f.wall_normal,body).valid,"wall geometry cannot substitute a different contacted body incarnation");
+    }
+    { Fixture f; f.delay=31; check(!f.query_wall().valid,"wall work cannot renew an expired native lease"); }
+    { Fixture f; f.delay=10; const auto sample=f.query_wall();
+      check(sample.valid && sample.queried_at==1000 && f.time==1050,"wall casts spend original query clock"); }
+    { Fixture f; f.self=true; check(f.query_wall().valid && f.calls==6,"wall excludes exact local skater body before world contact"); }
+    { Fixture f; f.many_self=true; check(!f.query_wall().valid && f.calls==9,"wall self-body exclusions remain bounded"); }
     std::cout<<checks<<" surface geometry/native-query contract checks passed\n";
 }

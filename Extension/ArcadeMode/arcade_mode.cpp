@@ -28,6 +28,7 @@
 #include "arcade_native_ground_grab.h"
 #include "arcade_native_grab_transition.h"
 #include "arcade_native_grind_transition.h"
+#include "arcade_wallplant_runtime.h"
 #include "arcade_grind_change.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
@@ -1191,6 +1192,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         std::lock_guard lock(ollie_mutex);
         if (clock_valid) {
             const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds,orientation);
+            wallplant_runtime::observe_physics(frame);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
             publish_input_context(frame);
@@ -1739,6 +1741,7 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    wallplant_runtime::cancel();
     grind_change.cancel();
     native_grind::cancel();
     native_flip::cancel();
@@ -1775,6 +1778,7 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    wallplant_runtime::cancel();
     native_grind::cancel();
     native_flip::cancel();
     native_grab::cancel();
@@ -1992,6 +1996,7 @@ void on_client_tick() noexcept {
         native_manual_pose::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_footplant::tick(score_probe_base,gameplay && focus_available && native_grab::available());
         native_grind::tick(gameplay && focus_available);
+        wallplant_runtime::tick(score_probe_base,gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
@@ -2267,6 +2272,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         arcade_input.observe_physical(NativeControllerRoute::session,physical);
         const auto owner_epoch = input_owner_epoch.load(std::memory_order_acquire);
         if (owner_epoch != arcade_input.owner_epoch()) {
+            wallplant_runtime::cancel();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& prewind : prewinds) prewind.reset();
@@ -2291,6 +2297,8 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool flip_ready = admission.flip_ready;
         if (!game_input && !owns_controls) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(NativeControllerRoute::session,now);
+        if(!game_input || !owns_controls)wallplant_runtime::cancel();
+        else if(physical_buttons&0x6000u)wallplant_runtime::interrupt_animation();
         capture_game_input=game_input;
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
         const bool releasing_manual = game_input && admission.releasing && !offboard && release_deadline >= now && release_deadline - now <= 150;
@@ -2341,6 +2349,9 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             return native_grab::fingerflip(grab.owner,grab.episode,id,steps,tick,mirror);
         };
         const auto grind_frame=arcade_input.native_context(now);
+        const auto wallplant_receipt=wallplant_runtime::latest_completed();
+        if(wallplant_receipt)
+            arcade_input.acknowledge_wallplant(now,wallplant_receipt.native,wallplant_receipt.input_sequence);
         const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
             !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
         const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
@@ -2352,10 +2363,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         if(grind_change.requires_transition() && !native_grind::pending() &&
             !native_grind::completion(native_flip_owner,grind_change.serial(),now).native.valid)grind_change.cancel();
         if(!grind_change.active())native_grind::cancel();
-        struct GrindDispatch { NoBailSkater owner; NativeGrindContact contact; std::uint64_t now; }
-            grind_dispatch{native_flip_owner,grind_contact,now};
+        struct GrindDispatch { NoBailSkater owner; NativeGrindContact contact; std::uint64_t now; NativeInputFrame frame; }
+            grind_dispatch{native_flip_owner,grind_contact,now,grind_frame};
         const InputAdapter grind_adapter{&grind_dispatch,[](void* context,const InputRequest& request) noexcept {
             const auto& dispatch=*static_cast<GrindDispatch*>(context);
+            if(request.action==InputAction::wall_command)
+                return wallplant_runtime::request(request,dispatch.now,dispatch.frame);
             return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline,auto control) noexcept {
                 return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline,control);
             });
@@ -2390,7 +2403,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
             action_experiment, action_safe, admission.stance_known,
             manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
-            held_flip,footplant,ground_grab);
+            held_flip,footplant,ground_grab,wallplant_runtime::surface(now,grind_frame));
         if (!result.footplant_owned) native_footplant::cancel();
         if (!result.ground_grab_owned) native_ground_grab::cancel();
         if (result.held_flip_request || result.held_input_released) {
