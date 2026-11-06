@@ -18,6 +18,7 @@
 #include <atomic>
 #include <bit>
 #include <mutex>
+#include <type_traits>
 #include <Windows.h>
 
 namespace dingosdk::arcade_mode::native_grab {
@@ -328,13 +329,13 @@ void acknowledge(std::uint64_t now) noexcept {
         }
     }
 }
-void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t parameters) {
+void initialize(std::uintptr_t actor,float start_tick,std::uintptr_t context,std::uintptr_t parameters) {
     std::uint64_t occurrence{};int index=-1;
     if (active.load()) {
         std::lock_guard lock(mutex);
         if (valid() && context==session.block+0x48) {occurrence=session.serial;index=actor_index(actor);}
     }
-    original_initialize(actor,context,parameters);
+    original_initialize(actor,start_tick,context,parameters);
     native_held_flip::initialized(actor,context);
     native_manual_pose::initialized(actor,context);
     native_ground_grab::initialized(actor,context);
@@ -371,6 +372,7 @@ void initialize(std::uintptr_t actor,std::uintptr_t context,std::uintptr_t param
         }
     }
 }
+static_assert(std::is_same_v<decltype(&initialize),contract::Initialize>);
 std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,std::uintptr_t context) {
     const auto held=native_held_flip::before_evaluate(actor,context,delta);
     const auto manual=native_manual_pose::before_evaluate(actor,context,delta);

@@ -1,5 +1,29 @@
 # RC3 implementation status — incomplete candidate
 
+## Shared actor initialization coverage
+
+RC3-15 Benihana capture
+`6fca9acc1de971cc22344c75e98fde5f6ef662f2e4d6e52ed9812a0525be3494`
+reached OneFooterType7. Expected Into actor63 and Loop actor49 advanced from0,
+but the observer had no initialization receipt, so it correctly refused to
+acknowledge them. The landing bailed and the remaining batch stopped.
+
+Offline inspection of the pinned executable established why observing virtual
+initialize alone is incomplete. Original constructors at RVA12706c0 and1270980
+call the shared initializer127b090 directly at12707ce and1270a7c. The previously
+observed virtual entry1277480 tail-calls the same function at1277516. The shared
+ABI is actor/float-start-tick/state-view/parameters in RCX/XMM1/R8/R9. It installs
+duration and tracks and optionally evaluates the initial offset. The observer
+now hooks this fingerprinted common entry through the existing hook service,
+forwards all arguments and observes only after the original call returns.
+Exact assets, local owner/view and later positive-delta advancement remain
+required. This also covers original construction of held-flip and manual actors;
+it does not force any state transition or create an animation.
+
+This is an observation correction with a gameplay consequence: a missed grab
+acknowledgment previously kept a released input pending until its failure bound.
+Windows compilation and hardware actor/hold/release regression remain required.
+
 ## RC3-15 first-use hardware verification
 
 Source `5fbf0c620cfe50b7356843ec8d59cbcd6d480765` passed development
