@@ -106,6 +106,17 @@ struct Session {
     unsigned other_actor_reports{};
     unsigned state_recheck_reports{};
 } session;
+// Exit actors start after the input lease has withdrawn. This separate,
+// read-only receipt retains correlation, never permission to hold an input.
+struct ExitObservation {
+    NoBailSkater owner{};
+    std::uintptr_t block{},actor{};
+    std::uint64_t serial{},episode{},expires_at{},reported_at{};
+    std::int32_t footer{};
+    unsigned reports{};
+    bool entered{},initialized{};
+} exit_observation;
+std::atomic<bool> observing_exit{};
 std::uint64_t serial{},retry_at{};
 unsigned other_actor_reports{};
 constexpr auto foot_settings_owner="arcade-native-foot-input";
@@ -255,6 +266,27 @@ bool airborne(OwnershipObservation* observation=nullptr) noexcept {
     return current.known() && (current.state==state_contract::board_air_states[0] ||
                               current.state==state_contract::board_air_states[1]);
 }
+bool exit_owner_current() noexcept {
+    NoBailSkater owner{};
+    return no_bail_skater(owner) && owner==exit_observation.owner &&
+        state_block(owner)==exit_observation.block;
+}
+bool exit_current() noexcept {
+    if(!gameplay_allowed.load() || !exit_observation.serial ||
+        GetTickCount64()>exit_observation.expires_at || !exit_owner_current())return false;
+    const auto state=game::skater::read_current_physics_state(
+        [](std::uint32_t& value) noexcept {
+            return read(exit_observation.owner.context+actor_contract::physics_state,value);
+        },exit_owner_current);
+    return state.known() && (state.state==200 || state.state==201);
+}
+bool exit_actor_is(std::uintptr_t actor) noexcept {
+    const auto footer=exit_observation.footer;
+    if(footer<1 || static_cast<std::size_t>(footer)>contract::footer_exit_actors.size())return false;
+    const auto asset=pointer(actor+actor_contract::actor_asset);
+    return pointer(asset)==image+actor_contract::actor_type &&
+        guid_is(asset,contract::footer_exit_actors[static_cast<std::size_t>(footer-1)].actor.guid);
+}
 std::optional<bool> finger_setting_read(unsigned location,std::string_view name,bool original) noexcept {
     if(location!=2 || name!=finger_setting || !active.load() || !gameplay_allowed.load())return {};
     // The settings reader also serves menus and other skaters. Only the two
@@ -396,6 +428,8 @@ void acknowledge(std::uint64_t now) noexcept {
         if (session.lease.acknowledge(detail,a.delta,a.before,a.after,a.initialized,
                                     a.object && actor_index(a.object)==static_cast<int>(i),grabbing,one_footer) && !a.reported) {
             a.reported=true;session.reported=true;
+            if(exit_observation.serial==session.serial && one_footer==exit_observation.footer)
+                exit_observation.entered=true;
             const auto board=pointer(pointer(session.owner.core+0x430)+0x18);
             const auto bodies=pointer(board+0x20);std::uint32_t count{};float vy{};
             const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
@@ -417,6 +451,22 @@ void initialize(std::uintptr_t actor,float start_tick,std::uintptr_t context,std
     native_held_flip::initialized(actor,context);
     native_manual_pose::initialized(actor,context);
     native_ground_grab::initialized(actor,context);
+    if(observing_exit.load()) {
+        std::lock_guard lock(mutex);float duration{};
+        if(exit_observation.entered && exit_actor_is(actor) && exit_current() &&
+            context==exit_observation.block+actor_contract::state_view &&
+            read(actor+actor_contract::actor_duration,duration) &&
+            std::isfinite(duration) && duration>0 && duration<10000) {
+            exit_observation.actor=actor;exit_observation.initialized=true;
+            if(exit_observation.reports<16) {
+                ++exit_observation.reports;
+                logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE NATIVE GRAB EXIT INIT: serial={} episode={} one_footer={} actor={} actor_asset={} duration={} input_ownership=false landing_scoring_acceptance=unverified.",
+                    exit_observation.serial,exit_observation.episode,exit_observation.footer,actor,
+                    contract::footer_exit_actors[static_cast<std::size_t>(exit_observation.footer-1)].actor.name,duration);
+            }
+        }
+    }
     if (occurrence && index<0) {
         std::lock_guard lock(mutex);
         const auto* selected=session.lease.selected();
@@ -456,6 +506,15 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
     const auto held=native_held_flip::before_evaluate(actor,context,delta);
     const auto manual=native_manual_pose::before_evaluate(actor,context,delta);
     const auto ground=native_ground_grab::before_evaluate(actor,context,delta);
+    std::uint64_t exit_serial{};float exit_before{};
+    if(observing_exit.load() && std::isfinite(delta) && delta>0) {
+        std::lock_guard lock(mutex);
+        if(exit_observation.entered && exit_observation.initialized &&
+            exit_observation.actor==actor && exit_actor_is(actor) && exit_current() &&
+            pointer(context+actor_contract::evaluation_view)==exit_observation.block+actor_contract::state_view &&
+            read(actor+actor_contract::actor_time,exit_before) && std::isfinite(exit_before))
+            exit_serial=exit_observation.serial;
+    }
     std::uint64_t occurrence{};int index=-1;float before{};
     if (active.load() && std::isfinite(delta) && delta>0) {
         std::lock_guard lock(mutex);
@@ -467,6 +526,22 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
     native_held_flip::after_evaluate(held,context,delta);
     native_manual_pose::after_evaluate(manual,context,delta);
     native_ground_grab::after_evaluate(ground,context,delta);
+    if(exit_serial) {
+        std::lock_guard lock(mutex);float after{};
+        const auto now=GetTickCount64();
+        if(exit_current() && exit_observation.serial==exit_serial &&
+            exit_observation.actor==actor && exit_actor_is(actor) &&
+            pointer(context+actor_contract::evaluation_view)==exit_observation.block+actor_contract::state_view &&
+            read(actor+actor_contract::actor_time,after) && std::isfinite(after) && after>exit_before &&
+            exit_observation.reports<16 && (!exit_observation.reported_at ||
+                (now>=exit_observation.reported_at && now-exit_observation.reported_at>=200))) {
+            exit_observation.reported_at=now;++exit_observation.reports;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE NATIVE GRAB EXIT: ms={} serial={} episode={} one_footer={} actor_asset={} before={} after={} delta={} initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+                now,exit_serial,exit_observation.episode,exit_observation.footer,
+                contract::footer_exit_actors[static_cast<std::size_t>(exit_observation.footer-1)].actor.name,exit_before,after,delta);
+        }
+    }
     if (index>=0) {
         std::lock_guard lock(mutex);float after{};
         if (session.serial==occurrence && valid() && read(actor+0x1c,after)) {
@@ -487,7 +562,10 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
     return result;
 }
 }
-void cancel() noexcept {std::lock_guard lock(mutex);retire("cancel");}
+void cancel() noexcept {
+    std::lock_guard lock(mutex);retire("cancel");
+    exit_observation={};observing_exit.store(false);
+}
 bool available() noexcept {return hooks_ready.load() && assets_ready.load() && gameplay_allowed.load();}
 bool blocks_flip(const NoBailSkater& owner) noexcept {
     if (!available()) return false;
@@ -529,7 +607,14 @@ void tick(bool gameplay) noexcept {
     }
     if (active.load()) {
         std::lock_guard lock(mutex);
-        if (!valid() || !session.lease.intent(GetTickCount64())) retire("tick");
+        const bool current=valid();
+        if(exit_observation.serial==session.serial && current)
+            exit_observation.expires_at=GetTickCount64()+5000;
+        if (!current || !session.lease.intent(GetTickCount64())) retire("tick");
+    }
+    if(observing_exit.load()) {
+        std::lock_guard lock(mutex);
+        if(!exit_current()) {exit_observation={};observing_exit.store(false);}
     }
 }
 void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool permitted) noexcept {
@@ -560,6 +645,14 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
     // A previous requested pose cannot lend its Into receipt to this request.
     for(std::size_t i=pose_actor_end;i<grab_actor_count;++i)session.actors[i]={};
     if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire("request");return false;}
+    exit_observation={};observing_exit.store(false);
+    if(const auto* selected=session.lease.selected();selected && selected->one_footer) {
+        exit_observation.owner=owner;exit_observation.block=block;
+        exit_observation.serial=session.serial;exit_observation.episode=episode;
+        exit_observation.footer=selected->one_footer;
+        exit_observation.expires_at=GetTickCount64()+5000;
+        observing_exit.store(true);
+    }
     input::gameplay_options().release(foot_settings_owner);session.foot_settings_since=0;
     refresh_foot_settings(GetTickCount64());
     session.lineage=physical.generations;session.air=physical.air_episode;

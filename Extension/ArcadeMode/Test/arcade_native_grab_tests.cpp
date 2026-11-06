@@ -5,6 +5,7 @@
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Engine/Game/Input/gameplay_options.h"
 #include "Engine/Game/Skater/physics_state_read.h"
+#include "Engine/Game/Build/20260929/arcade_grab_transition.h"
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -13,6 +14,20 @@ using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
+void native_footer_exit_contract() {
+    namespace contract=dingosdk::game::build::v20260929::arcade_grab_transition;
+    check(contract::footer_exit_actors.size()==13,"all original footer exits have separate actor contracts");
+    for(std::size_t i=0;i<contract::footer_exit_actors.size();++i) {
+        const auto& exit=contract::footer_exit_actors[i];
+        check(exit.one_footer==static_cast<std::int32_t>(i+1),"exit actor lookup preserves native footer identity order");
+        for(const auto& into:contract::footer_entry_actors)
+            check(exit.actor.guid!=into.actor.guid,"an Into actor cannot acknowledge Exit");
+        for(const auto& loop:contract::actor_assets)
+            check(exit.actor.guid!=loop.guid,"a held grab actor cannot acknowledge Exit");
+        for(std::size_t j=0;j<i;++j)
+            check(exit.actor.guid!=contract::footer_exit_actors[j].actor.guid,"footer exits remain distinct original actors");
+    }
+}
 void current_air_read_preserves_only_verified_hold() {
     for (unsigned hz:{30u,60u,120u}) for (unsigned fault=0;fault<8;++fault) {
         native_grab::Lease lease;
@@ -663,4 +678,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){native_footer_exit_contract();current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}

@@ -245,3 +245,20 @@ cec17ca1-1f6e-6ee3-cec1-7ca11f6e6ee3 and its distinct body actor
 The original actor length is75 ticks, with its branch-out beginning at25.
 Native GrabExit state alone is not evidence that this actor initialized or
 advanced in the failed ramp captures.
+
+The follow-up observes all13 original one-footer Exit bodies independently of
+the input lease. Their identities are joined from the already inventoried Exit
+sequences, with a distinct contract for each footer. Correlation requires the
+same original local owner and state view, an acknowledged native footer entry,
+that footer's exact Exit actor initialization, and subsequent positive native
+advancement. An Into or Loop actor cannot supply this receipt. Input withdrawal
+still happens at the existing time; this observer cannot extend a hold, choose
+an animation, change a native field or suppress a bail.
+
+Observation ends on a non-air state, owner loss, Arcade OFF, a new accepted
+grab request or five seconds without an active lease. That last limit bounds
+diagnostic retention only; it is not a gameplay delay or exit deadline. Reports
+are bounded to16 per request and advancement samples are spaced by200ms.
+These receipts can establish which exit advances before impact, but do not
+establish its pose weight, a clean landing or native scoring. Hardware evidence
+for the new observer remains pending.
