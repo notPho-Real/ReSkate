@@ -214,3 +214,15 @@ The independent live reads are explicitly not a transactional physics snapshot.
 The next source investigation must distinguish native state publication timing
 from a real owner/state loss before changing cancellation. This observation
 does not authorize reusing old air state, bypassing guards or suppressing bail.
+
+The follow-up uses a single bounded fresh read after zero. It revalidates the
+same complete owner and state block before and after that read. Only an actual
+new200/201 result satisfies airborne admission. Persistent zero, failed reads,
+owner replacement and every non-air state still cancel; no cached state is
+substituted and no polling delay is introduced. Nonzero state reads retain the
+previous path. A bounded diagnostic records the initial zero and actual recheck
+result. Portable regression coverage exercises the observed held-Judo case and
+those rejection paths at30/60/120Hz. This addresses inconsistent observation;
+it does not establish native catch, landing or scoring acceptance, and it cannot
+repair a zero that persists through the recheck. A new exact-source native trial
+must show whether the observed premature cancellation is resolved.

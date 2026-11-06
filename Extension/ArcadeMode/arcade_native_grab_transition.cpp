@@ -12,6 +12,8 @@
 #include "Engine/Game/Abi/native_data.h"
 #include "Engine/Game/Input/gameplay_options.h"
 #include "Engine/Game/Settings/native_boolean_read.h"
+#include "Engine/Game/Skater/physics_state_read.h"
+#include "Engine/Game/Build/20260929/skater_state.h"
 #include "Extension/Progression/local_entitlement_trigger_runtime.h"
 #include "Engine/Game/Build/image_identity.h"
 #include "Engine/Game/Build/20260929/arcade_grab_transition.h"
@@ -86,6 +88,7 @@ struct OwnershipObservation {
     unsigned validity_failure{}; // 1=gameplay, 2=assets, 3=owner, 4=air state
     bool owner_verified{},state_read{};
     std::uint32_t state{};
+    bool state_rechecked{},recheck_owner_verified{};
 };
 struct Session {
     Lease lease{};NoBailSkater owner{};std::uintptr_t block{};
@@ -101,6 +104,7 @@ struct Session {
     std::uint64_t foot_settings_since{};
     OwnershipObservation last_invalid{};
     unsigned other_actor_reports{};
+    unsigned state_recheck_reports{};
 } session;
 std::uint64_t serial{},retry_at{};
 unsigned other_actor_reports{};
@@ -162,6 +166,8 @@ struct Event {
     std::uint64_t serial{},episode{};
     ArcadeTrick trick{};std::int32_t detail{};InputRequest physical{};
     bool input_trace{},extra{},native_adapter{},retired{},native_owner{};
+    bool state_recheck{},state_recheck_readable{},state_recheck_owner{};
+    std::uint32_t state_recheck_value{};
     std::uint64_t ms{},origin_action{},current_action{};
     unsigned failed_proofs{},gate{},disposition{},result{};
     const char* ending_reason{};
@@ -178,17 +184,20 @@ void flush_events() noexcept {
     {std::lock_guard lock(mutex);pending=events;count=event_count;lost=lost_events;event_count=lost_events=0;}
     for (unsigned i=0;i<count;++i) {
         const auto& e=pending[i];
-        if (e.input_trace) logging::log(logging::Level::info,logging::Channel::skater,
+        if (e.state_recheck) logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE GRAB STATE RECHECK: serial={} episode={} first=0 readable={} state={} owner_verified={} cached_state_used=false acceptance=false.",
+            e.serial,e.episode,e.state_recheck_readable,e.state_recheck_value,e.state_recheck_owner);
+        else if (e.input_trace) logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE GRAB INPUT: ms={} recognized_at={} pressed_at={} direction={} presses={} form={} semantic={} request_action={} origin_action={} current_action={} extra={} native_adapter={} retired={} failed_proofs={} native_owner={} gate={} disposition={} result={} animation_acknowledged=false.",
             e.ms,e.physical.recognized_at,e.physical.physical_pressed_at,e.physical.direction,e.physical.presses,
             static_cast<unsigned>(e.physical.form),static_cast<unsigned>(e.physical.air.trick),e.physical.generations.action,
             e.origin_action,e.current_action,e.extra,e.native_adapter,e.retired,e.failed_proofs,e.native_owner,e.gate,e.disposition,e.result);
         else if (e.ending) logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified reason={} observed_at={} owner_verified={} owner_failure={} state_read={} state={} last_invalid_at={} validity_failure={} invalid_owner_failure={} invalid_state_read={} invalid_state={}.",
+            "ARCADE NATIVE GRAB END: serial={} episode={} acknowledged={} airborne={} intent_withdrawn=true landing_scoring_acceptance=unverified reason={} observed_at={} owner_verified={} owner_failure={} state_read={} state={} last_invalid_at={} validity_failure={} invalid_owner_failure={} invalid_state_read={} invalid_state={} invalid_state_rechecked={} invalid_recheck_owner_verified={}.",
             e.serial,e.episode,e.acknowledged,e.airborne,e.ending_reason,e.ending_owner.ms,
             e.ending_owner.owner_verified,e.ending_owner.owner_failure,e.ending_owner.state_read,e.ending_owner.state,
             e.last_invalid.ms,e.last_invalid.validity_failure,e.last_invalid.owner_failure,
-            e.last_invalid.state_read,e.last_invalid.state);
+            e.last_invalid.state_read,e.last_invalid.state,e.last_invalid.state_rechecked,e.last_invalid.recheck_owner_verified);
         else logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE NATIVE GRAB REQUEST: serial={} episode={} semantic={} expected_detail={} held={} pressed_at={} released_at={} recognized_at={} direction={} presses={} acknowledged=false.",
             e.serial,e.episode,static_cast<unsigned>(e.trick),e.detail,e.held,e.physical.physical_pressed_at,
@@ -226,10 +235,25 @@ bool same_owner(OwnershipObservation* observation=nullptr) noexcept {
     return !failure;
 }
 bool airborne(OwnershipObservation* observation=nullptr) noexcept {
-    std::uint32_t state{};
-    const bool known=read(session.owner.context+0x1414,state);
-    if (observation) {observation->state_read=known;observation->state=state;}
-    return known && (state==200 || state==201);
+    namespace state_contract=game::build::v20260929::skater_state;
+    const auto current=game::skater::read_current_physics_state(
+        [](std::uint32_t& state) noexcept {
+            return read(session.owner.context+state_contract::physics_state_offset,state);
+        },[]() noexcept {return same_owner();});
+    if (observation) {
+        observation->state_read=current.readable;observation->state=current.state;
+        observation->state_rechecked=current.rechecked;
+        observation->recheck_owner_verified=current.owner_verified;
+    }
+    if(current.rechecked && session.state_recheck_reports<8) {
+        ++session.state_recheck_reports;
+        Event event{};event.serial=session.serial;event.episode=session.episode;
+        event.state_recheck=true;event.state_recheck_readable=current.readable;
+        event.state_recheck_value=current.state;event.state_recheck_owner=current.owner_verified;
+        enqueue(event);
+    }
+    return current.known() && (current.state==state_contract::board_air_states[0] ||
+                              current.state==state_contract::board_air_states[1]);
 }
 std::optional<bool> finger_setting_read(unsigned location,std::string_view name,bool original) noexcept {
     if(location!=2 || name!=finger_setting || !active.load() || !gameplay_allowed.load())return {};

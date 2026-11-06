@@ -4,6 +4,7 @@
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Engine/Game/Input/gameplay_options.h"
+#include "Engine/Game/Skater/physics_state_read.h"
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -12,6 +13,41 @@ using namespace dingosdk::arcade_mode;
 namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
+void current_air_read_preserves_only_verified_hold() {
+    for (unsigned hz:{30u,60u,120u}) for (unsigned fault=0;fault<8;++fault) {
+        native_grab::Lease lease;
+        check(lease.request(ArcadeTrick::judo,1000,true),"start Judo physical hold");
+        const native_grab::RetargetObservation entered{true,true,true,false,true,2,true};
+        check(lease.controls(entered,true).feet!=0,"original foot input follows established BS owner");
+        check(lease.acknowledge(0,3,0,3,true,true,true,4),"original Judo Into advances before hold check");
+        unsigned reads{},owners{};
+        const auto observation=dingosdk::game::skater::read_current_physics_state(
+            [&](std::uint32_t& state) {
+                ++reads;
+                if(fault==5 || (fault==6 && reads==2))return false;
+                state=reads==1?0u:fault==1?0u:fault==2?100u:fault==3?504u:201u;
+                return true;
+            },[&] {++owners;return !(fault==4 || (fault==7 && owners==2));});
+        const bool air=observation.known() && (observation.state==200 || observation.state==201);
+        lease.refresh(1000+1000/hz,true,air);
+        check(lease.intent(1000+1000/hz)==(fault==0),
+              "fresh same-owner air recheck retains held Judo; unknown, ground, bail, read failure and replaced owner cancel");
+        check(reads<=2 && owners<=2,"state recheck is bounded without polling or waiting");
+        if(fault==0) {
+            check(observation.first==0 && observation.state==201 && observation.rechecked,
+                  "recovery records both actual reads instead of claiming zero is air");
+            lease.refresh(1000+2*(1000/hz),false,true);
+            check(!lease.intent(1000+2*(1000/hz)),"actual physical release still withdraws acknowledged hold");
+        }
+    }
+    for (std::uint32_t state:{100u,200u,201u,403u,504u,601u,999u}) {
+        unsigned reads{},owners{};
+        const auto observed=dingosdk::game::skater::read_current_physics_state(
+            [&](std::uint32_t& value){++reads;value=state;return true;},[&]{++owners;return true;});
+        check(observed.state==state && observed.readable && !observed.rechecked && reads==1 && owners==0,
+              "nonzero native transitions are never retried or replaced");
+    }
+}
 struct Route {
     ArcadeInput input{true};NativeInputState producer;NativeInputReadiness readiness;
     NativeInputOwner owner{1,2,3,4,5};NativeInputFrame frame{};
@@ -627,4 +663,4 @@ void repeated_grab_without_flip_selection() {
     }
 }
 }
-int main(){requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
+int main(){current_air_read_preserves_only_verified_hold();requests();complete_direct_families();selected_native_families();native_grab_after_stance_change();foot_setting_admission();delayed_tap_and_controls();repeated_grab_after_unsupported_first_binding();repeated_grab_uses_physical_interval();input_order_and_launch();native_air_before_client_readiness();repeated_grab_after_native_jump_retirement();repeated_grab_without_flip_selection();independent_native_identity_fields();grab_and_native_shoulders();std::cout<<checks<<" native grab source/contract checks passed (gameplay unverified)\n";}
