@@ -211,6 +211,7 @@ def build():
         finger = fingers.get(value if ns == "Enum.FingerflipType" else GRAB_TO_FINGER.get(value) if ns == "Enum.GrabType" else None)
         if finger:
             row.update(implementation_state=PENDING if ns == "Enum.FingerflipType" else DEPENDENT,
+                       runtime_actor=[finger["actor_guid"]],
                        assets=[dict(resource_index=finger["resource"], name=finger["sequence"],
                            sequence_guid=finger["sequence_guid"], actors=[dict(guid=finger["actor_guid"])])],
                        arcade_binding=[finger["arcade_binding"]],

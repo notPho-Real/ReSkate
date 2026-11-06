@@ -467,5 +467,31 @@
     "landing_scoring_verified": false,
     "maximum_board_height_m": 0.028994,
     "lifecycle_limit": "Analog selection failed expected actor acknowledgment in both surrounding captures; native steering variants require investigation"
+  },
+  "6920b836-af5d-55cd-6920-b836af5d55cd": {
+    "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+    "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
+    "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
+    "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
+    "serial": 2,
+    "episode": 1,
+    "native_fingerflip_identity": 11,
+    "native_name": "BsFingerflip",
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "before": 0,
+    "after": 2,
+    "delta": 2,
+    "scoped_original_profile_read": true,
+    "original_preference": true,
+    "fresh_effective_read": true,
+    "ground_return_observed": true,
+    "airborne_catch_verified": false,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false,
+    "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
+    "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
   }
 }

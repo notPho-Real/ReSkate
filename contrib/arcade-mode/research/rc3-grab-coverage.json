@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 21,
+  "native_actor_evidence_count": 22,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -8465,20 +8465,51 @@
         "Establish BS Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "6920b836-af5d-55cd-6920-b836af5d55cd"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 11
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
+          "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
+          "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
+          "serial": 2,
+          "episode": 1,
+          "native_fingerflip_identity": 11,
+          "native_name": "BsFingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "ground_return_observed": true,
+          "airborne_catch_verified": false,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
+          "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
+        }
+      ]
     },
     {
       "native_name": "FSFingerflip",
@@ -8514,6 +8545,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "31d833f5-9c8d-4692-31d8-33f59c8d4692"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 14
@@ -8553,6 +8587,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "0e473e6e-2328-9645-0e47-3e6e23289645"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 13
@@ -8592,6 +8629,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "e7464a06-3d3f-3dbd-e746-4a063d3f3dbd"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 10
@@ -8631,6 +8671,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "11bc8118-ac1a-1792-11bc-8118ac1a1792"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 9
@@ -8670,6 +8713,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "f10c7f7a-f524-7cdc-f10c-7f7af5247cdc"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 12
@@ -8709,6 +8755,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "edbd1421-1fc0-5996-edbd-14211fc05996"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 1
@@ -8748,6 +8797,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "534829e3-b2a6-6a33-5348-29e3b2a66a33"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 7
@@ -8787,6 +8839,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "23faf164-3a34-05aa-23fa-f1643a3405aa"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 6
@@ -8826,6 +8881,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "3c3c8ff5-a88e-8400-3c3c-8ff5a88e8400"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 2
@@ -8865,6 +8923,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "1c03b497-6ee3-32a8-1c03-b4976ee332a8"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 3
@@ -8904,6 +8965,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "4d0d7811-2676-34bb-4d0d-7811267634bb"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 8
@@ -8943,6 +9007,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "ad402b40-552c-ea44-ad40-2b40552cea44"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 4
@@ -8982,6 +9049,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "8dbd3efb-3f4b-e79f-8dbd-3efb3f4be79f"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 5
@@ -9021,6 +9091,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "1929fca6-e045-dfe2-1929-fca6e045dfe2"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 23
@@ -9060,6 +9133,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "41e07a8f-7902-1964-41e0-7a8f79021964"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 24
@@ -9099,6 +9175,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "078eeb7f-6227-665c-078e-eb7f6227665c"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 25
@@ -9138,6 +9217,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "3e758231-7d4b-9dac-3e75-82317d4b9dac"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 26
@@ -9177,6 +9259,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "fd34817d-287e-7557-fd34-817d287e7557"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 28
@@ -9216,6 +9301,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "aab2b832-c8ae-e0ab-aab2-b832c8aee0ab"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 27
@@ -9343,6 +9431,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "0f119d7c-e87e-8e7b-0f11-9d7ce87e8e7b"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 19
@@ -9382,6 +9473,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "6d5195bb-9bf7-44af-6d51-95bb9bf744af"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 20
@@ -9421,6 +9515,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "b3d059ee-52e9-ee6b-b3d0-59ee52e9ee6b"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 22
@@ -9460,6 +9557,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "2f60d208-b58c-a4b6-2f60-d208b58ca4b6"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 21
@@ -9499,6 +9599,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "39d6dbbc-f658-708f-39d6-dbbcf658708f"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 29
@@ -9538,6 +9641,9 @@
         "hold_release": "unverified",
         "landing_scoring": "unverified"
       },
+      "runtime_actor": [
+        "f39f97d6-c0ff-9e11-f39f-97d6c0ff9e11"
+      ],
       "dependency": {
         "namespace": "Enum.FingerflipType",
         "value": 30
@@ -15254,7 +15360,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "edbd1421-1fc0-5996-edbd-14211fc05996"
+      ]
     },
     {
       "native_name": "Weddleflip",
@@ -15289,7 +15398,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "3c3c8ff5-a88e-8400-3c3c-8ff5a88e8400"
+      ]
     },
     {
       "native_name": "WeddleToBs",
@@ -15324,7 +15436,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "1c03b497-6ee3-32a8-1c03-b4976ee332a8"
+      ]
     },
     {
       "native_name": "SeatbeltToNose",
@@ -15359,7 +15474,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "ad402b40-552c-ea44-ad40-2b40552cea44"
+      ]
     },
     {
       "native_name": "StaleToFs",
@@ -15394,7 +15512,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "8dbd3efb-3f4b-e79f-8dbd-3efb3f4be79f"
+      ]
     },
     {
       "native_name": "StaleFlip",
@@ -15429,7 +15550,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "23faf164-3a34-05aa-23fa-f1643a3405aa"
+      ]
     },
     {
       "native_name": "TailFlip",
@@ -15464,7 +15588,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "534829e3-b2a6-6a33-5348-29e3b2a66a33"
+      ]
     },
     {
       "native_name": "CrailToTail",
@@ -15499,7 +15626,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "4d0d7811-2676-34bb-4d0d-7811267634bb"
+      ]
     },
     {
       "native_name": "BsToWeddle",
@@ -15534,7 +15664,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "11bc8118-ac1a-1792-11bc-8118ac1a1792"
+      ]
     },
     {
       "native_name": "BsVarial",
@@ -15569,7 +15702,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "e7464a06-3d3f-3dbd-e746-4a063d3f3dbd"
+      ]
     },
     {
       "native_name": "BsFingerflip",
@@ -15595,16 +15731,47 @@
         "Establish BS Grab, keep B held, then neutral or Left+X; release B for native exit"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Exact initialized original body actor plus positive advancement and native FingerFlipType required; no gameplay capture yet",
-      "release_landing_evidence": "Software checks neutral catch, observed destination, release withdrawal, owner loss and timeout; native catch/landing gameplay pending",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and native catch, landing and scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "6920b836-af5d-55cd-6920-b836af5d55cd"
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/finger-first-native-entry.json.gz",
+          "uncompressed_sha256": "3304c9388c26d7ca5bddd5bbcddbb1b4ccdc3af1d622ea8af62cdab9bb3056f6",
+          "compressed_sha256": "1f9b27285bfc4a63f4271d894f76a5422910fd23e41118879919f9719bed8b61",
+          "serial": 2,
+          "episode": 1,
+          "native_fingerflip_identity": 11,
+          "native_name": "BsFingerflip",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0,
+          "after": 2,
+          "delta": 2,
+          "scoped_original_profile_read": true,
+          "original_preference": true,
+          "fresh_effective_read": true,
+          "ground_return_observed": true,
+          "airborne_catch_verified": false,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "lifecycle_limit": "FingerFlipType11 and GrabType2 persisted after ground return. Earlier X/B release also entered the correct actor and returned to ground, but no airborne catch/destination transition was observed.",
+          "earlier_release_capture_sha256": "5f3e79c2d817fa010797afce745512c84572feba381f089ba53602e6da49a433"
+        }
+      ]
     },
     {
       "native_name": "FsToStale",
@@ -15639,7 +15806,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "f10c7f7a-f524-7cdc-f10c-7f7af5247cdc"
+      ]
     },
     {
       "native_name": "FsVarial",
@@ -15674,7 +15844,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "0e473e6e-2328-9645-0e47-3e6e23289645"
+      ]
     },
     {
       "native_name": "FsFingerflip",
@@ -15709,7 +15882,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "31d833f5-9c8d-4692-31d8-33f59c8d4692"
+      ]
     },
     {
       "native_name": "CoffinKickflip",
@@ -15832,7 +16008,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "0f119d7c-e87e-8e7b-0f11-9d7ce87e8e7b"
+      ]
     },
     {
       "native_name": "DoubleHeelflip",
@@ -15867,7 +16046,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "6d5195bb-9bf7-44af-6d51-95bb9bf744af"
+      ]
     },
     {
       "native_name": "DoubleFsShuv",
@@ -15902,7 +16084,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "2f60d208-b58c-a4b6-2f60-d208b58ca4b6"
+      ]
     },
     {
       "native_name": "DoubleBsShuv",
@@ -15937,7 +16122,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "b3d059ee-52e9-ee6b-b3d0-59ee52e9ee6b"
+      ]
     },
     {
       "native_name": "BsFingerHeelflip",
@@ -15972,7 +16160,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "1929fca6-e045-dfe2-1929-fca6e045dfe2"
+      ]
     },
     {
       "native_name": "FsFingerHeelflip",
@@ -16007,7 +16198,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "41e07a8f-7902-1964-41e0-7a8f79021964"
+      ]
     },
     {
       "native_name": "FingerHeelflip",
@@ -16042,7 +16236,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "078eeb7f-6227-665c-078e-eb7f6227665c"
+      ]
     },
     {
       "native_name": "TailHeelflip",
@@ -16077,7 +16274,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "3e758231-7d4b-9dac-3e75-82317d4b9dac"
+      ]
     },
     {
       "native_name": "WeddleHeelflip",
@@ -16112,7 +16312,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "aab2b832-c8ae-e0ab-aab2-b832c8aee0ab"
+      ]
     },
     {
       "native_name": "StaleHeelflip",
@@ -16147,7 +16350,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "fd34817d-287e-7557-fd34-817d287e7557"
+      ]
     },
     {
       "native_name": "TailToCrail",
@@ -16182,7 +16388,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "39d6dbbc-f658-708f-39d6-dbbcf658708f"
+      ]
     },
     {
       "native_name": "NoseToSeatbelt",
@@ -16217,7 +16426,10 @@
         "native_animation": "unverified",
         "hold_release": "unverified",
         "landing_scoring": "unverified"
-      }
+      },
+      "runtime_actor": [
+        "f39f97d6-c0ff-9e11-f39f-97d6c0ff9e11"
+      ]
     }
   ],
   "sequence_inventory": [

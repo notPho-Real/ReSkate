@@ -118,8 +118,8 @@ FingerFlipType and catch/destination. Hold B through return, try a second
 transition, release B and land. Repeat with B released during entry and near
 landing. Verify native combo/score and original vertical trajectory. Held X,
 X before grab acknowledgment, footers, Rocket Air and ground B+X must not start
-a substitute flip or another Ollie. No successful RC3 fingerflip animation or
-scoring capture is yet claimed.
+a substitute flip or another Ollie. RC3-24 demonstrated BS Fingerflip entry and actor advancement, as recorded
+below. Full catch, exit and scoring acceptance remains outstanding.
 
 ## RC3-20 native failure isolation
 
@@ -170,3 +170,17 @@ tests reject wrong layouts, missing arguments, mismatched context generations
 and nonlocal owners and exercise lease acquisition, expiry and reader ownership.
 These guards and the borrowed return path still need native acceptance in the
 next Windows candidate; they do not establish a successful fingerflip.
+
+## RC3-24 original reader and actor observed
+
+On skate3_megapark, source5c841c20c82b5782f6ff4ac861aa0e9683159d97
+reported an exact scoped profile read, original value true, acquired hold and
+a fresh effective read. The original BS Fingerflip identity11 and actor
+6920b836-af5d-55cd-6920-b836af5d55cd initialized and advanced0→2.
+The skater returned to ground100 without observed bail. An earlier X/B
+release comparison repeated this entry, but neither trial demonstrated an
+airborne catch before landing; FingerFlipType11 and GrabType2 remained.
+Receipts are in rc3-native-grab-observations.json. This proves the missing
+reader route and genuine entry, not every family, complete exit or scoring.
+The original preference was already true in these trials, so a false saved
+preference with a temporary true borrow still needs native verification.
