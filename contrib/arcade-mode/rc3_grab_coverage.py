@@ -272,6 +272,12 @@ def build():
                          native_animation_acknowledgment="Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
                          release_landing_evidence="SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
                          remaining_blocker="Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.")
+            if any(e.get("native_exit_state_observed") and e.get("grab_identity_cleared_before_landing")
+                   and e.get("ground_return_observed") for e in matches):
+                entry["release_landing_evidence"] = (
+                    "Native grab identity cleared through the original exit state before ground return "
+                    "in the recorded trials. Consult each receipt for its exact context and limits; "
+                    "exact exit actor, numeric scoring, extended holds and other stances remain unverified.")
             if any(e.get("airborne_catch_verified") and e.get("grab_identity_cleared_before_landing")
                    and e.get("ground_return_observed") for e in matches):
                 entry["release_landing_evidence"] = (

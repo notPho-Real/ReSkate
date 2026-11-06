@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 23,
+  "native_actor_evidence_count": 51,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -2692,10 +2692,10 @@
         "Select \"Seatbelt\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2743,7 +2743,42 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 15
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/seatbelt-selected-native.json.gz",
+          "uncompressed_sha256": "8eba2b6bce4248c571c78fd057a4fcddc56ee12d347f3c3e7110a92d07b529ce",
+          "compressed_sha256": "9bd6266412c67632e8c47d93b5707d9bf09e35c15b8be93226fd202c070f7b43",
+          "native_name": "Seatbelt",
+          "serial": 14,
+          "episode": 88,
+          "native_detail": 15,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.728680299,
+            "released": 1.129557386,
+            "landed": 1.360835701
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Crail",
@@ -2789,10 +2824,10 @@
         "Select \"Crail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -2840,7 +2875,42 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 18
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/crail-selected-native.json.gz",
+          "uncompressed_sha256": "6d44c81c99270958884e4d00e58d8fe7fd5edafd6f3b679699978c5da5e146b0",
+          "compressed_sha256": "0cbe819f16d5ba4e563b14557004a57d2c8cb9f9d0523495b4c082aedd8ba31e",
+          "native_name": "Crail",
+          "serial": 13,
+          "episode": 87,
+          "native_detail": 18,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.735988768,
+            "released": 1.134134323,
+            "landed": 1.36645767
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Nose",
@@ -2917,7 +2987,7 @@
       ],
       "implementation_state": "ALIAS/DEPENDENT",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -3016,6 +3086,40 @@
           "intent_withdrawal_observed": true,
           "native_exit_actor_verified": false,
           "landing_scoring_verified": false
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nosegrab_alternate",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nosegrab (alternate native pose)",
+          "serial": 23,
+          "episode": 97,
+          "native_detail": 21,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.730887024,
+            "released": 1.133315683,
+            "landed": 1.372223013
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -3063,10 +3167,10 @@
         "Select \"Stale\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3114,7 +3218,42 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 25
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/stale-selected-native.json.gz",
+          "uncompressed_sha256": "8d4ddb2672a8be90eed4c9792baab83d2665e651ceea6013f08ba841d285e764",
+          "compressed_sha256": "0f736fdb01abb0317f1a3785c74820990f9f6dcdc6e606e514c7a5867d6b7799",
+          "native_name": "Stale",
+          "serial": 15,
+          "episode": 89,
+          "native_detail": 25,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.746101636,
+            "released": 1.149429244,
+            "landed": 1.381404422
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Mute",
@@ -3190,10 +3329,10 @@
         "Select \"Weddle (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3275,7 +3414,76 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 29
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/weddle-selected-native.json.gz",
+          "uncompressed_sha256": "c10686c920986a3754ef35912dcbf28a2f515e666e7351930d276b7323c49153",
+          "compressed_sha256": "58880e4c6bc8371cb3325b1185a739eb67f51787e02a8fdeea8d653382787d53",
+          "native_name": "Weddle",
+          "serial": 16,
+          "episode": 90,
+          "native_detail": 29,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.739768298,
+            "released": 1.139154279,
+            "landed": 1.406212928
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "weddle_alternate",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Weddle (alternate native pose)",
+          "serial": 35,
+          "episode": 109,
+          "native_detail": 29,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.740672749,
+            "released": 1.13493471,
+            "landed": 1.411455869
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Double",
@@ -3321,10 +3529,10 @@
         "R3+B (default selection, neutral direction); or Select \"Double Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3372,7 +3580,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 33
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "double_grab",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Double Grab",
+          "serial": 40,
+          "episode": 114,
+          "native_detail": 33,
+          "native_family": 9,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 0.60092926,
+          "delta": 0.60092926,
+          "phase": "loop",
+          "arcade_binding": "R3+B (default selection, neutral direction); or Select \"Double Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.666312166,
+            "released": 1.136634154,
+            "landed": 1.367088273
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Rocket",
@@ -3418,10 +3662,10 @@
         "Up+B,B within 250ms; or Select \"Rocket Air\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -3469,7 +3713,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 38
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "rocket_air",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Rocket Air",
+          "serial": 38,
+          "episode": 112,
+          "native_detail": 38,
+          "native_family": 10,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 2.0,
+          "delta": 2.0,
+          "phase": "loop",
+          "arcade_binding": "Up+B,B within 250ms; or Select \"Rocket Air\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.723032874,
+            "released": 1.15669423,
+            "landed": 1.396225372
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Melon",
@@ -5542,10 +5822,10 @@
         "Select \"Tail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -5593,7 +5873,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 14
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_bs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail BS Shifty",
+          "serial": 17,
+          "episode": 91,
+          "native_detail": 14,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.729234931,
+            "released": 1.164528925,
+            "landed": 1.425645941
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "FSShiftyTailGrab",
@@ -5639,10 +5955,10 @@
         "Select \"Tail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -5690,7 +6006,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 13
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_fs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail FS Shifty",
+          "serial": 18,
+          "episode": 92,
+          "native_detail": 13,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.741005301,
+            "released": 1.136499179,
+            "landed": 1.410950893
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Benihanna",
@@ -6058,10 +6410,10 @@
         "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6110,7 +6462,43 @@
         "namespace": "Enum.DetailedGrabType",
         "value": 24
       },
-      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged."
+      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged.",
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "seatbelt_bs_shifty",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Seatbelt BS Shifty",
+          "serial": 39,
+          "episode": 113,
+          "native_detail": 24,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731582362,
+            "released": 1.134171836,
+            "landed": 1.372118624
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "FSShiftySeatbelt",
@@ -6156,10 +6544,10 @@
         "Select \"Seatbelt FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6207,7 +6595,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 16
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "seatbelt_fs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Seatbelt FS Shifty",
+          "serial": 25,
+          "episode": 99,
+          "native_detail": 16,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.720311599,
+            "released": 1.12372314,
+            "landed": 1.325072288
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "BSShiftyCrail",
@@ -6283,10 +6707,10 @@
         "Select \"Crail BS Shifty (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6368,7 +6792,77 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 20
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_bs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail BS Shifty",
+          "serial": 27,
+          "episode": 101,
+          "native_detail": 20,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.735859218,
+            "released": 1.132487261,
+            "landed": 1.363569943
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_bs_shifty_alternate",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail BS Shifty (alternate native pose)",
+          "serial": 28,
+          "episode": 102,
+          "native_detail": 20,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail BS Shifty (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.723721055,
+            "released": 1.148262024,
+            "landed": 1.385992241
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "FSShiftyCrail",
@@ -6444,10 +6938,10 @@
         "Select \"Crail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6529,7 +7023,79 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 19
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_crail_fs_shifty",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Crail FS Shifty (from Nose)",
+          "serial": 24,
+          "episode": 98,
+          "native_detail": 19,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail FS Shifty (from Nose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.726968194,
+            "released": 1.128799111,
+            "landed": 1.357696627
+          },
+          "unknown_state_times_seconds": [
+            0.35555604
+          ],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_fs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail FS Shifty",
+          "serial": 26,
+          "episode": 100,
+          "native_detail": 19,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.740683131,
+            "released": 1.141794709,
+            "landed": 1.375354598
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "JudoNoseGrab",
@@ -6837,10 +7403,10 @@
         "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6922,7 +7488,77 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 24
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "nose_bs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Nose BS Shifty",
+          "serial": 20,
+          "episode": 94,
+          "native_detail": 24,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 0.99999994,
+          "delta": 0.99999994,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.727242309,
+            "released": 1.148459038,
+            "landed": 1.382976013
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "seatbelt_bs_shifty",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Seatbelt BS Shifty",
+          "serial": 39,
+          "episode": 113,
+          "native_detail": 24,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731582362,
+            "released": 1.134171836,
+            "landed": 1.372118624
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "FSShiftyNoseGrab",
@@ -6968,10 +7604,10 @@
         "Select \"Nose FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7019,7 +7655,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 23
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_fs_shifty",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nose FS Shifty",
+          "serial": 21,
+          "episode": 95,
+          "native_detail": 23,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731930843,
+            "released": 1.128673244,
+            "landed": 1.367195439
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "ModNoseGrab",
@@ -7204,10 +7876,10 @@
         "Select \"Stale Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7255,7 +7927,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 26
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tailbone",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Tailbone",
+          "serial": 30,
+          "episode": 104,
+          "native_detail": 26,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0000001,
+          "delta": 1.0000001,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.713148046,
+            "released": 1.151195035,
+            "landed": 1.383067346
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "StaleNosebone",
@@ -7301,10 +8009,10 @@
         "Select \"Stale Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7352,7 +8060,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 27
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_nosebone",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Nosebone",
+          "serial": 29,
+          "episode": 103,
+          "native_detail": 27,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.749214077,
+            "released": 1.148904417,
+            "landed": 1.377038633
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "StaleTuckKnee",
@@ -7458,10 +8202,10 @@
         "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7577,7 +8321,111 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 28
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_right",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Tuck Knee (right pose)",
+          "serial": 31,
+          "episode": 105,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (right pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.742570313,
+            "released": 1.135804661,
+            "landed": 1.371225527
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale TuckKnee",
+          "serial": 32,
+          "episode": 106,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale TuckKnee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.718946813,
+            "released": 1.156727641,
+            "landed": 1.357141056
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_middle",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Stale Tuck Knee (middle pose)",
+          "serial": 33,
+          "episode": 107,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.724543345,
+            "released": 1.129066769,
+            "landed": 1.366364567
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "WeddleNosebone",
@@ -7623,10 +8471,10 @@
         "Select \"Weddle Nose\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7674,7 +8522,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 31
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "weddle_nose",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Weddle Nose",
+          "serial": 36,
+          "episode": 110,
+          "native_detail": 31,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle Nose\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.705317667,
+            "released": 1.144680633,
+            "landed": 1.412184848
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "ModWeddle",
@@ -7764,10 +8648,10 @@
         "Select \"Weddle Tail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -7815,7 +8699,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 30
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "weddle_tail",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Weddle Tail",
+          "serial": 37,
+          "episode": 111,
+          "native_detail": 30,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle Tail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731679351,
+            "released": 1.134806119,
+            "landed": 1.403193686
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "FSGroundGrab",
@@ -8164,10 +9084,10 @@
         "Select \"Nose Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -8215,7 +9135,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 22
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_tailbone",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nose Tailbone",
+          "serial": 22,
+          "episode": 96,
+          "native_detail": 22,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.734701692,
+            "released": 1.135210984,
+            "landed": 1.365005716
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "TailNosebone",
@@ -8261,10 +9217,10 @@
         "Select \"Tail NoseBone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -8312,7 +9268,43 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 12
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_nosebone",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail NoseBone",
+          "serial": 19,
+          "episode": 93,
+          "native_detail": 12,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail NoseBone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731733219,
+            "released": 1.138035662,
+            "landed": 1.404522246
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "StaleFSTuckKnee",
@@ -8418,10 +9410,10 @@
         "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -8537,7 +9529,111 @@
       "dependency": {
         "namespace": "Enum.DetailedGrabType",
         "value": 28
-      }
+      },
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_right",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Tuck Knee (right pose)",
+          "serial": 31,
+          "episode": 105,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (right pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.742570313,
+            "released": 1.135804661,
+            "landed": 1.371225527
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale TuckKnee",
+          "serial": 32,
+          "episode": 106,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale TuckKnee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.718946813,
+            "released": 1.156727641,
+            "landed": 1.357141056
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_middle",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Stale Tuck Knee (middle pose)",
+          "serial": 33,
+          "episode": 107,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.724543345,
+            "released": 1.129066769,
+            "landed": 1.366364567
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "BSFingerflip",
@@ -11219,10 +12315,10 @@
         "Select \"Tail NoseBone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11265,6 +12361,42 @@
             "compressed_sha1": "c29d556a237ec7616c3d021f31bd588584a044d0",
             "decoded_sha256": "206a98e9eef6b866e9e71850027ca29e4b8c233731325ccb3b67621931d3e2ce"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_nosebone",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail NoseBone",
+          "serial": 19,
+          "episode": 93,
+          "native_detail": 12,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail NoseBone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731733219,
+            "released": 1.138035662,
+            "landed": 1.404522246
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11312,10 +12444,10 @@
         "Select \"Tail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11358,6 +12490,42 @@
             "compressed_sha1": "671837490437dfc77c550b0d5876b82962067ac2",
             "decoded_sha256": "2fb1206cfd37da1d9563dc4a84c827bb0d5b67860e8e9af1870f4e376acbd0f1"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_fs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail FS Shifty",
+          "serial": 18,
+          "episode": 92,
+          "native_detail": 13,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.741005301,
+            "released": 1.136499179,
+            "landed": 1.410950893
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11405,10 +12573,10 @@
         "Select \"Tail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11451,6 +12619,42 @@
             "compressed_sha1": "94067f8954538fc80a5bb6c205a23ea79f15d1a1",
             "decoded_sha256": "d1bac7c23fc1a50aae6d4d613138f57c60b0cb5c33d0751c72fe36c5bd6861bd"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "tail_bs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Tail BS Shifty",
+          "serial": 17,
+          "episode": 91,
+          "native_detail": 14,
+          "native_family": 3,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Tail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.729234931,
+            "released": 1.164528925,
+            "landed": 1.425645941
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11498,10 +12702,10 @@
         "Select \"Seatbelt\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11544,6 +12748,41 @@
             "compressed_sha1": "8ebc053f8c434e5e671782f7c1849fd82371103e",
             "decoded_sha256": "e81c83ae0d0f61897fa6186ff36d6c61fb084ec83010953d9aa78d7212587b83"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/seatbelt-selected-native.json.gz",
+          "uncompressed_sha256": "8eba2b6bce4248c571c78fd057a4fcddc56ee12d347f3c3e7110a92d07b529ce",
+          "compressed_sha256": "9bd6266412c67632e8c47d93b5707d9bf09e35c15b8be93226fd202c070f7b43",
+          "native_name": "Seatbelt",
+          "serial": 14,
+          "episode": 88,
+          "native_detail": 15,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.728680299,
+            "released": 1.129557386,
+            "landed": 1.360835701
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11591,10 +12830,10 @@
         "Select \"Seatbelt FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11637,6 +12876,42 @@
             "compressed_sha1": "1388d9edb77dfc1b1abcc70f4362786cbbd34452",
             "decoded_sha256": "7dd39cde767fec1236082428ed49cc69da6454bcead79cb49f7c5e7f55b18456"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "seatbelt_fs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Seatbelt FS Shifty",
+          "serial": 25,
+          "episode": 99,
+          "native_detail": 16,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.720311599,
+            "released": 1.12372314,
+            "landed": 1.325072288
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11684,10 +12959,10 @@
         "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11736,7 +13011,43 @@
         "namespace": "Enum.DetailedGrabType",
         "value": 24
       },
-      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged."
+      "source_identity_note": "Original Seatbelt BS Shifty actor emits Nose_BS_Shifty detail24. The unused Seatbelt_BS_Shifty detail17 is not synthesized; native scoring is unchanged.",
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "seatbelt_bs_shifty",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Seatbelt BS Shifty",
+          "serial": 39,
+          "episode": 113,
+          "native_detail": 24,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731582362,
+            "released": 1.134171836,
+            "landed": 1.372118624
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
+      ]
     },
     {
       "native_name": "Crail",
@@ -11782,10 +13093,10 @@
         "Select \"Crail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11828,6 +13139,41 @@
             "compressed_sha1": "136a2242f9ab637a8f866392c33bdbde1d6500c3",
             "decoded_sha256": "23dbdb0a4465f56e62abd367e8dbf76fee7c8293d6866703b2853c2b423c07ad"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/crail-selected-native.json.gz",
+          "uncompressed_sha256": "6d44c81c99270958884e4d00e58d8fe7fd5edafd6f3b679699978c5da5e146b0",
+          "compressed_sha256": "0cbe819f16d5ba4e563b14557004a57d2c8cb9f9d0523495b4c082aedd8ba31e",
+          "native_name": "Crail",
+          "serial": 13,
+          "episode": 87,
+          "native_detail": 18,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.735988768,
+            "released": 1.134134323,
+            "landed": 1.36645767
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -11905,10 +13251,10 @@
         "Select \"Crail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -11986,6 +13332,78 @@
             "decoded_sha256": "20dc871b6aa3e47255513629f37c2f5312b4cd226d757dd0351294ed60df9dc2"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_crail_fs_shifty",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Crail FS Shifty (from Nose)",
+          "serial": 24,
+          "episode": 98,
+          "native_detail": 19,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail FS Shifty (from Nose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.726968194,
+            "released": 1.128799111,
+            "landed": 1.357696627
+          },
+          "unknown_state_times_seconds": [
+            0.35555604
+          ],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_fs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail FS Shifty",
+          "serial": 26,
+          "episode": 100,
+          "native_detail": 19,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.740683131,
+            "released": 1.141794709,
+            "landed": 1.375354598
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
       ]
     },
     {
@@ -12062,10 +13480,10 @@
         "Select \"Crail BS Shifty (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12142,6 +13560,76 @@
             "compressed_sha1": "679568bd4e6182ec8e010ee6af97dc45564b3bbb",
             "decoded_sha256": "03d461e747898f418846048b3ef822296b881c1a30eee79111e97bb7237ac2b2"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_bs_shifty",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail BS Shifty",
+          "serial": 27,
+          "episode": 101,
+          "native_detail": 20,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.735859218,
+            "released": 1.132487261,
+            "landed": 1.363569943
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-crail-batch-trials-result.json.gz",
+          "trial": "crail_bs_shifty_alternate",
+          "uncompressed_sha256": "4fcda91e28479738ac6dc8cdc05c7fccdcc125e929424b748645e9fe469aa274",
+          "compressed_sha256": "03b6dd2e292bc90feafe2eea5ba7ad1938603e0dcf69fa08a6a5a4b8fec6f97f",
+          "native_name": "Crail BS Shifty (alternate native pose)",
+          "serial": 28,
+          "episode": 102,
+          "native_detail": 20,
+          "native_family": 5,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Crail BS Shifty (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.723721055,
+            "released": 1.148262024,
+            "landed": 1.385992241
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12220,7 +13708,7 @@
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
-      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
@@ -12315,6 +13803,40 @@
           "intent_withdrawal_observed": true,
           "native_exit_actor_verified": false,
           "landing_scoring_verified": false
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nosegrab_alternate",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nosegrab (alternate native pose)",
+          "serial": 23,
+          "episode": 97,
+          "native_detail": 21,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nosegrab (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.730887024,
+            "released": 1.133315683,
+            "landed": 1.372223013
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12362,10 +13884,10 @@
         "Select \"Nose Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12408,6 +13930,42 @@
             "compressed_sha1": "6feb1beff691f82eaa0e15a947bcd5ab342e7f1a",
             "decoded_sha256": "1bfd2e6a96484dfe3d3754ffecc954ad8ea5a7e23c4dacf479e69cc89489c253"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_tailbone",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nose Tailbone",
+          "serial": 22,
+          "episode": 96,
+          "native_detail": 22,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.734701692,
+            "released": 1.135210984,
+            "landed": 1.365005716
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12455,10 +14013,10 @@
         "Select \"Nose FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12501,6 +14059,42 @@
             "compressed_sha1": "1187e969c41246dd81f69b4b7a719c78c29f0632",
             "decoded_sha256": "2b563e7c2be66cd12b8a4eee0d4eefd379f3ede207622e92598e24c24f4c80dc"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-nose-batch-trials-result.json.gz",
+          "trial": "nose_fs_shifty",
+          "uncompressed_sha256": "c2ed31f9530d12325a0352dadb6752ef8729cc7ad0982f367b78f2e10f54f922",
+          "compressed_sha256": "a19ecfa362aef504523209870da10066e8d3837aa81a404fa58408471b7d3049",
+          "native_name": "Nose FS Shifty",
+          "serial": 21,
+          "episode": 95,
+          "native_detail": 23,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose FS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731930843,
+            "released": 1.128673244,
+            "landed": 1.367195439
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12578,10 +14172,10 @@
         "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12659,6 +14253,76 @@
             "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-shifty-batch-trials-result.json.gz",
+          "trial": "nose_bs_shifty",
+          "uncompressed_sha256": "c8b0d9e25d1f3f88425f39df91c4c76135fc5c66a19fe5ffa07e7df52884b0e7",
+          "compressed_sha256": "a5dc7ad3a76018c6c63b2ecc099acb463341b039005fbf93db65d2f1bbb8339c",
+          "native_name": "Nose BS Shifty",
+          "serial": 20,
+          "episode": 94,
+          "native_detail": 24,
+          "native_family": 6,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 0.99999994,
+          "delta": 0.99999994,
+          "phase": "loop",
+          "arcade_binding": "Select \"Nose BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.727242309,
+            "released": 1.148459038,
+            "landed": 1.382976013
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "seatbelt_bs_shifty",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Seatbelt BS Shifty",
+          "serial": 39,
+          "episode": 113,
+          "native_detail": 24,
+          "native_family": 4,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Seatbelt BS Shifty\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731582362,
+            "released": 1.134171836,
+            "landed": 1.372118624
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
       ]
     },
     {
@@ -12705,10 +14369,10 @@
         "Select \"Stale\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12751,6 +14415,41 @@
             "compressed_sha1": "65ee8c5745d4d7c79fc2627b803d4a6f6958eed9",
             "decoded_sha256": "7acf37546dc6a75a6a617a05a5e8d330238e63d38728976c995aae3be593e4d8"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/stale-selected-native.json.gz",
+          "uncompressed_sha256": "8d4ddb2672a8be90eed4c9792baab83d2665e651ceea6013f08ba841d285e764",
+          "compressed_sha256": "0f736fdb01abb0317f1a3785c74820990f9f6dcdc6e606e514c7a5867d6b7799",
+          "native_name": "Stale",
+          "serial": 15,
+          "episode": 89,
+          "native_detail": 25,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.746101636,
+            "released": 1.149429244,
+            "landed": 1.381404422
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12798,10 +14497,10 @@
         "Select \"Stale Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12844,6 +14543,42 @@
             "compressed_sha1": "e70e34c731d49da6dda9961584f01610ab92a044",
             "decoded_sha256": "0ad9992a97aa5d4a36cfa0dac4459e8a27478623924f09d7cce588b05030c139"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tailbone",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Tailbone",
+          "serial": 30,
+          "episode": 104,
+          "native_detail": 26,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0000001,
+          "delta": 1.0000001,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tailbone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.713148046,
+            "released": 1.151195035,
+            "landed": 1.383067346
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -12891,10 +14626,10 @@
         "Select \"Stale Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -12937,6 +14672,42 @@
             "compressed_sha1": "25ccf6ef1733fb365a5f984cf6b81df8360c9413",
             "decoded_sha256": "ed8127bf87fe7cdcd2474090106a360dbdcf1a2c2523676b8fb3db5c595a997b"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_nosebone",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Nosebone",
+          "serial": 29,
+          "episode": 103,
+          "native_detail": 27,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Nosebone\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.749214077,
+            "released": 1.148904417,
+            "landed": 1.377038633
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -13044,10 +14815,10 @@
         "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13159,6 +14930,110 @@
             "decoded_sha256": "612652562f88fb5a5eff24fb748470002249d55d5a0489d901152168c9a03fba"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_right",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale Tuck Knee (right pose)",
+          "serial": 31,
+          "episode": 105,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (right pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.742570313,
+            "released": 1.135804661,
+            "landed": 1.371225527
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-stale-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee",
+          "uncompressed_sha256": "76022d16cf96cbbdd842366fe508cc2b87c56fdbffb6bd9de42346566e66258a",
+          "compressed_sha256": "954e691a12a66300ff4cb79dbcfe28e85b4428029c504a303af182d1623d2b50",
+          "native_name": "Stale TuckKnee",
+          "serial": 32,
+          "episode": 106,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale TuckKnee\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.718946813,
+            "released": 1.156727641,
+            "landed": 1.357141056
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "stale_tuck_knee_middle",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Stale Tuck Knee (middle pose)",
+          "serial": 33,
+          "episode": 107,
+          "native_detail": 28,
+          "native_family": 7,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Stale Tuck Knee (middle pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.724543345,
+            "released": 1.129066769,
+            "landed": 1.366364567
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
       ]
     },
     {
@@ -13235,10 +15110,10 @@
         "Select \"Weddle (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13316,6 +15191,75 @@
             "decoded_sha256": "bc269d3fc6676ac9c05a4b1bd87ac71810c875b98b074dac1dc290c83d9bdfd3"
           }
         }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/weddle-selected-native.json.gz",
+          "uncompressed_sha256": "c10686c920986a3754ef35912dcbf28a2f515e666e7351930d276b7323c49153",
+          "compressed_sha256": "58880e4c6bc8371cb3325b1185a739eb67f51787e02a8fdeea8d653382787d53",
+          "native_name": "Weddle",
+          "serial": 16,
+          "episode": 90,
+          "native_detail": 29,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.739768298,
+            "released": 1.139154279,
+            "landed": 1.406212928
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native grab clearance/exit state and ground return in this flat-ground Ollie context. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        },
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "weddle_alternate",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Weddle (alternate native pose)",
+          "serial": 35,
+          "episode": 109,
+          "native_detail": 29,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle (alternate native pose)\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.740672749,
+            "released": 1.13493471,
+            "landed": 1.411455869
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
+        }
       ]
     },
     {
@@ -13362,10 +15306,10 @@
         "Select \"Weddle Tail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13408,6 +15352,42 @@
             "compressed_sha1": "9a37ee5b914b9e443ef6492f0c6c603c9f78596e",
             "decoded_sha256": "cf98f609f053366c29b99e65c6c91ddc3522ed514d194d2f0e4aeac5f4e016c1"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "weddle_tail",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Weddle Tail",
+          "serial": 37,
+          "episode": 111,
+          "native_detail": 30,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle Tail\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.731679351,
+            "released": 1.134806119,
+            "landed": 1.403193686
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -13455,10 +15435,10 @@
         "Select \"Weddle Nose\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13501,6 +15481,42 @@
             "compressed_sha1": "0d9fd2cd8bc8d0049d0e64af195ef7c0409ef4fd",
             "decoded_sha256": "4786acfe51a4a4d182ab0d1e9ca68788665965cb1b9f66583f176551e7ddab48"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "weddle_nose",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Weddle Nose",
+          "serial": 36,
+          "episode": 110,
+          "native_detail": 31,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle Nose\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.705317667,
+            "released": 1.144680633,
+            "landed": 1.412184848
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -13548,10 +15564,10 @@
         "Select \"Weddle Japan\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13594,6 +15610,42 @@
             "compressed_sha1": "e9d9ddde231a1e2b89286c19b77d10ad00dcbb4f",
             "decoded_sha256": "0a55dc9c481ab565748a0ae7515de32f53afbaa22199616898b4eddc02da35cb"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-weddle-batch-trials-result.json.gz",
+          "trial": "weddle_japan",
+          "uncompressed_sha256": "f2c7ce1d3a99da0ea8db88436fb04d4efb91d4c8cd859f55e42005424300d402",
+          "compressed_sha256": "81f8b6291d25e4754afee497f83b61b2e1058582359488e01ac9cfc88e7a54ee",
+          "native_name": "Weddle Japan",
+          "serial": 34,
+          "episode": 108,
+          "native_detail": 32,
+          "native_family": 8,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 1.0,
+          "delta": 1.0,
+          "phase": "loop",
+          "arcade_binding": "Select \"Weddle Japan\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.717036372,
+            "released": 1.155714828,
+            "landed": 1.424172432
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -13641,10 +15693,10 @@
         "R3+B (default selection, neutral direction); or Select \"Double Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -13687,6 +15739,42 @@
             "compressed_sha1": "f8f65239bd45519dbb717a30a72ab26405d163e8",
             "decoded_sha256": "72237dae31b3870efe00552e73c6c987c8f804b09183603c1468a2abca07f1e8"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "double_grab",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Double Grab",
+          "serial": 40,
+          "episode": 114,
+          "native_detail": 33,
+          "native_family": 9,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 0.60092926,
+          "delta": 0.60092926,
+          "phase": "loop",
+          "arcade_binding": "R3+B (default selection, neutral direction); or Select \"Double Grab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.666312166,
+            "released": 1.136634154,
+            "landed": 1.367088273
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
@@ -14210,10 +16298,10 @@
         "Up+B,B within 250ms; or Select \"Rocket Air\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "Native grab identity cleared through the original exit state before ground return in the recorded trials. Consult each receipt for its exact context and limits; exact exit actor, numeric scoring, extended holds and other stances remain unverified.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -14256,6 +16344,42 @@
             "compressed_sha1": "ba46ae1a3957853a7daca006ae18e96b598a42e2",
             "decoded_sha256": "77afd90d4c8c9116b011795528037520114364e46935f5985a2cb8f2c0a49345"
           }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+          "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-24/grab-remaining-batch-trials-result.json.gz",
+          "trial": "rocket_air",
+          "uncompressed_sha256": "566211507af947d122519361b2a440216737f7dc3a7a9449995b9191ca78fd70",
+          "compressed_sha256": "894469de59bde5bc8af686c0d55e34ef215227b7a6e765d6cb4608607e05d420",
+          "native_name": "Rocket Air",
+          "serial": 38,
+          "episode": 112,
+          "native_detail": 38,
+          "native_family": 10,
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "before": 0.0,
+          "after": 2.0,
+          "delta": 2.0,
+          "phase": "loop",
+          "arcade_binding": "Up+B,B within 250ms; or Select \"Rocket Air\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
+          "release_observed": true,
+          "ground_return_observed": true,
+          "grab_identity_cleared_before_landing": true,
+          "native_exit_state_observed": true,
+          "native_exit_actor_verified": false,
+          "landing_scoring_verified": false,
+          "timeline_seconds": {
+            "entered": 0.723032874,
+            "released": 1.15669423,
+            "landed": 1.396225372
+          },
+          "unknown_state_times_seconds": [],
+          "lifecycle_limit": "Exact original loop, native clearance/exit state and ground100 in this flat-ground Ollie trial. Exact Exit actor, numeric scoring, extended holds and other stances remain unverified."
         }
       ]
     },
