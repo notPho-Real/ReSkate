@@ -100,6 +100,20 @@ def blocker(entry):
 
 def build():
     source = json.loads((RESEARCH / "native-grab-source-catalog.json").read_text())
+    footer_phases = {}
+    contract = (ROOT / "Engine/Game/Build/20260929/arcade_grab_transition.h").read_text()
+    for phase, array in (("into", "footer_entry_actors"), ("exit", "footer_exit_actors")):
+        filename = "native-one-footer-" + ("entry" if phase == "into" else "exit") + "-actors.json"
+        actors = json.loads((RESEARCH / filename).read_text())
+        code = contract.split(array + "{{", 1)[1].split("}};", 1)[0]
+        identities = re.findall(r'"([0-9a-f-]{36})"', code)
+        assert [a["one_footer"] for a in actors] == list(range(1, 14))
+        assert [a["actor"] for a in actors] == identities
+        for actor in actors:
+            seq = next(s for s in source["sequence_inventory"] if s["resource_index"] == actor["resource"])
+            assert seq["name"].lower() == actor["sequence"].lower()
+            assert actor["resource"] not in footer_phases
+            footer_phases[actor["resource"]] = dict(actor, phase=phase)
     finger_rows = json.loads((RESEARCH / "native-fingerflip-transitions.json").read_text())["transitions"]
     finger_code = (ROOT / "Extension/ArcadeMode/arcade_fingerflip.h").read_text()
     declarations = re.findall(r"\{(\d+),(\d+),(\d+),(\d+)\}", finger_code)
@@ -237,12 +251,23 @@ def build():
         if variants:
             assert len(variants) == 1
             row.update(implementation_state=PENDING, arcade_binding=variants[0]["arcade_binding"],
+                       native_actor=variants[0]["native_actor"],
                        remaining_blocker="RC3 native lifecycle and scoring acceptance outstanding")
         finger = next((f for f in finger_rows if f["resource"] == seq["resource_index"]), None)
         if finger:
             row.update(implementation_state=PENDING, arcade_binding=finger["arcade_binding"],
+                       native_actor=finger["actor_guid"],
                        identity_links=[dict(namespace="Enum.FingerflipType", value=finger["native_id"])],
                        remaining_blocker="RC3 native animation/catch/landing/scoring acceptance outstanding")
+        if seq["resource_index"] in footer_phases:
+            phase = footer_phases[seq["resource_index"]]
+            parent = next(p for p in profiles.values() if p["one_footer"] == phase["one_footer"])
+            row.update(implementation_state=DEPENDENT, arcade_binding=parent["arcade_binding"],
+                       dependency=dict(namespace="Enum.OneFooterType", value=phase["one_footer"], phase=phase["phase"]),
+                       native_actor=phase["actor"],
+                       native_gameplay_context="Original airborne one-footer " + phase["phase"] + " phase",
+                       native_mechanism="Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+                       remaining_blocker="Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.")
         seq_rows.append(row)
     assert len(entries) == 171 and len(seq_rows) == 300
     observed = json.loads((RESEARCH / "rc3-native-grab-observations.json").read_text())
@@ -253,6 +278,14 @@ def build():
         assert evidence["actor_initialized"] and evidence["positive_advancement"]
         assert re.fullmatch(r"[0-9a-f]{64}", evidence["uncompressed_sha256"])
         assert not evidence["landing_scoring_verified"]
+    for row in seq_rows:
+        actor = row.get("native_actor")
+        if actor in observed:
+            row["rc3_native_evidence"] = observed[actor]
+            row["native_animation_acknowledgment"] = "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied."
+            evidence = observed[actor]
+            if evidence.get("native_exit_state_observed") and evidence.get("grab_identity_cleared_before_landing") and evidence.get("ground_return_observed"):
+                row["release_landing_evidence"] = "Native grab identity cleared through exit before ground return in the attached receipt. Exact exit actor, other contexts and numeric scoring remain separate acceptance items."
     for entry in entries:
         matches = [observed[a] for a in entry.get("runtime_actor", []) if a in observed]
         # An Into actor proves entry, not advancement of the separate Loop.

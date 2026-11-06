@@ -38,3 +38,14 @@ rejections still pass. Required hardware follow-up:100/150ms repeats retain a
 true double and native catch;250ms after a closed window preserves the single
 flip;350ms and post-landing input cause no extra launch. Numeric scoring,
 exact trajectory comparison and unseen-window sampling cases remain pending.
+
+RC3-28 hardware follow-up on source `2c2ce125d0a71d01e0decd73c8ec6ba4688660f7`
+passed all six bounded Mega Park trials at native 30 Hz. Single X measured
+0.991484 turns; 150 ms and 100 ms repeats measured 1.991346 and 1.991373 turns.
+Both doubles initialized and advanced the original held loop and reached native
+extra-count 1. The 250 ms, 350 ms and post-landing controls retained one turn
+and count 0. Every trial returned to ground state 100 without unknown or bail
+samples. In particular, the previous 250 ms bail no longer reproduced.
+The exact captures and observations are in `rc3-native-repeat-window-28.json`.
+These observations establish native rotations and catch for these timings;
+numeric scoring and exact trajectory equality remain unverified.

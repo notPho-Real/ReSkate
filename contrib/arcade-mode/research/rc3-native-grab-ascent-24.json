@@ -1,0 +1,53 @@
+{
+  "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+  "map": "skate3_megapark",
+  "capture": "artifacts/RC3-24/ascent-grab-native-trials-result.json.gz",
+  "uncompressed_sha256": "36c3bfabd220481105825a8796d7ec3cc2f0dfd69fd72101639cc53620ac4442",
+  "compressed_sha256": "f06cd2a931b282c674b2c4531b26652d67c906cdc6e3f95b4bd12781124e3067",
+  "trials": [
+    {
+      "name": "ascent_500",
+      "physical_b_seconds": 0.5,
+      "nearest_state_sample_seconds": 0.500564818,
+      "nearest_physical_state": 103,
+      "native_family_entry_seconds": 0.62445988,
+      "entry_vertical_velocity": 5.453267574310303,
+      "release_seconds": 1.155472846,
+      "landed_seconds": 1.387095301,
+      "unknown_state_samples": 0
+    },
+    {
+      "name": "ascent_530",
+      "physical_b_seconds": 0.53,
+      "nearest_state_sample_seconds": 0.526733101,
+      "nearest_physical_state": 200,
+      "native_family_entry_seconds": 0.602637584,
+      "entry_vertical_velocity": 4.2917399406433105,
+      "release_seconds": 1.132077715,
+      "landed_seconds": 1.370364617,
+      "unknown_state_samples": 0
+    },
+    {
+      "name": "ascent_560",
+      "physical_b_seconds": 0.56,
+      "nearest_state_sample_seconds": 0.559901022,
+      "nearest_physical_state": 201,
+      "native_family_entry_seconds": 0.600157138,
+      "entry_vertical_velocity": 5.696249008178711,
+      "release_seconds": 1.137382635,
+      "landed_seconds": 1.372050261,
+      "unknown_state_samples": 0
+    }
+  ],
+  "scoring_verified": false,
+  "interpretation": "Physical B was retained around native200\u2192201; original BS family appeared while ascending, followed by exact BS Loop advancement and clean landing. Family Into actor advancement and exact Ollie trajectory equality are not independently established by this capture.",
+  "native_logs": [
+    "[2026-11-06 14:48:02.952] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=41 episode=115 semantic=54 expected_detail=1 held=true pressed_at=749716458 released_at=0 recognized_at=749716506 direction=0 presses=1 acknowledged=false.",
+    "[2026-11-06 14:48:03.322] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=41 episode=115 detail=1 one_footer=0 actor=1075400544 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb before=0 after=1.8027897 delta=1.8027897 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.9384511 phase=loop.",
+    "[2026-11-06 14:48:06.286] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=42 episode=116 semantic=54 expected_detail=1 held=true pressed_at=749719827 released_at=0 recognized_at=749719839 direction=0 presses=1 acknowledged=false.",
+    "[2026-11-06 14:48:06.656] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=42 episode=116 detail=1 one_footer=0 actor=1075402784 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb before=0 after=1.8027897 delta=1.8027897 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.1821119 phase=loop.",
+    "[2026-11-06 14:48:09.618] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=43 episode=117 semantic=54 expected_detail=1 held=true pressed_at=749723187 released_at=0 recognized_at=749723187 direction=0 presses=1 acknowledged=false.",
+    "[2026-11-06 14:48:09.989] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=43 episode=117 detail=1 one_footer=0 actor=1095923872 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb before=0 after=1.8027897 delta=1.8027897 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.93797684 phase=loop."
+  ]
+}
