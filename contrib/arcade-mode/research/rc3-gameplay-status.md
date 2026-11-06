@@ -1,5 +1,52 @@
 # RC3 implementation status — incomplete candidate
 
+## RC3-14 exact-source Deck verification
+
+Source `c1658974816104a83be1cd382e52582829781398` passed development run
+42136769290, targeted run42136769209 and upstream integration run42136769265
+attempt2. DLL `bd61437f16b39c2ce9466811e2af6fcb2f1259482a59db2fecb790584e564460`
+was installed after normal game and launcher closure. The restarted process
+mapped the same DLL inode/device/hash. RC2 and previous candidates are retained.
+Tests below used `skate3_megapark`, with native and cached steps both1/30 second.
+
+Capture `bbf81aae51f0e39e4cd490a55752fb88292f3edd4b1d50a1f647fa9101b8575d`
+compared single X with X presses150ms apart. Single measured0.99150 rotations
+and landed. Double measured1.99157 but bailed; original held intent remained
+unallocated and the extra count stayed0. Extending the unadmitted input to its
+existing200ms deadline did not solve this timing case. PrepareHeldFlip was true
+at approximately696–769ms after A; the second X was at670ms. A later held-state
+flag alone is not the original EAT intent or a successful double.
+
+The90ms control, capture
+`ffa985d6e3e9400211dacceb93fd59ca5220b18eab52360804eb27132c68a2d7`,
+measured1.99364 rotations, reached one native extra rotation, exited held state
+and landed at1.42588 seconds. Exact held-loop callback and scoring remain open.
+The input window therefore remains unreliable; RC3-14 is not gameplay accepted.
+
+First-flight Judo capture
+`49b4e47de9edb9f85751d568497ac9807db1904232024a81f3544c98f6c948f8`
+did not start a native grab. OneFooterType was initially unallocated. The same
+input after ordinary grabs, capture
+`fedfcafdef551587be715b8719896e066257c449707e14943c4a7a4fbc6bcf1e`,
+initialized and advanced the exact Judo Into actor with OneFooterType4, withdrew
+the SDK input in air, then still entered native footplant601 before returning
+to ground. The first-use and footplant failures are separate.
+
+Source review found another circular dependency in native_grab::request:
+one-footer input required an already allocated OneFooterType state value.
+The next correction requires its verified original asset, allowing the native
+producer to create the state. Acknowledgment still requires the actual identity,
+matching initialized/advancing actor and native grab ownership. No state page,
+identity or actor is fabricated. Existing20 portable suites pass; they do not
+execute this Windows adapter. Windows CI and a fresh-process first-footer
+hardware regression are required before accepting this correction.
+
+Default B and Up+B capture
+`4743399db19ea08ffdb3e1f9ccd30271a88bc8fddba01444e1bb129933543c97`
+initialized/advanced the original BS and Nosegrab actors, withdrew SDK input
+in air and returned to ground. Both actor receipts occurred during descent;
+prompt ascent entry, full native cleanup and scoring remain unaccepted.
+
 ## Rocket reselection timing
 
 RC3-11 Mega Park capture

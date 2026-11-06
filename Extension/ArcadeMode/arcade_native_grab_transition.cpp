@@ -461,7 +461,11 @@ void refresh(const NoBailSkater& owner,std::uint64_t episode,bool held,bool perm
 bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest& physical,ArcadeTrick trick,bool held) noexcept {
     if (!available() || !episode || !pilot(trick)) return false;
     const auto block=state_block(owner);if (!block) return false;
-    if (pilot(trick)->one_footer && !address_at(block,8)) return false;
+    // OneFooterType is an output of original native entry. Its state page can
+    // be unallocated on the first flight; requiring that output here prevents
+    // the hand/foot input that would create it. Require the original asset,
+    // then let acknowledge() demand its actual value and advancing actor.
+    if (pilot(trick)->one_footer && !guid_is(assets[8].object,assets[8].guid)) return false;
     std::lock_guard lock(mutex);
     if(session.finger.active())return false;
     if (session.serial && (owner!=session.owner || episode!=session.episode)) retire("request_owner_episode");
