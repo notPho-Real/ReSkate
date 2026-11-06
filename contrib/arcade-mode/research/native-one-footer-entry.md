@@ -226,3 +226,22 @@ those rejection paths at30/60/120Hz. This addresses inconsistent observation;
 it does not establish native catch, landing or scoring acceptance, and it cannot
 repair a zero that persists through the recheck. A new exact-source native trial
 must show whether the observed premature cancellation is resolved.
+
+## Separate Into and Loop receipts
+
+The existing grab observer returned as soon as the lease had any acknowledgment.
+An Into receipt therefore prevented a later Loop advancement receipt, even when
+the separate Loop initialization was logged. Absence of that second receipt was
+an observation gap, not proof that the Loop failed to advance. The follow-up
+retains the original admission/withdrawal conditions and records each matching
+original actor once per request. Each still requires its own initialization,
+positive advancement, native identity and local owner. Reinitialization cannot
+produce unbounded repeated advancement logs. This does not observe an Exit
+after lease retirement or imply hold/landing/scoring acceptance.
+
+Existing Airwalk exit metadata identifies sequence
+cec17ca1-1f6e-6ee3-cec1-7ca11f6e6ee3 and its distinct body actor
+63d2a772-5f77-cd8b-63d2-a7725f77cd8b (resource10457, instance1).
+The original actor length is75 ticks, with its branch-out beginning at25.
+Native GrabExit state alone is not evidence that this actor initialized or
+advanced in the failed ramp captures.

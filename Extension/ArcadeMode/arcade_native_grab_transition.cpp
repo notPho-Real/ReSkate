@@ -79,7 +79,7 @@ const contract::GrabActorAsset& grab_actor_asset(unsigned index) noexcept {
         contract::footer_entry_actors[index-contract::actor_assets.size()].actor;
 }
 struct Written {std::uintptr_t at{};std::uint32_t previous{},value{};unsigned size{};};
-struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{},missing_initialization_reported{};};
+struct Actor {std::uintptr_t object{};float before{},after{},delta{};std::uint64_t advanced_at{};bool initialized{},missing_initialization_reported{},reported{};};
 // Observation only: distinguish a failed owner proof from a native landing.
 // Missing reads remain unknown; these fields never grant permission.
 struct OwnershipObservation {
@@ -376,7 +376,10 @@ void acknowledge(std::uint64_t now) noexcept {
         }
         return;
     }
-    const auto* selected=session.lease.selected();if (!selected || session.lease.acknowledged()) return;
+    // Into admission already releases a short physical tap. A later Loop still
+    // needs its own initialization/advancement receipt while B remains held;
+    // the first actor's acknowledgment is not evidence for that second actor.
+    const auto* selected=session.lease.selected();if (!selected) return;
     bool grabbing{};
     const auto grabbing_at=address(4);
     if (!grabbing_at || !read(grabbing_at,grabbing)) return;
@@ -387,12 +390,12 @@ void acknowledge(std::uint64_t now) noexcept {
     if (!identity.valid) return;
     const auto detail=identity.detail,one_footer=identity.one_footer;
     for (unsigned i=0;i<grab_actor_count;++i) {
-        const auto& a=session.actors[i];
+        auto& a=session.actors[i];
         const auto* profile=actor_profile(i);
         if (!profile || profile->trick!=selected->trick || now<a.advanced_at || now-a.advanced_at>Lease::heartbeat_ms) continue;
         if (session.lease.acknowledge(detail,a.delta,a.before,a.after,a.initialized,
-                                    a.object && actor_index(a.object)==static_cast<int>(i),grabbing,one_footer) && !session.reported) {
-            session.reported=true;
+                                    a.object && actor_index(a.object)==static_cast<int>(i),grabbing,one_footer) && !a.reported) {
+            a.reported=true;session.reported=true;
             const auto board=pointer(pointer(session.owner.core+0x430)+0x18);
             const auto bodies=pointer(board+0x20);std::uint32_t count{};float vy{};
             const bool velocity_known=pointer(board)==image+0x65e67a0 && pointer(bodies+0x10)==board &&
@@ -440,7 +443,8 @@ void initialize(std::uintptr_t actor,float start_tick,std::uintptr_t context,std
         std::lock_guard lock(mutex);float duration{};
         if (session.serial==occurrence && valid() && actor_index(actor)==index &&
             read(actor+0x20,duration) && std::isfinite(duration) && duration>0 && duration<10000) {
-            session.actors[index]={actor,0,0,0,0,true};
+            const bool reported=session.actors[index].reported;
+            session.actors[index]={actor,0,0,0,0,true,false,reported};
             if(const auto* profile=actor_profile(static_cast<unsigned>(index)))logging::log(logging::Level::info,logging::Channel::skater,
                 "ARCADE NATIVE GRAB INIT: serial={} episode={} detail={} actor={} actor_asset={} duration={}.",
                 occurrence,session.episode,profile->detail,actor,grab_actor_asset(static_cast<unsigned>(index)).name,duration);
@@ -469,7 +473,7 @@ std::uintptr_t evaluate(std::uintptr_t actor,std::uintptr_t output,float delta,s
             auto& a=session.actors[index];
             if (a.initialized && a.object==actor) {
                 a.before=before;a.after=after;a.delta=delta;a.advanced_at=GetTickCount64();
-                acknowledge(a.advanced_at);
+                if (!a.reported) acknowledge(a.advanced_at);
             } else if (!a.missing_initialization_reported) {
                 // A reused native actor may advance without an initialization
                 // observed in this lease. Record that gap, never acknowledge it.
@@ -552,6 +556,7 @@ bool request(const NoBailSkater& owner,std::uint64_t episode,const InputRequest&
         (!valid() || !session.lease.intent(GetTickCount64()) || !retarget_observation().eligible(session.lease.selected()))) return false;
     if (!session.serial) {session.owner=owner;session.block=block;session.episode=episode;}
     session.serial=++serial;session.reported=false;
+    for (auto& actor:session.actors) actor.reported=false;
     // A previous requested pose cannot lend its Into receipt to this request.
     for(std::size_t i=pose_actor_end;i<grab_actor_count;++i)session.actors[i]={};
     if (!valid() || !session.lease.request(trick,GetTickCount64(),held)) {retire("request");return false;}
@@ -580,6 +585,7 @@ Control controls(const NoBailSkater& owner,std::uint64_t episode,std::uint64_t t
                 "ARCADE NATIVE FINGERFLIP RETURN: serial={} identity={} destination={} native_grabbing=true scoring_acceptance=unverified.",
                 session.serial,session.finger.row()->identity,destination);
             session.lease.request(grab_family_trick(destination),now,true);session.reported=false;
+            for (auto& actor:session.actors) actor.reported=false;
             session.finger.cancel();session.finger_settings_since=0;
             session.finger_settings_evidence=session.finger_settings_reports=0;
             session.finger_native_setting_evidence=session.finger_native_setting_reports=0;
