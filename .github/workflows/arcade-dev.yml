@@ -1,9 +1,13 @@
 name: Arcade Mode development
 on:
   push:
-    branches: [arcade-mode, 'arcade-stage-*']
+    branches: [arcade-mode, main, 'arcade-stage-*', 'ci-optimization/arcade']
   workflow_dispatch:
     inputs:
+      full_integration:
+        description: Complete integration for an exact-source candidate
+        type: boolean
+        default: true
       cold_cache:
         description: Bypass Cargo caches for a measured cold run
         type: boolean
@@ -15,212 +19,16 @@ on:
 permissions:
   contents: read
 jobs:
-  windows-tests:
-    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
-    runs-on: windows-2022
-    env:
-      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
-      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-      - name: Restore Spotify dependencies and build cache
-        uses: ./.github/actions/spotify-cache
-        with:
-          build-cache: 'false'
-          cold: ${{ inputs.cold_cache == true && 'true' || 'false' }}
-      - name: Fetch native dependencies required at configure time
-        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
-      - name: Configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
-      # Independent runner/build tree: never race MSBuild on the runtime tree.
-      # This complete test gate remains required by packaging and publishing.
-      - name: Compile Windows test preflight
-        run: cmake --build --preset release --parallel 4 --target dingosdk_arcade_footplant_tests dingosdk_arcade_ground_grab_tests dingosdk_arcade_fingerflip_tests dingosdk_arcade_held_flip_tests dingosdk_arcade_native_orientation_tests dingosdk_arcade_manual_throw_tests dingosdk_arcade_native_grab_tests dingosdk_arcade_runtime_reset_tests dingosdk_profile_preference_snapshot_tests dingosdk_arcade_settings_snapshot_tests dingosdk_child_identity_tests dingosdk_rotating_log_tests dingosdk_arcade_camera_input_tests dingosdk_arcade_camera_diagnostics_tests dingosdk_arcade_ground_motion_step_tests dingosdk_arcade_ground_writer_tests dingosdk_camera_observer_tests dingosdk_depot_output_tests dingosdk_arcade_mode_tests dingosdk_arcade_balance_hud_publication_tests dingosdk_arcade_native_score_tests dingosdk_arcade_grind_observer_tests dingosdk_arcade_grind_transition_lifetime_tests dingosdk_arcade_grind_change_tests dingosdk_arcade_rail_pop_tests dingosdk_arcade_fixture_geometry_tests dingosdk_arcade_fixture_trajectory_tests dingosdk_arcade_input_telemetry_tests dingosdk_arcade_input_contract_tests dingosdk_arcade_input_session_tests dingosdk_arcade_manual_input_tests dingosdk_arcade_neutral_flip_release_tests dingosdk_arcade_air_motion_proof_tests dingosdk_arcade_native_spin_integration_tests dingosdk_arcade_launch_descriptor_tests dingosdk_arcade_manual_balance_entry_tests dingosdk_arcade_manual_reservation_current dingosdk_arcade_controller_route_tests dingosdk_arcade_manual_observation_tests dingosdk_arcade_manual_history_tests dingosdk_arcade_manual_step_tests dingosdk_arcade_manual_lifecycle_tests dingosdk_arcade_manual_lifecycle_composition_tests dingosdk_arcade_manual_acquisition_boundary_tests dingosdk_park_editor_transaction_tests dingosdk_arcade_score_asset_tests
-      # Separate unresolved parity check: arcade_input_manual_differential.
-      - name: Run Windows test preflight
-        run: ctest --test-dir build/vs2022-x64 -C Release -R "^(profile_preference_snapshot|arcade_(runtime_reset(_rollback_(persist|initial_load|expiry|owner|restore_mode|cleanup_scope))?|settings_snapshot(_source)?|camera_input|camera_diagnostics|ground_motion_step|ground_writer(_source)?|mode|native_score(_replay)?|grind_observer|grind_transition_lifetime|grind_change|rail_pop|fixture_geometry|fixture_trajectory|input_telemetry|input_contract|input_session|balance_hud_publication|controller_route|manual_input|manual_throw|neutral_flip_release|native_grab|footplant|ground_grab|fingerflip|held_flip|native_orientation|air_motion_proof|native_spin_integration|launch_descriptor|manual_balance_entry|manual_reservation(_.*)?|manual_observation|manual_history|manual_step|manual_lifecycle(_.*)?|manual_acquisition_boundary|score_assets)|child_identity|rotating_log(_startup_rollback)?|park_editor_transactions|launcher_depot_output|camera_observer_recovery)$" --output-on-failure
-      - name: Check bounded session records
-        run: python contrib/arcade-mode/test_session_records.py
-      - name: Check optional asset regeneration
-        run: python contrib/arcade-mode/test_ci_build.py
-
-  build:
-    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
-    runs-on: windows-2022
-    env:
-      CARGO_HOME: ${{ github.workspace }}/.ci-cargo
-      CARGO_TARGET_DIR: ${{ github.workspace }}/SpotifyHelper/target
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-      - name: Restore Spotify dependencies and build cache
-        uses: ./.github/actions/spotify-cache
-        with:
-          build-cache: 'true'
-          cold: ${{ inputs.cold_cache == true && 'true' || 'false' }}
-      - name: Fetch native dependencies required at configure time
-        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
-      - name: Configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=ON -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON
-      - name: Build runtime and release tools
-        run: cmake --build --preset release --parallel 4 --target dingosdk_runtime dingosdk_launcher dingosdk_arcade_score_assets
-      - name: Stage tested scoring metadata inspector
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path artifacts/arcade-score-assets -Force | Out-Null
-          Copy-Item build/vs2022-x64/Release/dingosdk_arcade_score_assets.exe artifacts/arcade-score-assets/
-          $hash = (Get-FileHash artifacts/arcade-score-assets/dingosdk_arcade_score_assets.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  dingosdk_arcade_score_assets.exe" | Set-Content artifacts/arcade-score-assets/sha256.txt -Encoding ascii
-          $env:GITHUB_SHA | Set-Content artifacts/arcade-score-assets/commit.txt -Encoding ascii
-      - name: Upload tested scoring metadata inspector
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ReSkate-arcade-score-assets-${{ github.sha }}
-          path: artifacts/arcade-score-assets/
-          if-no-files-found: error
-          retention-days: 30
-      - name: Stage development DLL
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path artifacts/arcade-dev -Force | Out-Null
-          Copy-Item build/vs2022-x64/Release/ReSkate.dll artifacts/arcade-dev/ReSkate.dll
-          $hash = (Get-FileHash artifacts/arcade-dev/ReSkate.dll -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  ReSkate.dll" | Set-Content artifacts/arcade-dev/ReSkate.dll.sha256 -Encoding ascii
-          $env:GITHUB_SHA | Set-Content artifacts/arcade-dev/commit.txt -Encoding ascii
-      - name: Upload development DLL
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ReSkate-arcade-dev-${{ github.sha }}
-          path: |
-            artifacts/arcade-dev/ReSkate.dll
-            artifacts/arcade-dev/ReSkate.dll.sha256
-            artifacts/arcade-dev/commit.txt
-          if-no-files-found: error
-          retention-days: 30
-      - name: Stage tested recovery launcher
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Path artifacts/arcade-launcher -Force | Out-Null
-          Copy-Item build/vs2022-x64/Release/ReSkateLauncher.exe artifacts/arcade-launcher/ReSkateLauncher.exe
-          $hash = (Get-FileHash artifacts/arcade-launcher/ReSkateLauncher.exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  ReSkateLauncher.exe" | Set-Content artifacts/arcade-launcher/ReSkateLauncher.exe.sha256 -Encoding ascii
-          $env:GITHUB_SHA | Set-Content artifacts/arcade-launcher/commit.txt -Encoding ascii
-      - name: Upload tested recovery launcher
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ReSkate-arcade-launcher-${{ github.sha }}
-          path: artifacts/arcade-launcher/
-          if-no-files-found: error
-          retention-days: 30
-
-
-  windows-test-diagnostic:
-    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]')
-    runs-on: windows-2022
-    timeout-minutes: 12
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-          path: diagnostic-tools
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-          ref: 29301b36a27f6deec969415136464a319d43271d
-          path: source
-      - name: Build only frozen Release test and capture one debugger execution
-        shell: pwsh
-        timeout-minutes: 10
-        run: ./diagnostic-tools/contrib/arcade-mode/lab/windows_test_diagnostic.ps1
-      - name: Upload sanitized diagnostic evidence only
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: arcade-windows-test-diagnostic-${{ github.sha }}
-          path: diagnostic-evidence/
-          if-no-files-found: error
-          retention-days: 3
-
-  linux-tests:
-    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-      - name: Native input and animation-ownership contract regressions (no hardware)
-        run: |
-          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab manual_throw control_state; do
-            c++ -std=c++20 -O2 -I. "Extension/ArcadeMode/Test/arcade_${suite}_tests.cpp" -o "$RUNNER_TEMP/arcade_${suite}_tests"
-            "$RUNNER_TEMP/arcade_${suite}_tests"
-          done
-      - name: Deck, lab and bounded trick-batch simulations
-        run: python3 contrib/arcade-mode/lab/controller.py self-test
-      - name: Neutral repository naming
-        run: |
-          git log -1 --format=%B > "$RUNNER_TEMP/arcade-commit-message.txt"
-          python3 contrib/arcade-mode/lab/naming_guard.py --message-file "$RUNNER_TEMP/arcade-commit-message.txt"
-      - name: Shell syntax
-        run: find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
-
-  macos-lab:
-    if: github.repository == 'notPho-Real/ReSkate' && (github.ref == 'refs/heads/arcade-mode' || startsWith(github.ref, 'refs/heads/arcade-stage-')) && !(github.event_name == 'push' && contains(github.event.head_commit.message, '[windows-test-diagnostic]'))
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-      - name: Native input and animation-ownership contract regressions (no hardware)
-        run: |
-          for suite in input_session neutral_flip_release air_motion_proof action_dispatch native_grab manual_throw control_state; do
-            c++ -std=c++20 -O2 -I. "Extension/ArcadeMode/Test/arcade_${suite}_tests.cpp" -o "$RUNNER_TEMP/arcade_${suite}_tests"
-            "$RUNNER_TEMP/arcade_${suite}_tests"
-          done
-      - name: Mac lab, trick-batch cleanup, bootstrap and fake Deck tests (no hardware)
-        run: python3 contrib/arcade-mode/lab/controller.py self-test
-      - name: Python and shell syntax
-        run: |
-          python3 -m compileall -q contrib/arcade-mode
-          find contrib/arcade-mode -type f \( -name '*.sh' -o -name '*.command' \) -print0 | xargs -0 -n1 bash -n
-
-  deck:
-    needs: [build, windows-tests, linux-tests, macos-lab]
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-      - name: Test installer and updater
-        run: python3 -m unittest discover -s contrib/arcade-mode -p 'test_*.py' -v
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: ReSkate-arcade-dev-${{ github.sha }}
-          path: artifacts/runtime
-      - name: Verify and package this tested build
-        run: |
-          cd artifacts/runtime
-          sha256sum -c ReSkate.dll.sha256
-          test "$(tr -d '\r\n' < commit.txt)" = "$GITHUB_SHA"
-          cd ../..
-          python3 contrib/arcade-mode/package_deck_installer.py artifacts/runtime/ReSkate.dll "$GITHUB_SHA" artifacts/Install-ReSkate-Arcade.desktop
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ReSkate-Arcade-Deck-${{ github.sha }}
-          path: |
-            artifacts/Install-ReSkate-Arcade.desktop
-            artifacts/channel.json
-          if-no-files-found: error
+  validation:
+    uses: ./.github/workflows/arcade-validation.yml
+    with:
+      full_integration: ${{ inputs.full_integration == true || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/arcade-mode' || github.ref == 'refs/heads/main' || contains(github.event.head_commit.message, '[full integration]') || contains(github.event.head_commit.message, '[release candidate]') }}
+      cold_cache: ${{ inputs.cold_cache == true }}
+      benchmark: ${{ inputs.benchmark == true }}
 
   publish:
-    needs: [build, windows-tests, linux-tests, macos-lab, deck]
-    if: github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !(github.event_name == 'workflow_dispatch' && inputs.benchmark)
+    needs: [validation]
+    if: needs.validation.outputs.full == 'true' && github.repository == 'notPho-Real/ReSkate' && github.ref == 'refs/heads/arcade-mode' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !(github.event_name == 'workflow_dispatch' && inputs.benchmark)
     runs-on: ubuntu-24.04
     permissions:
       contents: write

@@ -1,58 +1,25 @@
 name: Arcade upstream integration
 on:
+  pull_request:
+    branches: [main, arcade-mode, 'arcade-stage-*']
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
-    branches: [arcade-stage-unified-rc2-upstream, arcade-stage-rc3-gameplay]
+    tags: ['arcade-rc-*', 'arcade-milestone-*']
   workflow_dispatch:
+    inputs:
+      cold_cache:
+        description: Bypass caches for reproducibility measurement
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
-  upstream-windows-tests:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Fetch native build dependencies
-        run: cargo fetch --locked --manifest-path SpotifyHelper/Cargo.toml --target x86_64-pc-windows-msvc
-      - name: Configure complete upstream regression groups
-        id: configure
-        run: cmake --preset vs2022-x64 -DDINGOSDK_BUILD_TESTS=ON -DDINGOSDK_BUILD_ARCADE_MODE_TESTS=OFF -DDINGOSDK_BUILD_LAUNCHER_TESTS=ON -DDINGOSDK_BUILD_ARCADE_SCORE_ASSET_TOOLS=ON -DDINGOSDK_BUILD_PARK_EDITOR_TESTS=ON -DDINGOSDK_BUILD_TRAINER_TESTS=ON -DDINGOSDK_BUILD_MULTIPLAYER_TESTS=ON -DDINGOSDK_BUILD_PLUGIN_TESTS=ON -DDINGOSDK_BUILD_CRASH_REPORT_TESTS=ON
-      - name: Build crash reporter regression before the full runtime
-        run: cmake --build --preset release --parallel 4 --target dingosdk_crash_report_tests
-      - name: Check crash capture and post-exit metadata
-        run: ctest --test-dir build/vs2022-x64 -C Release -R '^crash_report$' --repeat until-fail:3 --output-on-failure --no-tests=error
-      - name: Build all configured targets with upstream warning policy
-        # A crash-fixture failure must still fail the job, but must not prevent
-        # independent runtime compilation and regression evidence.
-        if: always() && steps.configure.outcome == 'success'
-        run: cmake --build --preset release --parallel 4
-      - name: Run all tests that do not require a separately supplied game installation
-        if: always() && steps.configure.outcome == 'success'
-        # Required Arcade composition tests run separately in arcade-dev and arcade-fast.
-        # trainer_tuning_names reads real game data and cannot run on hosted CI.
-        # Preserve test evidence after a partial build; missing executables fail.
-        run: ctest --test-dir build/vs2022-x64 -C Release -E '^trainer_tuning_names$' --output-on-failure --output-junit integration-results.xml
-      - name: Preserve complete test results
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: integration-windows-tests-${{ github.sha }}
-          path: |
-            build/vs2022-x64/integration-results.xml
-            build/vs2022-x64/Testing/Temporary/
-          if-no-files-found: warn
-  linux-server-and-arcade:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-        with:
-          persist-credentials: false
-      - name: Build upstream Linux server
-        run: |
-          cmake --preset linux-x64
-          cmake --build build/linux --target dingosdk_server --parallel 4
-      - name: Compile and run portable native Arcade regressions
-        run: |
-          cmake -S contrib/arcade-mode/ci/targeted -B build/integration-targeted -DCMAKE_BUILD_TYPE=Release
-          cmake --build build/integration-targeted --parallel 4
-          ctest --test-dir build/integration-targeted --output-on-failure --no-tests=error
+  complete:
+    # Draft iteration gets the development graph on push. Request a milestone
+    # with a label, marker or dispatch instead of rebuilding all upstream targets.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'full-integration') || contains(github.event.pull_request.labels.*.name, 'release-candidate') || contains(github.event.pull_request.labels.*.name, 'milestone')
+    uses: ./.github/workflows/arcade-validation.yml
+    with:
+      full_integration: true
+      benchmark: true
+      cold_cache: ${{ inputs.cold_cache == true }}

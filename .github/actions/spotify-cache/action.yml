@@ -1,5 +1,9 @@
 name: Spotify Cargo cache
 description: Cache only registry data and toolchain-compatible Spotify build outputs
+outputs:
+  toolchain:
+    description: Exact Rust, MSVC and runner image fingerprint
+    value: ${{ steps.toolchain.outputs.digest }}
 inputs:
   build-cache:
     description: Restore/save compiled outputs only for the runtime job
@@ -15,6 +19,11 @@ runs:
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
+        # librespot embeds a random build ID without this standard reproducible
+        # build input. Use the checked-out source's commit time, never wall time.
+        $epoch = & git show -s --format=%ct HEAD
+        if ($LASTEXITCODE -or $epoch -notmatch '^[0-9]+$') { throw 'Source timestamp missing' }
+        "SOURCE_DATE_EPOCH=$epoch" >> $env:GITHUB_ENV
         $rust = & rustc -vV
         if ($LASTEXITCODE) { throw 'rustc identification failed' }
         $cargo = & cargo -V
@@ -28,9 +37,10 @@ runs:
         $identity = (@($rust) + @($cargo) + @($msvc, $env:ImageOS, $env:ImageVersion) + @($flags)) -join "`n"
         $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
         "digest=$digest" >> $env:GITHUB_OUTPUT
+        "ARCADE_TOOLCHAIN=$digest" >> $env:GITHUB_ENV
         @('### Spotify toolchain', '```text', $identity, '```') >> $env:GITHUB_STEP_SUMMARY
     - name: Cache Cargo registry and git dependencies
-      if: inputs.cold != 'true'
+      if: inputs.cold != 'true' && github.event_name != 'pull_request'
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: |
@@ -44,13 +54,24 @@ runs:
           spotify-registry-v1-${{ runner.os }}-${{ runner.arch }}-
     - name: Cache Spotify release outputs
       id: outputs
-      if: inputs.build-cache == 'true' && inputs.cold != 'true'
+      if: inputs.build-cache == 'true' && inputs.cold != 'true' && github.event_name != 'pull_request'
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
       with:
         path: SpotifyHelper/target
-        key: spotify-release-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake') }}-${{ hashFiles('SpotifyHelper/src/**', 'SpotifyHelper/build.rs') }}
+        key: spotify-release-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake', '.github/actions/spotify-cache/action.yml') }}-${{ github.sha }}
         restore-keys: |
-          spotify-release-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake') }}-
+          spotify-release-v2-${{ runner.os }}-${{ runner.arch }}-${{ steps.toolchain.outputs.digest }}-${{ hashFiles('SpotifyHelper/Cargo.lock', 'SpotifyHelper/Cargo.toml', 'SpotifyHelper/.cargo/**', '.cargo/**', 'cmake/Runtime.cmake', '.github/actions/spotify-cache/action.yml') }}-
+    - name: Regenerate source-dependent Spotify build metadata
+      if: inputs.build-cache == 'true'
+      shell: pwsh
+      run: |
+        # The dependency embeds Git/source-date metadata. Rebuild it even when
+        # restoring another revision's compatible dependencies; Cargo rebuilds
+        # its dependents. This never substitutes a cached final library.
+        if (Test-Path SpotifyHelper/target) {
+          cargo clean --locked --release --manifest-path SpotifyHelper/Cargo.toml -p librespot-core
+          if ($LASTEXITCODE) { throw 'Spotify metadata invalidation failed' }
+        }
     - name: Record cache outcome
       shell: pwsh
       env:
