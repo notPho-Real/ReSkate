@@ -71,8 +71,13 @@ inline std::vector<std::string> evidence_details(const TrickDefinition& t,bool t
     if(e.incomplete_records)lines.emplace_back(std::to_string(e.incomplete_records)+" incomplete/non-gameplay records; excluded from native trial counts.");
     if(e.comparison_records)lines.emplace_back(std::to_string(e.comparison_records)+" original-control comparison records; not Arcade acceptance.");
     if(policy.required)lines.emplace_back("Applicable checklist across current-compatible contexts. Verification additionally requires repeatable results in comparable conditions.");
-    for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)if(policy.required&(Criteria{1}<<c))
-        lines.emplace_back(std::string(criterion_names[c])+": "+criterion_state_names[static_cast<unsigned>(e.current_checklist.state(static_cast<Criterion>(c)))]);
+    for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)if(policy.required&(Criteria{1}<<c)) {
+        std::string row=std::string(criterion_names[c])+": "+criterion_state_names[static_cast<unsigned>(e.current_checklist.state(static_cast<Criterion>(c)))];
+        if(e.current_checklist.inconclusive[c])row+="; "+std::to_string(e.current_checklist.inconclusive[c])+" inconclusive trial(s)";
+        if(e.current_checklist.inconclusive[c] && e.current_checklist.passes[c])
+            row+="; "+std::to_string(e.current_checklist.passes[c])+" successful observation(s)";
+        lines.push_back(std::move(row));
+    }
     if(!technical)return lines;
     lines.emplace_back("Required criteria: "+std::string(policy.rationale));
     lines.emplace_back("Policy source: "+std::string(policy.source));

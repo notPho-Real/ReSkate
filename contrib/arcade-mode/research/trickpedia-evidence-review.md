@@ -28,6 +28,8 @@ applicable criteria repeatedly established in comparable conditions, provenance,
 build/fingerprint compatibility, no conflicting records, no invalidation and no
 applicable current failure in another context. Earlier successes do not hide a
 later failure. Mixed pass/fail records are labelled without inventing chronology.
+Unresolved inconclusive results for an applicable criterion also prevent Verified,
+even when other trials succeeded. They remain distinct from demonstrated failures.
 
 The compact checklist includes current-compatible observations from all contexts
 so a tested criterion is not called untested. These checklist rows alone cannot
@@ -101,7 +103,7 @@ are distributed in the installable build.
 
 | Trick | Derived result in the reviewed build | What remains open |
 | --- | --- | --- |
-| Ollie | Experimental / Repeatable; four native launch-stage executions preceding the separately measured flips | These are legitimate launches, but their subsequent flip landings do not prove a standalone Ollie landing/combo. Stance coverage also remains open. |
+| Ollie | Experimental / Repeatable; three qualifying native launch-stage executions and one inconclusive motion trial preceding the separately measured flips | Subsequent flip landings do not prove a standalone Ollie landing/combo. One raw trajectory anomaly requires investigation; stance coverage also remains open. |
 | Kickflip | Experimental / Acceptance Pending; two comparable rotation/actor/catch/landing observations | Complete timing, stance and numerical scoring/combo coverage. |
 | Heelflip | Experimental / Observed; one compatible single-flip trial | Repeatability and remaining timing/stance/scoring obligations. |
 | Double Kickflip | Experimental / Acceptance Pending; two RC3-28 positives at 100/150 ms | Complete timing, stance and scoring. RC3-24 positive and late-repeat bail retained historically. |
@@ -116,6 +118,19 @@ are distributed in the installable build.
 
 All records remain Experimental or Planned; none has been promoted merely to
 produce green entries. The exact counts are derived from trials, not this table.
+
+The original compressed RC3-24 timing/heel captures were also inspected read-only,
+and their decompressed SHA-256 values matched the report digests. Each of the
+four named segments has one native 103 entry and Ollie identity 1 before flip
+identity 2/3. The two timing segments and heel/double segment rise approximately
+0.599 m before the flip, with peak vertical velocity about 5.497 m/s. Native and
+cached steps both read 0.033333331 s. These three support the launch-stage motion
+claim. The heel/single segment instead moves from 0.070 m at 0.343 s to 1.089 m
+at 0.410 s (25.327 m/s), then 0.576 m at 0.439 s (-15.404 m/s). That discontinuity
+is **inconclusive appropriate-trajectory/single-legitimate-launch evidence**,
+not a fourth successful Ollie. Its input/identity observations are retained.
+This audit neither diagnoses the older engine behavior nor claims that a flip's
+later landing is standalone Ollie acceptance.
 
 `GRIND_TRANSITIONS_2026_10_30.md`, `grind-fixture-results.json` and
 `grind-exit-results.json` were reviewed. Constituent native-control physics,

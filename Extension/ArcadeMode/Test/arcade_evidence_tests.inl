@@ -26,6 +26,12 @@ void evidence_tests() {
     require(label_for()=="Experimental / Acceptance Pending","repeated core flow maturity");
     for(auto& trial:trials)trial.passed=policy.required;
     require(trick_status(t,20260929,fingerprint)==TrickStatus::verified && label_for()=="Verified","all applicable repeated criteria");
+    auto uncertain=trials[0];uncertain.trial_id="attempt-3";
+    uncertain.passed&=~criterion(Criterion::combo);uncertain.inconclusive=criterion(Criterion::combo);
+    std::array with_uncertain{trials[0],trials[1],uncertain};t.evidence.trials=with_uncertain;
+    require(!summary().current.verified && summary().current.passes[static_cast<unsigned>(Criterion::combo)]==2,
+            "two successes hid an unresolved applicable trial");
+    t.evidence.trials=trials;
     trials[0].failed=criterion(Criterion::wall_collision);
     require(summary().current.verified,"non-applicable criterion blocked verification");
     trials[0].failed=0;
@@ -39,6 +45,8 @@ void evidence_tests() {
     require(summary().current.state(Criterion::combo)==CriterionState::not_tested,"missing criterion treated as failure");
     trials[0].inconclusive=criterion(Criterion::combo);
     require(summary().current.state(Criterion::combo)==CriterionState::inconclusive,"inconclusive telemetry reported untested or failed");
+    const auto uncertain_lines=trickpedia::evidence_details(t,false,20260929,fingerprint);
+    require(std::find(uncertain_lines.begin(),uncertain_lines.end(),"Scoring / combo continuity: Tested; inconclusive; 1 inconclusive trial(s)")!=uncertain_lines.end(),"inconclusive checklist evidence hidden");
     trials[0].inconclusive=0;
     trials[0].failed=criterion(Criterion::combo);
     require(summary().current.state(Criterion::combo)==CriterionState::failed && !summary().current.verified,"observed failure ignored");

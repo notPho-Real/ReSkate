@@ -72,8 +72,9 @@ struct EvidenceView {
     constexpr CriterionState state(Criterion c)const noexcept {
         const auto i=static_cast<unsigned>(c);
         if(failures[i])return passes[i]?CriterionState::regressed:CriterionState::failed;
+        if(inconclusive[i])return CriterionState::inconclusive;
         return passes[i]>=2?CriterionState::satisfied:passes[i]?CriterionState::observed:
-            inconclusive[i]?CriterionState::inconclusive:CriterionState::not_tested;
+            CriterionState::not_tested;
     }
 };
 struct EvidenceSummary {
@@ -96,7 +97,8 @@ constexpr EvidenceView evidence_group(const TrickEvidence& evidence,AcceptancePo
         for(std::size_t j=0;j<evidence.trials.size();++j)if(j!=i && same_trial(t,evidence.trials[j])) {
             const auto& other=evidence.trials[j];
             duplicate=duplicate || j<i;invalidated=invalidated || other.invalidated;
-            if(t.passed!=other.passed || t.failed!=other.failed || t.revision!=other.revision)out.conflicting=true;
+            if(t.passed!=other.passed || t.failed!=other.failed || t.inconclusive!=other.inconclusive ||
+                t.revision!=other.revision)out.conflicting=true;
         }
         if(invalidated || duplicate)continue;
         for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c) {
@@ -114,7 +116,7 @@ constexpr EvidenceView evidence_group(const TrickEvidence& evidence,AcceptancePo
         out.core_trials>=2 && !out.conflicting && !evidence.invalidated;
     for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c) {
         if(out.failures[c] && (policy.required&(Criteria{1}<<c)))out.regression=true;
-        if((policy.required&(Criteria{1}<<c)) && (out.passes[c]<2 || out.failures[c]))out.verified=false;
+        if((policy.required&(Criteria{1}<<c)) && (out.passes[c]<2 || out.failures[c] || out.inconclusive[c]))out.verified=false;
     }
     return out;
 }
@@ -155,6 +157,8 @@ constexpr EvidenceSummary evaluate_evidence(const TrickEvidence& evidence,Accept
         for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)
             if((t.failed&(Criteria{1}<<c)) && !view.failures[c])view.failures[c]=1;
     }
+    for(const auto& t:evidence.trials)if(!evidence.invalidated && !t.invalidated && native_metadata(t) && (t.inconclusive&policy.required))
+        (current_trial(t,build,fingerprint)?out.current:out.historical).verified=false;
     return out;
 }
 } // namespace dingosdk::arcade_mode
