@@ -224,7 +224,7 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         diagnose(1,stage,reason,source,f,now,identity,flags,value,extra);
     };
     if(!api.now || !api.current){geometry(1,"geometry_api",GetTickCount64());return;}
-    const auto now=api.now(api.user);
+    auto now=api.now(api.user);
     if(!source.valid || !identity || !fresh(f,now) || source.owner!=skater(f.owner) ||
        (source.state!=200 && source.state!=201) || now<source.sampled_at ||
        now-source.sampled_at>InputTiming::native_sample_lease_ms || !ctx.fresh(now)) {
@@ -239,6 +239,10 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         clearance_ground=query_surface_geometry(api,ctx,wallplant_clearance_request(root),&trace);
         if(!clearance_ground.valid)diagnose_query("clearance",trace,source,f,identity);
     }
+    // A fallback stamps its own query time after the initial admission check.
+    // Validate at the actual current clock, not against an earlier millisecond
+    // which would misclassify a successful fresh query as a future observation.
+    now=api.now(api.user);
     if(!clearance_ground.fresh_for(ctx,now)) {
         geometry(3,"ground_freshness",now,(clearance_ground.valid?1ull:0ull)|(ground_reused?2ull:0ull)|
             (clearance_ground.context.native.fresh(now)?4ull:0ull)|
@@ -265,10 +269,19 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         const SurfaceGeometryBody shape{hit.shape.world,hit.shape.index,hit.shape.generation};
         SurfaceGeometryTrace trace;
         const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal,source.velocity,source.seconds,&trace);
+        now=api.now(api.user);
         if(!wall.valid)diagnose_query("wall",trace,source,f,identity);
         if(!wall.valid){geometry(9,"broad_wall",now);continue;}
         if(!native_wall_contact::current(hit,ctx.world)){geometry(10,"hit_current_after_query",now);continue;}
         if(!api.current(api.user,ctx)){geometry(11,"world_current_after_query",now);continue;}
+        now=api.now(api.user);
+        // Native queries/revalidation may advance time. Preserve every original
+        // timestamp and reject expired contact/frame/geometry at publication.
+        if(!fresh(f,now) || now<source.sampled_at ||
+           now-source.sampled_at>InputTiming::native_sample_lease_ms ||
+           !clearance_ground.fresh_for(ctx,now) || !wall.fresh_for(ctx,now)) {
+            geometry(14,"publication_freshness",now);continue;
+        }
         Candidate result{};result.hit=hit;result.wall=wall;result.ground=clearance_ground;result.root=root;
         result.clearance=clearance;result.published_at=now;result.valid=true;
         auto& c=result.contact;c.native=origin;c.geometry=ctx;c.body=shape;c.point=hit.point;

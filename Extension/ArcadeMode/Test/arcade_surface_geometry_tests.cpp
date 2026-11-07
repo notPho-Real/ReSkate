@@ -18,7 +18,7 @@ struct Fixture {
     static inline Fixture* running{};
     SurfaceGeometryContext live{{1,2,3,4,5},{true,true,{1,2,3},1,1000,false,false,1,1},6,7,1,90,1,SurfaceGeometryPhase::park};
     std::uint64_t time{1000};
-    unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{};
+    unsigned calls{}, pops{}, frees{}, entities{}, first{3}, delay{}, clock_step{};
     float sx{}, sz{};
     bool roof{}, unknown{}, seam{}, fold{}, edge{}, miss{}, bad_fraction{}, bad_data{}, wrong_world{}, overflow{},
         bad_body{}, changed_owner{}, changed_context{}, throw_query{}, no_context{}, many_self{}, self{}, read_fail{},
@@ -41,7 +41,9 @@ struct Fixture {
     bool explicit_contact_motion{};
     std::array<SurfaceGeometrySegment,5> wall_segments{};
     Fixture() { running=this; table[1]=reinterpret_cast<std::uintptr_t>(&pop); allocator=reinterpret_cast<std::uintptr_t>(table.data()); }
-    static std::uint64_t now(void* user) noexcept { return static_cast<Fixture*>(user)->time; }
+    static std::uint64_t now(void* user) noexcept {
+        auto& f=*static_cast<Fixture*>(user);const auto result=f.time;f.time+=f.clock_step;return result;
+    }
     static bool current(void* user,const SurfaceGeometryContext& context) noexcept {
         const auto& f=*static_cast<Fixture*>(user); return !f.no_context && context==f.live &&
             (!f.context_failure_after_owners || f.world_owner_calls<f.context_failure_after_owners);
@@ -164,6 +166,31 @@ bool surface_geometry_test_read(std::uintptr_t at,void* out,std::size_t size) no
 }
 }
 int main() {
+    for(bool wall:{false,true}) {
+        Fixture f;f.clock_step=1;
+        const auto api=f.api();const auto admitted_at=api.now(api.user);
+        const auto sample=wall?f.query_wall():f.query();
+        check(sample.valid&&sample.queried_at>admitted_at,
+            "native query may successfully stamp a later millisecond than its caller's admission clock");
+        check(!sample.fresh_for(f.live,admitted_at),
+            "reusing the pre-query clock reproduces the future-query rejection");
+        const auto original_query_time=sample.queried_at;
+        const auto original_frame_time=sample.context.native.sampled_at;
+        const auto validated_at=api.now(api.user);
+        check(sample.fresh_for(f.live,validated_at)&&revalidate_surface_geometry(api,f.live,sample),
+            "actual post-query validation time admits the unchanged fresh native geometry");
+        check(sample.queried_at==original_query_time&&sample.context.native.sampled_at==original_frame_time,
+            "validation never renews either native query or original frame timestamp");
+        f.clock_step=0;f.time=original_query_time-1;
+        check(!sample.fresh_for(f.live,api.now(api.user)),"clock rollback still rejects future observations");
+        f.time=original_frame_time+InputTiming::native_sample_lease_ms+1;
+        check(!sample.fresh_for(f.live,api.now(api.user))&&!revalidate_surface_geometry(api,f.live,sample),
+            "post-query publication cannot extend the original frame lease");
+    }
+    {
+        Fixture f;f.clock_step=20;
+        check(!f.query().valid,"a query that outlives original native authority fails rather than refreshing it");
+    }
     {
         Fixture f; auto sample=f.query();
         check(sample.valid && f.calls==5,"flat floor requires five real intersections");
