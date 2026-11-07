@@ -2,6 +2,7 @@
 #include "crash_reporter.h"
 #include "crash_capture_name.h"
 #include "crash_dump_retry.h"
+#include "crash_dump_snapshot.h"
 #include <DbgHelp.h>
 #include "Engine/Core/Debug/protocol.h"
 #include "Engine/Core/Debug/upload.h"
@@ -88,7 +89,8 @@ Json event_details(HANDLE process, const std::filesystem::path& game_root, const
     return details;
 }
 bool publish_dump(HANDLE process, const std::filesystem::path& game_root,
-    const std::filesystem::path& temporary, const SharedReport& report, const char* source) {
+    const std::filesystem::path& temporary, const SharedReport& report, const char* source,
+    bool snapshot = false, DWORD snapshot_error = ERROR_SUCCESS) {
     auto dump = temporary; dump.replace_extension(L".dmp");
     Json attributes = Json::object();
     attributes["application"] = "ReSkate";
@@ -114,6 +116,10 @@ bool publish_dump(HANDLE process, const std::filesystem::path& game_root,
     }
     attributes["report.id"] = utf8(dump.stem().c_str());
     attributes["capture.source"] = source;
+    if (stuck) {
+        attributes["capture.snapshot"] = snapshot ? "true" : "false";
+        attributes["capture.snapshot_error"] = std::to_string(snapshot_error);
+    }
     // (Tags for grouping crashes by the level and the graphics card; absent when unknown.)
     if (const auto destination = field(report.destination); !destination.empty()) {
         attributes["game.destination"] = destination;
@@ -185,12 +191,15 @@ bool save_dump(HANDLE process, const std::filesystem::path& game_root,
         return false;
     }
     MINIDUMP_EXCEPTION_INFORMATION exception{report.thread_id, report.exception, TRUE};
+    DumpSnapshot snapshot(process, report.source == CaptureSource::stuck_load);
+    MINIDUMP_CALLBACK_INFORMATION callbacks{DumpSnapshot::callback, nullptr};
     // With the memory the stacks point at, so a crash on a freed or overwritten object shows that
     // object and the list it was found in, not just the registers (a few MB more a dump).
     constexpr auto flags = static_cast<MINIDUMP_TYPE>(MiniDumpNormal | MiniDumpWithThreadInfo |
         MiniDumpWithUnloadedModules | MiniDumpWithIndirectlyReferencedMemory);
     const auto result = write_dump_retry([&]() -> std::uint32_t {
-        if (MiniDumpWriteDump(process, GetProcessId(process), file.value, flags, &exception, nullptr, nullptr)) return ERROR_SUCCESS;
+        if (MiniDumpWriteDump(snapshot.handle(process), GetProcessId(process), file.value, flags, &exception, nullptr,
+                snapshot.captured() ? &callbacks : nullptr)) return ERROR_SUCCESS;
         const auto error = GetLastError();
         diagnostic("write", error);
         return error;
@@ -210,7 +219,8 @@ bool save_dump(HANDLE process, const std::filesystem::path& game_root,
     }
     const auto published = publish_dump(process, game_root, temporary, report,
         report.source == CaptureSource::game_fatal_handler ? "game-fatal-handler" :
-        report.source == CaptureSource::stuck_load ? "stuck-load" : "unhandled-exception");
+        report.source == CaptureSource::stuck_load ? "stuck-load" : "unhandled-exception",
+        snapshot.captured(), snapshot.error());
     diagnostic(published ? "published" : "publish-failed", ERROR_SUCCESS);
     return published;
 }

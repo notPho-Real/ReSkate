@@ -11,6 +11,7 @@
 #include "Engine/Core/Log/logging.h"
 #include "Launcher/crash_capture_name.h"
 #include "Launcher/crash_dump_retry.h"
+#include "Launcher/crash_dump_snapshot.h"
 #include <array>
 #include <fstream>
 #include <format>
@@ -75,6 +76,25 @@ void endpoint_checks() {
         "Crash envelope endpoint not derived from the minidump endpoint");
     check(!accepted_response(429, receipt, id), "Rate limited submission accepted");
     check(!accepted_response(500, receipt, id), "Failed submission accepted");
+}
+void dump_snapshot_checks() {
+    DumpSnapshot disabled(GetCurrentProcess(), false);
+    check(!disabled.captured() && disabled.handle(GetCurrentProcess()) == GetCurrentProcess(),
+        "Normal crash capture unexpectedly clones the process");
+    MINIDUMP_CALLBACK_INPUT input{};
+    MINIDUMP_CALLBACK_OUTPUT output{};
+    input.CallbackType = IsProcessSnapshotCallback;
+    check(DumpSnapshot::callback(nullptr, &input, &output) && output.Status == S_FALSE,
+        "DbgHelp was not told the target is a snapshot");
+    for (const auto type : {IoStartCallback, VmStartCallback}) {
+        input.CallbackType = type; output.Status = S_FALSE;
+        check(DumpSnapshot::callback(nullptr, &input, &output) && output.Status == S_OK,
+            "Snapshot capture replaced standard file or memory I/O");
+    }
+    input.CallbackType = ReadMemoryFailureCallback;
+    input.ReadMemoryFailure.FailureStatus = HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY);
+    check(!DumpSnapshot::callback(nullptr, &input, &output) && FAILED(output.Status),
+        "Snapshot capture accepted missing memory");
 }
 void dump_retry_checks() {
     constexpr auto partial = static_cast<std::uint32_t>(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY));
@@ -419,9 +439,24 @@ void stuck_check(const std::filesystem::path& root) {
     check(MiniDumpReadDumpStream(bytes.data(), ExceptionStream, &stream, &data, &size) != FALSE &&
         static_cast<const MINIDUMP_EXCEPTION_STREAM*>(data)->ExceptionRecord.ExceptionCode == stuck_load_exception,
         "Stuck-load dump lacks its exception");
+    const auto* exception = static_cast<const MINIDUMP_EXCEPTION_STREAM*>(data);
+    const auto context = exception->ThreadContext;
+    check(context.DataSize >= sizeof(CONTEXT) && context.Rva <= bytes.size() &&
+        sizeof(CONTEXT) <= bytes.size() - context.Rva, "Stuck-load dump lacks its captured context");
+    check(reinterpret_cast<const CONTEXT*>(bytes.data() + context.Rva)->Rip != 0,
+        "Stuck-load dump has no instruction pointer");
+    std::array<char, 64> marker{};
+    fill_marker(marker);
+    check(bytes.find(std::string_view(marker.data(), marker.size())) != std::string::npos,
+        "Stuck-load snapshot lacks the heap memory referenced by its stack");
     check(MiniDumpReadDumpStream(bytes.data(), ThreadListStream, &stream, &data, &size) != FALSE &&
         static_cast<const MINIDUMP_THREAD_LIST*>(data)->NumberOfThreads >= 2, "Stuck-load dump lacks the other threads");
     const auto tags = Json::parse(read(stuck.wstring() + L".json"));
+    // The Windows integration fixture must exercise the stable snapshot path,
+    // not pass by silently falling back to a live read. The runtime retains
+    // live capture on hosts where PSS is unavailable.
+    check(tags.value("capture.snapshot", "") == "true" && tags.value("capture.snapshot_error", "") == "0",
+        "Stuck-load fixture did not capture a process snapshot");
     check(tags.at("error.type").string() == "stall" && tags.at("load.stage").string() == "Starting level load" &&
         tags.at("load.seconds").string() == "130" && !tags.contains("crash.site") &&
         tags.at("game.map").string() == "dingolevel_reskate_lsc_b2", "Stuck-load report not tagged as one");
@@ -509,6 +544,8 @@ int wmain(int argc, wchar_t** argv) {
             set_destination(L"Levels/Game/DingoLevel_Root/DingoLevel_Root + levels/game/dingolevel_reskate_lsc_b2/dingolevel_reskate_lsc_b2 @ DefaultStartPoint");
             // (Another thread, as a load's job workers would be: the dump holds it too.)
             std::jthread worker([](std::stop_token stop) { while (!stop.stop_requested()) Sleep(10); });
+            auto* const volatile marker = new std::array<char, 64>;
+            fill_marker(*marker);
             if (!capture_stuck_load(L"Starting level load", 130)) ExitProcess(44);
             // The game goes on: a second capture is refused only while one is in hand.
             worker.request_stop();
@@ -526,6 +563,7 @@ int wmain(int argc, wchar_t** argv) {
         SetEnvironmentVariableW(L"RESKATE_CRASH_REPORT_URL", L"http://invalid/post");
         check(start(root) == StartResult::failed, "Invalid endpoint enabled reporter");
         endpoint_checks();
+        dump_snapshot_checks();
         dump_retry_checks();
         attachment_checks(root);
         details_checks(root);
