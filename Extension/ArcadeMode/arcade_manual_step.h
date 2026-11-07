@@ -137,6 +137,45 @@ public:
         owner_=current.owner;generation_=current.owner_generation;pose_=pose;contact_at_=contact_at;committed_=current;
         return cached_;
     }
+    // Authoritative episode path. Unknown intervals suspend dynamics only.
+    // Each accepted row is an original native dt; client time is never integrated.
+    PhysicalBalanceSample sample_episode(ManualPhysics& physics,const NativeInputFrame& current,
+            SkatePose pose,std::uint64_t now,bool integrate,std::uint64_t admitted_step) noexcept {
+        seconds_=0;
+        if(!integrate || !current.valid || now<current.sampled_at || now-current.sampled_at>150){
+            count_=0; fault_=false; return {};
+        }
+        if(!physics.active() && !physics.closed())physics.begin(pose==SkatePose::nose_manual);
+        physics.transfer(pose==SkatePose::nose_manual);
+        if(fault_){count_=0;fault_=false;return {};}
+        if(current.physics_step==consumed_)return physics.snapshot();
+        const auto wanted=pose==SkatePose::manual?0x4000u:0x8000u;
+        PhysicalBalanceSample result=physics.snapshot();
+        std::size_t taken{};
+        for(std::size_t i=0;i<count_;++i){
+            const auto& row=records_[i];const auto& f=row.frame;
+            if(f.physics_step>current.physics_step)break;
+            taken=i+1;
+            if(f.physics_step<=consumed_)continue;
+            consumed_=f.physics_step;
+            const bool known=f.physics_step>=admitted_step && f.valid && f.owner==current.owner && f.owner_generation==current.owner_generation &&
+                f.state==100 && f.mode==1 && f.contacts==wanted && !(f.stance_and_push&0x40u) &&
+                f.sampled_at<=now && now-f.sampled_at<=1000 &&
+                row.controls.available && row.controls.sampled_at<=f.sampled_at && f.sampled_at-row.controls.sampled_at<=150;
+            if(!known)continue;
+            auto mapping=InputBalanceControls::vertical(pose==SkatePose::nose_manual?InputBalanceKind::nose:InputBalanceKind::manual);
+            mapping.admitted=true;const auto pair=row.controls.configured(mapping);
+            controls_.begin_manual(f.sampled_at);
+            controls_.poll_manual(f.sampled_at,result.position,{pair.first,pair.second},true);
+            result=manual_physics_pose(physics,pose,row.seconds,controls_.manual_input());
+            seconds_+=row.seconds;
+            if(!result.active)break;
+        }
+        for(std::size_t i=taken;i<count_;++i)records_[i-taken]=records_[i];
+        count_-=taken;
+        cached_=result;committed_=current;owner_=current.owner;generation_=current.owner_generation;pose_=pose;
+        return result;
+    }
 private:
     static bool stable_contact(const NativeInputFrame& a,const NativeInputFrame& b) noexcept {
         return a.valid && b.valid && a.owner==b.owner && a.owner_generation==b.owner_generation &&

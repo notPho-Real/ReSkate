@@ -19,6 +19,15 @@ inline bool manual_revert_preparation(bool valid, bool bail, unsigned state,
         unsigned mode, bool revert_pending) noexcept {
     return valid && !bail && state == 101 && mode == 1 && revert_pending;
 }
+// Internal physical handoff proof: verified original balance, native101 followed
+// by100/1 under the same owner. ack_at timestamps that native
+// transition, not a score-label event or an award. Matching contact must still
+// corroborate successor delivery; this cannot adopt generic one-wheel contact.
+struct ManualRevertContact {
+    std::uint64_t owner{},step{},contact{},ack_at{};
+    std::uint32_t previous_stance{}; // Origin diagnostic only; leading foot need not change in a180.
+    bool operator==(const ManualRevertContact&) const = default;
+};
 struct ManualInputDiagnostic {
         int stick{}, pad{}, stick_first{}, pad_first{}, request{};
         std::uint64_t stick_at{}, pad_at{}, request_at{};
@@ -28,6 +37,9 @@ struct ManualInputDiagnostic {
         bool from_air{};
         std::uint64_t recognition_id{}; // Diagnostic lineage only; no actuation decision.
         bool held_air{}; // Continuously held final direction, owned by this actor.
+        ManualRevertContact revert{};
+        bool release_requested{}; // Explicit physical cancellation, never an observation timeout.
+        bool air_episode_owned{}; // Admitted preparation still belongs to its verified native flight.
         bool operator==(const ManualInputDiagnostic&) const = default;
     };
 // Native actuation only. Recognition and physical continuity belong to the
@@ -38,9 +50,18 @@ public:
     static constexpr auto ground_pair_ms = InputTiming::ground_pair_ms, ground_sample_slack_ms = InputTiming::ground_sample_slack_ms;
     static constexpr auto air_pair_ms = InputTiming::air_pair_ms, air_request_ms = InputTiming::air_request_ms;
     static constexpr std::uint64_t acquisition_ms = 1200;
-    void cancel() noexcept { confirmed_ = established_ = balance_established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    void cancel() noexcept { confirmed_ = established_ = balance_established_ = air_prepared_ = landed_ = wrong_contact_ = clocked_ = held_air_ = flight_bound_ = false; requested_ = 0; recognition_id_=0; hard_reset_ = true; }
+    // Resume one retained, independently revalidated episode after suspension.
+    // No recognition/controller edge and no new acquisition clock is created.
+    void resume(const ManualInputDiagnostic& d) noexcept {
+        if(busy() || !d.owns || (d.request!=-1 && d.request!=1))return;
+        requested_=d.request;requested_at_=d.request_at;recognized_at_=d.recognized_at;recognition_id_=d.recognition_id;
+        confirmed_=established_=balance_established_=landed_=true;air_prepared_=d.from_air;
+        hard_reset_=clocked_=wrong_contact_=held_air_=flight_bound_=false;
+    }
     bool hard_reset() const noexcept { return hard_reset_; }
     bool busy() const noexcept { return requested_ != 0; }
+    bool established_balance() const noexcept { return requested_ && confirmed_ && balance_established_; }
     bool initial_ground_acquisition(std::uint64_t now) const noexcept {
         return requested_ && !air_prepared_ && !established_ && now >= requested_at_ &&
             now-requested_at_ < acquisition_ms;
@@ -50,31 +71,42 @@ public:
     std::uint64_t recognition_id() const noexcept { return requested_ ? recognition_id_ : 0; }
     bool from_air() const noexcept { return requested_ && air_prepared_; }
     bool held_air() const noexcept { return requested_ && air_prepared_ && !landed_ && held_air_; }
+    bool air_episode_owned() const noexcept { return requested_ && air_prepared_ && !landed_ && flight_bound_; }
     std::uint64_t requested_at() const noexcept { return requested_ ? requested_at_ : 0; }
     bool request(std::uint64_t now, int direction, bool airborne, bool safe,
-                 bool prepared_air, std::uint64_t recognized_at,std::uint64_t recognition_id=0, bool held_air=false) noexcept {
+                 bool prepared_air, std::uint64_t recognized_at,std::uint64_t recognition_id=0, bool held_air=false,
+                 bool flight_bound=false) noexcept {
         if (!safe || requested_ || (direction != -1 && direction != 1)) return false;
         if (prepared_air && (now < recognized_at || now - recognized_at > air_request_ms)) return false;
         hard_reset_ = false; requested_ = direction;
-        // Airborne waiting never renews preparation lifetime. A first admitted
-        // ground execution begins the separate existing landing-settling clock.
+        // Keep recognition immutable. A verified flight owns admitted preparation;
+        // first ground execution begins the separate landing-settling clock.
         requested_at_ = prepared_air && airborne ? recognized_at : now;
         recognized_at_ = recognized_at;recognition_id_=recognition_id;
         air_prepared_ = prepared_air; landed_ = !airborne;
         held_air_ = prepared_air && airborne && held_air;
+        flight_bound_ = prepared_air && airborne && flight_bound;
         confirmed_ = established_ = balance_established_ = wrong_contact_ = false;
         return true;
     }
     Output sample(std::uint64_t now, bool gameplay, bool safe, SkatePose observed,
                   bool conflicting, std::uint16_t buttons, bool balance_admitted = false,
-                  bool trigger_only_conflict = false, bool contact_only = false, bool held_air=false) noexcept {
+                  bool trigger_only_conflict = false, bool contact_only = false, bool held_air=false,
+                  bool flight_continues=false, bool native_revert_pending=false) noexcept {
         // Typed, independently admitted balance owns these configured vertical
         // held controls. Opposed command recognition remains a separate guard;
         // it must not drop the established native RS balance hold.
         const auto wanted=requested_<0 ? SkatePose::manual : SkatePose::nose_manual;
         const bool vertical_balance=balance_admitted && requested_ && confirmed_ && observed==wanted;
+        // A newer native contact generation can precede the client balance
+        // publication. Retain an already-established RS hold for trigger-only
+        // input while the queued revert waits for current admission. Cancelling
+        // here would turn the same RT edge into an unrelated ground revert.
+        // This grants no revert admission, contact evidence or balance control.
+        const bool retained_trigger_hold=trigger_only_conflict && requested_ && confirmed_ &&
+            balance_established_ && observed==wanted;
         const bool opposed_vertical=(buttons&3u)==3u && !vertical_balance;
-        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict)) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
+        if (!gameplay || !safe || (conflicting && !(vertical_balance && trigger_only_conflict) && !retained_trigger_hold) || (buttons & 0xf030u) || (buttons & 0x0300u) == 0x0300u ||
             opposed_vertical || (buttons & 12u) == 12u || observed == SkatePose::bail ||
             observed == SkatePose::grind || (clocked_ && now < last_)) {
             const bool hard = !gameplay || (buttons & 0x0030u) || opposed_vertical || (buttons & 12u) == 12u ||
@@ -83,13 +115,20 @@ public:
         }
         clocked_ = true; last_ = now;
         if (requested_) {
-            // Recognition, airborne request lifetime and native landing settling
-            // have separate deadlines. Rebounds cannot renew any of them.
+            // Unadmitted requests expire; admitted preparations follow native
+            // flight identity. Landing settling has its own bounded clock.
             if (air_prepared_ && !landed_ && !confirmed_) {
                 // A continuously held final direction is live input, not a
                 // renewed released request. Once lost, it cannot rearm itself.
                 held_air_ = held_air_ && held_air;
-                if (now - requested_at_ > air_request_ms && !held_air_) { cancel(); return {}; }
+                // The admission deadline bounds an unverified request, not an
+                // already-delivered preparation in the same native flight.
+                // Neutral stick input does not withdraw that landing selection.
+                // A brief landing/rebound between input polls still has the
+                // original bounded preparation window. It cannot inherit the
+                // old flight's extended authority or renew that deadline.
+                if (flight_bound_ && !flight_continues) flight_bound_ = false;
+                if (!flight_bound_ && now - requested_at_ > air_request_ms && !held_air_) { cancel(); return {}; }
                 // Missing observation is neither ground nor wheel contact. It
                 // cannot turn the recognition deadline into a fresh lease.
                 if (observed == SkatePose::riding || observed == SkatePose::manual ||
@@ -129,8 +168,12 @@ public:
             // Acquisition ends once matching contact and independent balance are admitted.
             // A one-poll balance-publication gap must use the continuation
             // lease below, not re-enter an already expired acquisition timer.
+            // A verified manual's native RT transition owns a separate bounded
+            // lease. Its temporary wheel-contact loss must not expire this RS
+            // actuator after150ms. Do not renew contact or admit a new balance;
+            // the session still requires original successor observations.
             if (((!air_prepared_ || landed_) && (!confirmed_ || !balance_established_) && now - requested_at_ >= acquisition_ms) ||
-                (confirmed_ && !initial_ground_acquisition(now) &&
+                (confirmed_ && !native_revert_pending && !initial_ground_acquisition(now) &&
                  now - confirmed_at_ >= (settling_air ? 200u : 150u))) {
                 cancel(); return {};
             }
@@ -139,7 +182,7 @@ public:
         return {};
     }
 private:
-    bool hard_reset_{}, clocked_{}, confirmed_{}, established_{}, balance_established_{}, air_prepared_{}, landed_{}, wrong_contact_{}, held_air_{};
+    bool hard_reset_{}, clocked_{}, confirmed_{}, established_{}, balance_established_{}, air_prepared_{}, landed_{}, wrong_contact_{}, held_air_{}, flight_bound_{};
     int requested_{};
     std::uint64_t last_{}, requested_at_{}, recognized_at_{}, recognition_id_{}, confirmed_at_{}, first_confirmed_at_{}, wrong_contact_at_{};
 };

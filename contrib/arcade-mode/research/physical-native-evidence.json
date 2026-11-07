@@ -1,0 +1,164 @@
+{
+  "evidence_kind": "temporary native debugger prototype, kernel-observed virtual-controller X; installed old DLL still present",
+  "trials": [
+    {
+      "planned_release_to_x_ms": 0,
+      "physical_x_ns": 76133533855823,
+      "native_intent": {
+        "ns": 76133804412194,
+        "field": "EnumGS.Intent.FlipTrick",
+        "before": 0,
+        "requested": 2,
+        "first_air_ns": 76133803856586,
+        "physical_x_ns": 76133533855823,
+        "vertical_velocity": 3.2835965156555176
+      },
+      "native_motion_initializations": [
+        {
+          "ns": 76133879601879,
+          "native_motion_start": 16.0,
+          "key_before": 24588,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        },
+        {
+          "ns": 76133881873220,
+          "native_motion_start": 16.0,
+          "key_before": 24588,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        }
+      ],
+      "first_advancing_evaluation": {
+        "ns": 76133882267303,
+        "ptm": "0x174725d50",
+        "time": [
+          0.13333332538604736,
+          15.999999046325684,
+          120.0,
+          104.0,
+          1.0,
+          2.5447580112138678e-42
+        ],
+        "delta": 2.0
+      },
+      "hips_vy_before_evaluation": 3.216125249862671,
+      "physics_state_before_evaluation": 201,
+      "observation_age_ms": 7.871778,
+      "x_to_advancing_evaluation_ms": 348.41148,
+      "sampled_pop_edges": 1,
+      "late_flags_seen": false,
+      "final_physics_state": 100,
+      "cached_steps": [
+        0.03333333134651184
+      ],
+      "source_sha256": "7d194df99fcb12fa0ae8d14ab1a40252d1843e911bd85597c7ff91b418f91ca5"
+    },
+    {
+      "planned_release_to_x_ms": 100,
+      "physical_x_ns": 76374611571777,
+      "native_intent": {
+        "ns": 76374792143425,
+        "field": "EnumGS.Intent.FlipTrick",
+        "before": 0,
+        "requested": 2,
+        "first_air_ns": 76374791573351,
+        "physical_x_ns": 76374611571777,
+        "vertical_velocity": 3.9157679080963135
+      },
+      "native_motion_initializations": [
+        {
+          "ns": 76374867543862,
+          "native_motion_start": 16.0,
+          "key_before": 24588,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        },
+        {
+          "ns": 76374870349265,
+          "native_motion_start": 16.0,
+          "key_before": 24588,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        }
+      ],
+      "first_advancing_evaluation": {
+        "ns": 76374870980459,
+        "ptm": "0x1770b0020",
+        "time": [
+          0.13333332538604736,
+          15.999999046325684,
+          120.0,
+          104.0,
+          1.0,
+          2.8306228979361305e-42
+        ],
+        "delta": 2.0
+      },
+      "hips_vy_before_evaluation": 3.214935064315796,
+      "physics_state_before_evaluation": 201,
+      "observation_age_ms": 8.863435,
+      "x_to_advancing_evaluation_ms": 259.408682,
+      "sampled_pop_edges": 1,
+      "late_flags_seen": false,
+      "final_physics_state": 100,
+      "cached_steps": [
+        0.03333333134651184
+      ],
+      "source_sha256": "7e6e804fd758caefd84dffc7ac83f386039e50ffe3aa33017e8d7280e7453bff"
+    },
+    {
+      "planned_release_to_x_ms": 500,
+      "physical_x_ns": 76017981105991,
+      "native_intent": {
+        "ns": 76017981694530,
+        "field": "EnumGS.Intent.FlipTrick",
+        "before": 0,
+        "requested": 2,
+        "first_air_ns": 76017751124576,
+        "physical_x_ns": 76017981105991,
+        "vertical_velocity": 2.5334150791168213
+      },
+      "native_motion_initializations": [
+        {
+          "ns": 76018028996026,
+          "native_motion_start": 16.0,
+          "key_before": 12,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        },
+        {
+          "ns": 76018031614302,
+          "native_motion_start": 16.0,
+          "key_before": 12,
+          "key_after": 32780,
+          "selected_asset": "0f16271d-5da0-a75f-0f16-271d5da0a75f"
+        }
+      ],
+      "first_advancing_evaluation": {
+        "ns": 76018032346106,
+        "ptm": "0x174725d50",
+        "time": [
+          0.13333332538604736,
+          15.999999046325684,
+          120.0,
+          104.0,
+          1.0,
+          2.5447580112138678e-42
+        ],
+        "delta": 2.0
+      },
+      "hips_vy_before_evaluation": 1.2414754629135132,
+      "physics_state_before_evaluation": 201,
+      "observation_age_ms": 0.793716,
+      "x_to_advancing_evaluation_ms": 51.240115,
+      "sampled_pop_edges": 1,
+      "late_flags_seen": false,
+      "final_physics_state": 100,
+      "cached_steps": [
+        0.03333333134651184
+      ],
+      "source_sha256": "1d629ae6f2dd7a488d04d05689f6e4cecf91ca11275d2d03f81e1a441ff54d14"
+    }
+  ]
+}

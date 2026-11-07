@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,14 +35,11 @@ struct Station {
     std::array<unsigned char, 16> carrier{}; // the song of the game's whose sound is replaced: a row, or one added when it is bound
     std::uintptr_t metadata{};               // the carrier's artist and title, as the game holds them
     std::string playlist;                    // the Spotify playlist it starts, or empty: whatever is playing
-    std::string id;                          // its playlist's id in the music screen
 };
 // Set each time the catalog is read (local_music_assets.cpp). `table` is what a metadata
 // asset begins with, by which one is known to be still there.
 void set_stations(std::vector<Station> stations, std::uintptr_t table);
 bool has_stations() noexcept;
-// Their playlists' ids in the music screen.
-std::vector<std::string> playlist_ids();
 // Which of them a playlist of these `count` members (16 bytes each) is, or -1. `add` is set
 // when its carrier is not among them and is to be added (`carrier`, 16 bytes). Any thread.
 int station_of(const unsigned char* members, std::uint32_t count, unsigned char* carrier, bool& add) noexcept;
@@ -65,6 +63,9 @@ void bound(std::uint32_t channel, bool music_channel, std::uint32_t playlist, st
 // which is what the game shows as now playing. They are put back when it is left, and before
 // the catalog is read from them.
 void restore_presentation() noexcept;
+// Before the map changes: every song reads as itself again, and none is held on to (their
+// assets go with the map). The thread that changes the level.
+void before_level_transition() noexcept;
 // The game's music player chose a song while one is on (local_music_playback.cpp:
 // music_select_next_hook). `queue` is the player's queue, `asked` whether it was asked for its
 // next song (its flags for that, at +0xf1 and +0xf2, are still up), which is Spotify's next
@@ -91,6 +92,17 @@ void grabbed() noexcept;
 bool recent() noexcept;
 // The music channel it is on, or ~0u.
 std::uint32_t channel() noexcept;
+// The game's own soundtrack on the player's channel (the one bound to a playlist that is none of
+// them): what it is playing, as its song's asset reads, and a next as the player's own press asks
+// it (plugins: reskate.music.game_*). Without a station on. The client thread.
+struct GameSong {
+    std::string artist, title;
+};
+std::optional<GameSong> game_song() noexcept;
+bool game_next() noexcept;
+// The player's channel's queue, as the game chose a song for it (local_music_playback.cpp).
+void plain_song_chosen(std::uintptr_t queue, std::uint32_t channel, bool asked) noexcept;
+std::uint32_t plain() noexcept;
 // The client thread, each frame: starts or pauses the outside player as one is entered or left.
 void tick() noexcept;
 // For the console.

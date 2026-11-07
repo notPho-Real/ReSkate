@@ -1,0 +1,217 @@
+{
+  "source_sha": "2c2ce125d0a71d01e0decd73c8ec6ba4688660f7",
+  "dll_sha256": "47846bee8b8272be2436faff590def2ed203177308c43a2836f356a20dd9d3b1",
+  "map": "skate3_megapark",
+  "arcade_enabled": false,
+  "observations": [
+    {
+      "capture": "artifacts/RC3-28/native-airwalk-release-held_controls-result.json.gz",
+      "raw_sha256": "f3b613a6bc0935a6cb692003df299e165cdacb77f93acf20736f1874df0e95a3",
+      "compressed_sha256": "099b91148405b8e395fad6474215aa3f520cafaec8fa4eb2ffc7831e904d8db5",
+      "samples": 740,
+      "foot_release_seconds": 3.75,
+      "hand_release_seconds": 4.75,
+      "transitions": [
+        {
+          "seconds": 0.010886,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.667615,
+          "state": 103,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.734873,
+          "state": 200,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.803806,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 3.173928,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 3.406323,
+          "state": 201,
+          "EnumGS.OneFooterType": 12,
+          "Bool.State.Is.OneFootAir": true,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 3.799079,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": true,
+          "Bool.Anim.Is.OneFootExit": true,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 4.134618,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 1
+        },
+        {
+          "seconds": 4.172403,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 1
+        },
+        {
+          "seconds": 4.465587,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 9
+        },
+        {
+          "seconds": 4.803586,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        }
+      ],
+      "final_state": 100,
+      "max_board_height": 3.4413771629333496
+    },
+    {
+      "capture": "artifacts/RC3-28/native-airwalk-simultaneous-held_controls-result.json.gz",
+      "raw_sha256": "3eaf779794942c59a828f2d702960d19771296d64b39a9681e3fd978f9d7062b",
+      "compressed_sha256": "8f8c90628f83881677df6e8264a54d808536a67d84999ee7eb0953fbe9a3646a",
+      "samples": 721,
+      "foot_release_seconds": 3.75,
+      "hand_release_seconds": 3.75,
+      "transitions": [
+        {
+          "seconds": 0.011144,
+          "state": 100,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.639046,
+          "state": 103,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.707504,
+          "state": 200,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 2.775041,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 0
+        },
+        {
+          "seconds": 3.133873,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 3.405121,
+          "state": 201,
+          "EnumGS.OneFooterType": 12,
+          "Bool.State.Is.OneFootAir": true,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": true,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 3.804733,
+          "state": 201,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": true,
+          "Bool.Anim.Is.OneFootExit": true,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 6
+        },
+        {
+          "seconds": 3.970503,
+          "state": 504,
+          "EnumGS.OneFooterType": 0,
+          "Bool.State.Is.OneFootAir": false,
+          "Bool.Anim.Is.OneFootExit": false,
+          "Bool.GP.CanGrab": false,
+          "EnumGS.GrabType": 6
+        }
+      ],
+      "final_state": 504,
+      "max_board_height": 3.1121139526367188
+    }
+  ],
+  "source_mechanism": {
+    "exit_state": "OneFoot.Exit.Node",
+    "early_branch": "Grab.Loop.Exit when Bool.GP.CanGrab becomes false",
+    "original_exit_tag": "e85ed10a-e890-26c5-e85e-d10ae89026c5",
+    "original_air_tag": "cbce14fd-720c-94f9-cbce-14fd720c94f9"
+  },
+  "inference": "Simultaneous hand/foot withdrawal truncates the native one-footer exit. Preserve hand input through native exit after withdrawing the foot.",
+  "limits": [
+    "One original-control trial per release order; Arcade adaptation still requires a new runtime trial.",
+    "Original input timings match except hand release; native launch sampling and peak height differ slightly.",
+    "Original-controller trials prove native identity, state flags and ground/bail outcome, not exact body actor acknowledgment or scoring."
+  ],
+  "native_scoring_verified": false,
+  "arcade_fix_gameplay_verified": false
+}

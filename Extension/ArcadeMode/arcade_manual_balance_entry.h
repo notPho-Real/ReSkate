@@ -8,7 +8,7 @@ namespace dingosdk::arcade_mode {
 // advanced variant, native balance component or a monetary scoring action.
 class GroundManualBalance {
 public:
-    void reset() noexcept { retire_air(); pending_ = confirmed_ = clocked_ = air_origin_ = held_air_ = landed_ = false; }
+    void reset() noexcept { retire_air(); pending_ = confirmed_ = clocked_ = air_origin_ = held_air_ = landed_ = flight_owned_ = false; }
     void observe(std::uint64_t now, const NativeInputFrame& frame,
                  const ManualInputDiagnostic& command, bool eligible) noexcept {
         // Once acquired, physical contact owns continuation and terminal display.
@@ -36,9 +36,18 @@ public:
         pending_ = false;
         // Existing one-wheel contact, including a kick, is never a new entry.
         // Unattributed air preparations retain their independent history route.
-        if (command.from_air || frame.contacts != 0xc000u) return;
+        const auto& revert=command.revert;
+        const bool linked = revert.owner && revert.owner==frame.owner_generation && revert.ack_at &&
+            now>=revert.ack_at && now-revert.ack_at<=1100 && command.request_at>=revert.ack_at &&
+            frame.physics_step>revert.step && frame.contact_generation>revert.contact &&
+            frame.contacts==(command.request<0?0x4000u:0x8000u);
+        if (command.from_air || (frame.contacts != 0xc000u && !linked)) return;
         owner_ = frame.owner; generation_ = frame.owner_generation;
         step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
+        // Already-present matching contact is attributable only to this
+        // observed native transition link. Still require a subsequent real
+        // physics step after owned RS delivery before admitting balance.
+        if(linked) contact_generation_=revert.contact;
         began_ = acquisition_at_ = command.request_at; first_delivery_at_ = delivered_at_ = now;
         direction_ = command.request; pending_ = true; clocked_ = false;
         air_origin_ = false; landed_ = true;
@@ -48,7 +57,7 @@ public:
         if (!pending_ && !confirmed_) return {};
         if (pending_ && air_origin_) {
             const bool live = valid && fresh(now,frame) && same_owner(frame) &&
-                now >= began_ && (landed_ || now-began_ <= ManualActuation::air_request_ms || held_air_) &&
+                now >= began_ && (landed_ || now-began_ <= ManualActuation::air_request_ms || held_air_ || flight_owned_) &&
                 now >= delivered_at_ && now-delivered_at_ <= 150;
             if (!live || (frame.airborne ? landed_ || !same_air(frame) : !matching_landing(frame))) {
                 retire_air(); reset(); return {};
@@ -125,10 +134,12 @@ private:
                      const ManualInputDiagnostic& command, bool eligible) noexcept {
         const bool continuing_hold = pending_ && air_origin_ && !landed_ && held_air_ && command.held_air &&
             same_owner(frame) && began_ == command.recognized_at && direction_ == command.request;
+        const bool continuing_flight = pending_ && air_origin_ && !landed_ && flight_owned_ && command.air_episode_owned &&
+            same_owner(frame) && began_ == command.recognized_at && direction_ == command.request && same_air(frame);
         if ((pending_ && landed_) || !eligible || !fresh(now,frame) || !command.owns || !command.safe || !command.from_air ||
             !command.recognized_at || command.request_at != command.recognized_at ||
             (command.request != -1 && command.request != 1) || now < command.recognized_at ||
-            (now-command.recognized_at > ManualActuation::air_request_ms && !continuing_hold) ||
+            (now-command.recognized_at > ManualActuation::air_request_ms && !continuing_hold && !continuing_flight) ||
             (frame.state != 200 && frame.state != 201) || (frame.mode != 1 && frame.mode != 2) ||
             !frame.airborne_episode || !frame.mode_generation || frame.contacts || (frame.stance_and_push & 0x40u) ||
             !frame.flip_known || frame.flip_id < -1) {
@@ -140,13 +151,14 @@ private:
             if (!same_air(frame)) { retire_air(); pending_ = air_origin_ = false; return; }
             air_frame_ = frame;
             held_air_ = held_air_ && command.held_air;
+            flight_owned_ = flight_owned_ && command.air_episode_owned;
             delivered_at_ = now; return; // Only delivery freshness renews, never intent lifetime.
         }
         owner_ = frame.owner; generation_ = frame.owner_generation;
         step_ = frame.physics_step; contact_generation_ = frame.contact_generation;
         began_ = command.recognized_at; first_delivery_at_ = delivered_at_ = now;
         direction_ = command.request; air_frame_ = frame;
-        pending_ = air_origin_ = true; held_air_ = command.held_air; clocked_ = landed_ = false;
+        pending_ = air_origin_ = true; held_air_ = command.held_air; flight_owned_ = command.air_episode_owned; clocked_ = landed_ = false;
     }
     static bool fresh(std::uint64_t now, const NativeInputFrame& frame) noexcept {
         return frame.valid && frame.owner.valid() && frame.owner_generation && frame.contact_generation &&
@@ -160,7 +172,7 @@ private:
     std::uint64_t generation_{}, began_{}, acquisition_at_{}, first_delivery_at_{}, delivered_at_{}, step_{}, contact_generation_{};
     std::uint64_t contact_at_{}, last_at_{}, last_step_{}, spent_generation_{}, spent_at_{};
     int direction_{}, spent_direction_{};
-    bool pending_{}, confirmed_{}, clocked_{}, spent_{}, air_origin_{}, held_air_{}, landed_{};
+    bool pending_{}, confirmed_{}, clocked_{}, spent_{}, air_origin_{}, held_air_{}, landed_{}, flight_owned_{};
 };
 inline ManualObservationResult manual_balance_observation(const ManualObservationResult& ground,
                                                          const ManualObservationResult& history) noexcept {

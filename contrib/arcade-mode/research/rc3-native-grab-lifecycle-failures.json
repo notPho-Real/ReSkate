@@ -1,0 +1,98 @@
+{
+  "scope": "Observed native failures; bindings and entry evidence remain recorded. These receipts do not classify untested contexts as unsupported.",
+  "one_footers": [
+    {
+      "native_id": 1,
+      "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+      "capture_sha256": "9041d1e50d180c5de604a4e0a2cfaa14e36b5053c0f4fadf1a5ace36c3cf3586",
+      "context": "skate3_megapark; original controls, Arcade OFF; flat-ground Ollie",
+      "observation": "OneFooterType1 at0.832s and grabbing loop at1.032s. X released1.02s, hand trigger1.25s. CanOneFoot and LeftFoot persisted until1.331s. State601 at1.300s produced a second flight, then ground100 and both identities0 at2.269s.",
+      "blocker": "Clean native one-footer exit before landing remains unverified; sequential foot/hand release reproduced a footplant and second flight. Exact actor and scoring acceptance remain outstanding."
+    },
+    {
+      "native_id": 4,
+      "source_sha": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+      "capture_sha256": "80613644a9135dac6d2728eb4961a019069760b9027cfdefe9516f98fb7c37d1",
+      "context": "skate3_megapark; original controls, Arcade OFF; changed leading foot; flat-ground Ollie",
+      "observation": "OneFooterType4 at0.822s. X released0.88s and hand trigger0.94s. Native intent persisted, loop appeared1.063s, state601 at1.290s produced a second flight, then ground100 and both identities0 at2.261s.",
+      "blocker": "Earlier physical release also reproduced the native footplant. The required native exit or airtime context is unresolved; suppressing footplant physics or clearing identity would not establish cleanup. Ramp follow-up also observed premature refresh cancellation on state0 followed immediately by verified owner/state201; native observation timing must be resolved before reliable hold/landing acceptance.",
+      "ramp_followup": {
+        "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+        "capture": "artifacts/RC3-24/ramp-judo-trials-result.json.gz",
+        "capture_sha256": "4fc18a611c3913735d6a547d5efa1e78c1c6ffa16601767a15557ac12cfb4174",
+        "compressed_sha256": "39ccf0476c7480bfc8f5d2f1bd3d574b5c831f8d98ef2321d60a12bcdca8171d",
+        "native_id": 4,
+        "binding": "Up-Right+B,B within250ms; hold second B",
+        "into_actor": "5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0",
+        "into_initialized_and_advanced": true,
+        "into_before": 0,
+        "into_after": 3,
+        "native_entry_seconds": 2.2758,
+        "native_loop_state_seconds": 2.515,
+        "foot_intent_cleared_seconds": 2.6713,
+        "footer_cleared_seconds": 2.6801,
+        "physical_b_release_seconds": 2.8,
+        "grab_cleared_with_exit_seconds": 3.076,
+        "bail_seconds": 3.6424,
+        "lease_cancellation": {
+          "reason": "refresh",
+          "failed_state_read_value": 0,
+          "owner_verified": true,
+          "immediately_following_state": 201,
+          "physical_b_still_held": true
+        },
+        "diagnosis": "Observed inconsistent independent state reads caused premature grab retirement. This is not proof that every state0 is transient or permission to bypass owner/state guards. Trace native publication and existing physics observation before changing cancellation. Bail causality and exact Exit actor remain unverified."
+      }
+    },
+    {
+      "native_id": 7,
+      "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
+      "capture_sha256": "5bd1f4c677f9436054b964139a97f3cb5cc5141fda7f269eb1de4e7505bb3e90",
+      "context": "skate3_megapark; Arcade Benihana after ordinary BS grab reset the previous family",
+      "observation": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
+      "blocker": "Native family cleanup remains unresolved even in the earlier-release landing. Stale GrabType blocks later advanced family admission. Exact loop/exit and numeric scoring are not accepted."
+    },
+    {
+      "native_id": 12,
+      "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+      "capture_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+      "context": "skate3_megapark; original quarter pipe; Arcade Down-Right+B; normal and earlier B-release comparison",
+      "observation": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
+      "blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
+      "comparisons": [
+        {
+          "capture": "artifacts/RC3-24/ramp-airwalk-trials-result.json.gz",
+          "raw_sha256": "a7d66eae04783112f7f6a2917c751edd45d679698b6a8a866ff9d396dfe94c04",
+          "gzip_sha256": "48bcadaaa0728904c6da32ab0c5f53dd138c967f5cb4578ed84c7132026a0c02",
+          "serial": 10,
+          "entry_seconds": 2.191358376,
+          "physical_release_seconds": 2.8,
+          "footer_cleared_seconds": 2.828181453,
+          "grab_cleared_with_exit_seconds": 3.225978277,
+          "bail_seconds": 3.461762141,
+          "last_airborne_board_tilt_degrees": 55.904526239726245,
+          "actor_initialized_and_advanced": true,
+          "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+          "exact_exit_actor_verified": false,
+          "scoring_verified": false
+        },
+        {
+          "capture": "artifacts/RC3-24/ramp-airwalk-early-trials-result.json.gz",
+          "raw_sha256": "38d218d071fb88b0f2ad822ea929a910c45fbb147ac98da8c8681438a5ee41d5",
+          "gzip_sha256": "758cff672e77d3267d621b1bcd38f1383b8e850a777249d543a75d930fdba89e",
+          "serial": 11,
+          "entry_seconds": 2.215982859,
+          "physical_release_seconds": 2.45,
+          "footer_cleared_seconds": 2.524899054,
+          "grab_cleared_with_exit_seconds": 2.920200419,
+          "bail_seconds": 3.783999929,
+          "last_airborne_board_tilt_degrees": 34.4867094095646,
+          "actor_initialized_and_advanced": true,
+          "native_into_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+          "exact_exit_actor_verified": false,
+          "scoring_verified": false
+        }
+      ]
+    }
+  ]
+}

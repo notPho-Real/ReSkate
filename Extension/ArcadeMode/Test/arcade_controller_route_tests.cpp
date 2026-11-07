@@ -139,8 +139,16 @@ void explicit_binding(){
         if(fault==11)r.captured(1);
         observe(r,1,physical(1017));r.select(1017,bitmap,available,f);
         check(!r.physical(1017).valid,"owner/state replacement, stale generations, focus, unsupported transport or source loss revokes");
+        using Failure=ControllerBindingFailure;
+        constexpr Failure failures[]{Failure::owner,Failure::owner_generation,Failure::physics_step,
+            Failure::native_clock,Failure::native_proof,Failure::native_proof,Failure::contact_generation,
+            Failure::action_generation,Failure::source,Failure::source,Failure::disconnected,Failure::captured};
+        check(r.observation(1017,true,available).binding_failure==failures[fault],
+            "revocation records the actual failed predicate without renewing permission");
         observe(r,1,physical(1034));r.select(1034,3,true,binding_frame(1034,7));
         check(!r.accepts(1,1034),"failed binding cannot recover through fresh activity alone");
+        check(r.observation(1034,true,true).binding_failure==failures[fault],
+            "later valid samples cannot overwrite the original failure evidence");
     }
     NativeControllerRoute filtered;filtered.arm(1,1000,1000);
     filtered.observe(1,physical(1000));filtered.select(1000,3,true,binding_frame(1000));

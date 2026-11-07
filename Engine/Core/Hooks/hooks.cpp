@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <utility>
 #include <vector>
 
 namespace dingosdk {
@@ -21,7 +22,7 @@ struct Hook {
     void* replacement{};
     void* relay{};
     void** original{};
-    bool attached{}, queued{}, retired{};
+    bool attached{}, queued{};
 };
 struct Registry {
     std::mutex mutex;
@@ -193,13 +194,26 @@ HookStatus WINAPI hook_prepare(void* target, void* replacement, void** original)
         return HookOk;
     });
 }
+namespace {
+thread_local unsigned batch_depth{}, batch_queued{};
+}
 HookStatus WINAPI hook_enable(void* target) {
     return locked([&](Registry& r) {
         if (!r.initialized) return HookNotInitialized;
         auto* hook = find(r, target); if (!hook) return HookNotFound;
         if (hook->attached) return HookOk;
+        if (batch_depth) {
+            hook->queued = true;
+            ++batch_queued;
+            return HookOk;
+        }
         return transact({{hook, true}});
     });
+}
+HookBatch::HookBatch() noexcept { ++batch_depth; }
+HookBatch::~HookBatch() {
+    if (--batch_depth || !std::exchange(batch_queued, 0)) return;
+    (void)hook_apply_queued();
 }
 HookStatus WINAPI hook_disable(void* target) {
     return locked([&](Registry& r) {
@@ -217,7 +231,7 @@ HookStatus WINAPI hook_remove(void* target) {
             const auto result = transact({{hook, false}});
             if (result != HookOk) return result;
         }
-        hook->retired = true; hook->queued = false; r.targets.erase(target);
+        hook->queued = false; r.targets.erase(target);
         return HookOk;
     });
 }
@@ -241,17 +255,6 @@ HookStatus WINAPI hook_apply_queued() {
         return result;
     });
 }
-HookStatus WINAPI hook_shutdown() {
-    return locked([](Registry& r) {
-        if (!r.initialized) return HookNotInitialized;
-        std::vector<Change> changes;
-        for (const auto& [target, hook] : r.targets) { (void)target; if (hook->attached) changes.push_back({hook, false}); }
-        const auto result = transact(changes);
-        if (result != HookOk) return result;
-        for (const auto& [target, hook] : r.targets) { (void)target; hook->retired = true; hook->queued = false; }
-        r.targets.clear(); r.initialized = false; return HookOk;
-    });
-}
 HookFailure hook_last_failure() noexcept { return last_failure; }
 const char* WINAPI hook_status_string(HookStatus value) {
     switch (value) {
@@ -262,19 +265,12 @@ const char* WINAPI hook_status_string(HookStatus value) {
     case HookDisabled: return "hook already detached";
     case HookNotFound: return "target not registered";
     case HookNotExecutable: return "target or replacement is not executable";
+    case HookBytesDiffer: return "patch target does not hold the expected bytes";
+    case HookOutOfReach: return "jump destination is out of rel32 reach";
     case HookOutOfMemory: return "out of memory";
     case HookProtectionFailed: return "memory protection or thread access denied";
     case HookUnsupportedFunction: return "Detours cannot relocate target";
     default: return "Detours transaction failed (Win32 status)";
     }
-}
-HookStatistics hook_statistics() {
-    auto& r = registry(); std::lock_guard lock(r.mutex);
-    HookStatistics result;
-    for (const auto& hook : r.lifetime) {
-        if (hook->retired) ++result.retired;
-        else { ++result.prepared; if (hook->attached) ++result.attached; }
-    }
-    return result;
 }
 }

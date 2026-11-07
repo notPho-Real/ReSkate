@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "classification": "routing",
+  "observed_source": "b55f5fe01bfaae82e78bd58b204fbc64ba36bb87",
+  "test_map": "skate3_megapark",
+  "defect": "The native grab admission flag received mirror_x, treating a valid leading-foot stance with bit 0x20 set as unknown. All grab requests were rejected after this stance change.",
+  "source_mechanism": {
+    "producer": "Original gamepad animation-expression hand and foot input producers",
+    "native_field": "stance_and_push, stance_switch_mask",
+    "ownership": "NativeInputReadiness validates the current physical frame and matching owner before exposing stance validity and orientation separately.",
+    "translation": "Swap physical trigger hands and negate horizontal family selectors when mirror_x is false. Keep vertical selectors. Authored fingerflip transition X was already mirrored by playback. Foot settings retain the existing original anatomical convention."
+  },
+  "independent_native_controls": [
+    {
+      "capture": "artifacts/RC3-09/stance-native-controls-result.json.gz",
+      "uncompressed_sha256": "036fdf615ae9e39eaaf04d89d8d25dafda6865bd43e5d546a41f5af7a73d1cbd",
+      "arcade": "OFF",
+      "stance_bit": "0x20",
+      "results": [
+        "Physical RT produced LeftHand intent, FS family 1, detail 6.",
+        "Physical LT produced RightHand intent, BS family 2, detail 1.",
+        "Physical RS down plus RT produced Crail family 5, detail 18.",
+        "Physical RS down plus LT produced Nose family 6, detail 22 with original tailbone selector tweak."
+      ]
+    },
+    {
+      "capture": "artifacts/RC3-09/stance-selectors-native-controls-result.json.gz",
+      "uncompressed_sha256": "8c75f30cee8ee2e7cf429adb91e8d545e5d9810ca6c7429e28d05bcb7166a449",
+      "arcade": "OFF",
+      "stance_bit": "0x20",
+      "results": [
+        "Physical RS positive X plus RT produced FS family 1, detail 10; LT produced BS family 2, detail 5.",
+        "Physical RS negative X plus RT produced Stale family 7, detail 28; LT produced Weddle family 8, detail 29."
+      ]
+    }
+  ],
+  "regression_scope": [
+    "All 57 profiles request the same native trick in both validated leading-foot orientations.",
+    "Hand and horizontal-selector output changes once; vertical selectors stay unchanged.",
+    "Fingerflip transition playback is not mirrored twice.",
+    "Landing removes trigger and selector ownership.",
+    "Missing, replaced, expired and future owner evidence cannot grant stance admission."
+  ],
+  "gameplay_acceptance": "PENDING: newly translated Arcade controls require the next verified DLL. Original-control comparison is evidence of input semantics, not acceptance of all 57 Arcade profiles.",
+  "remaining": [
+    "Verify both stances across repeated grabs, one-footers and fingerflip transitions, including correct actor, release, landing and native scoring.",
+    "The separate Nose Manual revert failure and missing held-loop actor callback remain open."
+  ]
+}

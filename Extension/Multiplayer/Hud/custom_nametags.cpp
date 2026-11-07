@@ -57,6 +57,8 @@ void publish_custom_nametags(std::uintptr_t base, std::vector<NametagPlayer> pla
             tag.color = player.color;
             tag.tag = std::move(player.tag);
             tag.talking = player.talking;
+            tag.extra = player.extra;
+            tag.extra_color = player.extra_color;
             tag.bubbles.reserve(player.bubbles.size());
             for (auto &line : player.bubbles)
                 tag.bubbles.push_back({std::move(line.text), std::move(line.raw), line.appear, line.fade, line.hint});
@@ -94,7 +96,6 @@ void set_custom_nametags_enabled(bool enabled) noexcept {
     }
 }
 
-bool custom_nametags_enabled() noexcept { return state().enabled.load(std::memory_order_acquire); }
 
 namespace {
 // The camera as it is now: the game updates its own camera after the client update the view

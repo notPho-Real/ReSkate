@@ -1,0 +1,66 @@
+{
+  "23": {
+    "source_sha": "2c2ce125d0a71d01e0decd73c8ec6ba4688660f7",
+    "dll_sha256": "47846bee8b8272be2436faff590def2ed203177308c43a2836f356a20dd9d3b1",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-28/finger-23-trials-result.json.gz",
+    "uncompressed_sha256": "859d07035bfa5008d42b0a8d2f91fcdd00f84c53e21da738dbe2d5d9f97f2840",
+    "compressed_sha256": "59fbd0eff5eb832e90fd0e9a9de33e9e70fa8e19770c2ba9fcab91936d886311",
+    "serial": 11,
+    "native_fingerflip_identity": 23,
+    "native_name": "BsFingerHeelflip",
+    "native_actor": "1929fca6-e045-dfe2-1929-fca6e045dfe2",
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "airborne_catch_verified": true,
+    "native_destination_family": 2,
+    "release_observed": true,
+    "ground_return_observed": true,
+    "grab_identity_cleared_before_landing": false,
+    "native_exit_state_observed": false,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false,
+    "timeline_seconds": {
+      "entered": 2.293625,
+      "destination": 2.928571,
+      "ground": 3.562517,
+      "hands_and_grab_flags_cleared": 3.896144
+    },
+    "native_acknowledgment": [
+      "[2026-11-06 15:50:08.554] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP: serial=11 episode=136 identity=23 actor=1076664928 before=0 after=2 delta=2 initialized=true destination=2 scoring_acceptance=unverified."
+    ],
+    "lifecycle_limit": "B held through native landing. Hand/grab flags clear after ground return; stored GrabType may remain. Destination entry does not establish blend completion. Early release, other stances, exact exit actor and numeric scoring remain unverified."
+  },
+  "10": {
+    "source_sha": "2c2ce125d0a71d01e0decd73c8ec6ba4688660f7",
+    "dll_sha256": "47846bee8b8272be2436faff590def2ed203177308c43a2836f356a20dd9d3b1",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-28/finger-10-trials-result.json.gz",
+    "uncompressed_sha256": "50c4018d6a05d176775aa22efd87efbf3fa154e43d340c5e8f19d16063165609",
+    "compressed_sha256": "75488b05faff7a0429d8923d3765c1cf1b942d8e61754419b3f42060899d5724",
+    "serial": 13,
+    "native_fingerflip_identity": 10,
+    "native_name": "BsVarial",
+    "native_actor": "e7464a06-3d3f-3dbd-e746-4a063d3f3dbd",
+    "actor_initialized": true,
+    "positive_advancement": true,
+    "airborne_catch_verified": true,
+    "native_destination_family": 2,
+    "release_observed": true,
+    "ground_return_observed": true,
+    "grab_identity_cleared_before_landing": false,
+    "native_exit_state_observed": false,
+    "native_exit_actor_verified": false,
+    "landing_scoring_verified": false,
+    "timeline_seconds": {
+      "entered": 2.301705,
+      "destination": 2.935194,
+      "ground": 3.675294,
+      "hands_and_grab_flags_cleared": 3.999174
+    },
+    "native_acknowledgment": [
+      "[2026-11-06 15:54:59.689] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP: serial=13 episode=137 identity=10 actor=1076688608 before=0 after=2 delta=2 initialized=true destination=2 scoring_acceptance=unverified."
+    ],
+    "lifecycle_limit": "B held through native landing. Hand/grab flags clear after ground return; stored GrabType may remain. Destination entry does not establish blend completion. Early release, other stances, exact exit actor and numeric scoring remain unverified."
+  }
+}

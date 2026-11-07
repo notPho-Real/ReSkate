@@ -2,7 +2,6 @@
 
 #include "overlay.h"
 #include "park_editor.h"
-#include "Engine/Scripting/custom_scripts.h"
 #include <imgui.h>
 #include <optional>
 #include <map>
@@ -71,12 +70,14 @@ struct SkateMenu {
     // Live while the scale slider is held; the saved value is authoritative otherwise.
     float scale = default_menu_scale;
     bool scale_editing{};
-    // Selected tab on each page; see the Page list in skate_menu.cpp.
-    int map_tab = 0, world_tab = 0, build_tab = 0, skater_tab = 0, settings_tab = 0, mods_tab = 0;
-    bool loose_files_settings_loaded{}, loose_files_saved{true};
-    bool custom_scripts_scanned{};
-    std::vector<custom_scripts::Script> custom_script_rows;
-    std::string custom_script_error;
+    // Selected tab on each page; see the Page list in skate_menu_internal.h.
+    int map_tab = 0, build_tab = 0, skater_tab = 0, settings_tab = 0;
+    int addon = 0; // the ADDONS page's addon (menu::Addon)
+    std::string plugin_page; // the PLUGINS section's plugin, by its id
+    // Window or full screen, as just chosen, until the saved setting comes back through the model.
+    std::optional<bool> fullscreen_pending;
+    double fullscreen_until = 0;
+    bool fullscreen_drawn = false; // the last frame was drawn full screen
     std::array<std::optional<int>, 3> graphics_pending{};
     std::array<double, 3> graphics_pending_until{};
     std::array<char, 128> object_search{};
@@ -103,8 +104,19 @@ struct SkateMenu {
     ImFont* bold = nullptr;
     ImFont* title = nullptr;    // brushed page titles
     ImFont* heading = nullptr;  // tile and section headers
+    ImFont* countdown = nullptr; // full-resolution fallback countdown digits
     ImFont* mono = nullptr;
+    // The same faces drawn larger (large_font_ratio times), swapped in while the menu is full
+    // screen, where everything is scaled up: text stays sharp instead of stretched.
+    ImFont* body_large = nullptr;
+    ImFont* bold_large = nullptr;
+    ImFont* heading_large = nullptr;
+    ImFont* title_large = nullptr;
+    // Full screen: the page's section rail (its first row of tabs, drawn down the left), indenting
+    // what follows it until the page is done.
+    float rail_indent = 0;
 };
+inline constexpr float large_font_ratio = 30.0f / 17.0f;
 void load_skate_fonts(SkateMenu& menu);
 void draw_skate_menu(SkateMenu& menu, const Model& model, const CallbacksV3& callbacks,
                      bool& visible);

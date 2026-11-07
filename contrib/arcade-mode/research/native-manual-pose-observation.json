@@ -1,0 +1,280 @@
+{
+  "purpose": "Read-only original manual actor observation; no animation selection or pose writes",
+  "source_chain": {
+    "regular_tail": [
+      1075,
+      6195,
+      22676
+    ],
+    "regular_nose": [
+      10463,
+      34218
+    ],
+    "fakie_tail": [
+      33850,
+      17773,
+      17319
+    ],
+    "fakie_nose": [
+      25379,
+      15978,
+      11171
+    ]
+  },
+  "finding": "Each native manual SuperLayers base uses nine balance/turn pose sequences. Watching only four medium loop actors does not account for this live base.",
+  "acceptance_limit": "Initialization and positive actor advancement do not prove nonzero blend weight. Final body/board posture, contact, orientation and sustained balance still need independent gameplay acceptance.",
+  "actors": [
+    {
+      "resource": 11516,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_high_turn_bs",
+      "sequence_guid": "dbfcd45c-2d9f-bb4f-dbfc-d45c2d9fbb4f",
+      "actor_guid": "0a500549-d63e-ce40-0a50-0549d63ece40",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 11820,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_med_pose",
+      "sequence_guid": "9882ba6c-2435-b814-9882-ba6c2435b814",
+      "actor_guid": "689bd126-3721-b99d-689b-d1263721b99d",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 12057,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_med_turn_fs",
+      "sequence_guid": "8ca83b58-84a7-26cc-8ca8-3b5884a726cc",
+      "actor_guid": "0d3805e6-593a-3034-0d38-05e6593a3034",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 12642,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_low_pose",
+      "sequence_guid": "3597b29c-62f9-e5e0-3597-b29c62f9e5e0",
+      "actor_guid": "b1be73a7-60da-0d13-b1be-73a760da0d13",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 12921,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_med_pose",
+      "sequence_guid": "cf8675da-b050-ef42-cf86-75dab050ef42",
+      "actor_guid": "c3022ebf-3a4c-9f95-c302-2ebf3a4c9f95",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 14288,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_low_turn_fs",
+      "sequence_guid": "e4625f6d-2f95-ee1f-e462-5f6d2f95ee1f",
+      "actor_guid": "06206c71-b37d-e2b7-0620-6c71b37de2b7",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 15203,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_low_turn_bs",
+      "sequence_guid": "c1102faf-081c-725b-c110-2faf081c725b",
+      "actor_guid": "4f32805f-5ad8-1dbf-4f32-805f5ad81dbf",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 16278,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_med_turn_bs",
+      "sequence_guid": "2ddf7916-c88c-ac58-2ddf-7916c88cac58",
+      "actor_guid": "31b47179-cadf-8ae4-31b4-7179cadf8ae4",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 17365,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_low_turn_bs",
+      "sequence_guid": "34623cad-f105-ae05-3462-3cadf105ae05",
+      "actor_guid": "58e3ff86-ecfd-fb99-58e3-ff86ecfdfb99",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 17734,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_low_turn_bs",
+      "sequence_guid": "51f260ea-803e-68b2-51f2-60ea803e68b2",
+      "actor_guid": "a286afa6-12c9-d2b3-a286-afa612c9d2b3",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 18182,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_high_turn_fs",
+      "sequence_guid": "1ec91c26-e995-ef42-1ec9-1c26e995ef42",
+      "actor_guid": "91b57959-1a68-03be-91b5-79591a6803be",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 19510,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_high_pose",
+      "sequence_guid": "005f34be-d3d2-5394-005f-34bed3d25394",
+      "actor_guid": "1fd99140-a9f4-2dfc-1fd9-9140a9f42dfc",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 19703,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_low_pose",
+      "sequence_guid": "29edc04d-8566-4f85-29ed-c04d85664f85",
+      "actor_guid": "43aa629a-7d37-002c-43aa-629a7d37002c",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 20357,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_high_turn_fs",
+      "sequence_guid": "495cdc6e-5251-0886-495c-dc6e52510886",
+      "actor_guid": "96613a9a-8549-6a13-9661-3a9a85496a13",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 20472,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_med_turn_bs",
+      "sequence_guid": "019c65e9-699a-11ec-019c-65e9699a11ec",
+      "actor_guid": "73d185fd-1cb7-5fae-73d1-85fd1cb75fae",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 21571,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_high_turn_fs",
+      "sequence_guid": "d7c0cfb9-da4b-7c06-d7c0-cfb9da4b7c06",
+      "actor_guid": "8075f7ba-6e73-c3f4-8075-f7ba6e73c3f4",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 21763,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_low_turn_fs",
+      "sequence_guid": "5417bf01-8759-03f2-5417-bf01875903f2",
+      "actor_guid": "1f5cac87-f360-e71b-1f5c-ac87f360e71b",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 24489,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_high_pose",
+      "sequence_guid": "d43f1726-9c19-66ee-d43f-17269c1966ee",
+      "actor_guid": "5af47609-e739-2c70-5af4-7609e7392c70",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 26065,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_high_turn_bs",
+      "sequence_guid": "bc20f1bb-e6d0-c4f2-bc20-f1bbe6d0c4f2",
+      "actor_guid": "40218bdc-dce1-cecb-4021-8bdcdce1cecb",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 26091,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_med_turn_fs",
+      "sequence_guid": "1e1c7b97-26fc-1650-1e1c-7b9726fc1650",
+      "actor_guid": "f8f784e5-df68-8ca4-f8f7-84e5df688ca4",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 2667,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_med_turn_fs",
+      "sequence_guid": "d2466e4f-f400-3165-d246-6e4ff4003165",
+      "actor_guid": "f75ee1cc-e349-7b64-f75e-e1cce3497b64",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 26826,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_high_turn_bs",
+      "sequence_guid": "0a5a20f3-3b17-57e4-0a5a-20f33b1757e4",
+      "actor_guid": "e453655a-017a-8b45-e453-655a017a8b45",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 27938,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_high_pose",
+      "sequence_guid": "3bb059eb-3a3e-0b2d-3bb0-59eb3a3e0b2d",
+      "actor_guid": "d6ff0c2e-7f4d-2119-d6ff-0c2e7f4d2119",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 28924,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_med_turn_fs",
+      "sequence_guid": "c414d489-6e39-05ed-c414-d4896e3905ed",
+      "actor_guid": "317d09c9-ef85-de23-317d-09c9ef85de23",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 2913,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_low_turn_bs",
+      "sequence_guid": "6b4ee810-a837-8a96-6b4e-e810a8378a96",
+      "actor_guid": "a66cc1cd-7219-db5c-a66c-c1cd7219db5c",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 292,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_med_turn_bs",
+      "sequence_guid": "6ad52583-6115-45fd-6ad5-2583611545fd",
+      "actor_guid": "bf5e7176-18ff-01b5-bf5e-717618ff01b5",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 29576,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_low_turn_fs",
+      "sequence_guid": "67472030-3edd-72a6-6747-20303edd72a6",
+      "actor_guid": "aebbbf2e-e173-9601-aebb-bf2ee1739601",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 33102,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_low_pose",
+      "sequence_guid": "0df101d5-b2a4-a9b2-0df1-01d5b2a4a9b2",
+      "actor_guid": "d875b0f9-2d23-d719-d875-b0f92d23d719",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 3462,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_fakie_low_pose",
+      "sequence_guid": "34b55baf-c1ff-2013-34b5-5bafc1ff2013",
+      "actor_guid": "45b99ca0-1fe2-9bd4-45b9-9ca01fe29bd4",
+      "native_blend_resource": 17319
+    },
+    {
+      "resource": 35207,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_med_pose",
+      "sequence_guid": "de4f96a9-206d-af18-de4f-96a9206daf18",
+      "actor_guid": "f663d916-c5fe-aa46-f663-d916c5feaa46",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 4210,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_high_pose",
+      "sequence_guid": "68c3f0f7-38d0-aa17-68c3-f0f738d0aa17",
+      "actor_guid": "0cdeb321-8c7b-90ff-0cde-b3218c7b90ff",
+      "native_blend_resource": 22676
+    },
+    {
+      "resource": 455,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_low_turn_fs",
+      "sequence_guid": "c43a1ece-6835-8346-c43a-1ece68358346",
+      "actor_guid": "a55b4027-8682-a022-a55b-40278682a022",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 6023,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_high_turn_bs",
+      "sequence_guid": "52339c3f-2b6c-ece7-5233-9c3f2b6cece7",
+      "actor_guid": "fdb82a07-6d37-f9fa-fdb8-2a076d37f9fa",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 7356,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_fakie_med_pose",
+      "sequence_guid": "e9ae8a95-ffbd-89e9-e9ae-8a95ffbd89e9",
+      "actor_guid": "6de7a9e3-1b34-bc19-6de7-a9e31b34bc19",
+      "native_blend_resource": 11171
+    },
+    {
+      "resource": 8618,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_n_high_turn_fs",
+      "sequence_guid": "d6ac948c-f40f-d76b-d6ac-948cf40fd76b",
+      "actor_guid": "a8d5ad66-9f0f-f854-a8d5-ad669f0ff854",
+      "native_blend_resource": 34218
+    },
+    {
+      "resource": 9608,
+      "sequence": "Animation/Dingo/seq_c_proto_onb_manual_t_med_turn_bs",
+      "sequence_guid": "6ad954c8-2260-31d5-6ad9-54c8226031d5",
+      "actor_guid": "d184a64c-c2c8-3b3d-d184-a64cc2c83b3d",
+      "native_blend_resource": 22676
+    }
+  ]
+}

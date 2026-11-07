@@ -40,9 +40,10 @@ struct GroundControl {
     // ordinary SDK yaw rate must not overwrite the native steering response.
     bool native_horizontal{};
     static GroundControl from_state(bool automatic,const InputDigitalState& state) noexcept {
+        // Physical X belongs to flip recognition, never the native push channel.
         const auto directions=state.buttons&15u;
         return {state.available && !(state.buttons&0x30u) && (state.pad_buttons&3u)!=3u && (state.pad_buttons&12u)!=12u,
-            automatic,bool(state.buttons&0x4000u),bool(directions&2u),bool(directions&4u),bool(directions&8u)};
+            automatic,false,bool(directions&2u),bool(directions&4u),bool(directions&8u)};
     }
     static GroundControl physical(bool automatic,std::uint16_t buttons,short x,short y) noexcept {
         return from_state(automatic,InputEvents::normalize({buttons,x,y},0));

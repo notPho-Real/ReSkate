@@ -85,8 +85,8 @@ int main() {
         }
         check(f.combo.model().state().manual_fatigue > 0,
               "admitted session owns a real correction/fatigue lifecycle");
-        check(!f.sample(61000, wanted, wanted, rows, 0, true, 0x2000).manual.owns,
-              "explicit brake releases admitted production actuation");
+        check(f.sample(61000, wanted, wanted, rows, 0, true, 0x2000).manual.owns,
+              "ground B is grab-only and preserves admitted manual actuation");
         check(!f.sample(61017, wanted, wanted, rows, 0, true, 0, false).manual.owns,
               "gameplay loss releases the shared session");
     }

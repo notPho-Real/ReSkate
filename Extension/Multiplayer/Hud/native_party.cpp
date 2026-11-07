@@ -1,4 +1,5 @@
 #include "native_party_internal.h"
+#include "Engine/Core/Hooks/hooks.h"
 #include "Extension/Multiplayer/Steam/steam_social.h"
 #include "Extension/Customization/local_customization_runtime.h"
 #include "Extension/Customization/local_player_card_runtime.h"
@@ -333,7 +334,10 @@ void update_native_party(std::uintptr_t base, const PartyRoster &roster, unsigne
         const bool active = std::any_of(roster.begin(), roster.end(), [](const auto &p) { return p.id != 0; });
         const auto steam = steam_social_snapshot();
         if (!active && !s.manager && steam->friends.empty()) return;
-        if (!s.attempted) install(base);
+        if (!s.attempted) {
+            HookBatch batch; // (its hooks in one pause of the game's threads)
+            install(base);
+        }
         if (!s.installed.load(std::memory_order_acquire)) return;
         const auto now = GetTickCount64();
         auto previous = s.published.load(std::memory_order_acquire);
@@ -510,6 +514,9 @@ std::string native_party_status() {
 }
 void set_native_party_map_markers(bool enabled) noexcept { state().map_markers.store(enabled, std::memory_order_release); }
 bool native_party_map_markers() noexcept { return state().map_markers.load(std::memory_order_acquire); }
+void set_native_party_flag_marker_test(bool enabled) noexcept { state().flag_markers_test.store(enabled, std::memory_order_release); }
+bool native_party_flag_marker_test() noexcept { return state().flag_markers_test.load(std::memory_order_acquire); }
+unsigned native_party_flag_markers() noexcept { return static_cast<unsigned>(state().flag_markers.size()); }
 bool native_party_map_icon_visible(std::size_t slot) noexcept {
     return slot < max_remote_players && ((state().map_slots[slot / 64].load() >> (slot % 64)) & 1) != 0;
 }

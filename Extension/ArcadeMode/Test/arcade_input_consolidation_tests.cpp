@@ -26,7 +26,7 @@ void physical_footprints() {
   const auto expected=family==0?InputAction::wall_command:family==3?InputAction::lip_change:family==4?InputAction::rail_select:InputAction::rail_change;
   const std::uint64_t last=family==0?20:family==1 || family==4?40:30;
   const auto request=family==4?input.pending_rail():receiver.last;
-  check(request.action==expected && request.first_input_at==10 && request.last_input_at==last && request.recognized_at==last,
+  check(request.action==expected && request.first_input_at==(family==0?20u:10u) && request.last_input_at==last && request.recognized_at==last,
    "live context consumers retain physical match endpoints separately from recognition and adapter readiness");
   if(family==4){
    check(receiver.last.action!=InputAction::rail_select&&!request.geometry_known&&!request.rail_generation,"approach intent has no named adapter admission or inferred contact geometry");
@@ -54,7 +54,7 @@ void expired_context_patterns() {
   if(family==2)environment.rail={InputRailPhase::established,1,0,0,0,0,true,true,true};
   if(family==3)environment.rail={InputRailPhase::lip_established,1,0,0,0,0,true,true,true};
   input.poll(0,{},environment,adapter);
-  if(family==0){environment.surface.physics_step=2;input.poll(10,{0,0,-25000},environment,adapter);environment.surface.physics_step=3;input.poll(461,{0x1000,0,-25000},environment,adapter);}
+  if(family==0){environment.surface.fresh=false;input.poll(10,{0x1000},environment,adapter);environment.surface.fresh=true;environment.surface.physics_step=3;input.poll(461,{0x1000},environment,adapter);}
   if(family==1){input.poll(10,{0,25000,25000},environment,adapter);input.poll(20,{0x8000,25000,25000},environment,adapter);input.poll(30,{0,25000,25000},environment,adapter);input.poll(1011,{0x8000,25000,25000},environment,adapter);}
   if(family==2){input.poll(10,{0x8000},environment,adapter);input.poll(20,{},environment,adapter);input.poll(311,{0x4000},environment,adapter);}
   if(family==3){input.poll(10,{0x2000},environment,adapter);input.poll(20,{},environment,adapter);input.poll(311,{0x2000},environment,adapter);}

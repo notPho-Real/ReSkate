@@ -88,7 +88,7 @@ inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const Aut
     if (ground.empty() || ground.size() > 128) return {};
     std::vector<AuthoredStickStep> result;
     unsigned tick{};
-    if (neutral_reset) { result = {{0, 0, 0}, {2, 0, 0}}; tick = 3; }
+    if (neutral_reset) { result = {{0, 0, 0}}; tick = 2; }
     bool first = true;
     for (const auto& point : ground) {
         if (!point.x && !point.y) break;
@@ -100,6 +100,29 @@ inline std::vector<AuthoredStickStep> compile_airborne_flick(std::span<const Aut
     result.push_back({tick + 3, 0, 0});
     result.push_back({tick + 5, 0, 0});
     return result;
+}
+
+// HeldTrick consumes the original gesture recognizer's held flag. Preserve the
+// authored flick and its final point only when that point also satisfies the
+// asset's hold sector. This supplies input, never a rotation or animation count.
+inline std::vector<AuthoredStickStep> compile_held_flick(const AuthoredGesture& gesture) {
+    if (gesture.nollie || gesture.context != GestureContext::ground ||
+        (gesture.native_id != 2 && gesture.native_id != 3) ||
+        !std::isfinite(gesture.hold_start) || !std::isfinite(gesture.hold_end) ||
+        std::abs(gesture.hold_start) > 3600 || std::abs(gesture.hold_end) > 3600 ||
+        !std::isfinite(gesture.hold_minimum) || gesture.hold_minimum <= 0 || gesture.hold_minimum > 1)
+        return {};
+    auto steps = compile_airborne_flick(compile_authored_flick(gesture, 24, true));
+    if (steps.size() < 4) return {};
+    const auto& end = steps[steps.size() - 3];
+    constexpr float pi = 3.14159265358979323846f;
+    const auto wrap = [](float angle) { return std::fmod(std::fmod(angle, 360.0f) + 360.0f, 360.0f); };
+    const float angle = wrap(std::atan2(static_cast<float>(end.x), static_cast<float>(end.y)) * 180 / pi - 180);
+    const float extent = wrap(gesture.hold_end - gesture.hold_start);
+    const float position = wrap(angle - gesture.hold_start);
+    const float magnitude = std::hypot(static_cast<float>(end.x), static_cast<float>(end.y)) / 32767;
+    if (extent <= 0 || extent > 180 || position > extent || magnitude < gesture.hold_minimum) return {};
+    return steps;
 }
 
 // Input ownership provenance only. Airtime and trick outcomes still come from
@@ -130,6 +153,13 @@ public:
         schedule_ = schedule;
     }
     AuthoredPlaybackSchedule schedule() const noexcept { return schedule_; }
+    bool start_endpoint_hold(std::span<const AuthoredStickStep> steps, std::uint64_t tick,
+                             bool mirror_x = false) noexcept {
+        if (!start(steps, tick, false, mirror_x, true)) return false;
+        if (first_non_neutral_ >= last_non_neutral_) { cancel(); return false; }
+        endpoint_hold_ = true;
+        return true;
+    }
     bool start(std::span<const AuthoredStickStep> steps, std::uint64_t tick, bool hold_setup,
                bool mirror_x = false, bool airborne = false) noexcept {
         cancel();
@@ -150,6 +180,9 @@ public:
         return true;
     }
     void release(std::uint64_t tick) noexcept {
+        // Withdrawing held input lets the native EAT/StateFlow own catch and
+        // cleanup. Do not replay the setup or write the native held state.
+        if (endpoint_hold_) { cancel(); return; }
         if (!holding_ || !size_) return;
         if (tick < last_) { cancel(); return; }
         holding_ = false; released_ = true; began_ = last_ = step_at_ = tick; timed_ = false;
@@ -169,10 +202,13 @@ public:
             // poll observes the latest due step without delaying later arcs. cat pouch
             const auto script_tick = elapsed + (released_ ? 18u : 0u);
             while (index_ + 1 < size_ && steps_[index_ + 1].tick <= script_tick) ++index_;
+            if (endpoint_hold_) index_ = std::min(index_, last_non_neutral_);
             if (index_ + 1 == size_) { cancel(); return {}; }
             return {true, steps_[index_].x, steps_[index_].y};
         }
         const auto since_step = tick - step_at_;
+        if (endpoint_hold_ && index_ == last_non_neutral_)
+            return {true, steps_[index_].x, steps_[index_].y};
         if (index_ >= last_non_neutral_ &&
             since_step >= steps_[size_ - 1].tick - steps_[index_].tick) {
             cancel(); return {};
@@ -183,7 +219,8 @@ public:
             // Tick publication can occur just after this output is delivered.
             // Preserve the existing native35ms airborne load in elapsed time,
             // including starts between frames. Other authored stages are unchanged.
-            const auto minimum_ms = airborne_ && index_ == first_non_neutral_ ? 35u : 0u;
+            const auto minimum_ms = !airborne_ ? 0u : index_ == first_non_neutral_ ? 35u :
+                index_ < first_non_neutral_ ? 30u : 0u;
             if (since_step >= due && now - step_at_ms_ >= minimum_ms) {
                 // A late input poll must deliver the next arc, never jump over it.
                 // Schedule later arcs from this delivery; same-tick reads are stable.
@@ -195,9 +232,22 @@ public:
     }
     void cancel() noexcept {
         size_ = index_ = first_non_neutral_ = last_non_neutral_ = 0;
-        holding_ = released_ = airborne_ = timed_ = false;
+        holding_ = released_ = airborne_ = timed_ = endpoint_hold_ = false;
     }
     bool busy() const noexcept { return size_ != 0; }
+    bool handoff_delivered_pop(std::uint64_t tick, std::uint64_t now) noexcept {
+        // Only the session's independently observed native Ollie may use this.
+        // Delivery-relative playback has emitted every arc, including its final
+        // nonneutral endpoint, on a preceding simulation tick. The following
+        // airborne recipe owns the neutral reset; an old end hold is not a pop.
+        if (!size_ || holding_ || airborne_ || !timed_ ||
+            schedule_ != AuthoredPlaybackSchedule::delivery_relative ||
+            first_non_neutral_ >= last_non_neutral_ ||
+            index_ < last_non_neutral_ || tick <= step_at_ || now <= step_at_ms_ ||
+            tick < last_ || now < last_ms_) return false;
+        cancel();
+        return true;
+    }
     bool finish_neutral_tail() noexcept {
         // A completed flick has already delivered neutral before a following
         // airborne action may take ownership. Never truncate an authored arc.
@@ -209,7 +259,7 @@ private:
     std::array<AuthoredStickStep, 128> steps_{};
     std::size_t size_{}, index_{}, first_non_neutral_{}, last_non_neutral_{};
     std::uint64_t began_{}, last_{}, step_at_{}, step_at_ms_{}, last_ms_{};
-    bool holding_{}, released_{}, airborne_{}, timed_{};
+    bool holding_{}, released_{}, airborne_{}, timed_{}, endpoint_hold_{};
     AuthoredPlaybackSchedule schedule_{AuthoredPlaybackSchedule::delivery_relative};
 };
 }

@@ -1,0 +1,1144 @@
+{
+  "source_commit": "ab50787eb1b1d661e6d0bf3a99f1b95545051900",
+  "dll_sha256": "9ea528fb0c0896888c9aac614c8cbfb01dce1e32b82534ea7c622afb2d667755",
+  "installation_id": "89db4f692e0e4a428033befb81a67745",
+  "pid": 74662,
+  "trials": [
+    {
+      "name": "method_early",
+      "raw_file": "1793496594588960000-method_early.json.gz",
+      "raw_sha256": "f6de02de8ac2eb976449f3bf5fd079cc754b283940b0a950bacf7201c067669f",
+      "capture": 2,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.00010290195496054366,
+            -1.6950252756942064e-06,
+            -0.0003327610029373318
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 650.844,
+          "state": 103,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.00010309795470675454,
+            -1.4998535107224598e-06,
+            -0.00033236719900742173
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 757.336,
+          "state": 200,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.40108752250671387,
+            3.9162890911102295,
+            -0.6154124736785889
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 791.029,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.7378823757171631,
+            4.629669189453125,
+            -0.10239330679178238
+          ],
+          "height": 199.5708465576172
+        },
+        {
+          "ms": 980.825,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": true,
+          "velocity": [
+            -0.40392664074897766,
+            1.5897490978240967,
+            0.15718340873718262
+          ],
+          "height": 200.01417541503906
+        },
+        {
+          "ms": 991.177,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            0.3415144383907318,
+            1.6272720098495483,
+            -0.5550484657287598
+          ],
+          "height": 200.07379150390625
+        },
+        {
+          "ms": 1291.291,
+          "state": 201,
+          "detail": 4,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.002220319351181388,
+            -2.239133596420288,
+            0.8288310170173645
+          ],
+          "height": 200.14764404296875
+        },
+        {
+          "ms": 1390.267,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.15510772168636322,
+            -3.044408082962036,
+            0.32131028175354004
+          ],
+          "height": 199.8591766357422
+        },
+        {
+          "ms": 1618.002,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.5285975933074951,
+            -1.1465730667114258,
+            -0.35771217942237854
+          ],
+          "height": 198.9725341796875
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.02,
+            "ready_check_ms": 0.015,
+            "write_and_observe_ms": 0.101
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.103,
+            "ready_check_ms": 0.031,
+            "write_and_observe_ms": 0.055
+          },
+          {
+            "scheduled_ms": 750.0,
+            "write_ms": 750.095,
+            "ready_check_ms": 0.027,
+            "write_and_observe_ms": 0.04
+          },
+          {
+            "scheduled_ms": 850.0,
+            "write_ms": 850.092,
+            "ready_check_ms": 0.021,
+            "write_and_observe_ms": 0.05
+          },
+          {
+            "scheduled_ms": 950.0,
+            "write_ms": 950.108,
+            "ready_check_ms": 0.023,
+            "write_and_observe_ms": 0.044
+          },
+          {
+            "scheduled_ms": 1300.0,
+            "write_ms": 1300.135,
+            "ready_check_ms": 0.051,
+            "write_and_observe_ms": 0.07
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "2",
+          "ms": "241037623",
+          "native_ms": "241037599",
+          "owner": "1",
+          "owner_generation": "3606",
+          "physics_step": "5142",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "2",
+          "ms": "241037660",
+          "native_ms": "241037632",
+          "owner": "1",
+          "owner_generation": "3606",
+          "physics_step": "5143",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "2",
+          "ms": "241037667",
+          "native_ms": "241037667",
+          "owner": "1",
+          "owner_generation": "3606",
+          "physics_step": "5144",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "241038687",
+          "released_at": "0",
+          "recognized_at": "241038687",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "detail": "4",
+          "actor": "1052160064",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "detail": "4",
+          "actor": "1052160064",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "before": "0",
+          "after": "1",
+          "delta": "1",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-2.2391336"
+        }
+      ],
+      "end": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "2",
+          "required_sources": "103",
+          "expected": "612",
+          "drained": "541",
+          "dropped": "71",
+          "drop_begin": "202",
+          "drop_end": "202",
+          "complete": "false",
+          "overflow": "true"
+        }
+      ],
+      "score_owner_verified": false
+    },
+    {
+      "name": "method_slow",
+      "raw_file": "1793496674787745000-method_slow.json.gz",
+      "raw_sha256": "bcc955c57d7ec773ef0585d57c03cefc5442876971cf95d7b2c3f65d1e1dfc67",
+      "capture": 3,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.0005736959865316749,
+            -1.5835781823625439e-06,
+            0.0017324574291706085
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 657.616,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.11951036006212234,
+            0.35796070098876953,
+            -0.04029488563537598
+          ],
+          "height": 198.99142456054688
+        },
+        {
+          "ms": 753.679,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.41426417231559753,
+            3.9162323474884033,
+            -0.6034924387931824
+          ],
+          "height": 199.4183807373047
+        },
+        {
+          "ms": 787.387,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.07610708475112915,
+            4.670663356781006,
+            0.10053665935993195
+          ],
+          "height": 199.5708770751953
+        },
+        {
+          "ms": 962.135,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            0.24151307344436646,
+            3.028748035430908,
+            0.46816813945770264
+          ],
+          "height": 200.02835083007812
+        },
+        {
+          "ms": 1255.125,
+          "state": 201,
+          "detail": 4,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            0.0,
+            -1.3105775117874146,
+            0.8166504502296448
+          ],
+          "height": 200.2630157470703
+        },
+        {
+          "ms": 1553.387,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.7159424424171448,
+            -4.073181629180908,
+            -1.0766602754592896
+          ],
+          "height": 199.296630859375
+        },
+        {
+          "ms": 1660.391,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.007333443500101566,
+            -0.0012961806496605277,
+            -0.020216522738337517
+          ],
+          "height": 198.97280883789062
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.024,
+            "ready_check_ms": 0.016,
+            "write_and_observe_ms": 0.181
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.503,
+            "ready_check_ms": 0.056,
+            "write_and_observe_ms": 0.16
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.128,
+            "ready_check_ms": 0.047,
+            "write_and_observe_ms": 0.08
+          },
+          {
+            "scheduled_ms": 1000.0,
+            "write_ms": 1000.126,
+            "ready_check_ms": 0.045,
+            "write_and_observe_ms": 0.07
+          },
+          {
+            "scheduled_ms": 1200.0,
+            "write_ms": 1202.178,
+            "ready_check_ms": 0.052,
+            "write_and_observe_ms": 0.058
+          },
+          {
+            "scheduled_ms": 1500.0,
+            "write_ms": 1500.214,
+            "ready_check_ms": 0.029,
+            "write_and_observe_ms": 0.056
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "3",
+          "ms": "241117694",
+          "native_ms": "241117667",
+          "owner": "1",
+          "owner_generation": "4531",
+          "physics_step": "7544",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "3",
+          "ms": "241117725",
+          "native_ms": "241117699",
+          "owner": "1",
+          "owner_generation": "4531",
+          "physics_step": "7545",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "3",
+          "ms": "241117757",
+          "native_ms": "241117731",
+          "owner": "1",
+          "owner_generation": "4531",
+          "physics_step": "7546",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "2",
+          "episode": "2",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "241118697",
+          "released_at": "0",
+          "recognized_at": "241118697",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        },
+        {
+          "serial": "3",
+          "episode": "2",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "241119001",
+          "released_at": "0",
+          "recognized_at": "241119001",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "detail": "4",
+          "actor": "1052159584",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "detail": "4",
+          "actor": "1052159584",
+          "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+          "before": "0",
+          "after": "1",
+          "delta": "1",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.9120508"
+        }
+      ],
+      "end": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "3",
+          "required_sources": "103",
+          "expected": "433",
+          "drained": "433",
+          "dropped": "0",
+          "drop_begin": "202",
+          "drop_end": "202",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "score_owner_verified": false
+    },
+    {
+      "name": "method",
+      "raw_file": "1793496740017550000-method.json.gz",
+      "raw_sha256": "55d31e4c3a6b1dc2780fe66900d84bd1bfba9ccd82d3b2825bb1885349f2f93a",
+      "capture": 4,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.00024566848878748715,
+            -1.5280102161341347e-06,
+            -0.0007580682286061347
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 664.553,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.11846259236335754,
+            0.3593893051147461,
+            -0.04056191071867943
+          ],
+          "height": 198.99151611328125
+        },
+        {
+          "ms": 762.129,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.4078487455844879,
+            3.915947675704956,
+            -0.6097432374954224
+          ],
+          "height": 199.4184112548828
+        },
+        {
+          "ms": 794.403,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.5383301377296448,
+            4.991913318634033,
+            -0.1794433742761612
+          ],
+          "height": 199.4184112548828
+        },
+        {
+          "ms": 968.485,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.020923899486660957,
+            2.0879323482513428,
+            -0.020475655794143677
+          ],
+          "height": 200.0283660888672
+        },
+        {
+          "ms": 1132.157,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": false,
+          "velocity": [
+            0.41411808133125305,
+            1.1084892749786377,
+            -0.40663284063339233
+          ],
+          "height": 200.29550170898438
+        },
+        {
+          "ms": 1267.323,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": true,
+          "right_intent": false,
+          "velocity": [
+            -0.025832241401076317,
+            -2.22623610496521,
+            0.8681477308273315
+          ],
+          "height": 200.1992645263672
+        },
+        {
+          "ms": 1301.116,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.003294616937637329,
+            -2.192082405090332,
+            0.0030392780900001526
+          ],
+          "height": 200.12277221679688
+        },
+        {
+          "ms": 1528.519,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.07881751656532288,
+            -4.44446325302124,
+            -0.19493108987808228
+          ],
+          "height": 199.24420166015625
+        },
+        {
+          "ms": 1635.535,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.0006904486217536032,
+            -0.000489431491587311,
+            0.002448628656566143
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.02,
+            "ready_check_ms": 0.014,
+            "write_and_observe_ms": 0.067
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.8,
+            "ready_check_ms": 0.04,
+            "write_and_observe_ms": 1.879
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.111,
+            "ready_check_ms": 0.033,
+            "write_and_observe_ms": 0.07
+          },
+          {
+            "scheduled_ms": 1000.0,
+            "write_ms": 1000.14,
+            "ready_check_ms": 0.052,
+            "write_and_observe_ms": 0.075
+          },
+          {
+            "scheduled_ms": 1100.0,
+            "write_ms": 1100.704,
+            "ready_check_ms": 0.048,
+            "write_and_observe_ms": 0.065
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.535,
+            "ready_check_ms": 0.057,
+            "write_and_observe_ms": 0.091
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "4",
+          "ms": "241182492",
+          "native_ms": "241182469",
+          "owner": "1",
+          "owner_generation": "5658",
+          "physics_step": "9488",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "4",
+          "ms": "241182524",
+          "native_ms": "241182499",
+          "owner": "1",
+          "owner_generation": "5658",
+          "physics_step": "9489",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "4",
+          "ms": "241182532",
+          "native_ms": "241182531",
+          "owner": "1",
+          "owner_generation": "5658",
+          "physics_step": "9490",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "241183532",
+          "released_at": "0",
+          "recognized_at": "241183532",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [],
+      "advancement": [],
+      "end": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "acknowledged": "false",
+          "airborne": "false",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "4",
+          "required_sources": "103",
+          "expected": "433",
+          "drained": "433",
+          "dropped": "0",
+          "drop_begin": "202",
+          "drop_end": "202",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "score_owner_verified": false
+    },
+    {
+      "name": "basic_tap",
+      "raw_file": "1793496806635155000-basic_tap.json.gz",
+      "raw_sha256": "18e9c203101e8cb407bf578e99d45412f9510389cd5d110db15cbac4688d44cf",
+      "capture": 5,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -8.854725456330925e-05,
+            -1.5441961522810743e-06,
+            0.000252087862463668
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 636.824,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.0012110995594412088,
+            -1.7478840845797095e-06,
+            -0.0034912426490336657
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 736.726,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.4242784380912781,
+            3.91573166847229,
+            -0.5917655229568481
+          ],
+          "height": 199.41839599609375
+        },
+        {
+          "ms": 771.146,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.5401611924171448,
+            4.999237537384033,
+            -0.1757812649011612
+          ],
+          "height": 199.41839599609375
+        },
+        {
+          "ms": 914.531,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.23545211553573608,
+            3.9768717288970947,
+            0.16020828485488892
+          ],
+          "height": 199.96739196777344
+        },
+        {
+          "ms": 1203.842,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.02014160342514515,
+            -1.0093690156936646,
+            0.7763672471046448
+          ],
+          "height": 200.29879760742188
+        },
+        {
+          "ms": 1281.652,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.26062721014022827,
+            -2.0850327014923096,
+            0.1807793378829956
+          ],
+          "height": 200.1187744140625
+        },
+        {
+          "ms": 1539.473,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.07377079129219055,
+            -4.882355213165283,
+            -0.13422062993049622
+          ],
+          "height": 199.09091186523438
+        },
+        {
+          "ms": 1604.218,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.02928484044969082,
+            -1.6334826946258545,
+            -0.02566879615187645
+          ],
+          "height": 198.97337341308594
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.015,
+            "ready_check_ms": 0.01,
+            "write_and_observe_ms": 0.062
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.113,
+            "ready_check_ms": 0.038,
+            "write_and_observe_ms": 0.054
+          },
+          {
+            "scheduled_ms": 850.0,
+            "write_ms": 850.127,
+            "ready_check_ms": 0.045,
+            "write_and_observe_ms": 0.09
+          },
+          {
+            "scheduled_ms": 950.0,
+            "write_ms": 950.129,
+            "ready_check_ms": 0.046,
+            "write_and_observe_ms": 0.055
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "5",
+          "ms": "241249090",
+          "native_ms": "241249065",
+          "owner": "1",
+          "owner_generation": "6537",
+          "physics_step": "11486",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "5",
+          "ms": "241249128",
+          "native_ms": "241249099",
+          "owner": "1",
+          "owner_generation": "6537",
+          "physics_step": "11487",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "5",
+          "ms": "241249158",
+          "native_ms": "241249132",
+          "owner": "1",
+          "owner_generation": "6537",
+          "physics_step": "11488",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "241250066",
+          "released_at": "0",
+          "recognized_at": "241250066",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "detail": "1",
+          "actor": "1090842144",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "detail": "1",
+          "actor": "1090842144",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "before": "0",
+          "after": "0.60092926",
+          "delta": "0.60092926",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.3399745"
+        }
+      ],
+      "end": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "5",
+          "required_sources": "103",
+          "expected": "422",
+          "drained": "422",
+          "dropped": "0",
+          "drop_begin": "202",
+          "drop_end": "202",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "score_owner_verified": false
+    }
+  ],
+  "full_acceptance": false,
+  "interpretation": [
+    "At native 30 Hz, the 100 ms Basic tap and slow directional control initialized and advanced the original Basic/Melon actors, observed GrabExit, cleared grab flags and returned to ground100. Scoring ownership remains unverified.",
+    "Slow physical B presses 304 ms apart selected two single Melon requests. Scope103 at3500 ms drained all rows without drops for this control, fast repeat and Basic tap.",
+    "The early750/950 ms pair recognized only a single Melon; its5000 ms capture overflowed71 rows. It is incomplete evidence.",
+    "The900/1100 ms pair DID recognize semantic29/presses2 (Method) at241183732. It was cancelled before native actor initialization. Original request action5679 became5681 through two changes; native_owner=false and failed_proofs88. The preceding lease retired with acknowledged=false and airborne=false while independent native samples remained state201. END airborne is same_owner() && airborne(), so false does not establish landing; exact failed owner/state predicate is not instrumented.",
+    "Do not loosen owner or native action gates on this evidence. Next source investigation must distinguish owner resolution/identity loss from transient state reads and the separate early-face watermark issue."
+  ],
+  "handback": {
+    "utc": "2026-11-01T01:34:15Z",
+    "native_state": 100,
+    "native_mode": 1,
+    "arcade_enabled": true,
+    "automatic_controller_route": {
+      "physical_slot": 1,
+      "logical_actor": 0,
+      "generation": 47,
+      "explicit_binding": false
+    },
+    "controller_neutral_destroyed": true,
+    "capture_stopped": true,
+    "lock_released": true,
+    "pending_hardware_jobs": false,
+    "cleanup_file": "1793496855863231000-cleanup.json.gz",
+    "cleanup_raw_sha256": "ba2de0109046e62262852486f00aa9edc67bfd970974c9eb11ec0260c228c5d4",
+    "next_owner": "Manual"
+  }
+}

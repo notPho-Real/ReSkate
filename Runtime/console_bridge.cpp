@@ -1,6 +1,7 @@
 #include "runtime_internal.h"
 #include "Extension/Console/commands.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
+#include "Extension/Plugins/plugin_runtime.h"
 #include "Extension/Progression/mission_progression_override.h"
 #include "Extension/Settings/gameplay_settings_override.h"
 #include "Extension/Settings/named_settings.h"
@@ -124,6 +125,8 @@ std::string apply_console_named_setting(std::string_view name, std::string_view 
 void execute_console_command(const std::string& command, std::chrono::steady_clock::time_point queued_at) {
     const ConsoleResetScope reset_scope{queued_at};
     try {
+        // A plugin's command never shadows one of ReSkate's: the host refuses those names.
+        if (dingosdk::plugins::run_console(command)) return;
         const dingosdk::console::Output output{[](const std::string& line) { console_line(line); }, {}, {}};
         dingosdk::console::game_commands().execute(command, console_model_snapshot(), output);
     } catch (const std::exception& error) {

@@ -1,0 +1,264 @@
+[
+  {
+    "source": "7bc28f93b72f62f1627f1077629d1001abd97b73",
+    "dll_sha256": "a7c8e54dbc4d588a0b7cccc7771da47c861a0ece6c17b5e7584bf9192be5b5af",
+    "map": "skate3_megapark",
+    "raw_sha256": "1ae6aab2e145b8848172340ddcf471fe7afa15ff61576116aabefba20a709ded",
+    "gzip_sha256": "311d2cbd7c5c74cae760c8752eec0ab32a0d5cf464fd57876dc6fa1aff41da58",
+    "samples": 1464,
+    "native_fakie_tail_contact_continuous_seconds": 11.176352249,
+    "grounded_entry_without_ollie": true,
+    "actor": "tail_fakie",
+    "actor_initialized_and_advanced": true,
+    "pose_blend_weight_verified": false,
+    "scoring_verified": false,
+    "low_speed_acceptance": false,
+    "physics_dt": 0.03333333134651184,
+    "cached_dt": 0.03333333134651184,
+    "input": "Up to neutral to Down for grounded entry, then RT; physical vertical balance corrections during hold",
+    "acceptance_limit": "This moving tail-contact trial verifies lifetime and native actor advancement, not blend weight, final pose correctness, low-speed reverts, nose-contact or chained-revert acceptance."
+  },
+  {
+    "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+    "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-24/nose-revert-native-hold.json.gz",
+    "raw_sha256": "494bd7362793f71fda2fdbb364080635c01b581f376cea2198103c79c879305d",
+    "gzip_sha256": "3d86292c582540a906c43c1edc48fd0463ce0cb4cfc7d62da1eb07d76751beab",
+    "samples": 1605,
+    "grounded_entry_without_ollie": true,
+    "native_revert_completed": true,
+    "actor": "nose_fakie",
+    "actor_initialized_and_advanced": true,
+    "pose_blend_weight_verified": false,
+    "scoring_verified": false,
+    "low_speed_acceptance": false,
+    "physics_dt": 0.03333333134651184,
+    "cached_dt": 0.03333333134651184,
+    "driver_fakie_checkpoint_seconds": 9.805047819,
+    "strict_native_fakie_nose_contact_spans_seconds": [
+      0.585748893,
+      4.411473057,
+      3.579776431,
+      1.421266906
+    ],
+    "native_state_changes_after_rt": [
+      {
+        "seconds": 0.009554464,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false
+      },
+      {
+        "seconds": 0.166508529,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": false
+      },
+      {
+        "seconds": 0.467055547,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 0.569122735,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 1.163884602,
+        "state": 100,
+        "contacts": 0,
+        "fakie": true
+      },
+      {
+        "seconds": 1.173201436,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 5.596787555,
+        "state": 100,
+        "contacts": 0,
+        "fakie": true
+      },
+      {
+        "seconds": 5.606900818,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 9.196834692,
+        "state": 0,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 9.206325675,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true
+      },
+      {
+        "seconds": 10.639264123,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false
+      }
+    ],
+    "continuous_ten_second_acceptance": false,
+    "acceptance_limit": "Original 101 to100 revert, native fakie and nose contact, and nose_fakie actor advancement verified. Three brief raw state/contact gaps prevent a strict continuous ten-second claim. Fakie became false as speed approached zero; contact remained nose. Final visual pose weight and numeric scoring remain unverified. Entry-only control proved the earlier aborted pre-RT contact was a settling rebound, not manual cancellation."
+  },
+  {
+    "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+    "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-24/nose-followup-native-nose_pose-result.json.gz",
+    "raw_sha256": "fa52b61ece69b6de994aa87d57b907be663c6e367afe91e5ac3f1b7295fbadb4",
+    "gzip_sha256": "9218b449463348187db4c90416a71144769a171a2917e83095fc101f212df386",
+    "samples": 1807,
+    "grounded_entry_without_ollie": true,
+    "normal_auto_push_seconds": 0.85,
+    "speed_before_rt": 5.519876067534899,
+    "native_revert_completed": true,
+    "actor": "nose_fakie",
+    "actor_initialized_and_advanced": true,
+    "pose_blend_weight_verified": false,
+    "scoring_verified": false,
+    "low_speed_acceptance": false,
+    "physics_dt": 0.03333333134651184,
+    "cached_dt": 0.03333333134651184,
+    "driver_fakie_checkpoint_seconds": 8.803765641,
+    "strict_native_fakie_nose_contact_spans_seconds": [
+      8.59058369,
+      0.854722453
+    ],
+    "native_state_changes_after_rt": [
+      {
+        "seconds": 0.00707527,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 5.519876067534899
+      },
+      {
+        "seconds": 0.162678491,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 5.6504583089280915
+      },
+      {
+        "seconds": 0.462412975,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 6.067047358664974
+      },
+      {
+        "seconds": 0.556475908,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 5.947347110578181
+      },
+      {
+        "seconds": 9.156047107,
+        "state": 0,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 0.8306892289870116
+      },
+      {
+        "seconds": 9.164976931,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 0.8179478408371276
+      },
+      {
+        "seconds": 10.028825944,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 0.4904709237952678
+      },
+      {
+        "seconds": 11.557405941,
+        "state": 100,
+        "contacts": 0,
+        "fakie": false,
+        "speed": 0.002901192428215399
+      },
+      {
+        "seconds": 11.566379385,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 0.00213605737866911
+      }
+    ],
+    "continuous_ten_second_acceptance": false,
+    "acceptance_limit": "The native nose manual persists, but one raw zero-state sample remains unknown and fakie switches false near0.49m/s. Not a continuous ten-second fakie acceptance. This control is retained alongside the faster normal-push comparison."
+  },
+  {
+    "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+    "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+    "map": "skate3_megapark",
+    "capture": "artifacts/RC3-24/nose-speed-native-nose_pose-result.json.gz",
+    "raw_sha256": "5b1951242a6d6ea9ca47f102375057b6a324e444f1e6d03ddaff616cd76370fc",
+    "gzip_sha256": "36349d31ebe1ea4c76001cc32af5d49905b82471be80c1642567ef9dfd360485",
+    "samples": 1533,
+    "grounded_entry_without_ollie": true,
+    "normal_auto_push_seconds": 1.6,
+    "speed_before_rt": 9.228944795534346,
+    "native_revert_completed": true,
+    "actor": "nose_fakie",
+    "actor_initialized_and_advanced": true,
+    "pose_blend_weight_verified": false,
+    "scoring_verified": false,
+    "low_speed_acceptance": false,
+    "physics_dt": 0.03333333134651184,
+    "cached_dt": 0.03333333134651184,
+    "driver_fakie_checkpoint_seconds": 10.133102127,
+    "strict_native_fakie_nose_contact_spans_seconds": [
+      11.17226789
+    ],
+    "native_state_changes_after_rt": [
+      {
+        "seconds": 0.005774812,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 9.228944795534346
+      },
+      {
+        "seconds": 0.143712248,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": false,
+        "speed": 9.388445068648611
+      },
+      {
+        "seconds": 0.48295347,
+        "state": 101,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 9.621087267395666
+      },
+      {
+        "seconds": 0.581238891,
+        "state": 100,
+        "contacts": 32768,
+        "fakie": true,
+        "speed": 9.630567487712343
+      }
+    ],
+    "continuous_ten_second_acceptance": true,
+    "acceptance_limit": "Original nose_fakie actor, native100, nose contact0x8000 and fakie remain observed continuously for11.17s after101 revert. Normal controller balance corrections only; no pose/physics writes. Screenshot corroborates stance and HUD. Final blend weight, low-speed behavior, scoring and chained reverts remain separate acceptance items."
+  }
+]

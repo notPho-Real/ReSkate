@@ -1,0 +1,80 @@
+[
+  {
+    "one_footer": 1,
+    "resource": 29675,
+    "actor": "c11089d2-07ce-1843-c110-89d207ce1843",
+    "sequence": "Animation/Dingo/seq_onb_grab_fs_1ft_onefoot_exit"
+  },
+  {
+    "one_footer": 2,
+    "resource": 32807,
+    "actor": "62e35d9d-f0a0-ee53-62e3-5d9df0a0ee53",
+    "sequence": "Animation/Dingo/seq_onb_grab_fs_1ft_frigid_exit"
+  },
+  {
+    "one_footer": 3,
+    "resource": 2224,
+    "actor": "eb1281c5-6e48-20dc-eb12-81c56e4820dc",
+    "sequence": "Animation/Dingo/seq_onb_grab_fs_2ft_nofoot_exit"
+  },
+  {
+    "one_footer": 4,
+    "resource": 2431,
+    "actor": "61ebfa04-5fb3-45fa-61eb-fa045fb345fa",
+    "sequence": "Animation/Dingo/seq_onb_grab_bs_1ft_judo_exit"
+  },
+  {
+    "one_footer": 5,
+    "resource": 14613,
+    "actor": "de8f5411-8bfe-894a-de8f-54118bfe894a",
+    "sequence": "Animation/Dingo/seq_onb_grab_bs_1ft_onefoot_exit"
+  },
+  {
+    "one_footer": 6,
+    "resource": 23259,
+    "actor": "85c5f18f-ca49-4696-85c5-f18fca494696",
+    "sequence": "Animation/Dingo/seq_onb_grab_bs_2ft_christ_exit"
+  },
+  {
+    "one_footer": 7,
+    "resource": 31212,
+    "actor": "fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6",
+    "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_benihanna_exit"
+  },
+  {
+    "one_footer": 8,
+    "resource": 3320,
+    "actor": "fa0f8662-ec0c-197c-fa0f-8662ec0c197c",
+    "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_onefoot_exit"
+  },
+  {
+    "one_footer": 9,
+    "resource": 30170,
+    "actor": "33cf1391-28d4-5b29-33cf-139128d45b29",
+    "sequence": "Animation/Dingo/seq_onb_grab_tail_2ft_tailwalk_exit"
+  },
+  {
+    "one_footer": 10,
+    "resource": 17259,
+    "actor": "09c69e85-8777-679c-09c6-9e858777679c",
+    "sequence": "Animation/Dingo/seq_onb_grab_nose_1ft_dogpiss_exit"
+  },
+  {
+    "one_footer": 11,
+    "resource": 14829,
+    "actor": "56e9109a-01a3-9890-56e9-109a01a39890",
+    "sequence": "Animation/Dingo/seq_onb_grab_nose_1ft_judo_exit"
+  },
+  {
+    "one_footer": 12,
+    "resource": 10457,
+    "actor": "63d2a772-5f77-cd8b-63d2-a7725f77cd8b",
+    "sequence": "Animation/Dingo/seq_onb_grab_nose_2ft_airwalk_exit"
+  },
+  {
+    "one_footer": 13,
+    "resource": 6428,
+    "actor": "d3254e1b-6159-8c04-d325-4e1b61598c04",
+    "sequence": "Animation/Dingo/seq_onb_grab_double_2ft_super_exit"
+  }
+]

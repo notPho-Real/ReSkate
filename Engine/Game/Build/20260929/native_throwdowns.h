@@ -4,6 +4,11 @@
 
 namespace dingosdk::game::build::v20260929::native_throwdowns {
 // Hooked functions.
+// GetPlayerIsInActivity (6dae8d15). The typed fast thunk calls this same
+// implementation, including calls inlined into the activity pause menu.
+inline constexpr std::uintptr_t player_in_activity = 0x834520;
+inline constexpr std::array<unsigned char,19> player_in_activity_prefix{
+    0x40,0x55,0x48,0x83,0xec,0x20,0x8b,0xe9,0xba,0x89,0x97,0x0f,0xbf,0x48,0x8d,0x4c,0x24,0x38,0xe8};
 // Reports whether a throwdown mode exists in the backend catalogue.
 inline constexpr std::uintptr_t mode_available = 0x807130;
 inline constexpr std::array<unsigned char, 19> mode_available_prefix{
@@ -67,6 +72,26 @@ inline constexpr std::uintptr_t debug_variable_stub = 0x2d70d60;
 // Globals
 // uint32 registration offset of the player identity base class.
 inline constexpr std::uintptr_t player_identity_offset = 0x6f7cfb0;
+
+// The sole offline player (native_throwdowns.cpp).
+// The players' virtual GetPlayerId (vtable +0x10 of both the client and the server player):
+// mov eax, [rcx+0x48]; ret, which is all of it. The player's id is read without the call.
+inline constexpr std::uintptr_t player_id_virtual = 0x7ff930;
+inline constexpr std::array<unsigned char, 4> player_id_virtual_prefix{0x8b,0x41,0x48,0xc3};
+// GetContextForRealm: void* (context* out, u32 realm), the same function as
+// local_placements::realm_context. Native GetPlayerIsInActivity selects the client realm with it.
+inline constexpr std::uintptr_t realm_context = 0x18b6e40;
+inline constexpr std::array<unsigned char, 19> realm_context_prefix{
+    0x89,0x54,0x24,0x10,0x53,0x48,0x83,0xec,0x30,0x4c,0x8b,0x05,0xe8,0xb7,0x70,0x05,0x48,0x8b,0xd9};
+// uint32 registration offsets whose difference takes a local player to its client player vars,
+// as native GetPlayerIsInActivity/GetPlayerMPActivityIdleState (834520/834950) do.
+inline constexpr std::uintptr_t client_player_vars_offset = 0x6f7bae0;
+inline constexpr std::uintptr_t local_player_base_offset = 0x75c3588;
+
+// A throwdown flag's world bubble (native_flag_bubble.h): the entity world manager (its world
+// pages at +0x70) and the vtable of the component store that holds MapObjectComponents.
+inline constexpr std::uintptr_t entity_world_manager = 0x74cd760;
+inline constexpr std::uintptr_t map_object_store_vtable = 0x65d0e48;
 
 // Throwdown lab (research; analysis/throwdowns-native-mp.md).
 // Posts MPParticipantsChanged(activity, const vector<u32>* added, const vector<u32>* removed)

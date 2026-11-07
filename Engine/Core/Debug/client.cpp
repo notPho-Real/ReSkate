@@ -22,6 +22,11 @@ template<std::size_t N> bool copy(std::array<wchar_t, N>& target, const std::wst
     target[value.size()] = 0;
     return true;
 }
+template<std::size_t N> void copy_cut(std::array<wchar_t, N>& target, std::wstring_view value) noexcept {
+    const auto size = std::min(value.size(), N - 1);
+    std::copy_n(value.begin(), size, target.begin());
+    target[size] = 0;
+}
 }
 StartResult start(const std::filesystem::path& log_directory) noexcept {
     try {
@@ -99,15 +104,66 @@ StartResult start(const std::filesystem::path& log_directory) noexcept {
         return StartResult::ready;
     } catch (...) { return StartResult::failed; }
 }
-void capture(EXCEPTION_POINTERS* exception) noexcept {
-    if (!exception || InterlockedCompareExchange(&capturing, 1, 0) != 0) return;
-    report->thread_id = GetCurrentThreadId();
+namespace {
+void capture_on(DWORD thread_id, EXCEPTION_POINTERS* exception, CaptureSource source) noexcept {
+    if (!exception || !thread_id || InterlockedCompareExchange(&capturing, 1, 0) != 0) return;
+    report->thread_id = thread_id;
     report->exception = exception;
+    report->source = source;
     MemoryBarrier();
     if (SetEvent(handles[requested])) {
         const HANDLE wait_for[]{handles[captured], helper};
         WaitForMultipleObjects(2, wait_for, FALSE, capture_timeout_ms);
     }
+}
+}
+void capture(EXCEPTION_POINTERS* exception) noexcept {
+    capture_on(GetCurrentThreadId(), exception, CaptureSource::unhandled_exception);
+}
+void capture_game_fatal(DWORD thread_id, EXCEPTION_POINTERS* exception) noexcept {
+    capture_on(thread_id, exception, CaptureSource::game_fatal_handler);
+}
+bool capture_stuck_load(std::wstring_view stage, DWORD seconds) noexcept {
+    if (!report || InterlockedCompareExchange(&capturing, 1, 0) != 0) return false;
+    // The "exception" is this thread where it stands: the helper reads it through the pointers
+    // (ClientPointers), so they stay on this stack until it answers.
+    CONTEXT context{};
+    RtlCaptureContext(&context);
+    EXCEPTION_RECORD record{};
+    record.ExceptionCode = stuck_load_exception;
+    record.ExceptionAddress = reinterpret_cast<void*>(context.Rip);
+    EXCEPTION_POINTERS pointers{&record, &context};
+    copy_cut(report->stuck_stage, stage);
+    report->stuck_seconds = seconds;
+    report->thread_id = GetCurrentThreadId();
+    report->exception = &pointers;
+    report->source = CaptureSource::stuck_load;
+    MemoryBarrier();
+    bool answered = false;
+    if (SetEvent(handles[requested])) {
+        const HANDLE wait_for[]{handles[captured], helper};
+        answered = WaitForMultipleObjects(2, wait_for, FALSE, stuck_capture_timeout_ms) == WAIT_OBJECT_0;
+    }
+    // The helper has put `requested` down again before it raised `captured`. One that did not
+    // answer (gone, or still writing) keeps the channel: a crash then goes without a report
+    // rather than racing a dump in hand.
+    if (!answered) return false;
+    ResetEvent(handles[captured]);
+    report->exception = nullptr;
+    InterlockedExchange(&capturing, 0);
+    return true;
+}
+void set_destination(std::wstring_view destination) noexcept {
+    if (auto* const shared = report) copy_cut(shared->destination, destination);
+}
+void set_gpu(std::wstring_view name, std::wstring_view driver) noexcept {
+    if (auto* const shared = report) {
+        copy_cut(shared->gpu_name, name);
+        copy_cut(shared->gpu_driver, driver);
+    }
+}
+void set_gpu_breadcrumbs(bool on) noexcept {
+    if (auto* const shared = report) shared->gpu_breadcrumbs = on ? 1 : 0;
 }
 void stop() noexcept {
     // An exception already using these handles owns them until process exit.

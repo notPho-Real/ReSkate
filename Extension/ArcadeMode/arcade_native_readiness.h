@@ -9,7 +9,7 @@ struct NativeInputPermissions {
     float speed{};
 };
 struct NativeInputAdmission : NativeInputPermissions {
-    bool mirror_x{}, offboard{}, flip_ready{}, matched{};
+    bool mirror_x{}, offboard{}, flip_ready{}, matched{}, stance_known{};
 };
 // Publish/consume under the existing input mutex. A client-derived permission
 // keeps the physical frame that justified it, rather than borrowing a new owner
@@ -18,6 +18,16 @@ class NativeInputReadiness {
 public:
     NativeInputFrame observed_proof()const noexcept{return proof_;}
     void reset() noexcept { proof_ = {}; permissions_ = {}; }
+    // Withholding mapped controls is distinct from admitting an action. An
+    // original focused client proof can reserve them during a missing physics
+    // observation, but cannot renew its150ms lease or cross a known owner exit.
+    bool owns_controls(std::uint64_t now,std::uint64_t owner,const NativeInputFrame& current) const noexcept {
+        return permissions_.gameplay && proof_.valid && proof_.owner.valid() && owner &&
+            proof_.owner_generation==owner && now>=proof_.sampled_at && now-proof_.sampled_at<=150 &&
+            proof_.state!=game::build::v20260929::arcade_native_probe::offboard_state &&
+            (!current.valid || (current.owner==proof_.owner && current.owner_generation==owner &&
+                current.state!=game::build::v20260929::arcade_native_probe::offboard_state));
+    }
     void publish(NativeInputFrame proof, NativeInputPermissions permissions) noexcept {
         proof_ = proof; permissions_ = proof.valid ? permissions : NativeInputPermissions{};
     }
@@ -32,7 +42,8 @@ public:
         out.gameplay = true;
         // Stance and immediate native exclusions always come from the same
         // current owner frame used by the facade, including between client ticks.
-        out.mirror_x = !(current.stance_and_push & game::build::v20260929::grind_exit::stance_switch_mask);
+        out.mirror_x = !(current.stance_and_push & game::build::v20260929::launches::stance_switch_mask);
+        out.stance_known = true;
         out.offboard = current.state == game::build::v20260929::arcade_native_probe::offboard_state;
         // This is the existing native action predicate, not clip readiness. It
         // can be reevaluated from the current frame so own selection/crouch

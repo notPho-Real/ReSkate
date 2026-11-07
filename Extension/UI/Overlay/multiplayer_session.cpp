@@ -168,7 +168,7 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
         field(menu, "Voice range", "How far apart players can be and still hear each other. Past this the host "
                                     "stops sending their voice.");
         float range = menu.voice_range_pending.value_or(mp.voice_range);
-        ImGui::SliderFloat("##voice-range", &range, min_voice_range, max_voice_range, "%.0f m",
+        ::dingosdk::overlay::menu::slider_float("##voice-range", &range, min_voice_range, max_voice_range, "%.0f m",
                            ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
         if (ImGui::IsItemActive()) menu.voice_range_pending = range;
         if (ImGui::IsItemDeactivatedAfterEdit()) {
@@ -258,7 +258,7 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
     if (ImGui::Button("Choose in Steam voice settings", ImVec2(-FLT_MIN, 0)))
         ShellExecuteW(nullptr, L"open", L"steam://settings/voice", nullptr, nullptr, SW_SHOWNORMAL);
     field(menu, "Your microphone", "How loud other players hear you.");
-    changed |= ImGui::SliderFloat("##microphone", &value.microphone, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
+    changed |= ::dingosdk::overlay::menu::slider_float("##microphone", &value.microphone, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
     if (mp.voice.transmitting) {
         tag(menu, "TRANSMITTING", skate_theme::good);
         ImGui::SameLine();
@@ -269,13 +269,13 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
 
     begin_card(menu, "hearing", "HEARING");
     field(menu, "Voices volume", "How loud you hear everyone. Adjust single players below.");
-    changed |= ImGui::SliderFloat("##listening", &value.volume, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
+    changed |= ::dingosdk::overlay::menu::slider_float("##listening", &value.volume, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp);
     changed |= toggle_row(menu, "Proximity voice", "Hear players quieter the further away they are. Off: everyone at full volume.",
                           value.proximity);
     ImGui::BeginDisabled(!value.proximity);
     field(menu, "Hearing distance", "How far away you hear nearby players. Voices get quieter with distance and "
                                     "fade out towards this edge.");
-    changed |= ImGui::SliderFloat("##distance", &value.distance, min_hearing_distance, max_hearing_distance, "%.0f m",
+    changed |= ::dingosdk::overlay::menu::slider_float("##distance", &value.distance, min_hearing_distance, max_hearing_distance, "%.0f m",
                                   ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic);
     ImGui::EndDisabled();
     end_card();
@@ -295,12 +295,13 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
     });
     if (mp.roster.empty()) note("Players appear here once you are in a session with them.");
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(px(8), px(6)));
-    if (!mp.roster.empty() && ImGui::BeginTable("voice-players", 4,
+    if (!mp.roster.empty() && ImGui::BeginTable("voice-players", 5,
         ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Player");
         ImGui::TableSetupColumn("Volume");
         ImGui::TableSetupColumn("##state", ImGuiTableColumnFlags_WidthFixed, px(100));
         ImGui::TableSetupColumn("##mute", ImGuiTableColumnFlags_WidthFixed, px(76));
+        ImGui::TableSetupColumn("##ignore", ImGuiTableColumnFlags_WidthFixed, px(84));
         ImGui::TableHeadersRow();
         for (const auto &peer : mp.roster) {
             ImGui::PushID(std::to_string(peer.id).c_str());
@@ -314,7 +315,7 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
             ImGui::TableNextRow(); ImGui::TableNextColumn();
             ImGui::AlignTextToFramePadding(); cell_text(peer.name);
             ImGui::TableNextColumn(); ImGui::SetNextItemWidth(-1);
-            if (ImGui::SliderFloat("##volume", &gain, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp) &&
+            if (::dingosdk::overlay::menu::slider_float("##volume", &gain, 0.f, max_voice_volume, "%.2fx", ImGuiSliderFlags_AlwaysClamp) &&
                 send_private(menu, "voice-volume", std::to_string(peer.id) + " " + std::to_string(gain), unused, false))
                 menu.voice_volume_pending[peer.id] = {gain, ImGui::GetTime() + 2};
             ImGui::TableNextColumn();
@@ -323,6 +324,10 @@ void voice_controls(SkateMenu &menu, const MultiplayerModel &mp) {
             ImGui::TableNextColumn();
             if (ImGui::Button(player.muted ? "Unmute" : "Mute", ImVec2(-1, 0)))
                 send_private(menu, "voice-mute", std::to_string(peer.id) + (player.muted ? " off" : " on"), unused, false);
+            // Ignore: their skater, voice, chat and everything else of theirs, on this screen only.
+            ImGui::TableNextColumn();
+            if (ImGui::Button(peer.ignored ? "Unignore" : "Ignore", ImVec2(-1, 0)))
+                send_private(menu, "ignore", std::to_string(peer.id) + (peer.ignored ? " off" : " on"), unused, false);
             ImGui::PopID();
         }
         ImGui::EndTable();
@@ -348,9 +353,9 @@ void ban_popup(SkateMenu &menu) {
                                                                      : menu.ban_confirm_name.c_str());
         ImGui::PopFont();
         const bool server = menu.ban_confirm_on_server;
-        note(server ? "They are removed now and can never join this server again. Unban them any time in Multiplayer > Bans."
+        note(server ? "They are removed now and can never join this server again. Unban them any time in Online > Bans."
                     : "They are removed now and can never join a lobby you host, even with your join code. "
-                      "Unban them any time in Multiplayer > Bans.");
+                      "Unban them any time in Online > Bans.");
         ImGui::Dummy(ImVec2(0, px(4)));
         const float half = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * .5f;
         skate_theme::push_primary_button();
@@ -371,7 +376,56 @@ void ban_popup(SkateMenu &menu) {
     }
     ImGui::PopStyleVar();
 }
+// The players this PC ignores, here or not, each with Unignore; and the players here to ignore.
+void ignored_card(SkateMenu &menu, const MultiplayerModel &mp) {
+    std::array<char, 65> unused{};
+    const auto count = std::to_string(mp.ignored.size()) + (mp.ignored.size() == 1 ? " player" : " players");
+    begin_card(menu, "ignored", "IGNORED PLAYERS", count.c_str());
+    note("Only for you: their skater, voice, chat, invites and plugins never show or are heard on your game, in any session. "
+         "They are not told. /ignore <player> in chat does it too.");
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(px(8), px(6)));
+    if (!mp.ignored.empty() && ImGui::BeginTable("ignored-table", 3, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("##here", ImGuiTableColumnFlags_WidthFixed, px(110));
+        ImGui::TableSetupColumn("##unignore", ImGuiTableColumnFlags_WidthFixed, px(100));
+        ImGui::TableHeadersRow();
+        for (const auto &player : mp.ignored) {
+            ImGui::PushID(std::to_string(player.id).c_str());
+            ImGui::TableNextRow(); ImGui::TableNextColumn();
+            ImGui::PushFont(menu.bold);
+            cell_text(player.name.empty() ? std::string("Unknown player") : player.name);
+            ImGui::PopFont();
+            ImGui::PushStyleColor(ImGuiCol_Text, skate_theme::grey_text);
+            ImGui::TextUnformatted(std::to_string(player.id).c_str());
+            ImGui::PopStyleColor();
+            ImGui::TableNextColumn();
+            const bool here = std::any_of(mp.roster.begin(), mp.roster.end(), [&](const auto &p) { return p.id == player.id && p.connected; });
+            if (here) tag(menu, "HERE", skate_theme::warning);
+            ImGui::TableNextColumn();
+            if (ImGui::Button("Unignore", ImVec2(-1, 0))) send_private(menu, "ignore", std::to_string(player.id) + " off", unused, false);
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::PopStyleVar();
+    if (mp.ignored.empty()) note("You ignore nobody.");
+    // The players in this session you could ignore.
+    bool heading{};
+    for (const auto &peer : mp.roster) {
+        if (peer.id == mp.local_id || !peer.connected || peer.ignored || (mp.dedicated && peer.id == mp.host_id)) continue;
+        if (!std::exchange(heading, true)) field(menu, "Players here", "Ignore one from here, or from their tile on the SESSION tab.");
+        ImGui::PushID(std::to_string(peer.id).c_str());
+        ImGui::AlignTextToFramePadding();
+        cell_text(peer.name);
+        ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - px(100));
+        if (ImGui::Button("Ignore", ImVec2(px(100), 0))) send_private(menu, "ignore", std::to_string(peer.id) + " on", unused, false);
+        ImGui::PopID();
+    }
+    end_card();
+}
+
 void bans_page(SkateMenu &menu, const Model &model) {
+    ignored_card(menu, model.multiplayer);
     const auto &bans = model.multiplayer.bans;
     // An admin of a dedicated server manages the server's list; otherwise, this PC's.
     const bool server = model.multiplayer.server_bans;
@@ -530,6 +584,23 @@ void session_page(SkateMenu &menu, const Model &model) {
             if (ImGui::IsItemHovered())
                 ImGui::SetTooltip("%s", mp.dedicated ? "Remove them and keep them off this server for good."
                                                      : "Remove them and keep them out of every lobby you host.");
+            right -= px(14);
+        }
+        // Ignoring them: nothing of theirs shows or is heard on this PC (the list is on the BANS tab).
+        if (peer && peer->id != mp.local_id) {
+            const float button = px(84);
+            right -= button;
+            ImGui::SetCursorScreenPos(ImVec2(right, middle));
+            if (peer->ignored) skate_theme::push_primary_button();
+            if (ImGui::Button(peer->ignored ? "Ignored" : "Ignore", ImVec2(button, 0))) {
+                std::array<char, 65> unused{};
+                send_private(menu, "ignore", std::to_string(peer->id) + (peer->ignored ? " off" : " on"), unused, false);
+            }
+            if (peer->ignored) skate_theme::pop_primary_button();
+            if (ImGui::IsItemHovered())
+                ImGui::SetTooltip("%s", peer->ignored
+                    ? "You ignore this player. Press to see and hear them again."
+                    : "Hide this player and everything they do, on your screen only: their skater, voice, chat, invites and plugins. They are not told.");
             right -= px(14);
         }
         // Their placed objects: ghosts for you (skated and walked through) until made solid.
@@ -702,11 +773,11 @@ void session_page(SkateMenu &menu, const Model &model) {
     if (!mp.tuning_status.empty()) note(mp.tuning_status.c_str());
     ImGui::Dummy(ImVec2(0, px(2)));
     bool force_layers = mp.force_world_layers;
-    if (toggle_row(menu, "Sync world layers", "Guests follow your World > Layers choices and cannot change their own.",
+    if (toggle_row(menu, "Sync world layers", "Guests follow your Map > Layers and crowds choices and cannot change their own.",
                    force_layers, controls(mp, "layer-sync"), force_layers ? "ON" : "OFF"))
         send_private(menu, "world-layer-sync", force_layers ? "on" : "off", unused, false);
     if (mp.dedicated)
-        note("The server's layers are set with server commands: layer <key> on|off (keys are listed in World > Layers).");
+        note("The server's layers are set with server commands: layer <key> on|off (keys are listed in Map > Layers and crowds).");
     else note(force_layers ? "Guests follow the host's world layers; their layer controls are locked."
                       : "Everyone picks their own world layers. Turning sync off restores each guest's own choices.");
     end_card();

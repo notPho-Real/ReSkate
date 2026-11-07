@@ -1,14 +1,8 @@
 #pragma once
+#include "Engine/Game/Skater/native_orientation.h"
 #include <cstdint>
+#include "arcade_trick_registry.h"
 namespace dingosdk::arcade_mode {
-struct InputTiming {
-    static constexpr std::uint64_t ground_pair_ms = 220;
-    static constexpr std::uint64_t ground_sample_slack_ms = 55;
-    static constexpr std::uint64_t air_pair_ms = 400, air_request_ms = 700;
-    static constexpr std::uint64_t direction_ms = 500, extra_press_ms = 300;
-    static constexpr std::uint64_t takeoff_preload_ms = 160, readiness_ms = 200;
-    static constexpr std::uint64_t native_sample_lease_ms = 150;
-};
 struct InputGenerations {
     std::uint64_t owner{}, contact{}, action{};
     bool operator==(const InputGenerations&) const = default;
@@ -39,6 +33,7 @@ struct InputNativeContext {
     bool airborne{};
     std::uint64_t airborne_episode{}, air_departure{};
     InputFlipObservation flip{};
+    NativeOrientation orientation{};
     InputAirEpisode air_episode() const noexcept { return {airborne_episode,air_departure}; }
     bool operator==(const InputNativeContext&) const = default;
     bool fresh(std::uint64_t now) const noexcept {
@@ -85,10 +80,14 @@ struct InputNativeContext {
         const bool awaiting_jump=!before.airborne && before.flip.id==-1 &&
             (flip.id==1 || (!airborne && flip.id==-1));
         const bool observed_jump=before.flip.id==1 && (flip.id==1 || (airborne && flip.id==-1));
+        // The native input selector retires before the Ollie animation. Keep
+        // this released jump's already observed AIR continuity on later idle
+        // samples; native ownership/animation admission remains independent.
+        const bool retired_jump=before.airborne && airborne && before.flip.id==-1 && flip.id==-1;
         if (!required || !before.required || !fresh(now) || !before.fresh(now) || !follows(before) ||
             generations.owner!=before.generations.owner || !flip.valid || !before.flip.valid ||
             !flip.object || flip.object!=before.flip.object || flip.stance!=before.flip.stance ||
-            (!awaiting_jump && !observed_jump) ||
+            (!awaiting_jump && !observed_jump && !retired_jump) ||
             phase(before.flip.state)<0 || phase(flip.state)<phase(before.flip.state) ||
             flip.mode>2 || before.flip.mode>2 || !flip.mode_generation || !before.flip.mode_generation) return false;
         const unsigned action_change=flip.state!=before.flip.state || flip.id!=before.flip.id;
@@ -152,6 +151,7 @@ struct InputNativeContext {
             context.airborne = frame.airborne; context.airborne_episode = frame.airborne_episode;
             context.air_departure = frame.air_departure;
         }
+        if constexpr (requires { frame.orientation; }) context.orientation=frame.orientation;
         if constexpr (requires { frame.flip_known; frame.flip_id; frame.selection_object;
                                  frame.state; frame.mode; frame.stance_and_push; }) {
             context.flip = {frame.flip_known,frame.flip_id,frame.selection_object,
@@ -177,12 +177,14 @@ struct InputPolicy {
     std::uint64_t manual_sample_allowance{InputTiming::ground_sample_slack_ms};
     bool inclusive_manual{true}, reject_opposing{true}, bounded_handoff{false};
     bool neutral_flip_on_release{};
+    bool manual_axis_projection{};
     bool operator==(const InputPolicy&) const = default;
     // Preserve the admitted physical Manual contract at30/60Hz; only ground
     // recognition receives this allowance, never air lifetime or actuation.
     static constexpr InputPolicy production() noexcept {
         auto result = InputPolicy{};
         result.neutral_flip_on_release = true;
+        result.manual_axis_projection = true;
         return result;
     }
     static constexpr InputPolicy compatibility() noexcept {

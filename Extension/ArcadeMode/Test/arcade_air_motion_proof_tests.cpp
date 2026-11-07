@@ -169,7 +169,7 @@ int main(){
   p.observe(1051,100);p.publish(1051,0);p.sample();p.intent.release_sequence=2;p.intent.release_at=1068;p.intent.native_launch_id=1;p.observe(1068,200,1);p.publish(1068,0);
   check(p.sample().vertical,"target-first retirement ends only at a new ordinary flight");
  }
- for(int flip:{2,3}) {
+ for(int flip:{2,3,4,9,36}) {
   Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
   p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
   p.observe(1017,200,1);p.publish(1017,0);const auto launch=p.sample();
@@ -181,12 +181,12 @@ int main(){
   check(!AirMotion::other_native_action({true,flip,16},launch.native_launch_id,AirMotion::qualified_followup(p.intent,current,1034)),
     "target-first retirement guard uses current authored flight authority");
  }
- for(int flip:{2,3})for(unsigned fault=0;fault<5;++fault){
+ for(int flip:{2,3,4,9,36})for(unsigned fault=0;fault<5;++fault){
   Pipeline p;p.observe(1000,100);p.publish(1000,0);p.sample();
   p.intent.release_sequence=1;p.intent.release_at=1017;p.intent.native_launch_id=1;
   p.observe(1017,200,1);p.publish(1017,0);check(p.sample().vertical,"qualified ordinary launch begins");
   p.intent.native_followup_id=fault==1?0:flip;
-  p.observe(1034,201,fault==2?4:flip);p.publish(1034,0);
+  p.observe(1034,201,fault==2?16:flip);p.publish(1034,0);
   if(fault==3)++p.intent.angular_proof.departure;
   if(fault==4)p.body.velocity_y+=4; // independent native impulse, even during a legitimate flip
   const auto out=p.sample();
@@ -197,6 +197,24 @@ int main(){
    p.intent.native_followup_id=0;
    check(!AirMotion::vertical_target_current(out,p.intent,proof,proof,1034,p.body.velocity_y,p.body.dt,{true,flip,16}),
      "withdrawn authored ownership cannot retain the flip trajectory exemption");
+  }
+ }
+ for(unsigned rate:{30u,60u,120u})for(int flip:{2,3,4,9,36}) {
+  Pipeline plain,flipped;float plain_y{},flip_y{};
+  for(auto* p:{&plain,&flipped}) {
+   p->body.dt=1.0f/static_cast<float>(rate);p->observe(1000,100);p->publish(1000,0);p->sample();
+   p->intent.release_sequence=1;p->intent.release_at=1017;p->intent.native_launch_id=1;
+  }
+  for(unsigned step=0;step<rate;++step) {
+   const auto now=1017+step*1000/rate;
+   plain.observe(now,step?201:200,1);plain.publish(now,0);
+   flipped.observe(now,step?201:200,step>=2?flip:1);flipped.publish(now,0);
+   if(step>=1)flipped.intent.native_followup_id=flip;
+   const auto a=plain.sample(),b=flipped.sample();
+   check(a.vertical && b.vertical && a.velocity_y==b.velocity_y,
+     "same launch retains identical velocity before and after qualified native flip acknowledgment without a second impulse");
+   plain_y=AirMotion::next_height(plain_y,a,plain.body.dt);flip_y=AirMotion::next_height(flip_y,b,flipped.body.dt);
+   check(plain_y==flip_y,"production native motion targets retain identical trajectory through flip selection and playback");
   }
  }
  std::cout<<checks<<" native motion publication proof checks passed\n";

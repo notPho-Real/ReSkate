@@ -1,0 +1,24 @@
+{
+  "installed_source": "0747f57991a3d2dea2101c595e000256d4ebe087",
+  "installed_dll_sha256": "89f9f391f8991008d048cbdeabf5d50f134fde549ede447528c050be289e61a3",
+  "date": "2026-11-04",
+  "capture_sha256": {
+    "native-trials-result.json": "68df9f6b04d74f312f9ed190be1eb3bf09ff08b15570405c7801fecdfbacc403",
+    "native-controls-result.json": "6921531af7dacbf062334457d16472d1ecbc292882ee8f75aef0af5359f6087d"
+  },
+  "measured_native_step_seconds": 0.03333333333333333,
+  "measured_cached_step_seconds": 0.03333333333333333,
+  "arcade_trials": {
+    "single_x": "native animation Kickflip, zero extra rotations, ground return",
+    "double_x": "two physical edges; native animation Kickflip; PrepareHeldFlip true; zero extra rotations; no held-input request",
+    "default_b": "exact Basic BS actor initialized and positively advanced; release and ground return",
+    "up_b": "native Nose selector arrived after BS family selection; wrong Basic BS actor; no Nose acknowledgment"
+  },
+  "original_controls_comparison": {
+    "simultaneous": "family 2; Nose selector true after hand",
+    "selector_first": "Nose selector true before hand; family 6; release and ground return"
+  },
+  "scoring": "not accepted; no numeric score attribution established",
+  "corrected_build_gameplay": "pending; these captures precede the source fixes",
+  "controls_restored": true
+}

@@ -77,6 +77,21 @@ int main(){
   check((air.owns_left && air.x!=0)==(fault==0),"only fresh same-owner prepared shoulder reaches first genuine AIR");
   if(!fault){check((air.x<0)==(side==BoardChord::lb) && air.yaw_rate==0,"buffer uses native LS only with intended sign");check(!poll(1201,0,false).owns_left,"release ends buffered AIR command");}
  }
+ for(auto side:{BoardChord::lb,BoardChord::rb})for(unsigned dt:{8u,17u,34u})for(unsigned hold:{34u,68u,150u}) {
+  AirRotation buffer;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+  auto poll=[&](unsigned t,unsigned buttons,unsigned state,bool crouch){
+   NativeRequestSample sample{};sample.valid=true;sample.state=state;sample.crouch_mode=state==103?0:1;sample.words[1]=state==200?0:0xc000;
+   const auto frame=producer.observe(t,owner,sample,{true,1,16});
+   return buffer.poll_preparation(t,static_cast<std::uint16_t>(buttons),true,frame,crouch,false,false,SpinMode::held);
+  };
+  poll(1000,0,100,false);poll(1000+dt,side,103,true);
+  const unsigned takeoff=1000+dt+hold;
+  auto out=poll(takeoff,side,200,false);
+  check(out.owns_left&&out.y==0,"short crouch retains original shoulder preparation through genuine takeoff");
+  for(unsigned t=takeoff+dt;t<takeoff+200;t+=dt){out=poll(t,side,200,false);}
+  check(out.x==(side==BoardChord::lb?-31783:31783)&&out.yaw_rate==0,"buffered AIR spin survives remaining chord interval without body writer");
+  check(!poll(takeoff+220,0,200,false).owns_left,"buffer release cannot stick");
+ }
  for(auto side:{BoardChord::lb,BoardChord::rb})for(bool nollie:{false,true}) {
   AirRotation preparation; NativeInputFrame f{};f.valid=true;f.owner={1,2,3,4,5};
   f.owner_generation=f.contact_generation=f.action_generation=f.physics_step=1;f.state=103;
@@ -118,7 +133,6 @@ int main(){
   AuthoredPipeline p;p.dt=static_cast<float>(cadence)/1000;
   p.poll(1000,0,100,-1,1);p.poll(1000+cadence);
   auto out=p.poll(1000+2*cadence,static_cast<std::uint16_t>(0x4000u|choice.first));
-  if(!choice.first)out=p.poll(1000+3*cadence);
   check(out.requested_id==choice.second&&out.authored_playback,"real basic flip request starts its existing authored RS actor");
   check(p.facade.allows_air_rotation(0,out.authored_playback),"ordinary flip RS playback leaves independent AIR rotation eligible");
   const auto begin=1000+4*cadence;

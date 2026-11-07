@@ -40,12 +40,32 @@ int run_arcade_playback_tests() {
     const auto air = compile_airborne_flick(steps);
     check(air.front().tick == 0 && !air.front().x && !air.front().y && air[1].tick == 2,
         "source-derived late stroke starts with30ms native neutral reset");
-    check(air[2].tick == 3 && air[2].x == steps[0].x && air[2].y == steps[0].y && air[3].tick == 5,
+    check(air[1].tick == 2 && air[1].x == steps[0].x && air[1].y == steps[0].y && air[2].tick == 4,
         "late stroke loads native setup then holds it for35ms instead of a single frame");
-    check(air[3].x == steps[1].x && air[4].tick == 6 && air[4].x == steps[2].x,
+    check(air[2].x == steps[1].x && air[3].tick == 5 && air[3].x == steps[2].x,
         "late stroke retains the fast authored path after a stable native setup");
     check(!air[air.size()-2].x && air.back().tick - air[air.size()-3].tick == 6,
         "late stroke holds its end for60ms then releases a bounded neutral tail");
+    {
+        AuthoredPlayback reset;
+        check(reset.start(air,100,false,false,true),"air reset control starts");
+        reset.sample(100,1000);
+        check(!reset.sample(102,1020).y,"early simulation publication cannot shorten delivered neutral30ms");
+        check(reset.sample(102,1030).y==steps[0].y,"first load begins at completed neutral reset without a redundant neutral waypoint");
+        check(!reset.handoff_delivered_pop(104,1040),"an airborne flip cannot use the pop-only handoff");
+    }
+    {
+        AuthoredPlayback pop;
+        check(pop.start(steps,0,true),"pop handoff source starts held");
+        pop.sample(0,1000);
+        check(!pop.handoff_delivered_pop(20,1334),"time alone cannot hand off held setup");
+        pop.release(20);pop.sample(20,1334);
+        check(!pop.handoff_delivered_pop(21,1351),"native AIR cannot skip undelivered intermediate pop arcs");
+        pop.sample(21,1351);pop.sample(22,1368);
+        check(!pop.handoff_delivered_pop(22,1368),"same-tick repeat does not establish consumed final pop output");
+        check(pop.handoff_delivered_pop(23,1385) && !pop.busy(),"delivered complete pop yields once before its authored end hold");
+        check(!pop.handoff_delivered_pop(24,1402),"retired pop cannot regain ownership");
+    }
     const auto ready_air = compile_airborne_flick(steps, false);
     {
         AuthoredPlayback phase;
@@ -82,6 +102,42 @@ int run_arcade_playback_tests() {
     check(std::hypot(full_range[1].x, full_range[1].y) > 32765 &&
           std::hypot(normal_range[1].x, normal_range[1].y) < 24576,
           "fast native flick uses the authored allowed maximum rather than a weaker midpoint");
+    {
+        auto held = native;
+        held.hold_start = 90; held.hold_end = 180; held.hold_minimum = .85f;
+        const auto path = compile_held_flick(held);
+        check(!path.empty(), "original Kickflip endpoint satisfies its authored hold sector");
+        for (unsigned rate : {30u, 60u, 120u}) {
+            AuthoredPlayback playback;
+            AuthoredTickClock clock;
+            check(playback.start_endpoint_hold(path, 0), "held native input begins with airborne reset and flick");
+            AuthoredPlayback::Output output{};
+            for (unsigned frame = 0; frame <= rate; ++frame) {
+                const auto tick = clock.advance(rate);
+                output = playback.sample(tick, frame * 1000 / rate);
+                check(!playback.handoff_delivered_pop(tick, frame * 1000 / rate), "held air flick never becomes another pop");
+            }
+            check(output.owns_stick && output.x == path[path.size()-3].x && output.y == path[path.size()-3].y,
+                "native hold endpoint survives ordinary flick neutral deadline at each cadence");
+            check(!playback.finish_neutral_tail(), "held endpoint cannot masquerade as delivered neutral");
+            playback.release(clock.advance(rate));
+            check(!playback.sample(clock.advance(rate), 1100).owns_stick && !playback.busy(),
+                "release withdraws held input immediately for native catch ownership");
+        }
+        AuthoredPlayback bounded;
+        check(bounded.start_endpoint_hold(path, 0, true), "held endpoint supports existing native mirror mapping");
+        for (unsigned tick = 0; tick <= 60; ++tick) bounded.sample(tick, tick * 17);
+        check(bounded.sample(61, 1037).x == -path[path.size()-3].x, "mirroring changes input only, never authored shared data");
+        check(!bounded.sample(180, 3060).owns_stick, "held endpoint retains the existing absolute safety bound");
+        held.hold_start = 180; held.hold_end = 270;
+        check(compile_held_flick(held).empty(), "mismatched native hold sector is refused");
+        held.native_id = 3; held.arcs.back().start = 210; held.arcs.back().end = 270;
+        check(!compile_held_flick(held).empty(), "original Heelflip endpoint satisfies its own hold sector");
+        held.hold_minimum = 0;
+        check(compile_held_flick(held).empty(), "missing hold metadata never creates held input");
+        held.hold_minimum = .85f; held.nollie = true;
+        check(compile_held_flick(held).empty(), "unverified nollie path is not substituted");
+    }
     check(delivered.schedule() == AuthoredPlaybackSchedule::delivery_relative,
         "existing delivery schedule remains the default");
     absolute.set_schedule(AuthoredPlaybackSchedule::absolute_ticks);

@@ -7,6 +7,8 @@
 #include "Engine/Vfs/https_download.h"
 #include "Extension/Boot/user_data_redirect.h"
 #include "Extension/UI/Overlay/overlay.h"
+#include "Engine/Core/Platform/wide_text.h"
+#include "Engine/Core/Text/url.h"
 #include <Windows.h>
 #include <bcrypt.h>
 #include <objbase.h>
@@ -88,18 +90,6 @@ std::filesystem::path home() { return redirected_local_app_data().parent_path();
 std::filesystem::path tool() { return home() / L"bin" / L"yt-dlp.exe"; }
 std::filesystem::path cookies_file() { return home() / L"youtube-cookies.txt"; }
 std::filesystem::path kept_file() { return home() / L"youtube-music.json"; }
-std::string narrow(const std::wstring& text) {
-    if (text.empty()) return {};
-    std::string out(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr)), '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), static_cast<int>(out.size()), nullptr, nullptr);
-    return out;
-}
-std::wstring wide(const std::string& text) {
-    if (text.empty()) return {};
-    std::wstring out(static_cast<std::size_t>(MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0)), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), static_cast<int>(out.size()));
-    return out;
-}
 // A video's id is eleven letters, digits, '-' and '_'.
 bool video_id(const std::string& id) {
     return id.size() == 11 && std::all_of(id.begin(), id.end(), [](unsigned char c) { return std::isalnum(c) || c == '-' || c == '_'; });
@@ -138,9 +128,9 @@ std::filesystem::path quickjs() { return home() / L"bin" / L"qjs.exe"; }
 std::pair<std::string, std::string> javascript() {
     std::error_code ignored;
     wchar_t path[MAX_PATH]{};
-    if (SearchPathW(nullptr, L"node.exe", nullptr, MAX_PATH, path, nullptr)) return {"node", narrow(path)};
-    if (const auto deno = home() / L"bin" / L"deno.exe"; std::filesystem::exists(deno, ignored)) return {"deno", narrow(deno.wstring())};
-    if (std::filesystem::exists(quickjs(), ignored)) return {"quickjs", narrow(quickjs().wstring())};
+    if (SearchPathW(nullptr, L"node.exe", nullptr, MAX_PATH, path, nullptr)) return {"node", wide_to_utf8(path)};
+    if (const auto deno = home() / L"bin" / L"deno.exe"; std::filesystem::exists(deno, ignored)) return {"deno", wide_to_utf8(deno.wstring())};
+    if (std::filesystem::exists(quickjs(), ignored)) return {"quickjs", wide_to_utf8(quickjs().wstring())};
     return {};
 }
 // (With the mutex held.) What yt-dlp is run with for the player's YouTube sign-in: their
@@ -149,7 +139,7 @@ std::vector<std::string> sign_in() {
     std::vector<std::string> arguments;
     if (!have_cookies && browser_name.empty()) return arguments; // (no sign-in: yt-dlp asks YouTube in a way that needs no runtime, and is quicker)
     if (const auto [name, path] = javascript(); !name.empty()) arguments = {"--no-js-runtimes", "--js-runtimes", name + ":" + path};
-    if (have_cookies) arguments.insert(arguments.end(), {"--cookies", narrow(cookies_file().wstring())});
+    if (have_cookies) arguments.insert(arguments.end(), {"--cookies", wide_to_utf8(cookies_file().wstring())});
     else arguments.insert(arguments.end(), {"--cookies-from-browser", browser_name});
     return arguments;
 }
@@ -235,7 +225,7 @@ std::optional<std::string> run_tool(const std::vector<std::string>& arguments, D
     std::wstring command = L"\"" + tool().wstring() + L"\"";
     for (const auto& argument : arguments) {
         // (None of what is passed has a quote in it: a link is checked before it is.)
-        command += L" \"" + wide(argument) + L"\"";
+        command += L" \"" + utf8_to_wide(argument) + L"\"";
     }
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
@@ -344,7 +334,7 @@ bool sound_file(const std::filesystem::path& file) {
 // taken apart when it is of the form "artist - title" (a track's number before it is left out).
 Song file_song(const std::filesystem::path& file, const std::string& folder) {
     Song song;
-    song.source = narrow(file.wstring());
+    song.source = wide_to_utf8(file.wstring());
     song.id = made_id(song.source);
 #if DINGOSDK_SPOTIFY_DEVICE
     char artist[256]{}, title[256]{};
@@ -353,7 +343,7 @@ Song file_song(const std::filesystem::path& file, const std::string& folder) {
     song.title = shown(title);
 #endif
     if (song.title.empty()) {
-        auto name = narrow(file.stem().wstring());
+        auto name = wide_to_utf8(file.stem().wstring());
         std::size_t digits{};
         while (digits < name.size() && digits < 3 && std::isdigit(static_cast<unsigned char>(name[digits]))) ++digits;
         if (digits && digits < name.size() && (name[digits] == '.' || name[digits] == '-' || name[digits] == '_' || (name[digits] == ' ' && (name[0] == '0' || name.find(" - ") == digits)))) {
@@ -381,7 +371,7 @@ void add_folder_now(std::string given) {
         if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Music, 0, nullptr, &known)) && known) folder = known;
         CoTaskMemFree(known);
     } else {
-        folder = wide(given);
+        folder = utf8_to_wide(given);
     }
     std::error_code failed;
     if (folder.empty() || !folder.is_absolute() || !std::filesystem::is_directory(folder, failed))
@@ -396,7 +386,7 @@ void add_folder_now(std::string given) {
         if (walk->is_regular_file(ignored) && sound_file(walk->path())) files.push_back(walk->path());
     }
     std::sort(files.begin(), files.end());
-    Playlist playlist{shown(narrow(folder.filename().wstring())), narrow(folder.wstring()), {}, {}, Kind::files};
+    Playlist playlist{shown(wide_to_utf8(folder.filename().wstring())), wide_to_utf8(folder.wstring()), {}, {}, Kind::files};
     if (playlist.name.empty()) playlist.name = "Local Files";
     for (const auto& file : files) {
         if (playlist.songs.size() >= most_files) break;
@@ -426,14 +416,6 @@ void add_folder_now(std::string given) {
 
 // --- radio ---
 
-std::string encoded(const std::string& text) {
-    std::string out;
-    for (const unsigned char c : text) {
-        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') out += static_cast<char>(c);
-        else out += std::format("%{:02X}", c);
-    }
-    return out;
-}
 // Stations by their name, from the radio-browser.info directory (a list kept by its
 // community, free to ask), the most listened to first; those this can play.
 void search_now(const std::string& asked) {
@@ -442,7 +424,7 @@ void search_now(const std::string& asked) {
     if (query.size() < 2) return problem(Kind::radio, "type at least two letters of a station's name");
     std::optional<std::string> text;
     for (const wchar_t* server : {L"de1", L"de2"}) {
-        text = https::get_text(std::wstring(L"https://") + server + L".api.radio-browser.info/json/stations/search?limit=40&hidebroken=true&order=clickcount&reverse=true&name=" + wide(encoded(query)),
+        text = https::get_text(std::wstring(L"https://") + server + L".api.radio-browser.info/json/stations/search?limit=40&hidebroken=true&order=clickcount&reverse=true&name=" + utf8_to_wide(url_escaped(query)),
             1024 * 1024, 15, agent);
         if (text) break;
     }
@@ -526,8 +508,8 @@ std::vector<std::uint8_t> fetched(const std::wstring& address) {
 // The picture of a song, for its playlist's tile or for what is playing: its video's, the one
 // in its file's tags, or its station's.
 std::vector<std::uint8_t> picture(Kind kind, const Song& song, const std::string& icon) {
-    if (kind == Kind::youtube) return fetched(L"https://i.ytimg.com/vi/" + wide(song.id) + L"/hqdefault.jpg");
-    if (kind == Kind::radio) return icon.starts_with("https://") ? fetched(wide(icon)) : std::vector<std::uint8_t>{};
+    if (kind == Kind::youtube) return fetched(L"https://i.ytimg.com/vi/" + utf8_to_wide(song.id) + L"/hqdefault.jpg");
+    if (kind == Kind::radio) return icon.starts_with("https://") ? fetched(utf8_to_wide(icon)) : std::vector<std::uint8_t>{};
 #if DINGOSDK_SPOTIFY_DEVICE
     std::vector<std::uint8_t> image(4 * 1024 * 1024);
     char artist[8]{}, title[8]{};
@@ -538,8 +520,8 @@ std::vector<std::uint8_t> picture(Kind kind, const Song& song, const std::string
 #endif
 }
 // Each playlist's tile is its first song's picture (of a folder, the first of its first few
-// files that has one).
-void make_covers() {
+// files that has one). Returns how many tiles got one, and (`missing`) how many still have none.
+std::size_t make_covers(std::size_t* missing = nullptr) {
     struct Wanted {
         std::size_t index;
         Kind kind;
@@ -556,6 +538,7 @@ void make_covers() {
             wanted.push_back({i, playlist.kind, playlist.url, {playlist.songs.begin(), playlist.songs.begin() + static_cast<std::ptrdiff_t>(count)}});
         }
     }
+    std::size_t made{};
     for (const auto& want : wanted)
         for (const auto& song : want.songs) {
             const auto image = picture(want.kind, song, want.icon);
@@ -563,9 +546,14 @@ void make_covers() {
             const auto address = spotify_cover::serve(image, std::string(kind_name(want.kind)) + "-" + song.id + ".png");
             if (address.empty()) continue;
             std::lock_guard lock(mutex);
-            if (want.index < library.size() && !library[want.index].songs.empty() && library[want.index].songs.front().id == want.songs.front().id) library[want.index].artwork = address;
+            if (want.index < library.size() && !library[want.index].songs.empty() && library[want.index].songs.front().id == want.songs.front().id) {
+                library[want.index].artwork = address;
+                ++made;
+            }
             break;
         }
+    if (missing) *missing = wanted.size() - std::min(made, wanted.size());
+    return made;
 }
 
 std::string hex_sha256(const std::filesystem::path& file) {
@@ -654,14 +642,33 @@ void run() noexcept {
             signed_in = have_tools && (have_cookies || !browser_name.empty());
         }
         if (signed_in) fetch_runtime(); // (a sign-in set by a ReSkate that did not fetch one)
-        make_covers();
     } catch (...) {}
+    // Tiles whose picture could not be fetched (YouTube's are fetched from i.ytimg.com) are tried
+    // again, sooner then later: fetched once at start, a game started while the connection was
+    // down kept its YouTube playlists without pictures until a command (2026-10-15).
+    std::size_t missing{};
+    try { make_covers(&missing); } catch (...) {}
+    auto retry_after = std::chrono::seconds(30);
     for (;;) {
         std::string command;
         {
             std::unique_lock lock(mutex);
             is_busy = false;
-            wake.wait(lock, [] { return !commands.empty(); });
+            const bool asked = missing ? wake.wait_for(lock, retry_after, [] { return !commands.empty(); })
+                                       : (wake.wait(lock, [] { return !commands.empty(); }), true);
+            if (!asked) {
+                is_busy = true;
+                lock.unlock();
+                std::size_t made{};
+                try { made = make_covers(&missing); } catch (...) {}
+                if (made) {
+                    profile_runtime::request_music_catalog_refresh();
+                    retry_after = std::chrono::seconds(30);
+                } else {
+                    retry_after = std::min<std::chrono::seconds>(retry_after * 2, std::chrono::minutes(10));
+                }
+                continue;
+            }
             command = std::move(commands.front());
             commands.pop_front();
             is_busy = true;
@@ -678,7 +685,7 @@ void run() noexcept {
                 search_now(command.substr(7));
                 continue; // (nothing of the music screen's has changed)
             }
-            make_covers();
+            make_covers(&missing);
             profile_runtime::request_music_catalog_refresh();
         } catch (...) {}
     }
@@ -830,7 +837,7 @@ void begin(std::size_t list, std::size_t song, bool asked) {
         } else if (kind == Kind::radio) {
             playing_stream = reskate_stream_play_url(chosen.source.c_str(), &sound, &ended, &titled);
         } else {
-            const auto program = narrow(tool().wstring());
+            const auto program = wide_to_utf8(tool().wstring());
             std::string arguments = "-f\n140/bestaudio[ext=m4a]\n--no-playlist\n--quiet\n--no-warnings\n";
             for (const auto& argument : sign_in()) arguments += argument + "\n";
             arguments += "-o\n-\nhttps://www.youtube.com/watch?v=" + chosen.id;

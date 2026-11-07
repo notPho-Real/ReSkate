@@ -8,6 +8,21 @@ namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 NativeRequestSample sample(unsigned state=100,unsigned stance=0,unsigned mode=1){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=mode;s.words[0]=stance;s.words[1]=0xc000;return s;}
+void control_ownership() {
+ NativeInputReadiness readiness;NativeInputState state;NativeInputOwner owner{1,2,3,4,5};
+ const auto proof=state.observe(1000,owner,sample(),{true,1,16});
+ readiness.publish(proof,{true,true,true,true,true,true,false,false,true,0});
+ check(readiness.owns_controls(1050,proof.owner_generation,{}),"missing action sample retains only bounded original control reservation");
+ check(!readiness.sample(1050,{}).gameplay,"reservation cannot manufacture gameplay/action readiness");
+ check(!readiness.owns_controls(1151,proof.owner_generation,{}),"control reservation expires at original150ms boundary");
+ check(!readiness.owns_controls(999,proof.owner_generation,{}),"clock rollback cannot retain controls");
+ auto changed=proof;++changed.owner.rig;
+ check(!readiness.owns_controls(1050,proof.owner_generation,changed),"known owner change restores fallback");
+ check(!readiness.owns_controls(1050,proof.owner_generation+1,proof),"authority epoch mismatch restores fallback");
+ changed=proof;changed.state=dingosdk::game::build::v20260929::arcade_native_probe::offboard_state;
+ check(!readiness.owns_controls(1050,proof.owner_generation,changed),"offboard controls retain native meanings");
+ readiness.reset();check(!readiness.owns_controls(1050,proof.owner_generation,proof),"reset cannot revive masked authority");
+}
 void client_phase_gap() {
     struct Route { ArcadeInput::Physical pad{true,1000,0,0,0,0,0,0,0};
         auto physical(std::uint64_t now)const{return now>=pad.at&&now-pad.at<=150?pad:ArcadeInput::Physical{};}
@@ -41,8 +56,8 @@ void client_phase_gap() {
             check(!physics.defer_client_phase(1010,owner,sample(excluded),original,true),"positive nonordinary/bail/rail/offboard exit cannot defer withdrawal");
     }
 }
-void held_air_manual() {
-    for(unsigned hz:{30u,60u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
+void prepared_air_manual() {
+    for(unsigned hz:{30u,60u,120u})for(int direction:{-1,1})for(bool pad:{false,true})for(unsigned fault=0;fault<7;++fault) {
         ArcadeInput input(true);input.enable(true);NativeInputState physics;NativeInputReadiness readiness;
         NativeInputOwner owner{1,2,3,4,5};NativeGesture::Output output{};std::uint64_t recognized{};
         const auto poll=[&](std::uint64_t now,int held,unsigned state=201,unsigned contacts=0,bool allowed=true){
@@ -71,18 +86,19 @@ void held_air_manual() {
             if(fault==5&&now>=1600&&now<1800)continue;
             poll(now,held,fault==6&&step==hz/2?300:201,0,allowed);
         }
-        check(output.manual.owns==(fault==0),"only uninterrupted fresh same-owner held direction survives beyond released700ms/ground1200ms");
-        if(fault==0) {
-            check(output.manual.recognized_at==recognized&&output.manual.request_at==recognized,"held input never renews recognition or original request time");
-            poll(3284,direction,100,0xc000);check(output.manual.owns&&output.manual.request_at==3284&&output.suppress_reverse,"first qualified landing retains vertical reservation and starts the separate original1200ms acquisition");
-            poll(3318,direction,100,direction<0?0x4000:0x8000);
+        check(output.manual.owns==(fault<=2),"same verified flight survives held, neutral and reheld input; owner loss, OFF, stale polling and bail revoke preparation");
+        if(fault<=2) {
+            check(output.manual.recognized_at==recognized&&output.manual.request_at==recognized,"flight continuation never renews recognition or original request time");
+            const int landing_direction=fault==1?0:direction;
+            poll(3284,landing_direction,100,0xc000);check(output.manual.owns&&output.manual.request_at==3284&&output.suppress_reverse==(landing_direction!=0),"first qualified landing starts its acquisition clock and reserves only an actual held modifier");
+            poll(3318,landing_direction,100,direction<0?0x4000:0x8000);
             check(output.manual.owns&&output.manual.confirmed&&!output.suppress_reverse,"confirmed landing contact hands vertical input to existing balance correction without a new pair");
         }
     }
 }
 }
-int main(){
-    client_phase_gap();held_air_manual();
+int main(){control_ownership();
+    client_phase_gap();prepared_air_manual();
     const NativeInputOwner owner{1,2,3,4,5};
     const NativeInputPermissions all{true,true,true,true,true,true,true,true,true,7};
     for(unsigned bit:{0u,0x20u}) {
@@ -92,19 +108,21 @@ int main(){
         const auto admitted=readiness.sample(110,unchanged);
         check(admitted.gameplay&&admitted.matched&&admitted.start&&admitted.push&&admitted.board&&admitted.drive&&
             admitted.manual&&admitted.prepare&&admitted.releasing&&admitted.action&&admitted.speed==7,"unchanged generation retains all permissions without requiring a new client tick");
-        check(admitted.mirror_x==!bool(bit&0x20u),"stance comes from the same validated frame as current authority");
+        check(admitted.stance_known&&admitted.mirror_x==!bool(bit&0x20u),"stance validity is independent of the validated mirror direction");
         const auto opposite=source.observe(120,owner,sample(100,bit^0x20u),{true,-1});
         const auto pending=readiness.sample(120,opposite);
         check(pending.gameplay&&!pending.matched&&!pending.start&&!pending.push&&!pending.board&&!pending.drive&&
             pending.manual&&!pending.prepare&&!pending.releasing&&pending.speed==0,"changed native stance cannot inherit old client-derived permissions");
-        check(pending.mirror_x==bool(bit&0x20u),"opposite current stance cannot be paired with the old stance");
+        check(pending.stance_known&&pending.mirror_x==bool(bit&0x20u),"opposite current stance cannot be paired with the old stance");
         readiness.publish(opposite,{true,false,false,false,false,false,false,false,true,0});
         check(!readiness.sample(121,opposite).start,"explicit new not-ready publication replaces old ready within its time lease");
         auto changed=owner;++changed.entity;
         const auto replacement=source.observe(125,changed,sample(100,bit),{true,-1});
         check(!readiness.sample(125,replacement).gameplay,"new owner authority cannot borrow old owner readiness or stance");
+        check(!readiness.sample(125,replacement).stance_known,"owner replacement withdraws stance admission");
         readiness.publish(replacement,all);
         check(readiness.sample(275,replacement).gameplay&&!readiness.sample(276,replacement).gameplay,"original physical observation retains inclusive150ms lease");
+        check(!readiness.sample(276,replacement).stance_known&&!readiness.sample(124,replacement).stance_known,"expired or future evidence cannot admit either stance");
         check(!readiness.sample(124,replacement).gameplay,"future-dated proof fails closed");
         readiness.reset();check(!readiness.sample(125,replacement).gameplay,"OFF invalidation removes the permission snapshot");
     }
@@ -128,7 +146,7 @@ int main(){
             input.publish_native_context(frame);input.publish_authority(now,frame.owner_generation,1,true);
             const auto a=gate.sample(now,frame);
             return input.poll(0,now,0,0,y,0,0,a.gameplay,a.start,false,0,false,false,false,now/17,false,{},a.mirror_x,
-                a.manual,SkatePose::air,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,a.mirror_x);
+                a.manual,SkatePose::air,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,ActionExperiment::classic,a.action,a.stance_known);
         };
         poll(100,0);poll(110,25000);check(poll(120,-25000).manual.owns,"real facade admits airborne direction-pair preparation");
         physics.observe(130,owner,sample(100),{true,-1});frame=physics.observe(140,owner,sample(200),{true,-1});
@@ -149,7 +167,7 @@ int main(){
             const auto a=gate.sample(now,frame);
             return input.poll(0,now,buttons,0,0,0,0,a.gameplay,a.start,a.push,a.speed,false,a.board,true,now/17,false,
                 prepared,a.mirror_x,a.manual,SkatePose::riding,false,a.prepare,a.offboard,false,a.flip_ready,false,0,0,
-                ActionExperiment::classic,a.action,a.mirror_x);
+                ActionExperiment::classic,a.action,a.stance_known);
         };
         poll(1000,0);check(poll(1017,classic_a).authored_playback,"fresh authorized press starts actual facade crouch");
         ++current_owner.rig;frame=observer.observe(1034,current_owner,sample(100,stance^0x20u),{true,-1});

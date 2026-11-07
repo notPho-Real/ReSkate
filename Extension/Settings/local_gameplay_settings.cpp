@@ -2,17 +2,20 @@
 #include "Extension/Profile/runtime_internal.h"
 #include "Extension/Progression/local_entitlement_trigger_runtime.h"
 #include "local_gameplay_settings.h"
+#include "Engine/Game/Input/gameplay_options.h"
+#include <algorithm>
 #include "local_user_settings.h"
+#include "Extension/Trainer/trainer_gamestate.h"
+#include "Extension/ArcadeMode/arcade_native_grind_transition.h"
 #include <optional>
 #include <string_view>
 #include <array>
+#include <atomic>
 
 namespace dingosdk::profile_runtime {
 // Applied gameplay values live in an ECS cache even when the user-value
 
 // service does not exist. Hook the applied cache, never the pending UI edits.
-
-// See analysis/native-game-settings.md for the two distinct native boundaries.
 
 GameplaySettingFunctions& gameplay_settings() { static GameplaySettingFunctions f; return f; }
 
@@ -96,9 +99,84 @@ void save_gameplay_setting(const void* reference, const dingosdk::Json& value) {
     } catch (...) { dingosdk::logging::event(dingosdk::logging::Channel::settings, "{\"event\":\"local_gameplay_setting_save_failed\"}"); }
 }
 
+// The player's own stance (Gameplay Preferences' Default Stance Is Goofy), seen as the game reads
+// or changes it: a plugin's flick pictures follow it. Its setting is found once by its key
+// (one naming both "stance" and "goofy"); every other setting asset is checked once per thread.
+namespace {
+std::atomic<std::uintptr_t> stance_asset{};
+std::atomic<int> stance_value{-1};
+void note_stance(const void* reference, bool value) noexcept {
+    std::uintptr_t asset{};
+    if (!reference || !memory::peek(reinterpret_cast<std::uintptr_t>(reference), asset)) return;
+    asset &= ~std::uintptr_t{4};
+    if (!asset) return;
+    if (const auto known = stance_asset.load(std::memory_order_relaxed); known != asset) {
+        if (known) return;
+        thread_local std::array<std::uintptr_t, 256> checked{};
+        auto& slot = checked[((asset >> 4) ^ (asset >> 12)) & 255];
+        if (slot == asset) return;
+        slot = asset;
+        PreserveError preserve;
+        try {
+            std::string key;
+            if (!gameplay_setting_key(reference, key)) return;
+            std::string lower;
+            for (const unsigned char c : key) lower += static_cast<char>(c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
+            if (lower.find("goofy") == std::string::npos || lower.find("stance") == std::string::npos) return;
+            stance_asset.store(asset, std::memory_order_relaxed);
+            dingosdk::logging::log(dingosdk::logging::Level::info, dingosdk::logging::Channel::settings,
+                                   "Player stance: read from the game's \"{}\" setting.", key);
+        } catch (...) { return; }
+    }
+    if (stance_value.exchange(value ? 1 : 0, std::memory_order_relaxed) != (value ? 1 : 0))
+        dingosdk::logging::log(dingosdk::logging::Level::info, dingosdk::logging::Channel::settings,
+                               "Player stance: {}.", value ? "goofy" : "regular");
+}
+}
+
+std::optional<bool> game_stance_goofy() noexcept {
+    const auto value = stance_value.load(std::memory_order_relaxed);
+    if (value < 0) return {};
+    return value == 1;
+}
+
 bool gameplay_get_bool(std::uintptr_t m, const void* a) {
-    if (const auto value = saved_gameplay_setting<bool>(a)) return *value;
-    return gameplay_settings().get_bool(m, a);
+    // A bounded Arcade request can use the original experimental transition
+    // path for its verified local expressions. This never saves a user value.
+    // All other assets, owners and callers retain the original profile policy.
+    if (arcade_mode::native_grind::pending()) {
+        if (arcade_mode::native_grind::setting_override(a,executing_expression)) return true;
+        auto* scope=expression_scope;
+        for(unsigned depth=0;scope && depth<32;++depth,scope=scope->parent)
+            if(scope->vm!=executing_expression && arcade_mode::native_grind::setting_override(a,scope->vm))return true;
+    }
+    const bool editing = gameplay_user_edit();
+    // Trainer overrides retain their priority. Plugins only replace boolean preferences the
+    // game actually reads here; no profile data or native addresses are exposed to scripts.
+    if (const auto forced = dingosdk::trainer::forced_gameplay_bool(a); forced && !editing) {
+        note_stance(a, *forced);
+        return *forced;
+    }
+    const auto saved = saved_gameplay_setting<bool>(a);
+    bool value = saved ? *saved : gameplay_settings().get_bool(m, a);
+    // A plugin's hold (reskate.settings.hold_gameplay) is what the game reads, and so the stance noted.
+    // Several of these a frame: the name is read into the stack as gameplay_setting_key's identifier
+    // reads it, with no heap string unless the option is new.
+    PreserveError preserve;
+    std::uintptr_t asset{}, name{};
+    if (memory::peek(reinterpret_cast<std::uintptr_t>(a), asset) && (asset & ~std::uintptr_t{4}) &&
+        memory::peek((asset & ~std::uintptr_t{4}) + 0x60, name) && name) {
+        char text[256];
+        const auto length = memory::peek_cstring(name, text, sizeof(text));
+        const std::string_view key(text, length > 0 ? static_cast<std::size_t>(length) : 0);
+        if (!key.empty() && std::none_of(key.begin(), key.end(), [](char c) { return static_cast<unsigned char>(c) < 32 || c == 127; })) {
+            try {
+                value = input::gameplay_options().observe(key, value, GetTickCount64(), editing);
+            } catch (...) { }
+        }
+    }
+    note_stance(a, value);
+    return value;
 }
 
 float gameplay_get_number(std::uintptr_t m, const void* a) {
@@ -124,9 +202,13 @@ void gameplay_set_bool(std::uintptr_t m, const void* a, bool v) {
         PreserveError preserve; std::string key;
     }
     if (!gameplay_user_edit()) {
-        gameplay_settings().set_bool(m, a, saved_gameplay_setting<bool>(a).value_or(v)); return;
+        const bool applied = saved_gameplay_setting<bool>(a).value_or(v);
+        gameplay_settings().set_bool(m, a, applied);
+        note_stance(a, applied);
+        return;
     }
     gameplay_settings().set_bool(m, a, v);
+    note_stance(a, v);
     save_gameplay_setting(a, v);
 }
 

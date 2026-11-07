@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "stage": "A: BS, Melon and Method exact native actors verified at30Hz; release/scoring followup remains",
+  "baseline": "65d34a0bc06034125b28779d10490e479df37fba",
+  "exe_sha256": "fbce74d5e28ef525dbba2cb4adbebc13405bdbd88f31bc940bca45e4ae88b8f9",
+  "complete_catalog": false,
+  "catalog_expansion_gate": "Stage A native animation, hold/release, landing and scoring acceptance",
+  "pilots": [
+    {
+      "native_name": "BS",
+      "native_id": 1,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
+      "arcade_binding": "B",
+      "tweak": [
+        0,
+        0
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "305 checks passed at 30/60/120 Hz",
+        "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
+        "native_animation": "c69dd24: exact original actor initialized with duration305 and advanced0 to0.20186043 at positive delta",
+        "hold_release": "release observed; BS additionally tested with held B and100ms tap",
+        "landing_scoring": "ground state100 observed; numeric scoring owner unverified"
+      }
+    },
+    {
+      "native_name": "BS_Melon",
+      "native_id": 4,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
+      "arcade_binding": "Left+B",
+      "tweak": [
+        0,
+        1
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "305 checks passed at 30/60/120 Hz",
+        "native_action": "c69dd24: native IsGrabbing and matching DetailedGrabType observed at measured30Hz; prior ec35 evidence retained",
+        "native_animation": "c69dd24: exact original actor initialized with duration305 and advanced0 to0.20186043 at positive delta",
+        "hold_release": "release observed; BS additionally tested with held B and100ms tap",
+        "landing_scoring": "Native201 ->0 ->100 observed; numeric scoring owner unverified",
+        "prior_gameplay_build": "fbcc0e9: request delivered but CanGrab false, no actor initialization or advancement acknowledgment"
+      }
+    },
+    {
+      "native_name": "BS_Method",
+      "native_id": 2,
+      "id_namespace": "Enum.DetailedGrabType",
+      "family": "grab",
+      "animation_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+      "context": "airborne, inspected stance only; no nollie",
+      "native_transition": "native right-trigger input establishes hand intent and eligibility; inspected BS tweak request selects original native pose through Grab.Into/Grab.Loop",
+      "arcade_binding": "Left+double B",
+      "tweak": [
+        1,
+        0
+      ],
+      "evidence_status": "partially verified",
+      "test_result": {
+        "source_contract": "305 checks passed at 30/60/120 Hz",
+        "native_action": "c69dd24: second B admitted through native_owner=true; IsGrabbing and DetailedGrabType2 observed",
+        "native_animation": "exact original Method actor initialized with duration305 and advanced0 to1.8027897 at positive delta",
+        "hold_release": "intent withdrawn airborne on release; native BS tag during exit requires investigation",
+        "landing_scoring": "native100 observed; HUD Method then BS Grab/Sketchy; numeric scoring owner unverified",
+        "followup": "compare original-game release semantics before changing tweak restoration"
+      }
+    }
+  ],
+  "source_receipts": [
+    {
+      "id": "shared-2609",
+      "name": "animation/dingo/ebool.intent.hasgrabintent",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 814677742,
+      "size": 1259,
+      "decoded_size": 2288,
+      "sha1": "0a23055526293ce910a63a762bc64d068fb78b46",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3178",
+      "name": "animation/dingo/enum.gs.detailedgrabtype",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815387657,
+      "size": 909,
+      "decoded_size": 1366,
+      "sha1": "80e225c5a3a74b525d8595a49d3629dd79b80a3a",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3350",
+      "name": "animation/dingo/float.intent.tweakleftright",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815596725,
+      "size": 836,
+      "decoded_size": 1266,
+      "sha1": "7fe7f657b4d354f36e091956ef675512f91d19fb",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3521",
+      "name": "animation/dingo/bool.anim.isgrabbing",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 815793094,
+      "size": 916,
+      "decoded_size": 1424,
+      "sha1": "6a39ba03aa7f76d3b07dbb01ea111afaaf4a9717",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-3870",
+      "name": "animation/dingo/float.intent.tweakfrontback",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 816362913,
+      "size": 836,
+      "decoded_size": 1266,
+      "sha1": "fb26004b97704239a7eaa5a9f36931ad7a1031b4",
+      "kind": "EBX"
+    },
+    {
+      "id": "shared-4346",
+      "name": "animation/dingo/enum.detailedgrabtype",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 816908251,
+      "size": 2186,
+      "decoded_size": 5720,
+      "sha1": "760f0c93d809f02860bbba9b932140a858b15925",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-1178",
+      "name": "animation/dingo/skaterphysics_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 840533555,
+      "size": 675,
+      "decoded_size": 1012,
+      "sha1": "d77bd9fa63943b7675fb716abe1d66f00f3cab56",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-1693",
+      "name": "animation/dingo/skatersharegamestates_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 841205535,
+      "size": 563,
+      "decoded_size": 876,
+      "sha1": "ad237564e26a9d4a3a2a36acc794d5ddeb5361bc",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-2444",
+      "name": "animation/dingo/default_sceneopmatrix",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 841958475,
+      "size": 1727,
+      "decoded_size": 4238,
+      "sha1": "27c7d50d7eb6262c6ea89eb346b3c6d886fef1d0",
+      "kind": "EBX"
+    },
+    {
+      "id": "config-3180",
+      "name": "animation/dingo/skaterexpressionactiontree_sceneop",
+      "path": "Data/Win32/configurations/layout/initialinstallpackage/cas_45.cas",
+      "offset": 843319871,
+      "size": 487,
+      "decoded_size": 738,
+      "sha1": "d8babb8e46e8a1fc8ec3d2477e6f0fa68e576f35",
+      "kind": "EBX"
+    }
+  ],
+  "observation_hooks": {
+    "initialize_rva": "0x1277480",
+    "evaluate_rva": "0x1278770",
+    "actor_asset_offset": "0x60",
+    "actor_ticks_offset": "0x1c",
+    "actor_duration_offset": "0x20",
+    "initialization_state_view": "RDX",
+    "evaluation_state_view": "[R9+8]"
+  },
+  "unverified_chains": [
+    "Ollie -> Grab",
+    "Flip -> Grab",
+    "Grab -> Flip",
+    "Grab -> different Grab",
+    "Flip -> additional Flip"
+  ],
+  "prohibited_substitutions": [
+    "animation ID writes",
+    "fake detailed tag",
+    "extra pop",
+    "synthetic score",
+    "named-grab trigger recipe as success"
+  ],
+  "hardware_evidence": [
+    "native-grab-hardware-pilot.json",
+    "native-grab-ec35a8e-acceptance.json",
+    "native-grab-c69dd24-acceptance.json",
+    "native-grab-c69dd24-regressions.json"
+  ],
+  "latest_method_trial": {
+    "source_commit": "c69dd24af196e2a43eb3b290ad92232d132b45d2",
+    "dll_sha256": "6cf3320e335d499106eff9473a981748dd767b401d9fbbad8cc9400359cce8bc",
+    "capture_sha256": "e8bf5b2a557e53ac9071c17d1d420389a2a7c8c98cd6f9f9b8b1a32f459a431d",
+    "sample_count": 486,
+    "sample_errors": 0,
+    "log_gaps": 0,
+    "physics_hz": 30,
+    "cached_step_hz": 30,
+    "correlation_complete": false,
+    "intended_native_detail": 2,
+    "method_acknowledged": true,
+    "input_admission": [
+      {
+        "ms": "163285535",
+        "recognized_at": "163285535",
+        "pressed_at": "163285506",
+        "direction": "4",
+        "presses": "1",
+        "form": "0",
+        "semantic": "21",
+        "request_action": "2591",
+        "origin_action": "0",
+        "current_action": "2591",
+        "extra": "false",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "3582",
+        "native_owner": "false",
+        "gate": "1",
+        "disposition": "1",
+        "result": "0",
+        "animation_acknowledged": "false"
+      },
+      {
+        "ms": "163285706",
+        "recognized_at": "163285706",
+        "pressed_at": "163285706",
+        "direction": "4",
+        "presses": "2",
+        "form": "0",
+        "semantic": "29",
+        "request_action": "2592",
+        "origin_action": "2591",
+        "current_action": "2592",
+        "extra": "true",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "80",
+        "native_owner": "true",
+        "gate": "1",
+        "disposition": "1",
+        "result": "0",
+        "animation_acknowledged": "false"
+      }
+    ],
+    "landing_state": 100,
+    "scoring": "unverified",
+    "result": "native animation passed; release/scoring acceptance incomplete",
+    "report": "native-grab-c69dd24-acceptance.json"
+  },
+  "native_continuation_assets": [
+    {
+      "name": "animation/dingo/bool.gp.cangrab",
+      "size": 914,
+      "decoded_size": 1418,
+      "sha1": "b83df3cc6247dc54931dc8edaf81962d16199f15",
+      "bundle": "gameconfig",
+      "resource_index": 1232,
+      "root_type": "BoolAsset",
+      "guid": "aa379a76-0ada-6e20-aa37-9a760ada6e20",
+      "decoded_sha256": "f7c190db81b97bb571adcfc8728b5697e9c6e97c291c90e605030a3f178ec28b"
+    },
+    {
+      "name": "animation/dingo/enumgs.grabtype",
+      "size": 895,
+      "decoded_size": 1356,
+      "sha1": "1d4bf9c2a85e9aa3b64883e96dbcc52669f2e635",
+      "bundle": "gameconfig",
+      "resource_index": 3401,
+      "root_type": "GameStateEnumerationAsset",
+      "guid": "387fb01d-9950-ce5d-387f-b01d9950ce5d",
+      "decoded_sha256": "187422ef30dc92564f896ce014c39a8856de8d1973986fb4606e021d2e95a6d4"
+    }
+  ],
+  "previous_method_trial": {
+    "source_commit": "c8f7971eb2f53fe06f8fa152446c5bc7dd75b1b2",
+    "dll_sha256": "09942bc8c76ed4a9ed4145cc7735f15cd011954274ced9deb2c3742b7b2a5f6b",
+    "capture_sha256": "4afe121d80901bc3b198888d1d56d41dd54543bb5b92f2ca580b19142cbd4ca1",
+    "sample_count": 479,
+    "sample_errors": 0,
+    "log_gaps": 0,
+    "physics_hz": 30,
+    "cached_step_hz": 30,
+    "correlation_complete": false,
+    "intended_native_detail": 2,
+    "method_acknowledged": false,
+    "input_admission": [
+      {
+        "ms": "160916533",
+        "recognized_at": "160916533",
+        "pressed_at": "160916509",
+        "direction": "4",
+        "presses": "1",
+        "form": "0",
+        "semantic": "21",
+        "request_action": "2749",
+        "origin_action": "0",
+        "current_action": "2749",
+        "extra": "false",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "3582",
+        "gate": "1",
+        "disposition": "1",
+        "result": "0",
+        "animation_acknowledged": "false"
+      },
+      {
+        "ms": "160916709",
+        "recognized_at": "160916709",
+        "pressed_at": "160916709",
+        "direction": "4",
+        "presses": "2",
+        "form": "0",
+        "semantic": "29",
+        "request_action": "2749",
+        "origin_action": "2749",
+        "current_action": "2750",
+        "extra": "true",
+        "native_adapter": "true",
+        "retired": "false",
+        "failed_proofs": "80",
+        "gate": "0",
+        "disposition": "3",
+        "result": "1",
+        "animation_acknowledged": "false"
+      }
+    ],
+    "landing_state": 100,
+    "scoring": "unverified",
+    "result": "failed",
+    "second_press_native_observation": {
+      "relative_kernel_edge_ms": -5.463722,
+      "state": 201,
+      "IsGrabbing": true,
+      "CanGrab": true,
+      "RightHandGrab": true,
+      "LeftHandGrab": false,
+      "GrabType": 2,
+      "DetailedGrabType": null
+    }
+  }
+}

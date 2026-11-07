@@ -3,15 +3,21 @@
 #include "Engine/Core/Debug/crash_report.h"
 #include "Engine/Core/Debug/native_dump.h"
 #include "Engine/Core/Debug/upload.h"
-#include "Engine/Core/Debug/multipart.h"
+#include "Engine/Core/Debug/report_envelope.h"
+#include "Engine/Core/Debug/report_details.h"
 #include "Engine/Core/Debug/protocol.h"
 #include "Engine/Core/Debug/trace.h"
 #include "crash_report_config.h"
 #include "Engine/Core/Log/logging.h"
+#include "Launcher/crash_capture_name.h"
+#include "Launcher/crash_dump_retry.h"
+#include "Launcher/crash_dump_snapshot.h"
+#include <array>
 #include <fstream>
 #include <format>
 #include <iostream>
 #include <thread>
+#include <vector>
 
 using namespace dingosdk;
 using namespace dingosdk::crash_report;
@@ -30,6 +36,19 @@ LONG WINAPI native_child_handler(EXCEPTION_POINTERS* pointers) {
     CopyFileW(path.c_str(), (native_fixture_directory / L"duplicate.dmp").c_str(), TRUE);
     ExitProcess(42);
 }
+// A heap block only the faulting stack points at: present in a dump only with the memory the
+// stacks reference. Made at run time, so its bytes are nowhere else in the process.
+// (Filled in place: a copy left on a stack would be in every dump.)
+__declspec(noinline) void fill_marker(std::array<char, 64>& bytes) {
+    for (std::size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<char>((i * 37 + 11) ^ 0xa5);
+}
+// The game's own fatal handler: ReSkate's import hook asks for its dump first, then the game
+// writes its own (game_fatal_dump.cpp).
+LONG WINAPI fatal_child_handler(EXCEPTION_POINTERS* pointers) {
+    capture_game_fatal(GetCurrentThreadId(), pointers);
+    return native_child_handler(pointers);
+}
+enum class Mode { direct, native, fatal };
 std::string read(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
@@ -49,8 +68,59 @@ void endpoint_checks() {
     check(accepted_response(200, "c350c4ee5e2b4b779b2e5e4a2b0e1b9d", id), "Unhyphenated receipt rejected");
     for (const auto* response : {"", "\n", "<html>OK</html>", R"({"detail":"ok"})", "c350c4ee-5e2b-4b77-9b2e", "c350c4ee-5e2b-4b77-9b2e-5e4a2b0e1b9d-00"})
         check(!accepted_response(200, response, id), "Unconfirmed submission accepted");
+    check(accepted_response(200, R"({"id":"c350c4ee5e2b4b779b2e5e4a2b0e1b9d"})", id) && id == "c350c4ee5e2b4b779b2e5e4a2b0e1b9d",
+        "Envelope receipt rejected");
+    check(!accepted_response(200, R"({"id":"short"})", id) && !accepted_response(200, R"({"id":)", id), "Broken envelope receipt accepted");
+    check(envelope_endpoint(L"https://sentry.example.com/api/2/minidump/?sentry_key=0123abcd") ==
+        L"https://sentry.example.com/api/2/envelope/?sentry_key=0123abcd" && envelope_endpoint(L"https://example.com/post").empty(),
+        "Crash envelope endpoint not derived from the minidump endpoint");
     check(!accepted_response(429, receipt, id), "Rate limited submission accepted");
     check(!accepted_response(500, receipt, id), "Failed submission accepted");
+}
+void dump_snapshot_checks() {
+    DumpSnapshot disabled(GetCurrentProcess(), false);
+    check(!disabled.captured() && disabled.handle(GetCurrentProcess()) == GetCurrentProcess(),
+        "Normal crash capture unexpectedly clones the process");
+    MINIDUMP_CALLBACK_INPUT input{};
+    MINIDUMP_CALLBACK_OUTPUT output{};
+    input.CallbackType = IsProcessSnapshotCallback;
+    check(DumpSnapshot::callback(nullptr, &input, &output) && output.Status == S_FALSE,
+        "DbgHelp was not told the target is a snapshot");
+    for (const auto type : {IoStartCallback, VmStartCallback}) {
+        input.CallbackType = type; output.Status = S_FALSE;
+        check(DumpSnapshot::callback(nullptr, &input, &output) && output.Status == S_OK,
+            "Snapshot capture replaced standard file or memory I/O");
+    }
+    input.CallbackType = ReadMemoryFailureCallback;
+    input.ReadMemoryFailure.FailureStatus = HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY);
+    check(!DumpSnapshot::callback(nullptr, &input, &output) && FAILED(output.Status),
+        "Snapshot capture accepted missing memory");
+}
+void dump_retry_checks() {
+    constexpr auto partial = static_cast<std::uint32_t>(HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY));
+    for (unsigned failures : {0u, 1u, 2u, 3u}) {
+        unsigned writes{}, resets{};
+        std::string file;
+        const auto result = write_dump_retry([&]() -> std::uint32_t {
+            check(file.empty(), "A retry retained partial dump bytes");
+            file = ++writes <= failures ? "partial bytes" : "complete dump";
+            return writes <= failures ? partial : ERROR_SUCCESS;
+        }, [&]() -> std::uint32_t { ++resets; file.clear(); return ERROR_SUCCESS; }, partial);
+        check(writes == (failures < 3 ? failures + 1 : 3) && result.attempts == writes &&
+            resets == writes - 1, "Dump retry exceeded its bound or skipped cleanup");
+        check(!result.reset_failed && result.error == (failures < 3 ? ERROR_SUCCESS : partial),
+            "Persistent partial copy was treated as success");
+        check(file == (failures < 3 ? "complete dump" : "partial bytes"), "Dump result does not match its bytes");
+    }
+    unsigned writes{}, resets{};
+    auto result = write_dump_retry([&]() -> std::uint32_t { ++writes; return ERROR_ACCESS_DENIED; },
+        [&]() -> std::uint32_t { ++resets; return ERROR_SUCCESS; }, partial);
+    check(result.error == ERROR_ACCESS_DENIED && writes == 1 && resets == 0, "Unrelated dump failure was retried");
+    writes = resets = 0;
+    result = write_dump_retry([&]() -> std::uint32_t { ++writes; return partial; },
+        [&]() -> std::uint32_t { ++resets; return ERROR_DISK_FULL; }, partial);
+    check(result.error == ERROR_DISK_FULL && result.reset_failed && writes == 1 && resets == 1,
+        "Failed partial-file cleanup allowed another write");
 }
 void trace_checks() {
     check(trace::envelope_url(L"https://sentry.example.com/api/2/minidump/?sentry_key=0123abcd") ==
@@ -96,53 +166,91 @@ void attachment_checks(const std::filesystem::path& root) {
     std::ofstream(log) << "a later game session";
     check(read(log_attachment_path(dump)) == original_log, "Queued attachment changed with live log");
     auto attributes = Json::object(); attributes["version"] = "fixture-build"; attributes["attachment.log"] = "complete";
+    std::ofstream(event_details_path(dump), std::ios::binary)
+        << R"({"breadcrumbs":{"values":[{"message":"last crash message"}]},"user":{"id":"0123456789abcdef0123456789abcdef"},)"
+           R"("contexts":{"reskate":{"mods":["A 1.0"]}},"tags":{"version":"replaced"},"release":"replaced"})";
+    const std::string event_id = "0123456789abcdef0123456789abcdef";
     {
-        MultipartReport body(dump, attributes, "fixture-boundary");
+        ReportEnvelope body(dump, attributes, event_id);
         check(body.error() == 0, "Cannot prepare attached report");
         std::string wire;
         check(body.write([&](const void* data, DWORD bytes) { wire.append(static_cast<const char*>(data), bytes); return true; }), "Cannot stream attached report");
-        check(wire.size() == body.size(), "Multipart Content-Length does not match transmitted bytes");
-        // Parse the emitted MIME parts independently to check names, boundaries and raw payloads.
-        std::map<std::string, std::pair<std::string, std::string>> parts;
-        const std::string delimiter = "--fixture-boundary";
-        std::size_t cursor{};
-        for (;;) {
-            check(wire.compare(cursor, delimiter.size(), delimiter) == 0, "Malformed MIME delimiter");
-            cursor += delimiter.size();
-            if (wire.compare(cursor, 4, "--\r\n") == 0) { check(cursor + 4 == wire.size(), "Trailing MIME data"); break; }
-            check(wire.compare(cursor, 2, "\r\n") == 0, "Missing MIME header separator"); cursor += 2;
-            const auto end = wire.find("\r\n\r\n", cursor), next = wire.find("\r\n" + delimiter, end + 4);
-            check(end != std::string::npos && next != std::string::npos, "Unterminated MIME part");
-            const auto header = wire.substr(cursor, end - cursor);
-            const auto name = header.find("name=\"");
-            check(name != std::string::npos, "Missing MIME field name");
-            const auto name_end = header.find('"', name + 6);
-            check(name_end != std::string::npos, "Invalid MIME field name");
-            check(parts.emplace(header.substr(name + 6, name_end - name - 6),
-                std::make_pair(header, wire.substr(end + 4, next - end - 4))).second, "Duplicate MIME field");
-            cursor = next + 2;
+        check(wire.size() == body.size(), "Envelope Content-Length does not match transmitted bytes");
+        // Read the envelope back independently: a header line, then each item's header line and
+        // exactly `length` bytes of payload, each followed by a newline.
+        std::size_t cursor = wire.find('\n');
+        check(cursor != std::string::npos, "Envelope has no header line");
+        const auto header = Json::parse(wire.substr(0, cursor));
+        check(header.at("event_id").string() == event_id, "Envelope header lacks the event ID");
+        ++cursor;
+        std::vector<std::pair<Json, std::string>> items;
+        while (cursor < wire.size()) {
+            const auto line_end = wire.find('\n', cursor);
+            check(line_end != std::string::npos, "Unterminated item header");
+            auto item = Json::parse(wire.substr(cursor, line_end - cursor));
+            const auto length = item.at("length").get<std::size_t>();
+            check(line_end + 1 + length <= wire.size(), "Item longer than the envelope");
+            items.emplace_back(std::move(item), wire.substr(line_end + 1, length));
+            cursor = line_end + 1 + length;
+            check(cursor == wire.size() || wire[cursor] == '\n', "Item payload not followed by a newline");
+            if (cursor < wire.size()) ++cursor;
         }
-        const auto event = Json::parse(parts.at("sentry").second);
-        check(parts.size() == 4 && event.at("tags").at("version").string() == "fixture-build" &&
-            event.at("release").string() == "reskate@fixture-build", "Attributes lost during multipart upload");
-        check(parts.at("upload_file_minidump").second == dump_bytes, "Dump bytes corrupted");
-        check(parts.at("attachment_ReSkate.log").second == original_log &&
-            parts.at("attachment_ReSkate.log").first.find("filename=\"ReSkate.log\"") != std::string::npos, "Log is not a named file attachment");
-        check(Json::parse(parts.at("attachment_report.json").second).at("version").string() == "fixture-build", "Report details attachment missing");
+        check(items.size() == 4, "Envelope does not hold the event, dump, report and log");
+        const auto& [event_item, event_payload] = items[0];
+        const auto event = Json::parse(event_payload);
+        check(event_item.at("type").string() == "event" && event.at("event_id").string() == event_id &&
+            event.at("platform").string() == "native" && event.at("level").string() == "fatal" &&
+            event.at("timestamp").get<double>() > 1.7e9, "Event item wrong");
+        check(event.at("tags").at("version").string() == "fixture-build" &&
+            event.at("release").string() == "reskate@fixture-build", "Attributes lost from the event");
+        check(event.at("breadcrumbs").at("values")[0].at("message").string() == "last crash message" &&
+            event.at("user").at("id").string() == "0123456789abcdef0123456789abcdef" &&
+            event.at("contexts").at("reskate").at("mods")[0].string() == "A 1.0", "Event details did not reach the event");
+        check(items[1].first.at("type").string() == "attachment" && items[1].first.at("attachment_type").string() == "event.minidump" &&
+            items[1].second == dump_bytes, "Dump not the event's minidump, or its bytes corrupted");
+        check(items[2].first.at("filename").string() == "report.json" &&
+            Json::parse(items[2].second).at("version").string() == "fixture-build", "Report details attachment missing");
+        check(items[3].first.at("filename").string() == "ReSkate.log" && items[3].second == original_log, "Log is not a named file attachment");
     }
+    check(ReportEnvelope(dump, attributes, "not-an-id").error() != 0, "An envelope without a proper event ID");
     {
-        MultipartReport body(dump, attributes, "fixture-boundary");
+        ReportEnvelope body(dump, attributes, event_id);
         check(!body.write([](const void*, DWORD) { return false; }), "Stream failure ignored");
     }
     std::filesystem::remove(log_attachment_path(dump));
-    check(MultipartReport(dump, attributes, "fixture-boundary").error() != 0, "Missing queued log silently dropped");
+    check(ReportEnvelope(dump, attributes, event_id).error() != 0, "Missing queued log silently dropped");
     attributes.erase("attachment.log");
-    check(MultipartReport(dump, attributes, "fixture-boundary").error() == 0, "Legacy report without logs blocked");
+    check(ReportEnvelope(dump, attributes, event_id).error() == 0, "Legacy report without logs blocked");
     const std::string tail(max_log_bytes, 'x');
     std::ofstream(log, std::ios::binary) << "discard this old prefix" << tail;
     check(snapshot_log(log, dump) == LogSnapshot::tail && read(log_attachment_path(dump)) == tail, "Large log did not retain bounded tail");
     check(std::filesystem::file_size(log) > max_log_bytes, "Original log was truncated");
     check(snapshot_log(directory / L"missing.log", directory / L"missing.dmp") == LogSnapshot::unavailable, "Missing source log reported as attached");
+}
+void details_checks(const std::filesystem::path& root) {
+    const auto directory = root / L"details";
+    std::filesystem::create_directories(directory);
+    const auto log = directory / L"ReSkate.log";
+    std::ofstream(log, std::ios::binary)
+        << "[2026-10-16 16:56:01.000] [1:2] SDK: [Runtime] [DEBUG] old debug line\r\n"
+        << "[2026-10-16 16:56:02.000] [1:2] Native(C): [Level] [INFO] Level active [13]\r\n"
+        << "[2026-10-16 16:56:03.000] [1:2] Native(M): [Graphics] [WARNING] Descriptor heap nearly full\r\n"
+        << "[2026-10-16 16:56:04.000] [1:2] SDK: [Runtime] [DEBUG] recent debug line\r\n"
+        << "a continuation without a time \xff\r\n";
+    const auto crumbs = log_breadcrumbs(log, 10, 2);
+    const auto& values = crumbs.at("values");
+    check(values.size() == 4, "Breadcrumbs kept a debug line from before the last few, or lost one");
+    check(values[0].at("message").string() == "Level active [13]" && values[0].at("level").string() == "info" &&
+        values[0].at("category").string() == "Native(C)/Level", "Breadcrumb text, level or category wrong");
+    check(values[1].at("level").string() == "warning" && values[2].at("level").string() == "debug", "Breadcrumb levels wrong");
+    check(values[3].at("message").string() == "a continuation without a time ?" &&
+        values[3].at("timestamp").get<double>() == values[2].at("timestamp").get<double>(), "A line without a time not kept with the one before");
+    check(values[1].at("timestamp").get<double>() - values[0].at("timestamp").get<double>() == 1.0 &&
+        values[0].at("timestamp").get<double>() > 1.7e9, "Breadcrumb times wrong");
+    check(log_breadcrumbs(directory / L"missing.log").is_null(), "Breadcrumbs from a missing log");
+    const auto id = install_id(directory);
+    check(id.size() == 32 && install_id(directory) == id, "Install ID not made once and kept");
+    check(crash_site(log).empty(), "A crash site read from something that is not a dump");
 }
 void queue_checks(const std::filesystem::path& root) {
     const auto queue = root / L"queue";
@@ -165,6 +273,19 @@ void queue_checks(const std::filesystem::path& root) {
     CloseHandle(lock.release());
     check(upload_pending(L"test", queue, success) == 1, "Confirmed upload not counted");
     check(!std::filesystem::exists(dump) && !std::filesystem::exists(metadata) && !std::filesystem::exists(log_attachment_path(dump)), "Confirmed report or attachment not removed");
+    const auto sent = queue / L"sent" / L"fixture.dmp";
+    check(std::filesystem::exists(sent) && read(log_attachment_path(sent)) == "original-session-log" &&
+        std::filesystem::exists(sent.wstring() + L".json"), "Confirmed report not kept in sent");
+    for (std::size_t i = 0; i < kept_sent_reports + 3; ++i) {
+        const auto path = queue / std::format(L"sent-{}.dmp", i);
+        std::ofstream(path) << "synthetic test data";
+        std::filesystem::last_write_time(path, std::filesystem::file_time_type::clock::now() + std::chrono::seconds(i + 1));
+        keep_sent_report(path);
+    }
+    std::size_t kept{};
+    for (const auto& entry : std::filesystem::directory_iterator(queue / L"sent")) kept += entry.path().extension() == L".dmp";
+    check(kept == kept_sent_reports && !std::filesystem::exists(sent) && std::filesystem::exists(queue / L"sent" / L"sent-12.dmp"),
+        "Sent reports not pruned to the newest");
     check(queue_directory(root, L"https://a/token/minidump") != queue_directory(root, L"https://b/token/minidump"), "Different destinations share queue");
     for (std::size_t i = 0; i < max_pending_reports + 2; ++i) {
         const auto path = queue / std::format(L"{}.dmp", i);
@@ -190,7 +311,8 @@ void queue_checks(const std::filesystem::path& root) {
     upload_pending(L"test", queue, failure);
     check(!std::filesystem::exists(expired) && !std::filesystem::exists(log_attachment_path(expired)), "Expired report or attachment retained");
 }
-void crash_check(const std::filesystem::path& root, bool native) {
+void crash_check(const std::filesystem::path& root, Mode mode) {
+    const bool native = mode != Mode::direct;
     std::filesystem::create_directories(root);
     std::array<wchar_t, 32768> executable{};
     GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
@@ -199,8 +321,12 @@ void crash_check(const std::filesystem::path& root, bool native) {
         child_path = root / L"Skate.exe";
         std::filesystem::copy_file(executable.data(), child_path);
         std::filesystem::copy_file(std::filesystem::path(executable.data()).parent_path() / L"ReSkateLauncher.exe", root / L"ReSkateLauncher.exe");
+        // One mod beside the fixture game, which its report must list.
+        std::filesystem::create_directories(root / L"Mods" / L"Fixture");
+        std::ofstream(root / L"Mods" / L"Fixture" / L"manifest.json") << R"({"name":"Fixture","version_number":"1.0.0"})";
     }
-    auto command = std::format(L"\"{}\" {} \"{}\"", child_path.wstring(), native ? L"--native-crash" : L"--crash", root.wstring());
+    auto command = std::format(L"\"{}\" {} \"{}\"", child_path.wstring(),
+        mode == Mode::fatal ? L"--fatal-crash" : native ? L"--native-crash" : L"--crash", root.wstring());
     STARTUPINFOW startup{sizeof(startup)};
     PROCESS_INFORMATION process{};
     check(CreateProcessW(child_path.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process) != FALSE, "Cannot start crash fixture");
@@ -210,7 +336,13 @@ void crash_check(const std::filesystem::path& root, bool native) {
     check(code == 42, "Previous exception handler was not preserved");
     const auto log = read(root / L"ReSkate.log");
     check(log.find("Crash reporting enabled") != std::string::npos, "Helper did not start");
-    check((log.find("ReSkate unhandled exception") != std::string::npos) != native, "Fixture did not exercise the expected exception handler");
+    // The bounded logger keeps last-chance evidence separate from the rotating
+    // session log. Still require the real handler, and reject it in native modes.
+    const auto fatal_path = root / L"ReSkate.fatal.log";
+    const auto fatal_log = std::filesystem::exists(fatal_path) ? read(fatal_path) : std::string{};
+    check((fatal_log.find("ReSkate unhandled exception") != std::string::npos) != native, "Fixture did not exercise the expected exception handler");
+    check(fatal_log.size() <= 16 * 1024 && log.find("ReSkate unhandled exception") == std::string::npos,
+        "Last-chance evidence escaped its separate bounded log");
     const auto queue = queue_directory(root / L"crashes", L"https://127.0.0.1:1/test/minidump");
     std::filesystem::path dump;
     for (int attempt = 0; attempt < 100 && dump.empty(); ++attempt) {
@@ -226,10 +358,34 @@ void crash_check(const std::filesystem::path& root, bool native) {
     check(MiniDumpReadDumpStream(bytes.data(), ModuleListStream, &stream, &data, &size) != FALSE, "Minidump module list missing");
     check(Json::parse(read(dump.wstring() + L".json")).at("application").string() == "ReSkate", "Crash attributes missing");
     check(Json::parse(read(dump.wstring() + L".json")).at("capture.source").string() ==
-        (native ? "game-native" : "unhandled-exception"), "Wrong capture source");
+        (mode == Mode::fatal ? "game-fatal-handler" : native ? "game-native" : "unhandled-exception"), "Wrong capture source");
+    if (mode != Mode::native) {
+        std::array<char, 64> marker{};
+        fill_marker(marker);
+        check(bytes.find(std::string_view(marker.data(), marker.size())) != std::string::npos,
+            "Dump lacks the heap memory the faulting stack points at");
+    }
     check(Json::parse(read(dump.wstring() + L".json")).at("attachment.log").string() == "complete" &&
         read(log_attachment_path(dump)) == log, "Crash did not snapshot its session log");
-    if (native) {
+    const auto tags = Json::parse(read(dump.wstring() + L".json"));
+    const auto site = tags.at("crash.site").string();
+    // (The fixture raises its exception, so it happens in RaiseException.)
+    check(site.starts_with("KERNELBASE.dll+0x") && site.size() > 17, "Crash site not tagged");
+    const auto details = Json::parse(read(event_details_path(dump)));
+    check(details.at("user").at("id").string().size() == 32 && details.at("breadcrumbs").at("values").size() > 0,
+        "Crash did not carry its event details");
+    // A native crash is collected after the game has exited, when Windows may no longer say where
+    // it ran from, so its mods come from the folder read while it ran.
+    const auto& context = details.at("contexts").at("reskate");
+    check(context.contains("mods") && context.at("mods").is_array(), "Crash report has no mods list");
+    const auto& mods = context.at("mods");
+    check(native ? mods.size() == 1 && mods[0].string() == "Fixture 1.0.0" && tags.at("mods.count").string() == "1" :
+        mods.empty() && tags.at("mods.count").string() == "0", "Crash report did not list the mods beside the game");
+    check(tags.at("game.map").string() == "dingolevel_reskate_lsc_b2" &&
+        tags.at("game.destination").string() == "Levels/Game/DingoLevel_Root/DingoLevel_Root + levels/game/dingolevel_reskate_lsc_b2/dingolevel_reskate_lsc_b2 @ DefaultStartPoint" &&
+        tags.at("gpu.name").string() == "Fixture GPU" && tags.at("gpu.driver").string() == "32.0.21025.1",
+        "Crash was not tagged with its level and graphics card");
+    if (mode == Mode::native) {
         const auto source = root / L"local" / L"ReSkate" / L"Game" / L"Skate" / L"CrashDumps";
         const auto pid = GetProcessId(child.value), created = process_creation_seconds(child.value);
         const auto selected = find_native_dump(source, pid, created);
@@ -244,6 +400,83 @@ void crash_check(const std::filesystem::path& root, bool native) {
     // Allow the helper's deliberately refused loopback upload to finish before fixture cleanup.
     for (int i = 0; i < 100 && !std::filesystem::exists(queue / L"status.txt"); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     check(std::filesystem::exists(dump), "Offline dump was lost");
+}
+// A stuck load: a dump of the running fixture, after which it goes on and crashes for real. Both
+// are captured, the first as a stuck-load report.
+void stuck_check(const std::filesystem::path& root) {
+    const auto first = capture_file_stem(42, 1000, 7);
+    const auto second = capture_file_stem(42, 1000, 7);
+    check(first != second, "Consecutive captures on one Windows tick share dump and sidecar names");
+    std::filesystem::create_directories(root);
+    std::array<wchar_t, 32768> executable{};
+    GetModuleFileNameW(nullptr, executable.data(), static_cast<DWORD>(executable.size()));
+    auto command = std::format(L"\"{}\" --stuck \"{}\"", executable.data(), root.wstring());
+    STARTUPINFOW startup{sizeof(startup)};
+    PROCESS_INFORMATION process{};
+    check(CreateProcessW(executable.data(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process) != FALSE, "Cannot start stuck fixture");
+    Handle child(process.hProcess), thread(process.hThread);
+    check(WaitForSingleObject(child.value, 60000) == WAIT_OBJECT_0, "Stuck fixture timed out");
+    DWORD code{}; GetExitCodeProcess(child.value, &code);
+    check(code != 44, "The stuck-load capture was not answered");
+    check(code == 42, "The fixture did not go on to its crash after the stuck-load capture");
+    const auto queue = queue_directory(root / L"crashes", L"https://127.0.0.1:1/test/minidump");
+    std::filesystem::path stuck, crash;
+    for (int attempt = 0; attempt < 100 && (stuck.empty() || crash.empty()); ++attempt) {
+        for (const auto& entry : std::filesystem::directory_iterator(queue)) {
+            if (entry.path().extension() != L".dmp") continue;
+            const auto source = Json::parse(read(entry.path().wstring() + L".json")).at("capture.source").string();
+            (source == "stuck-load" ? stuck : crash) = entry.path();
+        }
+        if (stuck.empty() || crash.empty()) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    if (stuck.empty() || crash.empty()) {
+        std::cerr << read(queue / L"stuck-capture-diagnostic.txt") << read(queue / L"capture-diagnostic.txt")
+                  << read(queue / L"capture-status.txt") << read(queue / L"status.txt");
+        for (const auto& entry : std::filesystem::directory_iterator(queue)) {
+            if (entry.is_regular_file())
+                std::cerr << entry.path().filename().string() << " bytes=" << entry.file_size() << '\n';
+        }
+    }
+    check(!stuck.empty(), "No stuck-load dump captured");
+    check(!crash.empty(), "The crash after a stuck-load capture was not captured");
+    check(Json::parse(read(crash.wstring() + L".json")).at("capture.source").string() == "unhandled-exception", "Wrong capture source after a stuck load");
+    auto bytes = read(stuck);
+    MINIDUMP_DIRECTORY* stream{}; void* data{}; ULONG size{};
+    check(MiniDumpReadDumpStream(bytes.data(), ExceptionStream, &stream, &data, &size) != FALSE &&
+        static_cast<const MINIDUMP_EXCEPTION_STREAM*>(data)->ExceptionRecord.ExceptionCode == stuck_load_exception,
+        "Stuck-load dump lacks its exception");
+    const auto* exception = static_cast<const MINIDUMP_EXCEPTION_STREAM*>(data);
+    const auto context = exception->ThreadContext;
+    check(context.DataSize >= sizeof(CONTEXT) && context.Rva <= bytes.size() &&
+        sizeof(CONTEXT) <= bytes.size() - context.Rva, "Stuck-load dump lacks its captured context");
+    check(reinterpret_cast<const CONTEXT*>(bytes.data() + context.Rva)->Rip != 0,
+        "Stuck-load dump has no instruction pointer");
+    std::array<char, 64> marker{};
+    fill_marker(marker);
+    check(bytes.find(std::string_view(marker.data(), marker.size())) != std::string::npos,
+        "Stuck-load snapshot lacks the heap memory referenced by its stack");
+    check(MiniDumpReadDumpStream(bytes.data(), ThreadListStream, &stream, &data, &size) != FALSE &&
+        static_cast<const MINIDUMP_THREAD_LIST*>(data)->NumberOfThreads >= 2, "Stuck-load dump lacks the other threads");
+    const auto tags = Json::parse(read(stuck.wstring() + L".json"));
+    // The Windows integration fixture must exercise the stable snapshot path,
+    // not pass by silently falling back to a live read. The runtime retains
+    // live capture on hosts where PSS is unavailable.
+    check(tags.value("capture.snapshot", "") == "true" && tags.value("capture.snapshot_error", "") == "0",
+        "Stuck-load fixture did not capture a process snapshot");
+    check(tags.at("error.type").string() == "stall" && tags.at("load.stage").string() == "Starting level load" &&
+        tags.at("load.seconds").string() == "130" && !tags.contains("crash.site") &&
+        tags.at("game.map").string() == "dingolevel_reskate_lsc_b2", "Stuck-load report not tagged as one");
+    const auto details = Json::parse(read(event_details_path(stuck)));
+    check(details.at("level").string() == "warning" && details.at("fingerprint").size() == 3 &&
+        details.at("fingerprint")[0].string() == "stuck-load" && details.at("fingerprint")[2].string() == "dingolevel_reskate_lsc_b2",
+        "Stuck-load report not grouped by its stage and map");
+    ReportEnvelope body(stuck, tags, "0123456789abcdef0123456789abcdef");
+    check(body.error() == 0, "Cannot prepare a stuck-load report");
+    std::string wire;
+    check(body.write([&](const void* chunk, DWORD count) { wire.append(static_cast<const char*>(chunk), count); return true; }), "Cannot stream a stuck-load report");
+    check(wire.find("\"level\":\"warning\"") != std::string::npos && wire.find("\"fingerprint\":[\"stuck-load\"") != std::string::npos,
+        "A stuck-load report would be sent as a fatal crash");
+    for (int i = 0; i < 100 && !std::filesystem::exists(queue / L"status.txt"); ++i) std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 }
 int wmain(int argc, wchar_t** argv) {
@@ -284,8 +517,10 @@ int wmain(int argc, wchar_t** argv) {
             check(result.accepted, "Sentry did not confirm test report");
             return 0;
         }
-        if (argc == 3 && (std::wstring_view(argv[1]) == L"--crash" || std::wstring_view(argv[1]) == L"--native-crash")) {
-            const bool native = std::wstring_view(argv[1]) == L"--native-crash";
+        if (argc == 3 && (std::wstring_view(argv[1]) == L"--crash" || std::wstring_view(argv[1]) == L"--native-crash" ||
+                std::wstring_view(argv[1]) == L"--fatal-crash")) {
+            const bool fatal = std::wstring_view(argv[1]) == L"--fatal-crash";
+            const bool native = fatal || std::wstring_view(argv[1]) == L"--native-crash";
             if (native) {
                 const auto local = std::filesystem::path(argv[2]) / L"local";
                 SetEnvironmentVariableW(L"LOCALAPPDATA", local.c_str());
@@ -297,7 +532,30 @@ int wmain(int argc, wchar_t** argv) {
             SetUnhandledExceptionFilter(finish_child);
             logging::Options options; options.directory = argv[2]; options.truncate_file = true;
             check(logging::initialize(options), "Fixture logging failed");
-            if (native) SetUnhandledExceptionFilter(native_child_handler); // Reproduce the game's later handler registration.
+            if (native) SetUnhandledExceptionFilter(fatal ? fatal_child_handler : native_child_handler); // Reproduce the game's later handler registration.
+            set_destination(L"Levels/Game/DingoLevel_Root/DingoLevel_Root + levels/game/dingolevel_reskate_lsc_b2/dingolevel_reskate_lsc_b2 @ DefaultStartPoint");
+            set_gpu(L"Fixture GPU", L"32.0.21025.1");
+            auto* const volatile marker = new std::array<char, 64>;
+            fill_marker(*marker);
+            const ULONG_PTR arguments[]{reinterpret_cast<ULONG_PTR>(marker)};
+            RaiseException(test_exception, EXCEPTION_NONCONTINUABLE, 1, arguments);
+            return 3;
+        }
+        if (argc == 3 && std::wstring_view(argv[1]) == L"--stuck") {
+            SetEnvironmentVariableW(L"RESKATE_CRASH_REPORTING", L"1");
+            SetEnvironmentVariableW(L"RESKATE_CRASH_REPORT_URL", L"https://127.0.0.1:1/test/minidump");
+            SetUnhandledExceptionFilter(finish_child);
+            logging::Options options; options.directory = argv[2]; options.truncate_file = true;
+            check(logging::initialize(options), "Fixture logging failed");
+            set_destination(L"Levels/Game/DingoLevel_Root/DingoLevel_Root + levels/game/dingolevel_reskate_lsc_b2/dingolevel_reskate_lsc_b2 @ DefaultStartPoint");
+            // (Another thread, as a load's job workers would be: the dump holds it too.)
+            std::jthread worker([](std::stop_token stop) { while (!stop.stop_requested()) Sleep(10); });
+            auto* const volatile marker = new std::array<char, 64>;
+            fill_marker(*marker);
+            if (!capture_stuck_load(L"Starting level load", 130)) ExitProcess(44);
+            // The game goes on: a second capture is refused only while one is in hand.
+            worker.request_stop();
+            worker.join();
             RaiseException(test_exception, EXCEPTION_NONCONTINUABLE, 0, nullptr);
             return 3;
         }
@@ -311,10 +569,15 @@ int wmain(int argc, wchar_t** argv) {
         SetEnvironmentVariableW(L"RESKATE_CRASH_REPORT_URL", L"http://invalid/post");
         check(start(root) == StartResult::failed, "Invalid endpoint enabled reporter");
         endpoint_checks();
+        dump_snapshot_checks();
+        dump_retry_checks();
         attachment_checks(root);
+        details_checks(root);
         queue_checks(root);
-        crash_check(root / L"direct", false);
-        crash_check(root / L"native", true);
-        std::cout << "Timing envelopes, endpoint, receipts, multipart attachments, log snapshots, retries, retention, opt-out, exception chaining, direct capture and native-handler fallback checks passed.\n";
+        crash_check(root / L"direct", Mode::direct);
+        crash_check(root / L"native", Mode::native);
+        crash_check(root / L"fatal", Mode::fatal);
+        stuck_check(root / L"stuck");
+        std::cout << "Timing envelopes, endpoint, receipts, multipart attachments, log snapshots, retries, retention, opt-out, exception chaining, direct capture, native-handler fallback, game fatal-handler and stuck-load capture checks passed.\n";
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }
 }

@@ -19,9 +19,9 @@ struct AirSelection {
     bool force_init : 1 {};
     bool board_rotate : 1 {};
     constexpr std::uint16_t query_ms() const noexcept {
-        return extra || predicate == AirInputPredicate::repeated_direction ? 300 : 500;
+        return static_cast<std::uint16_t>(extra || predicate == AirInputPredicate::repeated_direction ? InputTiming::extra_press_ms : InputTiming::direction_ms);
     }
-    constexpr std::uint16_t release_mask() const noexcept { return family == TrickFamily::grab ? 0x2000 : 0; }
+    constexpr std::uint16_t release_mask() const noexcept { return static_cast<std::uint16_t>(family == TrickFamily::grab ? TrickControls::mask(TrickControls::grab) : 0); }
     bool operator==(const AirSelection&) const = default;
     template<class Profile>
     std::optional<float> selected_speed(const Profile& profile) const noexcept {
@@ -84,7 +84,7 @@ constexpr AirSelection air_selection(TrickFamily family, std::int16_t direction,
 struct AirDirectionMatch { InputMatch match{}; std::int16_t direction{}; };
 inline AirDirectionMatch match_air_direction(const InputEvents& events, TrickFamily family,
         std::uint64_t now, std::uint32_t reject) noexcept {
-    const InputToken face{InputSource::buttons,static_cast<std::int16_t>(family == TrickFamily::flip ? 14 : 13),InputEdge::press};
+    const InputToken face{InputSource::buttons,static_cast<std::int16_t>(family == TrickFamily::flip ? TrickControls::flip : TrickControls::grab),InputEdge::press};
     for (std::size_t i=0;i<air_direction_rows.size();++i) {
         const auto row = air_direction_rows[family == TrickFamily::grab && i>=6 ? 13-i : i];
         const auto definition = air_selection(family,row.code,1);

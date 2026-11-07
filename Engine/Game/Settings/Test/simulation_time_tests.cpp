@@ -15,6 +15,8 @@ void check(bool condition, const char* what) {
 int main() {
     using namespace dingosdk::simulation_time;
     check(std::bit_cast<std::uint32_t>(step_seconds(60)) == 0x3c888888, "60 a second: the game's 1/60, from whole nanoseconds");
+    check(std::bit_cast<std::uint32_t>(step_seconds(120)) == 0x3c088888 && rate_of(step_seconds(120)) == 120,
+        "120 a second: native nanosecond truncation and matching cached skater rate");
     check(step_seconds(200) == 0.005f, "200 a second: 5 ms");
     check(step_seconds(0) == 0.0f, "no rate, no step");
     check(rate_of(step_seconds(60)) == 60 && rate_of(step_seconds(200)) == 200 && rate_of(step_seconds(1200)) == 1200,

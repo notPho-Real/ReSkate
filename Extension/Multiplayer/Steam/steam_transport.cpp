@@ -2,6 +2,7 @@
 #include "steam_lanes.h"
 #include "Extension/Multiplayer/Net/wire_codec.h"
 #include "Engine/Core/Platform/launcher_support.h"
+#include "Engine/Core/Platform/clock.h"
 #ifdef _WIN32
 #include <Windows.h>
 #else
@@ -35,13 +36,8 @@ using NativeModule = HMODULE;
 #else
 using NativeModule = void *;
 using ULONGLONG = std::uint64_t;
-inline std::uint64_t tick_ms() noexcept {
-    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                                          std::chrono::steady_clock::now().time_since_epoch())
-                                          .count());
-}
 #ifndef GetTickCount64
-#define GetTickCount64 tick_ms
+#define GetTickCount64 steady_ms
 #endif
 #endif
 template <class T> T symbol(NativeModule module, const char *name) {
@@ -174,6 +170,7 @@ struct SteamTransport::Impl {
                std::to_string(static_cast<int>(s.m_flInBytesPerSec / 1024.f + .5f)) + " KB/s in";
     }
     std::uint64_t frame{};
+    std::uint64_t name_asked_frame{}; // the poll frame a known name was last asked of Steam again
     ULONGLONG next_measure{}, next_sweep{};
     struct Name {
         std::string text;
@@ -689,10 +686,12 @@ void SteamTransport::poll() {
     p.run_callbacks(p.sockets);
     const auto now = GetTickCount64();
     // Link names only label the first connection in diagnostics; the session keeps its own.
+    // (From the names already read: asking Steam for every link here was a burst of its calls.)
     if (now >= p.name_refresh) {
         p.name_refresh = now + 30000;
         for (auto &[id, link] : p.links)
-            link.name = name(id);
+            if (const auto known = p.names.find(id); known != p.names.end() && !known->second.text.empty())
+                link.name = known->second.text;
     }
     std::deque<SteamNetConnectionStatusChangedCallback_t> events;
     {
@@ -898,9 +897,15 @@ std::string SteamTransport::name(std::uint64_t id) {
         return {};
     // Each lookup is two calls into the Steam client. Names change rarely: ask again
     // after 10 s, or after 1 s while Steam does not know the name yet.
+    // A name read before is given as it is while it is asked again, and only one of those a
+    // frame is asked: the roster asks for every player's every two seconds, and their names ran
+    // out together, so one frame asked Steam for all of them (ten milliseconds and more each).
     const auto now = GetTickCount64();
-    if (const auto cached = p.names.find(id); cached != p.names.end() && now < cached->second.expires)
-        return cached->second.text;
+    if (const auto cached = p.names.find(id); cached != p.names.end()) {
+        if (now < cached->second.expires) return cached->second.text;
+        if (!cached->second.text.empty() && p.name_asked_frame == p.frame) return cached->second.text;
+        if (!cached->second.text.empty()) p.name_asked_frame = p.frame;
+    }
     p.request_name(p.friends, id, true);
     const auto *value = p.persona_name(p.friends, id);
     auto text = value ? bounded(value, 128) : std::string{};

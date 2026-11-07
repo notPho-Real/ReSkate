@@ -23,14 +23,22 @@ void register_park_editor_commands(Commands &);
 void register_arcade_fixture_commands(Commands &);
 void register_multiplayer_commands(Commands &);
 void register_perf_commands(Commands &);
-// perf_commands.cpp: starts `perf memory`'s trace with the game when RESKATE_MEMORY_TRACE asks for it.
+// perf_commands.cpp: starts `perf memory`'s trace with the game when RESKATE_MEMORY_TRACE asks for it
+// (development builds; DINGOSDK_DEV_TOOLS). Elsewhere the switch does nothing.
+#if defined(DINGOSDK_DEV_TOOLS)
 void start_memory_trace_from_environment() noexcept;
+#else
+inline void start_memory_trace_from_environment() noexcept {}
+#endif
 void register_item_commands(Commands &);
+#if defined(DINGOSDK_DEV_TOOLS)
+// Extension/Rendering/Capture/capture_commands.cpp: `capture depth`, research for reskate.capture
+// (development builds).
+void register_capture_commands(Commands &);
+#endif
 void register_trainer_commands(Commands &);
-void register_hall_of_meat_commands(Commands &);
-void register_road_rash_commands(Commands &);
-void register_board_break_commands(Commands &);
-void register_grind_exit_commands(Commands &);
+void register_replay_keyframes_commands(Commands &);
+void register_plugin_commands(Commands &);
 // Runtime adapters. Invoked only by the verified game-thread dispatcher.
 void request_debug(overlay::DebugAction, bool enabled = false, float value = 0);
 void request_feature(overlay::OfflineFeatureGroup, bool enabled);

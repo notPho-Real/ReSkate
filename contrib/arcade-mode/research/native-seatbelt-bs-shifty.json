@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "native_pose": "Seatbelt BS Shifty",
+  "family": 4,
+  "emitted_detail": 24,
+  "emitted_detail_name": "Nose_BS_Shifty",
+  "unused_declaration": 17,
+  "controller": {
+    "resource": 25388,
+    "guid": "b3b06d8c-b94a-17d4-b3b0-6d8cb94a17d4",
+    "coordinates": [
+      1,
+      0
+    ],
+    "loop_wrapper": 20603,
+    "loop_ticks": [
+      55,
+      305
+    ]
+  },
+  "sequence": {
+    "resource": 15021,
+    "guid": "3a488ded-8550-7fff-3a48-8ded85507fff",
+    "decoded_sha256": "63095dc445a3448f9570676397b57b86ac5d2c13b760daae1d22b7d29930fbf0",
+    "actor": "b3afe5de-54e7-f94e-b3af-e5de54e7f94e"
+  },
+  "original_input": {
+    "hand": "right trigger",
+    "selector_rs": [
+      0,
+      28000
+    ],
+    "tweak_xy": [
+      1,
+      0
+    ]
+  },
+  "arcade_binding": "Select Seatbelt BS Shifty in Arcade Mode > R3+B grab; center LS, hold R3, press/hold B while airborne; release B for native exit",
+  "implementation": "Existing native family selector and pose lease; original actor initialization and positive advancement plus emitted detail24 required. No new native identity or score writes.",
+  "local_validation": "3105 native grab source/contract checks pass, including each selectable profile at 30/60/120 Hz; metadata coverage generator passes",
+  "gameplay_acceptance": "Pending; source path and injected observations are not animation, release, landing or scoring evidence."
+}

@@ -34,6 +34,15 @@ struct InputEvent {
     InputToken token{};
     std::uint64_t at{}, sequence{};
     std::uint32_t owners{};
+    // Manual-only interpretation of this actual direction edge. The shared
+    // eight-way token and its sequence remain unchanged for every other trick.
+    std::int16_t manual_vertical{};
+    // A physical throw can enter the Manual cone without changing its eight-way
+    // token. Keep that observation separate from the original command timestamp.
+    std::uint64_t manual_qualified_at{};
+    // Physical state at this edge, retained through takeoff/admission buffering.
+    std::uint16_t physical_buttons{};
+    std::int16_t physical_direction{};
 };
 struct InputPattern {
     std::span<const InputToken> steps;
@@ -67,10 +76,25 @@ public:
         now_ = now; clocked_ = true;
         return true;
     }
-    void record(InputToken token, std::uint64_t now) noexcept {
+    void record(InputToken token, std::uint64_t now, std::int16_t manual_vertical = 0,
+                std::uint16_t buttons = 0, std::int16_t direction = 0) noexcept {
         if (!advance(now)) return;
         if (size_ == capacity) { erase_front(); ++overflows_; }
-        at(size_++) = {token, now, ++sequence_, 0};
+        at(size_++) = {token, now, ++sequence_, 0, manual_vertical, manual_vertical ? now : 0, buttons, direction};
+    }
+    void qualify_manual_direction(std::int16_t direction, std::int16_t vertical,
+                                  std::uint64_t now) noexcept {
+        if (!direction || !vertical) return;
+        for (std::size_t i=size_; i>0; --i) {
+            auto& event=at(i-1);
+            if (event.token.source!=InputSource::direction || event.token.code!=direction) continue;
+            // A released, consumed or already qualified throw cannot be revived
+            // by cone jitter. No new shared edge, sequence or input time is made.
+            if (event.token.edge==InputEdge::press && !event.owners && !event.manual_vertical && now>=event.at) {
+                event.manual_vertical=vertical; event.manual_qualified_at=now;
+            }
+            return;
+        }
     }
     struct EventView {
         const InputHistory* journal;
@@ -444,6 +468,7 @@ public:
         if (policy != policy_) { reset(); policy_ = policy; }
         const auto state=normalize(input,now,true,policy_);
         digital_=state;
+        physical_=input;
         if (policy_.normalization == InputNormalization::analog) { sample_analog(now, input, controls); return; }
         exclusions_ = controls;
         const bool continuous = history_.advance(now);
@@ -479,6 +504,15 @@ public:
         const int h = x < 0 ? -static_cast<int>(x) : x;
         const auto sign = static_cast<std::int16_t>(y > 0 ? 1 : y < 0 ? -1 : 0);
         return v >= (sign == previous ? 8000 : 11000) && v * 4 >= h * 3 ? sign : std::int16_t{0};
+    }
+    static std::int16_t manual_vertical(PhysicalInputSample input) noexcept {
+        // D-pad remains exact. A deliberate vertical reversal may naturally
+        // travel diagonally: accept up to 1.5 times as much horizontal travel.
+        // Keep the physical magnitude threshold and reject shallow steering.
+        if(input.buttons&15u)return (input.buttons&15u)==1?1:(input.buttons&15u)==2?-1:0;
+        const int x=input.x<0?-static_cast<int>(input.x):input.x;
+        const int y=input.y<0?-static_cast<int>(input.y):input.y;
+        return y*3>=x*2 && (input.y>=12800 || input.y<=-13057) ? (input.y>0?1:-1) : 0;
     }
     std::int16_t vertical_direction(bool pad) const noexcept {
         if (policy_.normalization == InputNormalization::analog) {
@@ -551,6 +585,8 @@ private:
         vertical_pad_=digital_.pad_buttons&1u?1:digital_.pad_buttons&2u?-1:0;
         if (!armed_ || !continuous) { if (!continuous) held_clocks_ = {}; previous_ = input; canonical_ = digital_.direction; armed_ = true; observe_held(now); return; }
         direction(now, InputSource::direction, digital_.direction, canonical_);
+        if (policy_.manual_axis_projection && !exclusions_.admitted)
+            history_.qualify_manual_direction(canonical_,manual_vertical(input),now);
         // Current layout maps the physical controls into the fixed event order.
         // Trigger thresholds remain a declared layout policy, separate from axes.
         constexpr std::array<unsigned,10> order{13,14,15,12,8,16,6,9,17,7};
@@ -590,10 +626,12 @@ private:
         };
         if (exclusions_.admitted && exclusions_.kind != InputBalanceKind::none &&
             (logical(token) == logical(exclusions_.first) || logical(token) == logical(exclusions_.second))) return;
-        history_.record(token,now);
+        history_.record(token,now,token.source==InputSource::direction ? manual_vertical(physical_) : 0,
+                        physical_.buttons,digital_.direction);
     }
     InputHistory history_{};
     PhysicalInputSample previous_{};
+    PhysicalInputSample physical_{};
     InputDigitalState digital_{};
     std::int16_t stick_{}, pad_{}, vertical_stick_{}, vertical_pad_{}, canonical_{};
     InputPolicy policy_{};

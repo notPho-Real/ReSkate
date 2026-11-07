@@ -2,6 +2,7 @@
 #include "Engine/Core/Hooks/hooks.h"
 #include "Engine/Core/Log/logging.h"
 #include "Extension/Multiplayer/Session/session.h"
+#include "Engine/Core/Platform/clock.h"
 #include <charconv>
 #include <chrono>
 #include <map>
@@ -41,10 +42,6 @@ struct Requests {
 Requests &requests() { static auto *value = new Requests; return *value; }
 std::atomic<bool> changes_allowed{};
 constexpr const char *lobby_party = "Parties need a multiplayer session.";
-std::uint64_t now_ms() {
-    return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()).count());
-}
 // The SDK answers only while it owns the party: a session roster is published and the game
 // has no native group of its own.
 std::shared_ptr<const Published> owned_party() {
@@ -95,7 +92,7 @@ Address invite_hook(Address out, const std::uint64_t *eaid, Delegate callback) {
             if (!changes_allowed.load(std::memory_order_acquire)) return complete(out, callback, refused, lobby_party);
             {
                 std::lock_guard lock(requests().mutex);
-                requests().invited[*eaid] = now_ms();
+                requests().invited[*eaid] = steady_ms();
             }
             if (!send("invite", *eaid)) return complete(out, callback, refused, "Could not send the invite.");
             return complete(out, callback);
@@ -119,7 +116,7 @@ bool accepted_recently(std::uint64_t inviter) {
     auto &r = requests();
     std::lock_guard lock(r.mutex);
     const auto it = r.accepted.find(inviter);
-    return it != r.accepted.end() && now_ms() - it->second < 10000;
+    return it != r.accepted.end() && steady_ms() - it->second < 10000;
 }
 Address join_group_hook(Address out, std::uint64_t group, std::int32_t reason, Delegate callback) {
     try {
@@ -130,7 +127,7 @@ Address join_group_hook(Address out, std::uint64_t group, std::int32_t reason, D
             if (reason == 2 && accepted_recently(player)) return complete(out, callback);
             if (reason == 2) {
                 std::lock_guard lock(requests().mutex);
-                requests().accepted[player] = now_ms();
+                requests().accepted[player] = steady_ms();
             }
             if (!send(reason == 2 ? "accept" : "join", player)) return complete(out, callback, refused, "Could not reach the server.");
             return complete(out, callback);
@@ -162,7 +159,7 @@ Address accept_invite_hook(Address out, const Address *invite, const Address *ga
             if (allowed) {
                 {
                     std::lock_guard lock(requests().mutex);
-                    requests().accepted[inviter] = now_ms();
+                    requests().accepted[inviter] = steady_ms();
                 }
                 sent = send("accept", inviter);
             }
@@ -215,7 +212,7 @@ Address decline_hook(Address out, const Address *invite, Delegate callback) {
                     auto &r = requests();
                     std::lock_guard lock(r.mutex);
                     const auto it = r.accepted.find(from);
-                    just_accepted = it != r.accepted.end() && now_ms() - it->second < 10000;
+                    just_accepted = it != r.accepted.end() && steady_ms() - it->second < 10000;
                     if (it != r.accepted.end()) r.accepted.erase(it);
                 }
                 if (!just_accepted) send("decline", from);
@@ -310,6 +307,25 @@ void group_status_hook(const std::uint64_t *eaid, void *out, bool *found) {
 } // namespace
 
 void set_native_party_changes(bool allowed) noexcept { changes_allowed.store(allowed, std::memory_order_release); }
+bool post_native_ui_event(std::uintptr_t base, std::uintptr_t type, const void *payload) {
+    alignas(16) std::array<std::byte, 16> context{};
+    reinterpret_cast<void (*)(void *)>(base + party::current_context)(context.data());
+    const auto dispatcher = reinterpret_cast<Address (*)(void *)>(base + party::event_dispatcher)(context.data());
+    if (!dispatcher || !read<std::uint8_t>(dispatcher + party::dispatcher_live)) return false;
+    struct Options { float delay; std::uint32_t count; std::uint32_t flags; } options{0.f, 1, 0};
+    reinterpret_cast<void (*)(Address, Address, const void *, void *, Address)>(base + party::event_post)(
+        dispatcher, type, payload, &options, 0);
+    return true;
+}
+bool native_ui_event_code_known(std::uintptr_t base) noexcept {
+    unsigned matched{};
+    for (const auto &contract : party::party_request_contracts) {
+        if (contract.rva != party::current_context && contract.rva != party::event_dispatcher && contract.rva != party::event_post) continue;
+        std::array<unsigned char, 32> actual{};
+        matched += memory::peek(base + contract.rva, actual) && actual == contract.bytes;
+    }
+    return matched == 3;
+}
 
 namespace native_party_detail {
 std::uint64_t last_native_invite(std::uint64_t id) {
@@ -322,14 +338,7 @@ std::uint64_t last_native_invite(std::uint64_t id) {
 // dispatcher's type-aware copy, so it may be freed after. Game thread.
 bool post_event(std::uintptr_t type, const void *payload) {
     const auto base = state().base;
-    alignas(16) std::array<std::byte, 16> context{};
-    reinterpret_cast<void (*)(void *)>(base + party::current_context)(context.data());
-    const auto dispatcher = reinterpret_cast<Address (*)(void *)>(base + party::event_dispatcher)(context.data());
-    if (!dispatcher || !read<std::uint8_t>(dispatcher + 0x28)) return false;
-    struct Options { float delay; std::uint32_t count; std::uint32_t flags; } options{0.f, 1, 0};
-    reinterpret_cast<void (*)(Address, Address, const void *, void *, Address)>(base + party::event_post)(
-        dispatcher, base + type, payload, &options, 0);
-    return true;
+    return post_native_ui_event(base, base + type, payload);
 }
 void post_party_changes(const Published *previous, const Published &next) {
     if (!requests().installed.load(std::memory_order_acquire)) return;

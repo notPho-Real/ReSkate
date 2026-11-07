@@ -1,0 +1,1507 @@
+{
+  "schema_version": 1,
+  "source_commit": "be22b1a2f731485f8175c5fc8d8645598bb6a322",
+  "dll_sha256": "98aa97e1c4322b99023d286d0ccdce7bf3be87248e56d9195150147897e5b179",
+  "status": "native_actor_and_release_evidence_with_remaining_acceptance_limits",
+  "date": "2026-10-31",
+  "runner_sha256": "82f033b4f4856926b0fccf8835d09256194bbff839009ec135af1d0be38bee3d",
+  "trials": [
+    {
+      "name": "method",
+      "raw_file": "1793488140249757000-method.json",
+      "raw_sha256": "e43019d32ce749a0b473617734c2b1ddf5c91a168c858a616fd44f0e0968a32a",
+      "capture": 4,
+      "native_cadence_ms_per_step": 33.0,
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "fresh_current_capture_controller_qualified": true,
+      "request_receipts": [
+        {
+          "serial": "2",
+          "episode": "2",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "232584309",
+          "released_at": "0",
+          "recognized_at": "232584309",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        },
+        {
+          "serial": "3",
+          "episode": "2",
+          "semantic": "29",
+          "expected_detail": "2",
+          "held": "true",
+          "pressed_at": "232584509",
+          "released_at": "0",
+          "recognized_at": "232584509",
+          "direction": "4",
+          "presses": "2",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": {
+        "serial": "3",
+        "episode": "2",
+        "detail": "2",
+        "actor": "1043698560",
+        "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+        "duration": "305"
+      },
+      "advancement": {
+        "serial": "3",
+        "episode": "2",
+        "detail": "2",
+        "actor": "1043698560",
+        "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+        "before": "0",
+        "after": "1",
+        "delta": "1",
+        "initialized": "true",
+        "native_evaluation": "true",
+        "velocity_known": "true",
+        "vertical_velocity": "-1.8407378"
+      },
+      "end_receipt": {
+        "serial": "3",
+        "episode": "2",
+        "acknowledged": "true",
+        "airborne": "true",
+        "intent_withdrawn": "true",
+        "landing_scoring_acceptance": "unverified"
+      },
+      "native_sample_count": 477,
+      "native_sample_errors": 0,
+      "collector_errors": [],
+      "native_transitions": [
+        {
+          "sample_relative_ms": 0.0,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 652.867,
+          "native_state": 103,
+          "detail": 0,
+          "grab_exit": null,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 748.209,
+          "native_state": 200,
+          "detail": 0,
+          "grab_exit": null,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 779.735,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 949.745,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1247.933,
+          "native_state": 201,
+          "detail": 2,
+          "grab_exit": null,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1450.389,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1654.851,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1910.601,
+          "native_state": 0,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1921.111,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        }
+      ],
+      "physical_and_returned_packet_changes": [
+        {
+          "ms": 232583353,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": 0,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232583409,
+          "raw_buttons": 4096,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232583913,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232584037,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 103
+        },
+        {
+          "ms": 232584137,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 200
+        },
+        {
+          "ms": 232584169,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232584309,
+          "raw_buttons": 8196,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232584409,
+          "raw_buttons": 4,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232584509,
+          "raw_buttons": 8196,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232584810,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232585037,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        }
+      ],
+      "physical_delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.015,
+            "ready_check_ms": 0.01,
+            "write_and_observe_ms": 0.058
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.436,
+            "ready_check_ms": 0.034,
+            "write_and_observe_ms": 1.343
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.12,
+            "ready_check_ms": 0.042,
+            "write_and_observe_ms": 0.055
+          },
+          {
+            "scheduled_ms": 1000.0,
+            "write_ms": 1000.111,
+            "ready_check_ms": 0.038,
+            "write_and_observe_ms": 0.054
+          },
+          {
+            "scheduled_ms": 1100.0,
+            "write_ms": 1100.094,
+            "ready_check_ms": 0.026,
+            "write_and_observe_ms": 0.086
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.117,
+            "ready_check_ms": 0.039,
+            "write_and_observe_ms": 0.052
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "capture_footer": {
+        "expected": "2819",
+        "drained": "2819",
+        "dropped": "0",
+        "complete": "false",
+        "overflow": "false",
+        "drop_begin": "203",
+        "drop_end": "203"
+      },
+      "sources_observed": [
+        1,
+        2,
+        3,
+        6,
+        7
+      ],
+      "native_score_details": [
+        {
+          "seq": "3",
+          "scalar_status": "5",
+          "category_status": "5",
+          "sequence_kind": "1",
+          "action_score": "41",
+          "base_score": "35",
+          "landing": "0.9",
+          "current_category": "2",
+          "authoritative": "false"
+        }
+      ],
+      "score_owner_verified": false,
+      "actual_angular_motion_accepted": false
+    },
+    {
+      "name": "shoulder_left",
+      "raw_file": "1793488199173719000-shoulder_left.json",
+      "raw_sha256": "f3030012332ccbf4361e6a23079bef290cc9a42f7bee6546d519ed878d2ac7ee",
+      "capture": 5,
+      "native_cadence_ms_per_step": 33.5,
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "fresh_current_capture_controller_qualified": true,
+      "request_receipts": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "232644303",
+          "released_at": "0",
+          "recognized_at": "232644303",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": {
+        "serial": "4",
+        "episode": "3",
+        "detail": "1",
+        "actor": "1045689440",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "duration": "305"
+      },
+      "advancement": {
+        "serial": "4",
+        "episode": "3",
+        "detail": "1",
+        "actor": "1045689440",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "before": "0",
+        "after": "1",
+        "delta": "1",
+        "initialized": "true",
+        "native_evaluation": "true",
+        "velocity_known": "true",
+        "vertical_velocity": "-1.9439282"
+      },
+      "end_receipt": {
+        "serial": "4",
+        "episode": "3",
+        "acknowledged": "true",
+        "airborne": "true",
+        "intent_withdrawn": "true",
+        "landing_scoring_acceptance": "unverified"
+      },
+      "native_sample_count": 465,
+      "native_sample_errors": 0,
+      "collector_errors": [],
+      "native_transitions": [
+        {
+          "sample_relative_ms": 0.0,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 649.814,
+          "native_state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 749.541,
+          "native_state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 792.115,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 952.757,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1254.057,
+          "native_state": 201,
+          "detail": 1,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1455.327,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1616.929,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        }
+      ],
+      "physical_and_returned_packet_changes": [
+        {
+          "ms": 232642463,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": 0,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232643403,
+          "raw_buttons": 4096,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232643903,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232644035,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 103
+        },
+        {
+          "ms": 232644139,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 200
+        },
+        {
+          "ms": 232644171,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232644303,
+          "raw_buttons": 8192,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232644451,
+          "raw_buttons": 8448,
+          "returned_lx": -31783,
+          "returned_ly": 0,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232644652,
+          "raw_buttons": 8192,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232644803,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232645003,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        }
+      ],
+      "physical_delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.017,
+            "ready_check_ms": 0.011,
+            "write_and_observe_ms": 0.055
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.193,
+            "ready_check_ms": 0.054,
+            "write_and_observe_ms": 0.082
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.146,
+            "ready_check_ms": 0.067,
+            "write_and_observe_ms": 0.087
+          },
+          {
+            "scheduled_ms": 1050.0,
+            "write_ms": 1050.056,
+            "ready_check_ms": 0.029,
+            "write_and_observe_ms": 0.045
+          },
+          {
+            "scheduled_ms": 1250.0,
+            "write_ms": 1250.162,
+            "ready_check_ms": 0.018,
+            "write_and_observe_ms": 0.05
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.122,
+            "ready_check_ms": 0.046,
+            "write_and_observe_ms": 0.083
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "capture_footer": {
+        "expected": "2814",
+        "drained": "2814",
+        "dropped": "0",
+        "complete": "false",
+        "overflow": "false",
+        "drop_begin": "203",
+        "drop_end": "203"
+      },
+      "sources_observed": [
+        1,
+        2,
+        3,
+        6,
+        7
+      ],
+      "native_score_details": [
+        {
+          "seq": "5",
+          "scalar_status": "5",
+          "category_status": "5",
+          "sequence_kind": "1",
+          "action_score": "10",
+          "base_score": "15",
+          "landing": "0.9",
+          "current_category": "2",
+          "authoritative": "false"
+        }
+      ],
+      "score_owner_verified": false,
+      "actual_angular_motion_accepted": false
+    },
+    {
+      "name": "shoulder_right",
+      "raw_file": "1793488247936181000-shoulder_right.json",
+      "raw_sha256": "d3cd1ae24aedd7f75e69e9cf32a59b66642e1cfffd23f183f884f1341440d88e",
+      "capture": 6,
+      "native_cadence_ms_per_step": 33.5,
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "fresh_current_capture_controller_qualified": true,
+      "request_receipts": [
+        {
+          "serial": "5",
+          "episode": "4",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "232691719",
+          "released_at": "0",
+          "recognized_at": "232691719",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": {
+        "serial": "5",
+        "episode": "4",
+        "detail": "1",
+        "actor": "1046406656",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "duration": "305"
+      },
+      "advancement": {
+        "serial": "5",
+        "episode": "4",
+        "detail": "1",
+        "actor": "1046406656",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "before": "0",
+        "after": "1",
+        "delta": "1",
+        "initialized": "true",
+        "native_evaluation": "true",
+        "velocity_known": "true",
+        "vertical_velocity": "-1.9375374"
+      },
+      "end_receipt": {
+        "serial": "5",
+        "episode": "4",
+        "acknowledged": "true",
+        "airborne": "true",
+        "intent_withdrawn": "true",
+        "landing_scoring_acceptance": "unverified"
+      },
+      "native_sample_count": 464,
+      "native_sample_errors": 0,
+      "collector_errors": [],
+      "native_transitions": [
+        {
+          "sample_relative_ms": 0.0,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 631.807,
+          "native_state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 730.216,
+          "native_state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 773.493,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 936.225,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1233.787,
+          "native_state": 201,
+          "detail": 1,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1436.406,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1609.233,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        }
+      ],
+      "physical_and_returned_packet_changes": [
+        {
+          "ms": 232690039,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": 0,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232690819,
+          "raw_buttons": 4096,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232691323,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232691435,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 103
+        },
+        {
+          "ms": 232691535,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 200
+        },
+        {
+          "ms": 232691571,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232691719,
+          "raw_buttons": 8192,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232691871,
+          "raw_buttons": 8704,
+          "returned_lx": 31783,
+          "returned_ly": 0,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232692071,
+          "raw_buttons": 8192,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232692219,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232692407,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        }
+      ],
+      "physical_delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.111,
+            "ready_check_ms": 0.104,
+            "write_and_observe_ms": 0.074
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 501.344,
+            "ready_check_ms": 0.035,
+            "write_and_observe_ms": 0.177
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.123,
+            "ready_check_ms": 0.044,
+            "write_and_observe_ms": 0.096
+          },
+          {
+            "scheduled_ms": 1050.0,
+            "write_ms": 1050.091,
+            "ready_check_ms": 0.024,
+            "write_and_observe_ms": 0.04
+          },
+          {
+            "scheduled_ms": 1250.0,
+            "write_ms": 1250.097,
+            "ready_check_ms": 0.026,
+            "write_and_observe_ms": 0.051
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.121,
+            "ready_check_ms": 0.048,
+            "write_and_observe_ms": 0.082
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "capture_footer": {
+        "expected": "2814",
+        "drained": "2814",
+        "dropped": "0",
+        "complete": "false",
+        "overflow": "false",
+        "drop_begin": "203",
+        "drop_end": "203"
+      },
+      "sources_observed": [
+        1,
+        2,
+        3,
+        6,
+        7
+      ],
+      "native_score_details": [
+        {
+          "seq": "7",
+          "scalar_status": "5",
+          "category_status": "5",
+          "sequence_kind": "1",
+          "action_score": "10",
+          "base_score": "15",
+          "landing": "0.9",
+          "current_category": "2",
+          "authoritative": "false"
+        }
+      ],
+      "score_owner_verified": false,
+      "actual_angular_motion_accepted": false
+    },
+    {
+      "name": "basic_tap",
+      "raw_file": "1793488304481482000-basic_tap.json",
+      "raw_sha256": "78d7b5bf6e6c4a7248446afb47f4549906b029b9f3dce6bbbe4476005930a2fa",
+      "capture": 7,
+      "native_cadence_ms_per_step": 32.0,
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "fresh_current_capture_controller_qualified": true,
+      "request_receipts": [
+        {
+          "serial": "6",
+          "episode": "5",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "232747444",
+          "released_at": "0",
+          "recognized_at": "232747444",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": {
+        "serial": "6",
+        "episode": "5",
+        "detail": "1",
+        "actor": "1085366816",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "duration": "305"
+      },
+      "advancement": {
+        "serial": "6",
+        "episode": "5",
+        "detail": "1",
+        "actor": "1085366816",
+        "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+        "before": "0",
+        "after": "0.60092926",
+        "delta": "0.60092926",
+        "initialized": "true",
+        "native_evaluation": "true",
+        "velocity_known": "true",
+        "vertical_velocity": "-1.6122913"
+      },
+      "end_receipt": {
+        "serial": "6",
+        "episode": "5",
+        "acknowledged": "true",
+        "airborne": "true",
+        "intent_withdrawn": "true",
+        "landing_scoring_acceptance": "unverified"
+      },
+      "native_sample_count": 463,
+      "native_sample_errors": 0,
+      "collector_errors": [],
+      "native_transitions": [
+        {
+          "sample_relative_ms": 0.0,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 634.21,
+          "native_state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 730.656,
+          "native_state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 757.691,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 895.0,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1192.099,
+          "native_state": 201,
+          "detail": 1,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1266.798,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1532.305,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1595.503,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        }
+      ],
+      "physical_and_returned_packet_changes": [
+        {
+          "ms": 232745864,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": 0,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232746592,
+          "raw_buttons": 4096,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232747092,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232747204,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 103
+        },
+        {
+          "ms": 232747304,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 200
+        },
+        {
+          "ms": 232747336,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232747444,
+          "raw_buttons": 8192,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232747544,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232747800,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232748172,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        }
+      ],
+      "physical_delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.013,
+            "ready_check_ms": 0.009,
+            "write_and_observe_ms": 0.067
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.133,
+            "ready_check_ms": 0.027,
+            "write_and_observe_ms": 0.055
+          },
+          {
+            "scheduled_ms": 850.0,
+            "write_ms": 850.121,
+            "ready_check_ms": 0.044,
+            "write_and_observe_ms": 0.057
+          },
+          {
+            "scheduled_ms": 950.0,
+            "write_ms": 950.121,
+            "ready_check_ms": 0.042,
+            "write_and_observe_ms": 0.055
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "capture_footer": {
+        "expected": "2812",
+        "drained": "2812",
+        "dropped": "0",
+        "complete": "false",
+        "overflow": "false",
+        "drop_begin": "203",
+        "drop_end": "203"
+      },
+      "sources_observed": [
+        1,
+        2,
+        3,
+        6,
+        7
+      ],
+      "native_score_details": [
+        {
+          "seq": "9",
+          "scalar_status": "5",
+          "category_status": "5",
+          "sequence_kind": "1",
+          "action_score": "5",
+          "base_score": "15",
+          "landing": "0.9",
+          "current_category": "2",
+          "authoritative": "false"
+        }
+      ],
+      "score_owner_verified": false,
+      "actual_angular_motion_accepted": false
+    },
+    {
+      "name": "melon",
+      "raw_file": "1793488434990605000-melon.json",
+      "raw_sha256": "a333cae822e7f1aa634354ba3a5260ae395debec91e84bddaaf40dccb8c112c1",
+      "capture": 8,
+      "native_cadence_ms_per_step": 33.5,
+      "physics_dt_values": [
+        0.03333333134651184
+      ],
+      "cached_dt_values": [
+        0.03333333134651184
+      ],
+      "fresh_current_capture_controller_qualified": true,
+      "request_receipts": [
+        {
+          "serial": "7",
+          "episode": "6",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "232878368",
+          "released_at": "0",
+          "recognized_at": "232878368",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": {
+        "serial": "7",
+        "episode": "6",
+        "detail": "4",
+        "actor": "1045634560",
+        "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+        "duration": "305"
+      },
+      "advancement": {
+        "serial": "7",
+        "episode": "6",
+        "detail": "4",
+        "actor": "1045634560",
+        "actor_asset": "3fbc3fdd-701e-719d-3fbc-3fdd701e719d",
+        "before": "0",
+        "after": "0.60092926",
+        "delta": "0.60092926",
+        "initialized": "true",
+        "native_evaluation": "true",
+        "velocity_known": "true",
+        "vertical_velocity": "-1.5853424"
+      },
+      "end_receipt": {
+        "serial": "7",
+        "episode": "6",
+        "acknowledged": "true",
+        "airborne": "true",
+        "intent_withdrawn": "true",
+        "landing_scoring_acceptance": "unverified"
+      },
+      "native_sample_count": 476,
+      "native_sample_errors": 0,
+      "collector_errors": [],
+      "native_transitions": [
+        {
+          "sample_relative_ms": 0.0,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 645.55,
+          "native_state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 741.223,
+          "native_state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 773.508,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 900.058,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1208.078,
+          "native_state": 201,
+          "detail": 4,
+          "grab_exit": false,
+          "is_grabbing": true,
+          "right_hand_intent": true
+        },
+        {
+          "sample_relative_ms": 1274.117,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1553.207,
+          "native_state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        },
+        {
+          "sample_relative_ms": 1600.414,
+          "native_state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "is_grabbing": false,
+          "right_hand_intent": false
+        }
+      ],
+      "physical_and_returned_packet_changes": [
+        {
+          "ms": 232876396,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": 0,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232877516,
+          "raw_buttons": 4096,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232878016,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        },
+        {
+          "ms": 232878136,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 103
+        },
+        {
+          "ms": 232878236,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 200
+        },
+        {
+          "ms": 232878272,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232878368,
+          "raw_buttons": 8196,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232878716,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 255,
+          "native_state": 201
+        },
+        {
+          "ms": 232878734,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 201
+        },
+        {
+          "ms": 232879105,
+          "raw_buttons": 0,
+          "returned_lx": 0,
+          "returned_ly": -1,
+          "returned_rt": 0,
+          "native_state": 100
+        }
+      ],
+      "physical_delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.012,
+            "ready_check_ms": 0.008,
+            "write_and_observe_ms": 0.044
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.126,
+            "ready_check_ms": 0.037,
+            "write_and_observe_ms": 0.052
+          },
+          {
+            "scheduled_ms": 850.0,
+            "write_ms": 850.136,
+            "ready_check_ms": 0.053,
+            "write_and_observe_ms": 0.068
+          },
+          {
+            "scheduled_ms": 1200.0,
+            "write_ms": 1200.101,
+            "ready_check_ms": 0.021,
+            "write_and_observe_ms": 0.039
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "capture_footer": {
+        "expected": "2815",
+        "drained": "2815",
+        "dropped": "0",
+        "complete": "false",
+        "overflow": "false",
+        "drop_begin": "203",
+        "drop_end": "203"
+      },
+      "sources_observed": [
+        1,
+        2,
+        3,
+        6,
+        7
+      ],
+      "native_score_details": [
+        {
+          "seq": "11",
+          "scalar_status": "5",
+          "category_status": "5",
+          "sequence_kind": "1",
+          "action_score": "25",
+          "base_score": "35",
+          "landing": "0.9",
+          "current_category": "2",
+          "authoritative": "false"
+        }
+      ],
+      "score_owner_verified": false,
+      "actual_angular_motion_accepted": false
+    }
+  ],
+  "interpretation": [
+    "Basic BS Grab, Melon and Method each initialized the exact original actor and positively advanced in native evaluation; the100ms Basic tap did not require holding B until initialization.",
+    "Each completed trial observed native GrabExit and cleared right-hand/IsGrabbing flags before or on return to ground100; Method briefly sampled state0 after first ground contact, retained as an observation gap rather than erased.",
+    "Both held shoulder directions delivered native LS +/-31783 concurrently with RT255 and the exact Basic Grab actor; shoulder release preserved grab input and B release cleared it. Packets and actor advancement do not independently prove angular body motion.",
+    "Later first B at900ms and second at1100ms after A press selected Method, unlike the earlier750/950ms attempt. This supports a takeoff eligibility/timing hypothesis, not a completed root-cause proof or a gameplay timing workaround.",
+    "All five full-mask127 captures drained their expected rows without new drops, but footers remain incomplete. They observed sources1,2,3,6,7; required manual sources4/5 did not occur. Do not relabel complete=false as a pass.",
+    "Native score detail rows remain authoritative=false and owner_verified=false; reported score numbers are supporting observations only.",
+    "No gameplay implementation changed during this window; no DLL/world/rate/layout/fixture changes, extra pop, invented animation or synthetic scoring was introduced."
+  ],
+  "handback": {
+    "released_utc": "2026-10-31T23:15:53Z",
+    "pid": 69119,
+    "installation_id": "b78b73129f92450cb88623875561006c",
+    "world": "San Vansterdam / Hedgemont / Blue Light Beach",
+    "native_state": 100,
+    "native_mode": 1,
+    "arcade_enabled": true,
+    "automatic_route": {
+      "physical_slot": 1,
+      "logical_actor": 0,
+      "generation": 81,
+      "explicit_binding": false
+    },
+    "controller_neutralized_destroyed": true,
+    "capture_stopped": true,
+    "keys_released": true,
+    "shared_lock_released": true,
+    "debugger": false,
+    "cleanup_file": "1793488488833344000-cleanup.json",
+    "cleanup_sha256": "a10e5613b0f36ec0f350aad404b5962971c1a3d01d0e895c1b60c3673b24cfc0"
+  },
+  "next_acceptance": [
+    "Use the existing scoped103 capture for input/recognition/native/controller evidence without requiring absent manual sources; retain any remaining footer failures.",
+    "Independent angular/body observations, source-owned scoring qualification and native60/120Hz trials remain required.",
+    "Do not expand runtime catalog/chains on the basis of this partial acceptance alone."
+  ],
+  "complete_mission": false
+}

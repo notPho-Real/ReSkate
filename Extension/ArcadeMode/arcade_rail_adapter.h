@@ -1,7 +1,7 @@
 #pragma once
 #include "arcade_input_policy.h"
 #include "arcade_input_types.h"
-#include "Engine/Game/Build/20260929/grind_exit.h"
+#include "Engine/Game/Build/20260929/launches.h"
 
 namespace dingosdk::arcade_mode {
 enum class RailAdapterMethod : std::uint8_t { align, nose_pressure, tail_pressure, dark_catch, named_grind, lip };
@@ -21,7 +21,7 @@ public:
     void reset() noexcept { *this = {}; }
     void observe(InputNativeContext native, std::uint32_t state) noexcept {
         const bool air = state == 200 || state == 201;
-        namespace rail = game::build::v20260929::grind_exit;
+        namespace rail = game::build::v20260929::launches;
         const bool contact = state >= rail::grind_states_first && state < rail::grind_states_end;
         const bool coherent = native.required && native.valid && native.airborne == air && native.rail_family == contact && native.follows(native_) &&
             (!native_.valid || native.physics_step != native_.physics_step || state == state_);

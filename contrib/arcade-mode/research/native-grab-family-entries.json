@@ -1,0 +1,150 @@
+{
+  "source_cdb": 32512,
+  "purpose": "Original family Into actors for fingerflip entry; not detailed-pose acceptance",
+  "rows": [
+    {
+      "row": 0,
+      "family": 6,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_nose_into",
+      "resource": 24142,
+      "sequence_guid": "8bfc323c-1174-1b4b-8bfc-323c11741b4b",
+      "actor_guid": "148e73b6-e2be-193a-148e-73b6e2be193a",
+      "decoded_sha256": "5bd321b6638ccd24821ed062c1703b57ca217c60134f4d02694d43c00998203e"
+    },
+    {
+      "row": 1,
+      "family": 3,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_tail_into",
+      "resource": 24224,
+      "sequence_guid": "ce7cf50b-dc75-8bb1-ce7c-f50bdc758bb1",
+      "actor_guid": "7ef011be-604c-dd97-7ef0-11be604cdd97",
+      "decoded_sha256": "cf0683800b03bca9484b8632fbfb3ac37d972d4ae96b0b33a5a1b50deab9c3a9"
+    },
+    {
+      "row": 2,
+      "family": 5,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_crail_into",
+      "resource": 15390,
+      "sequence_guid": "b186b3fd-466b-df36-b186-b3fd466bdf36",
+      "actor_guid": "37e24428-9bab-cf65-37e2-44289babcf65",
+      "decoded_sha256": "8281e1d9ab9c5370f2e81ee520209cad1104e53ee6f73ce9b5b70f8c6b0ad51e"
+    },
+    {
+      "row": 3,
+      "family": 4,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_seatbelt_into",
+      "resource": 7368,
+      "sequence_guid": "ec66a912-773e-c06c-ec66-a912773ec06c",
+      "actor_guid": "0ac05e03-4e7d-84aa-0ac0-5e034e7d84aa",
+      "decoded_sha256": "aaea77b9d47eb78ab781314823bb250818e591de2c978de3b0001fc008f57b0f"
+    },
+    {
+      "row": 4,
+      "family": 7,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_stale_into",
+      "resource": 14247,
+      "sequence_guid": "e35cb427-92f9-96a0-e35c-b42792f996a0",
+      "actor_guid": "d9237e30-e925-a4c6-d923-7e30e925a4c6",
+      "decoded_sha256": "074a8e4bfbe81495bde7d62958cfed5e10263c1c286db0a5b115c293499e7f03"
+    },
+    {
+      "row": 5,
+      "family": 8,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_weddle_into",
+      "resource": 29574,
+      "sequence_guid": "ff2ba0fa-d8fd-03c3-ff2b-a0fad8fd03c3",
+      "actor_guid": "e4821ac6-a042-75fc-e482-1ac6a04275fc",
+      "decoded_sha256": "550c7052277a7d13a743b1b1172d37a9361a0eddaa854ab4a66faa39c62763e0"
+    },
+    {
+      "row": 6,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_double_grab_into",
+      "resource": 19483,
+      "sequence_guid": "531472ad-264a-2afa-5314-72ad264a2afa",
+      "actor_guid": "b7f0831e-a3b8-6540-b7f0-831ea3b86540",
+      "decoded_sha256": "4d9ace9fd59e98d88fbe4e729a364f8f6957aea5c573cb907100fd7ee3216d33"
+    },
+    {
+      "row": 7,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_double_grab_into",
+      "resource": 19483,
+      "sequence_guid": "531472ad-264a-2afa-5314-72ad264a2afa",
+      "actor_guid": "b7f0831e-a3b8-6540-b7f0-831ea3b86540",
+      "decoded_sha256": "4d9ace9fd59e98d88fbe4e729a364f8f6957aea5c573cb907100fd7ee3216d33"
+    },
+    {
+      "row": 8,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_double_grab_into",
+      "resource": 19483,
+      "sequence_guid": "531472ad-264a-2afa-5314-72ad264a2afa",
+      "actor_guid": "b7f0831e-a3b8-6540-b7f0-831ea3b86540",
+      "decoded_sha256": "4d9ace9fd59e98d88fbe4e729a364f8f6957aea5c573cb907100fd7ee3216d33"
+    },
+    {
+      "row": 9,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_double_grab_into",
+      "resource": 19483,
+      "sequence_guid": "531472ad-264a-2afa-5314-72ad264a2afa",
+      "actor_guid": "b7f0831e-a3b8-6540-b7f0-831ea3b86540",
+      "decoded_sha256": "4d9ace9fd59e98d88fbe4e729a364f8f6957aea5c573cb907100fd7ee3216d33"
+    },
+    {
+      "row": 10,
+      "family": 10,
+      "sequence": "animation/dingo/seq_c_proto_onb_grab_rocket_into",
+      "resource": 31585,
+      "sequence_guid": "f16db680-fa66-411e-f16d-b680fa66411e",
+      "actor_guid": "8183390e-8e15-4aaa-8183-390e8e154aaa",
+      "decoded_sha256": "74028540342c46158afbf9474cfb2cab818be967beb60f7ba2ba015c5da01b5d"
+    },
+    {
+      "row": 11,
+      "family": 10,
+      "sequence": "animation/dingo/seq_c_proto_onb_grab_rocket_into",
+      "resource": 31585,
+      "sequence_guid": "f16db680-fa66-411e-f16d-b680fa66411e",
+      "actor_guid": "8183390e-8e15-4aaa-8183-390e8e154aaa",
+      "decoded_sha256": "74028540342c46158afbf9474cfb2cab818be967beb60f7ba2ba015c5da01b5d"
+    },
+    {
+      "row": 12,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_fs_into_double",
+      "resource": 32012,
+      "sequence_guid": "d4f1f3f1-d58e-4eb5-d4f1-f3f1d58e4eb5",
+      "actor_guid": "3b2cd475-29e8-2ba5-3b2c-d47529e82ba5",
+      "decoded_sha256": "2d5d9432589b6cb03de18fd347f928f2211c5b9a0fb1579c30af70c0c58a84e1"
+    },
+    {
+      "row": 13,
+      "family": 9,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_grab_bs_into_double",
+      "resource": 27210,
+      "sequence_guid": "6c197fbf-e3f0-f34b-6c19-7fbfe3f0f34b",
+      "actor_guid": "454cab4b-db37-de60-454c-ab4bdb37de60",
+      "decoded_sha256": "e4ff5d1870e44fcfdd0be64dda8c96cc4ef2fe873ea2425c7d2b04464bd564d0"
+    },
+    {
+      "row": 14,
+      "family": 1,
+      "sequence": "animation/dingo/seq_c_proto_inair_fs_grab_into",
+      "resource": 30005,
+      "sequence_guid": "8e770d8c-d2a6-a576-8e77-0d8cd2a6a576",
+      "actor_guid": "1f87634e-a7cd-c772-1f87-634ea7cdc772",
+      "decoded_sha256": "6fa027c7e5ed5b9d915c63ab78667b2b5b68520aed7c65a5151fa1e954f76ce2"
+    },
+    {
+      "row": 15,
+      "family": 2,
+      "sequence": "animation/dingo/seq_c_proto_onb_inair_bs_grab_into",
+      "resource": 24967,
+      "sequence_guid": "77db0ffc-cbc8-cef2-77db-0ffccbc8cef2",
+      "actor_guid": "4fa44cca-8576-c46c-4fa4-4cca8576c46c",
+      "decoded_sha256": "c8988771c0b7e4fd1302aacc39fc235647cab4487ecad7303c32ee580c560de8"
+    }
+  ]
+}

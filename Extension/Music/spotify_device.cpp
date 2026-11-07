@@ -4,6 +4,7 @@
 #include "Engine/Core/Log/logging.h"
 #include "Engine/Vfs/https_download.h"
 #include "Extension/Boot/user_data_redirect.h"
+#include "Engine/Core/Platform/wide_text.h"
 #include <Windows.h>
 #include <atomic>
 #include <filesystem>
@@ -36,18 +37,6 @@ void say(logging::Level level, const std::string& text) noexcept {
         logging::log(level, logging::Channel::music, "Spotify device: {}", text);
     } catch (...) {}
 }
-std::wstring wide(const std::string& text) {
-    if (text.empty()) return {};
-    std::wstring out(static_cast<std::size_t>(MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0)), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), static_cast<int>(out.size()));
-    return out;
-}
-std::string narrow(const std::wstring& text) {
-    if (text.empty()) return {};
-    std::string out(static_cast<std::size_t>(WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0, nullptr, nullptr)), '\0');
-    WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), static_cast<int>(out.size()), nullptr, nullptr);
-    return out;
-}
 void ask(const std::string& line) noexcept {
 #if DINGOSDK_SPOTIFY_DEVICE
     if (running.load(std::memory_order_relaxed)) reskate_spotify_ask(line.c_str());
@@ -60,7 +49,7 @@ void ask(const std::string& line) noexcept {
 void fetch_cover(std::string address, std::uint64_t of) {
     try {
         if (!address.starts_with("https://")) return;
-        const auto image = https::get_text(wide(address), 4 * 1024 * 1024, 10, L"ReSkate");
+        const auto image = https::get_text(utf8_to_wide(address), 4 * 1024 * 1024, 10, L"ReSkate");
         if (!image) return;
         std::lock_guard lock(mutex);
         if (track.revision != of) return; // (the song has changed since)
@@ -79,7 +68,10 @@ void told(const char* text) {
         if (parts.empty()) return;
         if (parts[0] == "LOG") {
             static std::atomic<int> logged{};
-            if (parts.size() > 1 && logged.fetch_add(1, std::memory_order_relaxed) < 300) say(logging::Level::debug, "(librespot) " + parts[1]);
+            // (What it says went wrong is for everyone's log: a player whose Spotify stays silent
+            // has it to send. The rest is for working on it.)
+            const bool wrong = parts.size() > 1 && (parts[1].starts_with("ERROR") || parts[1].starts_with("WARN"));
+            if (parts.size() > 1 && logged.fetch_add(1, std::memory_order_relaxed) < 300) say(wrong ? logging::Level::warning : logging::Level::debug, "(librespot) " + parts[1]);
             // (What it says just before it gives up on an account that is not Premium.)
             if (parts.size() > 1 && parts[1].find("does not support") != std::string::npos && parts[1].find("accounts") != std::string::npos) not_premium.store(true);
         } else if (parts[0] == "READY") {
@@ -148,7 +140,7 @@ void start() noexcept {
         std::error_code ignored;
         std::filesystem::create_directories(cache, ignored);
         running.store(true);
-        if (!reskate_spotify_start("ReSkate", narrow(cache.wstring()).c_str(), &sound, &told)) {
+        if (!reskate_spotify_start("ReSkate", wide_to_utf8(cache.wstring()).c_str(), &sound, &told)) {
             running.store(false);
             say(logging::Level::warning, "it could not be started.");
         }

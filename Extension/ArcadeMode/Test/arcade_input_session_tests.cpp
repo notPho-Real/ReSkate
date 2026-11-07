@@ -61,7 +61,7 @@ void native_adapters() {
     check(!h.poll(968).action.owned, "basic grab releases ownership after its34ms neutral tail");
     check(!h.poll(985).action.requested, "held B cannot replay after native recipe completes");
     h.admission.pose = SkatePose::riding;
-    check(h.poll(1002, {0x2000}).buttons == 0x2000, "grounded B remains physical native brake");
+    check(h.poll(1002, {0x2000}).buttons == 0, "grounded B remains Arcade-only and cannot publish native brake");
     h.session.reset(); h.poll(1000);
     out = h.poll(1017, {0, 0, 0, 0, 255});
     check(out.action.owned && out.action.pad.right_y == 0 && out.action.request_kind == 3,
@@ -108,7 +108,7 @@ void one_journal_and_boundaries() {
         out = test.poll(100, {0x1000});
         check(!out.authored_playback && !out.requested_id, "held-through-boundary A cannot become a fresh press");
     }
-    ArcadeInput input; input.enable(true);
+    auto input_storage=std::make_unique<ArcadeInput>();auto& input=*input_storage; input.enable(true);
     input.poll(0, 0, 0, 0, 0, 0, 0, true, true);
     input.enable(false);
     const auto off = input.poll(0, 17, 0xf30f, -30000, 20000, 12000, -14000, true, true);
@@ -306,7 +306,7 @@ void repeated_air_safety() {
         a.gameplay=a.authored=a.action_fresh=a.inspected_stance=a.may_start=true;
         a.action_mode=ActionExperiment::classic;a.pose=SkatePose::air;a.catalog=prepared;
         unsigned dispatched{};
-        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,510u,578u};
+        const std::array<unsigned,3> times=step==17?std::array{153u,357u,561u}:std::array{170u,476u,578u};
         for(unsigned now=0;now<1000;now+=step) {
             a.tick=now/step;
             const auto buttons=static_cast<std::uint16_t>(((now>=150&&now<200)||(now>=350&&now<400)||(now>=550&&now<600))?0x4000:0);
@@ -455,7 +455,7 @@ void production_air_query_matrix() {
         const auto out=h.poll(age+1,conformance_direction(static_cast<std::int16_t>(held?code:0),pad,0x4000));
         const bool expected=held||(!unrelated&&age<500);
         const auto& d=h.session.diagnostic();
-        check(d.recognition_count==(expected?1u:0u),
+        check(d.recognition_count==1,
             "actual Session applies held/released direction windows and the press-only intervening barrier for every ordinary flip direction");
         if(expected) {
             const auto& request=d.recognition[0].request;
@@ -466,11 +466,11 @@ void production_air_query_matrix() {
             bool consumed{};for(const auto& event:h.session.history().events())
                 if(event.token==InputToken{InputSource::buttons,14,InputEdge::press})consumed=event.owners==InputConsumption::regular;
             check(consumed,"only successful ordinary Session matching commits its face category");
-        } else check(!out.requested_id&&!out.authored_playback,"failed query creates no native request or owner");
+        } else check(out.requested_id==2&&d.recognition[0].request.form==InputForm::neutral_press,"expired direction falls back to the new physical neutral X press, never its stale variant");
     }
     for(auto age:{499u,500u,501u})for(bool released:{false,true}) {
         ConformanceSession h;h.trace="face-before-direction";
-        if(released)h.admission.input_policy=InputPolicy::compatibility();
+        h.admission.input_policy=InputPolicy::compatibility();
         h.poll(0);h.poll(1,{0x4000});
         if(released)h.poll(2);
         const auto out=h.poll(age+1,{static_cast<std::uint16_t>(released?0:0x4000),-25000});
@@ -499,7 +499,7 @@ void production_air_query_matrix() {
 }
 void production_order_and_boundary_matrix() {
     for(auto cadence:{17u,34u})for(auto code:{4,6,8,2})for(bool simultaneous:{false,true}) {
-        ConformanceSession h;h.trace="triple-tail-order";h.poll(0);
+        ConformanceSession h;h.trace="triple-tail-order";h.admission.input_policy=InputPolicy::compatibility();h.poll(0);
         h.poll(cadence,conformance_direction(static_cast<std::int16_t>(code),false));h.poll(2*cadence);
         if(!simultaneous) {
             h.poll(3*cadence,{0x0100});const auto early=h.poll(4*cadence,{0x4000});
@@ -613,6 +613,57 @@ struct ConformanceFacade {
         return out;
     }
 };
+void completed_wallplant_air_followup() {
+    for (unsigned cadence:{8u,17u,34u}) for (bool ready:{false,true}) {
+        auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;
+        h.poll(1000,200);
+        check(h.poll(1000+cadence,200,{0x4000}).requested_id==2,
+            "wallplant fixture begins with the production airborne kickflip");
+        const auto now=1000+2*cadence;
+        h.poll(now,200,{0x1000});
+        const auto proof=h.input.native_context(now);
+        const auto journal=h.input.history(0)->events();
+        std::uint64_t sequence{};
+        for (const auto& event:journal) if(event.token==InputToken{InputSource::buttons,12,InputEdge::press})sequence=event.sequence;
+        const auto count=journal.size();const auto last=journal.back().sequence;
+        check(sequence && h.input.authored_air_followup(now,proof)==2,
+            "A request alone leaves the existing airborne flip lineage intact");
+        for(unsigned bad=0;bad<9;++bad) {
+            auto invalid=proof;auto when=now;auto identity=sequence;
+            if(bad==0)invalid.valid=false;
+            if(bad==1)++invalid.owner.core;
+            if(bad==2)++invalid.owner_generation;
+            if(bad==3)++invalid.airborne_episode;
+            if(bad==4)++invalid.air_departure;
+            if(bad==5)invalid.airborne=false;
+            if(bad==6)when+=151;
+            if(bad==7)identity=0;
+            if(bad==8)identity=last+1;
+            check(!h.input.acknowledge_wallplant(when,invalid,identity),
+                "unproven stale foreign or mismatched wallplant receipt cannot retire the actor");
+            check(h.input.authored_air_followup(now,proof)==2,"invalid receipt preserves the first flip lineage");
+        }
+        check(h.input.acknowledge_wallplant(now,proof,sequence),"completed same-flight rebound retires old air intent once");
+        check(!h.input.acknowledge_wallplant(now,proof,sequence),"repeated receipt cannot retire another action");
+        check(!h.input.authored_air_followup(now,proof) && h.input.history(0)->events().size()==count &&
+            h.input.history(0)->events().back().sequence==last,
+            "receipt preserves physical journal and does not create a native airborne trick");
+        h.flip_ready=ready;
+        auto out=h.poll(now+cadence,200,{0x4000});
+        const auto& diagnostic=*h.input.input_diagnostic(0);
+        check(diagnostic.recognition_count==1 && diagnostic.recognition[0].request.presses==1,
+            "fresh post-rebound X is a separate flip, never the pre-wallplant double-flip child");
+        check(!out.jump.setup_started && !out.jump.released && !out.native_flip_request,
+            "post-rebound air gesture creates neither a second launch nor a ground-pop native bridge request");
+        check(ready ? out.requested_id==2 : !out.requested_id,"post-rebound flip respects genuine native readiness");
+        if(!ready) {
+            h.flip_ready=true;out=h.poll(now+2*cadence,200,{0x4000});
+            check(out.requested_id==2,"queued post-rebound flip starts once readiness returns without a new edge");
+        }
+        check(!h.input.acknowledge_wallplant(now+2*cadence,proof,sequence),
+            "old receipt cannot cancel the new post-rebound actor");
+    }
+}
 void grounded_manual_readiness_wait() {
     InputNativeContext context{true,true,{1,1,1},1,1000};
     context.flip.state = 101; context.flip.mode = 1;
@@ -696,18 +747,18 @@ void grounded_manual_readiness_wait() {
         check(!recovered.manual.owns,
             "owner loss stale producer OFF unknown departure rail and physical conflicts retire pending intent");
     }
-    for (auto age : {219u,220u,275u,276u}) {
+    for (auto age : {219u,220u,275u,276u,449u,450u,451u}) {
         auto fixture = std::make_unique<ConformanceFacade>(); auto& h = *fixture;
         h.manual_ready = true;
         h.poll(1000,100); h.poll(1017,101,{0,0,25000}); h.poll(1034,101);
         for (auto t = 1051u; t < 1017+age; t += 17) h.poll(t,101);
         const auto out = h.poll(1017+age,100,{0,0,-25000});
-        check(out.manual.owns == (age <= 275),
-            "ground readiness waiting retains the explicit55ms physical sampling allowance");
+        check(out.manual.owns == (age <= InputTiming::manual_throw_pair_ms),
+            "ground readiness waiting retains the physical450ms reversal window");
     }
 }
 void manual_transition_continuity_negatives() {
-    ConformanceFacade h;
+    auto h_storage=std::make_unique<ConformanceFacade>();auto& h=*h_storage;
     h.poll(1000,100); h.poll(1017,100,{0,0,12800});
     const auto before=InputNativeContext::from_frame(h.input.native_context(1017));
     h.poll(1034,200,{0,0,12800});
@@ -734,7 +785,7 @@ void manual_transition_continuity_negatives() {
     }
     check(!after.ordinary_air_transition(before,1168),"transition continuity cannot renew the older native frame lease");
     for(unsigned boundary=0;boundary<4;++boundary){
-        ConformanceFacade n;n.manual_ready=true;n.poll(1000,100);n.poll(1017,100,{0,0,12800});
+        auto n_storage=std::make_unique<ConformanceFacade>();auto& n=*n_storage;n.manual_ready=true;n.poll(1000,100);n.poll(1017,100,{0,0,12800});
         if(boundary==0)++n.owner.core;
         if(boundary==1)n.poll(1034,999,{0,0,12800});
         if(boundary==2)n.poll(1034,401,{0,0,12800});
@@ -745,7 +796,7 @@ void manual_transition_continuity_negatives() {
         check(out.manual.owns==(boundary==3),"only positively observed ordinary transitions preserve an unfinished physical pair");
     }
     for(auto face:{std::uint16_t{0x2000},std::uint16_t{0x4000}}){
-        ConformanceFacade n;n.poll(1000,100);n.poll(1017,100,{face,-25000});n.poll(1034,100,{0,-25000});
+        auto n_storage=std::make_unique<ConformanceFacade>();auto& n=*n_storage;n.poll(1000,100);n.poll(1017,100,{face,-25000});n.poll(1034,100,{0,-25000});
         n.poll(1051,200,{0,-25000});const auto out=n.poll(1068,200,{face,-25000});
         const auto* d=n.input.input_diagnostic(0);
         check(d->recognition_count==1 && d->recognition[0].request.presses==1,
@@ -754,21 +805,21 @@ void manual_transition_continuity_negatives() {
     }
 }
 void manual_context_window_contracts(){
- for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(bool ending_air:{false,true})for(unsigned age:{219u,220u,275u,276u,300u,399u,400u}){
+ for(bool nose:{false,true})for(unsigned cadence:{17u,34u})for(bool ending_air:{false,true})for(unsigned age:{219u,220u,275u,276u,300u,399u,400u,449u,450u,451u}){
   auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.manual_ready=true;h.cadence=cadence;
   const short first=nose?-13057:12800,second=nose?12800:-13057;
   h.poll(1000,ending_air?100u:200u);h.poll(1017,ending_air?100u:200u,{0,0,first});
   for(auto now=1017+cadence;now<1017+age;now+=cadence)h.poll(now,200,{0,0,first});
   const auto out=h.poll(1017+age,ending_air?200u:100u,{0,0,second});
-  const bool expected=ending_air ? age<400u : age<=275u;
-  check(out.manual.owns==expected,"actual query context selects sampled ground275 or strict air400 without rewriting a preexisting analog edge");
+  const bool expected=ending_air ? age<InputTiming::manual_throw_pair_ms : age<=InputTiming::manual_throw_pair_ms;
+  check(out.manual.owns==expected,"ground and air share450ms physical pairing without rewriting an existing edge");
   if(expected)check(out.manual.from_air==ending_air&&out.manual.recognized_at==1017+age,
        "cross-context recognition records its actual query context and immutable recognition time");
  }
 }
 void production_facade_matrix() {
     for(auto cadence:{17u,34u})for(unsigned actor=0;actor<5;++actor)for(unsigned boundary=0;boundary<5;++boundary) {
-        ConformanceFacade h;h.cadence=cadence;h.trace="bound-owner-lifecycle";
+        auto h_storage=std::make_unique<ConformanceFacade>();auto& h=*h_storage;h.cadence=cadence;h.trace="bound-owner-lifecycle";
         const auto state=actor==1||actor==2||actor==3?200u:100u;
         const PhysicalInputSample commands[]{{0x1000},{0x4000,-25000},{0x2000},{0x8000},{0,0,0,0,255}};
         const auto physical=commands[actor];h.poll(1000,state);const auto start=h.poll(1000+cadence,state,physical);
@@ -793,14 +844,14 @@ void production_facade_matrix() {
             "a genuine release and fresh press rearm the supported endpoint through the actual native-bound caller");
     }
     for(auto cadence:{17u,34u}) {
-        ConformanceFacade jump;jump.cadence=cadence;jump.trace="bound-jump-release";
+        auto jump_storage=std::make_unique<ConformanceFacade>();auto& jump=*jump_storage;jump.cadence=cadence;jump.trace="bound-jump-release";
         jump.poll(1000,100);jump.poll(1000+cadence,100,{0x1000});
         const auto released=jump.poll(1000+2*cadence,200);
         check(released.jump.released&&released.jump.setup_admitted&&released.jump.pressed_at==1000+cadence&&
             released.jump.released_at==1000+2*cadence&&!released.jump.from_rail,
             "actual bound ordinary jump retains its admitted original press and physical release across takeoff");
         check(!jump.poll(1000+3*cadence,200).jump.released,"bound release is published once independently of the held setup actor");
-        ConformanceFacade rail;rail.cadence=cadence;rail.trace="bound-rail-handoff";
+        auto rail_storage=std::make_unique<ConformanceFacade>();auto& rail=*rail_storage;rail.cadence=cadence;rail.trace="bound-rail-handoff";
         rail.poll(1000,200);const auto ticket=rail.poll(1000+cadence,200,{0x8000});
         const auto pad=rail.input.sample_native_rail(ticket.rail,1000+cadence,true);
         check(ticket.rail.held&&pad.owns_right_stick&&!pad.button_mask,
@@ -809,12 +860,11 @@ void production_facade_matrix() {
         check(!release.rail.held&&release.rail.request.input_sequence==ticket.rail.request.input_sequence&&
             release.rail.request.physical_released_at==1000+2*cadence,
             "actual rail release preserves ticket identity and its independently observed physical edge");
-        ConformanceFacade contact;contact.cadence=cadence;contact.trace="bound-rail-exit-veto";
+        auto contact_storage=std::make_unique<ConformanceFacade>();auto& contact=*contact_storage;contact.cadence=cadence;contact.trace="bound-rail-exit-veto";
         contact.poll(1000,401);const auto exit=contact.poll(1000+cadence,401,{0x1000});
-        check(!exit.jump.setup_started&&!exit.authored_playback&&!exit.requested_id&&
-            contact.input.input_diagnostic(0)->recognition_count==0,
-            "bound rail-family safety veto does not publish an ordinary crouch/exit actor from caller may-start alone");
-        ConformanceFacade ground;ground.cadence=cadence;ground.trace="bound-ground-turn";
+        check(!exit.jump.setup_started&&!exit.authored_playback&&!exit.requested_id&&exit.unsupported,
+            "recognized rail A cannot borrow a ground recipe when the exact from-grind actor is absent");
+        auto ground_storage=std::make_unique<ConformanceFacade>();auto& ground=*ground_storage;ground.cadence=cadence;ground.trace="bound-ground-turn";
         ground.poll(1000,100);ground.poll(1000+cadence,100,{0,0,-25000});
         ground.poll(1000+2*cadence,100);ground.poll(1000+3*cadence,100,{0,0,-25000});
         const auto turn=ground.poll(1000+4*cadence,100,{0x0200,0,-25000});
@@ -844,7 +894,7 @@ void auxiliary_mode_contract() {
     }
     // The actual caller supports selecting this experiment only while disabled.
     for(auto cadence:{17u,34u})for(auto mode:{ActionExperiment::grabs,ActionExperiment::classic,ActionExperiment::revert_backside}) {
-        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};ArcadeInput input{true};
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};auto input_storage=std::make_unique<ArcadeInput>(true);auto& input=*input_storage;
         input.enable(true);input.set_recognition_capture(0,true);
         const auto poll=[&](std::uint64_t now,std::uint8_t rt) {
             NativeRequestSample sample{};sample.valid=true;sample.state=100;sample.crouch_mode=1;sample.words[1]=0xc000;
@@ -1013,18 +1063,52 @@ void native_revert_stances() {
   poll(2400,101,0);check(!poll(2417,101,255).action.owned,"transitional slide does not admit a new revert");
  }
 }
+void established_manual_revert_retains_pressure() {
+ for(bool nose:{false,true})for(unsigned cadence:{8u,17u,33u}) {
+  Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
+  raw.valid=true;raw.crouch_mode=1;
+  auto poll=[&](std::uint64_t now,unsigned state,short y=0,unsigned rt=0) {
+   const bool established=now>=1000 && state==100 && now<1200;
+   raw.state=state;raw.words[1]=established?(nose?0x8000u:0x4000u):0xc000u;
+   const auto f=producer.observe(now,owner,raw,{true,-1},false,0,{true,now>=1800});
+   h.admission.native_context=InputNativeContext::from_frame(f);
+   h.admission.balance_generations=h.admission.native_context.generations;
+   h.admission.manual_balance_admitted=established;
+   h.admission.pose=established?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
+   h.admission.manual_safe=h.admission.action_fresh=state==100;
+   h.session.observe_manual_transition(h.admission.native_context);
+   return h.poll(now,{0,0,y,0,static_cast<std::uint8_t>(rt)});
+  };
+  poll(900,100);poll(920,100,static_cast<short>(nose?-25000:25000));
+  check(poll(940,100,static_cast<short>(nose?25000:-25000)).manual.owns,"physical pair begins the manual before revert");
+  check(poll(1000,100).manual.confirmed,"original contact confirms the owned manual");
+  check(poll(1100,100,0,255).action.owned,"verified manual starts RT");
+  for(unsigned now=1200;now<1800;now+=cadence) {
+   const auto out=poll(now,101);
+   check(out.manual.owns && out.manual.request==(nose?1:-1),
+    "native revert retains the manual actuator beyond the ordinary150ms contact timeout");
+   check(out.right_y==(nose?20000:-20000),"native revert preserves original partial pressure");
+  }
+  const auto returned=poll(1800,100);
+  check(returned.manual.owns && !returned.manual.confirmed,"return renews delivery while awaiting genuine successor contact");
+  // Without successor contact, the transition lease must still expire.
+  check(!poll(3001,100).manual.owns,"missing successor cannot retain manual pressure indefinitely");
+ }
+}
 void native_manual_revert_links() {
- for(bool nose:{false,true})for(unsigned fault=0;fault<7;++fault) {
+ for(bool nose:{false,true})for(bool initial_fakie:{false,true})for(unsigned fault=0;fault<9;++fault) {
   Harness h;NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};NativeRequestSample raw{};
   raw.valid=true;raw.crouch_mode=1;raw.words[1]=nose?0x8000u:0x4000u;
   auto poll=[&](std::uint64_t now,unsigned state,unsigned rt,bool switched){
-   raw.state=state;raw.words[0]=switched?0x20u:0u;
-   auto f=producer.observe(now,owner,raw,{true,-1});
+   if(fault==3 && state==101)state=100; // Missing native transition, even if RT playback ran.
+   raw.state=state;raw.words[0]=(switched || (fault==7 && now>=1834))?0x20u:0u;
+   auto f=producer.observe(now,owner,raw,{true,-1},false,0,{fault!=8,initial_fakie!=(fault!=7 && now>=1834 && state==100)});
    h.admission.native_context=InputNativeContext::from_frame(f);
    h.admission.balance_generations=h.admission.native_context.generations;
    h.admission.manual_balance_admitted=state==100&&now<1300&&fault!=1;
    h.admission.pose=state==100&&now<1300?(nose?SkatePose::nose_manual:SkatePose::manual):SkatePose::riding;
    h.admission.action_fresh=state==100;h.admission.manual_safe=state==100;
+   if(fault!=2)h.session.observe_manual_transition(h.admission.native_context);
    return h.poll(now,{0,0,0,0,static_cast<std::uint8_t>(rt)});
   };
   poll(1000,100,0,false);auto out=poll(1017,100,255,false);
@@ -1034,14 +1118,13 @@ void native_manual_revert_links() {
   if(fault==6)h.admission.action_mode=ActionExperiment::off;
   poll(1100,101,0,false);poll(1200,101,0,false);poll(1300,101,0,false);
   if(fault==6)check(!h.session.pending_manual_revert(1300,h.admission.native_context),"action-mode cancellation cannot retain pending combo authority");
-  if(fault!=2)h.session.observe_native_revert(1300,h.admission.native_context);
   if(fault==4)++owner.core;
   for(unsigned t=1317;t<1800;t+=17)poll(t,101,0,false);
-  out=poll(fault==5?2600u:1834u,100,0,fault!=3);
-  if(fault!=5)for(unsigned t=1851;t<2200;t+=17)out=poll(t,100,0,fault!=3);
-  check(out.manual.owns==(fault==0),"opposite manual requires native revert, changed stance, same owner and bounded grace");
-  if(fault==0)check(out.manual.request==(nose?-1:1)&&out.right_y==(nose?-20000:20000)&&!out.manual.confirmed,
-   "handoff requests opposite partial native RS without fabricating contact or balance confirmation");
+  out=poll(fault==5?2600u:1834u,100,0,false);
+  if(fault!=5)for(unsigned t=1851;t<2200;t+=17)out=poll(t,100,0,false);
+  check(out.manual.owns==(fault==0),"manual handoff requires native transition, changed corroborated fakie state, same owner and bounded grace; leading foot need not change");
+  if(fault==0)check(out.manual.request==(nose?1:-1)&&out.right_y==(nose?20000:-20000)&&!out.manual.confirmed,
+   "handoff preserves original partial native RS without fabricating contact or balance confirmation");
  }
  for(bool nose:{false,true}) {
   ComboSession combo(native_combo_tuning());
@@ -1092,6 +1175,8 @@ void revert_crouch_ownership() {
  }
 }
 int main() {
+    completed_wallplant_air_followup();
+    established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();
     native_pending_and_active_flights(); auxiliary_mode_contract(); auxiliary_release_handoff_contract();

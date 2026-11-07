@@ -1,0 +1,919 @@
+{
+  "source_commit": "dbaa45a1ad63103a2926c84a50bcb11c898a6c38",
+  "dll_sha256": "4a54bf245ce4fe00b58602c98b9f0770382d7c09b68e561608f9a6bfe66a9356",
+  "installation_id": "454ae10d4f5e4bc38b1a9ba03712cc47",
+  "pid": 78791,
+  "trials": [
+    {
+      "name": "method",
+      "raw_file": "1793500378564369000-method.json.gz",
+      "raw_sha256": "60320671302221e5bd33ff155062296a6896ad80293c88cc7396ae6e82370594",
+      "capture": 2,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            -0.0003488149377517402,
+            -1.5095356502570212e-06,
+            0.0011453342158347368
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 652.434,
+          "state": 103,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            -0.11892888695001602,
+            0.35738053917884827,
+            -0.035131629556417465
+          ],
+          "height": 198.9914093017578
+        },
+        {
+          "ms": 750.219,
+          "state": 200,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.39919301867485046,
+            3.9162492752075195,
+            -0.616334855556488
+          ],
+          "height": 199.41836547851562
+        },
+        {
+          "ms": 782.342,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": null,
+          "right_intent": false,
+          "velocity": [
+            0.09971150755882263,
+            4.6708984375,
+            -0.317319393157959
+          ],
+          "height": 199.5708770751953
+        },
+        {
+          "ms": 956.17,
+          "state": 201,
+          "detail": null,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.08478239178657532,
+            3.029205560684204,
+            0.2243746519088745
+          ],
+          "height": 200.02835083007812
+        },
+        {
+          "ms": 1252.204,
+          "state": 201,
+          "detail": 2,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.18172600865364075,
+            -1.6509414911270142,
+            0.5237654447555542
+          ],
+          "height": 200.20960998535156
+        },
+        {
+          "ms": 1613.674,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.3510780334472656,
+            -2.530689001083374,
+            1.151347041130066
+          ],
+          "height": 199.06100463867188
+        },
+        {
+          "ms": 1647.335,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": false,
+          "velocity": [
+            -0.3510780334472656,
+            -2.530689001083374,
+            1.151347041130066
+          ],
+          "height": 199.06100463867188
+        },
+        {
+          "ms": 1657.967,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.10103344917297363,
+            -1.1909974813461304,
+            -0.03412095457315445
+          ],
+          "height": 198.979736328125
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.022,
+            "ready_check_ms": 0.016,
+            "write_and_observe_ms": 0.153
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.119,
+            "ready_check_ms": 0.032,
+            "write_and_observe_ms": 0.147
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.115,
+            "ready_check_ms": 0.028,
+            "write_and_observe_ms": 0.062
+          },
+          {
+            "scheduled_ms": 1000.0,
+            "write_ms": 1000.216,
+            "ready_check_ms": 0.031,
+            "write_and_observe_ms": 0.11
+          },
+          {
+            "scheduled_ms": 1100.0,
+            "write_ms": 1100.095,
+            "ready_check_ms": 0.025,
+            "write_and_observe_ms": 0.155
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.127,
+            "ready_check_ms": 0.032,
+            "write_and_observe_ms": 0.135
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "2",
+          "ms": "244820840",
+          "native_ms": "244820813",
+          "owner": "1",
+          "owner_generation": "4092",
+          "physics_step": "6313",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "2",
+          "ms": "244820872",
+          "native_ms": "244820845",
+          "owner": "1",
+          "owner_generation": "4092",
+          "physics_step": "6314",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "2",
+          "ms": "244820904",
+          "native_ms": "244820878",
+          "owner": "1",
+          "owner_generation": "4092",
+          "physics_step": "6315",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "1",
+          "episode": "1",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "244821860",
+          "released_at": "0",
+          "recognized_at": "244821860",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        },
+        {
+          "serial": "2",
+          "episode": "1",
+          "semantic": "29",
+          "expected_detail": "2",
+          "held": "true",
+          "pressed_at": "244822060",
+          "released_at": "0",
+          "recognized_at": "244822060",
+          "direction": "4",
+          "presses": "2",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor": "1048868864",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "detail": "2",
+          "actor": "1048868864",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "before": "0",
+          "after": "1",
+          "delta": "1",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.6509415"
+        }
+      ],
+      "end": [
+        {
+          "serial": "2",
+          "episode": "1",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "tick",
+          "observed_at": "244822370",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "2",
+          "required_sources": "103",
+          "expected": "435",
+          "drained": "435",
+          "dropped": "0",
+          "drop_begin": "200",
+          "drop_end": "200",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "stored_capture_rows": 435,
+      "missing_capture_ordinals": [],
+      "stored_capture_complete": true,
+      "score_owner_verified": false
+    },
+    {
+      "name": "basic_tap",
+      "raw_file": "1793500444384523000-basic_tap.json.gz",
+      "raw_sha256": "364b9a56565aae4ebc73e0cea897444b611402d35caabed8e930715cb7dc384c",
+      "capture": 3,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -8.58377170516178e-05,
+            -1.4701258805871475e-06,
+            0.0001990332530112937
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 643.486,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -8.64607936819084e-05,
+            -1.6530334505659994e-06,
+            0.00019966413674410433
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 752.398,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.4627441167831421,
+            3.9159467220306396,
+            -0.5666747689247131
+          ],
+          "height": 199.4184112548828
+        },
+        {
+          "ms": 785.129,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.7503089308738708,
+            4.6287689208984375,
+            -0.01759842410683632
+          ],
+          "height": 199.5708465576172
+        },
+        {
+          "ms": 881.586,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.010707605630159378,
+            3.345266580581665,
+            1.3817752599716187
+          ],
+          "height": 199.90884399414062
+        },
+        {
+          "ms": 1186.049,
+          "state": 201,
+          "detail": 1,
+          "grab_exit": null,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.0847444012761116,
+            -1.3153315782546997,
+            0.8304944634437561
+          ],
+          "height": 200.28890991210938
+        },
+        {
+          "ms": 1251.244,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.189730703830719,
+            -1.8994131088256836,
+            0.22193948924541473
+          ],
+          "height": 200.17770385742188
+        },
+        {
+          "ms": 1512.828,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.03463548421859741,
+            -4.582716941833496,
+            -0.019420534372329712
+          ],
+          "height": 199.23638916015625
+        },
+        {
+          "ms": 1622.192,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.0024270638823509216,
+            -2.415428934909869e-05,
+            0.005475442390888929
+          ],
+          "height": 198.9728240966797
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.021,
+            "ready_check_ms": 0.014,
+            "write_and_observe_ms": 0.077
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.129,
+            "ready_check_ms": 0.031,
+            "write_and_observe_ms": 0.056
+          },
+          {
+            "scheduled_ms": 850.0,
+            "write_ms": 850.099,
+            "ready_check_ms": 0.038,
+            "write_and_observe_ms": 0.052
+          },
+          {
+            "scheduled_ms": 950.0,
+            "write_ms": 950.103,
+            "ready_check_ms": 0.04,
+            "write_and_observe_ms": 0.049
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "3",
+          "ms": "244886803",
+          "native_ms": "244886779",
+          "owner": "1",
+          "owner_generation": "5160",
+          "physics_step": "8292",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "3",
+          "ms": "244886839",
+          "native_ms": "244886812",
+          "owner": "1",
+          "owner_generation": "5160",
+          "physics_step": "8293",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "3",
+          "ms": "244886847",
+          "native_ms": "244886845",
+          "owner": "1",
+          "owner_generation": "5160",
+          "physics_step": "8294",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "semantic": "54",
+          "expected_detail": "1",
+          "held": "true",
+          "pressed_at": "244887736",
+          "released_at": "0",
+          "recognized_at": "244887736",
+          "direction": "0",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "detail": "1",
+          "actor": "1048873824",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "detail": "1",
+          "actor": "1048873824",
+          "actor_asset": "e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb",
+          "before": "0",
+          "after": "0.20186043",
+          "delta": "0.20186043",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.3153316"
+        }
+      ],
+      "end": [
+        {
+          "serial": "3",
+          "episode": "2",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "transition_lease",
+          "observed_at": "244888077",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "3",
+          "required_sources": "103",
+          "expected": "423",
+          "drained": "423",
+          "dropped": "0",
+          "drop_begin": "200",
+          "drop_end": "200",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "stored_capture_rows": 423,
+      "missing_capture_ordinals": [],
+      "stored_capture_complete": true,
+      "score_owner_verified": false
+    },
+    {
+      "name": "method",
+      "raw_file": "1793500518990582000-method.json.gz",
+      "raw_sha256": "5aa8e4f45e8a8f3fb1f5626095d9b994f65fe60544829ca390ea7c07b6cebacf",
+      "capture": 4,
+      "native_transitions": [
+        {
+          "ms": 0.0,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.0009567386587150395,
+            -1.5074293742145528e-06,
+            0.002133855363354087
+          ],
+          "height": 198.9728240966797
+        },
+        {
+          "ms": 647.881,
+          "state": 103,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.11527182161808014,
+            0.3595377504825592,
+            -0.04884185269474983
+          ],
+          "height": 198.9915008544922
+        },
+        {
+          "ms": 740.303,
+          "state": 200,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            6.126578955445439e-05,
+            3.2835965156555176,
+            -8.74171091709286e-05
+          ],
+          "height": 199.2845001220703
+        },
+        {
+          "ms": 783.91,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.13548490405082703,
+            4.669713973999023,
+            0.15457674860954285
+          ],
+          "height": 199.57086181640625
+        },
+        {
+          "ms": 941.359,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            0.2636719048023224,
+            3.364563226699829,
+            0.2783203423023224
+          ],
+          "height": 199.9446563720703
+        },
+        {
+          "ms": 1250.224,
+          "state": 201,
+          "detail": 2,
+          "grab_exit": false,
+          "grabbing": true,
+          "right_intent": true,
+          "velocity": [
+            -0.17537854611873627,
+            -1.8414192199707031,
+            0.5253421664237976
+          ],
+          "height": 200.2096405029297
+        },
+        {
+          "ms": 1440.111,
+          "state": 201,
+          "detail": 0,
+          "grab_exit": true,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            -0.1739502102136612,
+            -2.591858148574829,
+            0.2636719048023224
+          ],
+          "height": 200.01084899902344
+        },
+        {
+          "ms": 1642.648,
+          "state": 100,
+          "detail": 0,
+          "grab_exit": false,
+          "grabbing": false,
+          "right_intent": false,
+          "velocity": [
+            0.21741896867752075,
+            0.21771976351737976,
+            0.13836218416690826
+          ],
+          "height": 198.98281860351562
+        }
+      ],
+      "delivery_timing": {
+        "samples": [
+          {
+            "scheduled_ms": 0,
+            "write_ms": 0.017,
+            "ready_check_ms": 0.011,
+            "write_and_observe_ms": 0.066
+          },
+          {
+            "scheduled_ms": 500.0,
+            "write_ms": 500.114,
+            "ready_check_ms": 0.036,
+            "write_and_observe_ms": 0.275
+          },
+          {
+            "scheduled_ms": 900.0,
+            "write_ms": 900.097,
+            "ready_check_ms": 0.026,
+            "write_and_observe_ms": 0.101
+          },
+          {
+            "scheduled_ms": 1000.0,
+            "write_ms": 1000.101,
+            "ready_check_ms": 0.027,
+            "write_and_observe_ms": 0.07
+          },
+          {
+            "scheduled_ms": 1100.0,
+            "write_ms": 1100.087,
+            "ready_check_ms": 0.02,
+            "write_and_observe_ms": 0.035
+          },
+          {
+            "scheduled_ms": 1400.0,
+            "write_ms": 1400.089,
+            "ready_check_ms": 0.023,
+            "write_and_observe_ms": 0.042
+          }
+        ],
+        "dropped": 0,
+        "scope": "uinput_write_not_game_poll"
+      },
+      "collector_errors": [],
+      "baseline_native": [
+        {
+          "capture": "4",
+          "ms": "244961207",
+          "native_ms": "244961182",
+          "owner": "1",
+          "owner_generation": "6513",
+          "physics_step": "10524",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "4",
+          "ms": "244961239",
+          "native_ms": "244961213",
+          "owner": "1",
+          "owner_generation": "6513",
+          "physics_step": "10525",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        },
+        {
+          "capture": "4",
+          "ms": "244961271",
+          "native_ms": "244961246",
+          "owner": "1",
+          "owner_generation": "6513",
+          "physics_step": "10526",
+          "binding_state": "2",
+          "gameplay": "true",
+          "native_state": "100"
+        }
+      ],
+      "physics_dt": [
+        0.03333333134651184
+      ],
+      "cached_dt": [
+        0.03333333134651184
+      ],
+      "requests": [
+        {
+          "serial": "4",
+          "episode": "3",
+          "semantic": "21",
+          "expected_detail": "4",
+          "held": "true",
+          "pressed_at": "244962263",
+          "released_at": "0",
+          "recognized_at": "244962263",
+          "direction": "4",
+          "presses": "1",
+          "acknowledged": "false"
+        }
+      ],
+      "initialization": [
+        {
+          "serial": "5",
+          "episode": "3",
+          "detail": "2",
+          "actor": "1048868544",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "duration": "305"
+        }
+      ],
+      "advancement": [
+        {
+          "serial": "5",
+          "episode": "3",
+          "detail": "2",
+          "actor": "1048868544",
+          "actor_asset": "12d1f15d-c040-6fd0-12d1-f15dc0406fd0",
+          "before": "0",
+          "after": "1",
+          "delta": "1",
+          "initialized": "true",
+          "native_evaluation": "true",
+          "velocity_known": "true",
+          "vertical_velocity": "-1.8414192"
+        }
+      ],
+      "end": [
+        {
+          "serial": "5",
+          "episode": "3",
+          "acknowledged": "true",
+          "airborne": "true",
+          "intent_withdrawn": "true",
+          "landing_scoring_acceptance": "unverified",
+          "reason": "tick",
+          "observed_at": "244962770",
+          "owner_verified": "true",
+          "owner_failure": "0",
+          "state_read": "true",
+          "state": "201",
+          "last_invalid_at": "0",
+          "validity_failure": "0",
+          "invalid_owner_failure": "0",
+          "invalid_state_read": "false",
+          "invalid_state": "0"
+        }
+      ],
+      "footer": [
+        {
+          "capture": "4",
+          "required_sources": "103",
+          "expected": "433",
+          "drained": "433",
+          "dropped": "0",
+          "drop_begin": "200",
+          "drop_end": "200",
+          "complete": "true",
+          "overflow": "false"
+        }
+      ],
+      "stored_capture_rows": 426,
+      "missing_capture_ordinals": [
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284
+      ],
+      "stored_capture_complete": false,
+      "score_owner_verified": false
+    }
+  ],
+  "full_acceptance": false,
+  "interpretation": [
+    "Two Method trials and a100ms Basic tap initialized/advanced the exact original actors at measured native30Hz and returned ground100. This build only added observations, so these passes are not a fix for the intermittent ab50787 cancellation.",
+    "All three SDK footers reported complete=true, zero drops and no overflow. Independent ordinal auditing found the second Method local log collection lacked rows278-284 (426 of433 retained); its request/recognition trace is incomplete despite the footer. The first Method retained435/435 and Basic423/423.",
+    "First Method and Basic owner proofs remained verified through retirement, state201 was read, and no failed validity sample was observed. First Method GrabExit remained unknown; Basic and second Method observed native GrabExit. All ended at ground100 with grab flags cleared.",
+    "Second Method native actor initialization and advancement for serial5 are present, but its serial5 request log is absent. Preserve that evidence gap rather than inferring a fully recorded semantic path.",
+    "The prior ownership failure did not reproduce. The early first-B loss, native scoring ownership,60/120Hz hardware acceptance and native chains remain unresolved. StageA reliability acceptance and broad catalog enablement are incomplete."
+  ],
+  "handback": {
+    "utc": "2026-11-01T02:36:10Z",
+    "native_state": 100,
+    "native_mode": 1,
+    "arcade_enabled": true,
+    "route_generation": 39,
+    "physical_slot": 1,
+    "logical_actor": 0,
+    "explicit_binding": false,
+    "controller_neutral_destroyed": true,
+    "capture_stopped": true,
+    "lock_released": true,
+    "pending_jobs": false,
+    "cleanup_file": "1793500570006385000-cleanup.json.gz",
+    "cleanup_raw_sha256": "7378e4f1646568a6cf46a8be9e098448ae5ec232969e6836743b6a38d281df15",
+    "previous_build_preserved": "c0489142ef8f1380606688d02d5e3c8f833909b5"
+  }
+}

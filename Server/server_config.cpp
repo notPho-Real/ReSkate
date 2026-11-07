@@ -114,6 +114,11 @@ Layout layout(const ServerConfig &c) {
     park_limits["objects"] = c.park_limits.objects;
     maps.set("park_limits", std::move(park_limits));
 
+    auto &plugins = root.section("plugins");
+    auto required = Json::array();
+    for (const auto &plugin : c.required_plugins) required.push_back(plugin);
+    plugins.set("required", std::move(required));
+
     auto &players = root.section("players");
     players.set("allow_boosts", c.boosts);
     players.set("allow_no_bail", c.no_bail);
@@ -131,6 +136,10 @@ Layout layout(const ServerConfig &c) {
     players.set("allow_object_scaling", c.object_scaling);
     players.set("sync_effects", c.sync_effects);
     players.set("announce_throwdowns", c.announce_throwdowns);
+    auto locks = Json::array();
+    for (const auto bit : {lock_noclip, lock_nobail, lock_boosts, lock_tuning, lock_ollies})
+        if (c.throwdown_locks & bit) locks.push_back(lock_tools_text(bit));
+    players.set("throwdown_locks", std::move(locks));
 
     auto &anti_cheat = root.section("anti_cheat");
     anti_cheat.set("speed_hack", c.speed_check);
@@ -172,6 +181,7 @@ Layout layout(const ServerConfig &c) {
     vote("extend_map", c.votes.extend);
     votes.set("seconds", c.votes.seconds);
     votes.set("cooldown_seconds", c.votes.cooldown);
+    votes.set("kick_minutes", c.votes.kick_minutes);
     votes.set("starter_votes_yes", c.votes.starter_votes_yes);
     votes.set("polls", c.votes.polls);
     votes.set("poll_seconds", c.votes.poll_seconds);
@@ -341,6 +351,9 @@ ServerConfig load_config(const std::filesystem::path &file, std::vector<std::str
     c.rotation_announce = get("maps", "rotation_announce", c.rotation_announce);
     c.latest_versions = get("maps", "latest_versions", c.latest_versions);
     c.latest_check_minutes = std::clamp(get("maps", "latest_check_minutes", c.latest_check_minutes), 5U, 1440U);
+    if (const auto *required = find("plugins", "required"); required && required->is_array())
+        for (const auto &plugin : *required)
+            if (plugin.is_string()) c.required_plugins.push_back(plugin.string());
     if (const auto *parks = find("maps", "parks"); parks && parks->is_object())
         for (unsigned lot = 0; lot < park_lots.size(); ++lot) c.parks[lot] = parks->value(park_lots[lot].key, c.parks[lot]);
     c.world_layer_sync = get("maps", "world_layer_sync", c.world_layer_sync);
@@ -379,6 +392,10 @@ ServerConfig load_config(const std::filesystem::path &file, std::vector<std::str
     c.object_scaling = get("players", "allow_object_scaling", c.object_scaling);
     c.sync_effects = get("players", "sync_effects", c.sync_effects);
     c.announce_throwdowns = get("players", "announce_throwdowns", c.announce_throwdowns);
+    if (const auto *locks = find("players", "throwdown_locks", {}); locks && locks->is_array())
+        for (const auto &value : *locks)
+            if (value.is_string())
+                if (const auto tools = parse_lock_tools(value.string())) c.throwdown_locks |= *tools;
 
     c.speed_check = get("anti_cheat", "speed_hack", c.speed_check, {"speed_check"});
     if (c.speed_check != "off" && c.speed_check != "warn" && c.speed_check != "kick") c.speed_check = "warn";
@@ -431,10 +448,11 @@ ServerConfig load_config(const std::filesystem::path &file, std::vector<std::str
     read_vote("kick", c.votes.kick);
     read_vote("time_of_day", c.votes.time);
     read_vote("extend_map", c.votes.extend);
-    for (const char *key : {"seconds", "cooldown_seconds", "starter_votes_yes", "polls", "poll_seconds", "custom"})
+    for (const char *key : {"seconds", "cooldown_seconds", "kick_minutes", "starter_votes_yes", "polls", "poll_seconds", "custom"})
         if (!votes.contains(key)) missing.push_back(std::string("votes.") + key);
     c.votes.seconds = std::clamp(votes.value("seconds", c.votes.seconds), 10U, 300U);
     c.votes.cooldown = std::clamp(votes.value("cooldown_seconds", c.votes.cooldown), 0U, 3600U);
+    c.votes.kick_minutes = votes.value("kick_minutes", c.votes.kick_minutes);
     c.votes.starter_votes_yes = votes.value("starter_votes_yes", c.votes.starter_votes_yes);
     c.votes.polls = votes.value("polls", c.votes.polls);
     if (c.votes.polls != "off" && c.votes.polls != "admins" && c.votes.polls != "everyone") c.votes.polls = "admins";
@@ -691,6 +709,37 @@ std::optional<std::uint64_t> parse_scoring(std::string_view text) {
     if (!value) return std::nullopt;
     return value;
 }
+std::optional<std::uint8_t> parse_lock_tools(std::string_view text) {
+    std::uint8_t tools{};
+    for (bool more = true; more;) {
+        const auto comma = text.find(',');
+        more = comma != std::string_view::npos;
+        auto name = text.substr(0, comma);
+        text = more ? text.substr(comma + 1) : std::string_view{};
+        while (!name.empty() && std::isspace(static_cast<unsigned char>(name.front()))) name.remove_prefix(1);
+        while (!name.empty() && std::isspace(static_cast<unsigned char>(name.back()))) name.remove_suffix(1);
+        std::string lower(name);
+        for (auto &c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lower == "noclip" || lower == "teleport") tools |= lock_noclip;
+        else if (lower == "nobail") tools |= lock_nobail;
+        else if (lower == "boosts") tools |= lock_boosts;
+        else if (lower == "tuning") tools |= lock_tuning;
+        else if (lower == "ollies") tools |= lock_ollies;
+        else if (lower == "objects") tools |= lock_objects;
+        else if (lower == "all") tools |= lock_all;
+        else return std::nullopt;
+    }
+    if (!tools) return std::nullopt;
+    return tools;
+}
+std::string lock_tools_text(std::uint8_t tools) {
+    std::string text;
+    for (const auto &[bit, name] : {std::pair{lock_noclip, "noclip"}, std::pair{lock_nobail, "nobail"},
+                                    std::pair{lock_boosts, "boosts"}, std::pair{lock_tuning, "tuning"},
+                                    std::pair{lock_ollies, "ollies"}, std::pair{lock_objects, "objects"}})
+        if (tools & bit) text += (text.empty() ? "" : ", ") + std::string(name);
+    return text.empty() ? "none" : text;
+}
 std::size_t extra_slots(const ServerConfig &config) noexcept {
     // (A player with such a role who is also listed has one slot, not two.)
     std::size_t slots = config.reserved.size();
@@ -765,7 +814,8 @@ bool custom_command_name_free(std::string_view name) noexcept {
           "object-placement", "object-scaling", "objects", "park", "park-mod", "parties", "party-size", "password", "placement",
           "players", "rate", "reserved", "rotation", "say", "score-allow", "score-check", "speed-check", "status", "teleport",
           "tod", "tpall", "tphere", "tps", "tuning", "tuning-enforce", "unban", "voice", "voice-allow", "voice-range",
-          "vote-cancel", "votes", "welcome", "world-layer-sync", "quit", "exit", "stop", "update"})
+          "vote-cancel", "votes", "welcome", "world-layer-sync", "quit", "exit", "stop", "update",
+          "bone-reach", "lock", "locks", "unlock", "throwdown-locks", "words", "poll-run", "plugin"})
         if (name == taken) return false;
     // A number is an answer to a poll ("/2").
     return !std::all_of(name.begin(), name.end(), [](char c) { return c >= '0' && c <= '9'; });
@@ -829,7 +879,14 @@ std::string config_error(const ServerConfig &c) {
     if (!parse_colour(c.chat_color)) return "chat_color must be a colour like #8E5CFF.";
     if (c.afk_kick > 1440) return "afk_kick_minutes must be 0 (never) to 1440.";
     if (c.kick_minutes > 1440) return "kick_minutes must be 0 (until the server restarts) to 1440.";
+    if (c.votes.kick_minutes > 1440) return "votes.kick_minutes must be 0 (until the server restarts) to 1440.";
     if (c.word_warnings > 10) return "word_warnings must be 0 (words are not checked) to 10.";
+    if (c.required_plugins.size() > max_required_plugins)
+        return "plugins.required holds at most " + std::to_string(max_required_plugins) + " plugins.";
+    for (const auto &plugin : c.required_plugins)
+        if (plugin.empty() || !valid_map_package(plugin))
+            return "plugins.required: \"" + plugin + "\" is not a Thunderstore package. Write it as Owner-Name, or Owner-Name-1.2.3 for at least that version.";
+    if (!valid_required_plugins(c.required_plugins)) return "plugins.required names a plugin twice.";
     if (!parse_colour(c.chat_text_color)) return "chat_text_color must be a colour like #D9C8FF.";
     if (!valid_server_name(c.name)) return std::string("name must be ") + server_name_rule + ".";
     for (const auto id : c.reserved)

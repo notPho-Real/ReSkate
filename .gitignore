@@ -18,8 +18,6 @@ __pycache__/
 *.pcapng
 *.pdml
 *.mitm
-analysis/raw/**/*.ebx
-analysis/raw/**/*.res
 
 # Optional developer utilities stay local. CMake is self-contained.
 /tools/
@@ -29,3 +27,10 @@ analysis/raw/**/*.res
 /analysis/
 /docs/
 /release
+
+# Plugin mods are kept on this machine, out of the repository.
+/contrib/plugins/
+
+# vtf's linux development configuration
+.vscode/
+.clangd

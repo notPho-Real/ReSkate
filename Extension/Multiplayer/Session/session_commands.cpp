@@ -1,4 +1,5 @@
 #include "session_internal.h"
+#include "Engine/Core/Platform/path_text.h"
 #include "Extension/Multiplayer/Steam/steam_social.h"
 #include "Extension/Multiplayer/Hud/native_indicators.h"
 #include "Extension/Multiplayer/Hud/native_player_ui.h"
@@ -9,6 +10,7 @@
 #include "Engine/Core/Platform/launcher_support.h"
 #include "Engine/Core/Text/word_filter.h"
 #include "Engine/Game/Multiplayer/session_tools.h"
+#include "Engine/Core/Text/ascii.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -31,6 +33,11 @@ void apply_object_limit(Session &s, unsigned limit) {
     s.object_limit = limit;
     set_lobby_object_limit(s.mode == Mode::host || (s.role_permissions & role_objects) ? 0 : limit);
 }
+void apply_object_scaling(Session &s, bool allowed) {
+    s.object_scaling = allowed;
+    // As the menus see it (session_view.cpp): the host, and a role that may always build, are exempt.
+    set_lobby_object_scaling_allowed(allowed || s.mode != Mode::join || (s.role_permissions & role_objects));
+}
 void apply_object_placement(Session &s, ObjectPlacement policy) {
     s.object_placement = policy;
     // On a dedicated server "host only" means the roles that may always build.
@@ -45,12 +52,13 @@ void apply_nametags(const Session &s) {
     set_native_nametags_enabled(false);
     set_native_compass_enabled(!s.nametags);
 }
-void apply_guest_tools(Session &s, bool noclip, bool no_bail, bool boosts) {
+void apply_guest_tools(Session &s, bool noclip, bool no_bail, bool boosts, bool ollies) {
     s.guest_noclip = noclip;
     s.guest_no_bail = no_bail;
     s.guest_boosts = boosts;
+    s.guest_ollies = ollies;
     const bool exempt = s.mode == Mode::host || (s.role_permissions & role_movement);
-    set_session_tools_allowed(noclip || exempt, no_bail || exempt, boosts || exempt);
+    set_session_tools_allowed(noclip || exempt, no_bail || exempt, boosts || exempt, ollies || exempt);
 }
 } // namespace session_detail
 namespace {
@@ -91,11 +99,6 @@ std::optional<bool> parse_switch(std::string_view argument, bool current) {
     return {};
 }
 // ---- teleports ----
-std::string lowered(std::string_view text) {
-    std::string result(text);
-    for (auto &c : result) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-    return result;
-}
 std::string peer_name(Session &s, const Peer &p) {
     return p.member.name.empty() ? s.transport.name(p.member.id) : p.member.name;
 }
@@ -107,7 +110,7 @@ Peer *find_player(Session &s, std::string_view who, std::string &error) {
     Peer *match{};
     for (auto &p : active_peers(s)) {
         if (!p.handshaken || !p.member.id || (dedicated_host(s) && p.member.id == s.host_id)) continue;
-        if (numeric ? p.member.id == id : lowered(peer_name(s, p)).starts_with(lowered(who))) {
+        if (numeric ? p.member.id == id : ascii_lower(peer_name(s, p)).starts_with(ascii_lower(who))) {
             if (match) { error = "More than one player matches \"" + std::string(who) + "\"."; return nullptr; }
             match = &p;
         }
@@ -115,12 +118,49 @@ Peer *find_player(Session &s, std::string_view who, std::string &error) {
     if (!match) error = "No player matches \"" + std::string(who) + "\".";
     return match;
 }
+} // namespace
+std::string session_detail::ignore_command(Session &s, std::string_view verb, std::string_view who) {
+    while (!who.empty() && who.front() == ' ') who.remove_prefix(1);
+    while (!who.empty() && who.back() == ' ') who.remove_suffix(1);
+    if (verb == "ignored") {
+        if (s.ignored_players.empty()) return "You ignore nobody.";
+        std::string names;
+        for (const auto &[id, name] : s.ignored_players) names += (names.empty() ? "" : ", ") + (name.empty() ? std::to_string(id) : name);
+        return "You ignore " + names + ". /unignore <player> stops it.";
+    }
+    if (who.empty()) return verb == "ignore" ? "/ignore <player>" : "/unignore <player>";
+    if (verb == "ignore") {
+        std::string error;
+        auto *p = find_player(s, who, error);
+        if (!p) return error;
+        const auto name = peer_name(s, *p);
+        if (ignored(s, p->member.id)) return "You ignore " + name + " already.";
+        set_ignored(s, p->member.id, name, true);
+        return "You ignore " + name + ": nothing of theirs shows or is heard here, in any session. /unignore " + name + " stops it.";
+    }
+    // Unignore: anyone on the list, here or not, by the start of their name or their SteamID64.
+    std::uint64_t id{};
+    const auto parsed = std::from_chars(who.data(), who.data() + who.size(), id);
+    const bool numeric = parsed.ec == std::errc{} && parsed.ptr == who.data() + who.size();
+    std::uint64_t match{};
+    for (const auto &[listed, name] : s.ignored_players) {
+        if (numeric ? listed == id : ascii_lower(name).starts_with(ascii_lower(who))) {
+            if (match) return "More than one ignored player matches \"" + std::string(who) + "\".";
+            match = listed;
+        }
+    }
+    if (!match) return "You don't ignore anyone matching \"" + std::string(who) + "\".";
+    const auto name = s.ignored_players[match];
+    set_ignored(s, match, name, false);
+    return "You no longer ignore " + (name.empty() ? std::to_string(match) : name) + ".";
+}
+namespace {
 // party: "invite|join|kick|promote <player>", "accept|decline [player]", "leave", "open",
 // "close" or "status". Menus pass SteamID64s; people type the start of a name.
 std::string party_command(Session &s, std::string_view argument) {
     while (!argument.empty() && argument.front() == ' ') argument.remove_prefix(1);
     const auto space = argument.find(' ');
-    const auto verb = lowered(argument.substr(0, space));
+    const auto verb = ascii_lower(argument.substr(0, space));
     auto who = space == std::string_view::npos ? std::string_view{} : argument.substr(space + 1);
     while (!who.empty() && who.front() == ' ') who.remove_prefix(1);
     if (s.mode != Mode::host && s.mode != Mode::join) return "Parties need a multiplayer session.";
@@ -435,11 +475,11 @@ std::string start_pose_dump(Session &s, std::string_view argument) {
     s.pose_dump.close();
     s.pose_dump.clear();
     s.pose_dump.open(file, std::ios::binary | std::ios::trunc);
-    if (!s.pose_dump) return "Could not write " + file.string() + ".";
+    if (!s.pose_dump) return "Could not write " + path_utf8(file) + ".";
     s.pose_dump.write("RSPD1\n", 6);
     s.pose_dump_until = now_us() + static_cast<std::uint64_t>(seconds) * 1000000;
     s.pose_dump_count = 0;
-    return "Recording your poses for " + std::to_string(seconds) + " s to " + file.string() + ". Skate as you normally would.";
+    return "Recording your poses for " + std::to_string(seconds) + " s to " + path_utf8(file) + ". Skate as you normally would.";
 }
 std::string edit_direct_connections(Session &s, std::string_view argument) {
     const auto enabled = parse_switch(argument, s.prefer_direct);
@@ -622,14 +662,14 @@ bool own_mark_command(std::string_view action) {
 } // namespace
 bool queue_command(std::string_view action, std::string_view argument, std::string_view password) {
     if (launcher::offline_mode() && !own_mark_command(action)) return false;
-    if ((action != "host" && action != "host-config" && action != "join" && action != "rejoin" && action != "join-lobby" && action != "join-friend-lobby" && action != "stop" &&
+    if ((action != "host" && action != "host-config" && action != "join" && action != "rejoin" && action != "join-lobby" && action != "join-friend-lobby" && action != "stop" && action != "stop-map-fetch" &&
          action != "distances" && action != "object-placement" && action != "object-limit" && action != "kick" && action != "clear-objects" &&
          action != "nametags" && action != "chat-visible" && action != "chat-filter" &&
          action != "nametag-distance" && action != "nametag-dots" && action != "nametags-friends" && action != "player-distance" && action != "direct-connections" && action != "pose-dump" && action != "vote" && action != "voice-chat" &&
          action != "chat-bubbles" && action != "chat-bubbles-own" && action != "chat-bubbles-distance" &&
          action != "chat-bubbles-duration" && action != "chat-bubbles-history" &&
          !own_mark_command(action) &&
-         action != "voice" && action != "voice-mute" && action != "objects-solid" &&
+         action != "voice" && action != "voice-mute" && action != "ignore" && action != "objects-solid" &&
          action != "voice-volume" && action != "voice-allow" && action != "voice-range" && action != "chat" && action != "typing" && action != "ban" && action != "unban" &&
          action != "world-layer-sync" && action != "noclip-allow" && action != "nobail-allow" && action != "boosts-allow" &&
          action != "tuning-enforce" && action != "tp" &&
@@ -695,7 +735,7 @@ std::string command(std::string_view action, std::string_view argument, std::str
             // dedicated server, which answers in chat.
             const auto line = argument.substr(1);
             const auto space = line.find(' ');
-            const auto verb = lowered(line.substr(0, space));
+            const auto verb = ascii_lower(line.substr(0, space));
             const auto rest = space == std::string_view::npos ? std::string_view{} : line.substr(space + 1);
             std::string result;
             if (verb.empty() || verb == "help" || verb == "?") {
@@ -711,6 +751,11 @@ std::string command(std::string_view action, std::string_view argument, std::str
                 return refused.empty() ? "Message sent." : refused;
             } else if (!dedicated_host(s) && verb == "party") {
                 result = party_command(s, rest);
+            } else if (verb == "ignore" || verb == "unignore" || verb == "ignored") {
+                result = ignore_command(s, verb, rest);
+            } else if (queue_plugin_chat_command(s, verb, rest)) {
+                // A plugin's: it runs on this PC at the plugins' next tick, and answers itself.
+                return "Command sent.";
             } else {
                 result = send_chat_command(s, argument);
             }
@@ -817,6 +862,23 @@ std::string command(std::string_view action, std::string_view argument, std::str
             publish(s);
             return "Player voice volume updated.";
         }
+        // ignore <SteamID64> on|off: the menus' Ignore button.
+        if (action == "ignore") {
+            const auto split = argument.find(' ');
+            std::uint64_t id{};
+            const auto result = std::from_chars(argument.data(), argument.data() + (split == std::string_view::npos ? argument.size() : split), id);
+            const auto enabled = split == std::string_view::npos ? std::string_view{} : argument.substr(split + 1);
+            if (result.ec != std::errc{} || (enabled != "on" && enabled != "off")) return "ignore <SteamID64> on|off";
+            if (enabled == "off") {
+                if (!ignored(s, id)) return "You don't ignore that player.";
+                set_ignored(s, id, s.ignored_players[id], false);
+                return "Player no longer ignored.";
+            }
+            const auto *p = find_peer(s, id);
+            if (!p || id == s.transport.status().local_id || (dedicated_host(s) && id == s.host_id)) return "Choose a connected player to ignore.";
+            set_ignored(s, id, peer_name(s, *p), true);
+            return "Player ignored.";
+        }
         if (action == "voice-mute") {
             const auto split = argument.find(' ');
             if (split == std::string_view::npos) return "Choose a player to mute.";
@@ -875,7 +937,15 @@ std::string command(std::string_view action, std::string_view argument, std::str
         if (action == "status")
             return s.status + " | Players " + std::to_string(player_count(s)) + "/" +
                    std::to_string(s.capacity);
-        if (action == "stop") {
+        if (action == "stop-map-fetch") {
+            std::uint64_t expected{};
+            const auto parsed = std::from_chars(argument.data(), argument.data() + argument.size(), expected);
+            // A worker's queued cancellation may execute after a fresh join command.
+            if (parsed.ec != std::errc{} || parsed.ptr != argument.data() + argument.size() ||
+                !expected || expected != s.map_fetch_deadline)
+                return s.status;
+        }
+        if (action == "stop" || action == "stop-map-fetch") {
             stop(s, "Multiplayer stopped.");
             publish(s);
             return s.status;
@@ -968,6 +1038,8 @@ std::string command(std::string_view action, std::string_view argument, std::str
         if (action == "rejoin") {
             rejoin = std::exchange(s.rejoin, std::nullopt);
             if (!rejoin) return "There is no session to go back to.";
+            if (map_fetch_policy::expired(rejoin->deadline_us, now_us()))
+                return "Map download timed out. Please try joining the server again.";
         }
         if (action != "host" && action != "join" && action != "echo" && !rejoin)
             return "Unknown multiplayer action.";
@@ -1113,6 +1185,8 @@ std::string command(std::string_view action, std::string_view argument, std::str
             s.host_id = invitation->steam_id;
             s.awaiting_map = true;
             s.join_started = now_us();
+            s.map_fetch_deadline = rejoin ? rejoin->deadline_us : 0;
+            map_fetch_deadline_flag.store(s.map_fetch_deadline);
             s.status = "Connecting and checking the host's map...";
         }
         set_lobby_park_mode(s.mode == Mode::host || s.mode == Mode::join, s.mode == Mode::join);
@@ -1124,5 +1198,25 @@ std::string command(std::string_view action, std::string_view argument, std::str
         publish(s);
         return s.status;
     }
+}
+std::string host_kick(std::uint64_t player, std::string_view why) {
+    auto &s = session();
+    if (s.mode != Mode::host) return "only the lobby's host can";
+    if (player == s.host_id) return "the host cannot be kicked";
+    const auto *peer = find_peer(s, player);
+    if (!peer || !peer->handshaken) return "that player is not in the session";
+    s.banned.insert(player);
+    disconnect(s, player, why.empty() ? std::string("You were removed from the session.") : "You were removed from the session: " + std::string(why));
+    s.next_party_update = 0;
+    return {};
+}
+std::string host_teleport(std::uint64_t player, const std::array<float, 3> &at) {
+    auto &s = session();
+    if (s.mode != Mode::host) return "only the lobby's host can";
+    auto *peer = find_peer(s, player);
+    if (!peer || !peer->handshaken || !peer->world_ready) return "that player is not in the world";
+    auto p = packet(s, PacketKind::teleport, now_us());
+    p.teleport = at;
+    return send_packet(s, player, p, true, false) ? std::string{} : "it could not be sent";
 }
 } // namespace dingosdk::multiplayer

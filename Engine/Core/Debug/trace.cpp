@@ -5,6 +5,7 @@
 #include "protocol.h"
 #include "crash_report_config.h"
 #include "Engine/Core/Json/json.h"
+#include "Engine/Core/Text/ascii.h"
 #include <array>
 #include <atomic>
 #include <condition_variable>
@@ -42,11 +43,6 @@ std::string random_hex(std::size_t bytes) {
     for (std::size_t i = 0; i < bytes; ++i) text += std::format("{:02x}", buffer[i]);
     return text;
 }
-std::string narrow(std::wstring_view value) {
-    std::string result;
-    for (const auto c : value) result += c < 0x80 ? static_cast<char>(c) : '?';
-    return result;
-}
 std::string timestamp(Clock::time_point time) {
     return std::format("{:%FT%T}Z", std::chrono::floor<std::chrono::milliseconds>(time));
 }
@@ -66,19 +62,19 @@ void configure(State& s) {
     if (parts.dwExtraInfoLength) s.resource.append(parts.lpszExtraInfo, parts.dwExtraInfoLength);
     s.port = parts.nPort;
     // The game inherits the launcher's trace, so one launch reads as one timeline.
-    s.trace_id = narrow(environment(L"RESKATE_TRACE_ID"));
+    s.trace_id = ascii_narrow(environment(L"RESKATE_TRACE_ID"));
     if (s.trace_id.size() != 32 || s.trace_id.find_first_not_of("0123456789abcdef") != std::string::npos) {
         s.trace_id = random_hex(16);
         SetEnvironmentVariableW(L"RESKATE_TRACE_ID", std::wstring(s.trace_id.begin(), s.trace_id.end()).c_str());
     }
     std::array<wchar_t, 32768> path{};
     const auto length = GetModuleFileNameW(nullptr, path.data(), static_cast<DWORD>(path.size()));
-    if (length && length < path.size()) s.process = narrow(std::filesystem::path(path.data()).filename().wstring());
+    if (length && length < path.size()) s.process = ascii_narrow(std::filesystem::path(path.data()).filename().wstring());
     s.enabled = true;
 }
 // Set by start() and never destroyed: the worker thread may outlive static
 // destruction, and a DLL must not join a thread while the loader lock is held.
-std::atomic<State*> active{};
+std::atomic<State*> started_state{};
 constexpr std::uint64_t hitch_ns = 50ull * 1000 * 1000;
 struct Pacing {
     std::atomic<std::uint64_t> last{}, frames{}, total{}, hitches{}, worst{};
@@ -165,17 +161,18 @@ std::string envelope(const Transaction& transaction) {
 }
 bool start() noexcept {
     try {
-        if (active.load()) return true;
+        if (started_state.load()) return true;
         auto s = std::make_unique<State>();
         configure(*s);
         if (!s->enabled) return false;
         State* expected{};
-        if (active.compare_exchange_strong(expected, s.get())) (void)s.release();
+        if (started_state.compare_exchange_strong(expected, s.get())) (void)s.release();
         return true;
     } catch (...) { return false; }
 }
+bool active() noexcept { return started_state.load(std::memory_order_relaxed) != nullptr; }
 void frame(std::uint64_t now_ns) noexcept {
-    if (!active.load(std::memory_order_relaxed)) return;
+    if (!started_state.load(std::memory_order_relaxed)) return;
     const auto previous = pacing.last.exchange(now_ns, std::memory_order_relaxed);
     if (!previous || now_ns <= previous) return;
     const auto took = now_ns - previous;
@@ -191,7 +188,7 @@ FramePacing take_frame_pacing() noexcept {
 void record(std::string_view name, std::string_view operation, std::chrono::milliseconds duration,
         bool ok, Tags tags, Measurements measurements) noexcept {
     try {
-        auto* const started = active.load();
+        auto* const started = started_state.load();
         if (!started) return;
         auto& s = *started;
         Transaction transaction;
@@ -218,7 +215,7 @@ void record(std::string_view name, std::string_view operation, std::chrono::mill
 }
 void flush(std::chrono::milliseconds timeout) noexcept {
     try {
-        auto* const started = active.load();
+        auto* const started = started_state.load();
         if (!started) return;
         auto& s = *started;
         std::unique_lock lock(s.mutex);

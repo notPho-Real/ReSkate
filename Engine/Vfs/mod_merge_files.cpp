@@ -1,6 +1,9 @@
 #include "mod_merge_internal.h"
 #include "Engine/Core/Json/json.h"
 #include "Engine/Core/Platform/path_text.h"
+#include "Engine/Resource/cas_codec.h"
+#include "Engine/Resource/ebx_fixup_repair.h"
+#include "Engine/Core/Text/ascii.h"
 
 #include <Windows.h>
 #include <bcrypt.h>
@@ -13,12 +16,6 @@ namespace dingosdk::mods::detail {
 namespace {
 constexpr std::size_t maximumTocBytes = 64 * 1024 * 1024;
 } // namespace
-
-std::string lower(std::string_view text) {
-    std::string result(text);
-    for (auto& ch : result) if (ch >= 'A' && ch <= 'Z') ch = static_cast<char>(ch + ('a' - 'A'));
-    return result;
-}
 
 std::vector<std::byte> read_file(const fs::path& path) {
     std::ifstream input(path, std::ios::binary | std::ios::ate);
@@ -98,6 +95,13 @@ std::uint64_t append_file(const fs::path& from, const fs::path& to) {
     return start;
 }
 
+fs::path inside(const fs::path& output, const fs::path& relative) {
+    const auto normal = relative.lexically_normal();
+    if (normal.empty() || normal.has_root_name() || normal.has_root_directory() || *normal.begin() == L"..")
+        throw std::runtime_error("Refused to write " + path_utf8(relative) + ": it is outside the merged patch's folder");
+    return output / normal;
+}
+
 // Hard link when the volume allows it, so a 400 MB archive costs nothing.
 void link_or_copy(const fs::path& from, const fs::path& to) {
     fs::create_directories(to.parent_path());
@@ -116,9 +120,12 @@ RelativeFiles scan(const fs::path& directory) {
     for (fs::recursive_directory_iterator it(root, error), end; it != end && !error; it.increment(error)) {
         if (!it->is_regular_file(error) || error) { error.clear(); continue; }
         // The game only names archives in ASCII: anything else is not one of its files.
-        const auto relative = ascii_path(fs::relative(it->path(), directory, error));
-        if (error || relative.empty()) { error.clear(); continue; }
-        const auto extension = lower(ascii_path(it->path().extension()));
+        // Lexically, as the folder is laid out: fs::relative resolves links, and a Win32 (or a
+        // folder in it) that is a junction elsewhere would come out as ../../.., a path the merge
+        // then reads the game's TOC from and writes its own copies to outside the patch folder.
+        const auto relative = ascii_path(it->path().lexically_relative(directory));
+        if (relative.empty() || relative.starts_with("../")) continue;
+        const auto extension = ascii_lower(ascii_path(it->path().extension()));
         if (extension == ".toc") result.tocs.push_back(relative);
         else if (extension == ".cas") result.archives.push_back(relative);
     }
@@ -140,6 +147,29 @@ fb::Sha1 sha1_of(std::span<const std::byte> bytes) {
     BCryptCloseAlgorithmProvider(algorithm, 0);
     if (status < 0) throw std::runtime_error("Cannot hash the merged asset");
     return digest;
+}
+
+EbxRepair repair_ebx_payload(std::vector<std::byte>& encoded, fb::BundleAsset& asset, const fs::path& gameRoot) {
+    std::vector<std::byte> decoded;
+    std::optional<fb::ebx::FixupRepair> repaired;
+    try {
+        decoded = fb::decode_cas(encoded, {gameRoot});
+        repaired = fb::ebx::repair_type_fixups(decoded);
+    } catch (const std::exception&) {
+        if (decoded.empty()) return {};
+    }
+    EbxRepair result;
+    if (asset.originalSize != decoded.size()) result.listed = asset.originalSize;
+    if (repaired) {
+        encoded = fb::encode_cas(repaired->bytes, {gameRoot});
+        asset.sha1 = sha1_of(repaired->bytes);
+        asset.originalSize = repaired->bytes.size();
+        result.removed = repaired->removed;
+    } else if (result.listed) {
+        asset.sha1 = sha1_of(decoded);
+        asset.originalSize = decoded.size();
+    }
+    return result;
 }
 
 PlacementRecord read_placements(const fs::path& file) {
@@ -200,3 +230,34 @@ void write_placements(const fs::path& file, const PlacementRecord& record) {
 }
 
 } // namespace dingosdk::mods::detail
+
+namespace dingosdk::mods {
+
+std::map<std::string, std::uint64_t> read_map_meshes(const std::filesystem::path& file) {
+    std::map<std::string, std::uint64_t> meshes;
+    try {
+        std::ifstream input(file, std::ios::binary);
+        if (!input) return meshes;
+        const std::string text{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+        const auto root = Json::parse(text);
+        if (!root.contains("maps")) return meshes;
+        for (const auto& [level, bytes] : root.at("maps").items()) meshes[level] = bytes.get<std::uint64_t>();
+    } catch (const std::exception&) {
+        meshes.clear();
+    }
+    return meshes;
+}
+
+void write_map_meshes(const std::filesystem::path& file, const std::map<std::string, std::uint64_t>& meshes) {
+    auto all = read_map_meshes(file);
+    for (const auto& [level, bytes] : meshes) all[level] = bytes;
+    auto root = Json::object();
+    root["schema"] = 1u;
+    auto maps = Json::object();
+    for (const auto& [level, bytes] : all) maps[level] = bytes;
+    root["maps"] = std::move(maps);
+    const auto text = root.dump(2);
+    detail::write_file(file, std::as_bytes(std::span(text)));
+}
+
+} // namespace dingosdk::mods

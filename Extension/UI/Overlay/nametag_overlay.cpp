@@ -314,9 +314,18 @@ void draw_nametags() {
                 const auto dim = with_alpha(IM_COL32(230, 230, 230, 255), 0.85f * alpha);
                 draw->AddText(font, detail, ImVec2(distance_at.x + offset, distance_at.y + offset), shadow, distance.c_str());
                 draw->AddText(font, detail, distance_at, dim, distance.c_str());
+                // A plugin's tag for the player (reskate.session.tag): above the name.
+                if (!tag.extra.empty()) {
+                    const auto extra_size = font->CalcTextSizeA(detail, FLT_MAX, 0.0f, tag.extra.c_str());
+                    const float above = std::min(bubble_bottom, name_at.y);
+                    const ImVec2 extra_at(at.x - extra_size.x * 0.5f, above - extra_size.y);
+                    draw->AddText(font, detail, ImVec2(extra_at.x + offset, extra_at.y + offset), shadow, tag.extra.c_str());
+                    draw->AddText(font, detail, extra_at, with_alpha(tag.extra_color, alpha), tag.extra.c_str());
+                    bubble_bottom = extra_at.y;
+                }
                 if (tag.talking) speaker(draw, ImVec2(left - size * 1.05f, name_at.y + name_size.y * 0.5f), size * 0.8f,
                                          with_alpha(animated_colour, alpha));
-                bubble_bottom = name_at.y;
+                bubble_bottom = std::min(bubble_bottom, name_at.y); // above the name, or the plugin's tag over it
             }
         }
         if (value.show_bubbles && !tag.bubbles.empty() && tag.distance <= value.bubble_distance) {

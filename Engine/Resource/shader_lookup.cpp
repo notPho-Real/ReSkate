@@ -1,9 +1,7 @@
 #include "shader_lookup.h"
 
 #include <algorithm>
-#include <array>
 #include <cstring>
-#include <limits>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -44,6 +42,92 @@ std::size_t lookup_offset(const Table& table) {
     return static_cast<std::size_t>(offset);
 }
 
+// Equality includes the opaque heap, relocation list and graph metadata;
+// lookup rows themselves can differ.
+bool same_graph(const Table& left, const Table& right) {
+    if (left.resourceMeta.size() != 16 || right.resourceMeta.size() != 16) return false;
+    const auto end = lookup_offset(left);
+    return end == lookup_offset(right) &&
+        std::equal(left.resourceMeta.begin(), left.resourceMeta.begin() + 8, right.resourceMeta.begin()) &&
+        std::equal(left.resourceMeta.begin() + 12, left.resourceMeta.end(), right.resourceMeta.begin() + 12) &&
+        std::equal(left.resource.begin(), left.resource.begin() + static_cast<std::ptrdiff_t>(end), right.resource.begin());
+}
+
+// Some authoring tools retain the complete stock heap and append a new program
+// array whose initial records are exact copies of the stock records. Stock-only
+// aliases can still address those programs, without importing any bytes. This
+// optional path recognises the pinned game's 168-byte records; an unfamiliar
+// layout simply cannot use it, rather than failing the ordinary alias merge.
+bool preserves_stock(const Table& retained, const Table& stock) {
+    if (stock.resourceMeta.size() != 16) return false;
+    try {
+        (void)lookup_offset(retained);
+        (void)lookup_offset(stock);
+        const auto stockSize = read<std::uint32_t>(stock.resourceMeta, 0);
+        const auto keptSize = read<std::uint32_t>(retained.resourceMeta, 0);
+        const auto count = read<std::uint32_t>(stock.resource, 0);
+        const auto keptCount = read<std::uint32_t>(retained.resource, 0);
+        const auto start = read<std::uint64_t>(stock.resource, 4);
+        const auto keptStart = read<std::uint64_t>(retained.resource, 4);
+        const auto recordBytes = static_cast<std::uint64_t>(count) * 168;
+        if (!count || count > keptCount || stockSize < 12 || keptSize < stockSize ||
+            start < 12 || start > stockSize || recordBytes > stockSize - start ||
+            keptStart < 12 || keptStart > keptSize || recordBytes > keptSize - keptStart ||
+            static_cast<std::uint64_t>(keptCount) * 168 > keptSize - keptStart ||
+            !std::equal(stock.resourceMeta.begin() + 12, stock.resourceMeta.end(), retained.resourceMeta.begin() + 12) ||
+            !std::equal(stock.resource.begin() + 12, stock.resource.begin() + stockSize, retained.resource.begin() + 12) ||
+            !std::equal(stock.resource.begin() + static_cast<std::ptrdiff_t>(start),
+                        stock.resource.begin() + static_cast<std::ptrdiff_t>(start + recordBytes),
+                        retained.resource.begin() + static_cast<std::ptrdiff_t>(keptStart))) return false;
+        const auto relocations = [](const Table& table, std::uint32_t size) {
+            const auto bytes = read<std::uint32_t>(table.resourceMeta, 4);
+            if (bytes % 4) throw std::runtime_error("relocation layout");
+            std::vector<std::uint32_t> fields;
+            for (std::size_t at = 0; at < bytes; at += 4) {
+                const auto field = read<std::uint32_t>(table.resource, static_cast<std::size_t>(size) + at);
+                if (field > size || size - field < 8 || read<std::uint64_t>(table.resource, field) > size)
+                    throw std::runtime_error("relocation bounds");
+                fields.push_back(field);
+            }
+            std::ranges::sort(fields);
+            if (std::adjacent_find(fields.begin(), fields.end()) != fields.end())
+                throw std::runtime_error("duplicate relocation");
+            return fields;
+        };
+        const auto fields = relocations(stock, stockSize);
+        const auto keptFields = relocations(retained, keptSize);
+        if (!std::binary_search(fields.begin(), fields.end(), 4U) ||
+            !std::binary_search(keptFields.begin(), keptFields.end(), 4U)) return false;
+        for (const auto field : fields) {
+            if (!std::binary_search(keptFields.begin(), keptFields.end(), field)) return false;
+            if (field >= start && field < start + recordBytes) {
+                const auto copied = static_cast<std::uint32_t>(keptStart + field - start);
+                if (!std::binary_search(keptFields.begin(), keptFields.end(), copied)) return false;
+            }
+        }
+        // Additional fixups in either preserved region would reinterpret its
+        // unchanged bytes as pointers, so membership must agree both ways.
+        for (const auto field : keptFields) {
+            if (field < stockSize && !std::binary_search(fields.begin(), fields.end(), field)) return false;
+            if (field >= keptStart && field < keptStart + recordBytes) {
+                const auto original = static_cast<std::uint32_t>(start + field - keptStart);
+                if (!std::binary_search(fields.begin(), fields.end(), original)) return false;
+            }
+        }
+        struct Array { std::size_t count, pointer, stride; };
+        constexpr Array arrays[]{{0x0c,0x10,16},{0x18,0x1c,8},{0x30,0x34,16},
+                                {0x3c,0x40,6},{0x48,0x4c,8},{0x54,0x58,2},{0x60,0x64,8}};
+        for (std::uint32_t i = 0; i < count; ++i) for (const auto& array : arrays) {
+            const auto record = static_cast<std::size_t>(start + i * 168ULL);
+            const auto items = read<std::uint32_t>(stock.resource, record + array.count);
+            const auto pointer = read<std::uint64_t>(stock.resource, record + array.pointer);
+            if (pointer > stockSize || static_cast<std::uint64_t>(items) * array.stride > stockSize - pointer ||
+                (items && !std::binary_search(fields.begin(), fields.end(), static_cast<std::uint32_t>(record + array.pointer)))) return false;
+        }
+        return true;
+    } catch (const std::exception&) { return false; }
+}
+
 ProgramRows read_program_rows(const Table& table) {
     auto offset = lookup_offset(table);
     const auto count = read<std::uint32_t>(table.resource, offset);
@@ -80,176 +164,86 @@ TextureRows read_texture_rows(const Table& table) {
 
 } // namespace
 
-namespace {
-constexpr std::size_t programStride = 168;
-struct ProgramBlob {
-    Table source;
-    std::span<const std::byte> payload;
-    std::uint64_t records{};
-    std::uint32_t count{};
-    std::vector<std::uint32_t> relocations;
-};
-ProgramBlob program_blob(const Table& source) {
-    const auto end = lookup_offset(source);
-    const auto size = read<std::uint32_t>(source.resourceMeta, 0);
-    if ((end - size) % 4) throw std::runtime_error("Program relocations are not aligned");
-    ProgramBlob blob{source, source.resource.first(size)};
-    blob.count = read<std::uint32_t>(blob.payload, 0);
-    blob.records = read<std::uint64_t>(blob.payload, 4);
-    if (blob.records > size || blob.count > (size - blob.records) / programStride)
-        throw std::runtime_error("Program records exceed their payload");
-    for (auto at = std::size_t{size}; at < end; at += 4) {
-        const auto pointer = read<std::uint32_t>(source.resource, at);
-        if (read<std::uint64_t>(blob.payload, pointer) > size)
-            throw std::runtime_error("Program relocation points outside its payload");
-        blob.relocations.push_back(pointer);
-    }
-    return blob;
+bool preserves_stock_programs(const Table& candidate, const Table& stock) {
+    return preserves_stock(candidate, stock);
 }
-struct ProgramArray { std::size_t pointer, stride; };
-constexpr std::array programArrays{
-    ProgramArray{0x10, 16}, ProgramArray{0x1c, 8}, ProgramArray{0x28, 8}, ProgramArray{0x34, 16},
-    ProgramArray{0x40, 6}, ProgramArray{0x4c, 8}, ProgramArray{0x58, 2},
-    ProgramArray{0x64, 8}, ProgramArray{0x70, 8}, ProgramArray{0x80, 16}, ProgramArray{0x8c, 32}
-};
-std::size_t record_at(const ProgramBlob& blob, std::uint32_t index) {
-    if (index >= blob.count) throw std::runtime_error("Material references an absent shader program");
-    return static_cast<std::size_t>(blob.records) + index * programStride;
+bool same_program_graph(const Table& candidate, const Table& other) {
+    try { return same_graph(candidate, other); }
+    catch (const std::exception&) { return false; }
 }
-std::span<const std::byte> program_array(const ProgramBlob& blob, std::size_t record, ProgramArray array) {
-    const auto count = read<std::uint32_t>(blob.payload, record + array.pointer - 4);
-    const auto pointer = read<std::uint64_t>(blob.payload, record + array.pointer);
-    if (pointer > blob.payload.size() || count > (blob.payload.size() - pointer) / array.stride)
-        throw std::runtime_error("Shader program array exceeds its payload");
-    return blob.payload.subspan(static_cast<std::size_t>(pointer), count * array.stride);
-}
-bool same_program(const ProgramBlob& a, std::uint32_t ai, const ProgramBlob& b, std::uint32_t bi) {
-    const auto aa = record_at(a, ai), ba = record_at(b, bi);
-    for (std::size_t at = 0; at < programStride; ++at) {
-        if (std::ranges::any_of(programArrays, [&](auto array) {
-                return at >= array.pointer && at < array.pointer + 8; })) continue;
-        if (a.payload[aa + at] != b.payload[ba + at]) return false;
-    }
-    for (const auto array : programArrays)
-        if (!std::ranges::equal(program_array(a, aa, array), program_array(b, ba, array))) return false;
-    return true;
-}
-std::uint32_t native_offset(std::size_t offset) {
-    if (offset > std::numeric_limits<std::uint32_t>::max())
-        throw std::runtime_error("Merged program database exceeds the native address range");
-    return static_cast<std::uint32_t>(offset);
-}
-} // namespace
 
-MergedTable merge_program_lookup(const Table& base, const std::span<const Table> edits) {
-    std::vector<ProgramBlob> blobs{program_blob(base)};
-    for (const auto& edit : edits) blobs.push_back(program_blob(edit));
-    struct Reference { std::size_t blob; std::uint32_t program; };
-    std::map<std::uint64_t, std::vector<Reference>> references;
+bool only_stock_aliases(const Table& candidate, const Table& stock) {
+    try {
+        if (!same_graph(candidate, stock)) return false;
+        const auto rows = read_program_rows(candidate);
+        const auto original = read_program_rows(stock);
+        const auto count = read<std::uint32_t>(stock.resource, 0);
+        for (const auto& [key, values] : original) {
+            const auto at = rows.find(key);
+            if (at == rows.end() || at->second != values) return false;
+        }
+        for (const auto& [key, values] : rows) {
+            (void)key;
+            if (std::any_of(values.begin(), values.end(), [&](auto index) { return index >= count; })) return false;
+        }
+        return true;
+    } catch (const std::exception&) { return false; }
+}
+
+MergedTable merge_program_lookup(const Table& base, const std::span<const Table> edits, const Table& stock) {
+    const auto start = lookup_offset(base);
+    const auto records = read<std::uint32_t>(base.resource, 0); // the base blob's record count
     auto rows = read_program_rows(base);
-    for (const auto& [key, values] : rows) for (const auto index : values) {
-        record_at(blobs.front(), index);
-        references[key].push_back({0, index});
-    }
     const auto baseRows = rows;
+
+    const bool stockPreserved = preserves_stock(base, stock);
+    const auto stockRecords = stockPreserved ? read<std::uint32_t>(stock.resource, 0) : 0;
     MergedTable merged;
-    for (std::size_t b = 1; b < blobs.size(); ++b) {
-        for (const auto& [key, values] : read_program_rows(blobs[b].source)) {
-            for (const auto index : values) record_at(blobs[b], index);
-            if (baseRows.contains(key)) continue;
-            if (const auto previous = references.find(key); previous != references.end()) {
-                bool same = previous->second.size() == values.size();
-                for (std::size_t i = 0; same && i < values.size(); ++i) {
-                    const auto ref = previous->second[i];
-                    same = same_program(blobs[ref.blob], ref.program, blobs[b], values[i]);
+    for (auto at = rows.begin(); at != rows.end();) {
+        if (std::any_of(at->second.begin(), at->second.end(), [&](auto index) { return index >= records; })) {
+            at = rows.erase(at);
+            ++merged.outside;
+            ++merged.removed;
+        } else ++at;
+    }
+    for (const auto& edit : edits) {
+        try {
+            // Indices have meaning only within their owning graph. Keep the selected
+            // bundle's heap and relocations verbatim: importing another graph can
+            // make the game instantiate programs before their compiled files load.
+            const bool sameGraph = same_graph(base, edit);
+            const bool stockGraph = stockPreserved && (same_graph(stock, edit) || preserves_stock(edit, stock));
+            const auto available = sameGraph ? records : stockRecords;
+            for (const auto& [key, values] : read_program_rows(edit)) {
+                if (const auto held = baseRows.find(key); held != baseRows.end()) {
+                    if (held->second != values) ++merged.conflicts;
+                    continue;
                 }
-                if (!same) ++merged.conflicts;
-                continue;
+                if ((!sameGraph && !stockGraph) || std::any_of(values.begin(), values.end(), [&](std::uint32_t index) { return index >= available; })) {
+                    ++merged.outside;
+                    continue;
+                }
+                const auto [row, inserted] = rows.try_emplace(key, values);
+                if (inserted) ++merged.added;
+                else if (row->second != values) ++merged.conflicts;
             }
-            for (const auto index : values) references[key].push_back({b, index});
-            ++merged.added;
+        } catch (const std::exception&) {
+            // A malformed edit is not permission to discard a verified graph.
+            ++merged.outside;
         }
     }
-    // Preserve the exact native prefix when edits only add aliases to stock programs.
-    // Private programs need their own records and relocated backing data as well.
-    using Source = std::pair<std::size_t, std::uint32_t>;
-    std::map<Source, std::uint32_t> remapped;
-    std::vector<Source> additions;
-    for (const auto& [key, refs] : references) {
-        auto& row = rows[key];
-        row.clear();
-        for (const auto ref : refs) {
-            auto index = ref.program;
-            if (ref.blob && (index >= blobs.front().count ||
-                    !same_program(blobs.front(), index, blobs[ref.blob], index))) {
-                const Source source{ref.blob, index};
-                auto [entry, inserted] = remapped.try_emplace(source,
-                    native_offset(std::size_t{blobs.front().count} + additions.size()));
-                if (inserted) additions.push_back(source);
-                index = entry->second;
-            }
-            row.push_back(index);
-        }
-    }
-    merged.resourceMeta.assign(base.resourceMeta.begin(), base.resourceMeta.end());
-    if (additions.empty()) {
-        merged.resource.assign(base.resource.begin(), base.resource.begin() + lookup_offset(base));
-    } else {
-        merged.resource.assign(blobs.front().payload.begin(), blobs.front().payload.end());
-        auto relocations = blobs.front().relocations;
-        std::map<std::size_t, std::size_t> offsets;
-        for (const auto& [b, index] : additions) {
-            if (offsets.contains(b)) continue;
-            merged.resource.resize((merged.resource.size() + 15) & ~std::size_t{15});
-            const auto offset = merged.resource.size();
-            offsets[b] = offset;
-            const auto& blob = blobs[b];
-            // Copy the complete backing graph, including opaque resource bindings.
-            // This keeps runtime-mutated GUID arrays separate across mods.
-            merged.resource.insert(merged.resource.end(), blob.payload.begin(), blob.payload.end());
-            for (const auto pointer : blob.relocations) {
-                const auto destination = native_offset(offset + pointer);
-                const auto target = read<std::uint64_t>(blob.payload, pointer) + offset;
-                std::memcpy(merged.resource.data() + destination, &target, 8);
-                relocations.push_back(destination);
-            }
-        }
-        merged.resource.resize((merged.resource.size() + 7) & ~std::size_t{7});
-        const auto table = static_cast<std::uint64_t>(merged.resource.size());
-        const auto count = native_offset(std::size_t{blobs.front().count} + additions.size());
-        merged.resource.resize(native_offset(static_cast<std::size_t>(table) + std::size_t{count} * programStride));
-        const auto copy_record = [&](const ProgramBlob& blob, std::uint32_t index,
-                                     std::size_t offset, std::uint32_t destination) {
-            const auto source = record_at(blob, index);
-            const auto target = static_cast<std::size_t>(table) + destination * programStride;
-            std::memcpy(merged.resource.data() + target, merged.resource.data() + offset + source, programStride);
-            for (const auto pointer : blob.relocations)
-                if (pointer >= source && pointer < source + programStride)
-                    relocations.push_back(native_offset(target + pointer - source));
-        };
-        for (std::uint32_t i = 0; i < blobs.front().count; ++i) copy_record(blobs.front(), i, 0, i);
-        for (const auto& source : additions)
-            copy_record(blobs[source.first], source.second, offsets.at(source.first), remapped.at(source));
-        std::memcpy(merged.resource.data(), &count, 4);
-        std::memcpy(merged.resource.data() + 4, &table, 8);
-        relocations.push_back(4);
-        std::ranges::sort(relocations);
-        relocations.erase(std::ranges::unique(relocations).begin(), relocations.end());
-        const auto size = native_offset(merged.resource.size());
-        for (const auto pointer : relocations) append(merged.resource, pointer);
-        const auto relocationSize = native_offset(relocations.size() * 4);
-        std::memcpy(merged.resourceMeta.data(), &size, 4);
-        std::memcpy(merged.resourceMeta.data() + 4, &relocationSize, 4);
-    }
-    const auto lookup = merged.resource.size();
-    append(merged.resource, native_offset(rows.size()));
+
+    merged.resource.assign(base.resource.begin(),
+                           base.resource.begin() + static_cast<std::ptrdiff_t>(start));
+    append(merged.resource, static_cast<std::uint32_t>(rows.size()));
     for (const auto& [key, values] : rows) {
         append(merged.resource, key);
-        append(merged.resource, native_offset(values.size()));
+        append(merged.resource, static_cast<std::uint32_t>(values.size()));
         for (const auto value : values) append(merged.resource, value);
     }
-    const auto size = native_offset(merged.resource.size() - lookup);
-    std::memcpy(merged.resourceMeta.data() + 8, &size, 4);
+    merged.resourceMeta.assign(base.resourceMeta.begin(), base.resourceMeta.end());
+    const auto size = static_cast<std::uint32_t>(merged.resource.size() - start);
+    std::memcpy(merged.resourceMeta.data() + 8, &size, sizeof(size));
     return merged;
 }
 

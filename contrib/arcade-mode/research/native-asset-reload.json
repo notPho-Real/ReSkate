@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "date": "2026-11-05",
+  "classification": "native asset cache invalidation",
+  "map": "skate3_megapark",
+  "tested_source": "baf44ab2c908dd49fc1acd2676b149d5df1f5845",
+  "tested_dll_sha256": "f0f1fefc4614d029cbd195007802d9bdc3f3cbbbfe8a9b1dff1139b6a4054e07",
+  "captures": [
+    {
+      "file": "native-trials-result.json",
+      "sha256": "a7b457c658a533ea491b018895d14bbf7171cfb504defcc63aa38ffddf0e2684"
+    },
+    {
+      "file": "mega-native-trials-result.json",
+      "sha256": "e4df5b8657462de6ad9420e06aa385d2b9de851f86a2dd56ef6682970cf94cf8"
+    },
+    {
+      "file": "mega-late-native-trials-result.json",
+      "sha256": "7287aaa73b166aee7b969c7dcad754502f7413a24daa1fed8591a4cdae089cfb"
+    },
+    {
+      "file": "mega-flip-bindings.json",
+      "sha256": "80570da6ca5574e247ca46a5edf2f1c4ff7d287b43fef354f6a080055cb1dd1e"
+    }
+  ],
+  "observed": {
+    "prior_current_flip_asset": 759781952,
+    "prior_address_now_guid": "a96b6ee4-322e-77ea-a96b-6ee4322e77ea",
+    "live_current_flip_asset": 759778208,
+    "live_current_flip_guid": "3c405417-06a7-3d61-3c40-541706a73d61",
+    "live_current_flip_valid_in_owner": true,
+    "single_and_double_x_at_520_and_720_ms": "Ollie animation only; no native flip acknowledgment or extra rotation",
+    "physics_dt": 0.03333333134651184,
+    "production_flip_cache": {
+      "address": 123145100522288,
+      "pointers": [
+        759781952,
+        759971024,
+        759814400,
+        759783616
+      ],
+      "live_guids": [
+        "a96b6ee4-322e-77ea-a96b-6ee4322e77ea",
+        "8d097a29-7921-de57-96bd-266e7c0a875b",
+        "1b62e911-3c14-ca1e-1b62-e9113c14ca1e",
+        "fbf04518-8311-695c-9f05-4116f3e1b7ab"
+      ]
+    },
+    "production_cache_result": "All four expected GUIDs differ from the resources at the cached pointers. Matched the unique four-GUID StateAsset array in the pinned DLL data section."
+  },
+  "source_defect": "Flip and held-flip caches stopped revalidating after initial readiness. Grab revalidation omitted its first eight required assets. Ground inputs also latched readiness. Native per-read GUID guards refused stale memory but nothing triggered required rediscovery.",
+  "correction": "Validate cached native GUIDs each gameplay tick before the existing throttled lookup. Withdraw stale required readiness and leases; resolve only original names and GUIDs. Optional grab discovery remains independent.",
+  "source_review": [
+    "Pinned upstream 919b04e9a5aa708974b8ea7298c61333104d3905 native find_asset API and callers",
+    "Existing native-ollie-flip-transition research and source survey; no replacement animation mechanism"
+  ],
+  "local_validation": [
+    "Native metadata cache invalidation and relocated address regression",
+    "Neutral flip release: 9014 checks plus native entry/cache tests",
+    "Held flip: 122 fixture checks",
+    "Native grab: 3071 source/contract checks",
+    "Ground grab and footplant input tests"
+  ],
+  "acceptance": "PENDING: rebuilt runtime, exact CI gates, reload Mega Park and prove native flip/held/grab initialization, advancement, catch and landing. Software checks do not prove rotations or scoring.",
+  "discarded_trials": [
+    "mega-correlation: console opened after binding revoked the temporary controller",
+    "mega-correlation2: rapid console typing failed to establish binding; no Ollie"
+  ]
+}

@@ -9,7 +9,7 @@
 // volume settings.
 namespace dingosdk::multiplayer {
 // Values of the game's enum.
-enum class UiSound : std::uint32_t { cancel = 0, navigate = 3, toggle = 5, select = 7, tab = 56 };
+enum class UiSound : std::uint32_t { cancel = 0, navigate = 3, toggle = 5, select = 7, tab = 56, countdown = 57, go = 58 };
 // Any thread: the sound is played at the next client tick (the newest asked for wins).
 void queue_ui_sound(std::uint32_t sound) noexcept;
 // Client thread, each tick while a world is up.

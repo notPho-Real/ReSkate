@@ -4,8 +4,10 @@
 #include "Extension/ArcadeMode/arcade_manual_step.h"
 #include "Extension/ArcadeMode/arcade_manual_labels.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
 @@ACQUISITION_INCLUDE@@
 #include "Extension/ArcadeMode/arcade_manual_balance_entry.h"
+#include "Extension/ArcadeMode/arcade_manual_episode.h"
 #include "Extension/ArcadeMode/arcade_manual_release.h"
 #include "Extension/ArcadeMode/arcade_native_events.h"
 #include "Extension/ArcadeMode/arcade_native_readiness.h"
@@ -34,6 +36,8 @@ using BalanceHudRenderAck = void (*)(BalanceHudSource,std::uint64_t,std::uint64_
 bool fixture_watch=true;std::uint64_t clock_ms=1000;std::atomic<std::uint64_t> camera_wait_clock{};
 std::uint64_t GetTickCount64(){const auto waiting=camera_wait_clock.load();return waiting?waiting:clock_ms;}
 bool auto_kick_enabled(){return true;}
+unsigned trial_hz{};std::uint64_t trial_frame{},trial_start{};
+void advance_trial(unsigned dt){if(trial_hz)clock_ms=trial_start+(++trial_frame)*1000/trial_hz;else clock_ms+=dt;}
 // Real mutex with an optional deterministic contention seam. The try-lock
 // control reports only after its failed attempt; blocking lock reports before
 // waiting, so the producer can publish and release without sleeps or polling.
@@ -47,6 +51,7 @@ std::atomic<bool> active{true};bool enabled(){return active.load();}
 std::atomic<bool>& mode_enabled=active;
 std::atomic<bool> prepared_catalog{true};
 @@CAMERA_STATE@@
+namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept;}
 NativeInputState native_input_state,motion_cleanup_state;@@INPUT_STATE@@
 NativeInputOwner input_owner(const NoBailSkater& o)noexcept{return{o.base,o.entity,o.core,o.context,o.rig};}
 struct ControllerInput{bool available=true;std::uint16_t buttons{};short left_x{},left_y{},right_x{},right_y{};};
@@ -58,7 +63,7 @@ std::array<PlaybackPacket,4> playback_packets;NativeControllerRoute controller_r
 @@PACKET_RETIRE@@
 std::atomic<std::uint64_t> action_eligible_until{},manual_eligible_until{},manual_prepare_until{},manual_release_until{};
 NativeInputReadiness native_readiness;std::atomic<SkatePose> manual_observed{SkatePose::unknown};std::atomic<bool>manual_balance_admitted{};
-struct Telemetry{template<class T>void client(const T&){}bool client_dropped()const{return false;}}input_telemetry;
+struct Telemetry{template<class T>void client(const T&){}void pad(const PadTelemetry&){}bool client_dropped()const{return false;}}input_telemetry;
 NativeInputFrame capture_native_frame{};std::array<std::uint32_t,8> capture_native_words{};float capture_physics_dt{};
 struct Correlation{bool schema4_enabled{};bool observational()const{return false;}bool schema4()const{return schema4_enabled;}std::uint64_t capture_id()const{return 7;}void lost(){}void end(std::uint64_t,NativeInputFrame,bool,void(*)(),bool){}template<class Sink>void event(CaptureCorrelationEvidence,const NativeInputFrame&,std::uint64_t,Sink){}}input_capture_correlation;
 struct CaptureManualJoinFixture{std::uint64_t request{},owner_generation{},publication{};bool from_air{},model_seen{},publication_seen{},render_seen{},exit_seen{};unsigned route{},exit_reason{};NativeInputOwner owner{};}capture_manual_join;
@@ -91,14 +96,38 @@ ControllerInput previous_pad,previous_source_pad;bool preference_loaded{};unsign
 void invalidate_surface_geometry(){}void invalidate_traffic_surface(){}void invalidate_grind_observer(){}
 void prepare_authored_catalog(){}void reset_score_label_occurrences(){}void capture_row(){}
 namespace dingosdk::profile_runtime{void set_local_preference(const char*,bool){}}
+// Nonactuating native service boundary; manual tests do not claim flip playback.
+namespace dingosdk::arcade_mode::native_flip {void cancel()noexcept{}}
+namespace dingosdk::arcade_mode::native_grab {void cancel()noexcept{}} // Nonactuating grab boundary.
+namespace dingosdk::arcade_mode::native_footplant {void cancel()noexcept{}}
+namespace dingosdk::arcade_mode::native_ground_grab {void cancel()noexcept{}}
+// No wall collision/physics is supplied by the manual fixture. Keep current
+// production observation, cancellation and surface-publication calls compiled.
+namespace dingosdk::arcade_mode::wallplant_runtime {
+void cancel()noexcept{}
+void interrupt_animation()noexcept{}
+void observe_physics(const NativeInputFrame&)noexcept{}
+InputSurfaceState surface(std::uint64_t,const NativeInputFrame&)noexcept{return {};}
+bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector)noexcept{return false;}
+}
+NativeFlipRequest normal_flip{};
+NativeGrabRequest normal_grab{};
+NativeGroundGrabRequest ground_grab{};
+NativeFootplantRequest footplant{}; // Manual fixtures cannot admit native footplants.
+#include "Extension/ArcadeMode/arcade_grind_change.h"
+GrindChange grind_change;
+InputAdapter grind_adapter{}; // Native backend cannot execute in this fixture.
+HeldFlipObservation held_flip{}; // No native held-flip evidence is supplied by manual tests.
+namespace dingosdk::arcade_mode::native_grind {void cancel()noexcept{}}
 namespace dingosdk::logging{
 enum class Level{info};enum class Channel{skater};
 template<class... Args>void log(Level,Channel,const char*,Args&&...){}
 }
 @@SET_ENABLED@@
 NoBailSkater owner{1,2,3,4,5};NativeRequestSample raw;NativeInputFrame latest;
-bool corrupt_manual_delivery{};
+bool corrupt_manual_delivery{};NativeOrientation orientation{true,false};
 void observe(float seconds,unsigned contacts,unsigned state=100,bool valid=true,bool idle_known=true){
+ if(trial_hz)seconds=1.f/static_cast<float>(trial_hz);
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)seconds=1.f/hud_hz;
 #endif
@@ -131,6 +160,7 @@ const std::optional<std::vector<PreparedGesture>> prepared{std::vector<PreparedG
  {16,true,GestureContext::ground,{{0,0,32767},{18,25000,-28000},{21,0,0},{24,0,0}}}}};
 NativeGesture::Output remap(std::uint16_t physical_buttons=0,short physical_y=0,short physical_x=0,unsigned char physical_rt=0){
  const unsigned user=0;const auto now=clock_ms;const auto tick=now/17;NativeGesture::Output result{};
+ const auto grind_frame=arcade_input.native_context(now);
  const auto buttons=physical_buttons;short left_x=physical_x,left_y=physical_y,right_x=0,right_y=0;unsigned char left_trigger=0,right_trigger=physical_rt;
  const bool authored=true;
  arcade_input.observe_physical(user,{true,now,physical_buttons,left_x,left_y,right_x,right_y,left_trigger,right_trigger});
@@ -153,11 +183,11 @@ template<class T,class... Args>void reconstruct(T& object,Args&&... args){
  std::destroy_at(&object);std::construct_at(&object,std::forward<Args>(args)...);
 }
 void reset_case(){
- native_score_active=true;
+ trial_hz=0;native_score_active=true;orientation={true,false};
  controller_route.reset();playback_packets={};corrupt_manual_delivery=false;
  active=true;fixture_watch=true;owner={1,2,3,4,5};reconstruct(arcade_input,true);arcade_input.enable(true);native_input_state={};motion_cleanup_state={};reset_physical_manual=false;
  physical_manual=ManualPhysics{};reconstruct(physical_manual_steps);native_readiness={};
- combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_acquisition={};manual_release={};balance_control={};
+ combo_session=ComboSession(native_combo_tuning());manual_identity={};ground_manual_balance={};manual_episode.reset();manual_hud_episode=0;manual_acquisition={};manual_release={};balance_control={};
  had_combo_owner=false;combo_tick_at=0;clock_ms=1000;presenters={};labels={};rows.clear();manual_balance_admitted=false;
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  hud_frame=0;publish_balance_hud({},0,{});
@@ -167,7 +197,7 @@ void tick(unsigned dt,unsigned state,unsigned contacts,bool valid=true){
 #if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
  if(hud_hz)clock_ms=1000+std::uint64_t{++hud_frame}*1000/hud_hz;else
 #endif
- clock_ms+=dt;
+ advance_trial(dt);
  observe(dt/1000.f,contacts,state,valid);client(dt/1000.f,history());
 }
 void prepare_air(bool nose,unsigned dt){
@@ -673,8 +703,8 @@ void air_admission_lifecycle(){
   prepare_air(nose,dt);clock_ms+=dt;observe(dt/1000.f,0,200,true,false);client(dt/1000.f,history());remap();
   const auto wanted=nose?0x8000u:0x4000u;tick(dt,100,wanted);remap();const auto landed=clock_ms;
   while(clock_ms<landed+1200+dt){tick(dt,100,wanted);remap();}
-  check(!manual_balance_admitted.load()&&!balance_hud_pending()&&manual_release.pending(),
-        "absent attributable air delivery and absent history retain the original bounded unadmitted cleanup");
+  check(!manual_balance_admitted.load()&&!balance_hud_pending()&&!manual_release.pending(),
+        "absent attributable air delivery cannot invent admission or synthetic putdown");
  }
 }
 std::uint64_t start_analog_air(unsigned dt){
@@ -689,18 +719,68 @@ std::uint64_t start_analog_air(unsigned dt){
  return clock_ms;
 }
 void analog_air_boundaries(){
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned gap:{399u,400u})for(unsigned age:{699u,700u,701u}){
+ for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned gap:{449u,450u})for(unsigned age:{699u,700u,701u}){
   start_analog_air(dt);const short first=nose?-13057:12800,second=nose?12800:-13057;
   tick(dt,200,0);remap(0,first);const auto first_at=clock_ms;
   while(clock_ms<first_at+gap){const auto step=static_cast<unsigned>(std::min<std::uint64_t>(dt,first_at+gap-clock_ms));tick(step,200,0);remap(0,first);}
   const auto recognized=clock_ms;const auto out=remap(0,second);
-  check(out.manual.owns==(gap<400),"actual analog399ms pairing starts the existing adapter while400ms equality is rejected");
+  check(out.manual.owns==(gap<450),"actual analog449ms pairing starts the existing adapter while450ms equality is rejected");
   while(clock_ms+dt<recognized+age){tick(dt,200,0);remap();}
   tick(static_cast<unsigned>(recognized+age-clock_ms),100,nose?0x8000u:0x4000u);const auto landed=remap();
-  check(manual_balance_admitted.load()==(gap<400&&age<=700)&&balance_hud_pending()==(gap<400&&age<=700),
-        "actual analog AIR recognition700ms landing is eligible and701ms cannot revive expired intent");
-  if(gap<400&&age<=700)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
-        "landing acquisition time never replaces the original analog recognition deadline");
+  check(manual_balance_admitted.load()==(gap<450)&&balance_hud_pending()==(gap<450),
+        "admitted same-flight preparation crosses700ms while invalid direction pairs remain rejected");
+  if(gap<450)check(landed.manual.owns&&landed.manual.recognized_at==recognized,
+        "landing acquisition never replaces the original analog recognition identity");
+ }
+}
+void early_air_manual_landing(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned flight:{1000u,2500u,5000u}){
+  const unsigned dt=1000/hz;start_analog_air(dt);
+  tick(dt,200,0);remap(0,nose?-28000:28000);
+  tick(dt,200,0);auto selection=remap(0,nose?28000:-28000).manual;
+  // At faster polls the existing authored Ollie is still delivering its
+  // neutral tail. The original queued gesture must wait, without another edge.
+  for(unsigned wait=0;!selection.owns&&wait<200;wait+=dt){tick(dt,200,0);selection=remap().manual;}
+  if(!selection.owns)std::cerr<<"early-air admission hz="<<hz<<" nose="<<nose<<" flight="<<flight<<"\n";
+  check(selection.owns&&selection.from_air,"early manual is admitted during the original Ollie");
+  trial_hz=hz;trial_start=clock_ms;trial_frame=0;
+  while(clock_ms<selection.recognized_at+flight){
+   tick(dt,201,0);const auto out=remap();
+   if(!out.manual.owns)std::cerr<<"early-air first loss hz="<<hz<<" nose="<<nose<<" age="<<clock_ms-selection.recognized_at<<" request="<<out.manual.request<<"\n";
+   check(out.manual.owns&&out.manual.recognized_at==selection.recognized_at&&out.manual.recognition_id==selection.recognition_id,
+       "early released manual survives the same verified flight beyond700ms without reacquisition");
+   check(!manual_balance_admitted.load()&&!balance_hud_pending()&&!manual_release.pending(),
+       "prepared airborne manual does not invent ground balance or putdown");
+  }
+  tick(dt,100,nose?0x8000u:0x4000u);const auto landed=remap();
+  check(landed.manual.owns&&manual_balance_admitted.load()&&balance_hud_pending(),
+       "early released manual admits actual matching contact on a long-flight landing");
+  std::cout<<"PASS early "<<(nose?"Nose":"Manual")<<" neutral-stick flight "<<flight<<"ms "<<hz<<"Hz\n";
+ }
+ for(bool nose:{false,true}){
+  const unsigned dt=17;prepare_air(nose,dt);const auto recognized=remap().manual.recognized_at;
+  tick(dt,100,0xc000);tick(dt,200,0);const auto rebound=remap();
+  check(rebound.manual.owns&&!rebound.manual.air_episode_owned&&rebound.manual.recognized_at==recognized,
+      "brief unpolled landing rebound keeps only the original bounded preparation, not extended flight authority");
+  while(clock_ms<=recognized+700){tick(dt,201,0);remap();}
+  check(!remap().manual.owns&&!manual_balance_admitted.load()&&!manual_release.pending(),
+      "rebound cannot renew the original request deadline or invent balance or putdown");
+ }
+ for(bool nose:{false,true})for(unsigned exit=0;exit<8;++exit){
+  const unsigned dt=17;prepare_air(nose,dt);const auto recognized=remap().manual.recognized_at;
+  while(clock_ms<recognized+900){tick(dt,201,0);check(remap().manual.owns,"negative control begins with a retained early preparation");}
+  if(exit==0)owner.rig+=16;
+  if(exit==1){tick(dt,100,0xc000);tick(dt,200,0);} // Unobserved landing and new flight.
+  else if(exit==2)clock_ms+=200; // Stale producer cannot authorize a stick.
+  else if(exit==3)set_enabled(false,false);
+  else tick(dt,exit==4?300:exit==5?400:exit==6?504:201,exit==5?0xc000u:0u);
+  const auto ended=remap(exit==7?0x2000u:0u);
+  check(!ended.manual.owns&&!manual_release.pending(),
+      "owner change, new flight, stale producer, OFF, bail, rail, offboard and conflicting grab revoke air intent without putdown");
+  if(exit==3)set_enabled(true,false);
+  tick(dt,200,0);remap();tick(dt,100,nose?0x8000u:0x4000u);const auto later=remap();
+  check(!later.manual.owns&&!manual_balance_admitted.load(),
+      "retired airborne selection cannot reappear on later matching contact without another gesture");
  }
 }
 void analog_air_lifecycle(){
@@ -723,16 +803,16 @@ void analog_air_lifecycle(){
     if(request.action!=InputAction::manual&&request.action!=InputAction::nose_manual)continue;
     ++recognized_count;recognized=request.recognized_at;first_edge=request.first_input_at;last_edge=request.last_input_at;
     check(request.context==InputContext::air&&request.action==(nose?InputAction::nose_manual:InputAction::manual)&&
-          recognized==clock_ms&&recognized-first_edge<400&&last_edge==recognized,
-          "analog cardinal edges keep their observed strict400ms pair clock and typed once-only recognition");
+          recognized==clock_ms&&recognized-first_edge<450&&last_edge==recognized,
+          "analog cardinal edges keep their observed strict450ms pair clock and typed once-only recognition");
    }
    if(out.manual.owns){if(!delivered)delivered=clock_ms;check(out.manual.from_air&&out.manual.recognized_at==recognized&&
        out.right_x==0&&out.right_y==(nose?20000:-20000),"actual prelanding RS delivery retains the immutable analog recognition and family");}
    check(!manual_balance_admitted.load()&&!balance_hud_pending(),"analog airborne request and pad output alone cannot fabricate grounded balance");
   }
-  const bool valid=shape<3;
+  const bool valid=shape<4;
   check(recognized_count==(valid?1u:0u)&&bool(delivered)==valid,
-        "raw native analog trajectories recognize once; pure diagonals and insufficient first throw cannot substitute cardinal edges");
+        "raw analog trajectories including diagonal reversals recognize once; insufficient first throw remains rejected");
   if(valid){
    unsigned consumed{};for(const auto& event:arcade_input.history(0)->events())if(event.token.source==InputSource::direction&&
        event.token.edge==InputEdge::press&&(event.at==first_edge||event.at==last_edge)){
@@ -748,32 +828,397 @@ void analog_air_lifecycle(){
 }
 
 
+void analog_manual_entry_tolerance(){
+ for(bool air:{false,true})for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})
+ for(short horizontal:{short{0},short{14000},short{-18000},short{26000},short{31000}}){
+  const unsigned dt=1000/hz;
+  if(air)start_analog_air(dt);
+  else {reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();}
+  arcade_input.set_recognition_capture(0,true);
+  const unsigned state=air?200:100,contacts=air?0:0xc000;
+  // RC3 accepts natural diagonal travel. Keep the steering negative outside
+  // the new cone while still above the vertical magnitude threshold.
+  const short magnitude=horizontal==31000?18000:28000;
+  const short first=nose?static_cast<short>(-magnitude):magnitude,second=static_cast<short>(-first);
+  tick(dt,state,contacts);const auto first_out=remap(0,first,horizontal);
+  const auto first_at=clock_ms;
+  const bool accepted=horizontal!=31000;
+  if(!air&&nose)check(first_out.suppress_reverse==accepted,
+      "vertical-dominant first Down reserves native reverse during manual recognition; steering-dominant input does not");
+  for(unsigned i=0;i<140/dt;++i){tick(dt,state,contacts);remap(0,first,i%2?horizontal:0);}
+  tick(dt,state,contacts);const auto output=remap(0,second,horizontal);
+  if(output.manual.owns!=accepted)std::cerr<<"entry air="<<air<<" nose="<<nose<<" hz="<<hz<<" x="<<horizontal<<" request="<<output.manual.request<<" safe="<<output.manual.safe<<"\n";
+  check(output.manual.owns==accepted,
+      "production manual entry accepts vertical-dominant diagonal pairs at30/60/120Hz and rejects steering-dominant pairs");
+  if(accepted){
+   check(output.manual.request==(nose?1:-1)&&output.right_y==(nose?20000:-20000),
+       "tolerant manual gesture retains native RS direction and pressure");
+   const auto* diagnostic=arcade_input.input_diagnostic(0);
+   unsigned matches{};
+   for(std::size_t i=0;i<diagnostic->recognition_count;++i){const auto& request=diagnostic->recognition[i].request;
+    if(request.action==InputAction::manual||request.action==InputAction::nose_manual){
+     if(request.first_input_at!=first_at||request.last_input_at!=clock_ms)std::cerr<<"edge air="<<air<<" nose="<<nose<<" hz="<<hz<<" x="<<horizontal<<" first="<<first_at<<" actual="<<request.first_input_at<<" last="<<request.last_input_at<<" now="<<clock_ms<<"\n";
+     ++matches;check(request.first_input_at==first_at&&request.last_input_at==clock_ms,
+         "manual tolerance consumes real shared direction edges without fabricated edge times");
+    }
+   }
+   check(matches==1,"one physical vertical pair creates one manual request");
+   tick(dt,100,nose?0x8000u:0x4000u);remap(0,second,horizontal);
+   check(manual_balance_admitted.load()&&balance_hud_pending(),
+       "tolerant ground and air requests still require original native contact before model and HUD admission");
+  }
+ }
+}
+void analog_manual_cone_continuation(){
+ for(bool air:{false,true})for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;
+  if(air)start_analog_air(dt);
+  else {reset_case();observe(dt/1000.f,0xc000);client(dt/1000.f,history());remap();}
+  arcade_input.set_recognition_capture(0,true);
+  const unsigned state=air?200:100,contacts=air?0:0xc000;
+  const short sign=nose?1:-1;
+  tick(dt,state,contacts);remap(0,static_cast<short>(-sign*19000),31000);const auto first=clock_ms;
+  tick(dt,state,contacts);const auto qualified_first=remap(0,static_cast<short>(-sign*25000),22000);
+  if(!air&&nose)check(qualified_first.suppress_reverse,"late Manual cone entry reserves reverse on its first qualifying sample");
+  // Keep the physical throw duration comparable across rates. The existing
+  // airborne launch actor still owns its finite release interval at120Hz.
+  while(clock_ms-first<100){tick(dt,state,contacts);remap(0,static_cast<short>(-sign*25000),22000);}
+  tick(dt,state,contacts);remap(0,static_cast<short>(sign*19000),31000);const auto last=clock_ms;
+  tick(dt,state,contacts);const auto output=remap(0,static_cast<short>(sign*25000),22000);
+  if(!output.manual.owns){std::cerr<<"cone air="<<air<<" nose="<<nose<<" hz="<<hz<<" request="<<output.manual.request<<" safe="<<output.manual.safe<<" rejected="<<output.manual.rejected<<'\n';
+   for(const auto&e:arcade_input.history(0)->events())std::cerr<<" token="<<e.token.code<<" edge="<<static_cast<int>(e.token.edge)<<" at="<<e.at<<" owners="<<e.owners<<" cone="<<e.manual_vertical<<" qualified="<<e.manual_qualified_at<<'\n';}
+  check(output.manual.owns && output.right_y==sign*20000,
+      "production remap acquires manual pressure when both throws qualify inside unchanged diagonal tokens");
+  const auto* diagnostic=arcade_input.input_diagnostic(0);unsigned matches{};
+  for(std::size_t i=0;i<diagnostic->recognition_count;++i){const auto&r=diagnostic->recognition[i].request;
+   if(r.action==InputAction::manual||r.action==InputAction::nose_manual){++matches;
+    check(r.first_input_at==first&&r.last_input_at==last&&r.recognized_at==clock_ms,
+        "composed Manual qualification retains original edges and separate recognition time");}}
+  check(matches==1 && !manual_balance_admitted.load() && !balance_hud_pending(),
+      "cone request is once-only and cannot fabricate native balance or HUD");
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"cone-request ground or air landing still needs original matching contact");
+  const auto episode=manual_episode.serial(),began=clock_ms;
+  while(clock_ms-began<10000){const auto value=snapshot();tick(dt,100,nose?0x8000u:0x4000u);
+   const auto held=remap(0,value.velocity+.02f*value.position>0?-25000:25000);
+   check(held.manual.owns&&manual_episode.serial()==episode&&combo_session.model().state().combo_active&&balance_hud_pending(),
+       "newly qualified analog pair continues one manual episode with model and HUD for ten seconds");}
+ }
+}
+void manual_handoff_native_boundaries(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(unsigned duration:{300u,1900u,5500u})for(unsigned missing=0;missing<9;++missing){
+  const unsigned dt=1000/hz;raw.words[0]=0;qualified(nose,dt,300);
+  const auto id=manual_episode.serial();const auto began=clock_ms;
+  check(remap(0,0,0,255).action.owned,"native handoff negative control begins from independently admitted manual and RT");
+  while(clock_ms-began<duration){
+   tick(dt,missing==0?100:101,0xc000);remap();
+  }
+  // A label may exist even when the physical transition is incomplete. It
+  // cannot stand in for the missing state, owner or original interval.
+  ScoreLabelOccurrence event{true,score_label_bit(3),1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
+  client(dt/1000.f,history(),event);
+  if(missing==8){
+   raw.state=100;raw.words[0]^=0x20u;client(dt/1000.f,history());
+   const auto retained=remap();
+   check(!retained.manual.owns || retained.manual.request==(nose?1:-1),"client-ahead stance publication cannot substitute for a new original native transition step");
+   check(manual_episode.serial()==id,"client-only publication retains original episode identity");continue;
+  }
+  if(missing==2){tick(dt,103,0xc000);remap();}
+  if(missing==3){owner.rig+=16;}
+  raw.words[0]^=0x20u;
+  if(missing==1)raw.words[0]|=0x40u;
+  const unsigned state=missing==4?300:missing==5?504:missing==6?400:100;
+  tick(missing==7?200:dt,state,nose?0x4000u:0x8000u);
+  const auto refused=remap();
+  check((!refused.manual.owns || refused.manual.request==(nose?1:-1))&&!refused.manual.revert.ack_at,
+      "physical handoff rejects absent101, pushing owner, interrupted transition, owner loss, bail, offboard, grind and an original-step gap even with a score label");
+  check(manual_episode.serial()==id,"failed native handoff never creates a replacement manual episode");
+ }
+}
 void manual_revert_production(){
- for(bool nose:{false,true})for(unsigned dt:{8u,17u,34u})for(bool ack:{false,true}){
-  qualified(nose,dt,300);
-  for(unsigned link=0;link<(ack?2u:1u);++link){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool ack:{false,true})for(unsigned contact_mode:{0u,1u,2u})for(unsigned ack_delay:{300u,900u,1900u,5500u})for(bool rapid:{false,true}){
+  if(rapid&&(ack||contact_mode!=2||ack_delay!=900))continue;
+  const unsigned dt=1000/hz;const bool already=contact_mode==1;
+  qualified(nose,dt,300);const bool initial_nose=nose;trial_hz=hz;trial_start=clock_ms;trial_frame=0;
+  const auto episode_id=manual_episode.serial();
+  const auto multiplier=combo_session.model().state().multiplier;
+  for(unsigned link=0;link<2u;++link){
    const auto began=clock_ms;
-   check(remap(0,0,0,255).action.owned,"qualified production manual admits one discrete RT actor");
-   while(clock_ms-began<900){
-    clock_ms+=dt;observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();
+   const auto started=remap(0,0,0,255);
+   check(started.action.owned,"qualified production manual admits one discrete RT actor");
+   RevertPlayback reference;
+   check(reference.start(began,RevertSide::frontside,{nose,!(raw.words[0]&0x20u),false,static_cast<short>(nose?20000:-20000)},true),"reference uses the unchanged native revert recipe");
+   const auto verify_left=[&](const NativeGesture::Output& actual){
+    const auto expected=reference.sample(clock_ms,true);
+    if(actual.action.pad.owns_left_stick!=expected.owns_sticks || (expected.owns_sticks&&(actual.action.pad.left_x!=expected.left_x||actual.action.pad.left_y!=expected.left_y)))
+     std::cerr<<"revert waypoint nose="<<nose<<" hz="<<hz<<" ack_delay="<<ack_delay<<" age="<<clock_ms-began<<" owns="<<actual.action.pad.owns_left_stick<<" expected="<<expected.owns_sticks<<" manual="<<actual.manual.owns<<"\n";
+    check(actual.action.pad.owns_left_stick==expected.owns_sticks&&
+       (!expected.owns_sticks||(actual.action.pad.left_x==expected.left_x&&actual.action.pad.left_y==expected.left_y)),
+       "manual successor preserves every native LS revert waypoint and its original clock");
+   };
+   verify_left(started);
+   while(clock_ms-began<ack_delay){
+    advance_trial(dt);observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());
+    const auto turning=remap(0,0,0,255);verify_left(turning);
+    if(!((!turning.manual.owns||turning.right_y==(nose?20000:-20000))&&manual_episode.serial()==episode_id&&manual_episode.transitioning()&&balance_hud_pending()&&!manual_release.pending()))
+     std::cerr<<"native progress nose="<<nose<<" hz="<<hz<<" delay="<<ack_delay<<" age="<<clock_ms-began<<" owns="<<turning.manual.owns<<" ry="<<turning.right_y<<" phase="<<static_cast<int>(manual_episode.phase())<<" exit="<<static_cast<int>(manual_episode.exit())<<" hud="<<balance_hud_pending()<<" release="<<manual_release.pending()<<"\n";
+    check((!turning.manual.owns||turning.right_y==(nose?20000:-20000))&&
+       manual_episode.serial()==episode_id&&manual_episode.transitioning()&&balance_hud_pending()&&!manual_release.pending(),
+       "original native revert progress retires request expiry without losing the manual episode or RS owner");
     check(combo_session.model().state().combo_active&&!combo_session.model().state().revert_pending,
        "admitted native revert preparation preserves original combo beyond landing grace without claiming success");
    }
-   if(!ack){
-    while(clock_ms-began<2400){clock_ms+=dt;observe(dt/1000.f,0xc000,101);client(dt/1000.f,history());remap();}
-    check(!combo_session.model().state().combo_active,"unacknowledged bounded revert settles without a phantom link");
+   if(ack){
+    ScoreLabelOccurrence event{true,score_label_bit(3),link+1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
+    client(dt/1000.f,history(),event);
+   }
+   check(combo_session.model().state().revert_pending==ack,"physical handoff cannot fabricate a missing native score-label acknowledgment");
+   const auto retained=remap(0,0,0,255);
+   check(!retained.manual.owns || retained.manual.request==(nose?1:-1),"neither a score label nor native101 alone transfers RS before original grounded return");
+   // Live Deck trace: foot-leading0x20 stays unchanged through native101->100.
+   // Independent native orientation changes; original manual identity remains.
+   orientation.fakie=!orientation.fakie;
+   advance_trial(dt);observe(dt/1000.f,already?(nose?0x8000u:0x4000u):0xc000u);client(dt/1000.f,history());
+   const auto out=remap(already&&ack_delay==900?0x6000u:0u,0,0,255);
+   check(out.manual.owns&&out.manual.request==(nose?1:-1),"observed native return with unchanged foot stance transfers manual RS before the native LS revert finishes");
+   verify_left(out);
+   check(!out.action.pad.owns_right_stick&&out.right_y==(nose?20000:-20000),"successor takes RS at original pressure without a native flick while RT remains held");
+   // Client publication can run again before either XInput or the next
+   // original physics callback. It must not erase the delivered acquisition.
+   client(dt/1000.f,history());
+   remap(0,0,0,255);client(dt/1000.f,history());remap(0,0,0,255);
+   const auto pressure_began=clock_ms;short previous=out.right_y;
+   while(clock_ms-pressure_began<200){
+    const auto duplicate=remap(0,0,0,255);
+    check(duplicate.right_y==previous,"duplicate client/input polls cannot advance the native-step pressure trajectory");
+    advance_trial(dt);observe(dt/1000.f,already?(nose?0x8000u:0x4000u):0xc000u);client(dt/1000.f,history());
+    const auto crossing=remap(0,0,0,255);verify_left(crossing);
+    const int delta=(nose?-1:1)*(crossing.right_y-previous);
+    check(crossing.manual.owns&&!crossing.action.pad.owns_right_stick&&delta==0,
+        "native-step handoff owns RS without changing original manual pressure");
+    check(manual_episode.serial()==episode_id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+        "native contact settling preserves original episode and HUD without a false physical exit");
+    previous=crossing.right_y;
+   }
+   check(previous==(nose?20000:-20000),"native observations preserve original manual pressure through fakie pose selection");
+   for(unsigned proof=0;proof<2;++proof){advance_trial(dt);observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());verify_left(remap(0,0,0,255));}
+   check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "delivered successor owns original manual balance and HUD after consecutive original contact while native LS may still run");
+   if(rapid&&link==0){
+    remap(); // Real RT release then press before the next original physics step.
     continue;
    }
-   ScoreLabelOccurrence event{true,score_label_bit(3),link+1,clock_ms,clock_ms,ScoreLabelUncertainty::none};
-   client(dt/1000.f,history(),event);
-   check(combo_session.model().state().revert_pending,"only independent native revert acknowledgment creates the post-revert link");
-   raw.words[0]^=0x20u;clock_ms+=dt;observe(dt/1000.f,0xc000);client(dt/1000.f,history());
-   const auto out=remap();
-   check(out.manual.owns&&out.manual.request==(nose?-1:1),"changed native stance admits opposite manual actuator after the sampled revert finishes");
-   nose=!nose;clock_ms+=dt;observe(dt/1000.f,nose?0x8000u:0x4000u);client(dt/1000.f,history());remap();
-   check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
-      "new independent opposite-wheel contact activates opposite balance and HUD without banking");
+   const auto acquired=clock_ms;
+   while(clock_ms-acquired<10000){const auto state=snapshot();tick(dt,100,nose?0x8000u:0x4000u);const auto held=remap(0,state.velocity+.02f*state.position>0?-25000:25000,0,clock_ms-began<1200?255:0);
+    if(clock_ms-began<1200)verify_left(held);
+    check(held.manual.owns&&held.right_y==(nose?20000:-20000)&&!held.action.pad.owns_right_stick,"original RS ownership remains continuous across native revert completion and held RT release");
+    if(!(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active))
+     std::cerr<<"linked failure nose="<<nose<<" dt="<<dt<<" already="<<already<<" age="<<clock_ms-acquired<<" balance="<<manual_balance_admitted.load()<<" hud="<<balance_hud_pending()<<" combo="<<combo_session.model().state().combo_active<<" putdown="<<manual_release.pending()<<" position="<<state.position<<" velocity="<<state.velocity<<" elapsed="<<state.elapsed<<"\n";
+    check(manual_episode.serial()==episode_id&&combo_session.model().state().multiplier==multiplier&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "revert-linked balance survives the acquisition deadline without artificial putdown");}
   }
+  trial_hz=0;
+  std::cout<<"PASS label="<<ack<<" "<<(initial_nose?"Nose->Fakie Nose->Nose":"Manual->Fakie Manual->Manual")<<(rapid?" immediate chain and 10s hold ":" two 10s holds ")<<hz<<"Hz contact_mode="<<contact_mode<<"\n";
+ }
+}
+void manual_revert_contact_publication_gap(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const auto id=manual_episode.serial(),request_at=remap().manual.request_at;
+  // Live c45 chain: original contact changes to both trucks before the next
+  // client publication, in the same interval as the second physical RT edge.
+  clock_ms+=dt;observe(dt/1000.f,0xc000u);
+  const auto waiting=remap(0,0,0,255);
+  if(!waiting.manual.owns)std::cerr<<"gap nose="<<nose<<" hz="<<hz<<" safe="<<waiting.manual.safe<<" request="<<waiting.manual.request<<" output="<<waiting.right_y<<" action="<<waiting.action.owned<<" admitted="<<manual_balance_admitted.load()<<" observed="<<static_cast<unsigned>(manual_observed.load())<<" episode="<<static_cast<unsigned>(manual_episode.phase())<<"\n";
+  check(waiting.manual.owns&&waiting.manual.request==(nose?1:-1)&&waiting.right_y==(nose?20000:-20000)&&waiting.manual.request_at==request_at,
+      "RT during a contact-publication gap retains established manual RS instead of falling through to a ground revert");
+  check(!waiting.action.owned&&!waiting.manual.revert.ack_at,
+      "missing current balance correlation waits without fabricating revert admission or acknowledgment");
+  client(dt/1000.f,history());const auto admitted=remap(0,0,0,255);
+  check(admitted.action.owned&&admitted.manual.owns&&admitted.right_y==(nose?20000:-20000)&&!admitted.action.pad.owns_right_stick,
+      "fresh authoritative episode publication admits the pending RT while preserving original RS");
+  check(manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "contact-publication race cannot bank or replace the established manual episode");
+  tick(dt,101,0xc000u);const auto turning=remap();
+  check(turning.manual.owns&&turning.right_y==(nose?20000:-20000)&&manual_episode.transitioning(),
+      "new native revert is linked to the retained manual rather than ordinary riding");
+  const auto began=clock_ms;
+  while(clock_ms-began<300){tick(dt,101,0xc000u);remap();}
+  orientation.fakie=!orientation.fakie;
+  tick(dt,100,0xc000u);const auto transfer=remap();
+  check(transfer.manual.revert.ack_at&&transfer.right_y==(nose?20000:-20000),
+      "publication-gap recovery still requires native return before renewing original pressure");
+  const auto crossing=clock_ms;
+  while(clock_ms-crossing<220){tick(dt,100,0xc000u);remap();}
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  const auto acquired=clock_ms;
+  while(clock_ms-acquired<10000){
+   const auto balance=snapshot();tick(dt,100,nose?0x8000u:0x4000u);
+   const auto held=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(held.manual.owns&&held.right_y==(nose?20000:-20000)&&manual_episode.serial()==id&&
+       balance_hud_pending()&&combo_session.model().state().combo_active&&!manual_release.pending(),
+       "contact-publication RT race recovers into ten seconds of fakie balance in the same episode");
+  }
+ }
+ for(bool nose:{false,true})for(unsigned loss:{0u,1u,2u,3u,4u}){
+  constexpr unsigned dt=17;qualified(nose,dt,300);
+  clock_ms+=dt;observe(dt/1000.f,0xc000u);remap(0,0,0,255);
+  if(loss==0)++owner.rig;
+  if(loss==4){clock_ms+=200;}
+  else {tick(loss==3?120:dt,loss==1?504:loss==2?300:100,0xc000u);}
+  const auto refused=remap(0,0,0,255);
+  check(!refused.manual.owns&&!refused.action.owned,
+      "queued RT across owner loss, offboard, bail, real putdown or stale evidence cannot retain or recreate authority");
+ }
+}
+void manual_ground_contact_bounce(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  reset_case();native_score_active=false;
+  observe(1.f/hz,0xc000);client(1.f/hz,history());remap();
+  tick(dt,100,0xc000);remap(nose?2u:1u);
+  tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"ground bounce delivers attributable pressure");
+  for(unsigned i=0;i<3;++i){tick(dt,100,wanted);remap();}
+  const auto id=manual_episode.serial(),request=remap().manual.request_at;
+  const auto before=snapshot().elapsed;
+  for(unsigned i=0;i<hz/5+1;++i){
+   tick(dt,100,0xc000);const auto held=remap();
+   check(held.manual.owns&&held.right_y==(nose?20000:-20000)&&held.manual.request_at==request&&
+       manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "owned ground settling cannot infer a putdown and cancel the pressure needed for recovery");
+   check(snapshot().elapsed==before&&!manual_release.pending(),
+       "both-truck settling suspends integration without a synthetic release");
+  }
+  const auto resumed=clock_ms;
+  while(clock_ms-resumed<10000){
+   const auto balance=snapshot();tick(dt,100,wanted);
+   const auto held=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(held.manual.owns&&manual_episode.serial()==id&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "recovered ground entry preserves its original episode and balance for ten seconds");
+  }
+  // No fresh controller delivery is an integration suspension, not a new
+  // release edge. This must also hold while native contact remains available.
+  for(unsigned i=0;i<hz/4+1;++i)tick(dt,100,wanted);
+  const auto suspended=snapshot().elapsed;
+  tick(dt,100,wanted);
+  check(snapshot().elapsed==suspended&&!manual_episode.ended()&&!manual_release.pending(),
+      "missing delivery suspends physics without fabricating release or physical exit");
+  corrupt_manual_delivery=true;
+  const auto missing=remap();corrupt_manual_delivery=false;
+  check(!missing.manual.release_requested,"neutral delivery without a physical cancel is not release evidence");
+  for(unsigned i=0;i<hz/5+1;++i){tick(dt,100,0xc000);remap();}
+  check(manual_episode.serial()==id&&!manual_episode.ended(),
+      "an unrequested neutral packet cannot turn contact uncertainty into putdown");
+ }
+}
+void manual_revert_successor_contact_bounce(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  const auto episode=manual_episode.serial();
+  check(remap(0,0,0,255).action.owned,"settling regression starts independently admitted manual RT");
+  const auto began=clock_ms;
+  while(clock_ms-began<433){tick(dt,101,nose?0x8000u:0x4000u);remap();}
+  orientation.fakie=!orientation.fakie;
+  tick(dt,100,0xc000u);remap();
+  const auto returned=clock_ms;
+  while(clock_ms-returned<533){tick(dt,100,0xc000u);remap();}
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(manual_episode.transitioning(),"first returning wheel contact is provisional, not completed handoff");
+  for(unsigned poll=0;poll<4;++poll){client(dt/1000.f,history());remap();}
+  check(manual_episode.transitioning(),"repeated consumers cannot confirm one native contact as settled");
+  const auto elapsed=snapshot().elapsed;
+  const auto bounce=clock_ms;
+  while(clock_ms-bounce<165){
+   tick(dt,100,0xc000u);const auto output=remap();
+   check(manual_episode.transitioning()&&manual_episode.serial()==episode&&output.manual.owns&&
+       output.right_y==(nose?20000:-20000)&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "post-revert native settling cannot cancel successor pressure or bank the original combo");
+   check(snapshot().elapsed==elapsed,"two-truck settling does not fabricate manual physics integration");
+  }
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(manual_episode.transitioning(),"a rebound must establish a new consecutive contact pair");
+  tick(dt,100,nose?0x8000u:0x4000u);remap();
+  check(manual_episode.pose()==(nose?SkatePose::nose_manual:SkatePose::manual)&&!manual_episode.transitioning(),
+      "second consecutive original contact completes the same linked manual episode");
+  const auto acquired=clock_ms;
+  while(clock_ms-acquired<10000){
+   const auto balance=snapshot();tick(dt,100,nose?0x8000u:0x4000u);
+   const auto output=remap(0,balance.velocity+.02f*balance.position>0?-25000:25000);
+   check(manual_episode.serial()==episode&&output.manual.owns&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "settled successor retains the episode, balance and HUD for ten seconds");
+  }
+ }
+}
+void manual_revert_without_native_transition(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);
+  const auto episode=manual_episode.serial(),began=clock_ms;
+  const auto request_at=remap().manual.request_at;
+  check(remap(0,0,0,255).action.owned,"failed-revert regression starts the existing RT recipe from real admitted manual");
+  while(clock_ms-began<10000){
+   // Recorded inverse failure: native100 and the original nose contact,
+   // without101 or any opposite contact. Finishing LS must not release RS.
+   const auto feedback=snapshot();
+   const auto age=clock_ms-began;
+   tick(dt,100,age>=50&&age<215?0xc000u:wanted);
+   const auto out=remap(0,feedback.velocity+.02f*feedback.position>0?-25000:25000,0,clock_ms-began<1200?255:0);
+   check(out.manual.owns&&out.manual.request==(nose?1:-1)&&out.manual.request_at==request_at&&
+       out.right_y==(nose?20000:-20000)&&!out.manual.revert.ack_at,
+       "unacknowledged RT retains original manual actuator and request clock without a false opposite handoff");
+   check(manual_episode.serial()==episode&&manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+       "finite revert recipe cannot end an independently continuing original manual or combo");
+   if(age>1600)check(!manual_episode.transitioning(),
+       "an unobserved revert request still expires without claiming native transition progress");
+  }
+  const auto released=remap(12u);
+  check(released.manual.release_requested&&!released.manual.owns&&released.right_y==0,
+      "physical cancellation delivers neutral before putdown completion");
+  tick(dt,100,0xc000);remap();
+  for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
+  check(!remap().manual.owns&&!balance_hud_pending(),"retained original still exits on a verified native putdown");
+ }
+}
+void manual_native_revert_freshness(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool disabled:{false,true}){
+  const unsigned dt=1000/hz;qualified(nose,dt,300);
+  check(remap(0,0,0,255).action.owned,"native-progress freshness control starts the admitted RT actor");
+  const auto began=clock_ms;
+  while(clock_ms-began<1900){tick(dt,101,nose?0x8000u:0x4000u);remap();}
+  check(manual_episode.transitioning(),"original native progress remains authoritative beyond request expiry");
+  const auto elapsed=snapshot().elapsed;
+  if(disabled)set_enabled(false,false);else clock_ms+=200;
+  const auto stopped=remap();
+  check(!stopped.manual.owns&&!stopped.action.owned&&!stopped.manual.revert.ack_at,
+      "native progress cannot authorize stale actuator output or survive Arcade OFF");
+  check(snapshot().elapsed==elapsed&&!manual_release.pending(),
+      "missing native progress suspends rather than integrating time or fabricating putdown");
+ }
+}
+void manual_pressure_observation_gaps(){
+ for(bool nose:{false,true})for(unsigned hz:{30u,60u,120u})for(bool owner_loss:{false,true}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);const auto episode=manual_episode.serial();
+  check(remap(0,0,0,255).action.owned,"pressure-gap case starts the real manual revert actor");
+  for(unsigned i=0;i<5;++i){tick(dt,101,wanted);remap();}
+  orientation.fakie=!orientation.fakie;
+  tick(dt,100,wanted);const auto start=remap();
+  check(start.manual.revert.ack_at&&start.right_y==(nose?20000:-20000),"acknowledged transfer begins at actual original pressure");
+  tick(dt,100,wanted);const auto first=remap();
+  check(first.right_y==start.right_y,"new original steps preserve native manual pressure");
+  for(unsigned i=0;i<3;++i)tick(dt,100,wanted); // no consumer/delivery
+  const auto resumed=remap();
+  check(resumed.right_y==first.right_y&&resumed.manual.request_at==first.manual.request_at,
+      "missed delivery steps do not jump pressure or restart acquisition");
+  for(unsigned i=0;i<5;++i)check(remap().right_y==resumed.right_y,"repeated reads of one native sample leave pressure fixed");
+  tick(dt,100,wanted);const auto next=remap();
+  check(next.right_y==resumed.right_y,
+      "resumed pressure still selects the original manual after a consumer gap");
+  if(owner_loss)owner.rig+=16;else clock_ms+=1200;
+  tick(dt,100,wanted);
+  const auto lost=remap();
+  check(!lost.manual.owns&&!manual_release.pending()&&manual_episode.serial()==episode&&(!owner_loss||!balance_hud_pending()),
+      "owner loss or expired unfinished transfer revokes actuation without a pressure snap or synthetic putdown");
  }
 }
 void manual_observation_continuity(){
@@ -800,104 +1245,182 @@ void manual_observation_continuity(){
   }
   tick(dt,100,0xc000);remap();
   for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
-  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"real completed contact exit still ends retained manual");
+  check(manual_balance_admitted.load()&&balance_hud_pending(),"continued owned pressure keeps two-truck uncertainty separate from a release");
+  check(remap(12u).manual.release_requested,"contact exit follows an explicit physical cancellation");
+  for(unsigned i=0;i<200/dt+1;++i){tick(dt,100,0xc000);remap();}
+  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"real completed contact exit after release ends retained manual");
+ }
+}
+void episode_ground_gap_regression(){
+ for(bool nose:{false,true}){
+  provisional_ground(nose,false);
+  check(balance_hud_pending(),"ground entry first publishes native admitted HUD");
+  const auto before=snapshot();
+  physical_manual_steps.invalidate(); // native frame still valid; missing dynamics record only
+  client(.034f,history());
+  check(balance_hud_pending() && manual_balance_admitted.load() && combo_session.model().state().combo_active,
+        "P0: a missing dynamics record must not erase established grounded manual identity or HUD");
+  check(snapshot().elapsed==before.elapsed && !manual_release.pending(),
+        "P0: a missing dynamics record must neither integrate time nor request putdown");
+ }
+}
+
+void episode_ten_seconds(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true})for(bool early:{false,true}){
+  reset_case();native_score_active=false;
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  observe(1.f/hz,0xc000);client(1.f/hz,history());remap();
+  tick(dt,100,0xc000);remap(nose?2u:1u);
+  tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"ground gesture delivers owned manual pressure");
+  if(early){rows.push_back({900,901,nose?2u:1u});client(1.f/hz,history());}
+  tick(dt,100,wanted);remap();
+  check(balance_hud_pending(),"ground contact admits meter before late history");
+  const auto id=manual_episode.serial();const auto multiplier=combo_session.model().state().multiplier;
+  const auto started=clock_ms;
+  for(unsigned i=1;i<=10*hz;++i){
+   clock_ms=started+static_cast<std::uint64_t>(i)*1000/hz;
+   if(i==4&&!early)rows.push_back({900,901,nose?2u:1u});
+   // One transient two-truck frame, missing dynamics and history publication.
+   observe(1.f/hz,i==hz?0xc000u:wanted);
+   if(i==2*hz)physical_manual_steps.invalidate();
+   client(1.f/hz,i==3*hz?ScoreLabelOccurrence{}:history());
+   const auto before=snapshot().elapsed;client(1.f/hz,history());
+   check(snapshot().elapsed==before,"duplicate client publication never invents physics time");
+   const auto state=snapshot();const auto out=remap(0,state.velocity+.02f*state.position>0?-25000:25000);
+   check(manual_episode.serial()==id&&manual_balance_admitted.load()&&balance_hud_pending()&&out.manual.owns&&
+       !manual_release.pending()&&combo_session.model().state().combo_active&&combo_session.model().state().multiplier==multiplier,
+       "10s ground episode retains identity, actuator, HUD and combo across realistic short gaps");
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+   rendered(true,"grounded episode meter stays rendered");
+#endif
+  }
+  std::cout<<"PASS ground "<<(nose?"Nose Manual":"Manual")<<" 10s "<<hz<<"Hz history="<<(early?"early":"late")<<"\n";
+ }
+}
+void episode_real_exits(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  for(unsigned boundary:{300u,401u,504u,701u,102u}){
+   qualified(nose,dt,300);clock_ms+=dt;observe(1.f/hz,0,boundary);
+   clock_ms+=dt;observe(1.f/hz,wanted);client(1.f/hz,history());const auto out=remap();
+   check(manual_episode.ended()&&!out.manual.owns&&!manual_release.pending(),
+       "positive native exit between clients retires episode and actuator without synthetic putdown");
+  }
+  qualified(nose,dt,300);
+  const auto released=remap(12u);
+  check(released.manual.release_requested&&!released.manual.owns&&released.right_y==0,
+      "real putdown fixture includes physical release and delivered neutral");
+  for(unsigned i=0;i<hz/4;++i){tick(dt,100,0xc000);remap();}
+  check(manual_episode.ended()&&!balance_hud_pending()&&!remap().manual.owns,
+      "consecutive original two-truck samples after release confirm physical putdown");
+  qualified(nose,dt,300);++owner.rig;tick(dt,100,wanted);
+  check(!remap().manual.owns&&!balance_hud_pending(),"changed native owner cannot inherit stale manual authority");
+  qualified(nose,dt,300);set_enabled(false,false);
+  check(!balance_hud_pending()&&!remap().manual.owns,"Arcade OFF immediately retires HUD and actuator");
+  for(bool safe:{false,true}){
+   qualified(nose,dt,300);ManualBalanceAdjustment adjustment;
+   const float edge=GameplayProfile{}.balance(PhysicalBalanceKind::manual).endpoint;
+   adjustment.lean_multiplier=0;adjustment.lean_add_signed=(safe?(nose?1.f:-1.f):(nose?-1.f:1.f))*edge*1.01f;
+   adjustment.speed_multiplier=0;
+   check(physical_manual.adjust(adjustment),"endpoint fixture adjusts actual production dynamics");
+   tick(dt,100,wanted);remap();
+   check((safe?combo_session.manual_putdown():combo_session.failed_section())&&!remap().manual.owns,
+       "genuine integrated endpoint retains native safe-putdown or bail request");
+  }
+ }
+}
+void episode_airborne_combos(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true})for(unsigned duration:{300u,800u}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);const auto multiplier=combo_session.model().state().multiplier;
+  const auto serial=manual_episode.serial();
+  const auto setup=remap(0x1000);check(setup.jump.setup_started,"manual Ollie uses existing native setup");
+  tick(dt,103,0xc000);remap(0x1000);tick(dt,103,0xc000);
+  check(remap().jump.released,"manual Ollie uses physical release without synthesizing an edge");
+  const auto start=clock_ms;tick(dt,200,0);remap();
+  while(clock_ms-start<duration){tick(dt,200,0);remap();
+   check(combo_session.model().state().combo_active&&!balance_hud_pending()&&
+       combo_session.model().state().multiplier==multiplier&&!manual_release.pending(),
+       "short and long native flight retain airborne combo without fictional manual HUD or multiplier");}
+  tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);remap(nose?1u:2u);
+  rows.push_back({80,90,nose?2u:1u});tick(dt,100,wanted);remap();
+  check(manual_balance_admitted.load()&&balance_hud_pending()&&combo_session.model().state().combo_active,
+      "fresh airborne preparation lands into manual while retaining combo");
+  if(duration<500)check(manual_episode.serial()==serial,"short hop retains original manual episode");
+ }
+}
+void episode_suspension(){
+ for(bool nose:{false,true}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,17,300);
+  const auto id=manual_episode.serial();const auto before=snapshot().elapsed;
+  clock_ms+=17;observe(.017f,0,100,false);client(.017f,{});remap();
+  check(manual_episode.serial()==id&&balance_hud_pending()&&snapshot().elapsed==before&&!manual_release.pending(),
+      "failed native read suspends dynamics and actuator without erasing HUD or requesting exit");
+  clock_ms+=17;observe(.017f,wanted);client(.017f,history());const auto resumed=remap();
+  check(resumed.manual.owns&&manual_episode.serial()==id&&balance_hud_pending()&&!manual_release.pending(),
+      "same verified native owner/contact resumes retained pressure after short read failure");
+  const auto original=latest.sampled_at;clock_ms+=25;client(.017f,history());
+  check(observed.sampled_at_ms==original,"client publication retains the original native HUD timestamp");
+  set_enabled(false,false);
+  check(!observed.valid,"actual OFF callback clears the HUD publication source immediately");
+ }
+}
+void episode_buffered_endpoint(){
+ for(bool nose:{false,true}){
+  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,17,300);
+  ManualBalanceAdjustment a;a.lean_multiplier=0;a.lean_add_signed=(nose?1.f:-1.f)*100000.f;a.speed_multiplier=0;
+  check(physical_manual.adjust(a),"endpoint uses actual physical balance");tick(17,100,wanted);remap();
+  check(manual_release.pending(),"integrated safe endpoint starts actual release adapter");
+  clock_ms+=17;observe(.017f,0xc000);clock_ms+=17;observe(.017f,wanted);client(.017f,history());remap();
+  check(!manual_release.pending(),"original observed physical completion between clients must retire old pending release before recovery contact");
+ }
+}
+void ground_manual_after_completed_exit(){
+ for(unsigned hz:{30u,60u,120u})for(bool nose:{false,true}){
+  const unsigned dt=1000/hz;const auto wanted=nose?0x8000u:0x4000u;
+  qualified(nose,dt,300);
+  const auto previous=manual_episode.serial();
+  check(remap(12u).manual.release_requested,"explicit release ends the first manual");
+  for(unsigned i=0;i<hz/4;++i){tick(dt,100,0xc000);remap();}
+  check(manual_episode.ended(),"native two-truck completion ends the old episode");
+  const short first=nose?-25000:25000,second=nose?25000:-25000;
+  tick(dt,100,0xc000);remap(0,first);
+  // Several real client publications separate ordinary human stick strokes.
+  // An ended episode must not repeatedly clear these new physical edges.
+  for(unsigned elapsed=dt;elapsed<150;elapsed+=dt){tick(dt,100,0xc000);remap(0,first);}
+  tick(dt,100,0xc000);
+  check(remap(0,second).manual.owns,"a fresh grounded pair survives old episode cleanup without an Ollie");
+  tick(dt,100,wanted);const auto acquired=remap();
+  check(acquired.manual.owns&&manual_episode.serial()>previous&&manual_balance_admitted.load(),
+    "only new original wheel contact admits the replacement manual episode");
  }
 }
 int main(){
+#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
+ ImGui::CreateContext();auto& io=ImGui::GetIO();io.IniFilename=nullptr;io.LogFilename=nullptr;
+ io.DisplaySize=ImVec2(1280,800);unsigned char* pixels{};int width{},height{};
+ io.Fonts->GetTexDataAsRGBA32(&pixels,&width,&height);
+#endif
+ episode_ground_gap_regression();
  camera_client_phase();
 #if defined(DINGOSDK_INPUT_PHASE_ONLY)
  std::cout<<checks<<" source-composed client phase and camera checks passed\n";return 0;
 #endif
+ episode_ten_seconds();
+ analog_manual_entry_tolerance();
+ analog_manual_cone_continuation();
+ manual_handoff_native_boundaries();
+ manual_ground_contact_bounce();
+ manual_revert_successor_contact_bounce();
  manual_revert_production();
+ manual_revert_contact_publication_gap();
+ manual_revert_without_native_transition();
+ manual_native_revert_freshness();
+ manual_pressure_observation_gaps();
  manual_observation_continuity();
- analog_air_boundaries();
- analog_air_lifecycle();
- air_admission_lifecycle();
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned duration:{300u,1100u,1400u})for(bool seen_unknown:{false,true})for(unsigned duplicates:{0u,3u}){
-  const auto wanted=nose?0x8000u:0x4000u;const auto original=qualified(nose,dt,duration);
-  clock_ms+=dt;observe(dt/1000.f,0);
-  if(seen_unknown){client(dt/1000.f,history());remap();}
-  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());
-  check(!manual_balance_admitted.load()&&!balance_hud_pending(),"unknown original interval retires balance/HUD without inventing recovery identity");
-  // Cleanup must retain the acquired contact even after the RS actor withdraws.
-  // Otherwise a new actor publication can mask an accidental acquisition reset.
-  arcade_input.cancel_manuals();
-  remap();
-  for(unsigned i=0;i<duplicates;++i){++clock_ms;client(dt/1000.f,history());remap();}
-  if(!manual_release.pending()&&clock_ms>=original+1200){tick(dt,100,wanted);remap();}
-  while(!manual_release.pending()&&clock_ms<original+1200+2*dt){
-   if(clock_ms<original+1200)check(!manual_release.pending(),"lost admission cannot shorten or renew original unadmitted cleanup lease");
-   tick(dt,100,wanted);remap();
-  }
-  const auto neutral=remap();
-  if(!(manual_release.pending()&&!neutral.manual.owns&&neutral.right_y==0))std::cerr<<"case nose="<<nose<<" dt="<<dt<<" duration="<<duration<<" seen="<<seen_unknown<<" duplicates="<<duplicates<<" age="<<clock_ms-original<<" owns="<<neutral.manual.owns<<" y="<<neutral.right_y<<" pending="<<manual_release.pending()<<"\n";
-  check(manual_release.pending()&&!neutral.manual.owns&&neutral.right_y==0,"still-acquired same-owner contact retains original bounded cleanup after model interval loss");
-  check(clock_ms>=original+1200,"bounded cleanup uses original ground request timestamp rather than a new recovery timestamp");
-  for(unsigned i=0;i<3;++i){tick(dt,100,wanted);const auto output=remap();check(manual_release.pending()&&!output.manual.owns&&output.right_y==0&&!balance_hud_pending(),"continuing pending putdown stays neutral without balance/HUD or refreshed actuation");}
-  tick(dt,100,0xc000);remap();check(!manual_release.pending()&&!balance_hud_pending(),"actual two-wheel completion retires original cleanup owner");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{300u,200u,401u,701u}){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
-  tick(dt,boundary,0);remap();check(!manual_balance_admitted.load()&&(boundary==401?balance_hud_pending()&&!meter.vertical:!balance_hud_pending()),"supported bail/air/rail/exit ends Manual ownership while preserving legitimate distinct rail display");
-  tick(dt,100,wanted);const auto recovered=remap();
-  check(!manual_release.pending()&&!recovered.manual.owns,"old Manual cleanup cannot survive positive native exit into unrelated recovery contact");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned loss=0;loss<4;++loss){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
-  if(loss==0){++owner.rig;clock_ms+=dt;observe(dt/1000.f,wanted);}
-  if(loss==1)clock_ms+=151;
-  if(loss==2)fixture_watch=false;
-  if(loss==3){active=false;arcade_input.enable(false);reset_physical_manual=true;}
-  client(dt/1000.f,history());const auto out=remap();
-  check(!manual_release.pending()&&!manual_balance_admitted.load()&&!balance_hud_pending()&&!out.manual.owns,"owner/stale/paused/OFF loss cannot preserve cleanup or admitted balance beyond source guards");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(bool prepared_return:{false,true}){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,800);const auto before=snapshot().elapsed;
-  const auto setup=remap(0x1000);check(setup.jump.setup_started&&setup.requested_id==(nose?16u:1u)&&manual_hop.active(),"actual admitted balance-hop request binds passive continuity once");
-  tick(dt,103,0xc000);remap(0x1000);check(!balance_hud_pending()&&!manual_balance_admitted.load()&&manual_hop.active(),"actual native crouch retires balance/HUD while preserving admitted hop history only");
-  tick(dt,103,0xc000);const auto release=remap();check(release.jump.released&&release.jump.setup_admitted&&release.jump.nollie==nose,"physical hop release keeps original admitted Manual/Nose family");
-  tick(dt,200,0);remap();check(!manual_hop.active()&&!balance_hud_pending()&&!manual_balance_admitted.load(),"actual AIR observation ends passive hop token and old balance owner");
-  bool finished{};for(unsigned i=0;i<100;++i){tick(dt,200,0);if(!remap().authored_playback){finished=true;break;}}check(finished,"accepted hop playback finishes without inventing native out clock");
-  if(prepared_return){tick(dt,200,0);remap(nose?2u:1u);tick(dt,200,0);check(remap(nose?1u:2u).manual.owns,"a fresh airborne pair owns the separately bounded return preparation");}
-  else{
-   tick(dt,100,0xc000);remap();check(!physical_manual.active()&&!balance_hud_pending(),"ordinary observed landing stops integration and hides the old physical section");
-   tick(dt,100,0xc000);remap(nose?2u:1u);tick(dt,100,0xc000);check(remap(nose?1u:2u).manual.owns,"new ordinary-ground gesture requires fresh input before later balance admission");
-  }
-  rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
-  check(manual_balance_admitted.load()&&balance_hud_pending(),"new matching history/contact admits later balance without stale old input or identity");
-  check(snapshot().elapsed>before,"same-combo air or brief grounded links preserve accumulated physical difficulty");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u}){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,800);const auto before=snapshot().elapsed;
-  tick(dt,200,0);remap();
-  for(unsigned i=0;i<100;++i){tick(dt,100,0xc000);remap();}
-  check(!combo_session.model().state().combo_active&&!physical_manual.active()&&!balance_hud_pending(),
-        "actual combo bank clears retained dynamics without a stale meter");
-  tick(dt,100,0xc000);remap(nose?2u:1u);tick(dt,100,0xc000);remap(nose?1u:2u);
-  rows.push_back({60,50,nose?2u:1u});tick(dt,100,wanted);remap();
-  check(manual_balance_admitted.load()&&snapshot().elapsed<before,"a new banked-combo entry begins fresh physical difficulty");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{300u,401u,504u,701u}){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,300);
-  clock_ms+=dt;observe(dt/1000.f,0,boundary);
-  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());const auto out=remap();
-  check(!out.manual.owns&&!manual_release.pending(),"hard native exit seen between client callbacks must retire old command and cleanup before original lease expires");
- }
- for(bool nose:{false,true})for(unsigned dt:{17u,34u})for(unsigned boundary:{100u,200u,300u,401u,504u,701u}){
-  const auto wanted=nose?0x8000u:0x4000u;qualified(nose,dt,1400);
-  clock_ms+=dt;observe(dt/1000.f,0);clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());remap();tick(dt,100,wanted);remap();
-  check(manual_release.pending(),"original cleanup is pending before skipped-client completion test");
-  clock_ms+=dt;observe(dt/1000.f,boundary==100?0xc000u:0u,boundary);
-  clock_ms+=dt;observe(dt/1000.f,wanted);client(dt/1000.f,history());const auto out=remap();
-  check(!manual_release.pending()&&!out.manual.owns,"original observed physical completion between clients must retire old pending release before recovery contact");
- }
- camera_lifecycle();
- camera_routing_lifecycle();
- camera_diagnostic_lock_outcomes();
- controller_packet_dependencies();
-#if defined(DINGOSDK_MANUAL_LIFECYCLE_HUD)
- hud_lifecycle();
-#endif
- initial_ground_acquisition();
- std::cout<<checks<<" exact production exit/cleanup lifecycle checks passed\n";
+ early_air_manual_landing();analog_air_boundaries();analog_air_lifecycle();air_admission_lifecycle();
+ episode_airborne_combos();episode_real_exits();episode_suspension();episode_buffered_endpoint();
+ ground_manual_after_completed_exit();
+ camera_lifecycle();camera_routing_lifecycle();camera_diagnostic_lock_outcomes();controller_packet_dependencies();
+ std::cout<<checks<<" production-composed manual episode checks passed\n";
 }

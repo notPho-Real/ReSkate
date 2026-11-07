@@ -39,6 +39,8 @@ void update_party_position(const Pose *pose) noexcept;
 // throwdown turn camera). 0 stops a spectate this function started. Game thread.
 void spectate_party_member(std::uint64_t id) noexcept;
 bool party_camera_requested() noexcept;
+// Whether Spectate holds the camera, or is giving it back: a plugin's camera waits. Game thread.
+bool party_spectating() noexcept;
 // Returns only a record owned by this adapter, validated against this manager.
 std::uint64_t native_party_player_info(std::uintptr_t manager, std::size_t slot) noexcept;
 std::string native_party_status();
@@ -48,6 +50,12 @@ void set_native_party_changes(bool allowed) noexcept;
 // A party invite from `from` (a session player) as the game's own invite toast, whose Accept and
 // Decline come back through the request hooks. False when it could not be shown. Game thread.
 bool post_native_party_invite(std::uint64_t from) noexcept;
+// Game thread. A native UI event of `type` (its type object) with `payload`, posted as the game's own
+// (the dispatcher copies the payload). False when the dispatcher does not accept events; throws when
+// it cannot be read.
+bool post_native_ui_event(std::uintptr_t base, std::uintptr_t type, const void *payload);
+// True when the three game functions post_native_ui_event calls match this build's fingerprints.
+[[nodiscard]] bool native_ui_event_code_known(std::uintptr_t base) noexcept;
 // The game's group id for a ReSkate party number (stable across promotions; 0 = none).
 constexpr std::uint64_t native_party_group_id(std::uint32_t party) noexcept {
     return party ? 0x5253500000000000ULL | party : 0;
@@ -56,6 +64,11 @@ bool native_party_map_icon_visible(std::size_t slot) noexcept;
 // Selectable party markers on the pause map (off by default; see native_party_internal.h).
 void set_native_party_map_markers(bool enabled) noexcept;
 bool native_party_map_markers() noexcept;
+// Other players' QuickDrop fast travel flags on the pause map. Test: a copy of each of your own
+// flags 6 m east, as if another player had placed it.
+void set_native_party_flag_marker_test(bool enabled) noexcept;
+bool native_party_flag_marker_test() noexcept;
+unsigned native_party_flag_markers() noexcept;
 // Every challenge start (StartChallenge, any thread): whether this copy runs coop. A coop copy
 // shows its coop objective ("all players complete the base challenge") on the objective list and
 // finish screen even when no Coop button was pressed here (a guest's copy, or a leader's Solo).

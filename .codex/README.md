@@ -27,3 +27,9 @@ For rate-dependent trials, verify the clock cadence and the local skater's cache
 step with the existing physics observer; a ForceSimRate readback alone is insufficient.
 Serialize all Deck input and console operations, including telemetry on/off;
 wait for the preceding controller job to complete before starting another.
+
+## Owner gameplay testing preference
+
+Use the Skate 3 Mega Park custom map for gameplay testing, including future
+RC3 sessions. The owner explicitly selected it on November 5, 2026. Verify the
+loaded map before sending test inputs; do not substitute another map for trials.

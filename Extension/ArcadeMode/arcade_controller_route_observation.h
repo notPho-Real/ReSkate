@@ -2,6 +2,11 @@
 #include <cstdint>
 
 namespace dingosdk::arcade_mode {
+enum class ControllerBindingFailure : unsigned {
+    none, deadline, source, physical_sample, selection, native_proof,
+    owner, owner_generation, physics_step, native_clock, contact_generation,
+    action_generation, disconnected, captured, cleared
+};
 enum class ControllerRouteReason : unsigned {
     ready, off, source_unavailable, no_connected_xinput, unsupported_source,
     multiple_connected, no_physical_sample, physical_clock_future,
@@ -29,11 +34,13 @@ struct ControllerRouteEvidence {
     bool bitmap_known{}, enabled{}, source_available{};
     ControllerRouteReason reason{ControllerRouteReason::selection_unavailable};
     bool explicit_binding{};
+    ControllerBindingFailure binding_failure{};
 };
 inline bool controller_route_evidence_valid(const ControllerRouteEvidence& r) noexcept {
     if(r.bitmap>15 || (!r.bitmap_known && r.bitmap) || r.physical_slot>4 ||
         (r.logical_actor!=0 && r.logical_actor!=4) ||
-        static_cast<unsigned>(r.reason)>static_cast<unsigned>(ControllerRouteReason::binding_revoked))return false;
+        static_cast<unsigned>(r.reason)>static_cast<unsigned>(ControllerRouteReason::binding_revoked) ||
+        static_cast<unsigned>(r.binding_failure)>static_cast<unsigned>(ControllerBindingFailure::cleared))return false;
     if(r.bitmap_known && !r.source_available)return false;
     if(r.reason==ControllerRouteReason::ready)return r.enabled&&r.source_available&&r.bitmap_known&&
         r.physical_slot<4&&(r.explicit_binding ? (r.bitmap&(1u<<r.physical_slot))!=0 : r.bitmap==(1u<<r.physical_slot))&&r.logical_actor==0;

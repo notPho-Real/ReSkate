@@ -10,7 +10,7 @@ get_filename_component(channel_root "${CMAKE_CURRENT_SOURCE_DIR}/../../../.." AB
 set(channel_generator "${CMAKE_CURRENT_SOURCE_DIR}/generate.py")
 set(channel_output "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${channel_output}")
-foreach(variant current rollback-owner rollback-reservation rollback-competitor rollback-rs rollback-release)
+foreach(variant current rollback-owner rollback-reservation rollback-competitor rollback-grind rollback-rs rollback-release)
     set(source "${channel_output}/${variant}.cpp")
     set(target "dingosdk_arcade_manual_channel_${variant}")
     add_custom_command(OUTPUT "${source}" "${channel_output}/${variant}.json"

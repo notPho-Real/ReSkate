@@ -1,0 +1,806 @@
+{
+  "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+  "map": "skate3_megapark",
+  "measured_rate": 60,
+  "manual_native_entries": 20,
+  "nose_manual_native_entries": 20,
+  "continuous_ground_window_passes": 37,
+  "unknown_state_samples": 3,
+  "native_scoring_verified": false,
+  "continuous_ten_second_balance_verified": false,
+  "rate_30_restored": true,
+  "temporary_controller_detached": true,
+  "arcade_on_restored": true,
+  "batches": [
+    {
+      "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+      "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+      "map": "skate3_megapark",
+      "capture_sha256": "c4caf49fe8e466d233abf19ec045bcd9da349fee602a72200542fcafbe02f749",
+      "trials": [
+        {
+          "name": "manual_00",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.358635697,
+          "contact_samples": 91,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_01",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.327901639,
+          "contact_samples": 96,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_02",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.471656506,
+          "contact_samples": 79,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_03",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.694186493,
+          "contact_samples": 55,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_04",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.342608091,
+          "contact_samples": 89,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_05",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.323055962,
+          "contact_samples": 96,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_06",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.471503799,
+          "contact_samples": 80,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_07",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.728245082,
+          "contact_samples": 52,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_08",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.352787819,
+          "contact_samples": 92,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_09",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.325271337,
+          "contact_samples": 92,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        }
+      ],
+      "claim": "Grounded native contact before A; not scoring, posture or continuous balance acceptance.",
+      "clock": {
+        "capture": 13,
+        "first": [
+          743925427,
+          142589
+        ],
+        "last": [
+          743930428,
+          142888
+        ],
+        "samples": 300,
+        "native_steps_per_second": 59.78804239152169,
+        "verified_60_hz": true
+      },
+      "accepted_entries": 10,
+      "native_contacts_before_a": 10,
+      "compressed_sha256": "fb91a94d3f9f60c3daf750299b0e1e491f4236bd2144b09a67039ca17c579b0f",
+      "capture": "artifacts/RC3-24/entry-60-manual-1-native-manuals-result.json.gz"
+    },
+    {
+      "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+      "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+      "map": "skate3_megapark",
+      "capture_sha256": "bdf105152cafae6ff2690ba2536a93db3225b316e3335f8d2f08659606b41752",
+      "trials": [
+        {
+          "name": "manual_10",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.475586965,
+          "contact_samples": 79,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_11",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.714592625,
+          "contact_samples": 53,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_12",
+          "trajectory": 0,
+          "grounded_entry": false,
+          "first_contact_seconds": 0.35103678,
+          "contact_samples": 85,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 1,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_13",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.329041105,
+          "contact_samples": 95,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_14",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.478886337,
+          "contact_samples": 78,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_15",
+          "trajectory": 3,
+          "grounded_entry": false,
+          "first_contact_seconds": 0.691151818,
+          "contact_samples": 56,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 1,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_16",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.348438174,
+          "contact_samples": 92,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_17",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.320032266,
+          "contact_samples": 93,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_18",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.478067113,
+          "contact_samples": 79,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "manual_19",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.770257031,
+          "contact_samples": 48,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        }
+      ],
+      "claim": "Grounded native contact before A; not scoring, posture or continuous balance acceptance.",
+      "clock": {
+        "capture": 14,
+        "first": [
+          744012260,
+          147798
+        ],
+        "last": [
+          744017260,
+          148098
+        ],
+        "samples": 301,
+        "native_steps_per_second": 60.0,
+        "verified_60_hz": true
+      },
+      "accepted_entries": 8,
+      "native_contacts_before_a": 10,
+      "compressed_sha256": "a02128700be8317348f3a358db7cf0c5c51a3e791d6d7a2c95c264cfa82f82ae",
+      "capture": "artifacts/RC3-24/entry-60-manual-2-native-manuals-result.json.gz"
+    },
+    {
+      "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+      "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+      "map": "skate3_megapark",
+      "capture_sha256": "4fa2b5e12ad3377ae669e3c92165216ab49ef3eee4933d91fa21710cddba49a4",
+      "trials": [
+        {
+          "name": "nose_00",
+          "trajectory": 0,
+          "grounded_entry": false,
+          "first_contact_seconds": 0.325331275,
+          "contact_samples": 88,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 1,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_01",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.309839625,
+          "contact_samples": 90,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_02",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.445114392,
+          "contact_samples": 73,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_03",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.576553363,
+          "contact_samples": 60,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_04",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.335047468,
+          "contact_samples": 87,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_05",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.312501119,
+          "contact_samples": 87,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_06",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.463929914,
+          "contact_samples": 71,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_07",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.588284342,
+          "contact_samples": 58,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_08",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.326594152,
+          "contact_samples": 88,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_09",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.310199781,
+          "contact_samples": 90,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        }
+      ],
+      "claim": "Grounded native contact before A; not scoring, posture or continuous balance acceptance.",
+      "clock": {
+        "capture": 15,
+        "first": [
+          744089660,
+          152442
+        ],
+        "last": [
+          744094661,
+          152742
+        ],
+        "samples": 301,
+        "native_steps_per_second": 59.9880023995201,
+        "verified_60_hz": true
+      },
+      "accepted_entries": 9,
+      "native_contacts_before_a": 10,
+      "compressed_sha256": "b567454028edaee6121d716471e8df8b45c35d58a2bc35d4f8eb832e6455737a",
+      "capture": "artifacts/RC3-24/entry-60-nose-1-native-manuals-result.json.gz"
+    },
+    {
+      "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+      "dll_sha256": "358ac7603dad377ff939e593ba44b815ad75f911383773b13c5bafc44fdf1d7a",
+      "map": "skate3_megapark",
+      "capture_sha256": "c7014aa90e1584fe356e0b24c761a87d5551bb141d1c07568aa7655855499736",
+      "trials": [
+        {
+          "name": "nose_10",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.467466279,
+          "contact_samples": 69,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_11",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.566057862,
+          "contact_samples": 63,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_12",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.322833632,
+          "contact_samples": 84,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_13",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.31822038,
+          "contact_samples": 88,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_14",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.462476811,
+          "contact_samples": 74,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_15",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.581934197,
+          "contact_samples": 59,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_16",
+          "trajectory": 0,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.334177183,
+          "contact_samples": 86,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_17",
+          "trajectory": 1,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.306384689,
+          "contact_samples": 90,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_18",
+          "trajectory": 2,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.459369082,
+          "contact_samples": 71,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        },
+        {
+          "name": "nose_19",
+          "trajectory": 3,
+          "grounded_entry": true,
+          "first_contact_seconds": 0.575937976,
+          "contact_samples": 61,
+          "physics_dt": [
+            0.01666666567325592
+          ],
+          "cached_dt": [
+            0.01666666567325592
+          ],
+          "returned_to_ground": true,
+          "native_contact_before_a": true,
+          "unknown_state_samples": 0,
+          "known_non_ground_states": []
+        }
+      ],
+      "claim": "Grounded native contact before A; not scoring, posture or continuous balance acceptance.",
+      "clock": {
+        "capture": 16,
+        "first": [
+          744186394,
+          158246
+        ],
+        "last": [
+          744191393,
+          158546
+        ],
+        "samples": 301,
+        "native_steps_per_second": 60.01200240048009,
+        "verified_60_hz": true
+      },
+      "accepted_entries": 10,
+      "native_contacts_before_a": 10,
+      "compressed_sha256": "b1118b30de52941b4fe54c7db5d9c782ff4220dcf14cbfe34585e9bf4ea74374",
+      "capture": "artifacts/RC3-24/entry-60-nose-2-native-manuals-result.json.gz"
+    }
+  ],
+  "limitations": "Every attempt reached requested native contact in state100 before A. Three isolated zero-state samples remain unknown; no known air/offboard state appeared before A. This is entry evidence, not sustained posture/scoring acceptance or a 120 Hz claim."
+}

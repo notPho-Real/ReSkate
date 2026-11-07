@@ -1,0 +1,342 @@
+{
+  "source_sha": "2c2ce125d0a71d01e0decd73c8ec6ba4688660f7",
+  "dll_sha256": "47846bee8b8272be2436faff590def2ed203177308c43a2836f356a20dd9d3b1",
+  "map": "skate3_megapark",
+  "native_identity": 9,
+  "native_name": "BsToWeddle",
+  "actor": "11bc8118-ac1a-1792-11bc-8118ac1a1792",
+  "binding": "Establish BS grab, hold B and press Up+X; keep B held through native catch/landing",
+  "trials": [
+    {
+      "capture": "artifacts/RC3-28/ramp-bs-varial-trials-result.json.gz",
+      "uncompressed_sha256": "15dbf02cd387e1940bc38dd5dc6ccf779d71552193e55a9565560a6827f4f426",
+      "compressed_sha256": "dac0e932fe014906090e421291322178a334f2317c3e750c730114de493f0c36",
+      "serial": 4,
+      "b_release_seconds": 3.05,
+      "final_state": 504,
+      "native_timeline": [
+        {
+          "seconds": 0.010654,
+          "state": 100,
+          "EnumGS.GrabType": 6,
+          "Bool.State.Is.FingerFlip": null,
+          "Enum.GS.FingerFlipType": null,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.596122,
+          "state": 200,
+          "EnumGS.GrabType": 6,
+          "Bool.State.Is.FingerFlip": null,
+          "Enum.GS.FingerFlipType": null,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.696711,
+          "state": 201,
+          "EnumGS.GrabType": 6,
+          "Bool.State.Is.FingerFlip": null,
+          "Enum.GS.FingerFlipType": null,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.899168,
+          "state": 201,
+          "EnumGS.GrabType": 2,
+          "Bool.State.Is.FingerFlip": null,
+          "Enum.GS.FingerFlipType": null,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.332659,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": true,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.631142,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 3.098474,
+          "state": 201,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 3.39766,
+          "state": 504,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 5.858344,
+          "state": 0,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 5.867288,
+          "state": 504,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        }
+      ],
+      "actor_receipts": [
+        "[2026-11-06 15:36:28.675] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=4 ms=752622111 since=0 original_known=false original=false hold_acquired=false sampled=false effective=false failure=this boolean gameplay option has not been read by the game yet animation_acknowledged=false.",
+        "[2026-11-06 15:36:28.676] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB FAMILY ENTRY: serial=4 family=2 actor=1076086624 actor_asset=4fa44cca-8576-c46c-4fa4-4cca8576c46c before=14 after=16 delta=2 initialized=true detailed_pose_acceptance=false.",
+        "[2026-11-06 15:36:28.677] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP REQUEST: serial=4 episode=130 gesture=7 expected_identity=9 source_family=2 destination=8 source_into_verified=true animation_acknowledged=false.",
+        "[2026-11-06 15:36:28.699] [624:788] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP PROFILE READ: serial=4 scoped=true original=true animation_acknowledged=false.",
+        "[2026-11-06 15:36:28.700] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=4 ms=752622136 since=752622137 original_known=true original=true hold_acquired=true sampled=false effective=false failure= animation_acknowledged=false.",
+        "[2026-11-06 15:36:28.732] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=4 ms=752622167 since=752622137 original_known=true original=true hold_acquired=true sampled=true effective=true failure= animation_acknowledged=false.",
+        "[2026-11-06 15:36:28.733] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=1 actor=1076074304 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:36:28.901] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP: serial=4 episode=130 identity=9 actor=1076498176 before=0 after=2 delta=2 initialized=true destination=8 scoring_acceptance=unverified.",
+        "[2026-11-06 15:36:29.166] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=29 actor=1076496736 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:36:29.167] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=32 actor=1076498816 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305.",
+        "[2026-11-06 15:36:29.172] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP RETURN: serial=4 identity=9 destination=8 native_grabbing=true scoring_acceptance=unverified.",
+        "[2026-11-06 15:36:29.198] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=130 detail=29 one_footer=0 actor=1076496736 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.97861886 phase=loop.",
+        "[2026-11-06 15:36:29.348] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=1 actor=1076074304 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:36:29.660] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=4 episode=130 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=tick observed_at=752623063 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false.",
+        "[2026-11-06 15:36:30.037] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=29 actor=1076496736 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:36:30.038] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=4 episode=130 detail=32 actor=1076498816 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305."
+      ],
+      "native_grab_identity_cleared": true
+    },
+    {
+      "capture": "artifacts/RC3-28/ramp-bs-varial-early-trials-result.json.gz",
+      "uncompressed_sha256": "6ddb8fcbfd1858396c95968bb787808a987e8cb1a4eb06f0a781e7cc8f0c499b",
+      "compressed_sha256": "3c6fa2be9a902e3c45db26148186c19669786f6a7738230e4745c9f7eac26806",
+      "serial": 6,
+      "b_release_seconds": 2.8,
+      "final_state": 504,
+      "native_timeline": [
+        {
+          "seconds": 0.010333,
+          "state": 100,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.606086,
+          "state": 200,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.710638,
+          "state": 201,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.906994,
+          "state": 201,
+          "EnumGS.GrabType": 2,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.337145,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.345994,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": true,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.644355,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.847137,
+          "state": 201,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 3.412495,
+          "state": 504,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        }
+      ],
+      "actor_receipts": [
+        "[2026-11-06 15:38:38.360] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=6 ms=752751800 since=752751801 original_known=true original=true hold_acquired=true sampled=false effective=false failure= animation_acknowledged=false.",
+        "[2026-11-06 15:38:38.361] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB FAMILY ENTRY: serial=6 family=2 actor=1076495936 actor_asset=4fa44cca-8576-c46c-4fa4-4cca8576c46c before=12 after=14 delta=2 initialized=true detailed_pose_acceptance=false.",
+        "[2026-11-06 15:38:38.361] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP REQUEST: serial=6 episode=132 gesture=7 expected_identity=9 source_family=2 destination=8 source_into_verified=true animation_acknowledged=false.",
+        "[2026-11-06 15:38:38.394] [624:788] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP PROFILE READ: serial=6 scoped=true original=true animation_acknowledged=false.",
+        "[2026-11-06 15:38:38.396] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=6 ms=752751836 since=752751801 original_known=true original=true hold_acquired=true sampled=true effective=true failure= animation_acknowledged=false.",
+        "[2026-11-06 15:38:38.428] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=1 actor=1076098304 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:38:38.595] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP: serial=6 episode=132 identity=9 actor=1108230720 before=0 after=2 delta=2 initialized=true destination=8 scoring_acceptance=unverified.",
+        "[2026-11-06 15:38:38.863] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=29 actor=1086608000 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:38:38.863] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=32 actor=1115006848 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305.",
+        "[2026-11-06 15:38:38.868] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP RETURN: serial=6 identity=9 destination=8 native_grabbing=true scoring_acceptance=unverified.",
+        "[2026-11-06 15:38:38.894] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=6 episode=132 detail=29 one_footer=0 actor=1086608000 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 before=0 after=2.0000002 delta=2.0000002 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.738492 phase=loop.",
+        "[2026-11-06 15:38:39.019] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=1 actor=1076098304 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:38:39.089] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=6 episode=132 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=tick observed_at=752752496 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false.",
+        "[2026-11-06 15:38:39.907] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=29 actor=1086608000 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:38:39.908] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=6 episode=132 detail=32 actor=1115006848 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305."
+      ],
+      "native_grab_identity_cleared": true
+    },
+    {
+      "capture": "artifacts/RC3-28/ramp-bs-varial-held-trials-result.json.gz",
+      "uncompressed_sha256": "23ae753fdbc0a57ed4822103399cd806683ddf62a87b2d9f2284dbc1f7625dda",
+      "compressed_sha256": "9d67657ae84783b98dee79a70d56f343d58fd2c37f85947828682b9be23be736",
+      "serial": 8,
+      "b_release_seconds": 4.5,
+      "final_state": 100,
+      "native_timeline": [
+        {
+          "seconds": 0.005963,
+          "state": 100,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.651629,
+          "state": 200,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.719646,
+          "state": 201,
+          "EnumGS.GrabType": 0,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        },
+        {
+          "seconds": 1.888375,
+          "state": 201,
+          "EnumGS.GrabType": 2,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.316509,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": true,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 2.620808,
+          "state": 201,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": true,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 3.68177,
+          "state": 100,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": true
+        },
+        {
+          "seconds": 3.720262,
+          "state": 100,
+          "EnumGS.GrabType": 8,
+          "Bool.State.Is.FingerFlip": false,
+          "Enum.GS.FingerFlipType": 9,
+          "Bool.Anim.IsGrabbing": false,
+          "Bool.GP.CanGrab": false
+        }
+      ],
+      "actor_receipts": [
+        "[2026-11-06 15:42:14.714] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=8 ms=752968160 since=752968161 original_known=true original=true hold_acquired=true sampled=false effective=false failure= animation_acknowledged=false.",
+        "[2026-11-06 15:42:14.715] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB FAMILY ENTRY: serial=8 family=2 actor=1114984128 actor_asset=4fa44cca-8576-c46c-4fa4-4cca8576c46c before=14 after=16 delta=2 initialized=true detailed_pose_acceptance=false.",
+        "[2026-11-06 15:42:14.716] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP REQUEST: serial=8 episode=134 gesture=7 expected_identity=9 source_family=2 destination=8 source_into_verified=true animation_acknowledged=false.",
+        "[2026-11-06 15:42:14.724] [624:788] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP PROFILE READ: serial=8 scoped=true original=true animation_acknowledged=false.",
+        "[2026-11-06 15:42:14.727] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP SETTING: serial=8 ms=752968172 since=752968161 original_known=true original=true hold_acquired=true sampled=true effective=true failure= animation_acknowledged=false.",
+        "[2026-11-06 15:42:14.756] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=1 actor=1076499456 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:42:14.922] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP: serial=8 episode=134 identity=9 actor=1076086464 before=0 after=2 delta=2 initialized=true destination=8 scoring_acceptance=unverified.",
+        "[2026-11-06 15:42:15.187] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=29 actor=1073529600 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:42:15.189] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=32 actor=1115006848 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305.",
+        "[2026-11-06 15:42:15.194] [624:908] Native(C): [Skater] [INFO] ARCADE NATIVE FINGERFLIP RETURN: serial=8 identity=9 destination=8 native_grabbing=true scoring_acceptance=unverified.",
+        "[2026-11-06 15:42:15.222] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=8 episode=134 detail=29 one_footer=0 actor=1073529600 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 before=0 after=2.0000002 delta=2.0000002 initialized=true native_evaluation=true velocity_known=true vertical_velocity=0.12953547 phase=loop.",
+        "[2026-11-06 15:42:15.299] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=1 actor=1076499456 actor_asset=e7191c5c-9c2e-7abb-e719-1c5c9c2e7abb duration=305.",
+        "[2026-11-06 15:42:16.012] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=29 actor=1073529600 actor_asset=f6e5f388-0aef-8a43-f6e5-f3880aef8a43 duration=305.",
+        "[2026-11-06 15:42:16.038] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=8 episode=134 detail=32 actor=1115006848 actor_asset=de0614ac-5b5c-efe4-de06-14ac5b5cefe4 duration=305.",
+        "[2026-11-06 15:42:16.283] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=8 episode=134 acknowledged=true airborne=false intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=752969704 owner_verified=true owner_failure=0 state_read=true state=100 last_invalid_at=752969704 validity_failure=4 invalid_owner_failure=0 invalid_state_read=true invalid_state=100 invalid_state_rechecked=false invalid_recheck_owner_verified=true."
+      ],
+      "native_grab_identity_cleared": false
+    }
+  ],
+  "native_scoring_verified": false,
+  "result": "Exact native actor and destination Weddle loop advance in all three trials. B release2.80/3.05s bails; hold through landing returns ground100 and original grab/hand flags subsequently clear. Stored GrabType8 remains after that held landing.",
+  "limitation": "Is.FingerFlip=false marks entry to the destination loop, not completion of the separate original30-tick switch blend. No independent live blend-completion observation yet. Early-release comparison with original controls remains outstanding; do not infer an adapter-only defect."
+}

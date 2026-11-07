@@ -17,9 +17,19 @@
 #include "arcade_manual_hop.h"
 #include "arcade_manual_step.h"
 #include "arcade_manual_acquisition.h"
+#include "arcade_manual_episode.h"
 #include "arcade_manual_balance_entry.h"
 #include "arcade_native_readiness.h"
 #include "arcade_native_trick.h"
+#include "arcade_native_flip_transition.h"
+#include "arcade_native_held_flip.h"
+#include "arcade_native_manual_pose.h"
+#include "arcade_native_footplant.h"
+#include "arcade_native_ground_grab.h"
+#include "arcade_native_grab_transition.h"
+#include "arcade_native_grind_transition.h"
+#include "arcade_wallplant_runtime.h"
+#include "arcade_grind_change.h"
 #include "arcade_authored_gestures.h"
 #include "arcade_playback_packet.h"
 #include "arcade_camera.h"
@@ -32,9 +42,9 @@
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include "Engine/Game/Build/20260929/skater_state.h"
 #include "Engine/Game/Build/20260929/no_bail.h"
-#include "Engine/Game/Build/20260929/grind_exit.h"
+#include "Engine/Game/Build/20260929/launches.h"
 #include "Extension/Skater/no_bail.h"
-#include "Extension/HallOfMeat/hall_of_meat_skater.h"
+#include "Extension/Skater/skater_physics.h"
 #include "Extension/Trainer/trainer.h"
 #include "Extension/Skater/client_source_spawn.h"
 #include "Extension/Skater/camera_diagnostics_format.h"
@@ -61,6 +71,8 @@
 namespace dingosdk::arcade_mode {
 namespace {
 std::atomic<bool> ready{};
+// Serialized with the existing controller/gesture mutex.
+GrindChange grind_change;
 std::atomic<bool> mode_enabled{};
 std::atomic<bool> auto_kick{true};
 std::atomic<SpinMode> selected_spin_mode{SpinMode::held};
@@ -105,6 +117,13 @@ NativeInputReadiness native_readiness; // Protected by ollie_mutex.
 // Preserve the named production Manual sampling allowance. Canonical strict
 // normalization remains an explicit policy rather than an implicit migration.
 ArcadeInput arcade_input(true, InputPolicy::production());
+bool native_rail_flip_armed{}; // Protected by ollie_mutex, like arcade_input.
+void publish_input_context(const NativeInputFrame& frame) noexcept {
+    arcade_input.publish_native_context(frame);
+    if (native_rail_flip_armed && !arcade_input.rail_followup_active(frame.sampled_at,frame)) {
+        native_flip::cancel(); native_rail_flip_armed=false;
+    }
+}
 NativeControllerRoute controller_route;
 ControllerRouteReporting controller_route_reporting; // Existing input mutex; diagnostic rate limit only.
 std::mutex ollie_mutex;
@@ -120,6 +139,7 @@ void retire_playback_packets() noexcept {
 std::array<std::uint64_t, 4> playback_polls{};
 std::array<NeutralStickDelivery, 4> neutral_delivery;
 std::atomic<ActionExperiment> action_mode{default_action_mode};
+std::atomic<ArcadeTrick> grab_choice{ArcadeTrick::double_grab};
 SurfaceGeometrySample surface_geometry_snapshot;
 std::atomic<bool> surface_geometry_available{};
 TrafficSurfaceMotion traffic_surface_snapshot;
@@ -481,6 +501,8 @@ void reset_manual_physics() noexcept {
 }
 ManualRelease manual_release;
 ManualAcquisition manual_acquisition; // Input mutex protects request-to-native cleanup.
+ManualEpisode manual_episode;
+std::atomic<std::uint64_t> manual_hud_episode{};
 GroundManualBalance ground_manual_balance; // Same mutex; delivered basic ground contact only.
 ManualHopContinuity manual_hop; // Input mutex protects admitted jump continuity.
 std::atomic<bool> reset_physical_manual{true};
@@ -499,13 +521,14 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
                   const ScoreLabelOccurrence& label, const ScoreLabelOccurrence& manual_label,
                   bool native_push_contact, float simulation_step) noexcept {
     if (reset_physical_manual.exchange(false, std::memory_order_acq_rel)) {
-        { std::lock_guard lock(ollie_mutex); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); }
+        { std::lock_guard lock(ollie_mutex); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); manual_episode.reset(); manual_hud_episode=0; }
         reset_manual_physics(); manual_release.reset(); manual_identity.reset(manual_label); combo_session.invalidate();
         balance_control.reset_manual();
     }
     const auto score = score_activity();
     NativeInputFrame native_frame{}, manual_completion{};
-    bool manual_continuity{}, pending_manual_revert{};
+    bool manual_continuity{};
+    std::uint64_t pending_manual_revert{};
     {
         std::lock_guard lock(ollie_mutex);
         native_frame = native_input_state.correlate(GetTickCount64(),input_owner(owner),native);
@@ -518,11 +541,13 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     const bool valid = native_frame.valid && native.valid && input.available && watch_valid &&
         std::isfinite(simulation_step) && simulation_step >= .001f && simulation_step <= .1f;
     const bool owner_changed = valid && had_combo_owner &&
-        (owner != combo_owner || manual_identity_epoch != native_frame.owner_generation);
+        (owner != combo_owner);
     if (valid) manual_identity_epoch = native_frame.owner_generation;
     const bool observation_gap = !manual_continuity && combo_tick_at &&
         (now < combo_tick_at || now - combo_tick_at > ScoreLabelEdges::freshness_ms);
-    if (!valid || owner_changed) {
+    bool episode_retained{};
+    { std::lock_guard lock(ollie_mutex); episode_retained=manual_episode.established() || manual_episode.airborne(); }
+    if (owner_changed || (!valid && !episode_retained)) {
         reset_manual_physics();
         balance_control.reset_manual();
         cancel_balance_bail();
@@ -530,10 +555,8 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         combo_tick_at = 0;
     }
     const bool bail = valid && had_combo_owner && !owner_changed && wipeouts != observed_wipeouts;
-    if (bail || observation_gap) { reset_manual_physics(); balance_control.reset_manual(); }
-    had_combo_owner = valid;
-    combo_owner = valid ? owner : NoBailSkater{};
-    observed_wipeouts = wipeouts;
+    if (bail || (observation_gap && !episode_retained)) { reset_manual_physics(); balance_control.reset_manual(); }
+    if(valid){had_combo_owner=true;combo_owner=owner;observed_wipeouts=wipeouts;}
     const bool activity_fresh = score.valid && now >= score.sampled_at && now - score.sampled_at <= 150;
     const auto candidate_pose = observed_pose({valid, activity_fresh,
         score.active, bail, native.state, native.crouch_mode, native.words[1] & 0xc000u});
@@ -551,8 +574,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     ManualObservationResult manual_observation{};
     const auto physical_contact = manual_acquisition_pose(native_frame,bail);
     bool acquisition_putdown{}, acquiring_history{},ground_confirmed{};
+    ManualEpisode episode;
+    bool episode_termination{};
     {
         std::lock_guard lock(ollie_mutex);
+        if(!valid)manual_episode.suspend();
+        manual_episode.observe(native_frame,pending_manual_revert,bail);
         const auto ground = ground_manual_balance.sample(now,native_frame,
             enabled() && valid && !owner_changed && !observation_gap && !bail,
             !manual_release.pending() && !combo_session.failed_section() && !combo_session.manual_putdown(),manual_continuity);
@@ -567,6 +594,19 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         acquisition_putdown = manual_acquisition.step(now,native_frame,physical_contact,manual_observation.confirmed,
             valid && !owner_changed && !observation_gap && !bail, (native.words[0] & 0x40u) != 0);
         acquiring_history = manual_acquisition.preserves_history(now,native_frame);
+        manual_episode.admit(native_frame,manual_observation);
+        episode_termination=manual_episode.take_termination();
+        episode=manual_episode;
+        if(episode.established() || episode.airborne()) {
+            manual_observation={episode.pose(),episode.grounded(),false};
+            acquisition_putdown=false;
+        }
+        if(episode.ended()) {
+            manual_observation={physical_contact};
+            if(balance_kind(physical_contact)==BalanceKind::manual)manual_observation={SkatePose::riding};
+            ground_manual_balance.reset();
+        }
+        manual_hud_episode=episode.grounded()?episode.serial():0;
     }
     // Late presentation cannot reopen a section already delivering putdown.
     const auto pose = acquisition_putdown && balance_kind(manual_observation.pose) == BalanceKind::manual ?
@@ -607,18 +647,26 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     float physical_seconds{};
     {
         std::lock_guard lock(ollie_mutex);
-        physical = physical_manual_steps.sample(physical_manual,native_frame,pose,now,
-            valid && !owner_changed && !observation_gap && !bail,preserve_hop || acquiring_history ||
-            (pose == SkatePose::riding && combo_session.model().state().combo_active && !combo_session.failed_section()));
+        if(episode.established() || episode.airborne()) {
+            if(episode.phase()==ManualEpisode::Phase::combo_airborne && physical_manual.active())physical_manual.stop();
+            physical=physical_manual_steps.sample_episode(physical_manual,native_frame,pose,now,
+                valid && !bail && episode.actuatable(now),episode.integration_step());
+        } else {
+            physical = physical_manual_steps.sample(physical_manual,native_frame,pose,now,
+                valid && !owner_changed && !observation_gap && !bail,preserve_hop || acquiring_history ||
+                (pose == SkatePose::riding && combo_session.model().state().combo_active && !combo_session.failed_section()));
+        }
         physical_seconds=physical_manual_steps.seconds();
-        // Losing a dynamics interval retires balance identity, not the original
-        // bounded cleanup of still-acquired same-owner contact. Acquisition's
-        // own native validity/owner/exit guards already revoke unsafe cleanup.
-        if (!physical.valid) { ground_manual_balance.reset(); manual_hop.reset(); }
+        // A missing dynamics interval suspends integration, never episode identity.
+        if (!physical.valid && !episode.established() && !episode.airborne()) { ground_manual_balance.reset(); manual_hop.reset(); }
     }
-    if (!physical.valid) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
-    const bool failed = combo_session.step(pose, manual_pose && physical.valid ? physical_seconds : dt, correction, native_revert,
-        manual_pose || kind == BalanceKind::manual ? &physical : nullptr,pending_manual_revert);
+    const bool episode_live=episode.established() || episode.airborne();
+    if (!physical.valid && !episode_live) { manual_identity.reset(manual_label); balance_control.reset_manual(); }
+    const bool failed = combo_session.step(pose, manual_pose ? physical_seconds : (episode_live?0.f:dt), correction, native_revert,
+        manual_pose || (kind == BalanceKind::manual && !episode_live) ? &physical : nullptr,pending_manual_revert,episode_live);
+    if(episode_live && (failed || combo_session.manual_putdown())) {
+        std::lock_guard lock(ollie_mutex);manual_episode.end(ManualEpisode::Exit::endpoint);manual_hud_episode=0;
+    }
     // Ending a section stops integration; banking the combo resets its retained
     // difficulty. Brief grounded links cannot silently start a fresh history.
     if (!combo_session.model().state().combo_active && !combo_session.failed_section()) {
@@ -632,6 +680,12 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         valid && !owner_changed && !observation_gap && release_context, physical_contact, combo_session.manual_putdown() || acquisition_putdown, native_frame.physics_step);
     const bool manual_closed = release.pending || combo_session.manual_putdown() || combo_session.failed_section();
     const auto termination = combo_session.model().balance_exit();
+    if(episode_termination){
+        const auto source=episode.termination_frame();
+        const bool verified=episode.exit()!=ManualEpisode::Exit::owner && episode.exit()!=ManualEpisode::Exit::endpoint;
+        input_telemetry.client(BalanceTerminationEvidence{now,static_cast<unsigned>(pose),0,
+            episode.serial(),source.physics_step,source.sampled_at,static_cast<unsigned>(episode.exit()),verified});
+    }
     if (termination != BalanceExit::none)
         input_telemetry.client(BalanceTerminationEvidence{now, static_cast<unsigned>(pose),
             static_cast<unsigned>(termination)});
@@ -643,7 +697,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         std::lock_guard lock(ollie_mutex);
         // Safe putdown clears the complete old input episode once. Repeated
         // contact polls keep neutral ownership without erasing fresh escape input.
-        if (!valid || owner_changed || observation_gap || bail || release.started) {
+        if (owner_changed || bail || release.started || ((!valid || observation_gap) && !episode_live)) {
             arcade_input.cancel_commands();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& prewind : prewinds) prewind.reset();
@@ -654,21 +708,24 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
         const bool initial_acquisition = physical_contact == SkatePose::riding &&
             !(native.words[0] & 0x40u) &&
             arcade_input.initial_ground_acquisition(NativeControllerRoute::session,now);
-        if (!valid || owner_changed || bail ||
-            manual_closed ||
-            (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual && !initial_acquisition))
+        if (owner_changed || bail || (!valid && !episode_live) ||
+            manual_closed || episode_termination ||
+            (kind == BalanceKind::manual && balance_kind(pose) != BalanceKind::manual && !initial_acquisition && !episode_live))
             arcade_input.cancel_manuals();
+        // The terminal observation revokes the old request once. An ended
+        // episode remains available for diagnostics; cancelling on every later
+        // client tick would erase each new grounded gesture before its reversal.
         if (manual_closed) manual_hop.reset();
         // An admitted endpoint already owns its safe-putdown or bail path.
         // Unadmitted cleanup must never substitute a putdown for a failed bail.
         if (combo_session.failed_section() || combo_session.manual_putdown()) manual_acquisition.reset();
-        if(native_revert)arcade_input.observe_native_revert(now,native_frame);
         const bool balance_admitted = manual_observation.confirmed &&
             combo_session.model().state().balance_kind == BalanceKind::manual && !manual_closed;
         manual_balance_admitted.store(balance_admitted, std::memory_order_relaxed);
         arcade_input.publish_balance_controls(balance_admitted ? InputBalanceControls::vertical(
             pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual) :
             InputBalanceControls{}, native_frame, history_observation.confirmed && history_observation.pose == pose);
+        if(valid && balance_admitted)arcade_input.resume_manual_episode(manual_episode.take_resume(now),native_frame,now);
         arcade_input.publish_manual_correction(physical.applied_correction,native_frame,
             balance_admitted && physical.valid && physical.active);
         if(balance_admitted){
@@ -685,9 +742,9 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
             else input_capture_correlation.lost();
         }else if(input_capture_correlation.schema4()&&capture_manual_join.request&&
                  !capture_manual_join.exit_seen&&
-                 (owner_changed||observation_gap||bail||!valid||release.started)){
-            capture_manual_join.exit_reason=owner_changed?3u:observation_gap?4u:bail?7u:
-                release.started?1u:10u;
+                 (owner_changed||bail||release.started||episode.ended())){
+            capture_manual_join.exit_reason=owner_changed?3u:bail?7u:release.started?1u:
+                10u;
             if(capture_correlation_add(capture_termination_sequence))
                 capture_event(CaptureCorrelationSource::manual_termination,capture_termination_sequence,now,native_frame);
             else input_capture_correlation.lost();
@@ -738,6 +795,7 @@ void update_combo(const NativeRequestSample& native, const NoBailSkater& owner, 
     }
     const auto& display = combo_session.balance_display_state();
     BalanceHudSource hud_source{native_frame.sampled_at,native_frame.valid};
+    if(episode.grounded()) {hud_source.episode=&manual_hud_episode;hud_source.episode_id=episode.serial();}
     auto hud_endpoints=BalanceEndpoints::bail_both;
     float hud_limit=1;
     if(display.balance_kind==BalanceKind::manual){
@@ -796,8 +854,8 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 r.valid, r.state, r.changes, r.wipeouts);
         else if constexpr (std::is_same_v<T, ControllerRouteEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={}.",
-                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding);
+                "ARCADE CONTROLLER ROUTE: ms={} bitmap_known={} bitmap={} physical_slot={} logical_actor={} generation={} enabled={} source_available={} reason={} explicit_binding={} binding_failure={}.",
+                r.ms,r.bitmap_known,r.bitmap,r.physical_slot,r.logical_actor,r.generation,r.enabled,r.source_available,controller_route_reason(r.reason),r.explicit_binding,static_cast<unsigned>(r.binding_failure));
         else if constexpr (std::is_same_v<T, RevertLinkEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE REVERT LINK: ms={} sequence={} labels={} accepted={} remaining_ms={}.",
@@ -843,8 +901,8 @@ void write_client_telemetry(const ClientTelemetry& row) noexcept {
                 "ARCADE BALANCE BAIL: ms={} request={} result={}.", r.ms, r.request, r.result);
         else if constexpr (std::is_same_v<T, BalanceTerminationEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
-                "ARCADE BALANCE TERMINATION: ms={} pose={} outcome={} native_exit_verified=false.",
-                r.ms, r.pose, r.outcome);
+                "ARCADE BALANCE TERMINATION: ms={} pose={} outcome={} episode={} step={} source_ms={} reason={} native_exit_verified={}.",
+                r.ms, r.pose, r.outcome, r.episode, r.physics_step, r.source_ms, r.reason, r.native_exit_verified);
         else if constexpr (std::is_same_v<T, ManualPhysicsEvidence>)
             logging::log(logging::Level::info, logging::Channel::skater,
                 "ARCADE MANUAL PHYSICS: ms={} dt={} elapsed={} pressure={} x={} v={} profile={}.",
@@ -1001,6 +1059,9 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
                     "ARCADE FLIP: X started candidate={} (experimental).", d.started);
                 if (d.requested_id || d.unsupported) logging::log(logging::Level::info, logging::Channel::skater,
                     "ARCADE AUTHORED REQUEST: id={} unsupported={}.", d.requested_id, d.unsupported);
+                if (d.held_request || d.held_released) logging::log(logging::Level::info,logging::Channel::skater,
+                    "ARCADE HELD FLIP INPUT: ms={} requested_id={} input_released={} native_id={} extra_rotations={} loop_acknowledged={} landing_scoring_acceptance=unverified.",
+                    d.held_ms,d.held_request,d.held_released,d.held_native_id,d.held_extra_rotations,d.held_acknowledged);
                 continue;
             }
             const auto& p = row.pad;
@@ -1026,10 +1087,11 @@ DWORD WINAPI input_telemetry_worker(void* context) noexcept {
             if (p.manual_sample) {
                 const auto& m = p.manual;
                 logging::log(logging::Level::info, logging::Channel::skater,
-                    "ARCADE MANUAL INPUT: seq={} ms={} user={} lx={} ly={} buttons={} pose={} safe={} prepare={} rejected={} stick={} pad={} stick_first={} pad_first={} stick_at={} pad_at={} request={} request_at={} owned={} confirmed={} output_y={}.",
+                    "ARCADE MANUAL INPUT: seq={} ms={} user={} lx={} ly={} buttons={} pose={} safe={} prepare={} rejected={} stick={} pad={} stick_first={} pad_first={} stick_at={} pad_at={} request={} request_at={} owned={} confirmed={} handoff_at={} handoff_owner={} handoff_origin_step={} handoff_origin_contact={} handoff_origin_stance={} output_y={}.",
                     p.sequence, p.ms, p.user, p.manual_x, p.manual_y, p.buttons, p.manual_pose,
                     m.safe, m.preparation, m.rejected, m.stick, m.pad, m.stick_first, m.pad_first,
-                    m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed, p.right_y);
+                    m.stick_at, m.pad_at, m.request, m.request_at, m.owns, m.confirmed,
+                    m.revert.ack_at, m.revert.owner, m.revert.step, m.revert.contact, m.revert.previous_stance, p.right_y);
             }
         }
         std::array<ComboSample, input_telemetry_worker_batch_size> samples{};
@@ -1095,25 +1157,28 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
         !memory::peek(owner.rig + crouch_mode, sample.crouch_mode)) {
         std::lock_guard lock(ollie_mutex);
         capture_native_frame.valid=false;
-        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
         return;
     }
     const auto flip = read_flip_selection([](auto address, auto& value) { return memory::peek(address, value); }, owner.core);
+    const auto orientation=read_native_orientation([](auto address,auto& value) { return memory::peek(address,value); },
+                                                   owner.core,owner.context);
     const bool offboard = sample.state == game::build::v20260929::no_bail::offboard_physics_state;
     // Same physics-step reader used by Hall of Meat; Trainer's position carries
     // separate provenance, just as it does for the existing fixture observer.
-    const auto foot = offboard && hall_of_meat::skater_available()
-        ? hall_of_meat::read_step(owner, seconds, wipeout) : hall_of_meat::Step{};
+    const auto foot = offboard && skater_physics::available()
+        ? skater_physics::read_step(owner, seconds, wipeout) : skater_physics::Step{};
     const auto motion = offboard ? trainer::telemetry() : trainer::Telemetry{};
     NoBailSkater after{};
     if (!no_bail_skater(after) || owner.base != after.base || owner.core != after.core || owner.entity != after.entity ||
         owner.context != after.context || owner.rig != after.rig) {
         std::lock_guard lock(ollie_mutex);
+        manual_episode.end(ManualEpisode::Exit::owner);manual_hud_episode=0;
         capture_native_frame.valid=false;
-        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+        native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
         input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
         set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         input_clock_valid.store(false,std::memory_order_release);
@@ -1126,11 +1191,14 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
     {
         std::lock_guard lock(ollie_mutex);
         if (clock_valid) {
-            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds);
+            const auto frame = native_input_state.observe(now,input_owner(owner),sample,flip,wipeout,seconds,orientation);
+            wallplant_runtime::observe_physics(frame);
             (void)motion_cleanup_state.observe(now,input_owner(owner),sample,flip,wipeout);
             capture_native_frame=frame;capture_native_words=sample.words;capture_physics_dt=seconds;
-            arcade_input.publish_native_context(frame);
-            if (manual_acquisition.observe_native(now,frame)) arcade_input.cancel_manuals();
+            publish_input_context(frame);
+            const bool manual_boundary=manual_episode.observe(frame,arcade_input.pending_manual_revert(now,frame),wipeout);
+            manual_hud_episode=manual_episode.grounded()?manual_episode.serial():0;
+            if (manual_acquisition.observe_native(now,frame) || manual_boundary) arcade_input.cancel_manuals();
             if (enabled()) physical_manual_steps.observe(frame,seconds,arcade_input.digital_state(now));
             else physical_manual_steps.reset();
             if(frame.valid)capture_event(CaptureCorrelationSource::native,frame.physics_step,frame.sampled_at,frame);
@@ -1140,7 +1208,7 @@ void observe_combo_step(const NoBailSkater& owner, float seconds, bool wipeout) 
             else arcade_input.invalidate_authority();
         } else {
             capture_native_frame.valid=false;
-            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); arcade_input.invalidate_authority();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); arcade_input.invalidate_authority();
             input_capture_correlation.maintain(GetTickCount64(),{},input_telemetry.client_dropped(),capture_row);
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
@@ -1530,6 +1598,10 @@ bool native_manual_contact_current(const NativeManualContact& proof) noexcept {
         manual_balance_admitted.load(std::memory_order_relaxed) && proof.generation_matches(frame.owner_generation,frame.contact_generation,frame.action_generation);
 }
 bool enabled() noexcept { return mode_enabled.load(std::memory_order_acquire); }
+ArcadeTrick selected_grab() noexcept {return grab_choice.load(std::memory_order_relaxed);}
+void set_selected_grab(ArcadeTrick trick) noexcept {
+    if (native_grab::pilot(trick)) grab_choice.store(trick,std::memory_order_relaxed);
+}
 bool auto_kick_enabled() noexcept { return auto_kick.load(std::memory_order_acquire); }
 void set_auto_kick(bool value, bool persist) noexcept {
     auto_kick.store(value,std::memory_order_release);
@@ -1669,6 +1741,13 @@ bool set_playback_experiment(PlaybackExperiment value, bool diagnostics) noexcep
 // Controller route binding_api publication begin.
 // Serialized with routing, facade ownership and transport packet retirement.
 static void withdraw_controller_authority() noexcept {
+    wallplant_runtime::cancel();
+    grind_change.cancel();
+    native_grind::cancel();
+    native_flip::cancel();
+    native_grab::cancel();
+    native_footplant::cancel();
+    native_ground_grab::cancel();
     arcade_input.invalidate_authority();
     arcade_input.observe_physical(0,{});
     for(auto& rotation:rotations)rotation.reset();
@@ -1677,7 +1756,8 @@ static void withdraw_controller_authority() noexcept {
     neutral_delivery={};retire_playback_packets();
     set_arcade_push_intent(false);set_arcade_air_intent(false,0,0,0,0,false);
     gameplay_valid_until.store(0,std::memory_order_release);
-    reset_physical_manual.store(true,std::memory_order_release);
+    if(manual_episode.established() || manual_episode.airborne())manual_episode.suspend();
+    else reset_physical_manual.store(true,std::memory_order_release);
 }
 bool set_controller_source(unsigned slot,unsigned duration_ms) noexcept {
     std::lock_guard lock(ollie_mutex);
@@ -1698,6 +1778,12 @@ void disconnect_xinput_source(unsigned slot) noexcept {
 // Controller route binding_api publication end.
 
 void set_enabled(bool value, bool persist) noexcept {
+    wallplant_runtime::cancel();
+    native_grind::cancel();
+    native_flip::cancel();
+    native_grab::cancel();
+    native_footplant::cancel();
+    native_ground_grab::cancel();
     invalidate_surface_geometry();invalidate_traffic_surface();
     reset_push_contact_policy.store(true, std::memory_order_release);
     cancel_balance_bail();
@@ -1706,6 +1792,7 @@ void set_enabled(bool value, bool persist) noexcept {
     {
         std::lock_guard lock(ollie_mutex);
         // Controller capture off publication begin.
+        grind_change.cancel();
         if(!value){
             if(input_capture_correlation.schema4()&&capture_manual_join.request&&!capture_manual_join.exit_seen){
                 capture_manual_join.exit_reason=2;
@@ -1719,7 +1806,7 @@ void set_enabled(bool value, bool persist) noexcept {
             arcade_input.set_recognition_capture(0,false);
         }
         // Controller capture off publication end.
-        native_input_state.invalidate(); physical_manual_steps.reset(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+        native_input_state.invalidate(); physical_manual_steps.reset(); native_readiness.reset(); publish_input_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); manual_episode.reset(); manual_hud_episode=0;
         // Controller route packet_mode_reset publication begin.
         controller_route.reset();
         retire_playback_packets();
@@ -1784,6 +1871,13 @@ bool start(std::uintptr_t image_base) noexcept {
     if (ready.load(std::memory_order_acquire)) return true;
     if (!image_base) return false;
     score_probe_base = image_base;
+    const bool native_flip_bridge=native_flip::start(image_base);
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE FLIP BRIDGE: available={}.",native_flip_bridge);
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GRAB BRIDGE: available={} gameplay_acceptance=unverified.",native_flip_bridge && native_grab::start(image_base));
+    logging::log(logging::Level::info,logging::Channel::skater,
+        "ARCADE NATIVE GRIND LIFETIME: available={}.",native_grind::start(image_base));
     request_probe_ready = validate_request_probe(image_base);
     const bool telemetry_ready = start_input_telemetry();
     logging::log(logging::Level::info, logging::Channel::skater,
@@ -1804,7 +1898,7 @@ bool start(std::uintptr_t image_base) noexcept {
 void on_client_tick() noexcept {
     if (!ready.load(std::memory_order_acquire)) return;
     try {
-        const float step = hall_of_meat::step_length();
+        const float step = skater_physics::step_length();
         const bool valid_clock = std::isfinite(step) && step >= .001f && step <= .1f;
         const auto stepped_at = input_step_at.load(std::memory_order_acquire);
         const auto clock_now = GetTickCount64();
@@ -1896,6 +1990,13 @@ void on_client_tick() noexcept {
         motion_capture_until.store(trainer_view && trainer_view->logging && ui.available && !ui.in_menu ? now + 150 : 0,
             std::memory_order_release);
         bool gameplay = enabled() && observed_clock && ui.available && !ui.in_menu && input.available;
+        native_flip::tick(gameplay && focus_available);
+        native_grab::tick(gameplay && focus_available);
+        native_held_flip::tick(score_probe_base,gameplay && focus_available && native_grab::available());
+        native_manual_pose::tick(score_probe_base,gameplay && focus_available && native_grab::available());
+        native_footplant::tick(score_probe_base,gameplay && focus_available && native_grab::available());
+        native_grind::tick(gameplay && focus_available);
+        wallplant_runtime::tick(score_probe_base,gameplay && focus_available);
         tick_arcade_fixture_geometry(now, gameplay);
         observe_score_hud(score_probe_base, now);
         native_score_tick(score_probe_base, now, gameplay);
@@ -1922,7 +2023,7 @@ void on_client_tick() noexcept {
             gameplay = gameplay && frame.valid;
             if (!deferred_phase) {
                 gameplay_valid_until.store(gameplay ? now + 150 : 0,std::memory_order_release);
-                arcade_input.publish_native_context(frame);
+                publish_input_context(frame);
                 // Source1 names the logical session, not physical slot0. The
                 // exclusive route generation/source were checked above.
                 if (arcade_input.publish_authority(authority_now, frame.valid ? frame.owner_generation : 0,
@@ -1932,7 +2033,8 @@ void on_client_tick() noexcept {
                     for (auto& charge : native_charges) charge.cancel();
                     neutral_delivery = {}; retire_playback_packets();
                     set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
-                    reset_physical_manual.store(true,std::memory_order_release);
+                    if(manual_episode.established() || manual_episode.airborne())manual_episode.suspend();
+                    else reset_physical_manual.store(true,std::memory_order_release);
                 }
             }
         }
@@ -1975,6 +2077,15 @@ void on_client_tick() noexcept {
         }
         if (gameplay) update_combo(native, native_owner, input, watch.valid, watch.wipeouts, now, score_edge, manual_label, push_valid, step);
         else if (!deferred_phase) {
+            bool retain_manual{};
+            { std::lock_guard lock(ollie_mutex);
+                retain_manual=enabled() && (manual_episode.established() || manual_episode.airborne());
+                if(retain_manual){
+                    manual_episode.suspend();physical_manual_steps.invalidate();arcade_input.cancel_manuals();
+                    manual_eligible_until=manual_prepare_until=manual_release_until=0;
+                }
+            }
+            if(!retain_manual){
             cancel_balance_bail();
             manual_identity.reset(manual_label);
             reset_manual_physics(); manual_release.reset();
@@ -1983,7 +2094,7 @@ void on_client_tick() noexcept {
             combo_owner = {};
             {
                 std::lock_guard lock(ollie_mutex);
-                arcade_input.cancel_manuals(); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+                arcade_input.cancel_manuals(); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); manual_episode.reset(); manual_hud_episode=0;
                 manual_eligible_until.store(0, std::memory_order_release);
                 manual_prepare_until.store(0, std::memory_order_release);
                 manual_release_until.store(0, std::memory_order_release);
@@ -1996,6 +2107,7 @@ void on_client_tick() noexcept {
             combo_session.invalidate();
             combo_tick_at = 0;
             publish_balance_hud({}, 0, {});
+            }
         }
         const auto failure_status = balance_bail_status();
         if (failure_status.serial != previous_balance_bail.serial || failure_status.result != previous_balance_bail.result) {
@@ -2076,7 +2188,7 @@ void on_client_tick() noexcept {
         {
             std::lock_guard lock(ollie_mutex);
             capture_native_frame.valid=false;
-            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); arcade_input.publish_native_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset();
+            native_input_state.invalidate(); motion_cleanup_state.invalidate(); physical_manual_steps.invalidate(); native_readiness.reset(); publish_input_context({}); manual_hop.reset(); manual_acquisition.reset(); ground_manual_balance.reset(); manual_episode.reset(); manual_hud_episode=0;
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& prewind : prewinds) prewind.reset();
@@ -2160,6 +2272,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         arcade_input.observe_physical(NativeControllerRoute::session,physical);
         const auto owner_epoch = input_owner_epoch.load(std::memory_order_acquire);
         if (owner_epoch != arcade_input.owner_epoch()) {
+            wallplant_runtime::cancel();
             arcade_input.invalidate_authority();
             for (auto& rotation : rotations) rotation.reset();
             for (auto& prewind : prewinds) prewind.reset();
@@ -2168,6 +2281,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             set_arcade_push_intent(false); set_arcade_air_intent(false,0,0,0,0,false);
         }
         const auto admission = native_readiness.sample(now,arcade_input.native_context(now));
+        // Controller route control_owner publication begin.
+        const bool owns_controls = mode_enabled.load(std::memory_order_acquire) && game_input &&
+            input_clock_valid.load(std::memory_order_acquire) && !(physical_buttons & 0x0030u) &&
+            arcade_input.admitted(NativeControllerRoute::session,now) &&
+            native_readiness.owns_controls(now,arcade_input.owner_epoch(),arcade_input.native_context(now));
+        // Controller route control_owner publication end.
         game_input = game_input && input_clock_valid.load(std::memory_order_acquire) &&
             admission.gameplay && !(physical_buttons & 0x0010u);
         const bool may_start = admission.start;
@@ -2176,8 +2295,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool offboard = admission.offboard;
         const bool action_safe = admission.action;
         const bool flip_ready = admission.flip_ready;
-        if (!game_input) arcade_input.invalidate_authority();
+        if (!game_input && !owns_controls) arcade_input.invalidate_authority();
         game_input = game_input && arcade_input.admitted(NativeControllerRoute::session,now);
+        if(!game_input || !owns_controls)wallplant_runtime::cancel();
+        else if(physical_buttons&0x6000u)wallplant_runtime::interrupt_animation();
         capture_game_input=game_input;
         const auto release_deadline = manual_release_until.load(std::memory_order_acquire);
         const bool releasing_manual = game_input && admission.releasing && !offboard && release_deadline >= now && release_deadline - now <= 150;
@@ -2191,15 +2312,107 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const bool may_exit_grind = game_input && admission.matched && observed == SkatePose::grind;
         input_capture_correlation.maintain(now,arcade_input.native_context(now),input_telemetry.client_dropped(),capture_row);
         arcade_input.set_recognition_capture(NativeControllerRoute::session,input_capture_correlation.captures(CaptureCorrelationSource::recognition));
+        const auto flip_owner=arcade_input.native_context(now).owner;
+        NoBailSkater native_flip_owner{flip_owner.base,flip_owner.entity,flip_owner.core,flip_owner.context,flip_owner.rig};
+        NativeFlipRequest normal_flip{};
+        if (native_flip::available()) normal_flip={&native_flip_owner,[](void* owner,std::int32_t id) noexcept {
+            return native_flip::request(*static_cast<NoBailSkater*>(owner),id);
+        }};
+        struct GrabRequestContext {NoBailSkater owner;std::uint64_t episode,tick;};
+        GrabRequestContext grab_context{native_flip_owner,arcade_input.native_context(now).airborne_episode,tick};
+        const bool grab_permitted=game_input && action_safe && action_experiment==ActionExperiment::classic &&
+            !offboard && observed==SkatePose::air && left_trigger<=30 && right_trigger<=30 &&
+            !(physical_buttons & (classic_a | 0x8000u | 0x0030u));
+        native_grab::refresh(grab_context.owner,grab_context.episode,(physical_buttons&0x2000u)!=0,grab_permitted);
+        NativeGrabRequest normal_grab{};
+        if (grab_permitted && native_grab::available()) normal_grab={&grab_context,
+            [](void* context,const InputRequest& request,ArcadeTrick trick,bool held) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::request(grab.owner,grab.episode,request,trick,held);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::right_hand_input(grab.owner,grab.episode);
+            },[](void* context,InputGenerations origin,InputAirEpisode air) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::continues(grab.owner,grab.episode,origin,air);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::hand_inputs(grab.owner,grab.episode);
+            },[](void* context) noexcept {
+                const auto& grab=*static_cast<GrabRequestContext*>(context);
+                return native_grab::controls(grab.owner,grab.episode,grab.tick);
+            }};
+        normal_grab.selected=selected_grab();
+        if(normal_grab.submit)normal_grab.fingerflip=[](void* context,std::uint8_t id,
+            std::span<const AuthoredStickStep> steps,std::uint64_t tick,bool mirror) noexcept {
+            const auto& grab=*static_cast<GrabRequestContext*>(context);
+            return native_grab::fingerflip(grab.owner,grab.episode,id,steps,tick,mirror);
+        };
+        const auto grind_frame=arcade_input.native_context(now);
+        const auto wallplant_receipt=wallplant_runtime::latest_completed();
+        if(wallplant_receipt)
+            arcade_input.acknowledge_wallplant(now,wallplant_receipt.native,wallplant_receipt.input_sequence);
+        const bool grind_permitted=game_input && owns_controls && !offboard && !releasing_manual &&
+            !(physical_buttons & (classic_a | 0x0330u)) && physical_left_trigger<=30 && physical_right_trigger<=30;
+        const auto grind_contact=grind_permitted?native_grind::contact(native_flip_owner):NativeGrindContact{};
+        const auto grind_animation=grind_permitted && (grind_contact.valid || grind_change.active())?
+            sample_grind_identity(native_flip_owner,now):NativeGrindSnapshot{};
+        auto grind_control=grind_permitted?native_grind::control(native_flip_owner):NativeGrindControl{};
+        grind_control.neutral=grind_control.neutral && physical_right_x==0 && physical_right_y==0;
+        grind_change.observe(now,grind_frame,grind_contact,grind_permitted && native_grind::available(),grind_animation,grind_control);
+        if(grind_change.requires_transition() && !native_grind::pending() &&
+            !native_grind::completion(native_flip_owner,grind_change.serial(),now).native.valid)grind_change.cancel();
+        if(!grind_change.active())native_grind::cancel();
+        struct GrindDispatch { NoBailSkater owner; NativeGrindContact contact; std::uint64_t now; NativeInputFrame frame; }
+            grind_dispatch{native_flip_owner,grind_contact,now,grind_frame};
+        const InputAdapter grind_adapter{&grind_dispatch,[](void* context,const InputRequest& request) noexcept {
+            const auto& dispatch=*static_cast<GrindDispatch*>(context);
+            if(request.action==InputAction::wall_command)
+                return wallplant_runtime::request(request,dispatch.now,dispatch.frame);
+            return grind_change.request(request,dispatch.now,[&](auto serial,auto deadline,auto control) noexcept {
+                return native_grind::arm(dispatch.owner,dispatch.contact,serial,dispatch.now,deadline,control);
+            });
+        }};
+        const auto held_flip=native_held_flip::observe(native_flip_owner,now);
+        struct FootplantContext {NoBailSkater owner;std::uint64_t step;};
+        FootplantContext footplant_context{native_flip_owner,grind_frame.physics_step};
+        NativeFootplantRequest footplant{};
+        if (game_input && !offboard && action_experiment==ActionExperiment::classic && native_footplant::available())
+            footplant={&footplant_context,[](void* context,Footplant kind) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_footplant::request(c.owner,c.step,kind);
+            },[](void* context) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_footplant::controls(c.owner,c.step);
+            }};
+        NativeGroundGrabRequest ground_grab{};
+        if(game_input && !offboard && action_experiment==ActionExperiment::classic && native_ground_grab::available())
+            ground_grab={&footplant_context,[](void* context,GroundGrab kind) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_ground_grab::request(c.owner,c.step,kind);
+            },[](void* context,bool held) noexcept {
+                const auto& c=*static_cast<FootplantContext*>(context);
+                return native_ground_grab::controls(c.owner,c.step,held);
+            }};
         result = arcade_input.poll(NativeControllerRoute::session, now, buttons, left_x, left_y, right_x, right_y,
             game_input, may_start || may_exit_grind, may_push && auto_kick_enabled(), admission.speed,
             left_trigger > 30 || right_trigger > 30, may_toggle_board, authored, tick,
             left_trigger > 30, prepared ? std::span<const PreparedGesture>(*prepared) : std::span<const PreparedGesture>{},
             admission.mirror_x, manual_safe,
             manual_observed.load(std::memory_order_relaxed), action_experiment == ActionExperiment::grabs,
-            manual_prepare, offboard, false, flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
-            action_experiment, action_safe, admission.mirror_x,
-            manual_balance_admitted.load(std::memory_order_relaxed));
+            manual_prepare, offboard, grind_change.active(), flip_ready, neutral_delivery[user].ready(now), left_trigger, right_trigger,
+            action_experiment, action_safe, admission.stance_known,
+            manual_balance_admitted.load(std::memory_order_relaxed),normal_flip,normal_grab,grind_change.admission(),grind_adapter,
+            held_flip,footplant,ground_grab,wallplant_runtime::surface(now,grind_frame));
+        if (!result.footplant_owned) native_footplant::cancel();
+        if (!result.ground_grab_owned) native_ground_grab::cancel();
+        if (result.held_flip_request || result.held_input_released) {
+            RemapEvidence evidence{};
+            evidence.held_ms=now;evidence.held_request=result.held_flip_request;evidence.held_released=result.held_input_released;
+            evidence.held_native_id=held_flip.id;evidence.held_extra_rotations=held_flip.extra_rotations;
+            evidence.held_acknowledged=result.held_actor_acknowledged;
+            input_telemetry.pad({{},evidence,true});
+        }
         const auto capture_proof=arcade_input.native_context(now);
         input_capture_correlation.maintain(now,capture_proof,input_telemetry.client_dropped(),capture_row);
         if(input_capture_correlation.active()){
@@ -2214,7 +2427,10 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 row.first_event=row.last_event=event.sequence;row.first_ms=row.last_ms=event.at;row.events_known=true;
                 input_capture_correlation.event(row,capture_proof,input_telemetry.client_dropped(),capture_row);
             }
-            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session))capture_recognitions(*diagnostic,now,capture_proof);
+            if(const auto* diagnostic=arcade_input.input_diagnostic(NativeControllerRoute::session)) {
+                capture_recognitions(*diagnostic,now,capture_proof);
+                native_grab::trace_input(now,*diagnostic,result.action);
+            }
         }
         if (result.suppress_reverse) left_y = 0;
         // The inspected guide stance has a clear native switch bit, also the
@@ -2222,13 +2438,18 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // Revert mirroring outside that baseline remains a separate native test.
         const auto& action = result.action;
         const auto manual_delivery_frame = arcade_input.native_context(now);
-        const bool manual_delivery = game_input && !offboard && !result.authored_playback && !action.owned &&
+        const bool linked_manual_delivery = result.manual.revert.ack_at && action.pad.owns_left_stick && !action.pad.owns_right_stick;
+        const bool manual_delivery = game_input && !offboard && !result.authored_playback && (!action.owned || linked_manual_delivery) &&
             !(physical_buttons & (classic_a | 0x0030u));
         manual_acquisition.observe(now,manual_delivery_frame,result.manual,manual_delivery);
         const bool manual_pad_delivery = manual_delivery && !releasing_manual && !result.rail.held &&
             result.right_x == 0 && (result.manual.request == -1 || result.manual.request == 1) &&
             result.right_y == result.manual.request * 20000;
         ground_manual_balance.observe(now,manual_delivery_frame,result.manual,manual_pad_delivery);
+        manual_episode.delivery(manual_delivery_frame,result.manual,manual_pad_delivery);
+        manual_episode.release_delivery(manual_delivery_frame,manual_delivery && result.manual.safe &&
+            result.manual.release_requested && !result.manual.owns && !result.rail.held &&
+            result.right_x==0 && result.right_y==0);
         result.buttons &= ~action.consume_buttons;
         if (action.consume_rt) right_trigger = 0;
         if (action.pad.owns_right_stick) { result.right_x = action.pad.right_x; result.right_y = action.pad.right_y; }
@@ -2250,6 +2471,19 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rail_pad = arcade_input.sample_native_rail(result.rail,now,
             game_input && !offboard && !releasing_manual && !reference && !action.owned);
         if (rail_pad.owns_right_stick) { result.right_x = rail_pad.right_x; result.right_y = rail_pad.right_y; }
+        if(grind_change.active() && (reference || action.owned || result.authored_playback)) {
+            grind_change.cancel();native_grind::cancel();
+        }
+        if(grind_change.active()) {
+            const auto completion=native_grind::completion(native_flip_owner,grind_change.serial(),now);
+            grind_change.verify(now,completion.native,grind_contact,grind_animation);
+            grind_change.advance(now,grind_contact,!native_grind::pending(),[&](auto serial,auto deadline,auto control) noexcept {
+                return native_grind::arm(native_flip_owner,grind_contact,serial,now,deadline,control);
+            });
+            if(!grind_change.active())native_grind::cancel();
+        }
+        const auto grind_pad=grind_change.sample(now);
+        if(grind_pad.owns) { result.right_x=grind_pad.x;result.right_y=grind_pad.y; }
 
         const auto pose = manual_observed.load(std::memory_order_relaxed);
         const auto hop_origin = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
@@ -2267,19 +2501,15 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         // claiming native entry, contact validity or a balance force.
         ground_controls.manual_vertical_reserved = rotation_enabled && manual_delivery &&
             !result.authored_playback && !action.owned && !reference && !manual_hop.active() &&
-            !result.rail.held && !rail_pad.owns_right_stick && !rail_pad.button_mask &&
+            !result.rail.held && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask &&
             ((result.manual.owns && (result.manual.request == -1 || result.manual.request == 1) &&
               result.right_x == 0 && result.right_y == result.manual.request * 20000) ||
              (releasing_manual && result.right_x == 0 && result.right_y == 0));
         // Manual vertical reservation publication end.
-        const bool square_push = rotation_enabled && admission.drive && ground_controls.known && ground_controls.square && pose == SkatePose::riding &&
-            !manual_hop.active() && physical_left_trigger <= 30 && physical_right_trigger <= 30 &&
-            !result.suppress_reverse && (!result.command_busy || crouched) && !action.owned && !reference;
-        if (!ground_controls.auto_kick && square_push) result.buttons |= classic_x;
         const auto drive_until = movement_eligible_until.load(std::memory_order_acquire);
         // A balance hop must not gain an ordinary crouch-kick assistance budget.
         const bool drive_safe = mode_enabled.load(std::memory_order_acquire) && game_input && admission.drive && !offboard && !manual_hop.active() &&
-            drive_until >= now && drive_until - now <= 150 && ((ground_controls.auto_kick && result.movement_intent) || square_push) && !ground_controls.down &&
+            drive_until >= now && drive_until - now <= 150 && (ground_controls.auto_kick && result.movement_intent) && !ground_controls.down &&
             pose == SkatePose::riding && !(physical_buttons & static_cast<std::uint16_t>(~(classic_x | (crouched ? classic_a : 0)))) &&
             physical_left_trigger <= 30 && physical_right_trigger <= 30 && !action.owned && !reference &&
             !result.suppress_reverse && (!result.command_busy || crouched);
@@ -2289,15 +2519,24 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
         const auto rotation_native = arcade_input.native_context(now);
         const auto rotation_pose = native_rotation_pose(rotation_native,pose,hop_origin.valid);
         const bool native_rate_ready = arcade_air_motion_ready(&rotation_native);
+        // Controller route air_ownership publication begin.
+        const auto air_spin_mode = spin_mode();
+        const auto held_shoulders = physical_buttons & BoardChord::pair;
+        const bool rotation_action_conflict = action.blocks_air_rotation(air_spin_mode==SpinMode::held &&
+            (held_shoulders==BoardChord::lb || held_shoulders==BoardChord::rb));
+        // Controller route air_ownership publication end.
         // Ordinary native AIR alone admits this writer. Unknown orientation,
         // NoSpin and transfer flags stay unknown; no automatic-turn or prewind
         // equivalence is claimed for this selected ordinary-air policy.
         auto rotation = rotations[NativeControllerRoute::session].poll_qualified(now,physical_buttons,ground_controls.left,ground_controls.right,
-            rotation_enabled,rotation_pose,native_rate_ready,reference || action.owned || result.phase==3,spin_mode(),{},&rotation_native);
+            rotation_enabled,rotation_pose,native_rate_ready,reference || rotation_action_conflict || result.phase==3,air_spin_mode,{},&rotation_native);
+        // Controller route preparation publication begin.
         const auto prewind = prewinds[NativeControllerRoute::session].poll_preparation(now,physical_buttons,
-            rotation_enabled,rotation_native,crouched,(result.right_y>0),
+            rotation_enabled,rotation_native,crouched || ((physical_buttons&classic_a) && result.authored_playback &&
+                rotation_native.state==103 && rotation_native.mode==0),(result.right_y>0),
             reference || action.owned || result.phase==3 || hop_origin.valid,spin_mode());
         if (prewind.owns_left) rotation=prewind;
+        // Controller route preparation publication end.
         // Controller route air publication begin.
         {
             // X is a following flip request, not cancellation of the admitted A release.
@@ -2305,10 +2544,24 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             if(result.jump.setup_started)native_charges[NativeControllerRoute::session].admit_setup(now,result.jump.pressed_at,result.jump.launch,charge_valid,result.jump.nollie);
             const auto release = native_charges[NativeControllerRoute::session].semantic_release(now, result.jump.released,
                 result.jump.setup_admitted, result.jump.from_rail, result.jump.pressed_at, result.jump.released_at, charge_valid,result.jump.launch,result.jump.nollie);
-            const bool angular_allowed = !reference && !action.owned &&
+            if (result.jump.released && release.sequence && !result.jump.from_rail && !reference &&
+                rotation_enabled && result.jump.launch.ordinary_writer()) {
+                native_flip::arm(native_flip_owner); native_rail_flip_armed=false;
+            }
+            // Rail release has its own admitted input lease and native pop;
+            // it never receives a NativeCharge/ordinary velocity ticket. The
+            // original TrickLaunch PTM selects its rail filter and actor tags.
+            if (result.jump.released && result.jump.from_rail && !reference && rotation_enabled &&
+                arcade_input.rail_followup_active(now,rotation_native)) {
+                native_flip::arm(native_flip_owner); native_rail_flip_armed=true;
+            }
+            if (native_rail_flip_armed && !arcade_input.rail_followup_active(now,rotation_native)) {
+                native_flip::cancel(); native_rail_flip_armed=false;
+            }
+            const bool angular_allowed = !reference && !rotation_action_conflict &&
                 arcade_input.allows_air_rotation(NativeControllerRoute::session,result.authored_playback) && result.phase != 3;
             if (prewind.owns_left && rotation_native.airborne && !angular_allowed) rotation={};
-            rotation = AirRotation::native_shoulder_output(rotation,spin_mode(),physical_buttons,angular_allowed);
+            rotation = AirRotation::native_shoulder_output(rotation,air_spin_mode,physical_buttons,angular_allowed);
             const auto contact = arcade_input.balance_admission(now,pose == SkatePose::nose_manual ? InputBalanceKind::nose : InputBalanceKind::manual);
             const bool manual_admitted = contact.valid && manual_balance_admitted.load(std::memory_order_relaxed) &&
                 (pose == SkatePose::manual || pose == SkatePose::nose_manual) &&
@@ -2322,7 +2575,7 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
                 rotation_enabled && angular_allowed && pose==SkatePose::riding && !result.authored_playback && !releasing_manual ? &result.ground_turn : nullptr,
                 release.sequence ? (release.nollie ? 16 : 1) : 0,arcade_input.authored_air_followup(now,rotation_native));
             observe_angular_controller(now,rotation_native,physical_buttons,static_cast<unsigned>(result.phase),rotation_enabled,
-                native_rate_ready,reference || action.owned || result.phase==3,angular_allowed,rotation);
+                native_rate_ready,reference || rotation_action_conflict || result.phase==3,angular_allowed,rotation);
         }
         // Controller route air publication end.
         // BoardChord has already consumed a valid pair and emitted native Y.
@@ -2334,18 +2587,36 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             {configured_balance.first,configured_balance.second},
             configured_balance.available && rotation_enabled && !manual_hop.active() && !reference && !action.owned && !result.authored_playback &&
             (!result.command_busy || result.manual.owns) &&
-            result.phase!=3 && !rail_pad.owns_right_stick && !rail_pad.button_mask && !rotation.owns_left &&
+            result.phase!=3 && !rail_pad.owns_right_stick && !grind_pad.owns && !rail_pad.button_mask && !rotation.owns_left &&
             !(physical_buttons & (classic_a | 0x0030u)) &&
             physical_left_trigger<=30 && physical_right_trigger<=30);
-        if(manual_correction.owns_y)left_y=manual_correction.y;
+        // The manual's vertical controls feed its balance model, not native
+        // locomotion. Reserve the final axis from initial RS delivery through
+        // owned putdown, including gaps in correction/contact publication.
+        // A real native revert/rotation owner retains its own left-stick recipe.
+        if(manual_correction.owns_y || (ground_controls.manual_vertical_reserved && !rotation.owns_left))left_y=0;
         observe_grind_pad(user, now, (physical_buttons & 0x8000u) != 0,
             result.right_x, result.right_y, mode_enabled.load(std::memory_order_acquire));
+        // Controller route final_controls publication begin.
+        if (owns_controls) {
+            // Only admitted actuators may publish native face buttons. Raw
+            // recognition history is untouched, including B/X press timestamps.
+            const auto native_faces = action.pad.owns_face_buttons ? action.pad.face_buttons :
+                static_cast<std::uint16_t>((result.automatic_push ? classic_x : 0) |
+                    (result.phase==3 ? BoardChord::native_y : 0));
+            result.buttons = static_cast<std::uint16_t>((result.buttons & ~0xf30fu) | (native_faces & 0xf000u));
+            if (!action.pad.owns_triggers) left_trigger = right_trigger = 0;
+            if (!result.authored_playback && !result.manual.owns && !action.pad.owns_right_stick && !rail_pad.owns_right_stick && !grind_pad.owns)
+                result.right_x = result.right_y = 0;
+        }
+        // Controller route final_controls publication end.
         const auto normal_mask = synthetic_packet_mask(result.phase, result.buttons != physical_buttons || consume_nollie ||
-            result.right_x != physical_right_x || result.right_y != physical_right_y) ^
+            result.right_x != physical_right_x || result.right_y != physical_right_y ||
+            left_trigger != physical_left_trigger || right_trigger != physical_right_trigger) ^
             manual_reverse_packet_mask(result.suppress_reverse) ^
             (authored && result.phase == 1 ? static_cast<unsigned>(tick & 0x00ffffffu) : 0u);
         capture_ownership=(result.authored_playback?16u:0u) | (action.owned||action.consume_rt||action.consume_buttons?32u:0u) |
-            (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick?256u:0u) | (normal_mask?512u:0u);
+            (rotation.owns_left?64u:0u) | (manual_correction.owns_y?128u:0u) | (rail_pad.owns_right_stick||grind_pad.owns?256u:0u) | (normal_mask?512u:0u);
         if(capture&&input_capture_correlation.schema4()){
             capture->manual_request=result.manual.recognition_id;
             capture->manual_recognized_ms=result.manual.recognized_at;
@@ -2356,12 +2627,12 @@ unsigned remap_xinput(unsigned user, unsigned short& buttons, short& right_x,
             capture->owned_neutral=ground_controls.manual_vertical_reserved && releasing_manual &&
                 result.right_x==0 && result.right_y==0;
             capture->final_writer=capture->manual_owns?1u:capture->owned_neutral?2u:
-                result.authored_playback?3u:action.owned?4u:rail_pad.owns_right_stick?5u:
+                result.authored_playback?3u:action.owned?4u:rail_pad.owns_right_stick||grind_pad.owns?5u:
                 result.right_x==physical_right_x && result.right_y==physical_right_y?0u:6u;
         }
         // Controller route packet_sample publication begin.
         const auto output_packet = playback_packets[user].sample(physical_packet, physical_packet ^ normal_mask,
-            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick);
+            reference || action.owned || action.consume_rt || action.consume_buttons || rotation.owns_left || manual_correction.owns_y || rail_pad.owns_right_stick || grind_pad.owns);
         // Controller route packet_sample publication end.
         neutral_delivery[user].observe(now, tick, mode_enabled.load(std::memory_order_acquire) && game_input && !offboard,
             result.right_x, result.right_y);

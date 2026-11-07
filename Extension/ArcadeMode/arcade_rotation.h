@@ -57,8 +57,13 @@ public:
             if (!prepared_air_ && now>=prepared_.sampled_at && now-prepared_.sampled_at<=250 &&
                 frame.airborne_started_at>=prepared_.sampled_at && frame.air_departure==prepared_.air_departure)
                 prepared_air_=frame.airborne_episode;
-            if (prepared_air_==frame.airborne_episode && frame.air_departure==prepared_.air_departure)
-                return {true,static_cast<std::int16_t>((held==BoardChord::lb?-.97f:.97f)*32767),0};
+            if (prepared_air_==frame.airborne_episode && frame.air_departure==prepared_.air_departure) {
+                // Preserve the remaining chord interval across takeoff, rather
+                // than requiring the entire interval to elapse while crouched.
+                if(now>=pressed_at_ && now-pressed_at_>BoardChord::window_ms)
+                    return {true,static_cast<std::int16_t>((held==BoardChord::lb?-.97f:.97f)*32767),0};
+                return {true,0,0};
+            }
             prepared_={}; prepared_air_=0;
         }
         const bool ground=fresh && !frame.airborne && !frame.rail_family &&
@@ -66,12 +71,13 @@ public:
         if (prepared_air_ && ground) { prepared_={}; prepared_air_=0; }
         auto output=poll(now,buttons,gameplay && mode==SpinMode::held,
             ground?SkatePose::riding:SkatePose::unknown,crouched,nollie,conflict);
-        if (safe && ground && crouched && output.owns_left) {
+        if (safe && ground && crouched && armed_ && !blocked_ && waiting_) {
             prepared_=frame; prepared_buttons_=held;
         }
         // Explicit buffered AIR spin, not a claim of native ground wind-up.
         // Only a fresh crouch-owned shoulder can bridge the bounded pop gap.
-        if (safe && ground && prepared_.valid && now>=prepared_.sampled_at && now-prepared_.sampled_at<=250)
+        if (safe && ground && prepared_.valid && now>=prepared_.sampled_at && now-prepared_.sampled_at<=250 &&
+            now>=pressed_at_ && now-pressed_at_>BoardChord::window_ms)
             output.owns_left=true;
         if (output.owns_left) output.x=output.y=0;
         return output;

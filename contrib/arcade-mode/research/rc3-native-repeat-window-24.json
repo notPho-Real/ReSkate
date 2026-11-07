@@ -1,0 +1,103 @@
+{
+  "source": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
+  "capture_sha256": "01174e8f11bbbdc1aef670f9f741764a75d7629cba65a5051cd271d83279b96f",
+  "error": "Traceback (most recent call last):\n  File \"<RC3 bounded native trial>\", line 1041, in <module>\nAssertionError\n",
+  "observer_error": null,
+  "trials": [
+    {
+      "name": "repeat_100ms",
+      "rotations_before_exit": -1.9912953345599198,
+      "max_excursion_turns": 2.0404890639931783,
+      "exit_state": 100,
+      "exit_seconds": 1.410373341,
+      "held_at_exit": false,
+      "states": [
+        100,
+        103,
+        200,
+        201
+      ],
+      "unknown_state_times_seconds": [],
+      "native_values": {
+        "EnumGS.Anim.CurrentFlipTrick": [
+          0,
+          1,
+          2
+        ],
+        "Bool.Anim.PrepareHeldFlip": [
+          false,
+          true
+        ],
+        "Bool.Intent.HeldFlip": [
+          false,
+          true
+        ],
+        "Bool.State.Is.HeldFlip": [
+          false,
+          true
+        ],
+        "Float.Anim.TrickHeldFlipCount": [
+          0.0,
+          1.0
+        ]
+      },
+      "max_sample_gap_ms": 13.064377
+    },
+    {
+      "name": "repeat_250ms",
+      "rotations_before_exit": -1.9916315583255355,
+      "max_excursion_turns": 2.0377171617427363,
+      "exit_state": 504,
+      "exit_seconds": 1.396932216,
+      "held_at_exit": false,
+      "states": [
+        100,
+        103,
+        200,
+        201,
+        504
+      ],
+      "unknown_state_times_seconds": [],
+      "native_values": {
+        "EnumGS.Anim.CurrentFlipTrick": [
+          0,
+          1,
+          2
+        ],
+        "Bool.Anim.PrepareHeldFlip": [
+          false,
+          true
+        ],
+        "Bool.Intent.HeldFlip": [
+          false
+        ],
+        "Bool.State.Is.HeldFlip": [
+          false,
+          true
+        ],
+        "Float.Anim.TrickHeldFlipCount": [
+          0.0
+        ]
+      },
+      "max_sample_gap_ms": 11.631619
+    }
+  ],
+  "method": "Read-only native board-up angle unwrapped in the initial skater right/up plane, from 450ms after A until first known ground/bail/offboard state. Transient unknown state samples are reported separately. No counter or animation writes.",
+  "scoring": "Unverified",
+  "actor_and_input_evidence": [
+    "[2026-11-06 14:00:17.094] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FLIP: serial=47 selected=2 ticks=18.001162 duration=120 native_evaluation=true.",
+    "[2026-11-06 14:00:17.145] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746850587 requested_id=2 input_released=false native_id=2 extra_rotations=0 loop_acknowledged=false landing_scoring_acceptance=unverified.",
+    "[2026-11-06 14:00:17.426] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD INIT: native_id=2 sampled_id=2 tracking=true owner_current=true view_matches=true duration_valid=true admitted=true.",
+    "[2026-11-06 14:00:17.427] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE HELD FLIP: serial=5 native_id=2 loop_initialized=true before=0 after=2.0011625 delta=2.0011625 extra_rotations=0 scoring_acceptance=unverified.",
+    "[2026-11-06 14:00:17.439] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746850875 requested_id=0 input_released=true native_id=2 extra_rotations=0 loop_acknowledged=false landing_scoring_acceptance=unverified.",
+    "[2026-11-06 14:00:20.427] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE FLIP: serial=48 selected=2 ticks=18.001162 duration=120 native_evaluation=true.",
+    "[2026-11-06 14:00:20.627] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746854071 requested_id=2 input_released=false native_id=2 extra_rotations=0 loop_acknowledged=false landing_scoring_acceptance=unverified.",
+    "[2026-11-06 14:00:20.855] [624:720] Native(C): [Skater] [INFO] ARCADE HELD FLIP INPUT: ms=746854275 requested_id=0 input_released=true native_id=2 extra_rotations=0 loop_acknowledged=false landing_scoring_acceptance=unverified."
+  ],
+  "map": "skate3_megapark",
+  "unexecuted_trials": [
+    "repeat_350ms",
+    "after_landing"
+  ],
+  "full_gameplay_acceptance": false
+}

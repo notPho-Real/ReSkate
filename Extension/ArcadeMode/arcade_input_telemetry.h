@@ -46,6 +46,10 @@ struct PadEvidence {
 struct RemapEvidence {
     bool ollie{}, flip{}, unsupported{};
     unsigned started{}, requested_id{};
+    std::uint64_t held_ms{};
+    std::int32_t held_request{}, held_native_id{};
+    float held_extra_rotations{};
+    bool held_released{}, held_acknowledged{};
 };
 struct PadTelemetry {
     PadEvidence pad{};
@@ -55,7 +59,11 @@ struct PadTelemetry {
 struct ComboSample { NativeRequestSample sample; std::uint64_t ms{}; NativeFlipSelection flip; };
 struct RevertLinkEvidence { std::uint64_t ms{}, sequence{}, labels{}; bool accepted{}; unsigned remaining_ms{}; };
 struct BalanceFailureEvidence { std::uint64_t ms{}; unsigned kind{}; std::uint64_t request{}; };
-struct BalanceTerminationEvidence { std::uint64_t ms{}; unsigned pose{}, outcome{}; };
+struct BalanceTerminationEvidence {
+    std::uint64_t ms{}; unsigned pose{}, outcome{};
+    std::uint64_t episode{},physics_step{},source_ms{};
+    unsigned reason{};bool native_exit_verified{};
+};
 struct ManualPhysicsEvidence {
     std::uint64_t ms{};
     float step{}, elapsed{}, repeat_pressure{}, position{}, velocity{};

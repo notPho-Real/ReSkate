@@ -5,6 +5,11 @@ preference is available at **Pause → Mod Options → Player → Arcade Mode** 
 through `arcademode`, `arcademode on`, and `arcademode off`. It defaults OFF and
 persists through the normal local preference store.
 
+RC3 candidate control references: [extended native grabs](../../contrib/arcade-mode/research/rc3-grab-bindings.md)
+and [repeated native flips](../../contrib/arcade-mode/research/rc3-flip-bindings.md).
+The repeated-X runtime and fakie posture changes still require native gameplay
+acceptance; see the [RC3 status](../../contrib/arcade-mode/research/rc3-gameplay-status.md).
+
 `arcadecameracapture <1..3000>` provides a separate finite camera observation;
 zero requests its end. It changes no camera policy and remains observable across
 OFF. See the [camera evidence contract](Test/camera_diagnostics/README.md) for
@@ -128,15 +133,53 @@ installed source identity and the controlled Deck comparison. Delivery and
 reference each produced five exact IDs in eight initial trials; one reference
 trial had incomplete evidence. Neither mode has repeatability acceptance.
 
+Neutral airborne X is recognized on its physical press, independently of RS
+playback availability. Its original press is queued through the verified native
+ollie handoff; release does not issue a second flip. The continuous native
+ollie proof ends on its actual owner/flight/action boundary, rather than at an
+arbitrary500ms age. Software delivery is not proof of native animation timing.
+
+A manual/revert link retains its original verified balance until opposite balance
+acquires. Physical handoff requires original native steps through101 and back to
+100/1 with changed stance, the same owner, and no observation gap. A score label
+cannot substitute for that transition, and a missing score label cannot block it.
+Scoring continues to require its independent native evidence. Changed stance plus attributed
+opposite contact may already be present when the new RS hold begins; one later
+native physics step must corroborate it. Generic existing one-wheel contact
+still cannot create a manual. Ground revert gesture/sweep/stance playback is
+unchanged. Manual input diagnostics include the handoff's native timestamp and
+original owner/contact/step. A future Powerslide continuation needs its own native
+transition proof; it is not enabled by this revert rule.
+Shoulder preparation is buffered AIR spin: short crouches retain
+intent across takeoff while finishing the existing120ms chord interval. Ground
+LS remains neutral; genuine native wind-up is not claimed.
+
 Automatic skating uses left-stick movement intent and the existing native held
 push adapter. `arcadeautokick on|off` saves the ordinary-ground preference;
-it defaults ON. With it OFF, hold X to request a push. Ordinary ground drive
+it defaults ON. Physical X is reserved for flips and never requests a push,
+including with auto-kick OFF. Only qualified left-stick movement may produce
+synthetic native X through the auto-push actor. Ordinary ground drive
 and resistance use the existing guarded body writer, preserve vertical and
 relative body velocities, and credit observed native speed loss. Physical Down,
 turning, reverse-facing motion and low speed select the brake policy. Missing
 support-plane and locked-vector facts do not select their special branches.
 Native resistance remains authoritative when it exceeds the selected budget.
 Manual, rail, air, bail, menu, owner loss and stale evidence exclude ground drive.
+
+While Arcade owns focused, onboard gameplay, physical A/X/B/Y and D-pad
+controls belong to recognition, not native face-button passthrough. B requests
+an eligible airborne grab; ground B cannot invoke native braking. LT supplies
+nollie/stance modifiers and RT requests an eligible revert. Only an admitted
+native action actor may publish triggers or face buttons; auto-push may publish
+X and the board chord may publish Y. Single shoulders drive the existing spin
+adapter, RS belongs to camera unless a native gesture/manual/rail actor owns it,
+and LS retains steering except during a qualified action or balance correction.
+Physical samples and original edge times remain unchanged for recognition.
+
+A temporary missing native action sample may withhold mapped controls under the
+original focused owner proof (at most its existing150ms lease); this grants no
+new action authority. OFF, menu/focus loss, offboard and actual owner loss retain
+native fallback. Unsupported ground X/B do not release an established manual.
 
 LB+RB within 120 ms requests one native board toggle from a verified safe riding
 or grounded offboard state. Both bumpers must release before another request;
@@ -187,7 +230,14 @@ revert experiments. These selections do not enable Arcade Mode themselves.
   the existing combo continuation hook; request delivery never does.
 
 `arcade_manual_input.h` retains native manual actuation and contact settling;
-the session journal recognizes directional commands. Balance corrections cannot start a new manual while already in
+the session journal recognizes directional commands. Production analog Manual
+entry accepts tilted vertical throws when vertical travel is at least sideways
+travel. It annotates existing physical direction edges without changing the
+shared eight-way tokens used by flips. Sideways jitter within a throw does not
+restart its pair clock. A qualifying first Down also suppresses native reverse
+while the pair is being recognized; mostly sideways input and diagonal D-pad
+commands remain excluded. Native contact is still required for balance admission.
+Balance corrections cannot start a new manual while already in
 one; confirmed takeoff, incompatible poses and competing commands release
 ownership. New command repeatability and combined gameplay still need Deck tests.
 
@@ -369,3 +419,22 @@ Schema1 remains readable, but its recognition bounds cannot prove membership.
 Missing/duplicate members and exhausted identities prevent complete accounting.
 Input scope covers the shared physical-event journal; ordinary pad diagnostics
 remain separate. Capture completeness never verifies a native action or cause.
+
+### Pop-to-flip handoff
+
+Physical X selects neutral Kickflip or the existing directional flip on press.
+A qualified released ordinary Ollie may select before AIR using its original
+release identity and the existing bounded 200 ms handoff; it cannot actuate on
+the ground or survive an unrelated release. Every pop arc must actually have
+been delivered, including the last endpoint on an earlier simulation tick,
+before independently observed same-flight Ollie/AIR permits the RS handoff.
+The following flip owns the native neutral reset (30 ms) and initial load
+(35 ms). A redundant neutral waypoint and the previous pop's end hold no longer
+serialize the two actors. Neither handoff changes the launch ticket or adds an
+impulse. Existing same-flight Kickflip/Heelflip trajectory preservation remains;
+other action IDs retain their native override until independently justified.
+
+Production-composed tests verify original press timing, actual stick stages,
+negative ownership/flight cases and identical Ollie/qualified-flip motion targets
+at 30/60/120 Hz. They do not measure native acknowledgment, visible board rotation
+or acknowledgment relative to apex. Those remain gameplay acceptance requirements.
