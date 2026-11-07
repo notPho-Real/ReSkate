@@ -251,10 +251,12 @@ struct SurfaceCallback {
  DWORD thread{};std::uintptr_t client{};NoBailSkater owner;SurfaceSelf self;
  SurfaceGeometryContext context;editor::NativeSurfaceApi surface;editor::NativePickingApi picking;
  bool entered{};
+ const char* failure{"not_checked"};
 };
 bool surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
  try{
-  const auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
+  auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
+  c.failure="callback_guard";
   const auto& editor=park_editor_detail::editor_state();
   if(!c.entered||!c.native_lock.owns_lock()||!c.world_lock.owns_lock()||c.thread!=GetCurrentThreadId()||
      cosmetic_runtime().update_thread!=c.thread||!local.active||local.base!=context.owner[0]||context!=c.context||
@@ -264,16 +266,31 @@ bool surface_callback_current(void* user,const SurfaceGeometryContext& context) 
      editor.surface_api.scope_allocator!=c.surface.scope_allocator||editor.surface_api.release!=c.surface.release||
      editor.picking_api.hit_body!=c.picking.hit_body||editor.picking_api.body_valid!=c.picking.body_valid||editor.picking_api.body_entity!=c.picking.body_entity)return false;
   std::array<std::uintptr_t,2> client_context{};auto& placements=placements_runtime();
+  c.failure="client_context";
   if(!placements.context)return false;
   placements.context(client_context.data());if(client_context[0]!=context.client_context)return false;
   std::uintptr_t actual{};NoBailSkater owner{};SurfaceSelf self;
-  if(!memory::read(c.client+8,actual)||actual!=context.client_context||!no_bail_skater(owner)||owner!=c.owner||
-     !read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
-  const auto frame=surface_geometry_native_frame(GetTickCount64());const auto current=InputNativeContext::from_frame(frame);
-  return frame.valid&&frame.owner==NativeInputOwner{context.owner[0],context.owner[1],context.owner[2],context.owner[3],context.owner[4]}&&
-   context.self_generation==frame.owner_generation&&current.fresh(GetTickCount64())&&context.native.fresh(GetTickCount64())&&
-   current.generations==context.native.generations&&current.air_episode()==context.native.air_episode()&&current.airborne==context.native.airborne&&
-   current.physics_step>=context.native.physics_step&&current.sampled_at>=context.native.sampled_at;
+  c.failure="client_pointer";
+  if(!memory::read(c.client+8,actual)||actual!=context.client_context)return false;
+  c.failure="native_owner";
+  if(!no_bail_skater(owner)||owner!=c.owner)return false;
+  c.failure="native_self";
+  if(!read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
+  const char* frame_reason{};
+  const auto frame=surface_geometry_native_frame(GetTickCount64(),&frame_reason);const auto current=InputNativeContext::from_frame(frame);
+  c.failure=frame_reason;
+  if(!frame.valid)return false;
+  c.failure="frame_owner_changed";
+  if(frame.owner!=NativeInputOwner{context.owner[0],context.owner[1],context.owner[2],context.owner[3],context.owner[4]})return false;
+  c.failure="frame_owner_generation";if(context.self_generation!=frame.owner_generation)return false;
+  c.failure="frame_stale";if(!current.fresh(GetTickCount64()))return false;
+  c.failure="query_frame_stale";if(!context.native.fresh(GetTickCount64()))return false;
+  c.failure="frame_generations";if(current.generations!=context.native.generations)return false;
+  c.failure="frame_episode";if(current.air_episode()!=context.native.air_episode())return false;
+  c.failure="frame_airborne";if(current.airborne!=context.native.airborne)return false;
+  c.failure="frame_clock";if(current.physics_step<context.native.physics_step||current.sampled_at<context.native.sampled_at)return false;
+  c.failure="current";
+  return true;
  }catch(...){return false;}
 }
 }
@@ -305,6 +322,7 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   SurfaceGeometryNativeApi api;api.base=local.base;api.surface=callback.surface;
   api.picking={callback.picking.hit_body,callback.picking.body_valid,callback.picking.body_entity,callback.picking.ready};
   api.user=&callback;api.now=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&surface_callback_current;api.read_bytes=&memory::read_bytes;
+  api.current_failure=[](void* user)noexcept{return static_cast<SurfaceCallback*>(user)->failure;};
   alignas(16) std::array<float,12> pose{};
   if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()||!surface_callback_current(&callback,origin))return;
   SurfaceGeometryRequest request;

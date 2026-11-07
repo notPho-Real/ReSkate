@@ -1537,10 +1537,15 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
     return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
 }
 // Controller route binding_context publication end.
-NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept {
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
-    return lock.owns_lock() && mode_enabled.load(std::memory_order_acquire) && arcade_input.admitted(0,now) ?
-        arcade_input.native_context(now) : NativeInputFrame{};
+    const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
+    if(!lock.owns_lock())return unavailable("frame_lock_busy");
+    if(!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
+    if(!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
+    const auto frame=arcade_input.native_context(now);
+    if(diagnostic_reason)*diagnostic_reason=frame.valid?"frame_valid":"frame_unavailable";
+    return frame;
 }
 void invalidate_traffic_surface() noexcept {traffic_surface_available.store(false,std::memory_order_release);}
 void invalidate_surface_geometry() noexcept {surface_geometry_available.store(false,std::memory_order_release);}

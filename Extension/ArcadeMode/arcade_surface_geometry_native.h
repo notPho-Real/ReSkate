@@ -27,11 +27,14 @@ struct SurfaceGeometryNativeApi {
     // Opt-in only for wallplant geometry. Must validate an allocated shape,
     // its current static body, and a complete non-ECS native owner stamp.
     bool (*static_world_owner)(void*, const SurfaceGeometryBody&, SurfaceGeometryWorldOwner&) noexcept{};
+    // Copied diagnostic from the existing current() callback, never a retry.
+    const char* (*current_failure)(void*) noexcept{};
 };
 // Optional copied receipts from calls already made by a geometry query. Never
 // issues another native query or changes its admission/cleanup behavior.
 struct SurfaceGeometryTrace {
     const char* reason{"not_started"};
+    const char* context_reason{"not_observed"};
     unsigned ray{}, attempt{}, hits{};
     SurfaceGeometryBody shape{};
     std::uint64_t entity{};

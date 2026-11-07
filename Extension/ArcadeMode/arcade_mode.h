@@ -30,7 +30,7 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Existing client callback supplies immutable query observations only.
-NativeInputFrame surface_geometry_native_frame(std::uint64_t now) noexcept;
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason=nullptr) noexcept;
 void publish_surface_geometry(const SurfaceGeometrySample&) noexcept;
 void invalidate_surface_geometry() noexcept;
 SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept;

@@ -33,12 +33,14 @@ struct Fixture {
     bool wall{}, upper_gap{}, lower_gap{};
     bool allow_world_owner{}, reject_world_owner{}, changing_world_owner{};
     unsigned world_owner_calls{};
+    unsigned reject_owner_at{},reject_shape_at{},shape_checks{},context_failure_after_owners{};
     SurfaceGeometryWorldOwner world_owner{{7,70,50331648},77,69,50331648,0,1234};
     SurfaceGeometryVector wall_normal{0,0,1}, wall_point{0,1.5f,0};
     Fixture() { running=this; table[1]=reinterpret_cast<std::uintptr_t>(&pop); allocator=reinterpret_cast<std::uintptr_t>(table.data()); }
     static std::uint64_t now(void* user) noexcept { return static_cast<Fixture*>(user)->time; }
     static bool current(void* user,const SurfaceGeometryContext& context) noexcept {
-        const auto& f=*static_cast<Fixture*>(user); return !f.no_context && context==f.live;
+        const auto& f=*static_cast<Fixture*>(user); return !f.no_context && context==f.live &&
+            (!f.context_failure_after_owners || f.world_owner_calls<f.context_failure_after_owners);
     }
     static std::uintptr_t world(std::uintptr_t context) { return context==running->live.client_context ? running->live.world : 0; }
     static void pop(std::uintptr_t,void*) { ++running->pops; if (running->throw_pop) throw std::runtime_error("pop failed"); }
@@ -48,7 +50,8 @@ struct Fixture {
     }
     static bool valid(const void* ptr) {
         const auto& b=*static_cast<const SurfaceGeometryBody*>(ptr);
-        return !running->bad_body && b.world==running->live.world && b.index!=UINT32_MAX && b.generation==running->generation;
+        const auto call=++running->shape_checks;
+        return call!=running->reject_shape_at && !running->bad_body && b.world==running->live.world && b.index!=UINT32_MAX && b.generation==running->generation;
     }
     static void* entity(void* out,const void* ptr) {
         auto& f=*running;
@@ -68,9 +71,10 @@ struct Fixture {
     }
     static bool static_owner(void* user,const SurfaceGeometryBody&,SurfaceGeometryWorldOwner& owner) noexcept {
         auto& f=*static_cast<Fixture*>(user);
-        if(f.reject_world_owner)return false;
+        const auto call=++f.world_owner_calls;
+        if(f.reject_world_owner || call==f.reject_owner_at)return false;
         owner=f.world_owner;
-        if(f.changing_world_owner)owner.generation+=++f.world_owner_calls;
+        if(f.changing_world_owner)owner.generation+=call;
         return true;
     }
     static void* ray(std::uintptr_t world_value,editor::NativeSurfaceResult* result,const editor::NativeSurfaceRay* ray_value,const char*) {
@@ -112,6 +116,7 @@ struct Fixture {
         api.picking.hit_body=&hit_body; api.picking.body_valid=&valid; api.picking.body_entity=&entity; api.picking.ready=true;
         api.user=this; api.now=&now; api.current=&current; api.read_bytes=&surface_geometry_test_read;
         if(allow_world_owner)api.static_world_owner=&static_owner;
+        api.current_failure=[](void*)noexcept{return "fixture_frame_lock_busy";};
         return api;
     }
     static SurfaceGeometryRequest request() {
@@ -212,6 +217,29 @@ int main() {
       check(!f.query().valid,"world owner changing during the query is rejected"); }
     { Fixture f;f.unknown=true;f.allow_world_owner=true;
       check(f.query_wall().valid,"verified non-ECS wall supports the same broad geometry query"); }
+    for(unsigned failure=0;failure<5;++failure) {
+        Fixture f;f.unknown=true;f.allow_world_owner=true;
+        const char* expected{};
+        switch(failure) {
+        case 0:f.reject_shape_at=3;expected="shape_changed_after_entity";break;
+        case 1:f.context_failure_after_owners=1;expected="owner_context_changed";break;
+        case 2:f.reject_owner_at=2;expected="static_owner_reader_again";break;
+        case 3:f.changing_world_owner=true;expected="static_owner_stamp_changed";break;
+        case 4:f.context_failure_after_owners=2;expected="static_owner_context_changed";break;
+        }
+        SurfaceGeometryTrace trace;
+        const auto sample=query_surface_geometry(f.api(),f.live,f.request(),&trace);
+        check(!sample.valid && std::strcmp(trace.reason,expected)==0,"diagnostic distinguishes shape, owner stamp, owner reader and context failures");
+        check(f.calls==1&&f.pops==1&&f.frees==1,"diagnostic never retries query or changes cleanup");
+        if(failure==1||failure==4)check(std::strcmp(trace.context_reason,"fixture_frame_lock_busy")==0,"callback failure copied without another context read");
+        else check(std::strcmp(trace.context_reason,"fixture_frame_lock_busy")!=0,"owner failure does not borrow stale callback failure reason");
+    }
+    {Fixture f;f.time=1151;SurfaceGeometryTrace trace;
+     check(!query_surface_geometry(f.api(),f.live,f.request(),&trace).valid&&
+         std::strcmp(trace.context_reason,"query_context_stale")==0&&f.calls==0,"wrapper freshness rejection is not mislabeled as callback failure");}
+    {Fixture f;auto api=f.api();api.surface.world=[](std::uintptr_t){return std::uintptr_t{8};};SurfaceGeometryTrace trace;
+     check(!query_surface_geometry(api,f.live,f.request(),&trace).valid&&
+         std::strcmp(trace.context_reason,"query_world_changed")==0&&f.calls==0,"wrapper world rejection is not mislabeled as callback failure");}
     for (unsigned failure=0;failure<12;++failure) {
         Fixture f; auto sample=f.query();
         switch(failure) {

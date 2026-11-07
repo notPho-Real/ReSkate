@@ -44,8 +44,8 @@ void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Ra
         if(query_diagnostic_count>=64)return;
         ++query_diagnostic_count;
         logging::log(logging::Level::info,logging::Channel::skater,
-            "ARCADE WALLPLANT QUERY: query={} reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={}.",
-            query,trace.reason,GetTickCount64(),f.physics_step,f.state,f.owner_generation,identity,source.serial,
+            "ARCADE WALLPLANT QUERY: query={} reason={} context_reason={} ms={} step={} state={} owner_generation={} contact={} raw={} ray={} attempt={} hits={} shape_world={} shape={} generation={} entity={} start={},{},{} end={},{},{} point={},{},{} value={}.",
+            query,trace.reason,trace.context_reason,GetTickCount64(),f.physics_step,f.state,f.owner_generation,identity,source.serial,
             trace.ray,trace.attempt,trace.hits,trace.shape.world,trace.shape.index,trace.shape.generation,trace.entity,
             trace.start[0],trace.start[1],trace.start[2],trace.end[0],trace.end[1],trace.end[2],
             trace.point[0],trace.point[1],trace.point[2],trace.value);

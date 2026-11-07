@@ -12,11 +12,17 @@ using namespace surface_geometry_detail;
 template<class T> bool read(const SurfaceGeometryNativeApi& api, std::uintptr_t at, T& value) noexcept {
     return api.read_bytes && api.read_bytes(at,&value,sizeof value);
 }
-bool current(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx) {
-    return api.base && api.base == ctx.owner[0] && api.surface.ready && api.picking.ready && api.now && api.current && api.surface.world &&
+bool current(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,SurfaceGeometryTrace* trace=nullptr) {
+    const auto fail=[&](const char* reason){if(trace)trace->context_reason=reason;return false;};
+    if(!(api.base && api.base == ctx.owner[0] && api.surface.ready && api.picking.ready && api.now && api.current && api.surface.world &&
         api.read_bytes && api.surface.ray && api.surface.scope_allocator && api.surface.release && api.picking.hit_body &&
-        api.picking.body_valid && api.picking.body_entity && ctx.fresh(api.now(api.user)) &&
-        api.current(api.user,ctx) && api.surface.world(ctx.client_context) == ctx.world && api.current(api.user,ctx);
+        api.picking.body_valid && api.picking.body_entity))return fail("query_api");
+    if(!ctx.fresh(api.now(api.user)))return fail("query_context_stale");
+    if(!api.current(api.user,ctx))return fail(api.current_failure?api.current_failure(api.user):"callback_before_world");
+    if(api.surface.world(ctx.client_context)!=ctx.world)return fail("query_world_changed");
+    if(!api.current(api.user,ctx))return fail(api.current_failure?api.current_failure(api.user):"callback_after_world");
+    if(trace)trace->context_reason="current";
+    return true;
 }
 bool body_owner(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                 const SurfaceGeometryBody& body, std::uint64_t& owner, SurfaceGeometryTrace* trace = nullptr,
@@ -31,11 +37,13 @@ bool body_owner(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContex
     if (!api.picking.body_valid(&body)) return fail("shape_changed");
     if (api.picking.body_entity(after.data(),&body) != after.data()) return fail("entity_reader_again");
     if (value != after) return fail("entity_changed");
-    if (!api.picking.body_valid(&body) || !current(api,ctx)) return fail("owner_context_changed");
+    if (!api.picking.body_valid(&body)) return fail("shape_changed_after_entity");
+    if (!current(api,ctx,trace)) return fail("owner_context_changed");
     if (!value[0]) {
         SurfaceGeometryWorldOwner again{};
-        if (!api.static_world_owner(api.user,body,again) || again!=native_owner || !current(api,ctx))
-            return fail("static_owner_changed");
+        if (!api.static_world_owner(api.user,body,again))return fail("static_owner_reader_again");
+        if (again!=native_owner)return fail("static_owner_stamp_changed");
+        if (!current(api,ctx,trace))return fail("static_owner_context_changed");
     }
     owner = value[0];
     if(world_owner)*world_owner=native_owner;
@@ -58,11 +66,11 @@ bool cleanup(const SurfaceGeometryNativeApi& api, editor::NativeSurfaceResult& r
 struct Hit { SurfaceGeometryVector point; SurfaceGeometryBody body; std::uint64_t owner; SurfaceGeometryWorldOwner world_owner; };
 struct Exclusions { std::array<SurfaceGeometryBody,8> bodies{}; std::size_t count{}; };
 bool exclusions_current(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
-                        const Exclusions& exclusions) {
-    if (!current(api,ctx)) return false;
+                        const Exclusions& exclusions,SurfaceGeometryTrace* trace=nullptr) {
+    if (!current(api,ctx,trace)) return false;
     for (std::size_t i = 0; i < exclusions.count; ++i) {
         std::uint64_t owner{};
-        if (!body_owner(api,ctx,exclusions.bodies[i],owner) || owner != ctx.self_entity) return false;
+        if (!body_owner(api,ctx,exclusions.bodies[i],owner,trace) || owner != ctx.self_entity) return false;
     }
     return true;
 }
@@ -72,7 +80,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
     if(trace){trace->start=segment.start;trace->end=segment.end;}
     for (unsigned attempt = 0; attempt <= 8; ++attempt) {
         if(trace)trace->attempt=attempt;
-        if (!exclusions_current(api,ctx,excluded)) return fail("exclusions_current");
+        if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_current");
         editor::NativeSurfaceRay ray;
         std::copy(segment.start.begin(),segment.start.end(),ray.start.begin());
         std::copy(segment.end.begin(),segment.end.end(),ray.end.begin());
@@ -125,7 +133,7 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
         }
         if (!released) return fail("cleanup");
         if (!hit) return {};
-        if (!exclusions_current(api,ctx,excluded)) return fail("exclusions_changed");
+        if (!exclusions_current(api,ctx,excluded,trace)) return fail("exclusions_changed");
         if (hit->owner != ctx.self_entity) {if(trace)trace->reason="hit";return hit;} // unknown nearer owner never skipped
         if (excluded.count == excluded.bodies.size() ||
             std::find(excluded.bodies.begin(),excluded.bodies.begin()+static_cast<std::ptrdiff_t>(excluded.count),hit->body) !=
@@ -135,22 +143,26 @@ std::optional<Hit> cast(const SurfaceGeometryNativeApi& api, const SurfaceGeomet
     return {};
 }
 }
-bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
-                                 const SurfaceGeometrySample& sample) noexcept {
+static bool revalidate(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
+                       const SurfaceGeometrySample& sample,SurfaceGeometryTrace* trace) noexcept {
     try {
         std::uint64_t owner{};
         SurfaceGeometryWorldOwner world_owner{};
-        return current(api,ctx) && sample.fresh_for(ctx,api.now(api.user)) &&
-            body_owner(api,ctx,sample.body,owner,nullptr,&world_owner) && owner == sample.body_owner &&
+        return current(api,ctx,trace) && sample.fresh_for(ctx,api.now(api.user)) &&
+            body_owner(api,ctx,sample.body,owner,trace,&world_owner) && owner == sample.body_owner &&
             world_owner == sample.world_owner;
     } catch (...) { return false; }
+}
+bool revalidate_surface_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
+                                 const SurfaceGeometrySample& sample) noexcept {
+    return revalidate(api,ctx,sample,nullptr);
 }
 SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api, const SurfaceGeometryContext& ctx,
                                              const SurfaceGeometryRequest& request, SurfaceGeometryTrace* trace) noexcept {
     const auto fail=[&](const char* reason) -> SurfaceGeometrySample {if(trace)trace->reason=reason;return {};};
     if(trace)*trace={};
     try {
-        if (!current(api,ctx)) return fail("query_context");
+        if (!current(api,ctx,trace)) return fail("query_context");
         SurfaceGeometrySample sample;
         sample.context = ctx; sample.queried_at = api.now(api.user);
         for (const auto& segment : request.segments) {
@@ -172,7 +184,7 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
         }
         if (!plane(points,sample.query_normal)) return fail("ground_plane");
         sample.point = points[0]; sample.valid = true;
-        if (!exclusions_current(api,ctx,excluded) || !revalidate_surface_geometry(api,ctx,sample)) return fail("ground_revalidation");
+        if (!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,sample,trace)) return fail("ground_revalidation");
         if(trace)trace->reason="ground_valid";
         return sample;
     } catch (...) { return fail("ground_exception"); }
@@ -182,7 +194,7 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
     const auto fail=[&](const char* reason) -> SurfaceGeometrySample {if(trace)trace->reason=reason;return {};};
     if(trace)*trace={};
     try {
-        if(!current(api,ctx) || !finite(point) || !finite(normal) ||
+        if(!current(api,ctx,trace) || !finite(point) || !finite(normal) ||
             std::abs(dot(normal,normal)-1.f)>.02f || !unit(normal) || std::abs(normal[1])>.1f) return fail("wall_context_normal");
         // A broad patch excludes narrow rails/poles and corner contacts. Half
         // width/height use the retained classic arcade minimum plant height (24 inches).
@@ -218,7 +230,7 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
         auto measured=cross(sub(points[4],points[3]),sub(points[2],points[1]));
         if(!unit(measured) || dot(measured,normal)<.995f)return fail("wall_plane_normal");
         sample.point=points[0];sample.query_normal=measured;sample.valid=true;
-        if(!exclusions_current(api,ctx,excluded) || !revalidate_surface_geometry(api,ctx,sample))return fail("wall_revalidation");
+        if(!exclusions_current(api,ctx,excluded,trace) || !revalidate(api,ctx,sample,trace))return fail("wall_revalidation");
         if(trace)trace->reason="wall_valid";
         return sample;
     } catch(...) {return fail("wall_exception");}
