@@ -253,7 +253,7 @@ struct SurfaceCallback {
  bool entered{};
  const char* failure{"not_checked"};
 };
-bool surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+bool surface_callback_current_impl(void* user,const SurfaceGeometryContext& context,bool wallplant) noexcept {
  try{
   auto& c=*static_cast<SurfaceCallback*>(user);auto& local=local_runtime();auto& world=world_layers_runtime();
   c.failure="callback_guard";
@@ -277,7 +277,9 @@ bool surface_callback_current(void* user,const SurfaceGeometryContext& context) 
   c.failure="native_self";
   if(!read_surface_self(context.client_context,owner,self)||self!=c.self||self.entity!=context.self_entity)return false;
   const char* frame_reason{};
-  const auto frame=surface_geometry_native_frame(GetTickCount64(),&frame_reason);const auto current=InputNativeContext::from_frame(frame);
+  const auto frame=wallplant?wallplant_surface_geometry_native_frame(&frame_reason):
+   surface_geometry_native_frame(GetTickCount64(),&frame_reason);
+  const auto current=InputNativeContext::from_frame(frame);
   c.failure=frame_reason;
   if(!frame.valid)return false;
   c.failure="frame_owner_changed";
@@ -292,6 +294,12 @@ bool surface_callback_current(void* user,const SurfaceGeometryContext& context) 
   c.failure="current";
   return true;
  }catch(...){return false;}
+}
+bool surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+ return surface_callback_current_impl(user,context,false);
+}
+bool wallplant_surface_callback_current(void* user,const SurfaceGeometryContext& context) noexcept {
+ return surface_callback_current_impl(user,context,true);
 }
 }
 void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
@@ -332,7 +340,8 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   auto sample=query_surface_geometry(api,origin,request);
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
   publish_surface_geometry(sample);
-  wallplant_runtime::publish_geometry(api,origin,frame,{pose[8],pose[9],pose[10]},sample);
+  auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
+  wallplant_runtime::publish_geometry(wallplant_api,origin,frame,{pose[8],pose[9],pose[10]},sample);
   callback.entered=false;
  }catch(...){arcade_mode::invalidate_surface_geometry();}
 }

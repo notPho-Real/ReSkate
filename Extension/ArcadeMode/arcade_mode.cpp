@@ -1599,17 +1599,31 @@ bool native_wallplant_execution_authorized(const NativeInputFrame& original,std:
         original.owner_generation==arcade_input.owner_epoch() &&
         wallplant_same_observation(original,arcade_input.native_context(now));
 }
-// Controller route binding_context publication end.
-NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
-    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+static NativeInputFrame surface_geometry_native_frame_locked(std::uint64_t now,const char** diagnostic_reason) noexcept {
     const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
-    if(!lock.owns_lock())return unavailable("frame_lock_busy");
     if(!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
     if(!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
     const auto frame=arcade_input.native_context(now);
     if(diagnostic_reason)*diagnostic_reason=frame.valid?"frame_valid":"frame_unavailable";
     return frame;
 }
+NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
+    std::unique_lock lock(ollie_mutex,std::try_to_lock);
+    if(!lock.owns_lock()) {
+        if(diagnostic_reason)*diagnostic_reason="frame_lock_busy";
+        return {};
+    }
+    return surface_geometry_native_frame_locked(now,diagnostic_reason);
+}
+NativeInputFrame wallplant_surface_geometry_native_frame(const char** diagnostic_reason) noexcept {
+    // Retained wall-contact query only. Its callback owns local/world lifetime
+    // locks, but holds neither the wallplant runtime mutex nor source busy.
+    // Input-owned paths never block on those lifetime locks; preference reads
+    // use try-lock and camera/persistence release input before native work.
+    std::lock_guard lock(ollie_mutex);
+    return surface_geometry_native_frame_locked(GetTickCount64(),diagnostic_reason);
+}
+// Controller route binding_context publication end.
 void invalidate_traffic_surface() noexcept {traffic_surface_available.store(false,std::memory_order_release);}
 void invalidate_surface_geometry() noexcept {surface_geometry_available.store(false,std::memory_order_release);}
 void publish_surface_geometry(const SurfaceGeometrySample& sample) noexcept {

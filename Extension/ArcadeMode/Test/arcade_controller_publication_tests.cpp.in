@@ -391,6 +391,48 @@ void run(){
         require(!native_wallplant_execution_authorized(airborne,checked_at),
             "production late execution rejects a real busy held session even with matching AIR proof");++checks;
     }
+    // Use the actual geometry accessors with a contended producer mutex.
+    // Ordinary callers still yield; retained wall queries wait for the owner
+    // then inspect the original frame at the real acquisition time.
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;native_input_state={};
+        arcade_input.enable(false);arcade_input.enable(true);
+        NativeRequestSample air_sample{};air_sample.valid=true;air_sample.state=201;air_sample.crouch_mode=2;
+        const auto original=native_input_state.observe(1000,owner,air_sample,{});
+        arcade_input.publish_native_context(original);arcade_input.publish_authority(1000,original.owner_generation,1,true);
+        NativeInputFrame ordinary{},acquired{};const char* ordinary_reason{};const char* acquired_reason{};
+        std::atomic<bool> waiting{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread query([&] {
+            ordinary=surface_geometry_native_frame(clock_ms,&ordinary_reason);
+            waiting.store(true,std::memory_order_release);
+            acquired=wallplant_surface_geometry_native_frame(&acquired_reason);
+        });
+        while(!waiting.load(std::memory_order_acquire))std::this_thread::yield();
+        clock_ms=boundary==1?1151:boundary==6?999:1001;
+        if(boundary==2)mode_enabled=false;
+        if(boundary==3)arcade_input.invalidate_authority();
+        if(boundary==4)arcade_input.publish_native_context({});
+        if(boundary==5) {
+            auto landed=air_sample;landed.state=100;landed.crouch_mode=1;landed.words[1]=0x8000;
+            arcade_input.publish_native_context(native_input_state.observe(1001,owner,landed,{}));
+        }
+        publisher.unlock();query.join();
+        require(!ordinary.valid&&std::string_view(ordinary_reason)=="frame_lock_busy",
+            "ordinary geometry retains its nonblocking contention behavior");++checks;
+        require(acquired.valid==(boundary==0||boundary==5),
+            "synchronized wall query still rejects expired/future/OFF/authority/invalid native context");++checks;
+        if(boundary==0) {
+            require(acquired.sampled_at==original.sampled_at&&acquired.physics_step==original.physics_step&&
+                std::string_view(acquired_reason)=="frame_valid",
+                "contention resolution preserves original native timestamp and step");++checks;
+        }
+        if(boundary==5) {
+            require(acquired.state==100&&!acquired.airborne&&acquired.physics_step>original.physics_step&&
+                acquired.action_generation!=original.action_generation,
+                "native transition while waiting is returned honestly for existing callback provenance rejection");++checks;
+        }
+    }
     std::cout<<checks<<" exact production binding API checks passed\n";
 }
 }

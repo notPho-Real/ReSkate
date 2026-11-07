@@ -41,6 +41,9 @@ bool native_wallplant_execution_authorized(const NativeInputFrame&,std::uint64_t
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Existing client callback supplies immutable query observations only.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason=nullptr) noexcept;
+// Retained wall-contact geometry callback only: serialize the same read and
+// evaluate freshness after acquiring input ownership. Never renews a frame.
+NativeInputFrame wallplant_surface_geometry_native_frame(const char** diagnostic_reason=nullptr) noexcept;
 void publish_surface_geometry(const SurfaceGeometrySample&) noexcept;
 void invalidate_surface_geometry() noexcept;
 SurfaceGeometrySample surface_geometry_observation(std::uint64_t now) noexcept;
