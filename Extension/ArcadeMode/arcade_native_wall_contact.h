@@ -5,6 +5,7 @@
 
 namespace dingosdk::arcade_mode::native_wall_contact {
 using Vec=std::array<float,3>;
+enum class Source : std::uint8_t { rig, board };
 struct Contact {
     body_hit_identity::NativeHandle shape{},body{};
     Vec point{},normal{};
@@ -16,9 +17,13 @@ struct Contact {
 };
 struct Snapshot {
     NoBailSkater owner{};
-    std::uint64_t serial{},sampled_at{};
+    std::uint64_t serial{},sampled_at{},source_serial{};
     std::uint32_t state{};
     std::uint32_t physics_thread{};
+    Source source{Source::rig};
+    std::uint32_t state_after{};
+    Vec velocity_after{};
+    bool after_valid{};
     float seconds{};
     Vec velocity{};
     std::array<Contact,64> contacts{};

@@ -223,6 +223,95 @@ void wall_controls() {
     e.surface.physics_step=3;input.poll(20,{0x8000},e,sink.adapter());check(sink.calls==2,"a new eligible physics step may retry an unsupported held command");
     e.surface.fresh=false;input.poll(30,{0x8000},e,sink.adapter());check(sink.calls==2,"unavailable wall context never invents an eligible surface");
 }
+void wallplant_contact_handoff() {
+    struct Fixture {
+        UnifiedInput input;Sink sink;
+        InputEnvironment e{InputContext::air,true};
+        Fixture() {
+            e.ollie_allowed=false;
+            e.native_context={true,true,{1,2,3},1,0,false,true,4,5};
+        }
+        void poll(std::uint64_t now,std::uint16_t buttons,bool surface=false,InputAdapter adapter={}) {
+            e.native_context.sampled_at=now;++e.native_context.physics_step;
+            if(surface)e.surface={7,e.native_context.physics_step,true,true,false,false,0,e.native_context.generations};
+            input.poll(now,{buttons},e,adapter.request?adapter:sink.adapter());
+        }
+    };
+    for(const auto delay:{1u,34u,149u,150u,151u})for(bool released:{false,true}) {
+        Fixture f;f.poll(0,0);f.poll(10,0x1000);
+        const auto press=f.input.history().events().back();
+        check(f.sink.calls==0 && press.owners==0,"airborne A remains unowned until independently eligible wall contact");
+        if(released)f.poll(11,0);
+        ++f.e.native_context.generations.contact;
+        f.poll(10+delay,released?0:0x1000,true);
+        check(f.sink.calls==(delay<=InputTiming::native_sample_lease_ms?1u:0u),
+              "real airborne edge precedes contact only within the unchanged native lease, held or released");
+        if(f.sink.calls) {
+            const auto& request=f.sink.last;
+            check(request.action==InputAction::wall_command && request.variant==1 &&
+                  request.input_sequence==press.sequence && request.physical_pressed_at==10 &&
+                  request.first_input_at==10 && request.last_input_at==10 && request.recognized_at==10+delay &&
+                  request.air_episode==f.e.native_context.air_episode() && request.generations==f.e.native_context.generations,
+                  "contact handoff preserves physical journal identity/time and binds the current native flight");
+        }
+        f.poll(20+delay,released?0:0x1000,true);
+        check(f.sink.calls==(delay<=InputTiming::native_sample_lease_ms?1u:0u),
+              "fresh contact publication cannot consume the same physical press twice or renew an expired edge");
+    }
+    for(unsigned fault=0;fault<13;++fault) {
+        Fixture f;
+        if(fault==0) {f.e.context=InputContext::ground;f.e.native_context.airborne=false;}
+        if(fault==1)f.e.native_context.required=false;
+        if(fault==2)f.e.native_context.rail_family=true;
+        if(fault==3)f.e.conflict=true;
+        if(fault==4)f.e.ollie_allowed=true; // Existing crouch consumes this same A.
+        f.poll(0,fault==5?0x1000:0);
+        f.poll(10,0x1000);
+        const auto calls=f.sink.calls;
+        if(fault==6)++f.e.native_context.generations.owner;
+        if(fault==7)++f.e.native_context.airborne_episode;
+        if(fault==8)++f.e.native_context.air_departure;
+        if(fault==9)f.input.cancel_air_episode(true);
+        if(fault==10)f.input.reset();
+        if(fault==11){f.e.conflict=true;f.poll(20,0x1000);}
+        if(fault==12){f.e.gameplay=false;f.poll(20,0x1000);}
+        f.e.context=InputContext::air;f.e.native_context.airborne=true;f.e.native_context.required=true;
+        f.e.native_context.rail_family=false;f.e.conflict=false;f.e.gameplay=true;f.e.ollie_allowed=false;
+        f.poll(30,0x1000,true);
+        check(f.sink.calls==calls,
+              "ground, unproven, rail, conflicting, consumed, startup-held, changed-flight and cancelled A cannot be borrowed");
+    }
+    {
+        Fixture f;f.poll(0,0);f.poll(10,0x1000);
+        f.poll(20,0x5000); // Ordinary X owns its own request; it invalidates deferred A.
+        const auto calls=f.sink.calls;
+        f.poll(30,0x1000,true);
+        check(calls==1 && f.sink.calls==calls && f.sink.last.action==InputAction::flip,
+              "a competing recognized flip retains its ordinary request without admitting buffered wallplant A");
+    }
+    for(const auto button:{std::uint16_t{0x2000},std::uint16_t{0x4000}})
+        for(const auto disposition:{InputDisposition::waiting,InputDisposition::started}) {
+        struct Owner {
+            InputDisposition disposition;unsigned tricks{},plants{};
+            static InputDisposition receive(void* state,const InputRequest& request) noexcept {
+                auto& self=*static_cast<Owner*>(state);
+                if(request.action==InputAction::wall_command) {++self.plants;return InputDisposition::unsupported;}
+                if(request.action==InputAction::flip || request.action==InputAction::grab) {
+                    ++self.tricks;return self.disposition;
+                }
+                return InputDisposition::unsupported;
+            }
+        } owner{disposition};
+        const InputAdapter adapter{&owner,Owner::receive};
+        Fixture f;f.poll(0,0,false,adapter);f.poll(10,0x1000,false,adapter);
+        f.poll(20,static_cast<std::uint16_t>(button|0x1000),false,adapter);
+        check(owner.tricks==1 && owner.plants==0,"ordinary grab or flip adapter receives the competing request");
+        f.e.conflict=disposition==InputDisposition::started;
+        f.poll(30,0x1000,true,adapter);
+        f.e.conflict=false;f.poll(40,0x1000,true,adapter);
+        check(owner.plants==0,"queued grab/flip or observed active owner prevents deferred A from becoming a wallplant later");
+    }
+}
 void air_extra_tables() {
     struct Actor:Sink {
         static InputDisposition start(void* state,const InputRequest& request) noexcept {
@@ -417,4 +506,4 @@ void state_bound_transition_requests() {
 }
 
 }
-int main() { policy_and_mode_boundaries(); state_bound_transition_requests(); composed_manual_deadline(); prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
+int main() { policy_and_mode_boundaries(); state_bound_transition_requests(); composed_manual_deadline(); prepared_pair_safety(); extra_table_expiry(); initial_rail_deadlines(); grab_release_and_reset(); normalization(); sampled_windows(); preparation(); early_contact_readiness(); grab_hold(); rail_tables(); lip_and_geometry_readiness(); lip_extra_tables(); wall_controls(); wallplant_contact_handoff(); air_extra_tables(); std::cout << checks << " control state checks passed\n"; }
