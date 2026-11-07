@@ -304,13 +304,18 @@ bool wallplant_surface_callback_current(void* user,const SurfaceGeometryContext&
 }
 void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
  PreserveError preserve;arcade_mode::invalidate_surface_geometry();
- if(!arcade_mode::enabled())return;
+ const auto probe=wallplant_runtime::geometry_probe();
+ const auto note=[&](unsigned stage,const char* reason){wallplant_runtime::geometry_event(probe,stage,reason);};
+ note(0,"client_entry");
+ if(!arcade_mode::enabled()){note(1,"disabled");return;}
  try{
   auto& local=local_runtime();std::unique_lock native(local.native_mutex);
   auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex);
-  if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation)return;
-  const auto frame=arcade_mode::surface_geometry_native_frame(GetTickCount64());NoBailSkater owner{};
-  if(!frame.valid||!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base)return;
+  if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
+  const char* frame_reason{};
+  const auto frame=arcade_mode::surface_geometry_native_frame(GetTickCount64(),&frame_reason);NoBailSkater owner{};
+  if(!frame.valid){note(3,frame_reason);return;}
+  if(!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base){note(4,"native_owner");return;}
   static std::uintptr_t validated_base{};static bool self_ready{};
   if(validated_base!=local.base){
    validated_base=local.base;self_ready=std::all_of(surface_self_contracts.begin(),surface_self_contracts.end(),[&](const auto& contract){
@@ -318,11 +323,11 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   }
   auto& placements=placements_runtime();const auto& editor=park_editor_detail::editor_state();
   std::array<std::uintptr_t,2> context{};std::uintptr_t actual{};
-  if(!self_ready||!placements.context||!editor.surface_api.ready||!editor.picking_api.ready)return;
+  if(!self_ready||!placements.context||!editor.surface_api.ready||!editor.picking_api.ready){note(5,"contracts_api");return;}
   placements.context(context.data());
-  if(!context[0]||!memory::read(client+8,actual)||actual!=context[0])return;
-  SurfaceSelf self;if(!read_surface_self(context[0],owner,self))return;
-  const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world)return;
+  if(!context[0]||!memory::read(client+8,actual)||actual!=context[0]){note(6,"client_context");return;}
+  SurfaceSelf self;if(!read_surface_self(context[0],owner,self)){note(7,"native_self");return;}
+  const auto physics_world=editor.surface_api.world(context[0]);if(!physics_world){note(8,"physics_world");return;}
   SurfaceGeometryContext origin{{owner.base,owner.entity,owner.core,owner.context,owner.rig},InputNativeContext::from_frame(frame),
    context[0],physics_world,world.root_generation,self.entity,frame.owner_generation,SurfaceGeometryPhase::client};
   surface_client_gate={client,local.base,context[0],GetTickCount64()};
@@ -332,7 +337,8 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   api.user=&callback;api.now=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&surface_callback_current;api.read_bytes=&memory::read_bytes;
   api.current_failure=[](void* user)noexcept{return static_cast<SurfaceCallback*>(user)->failure;};
   alignas(16) std::array<float,12> pose{};
-  if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()||!surface_callback_current(&callback,origin))return;
+  if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()){note(9,"native_pose");return;}
+  if(!surface_callback_current(&callback,origin)){note(10,callback.failure);return;}
   SurfaceGeometryRequest request;
   constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
   for(std::size_t i=0;i<5;++i)request.segments[i]={{pose[8]+offsets[i][0],pose[9]+.75f,pose[10]+offsets[i][1]},
@@ -341,9 +347,10 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
   publish_surface_geometry(sample);
   auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
+  note(11,"before_publish");
   wallplant_runtime::publish_geometry(wallplant_api,origin,frame,{pose[8],pose[9],pose[10]},sample);
   callback.entered=false;
- }catch(...){arcade_mode::invalidate_surface_geometry();}
+ }catch(...){note(12,"exception");arcade_mode::invalidate_surface_geometry();}
 }
 
 // Scope/table/selected-pose reuse: davad00/ReSkate (GPL-3.0),

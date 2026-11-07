@@ -55,6 +55,13 @@ void prepare_playback() noexcept; // requests the existing hooks at the next cli
 bool can_play() noexcept;
 bool owns_play(std::uint64_t ticket) noexcept;
 void cancel_play(std::uint64_t ticket);
+// Copied evidence from actual local animation/render callbacks for an owned play.
+// These counters do not establish a native ActorController or a foot-wall contact.
+struct PlaybackEvidence {
+    std::uint64_t ticket{}, samples{}, writes{}, draws{};
+    float first_sample{}, last_sample{};
+};
+std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept;
 // The clip of play(), moved to `seconds` (clamped to it), held there or playing on from it.
 void seek(float seconds);
 void pause(bool paused);

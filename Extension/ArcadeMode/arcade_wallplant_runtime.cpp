@@ -1,10 +1,12 @@
 #include "arcade_wallplant_runtime.h"
 #include "arcade_native_wall_contact.h"
 #include "arcade_wallplant_animation.h"
+#include "arcade_wallplant_visual.h"
 #include "Engine/Core/Log/logging.h"
 #include <Windows.h>
 #include <atomic>
 #include <mutex>
+#include <string_view>
 
 namespace dingosdk::arcade_mode::wallplant_runtime {
 namespace {
@@ -26,10 +28,13 @@ Raw raw{};
 NativeInputFrame raw_frame{};
 Candidate candidate{};
 WallplantPress pending{};
-WallplantCommand in_flight{},receipt{},play_pending{};
+WallplantCommand in_flight{},receipt{};
+WallplantVisual visual;
 std::uint64_t contact_identity{},last_raw{},last_used_contact{},last_success_at{},last_handled_input{};
 bool grounded{},takeoff{},separated{},contact_active{},permitted{},animation_ready{};
 std::atomic<bool> interrupt{};
+std::atomic<bool> stop_pose{};
+unsigned visual_reports{};
 std::atomic<std::uint64_t> pending_writer_input{};
 // Diagnostic receipts only: bounded for the process lifetime and emitted once
 // per stage/contact. This lock never acquires the runtime lock or calls native code.
@@ -40,6 +45,8 @@ unsigned diagnostic_count{};
 unsigned query_diagnostic_count{};
 DiagnosticSeen writer_seen{};
 unsigned writer_diagnostic_count{};
+DiagnosticSeen prepublish_seen{};
+unsigned prepublish_count{};
 void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Raw& source,
         const NativeInputFrame& f,std::uint64_t identity) noexcept {
     try {
@@ -121,10 +128,26 @@ WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometry
     out.takeoff_observed=takeoff;out.clearance_known=candidate.valid;out.separated=separated;
     return out;
 }
-void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept {
+void visual_event(const char* phase,const char* reason,const WallplantCommand& command,
+        const NativeInputFrame& frame) noexcept {
+    if(!command || visual_reports>=64)return;
+    ++visual_reports;
+    try {
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT VISUAL HANDOFF: occurrence={} phase={} reason={} ms={} issued={} owner_generation={} step={} state={} episode={} departure={} original_episode={} original_departure={}.",
+            command.input_sequence,phase,reason,GetTickCount64(),command.issued_at,frame.owner_generation,
+            frame.physics_step,frame.state,frame.airborne_episode,frame.air_departure,
+            command.native.airborne_episode,command.native.air_departure);
+    } catch(...) {}
+}
+void discard_visual(const char* reason,const NativeInputFrame& frame) noexcept {
+    visual_event("discard",reason,visual.command(),frame);visual.cancel(reason);
+}
+void withdraw(const char* reason,const NativeInputFrame* frame=nullptr,bool preserve_visual=false) noexcept {
     if(pending.sequence)diagnose(6,0,reason,raw,frame?*frame:observed,GetTickCount64(),contact_identity,
         0,0,0,pending.sequence,pending.pressed_at);
-    candidate={};raw={};raw_frame={};pending={};in_flight={};play_pending={};
+    candidate={};raw={};raw_frame={};pending={};in_flight={};
+    if(!preserve_visual)discard_visual(reason,frame?*frame:observed);
     pending_writer_input.store(0,std::memory_order_release);
     takeoff=grounded=separated=contact_active=animation_ready=false;policy.cancel();
 }
@@ -141,17 +164,29 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     native_wall_contact::enable(active);
     if(interrupt.exchange(false,std::memory_order_acq_rel)) {
         wallplant_animation::cancel();
-        std::lock_guard lock(mutex);play_pending={};
+        std::lock_guard lock(mutex);discard_visual("controller_interrupt",observed);
     }
+    if(stop_pose.exchange(false,std::memory_order_acq_rel))wallplant_animation::cancel();
     wallplant_animation::tick(active);
     NativeInputFrame f{};WallplantCommand play{};
     {
         std::lock_guard lock(mutex);permitted=active;
         if(!active){withdraw("inactive");observed={};return;}
-        f=observed;play=play_pending;play_pending={};
+        f=observed;
+        const auto queued=visual.command();
+        play=visual.take(f,GetTickCount64());
+        if(play)visual_event("request",visual.reason(),play,f);
+        else if(queued && !visual.pending())visual_event("discard",visual.reason(),queued,f);
     }
     if(play) {
-        const bool accepted=flight(play.native,f) && wallplant_animation::request(skater(play.native.owner),play.input_sequence);
+        // The visual receipt already checked either the original flight or its
+        // one observed native100 -> AIR handoff. Never rewrite the command's
+        // original AIR frame or revive input/motion authority for this pose.
+        bool accepted=!interrupt.load(std::memory_order_acquire) && !stop_pose.load(std::memory_order_acquire) &&
+            wallplant_animation::request(skater(play.native.owner),play.input_sequence);
+        if(accepted && (interrupt.load(std::memory_order_acquire) || stop_pose.load(std::memory_order_acquire))) {
+            wallplant_animation::cancel();accepted=false;
+        }
         logging::log(logging::Level::info,logging::Channel::skater,
             "ARCADE WALLPLANT VISUAL: occurrence={} requested={} approximation=true native_actor_verified=false native_scoring_verified=false.",
             play.input_sequence,accepted);
@@ -181,10 +216,18 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     };
     if(!same) {withdraw("physics_continuity",&f);last_used_contact=last_success_at=0;policy.reset();}
     if(!f.valid || !f.owner.valid()) {retention(0,"invalid_frame");observed={};return;}
+    if(visual.pending()) {
+        const auto queued=visual.command();const auto previous_reason=visual.reason();
+        visual.observe(f,f.sampled_at);
+        if(!visual.pending())visual_event("discard",visual.reason(),queued,f);
+        else if(std::string_view(previous_reason)!=visual.reason())visual_event("observe",visual.reason(),queued,f);
+    }
     if(!f.airborne) {
         retention(1,"not_airborne");
-        withdraw("physics_not_airborne",&f);grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
-        interrupt.store(true,std::memory_order_release);return;
+        withdraw("physics_not_airborne",&f,visual.pending());grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
+        // All active poses still stop on ground. Only the independently checked
+        // completed receipt above can wait for the first observed resumed AIR.
+        stop_pose.store(true,std::memory_order_release);return;
     }
     if(same && grounded && !observed.airborne)takeoff=true;
     grounded=false;observed=f;
@@ -367,7 +410,8 @@ void completed(const WallplantCommand& command,bool applied) noexcept {
     if(!command || !in_flight || command.input_sequence!=in_flight.input_sequence)return;
     in_flight={};
     if(!applied)return;
-    receipt=command;play_pending=command;last_used_contact=command.contact;
+    receipt=command;visual.completed(command,true);last_used_contact=command.contact;
+    visual_event("queue",visual.reason(),command,observed);
     last_success_at=command.issued_at;separated=false;animation_ready=false;
     logging::log(logging::Level::info,logging::Channel::skater,
         "ARCADE WALLPLANT REBOUND: occurrence={} contact={} owner={} owner_generation={} episode={} departure={} step={} before={},{},{} after={},{},{} point={},{},{} normal={},{},{} applied=true native_scoring_verified=false combo_continuity_verified=false animation_verified=false.",
@@ -377,6 +421,32 @@ void completed(const WallplantCommand& command,bool applied) noexcept {
         command.point[0],command.point[1],command.point[2],command.normal[0],command.normal[1],command.normal[2]);
 }
 WallplantCommand latest_completed() noexcept {std::lock_guard lock(mutex);return receipt;}
+GeometryProbe geometry_probe() noexcept {
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || !raw.valid || !contact_identity || !raw_frame.valid)return {};
+    return {contact_identity,raw.serial,raw_frame};
+}
+void geometry_event(const GeometryProbe& probe,unsigned stage,const char* reason) noexcept {
+    if(!probe.contact || !probe.raw || stage>=64)return;
+    try {
+        Raw source{};NativeInputFrame frame{};
+        {
+            std::lock_guard lock(mutex);
+            if(probe.contact!=contact_identity || probe.raw!=raw.serial || !raw.valid)return;
+            source=raw;frame=raw_frame;
+        }
+        std::lock_guard lock(diagnostic_mutex);
+        if(prepublish_count>=128)return;
+        if(prepublish_seen.contact!=probe.contact)prepublish_seen={probe.contact,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(prepublish_seen.stages&bit)return;
+        prepublish_seen.stages|=bit;++prepublish_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT PREPUBLISH: ms={} stage={} reason={} contact={} raw={} source={} source_serial={} raw_ms={} frame_ms={} step={} state={} owner_generation={}.",
+            GetTickCount64(),stage,reason,probe.contact,probe.raw,static_cast<unsigned>(source.source),
+            source.source_serial,source.sampled_at,frame.sampled_at,frame.physics_step,frame.state,frame.owner_generation);
+    } catch(...) {}
+}
 WriterProbe writer_probe() noexcept {
     if(!pending_writer_input.load(std::memory_order_acquire))return {};
     std::lock_guard lock(mutex);

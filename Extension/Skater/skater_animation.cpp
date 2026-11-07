@@ -321,6 +321,20 @@ void publish() {
     plan_now = std::move(next);
 }
 std::atomic<std::uint64_t> finished_serial{}; // the play the animation thread saw finish
+std::mutex playback_evidence_mutex;
+PlaybackEvidence playback_observed;
+void observe_playback(std::uint64_t ticket,unsigned phase,float time=0) {
+    if(!ticket)return;
+    std::lock_guard lock(playback_evidence_mutex);
+    auto& evidence=playback_observed;
+    if(evidence.ticket!=ticket)return;
+    if(phase==0 && std::isfinite(time)) {
+        if(!evidence.samples)evidence.first_sample=time;
+        evidence.last_sample=time;
+        if(evidence.samples!=UINT64_MAX)++evidence.samples;
+    } else if(phase==1 && evidence.writes!=UINT64_MAX)++evidence.writes;
+    else if(phase==2 && evidence.draws!=UINT64_MAX)++evidence.draws;
+}
 std::mutex recorded_mutex;
 std::shared_ptr<const Clip> recorded; // under recorded_mutex
 std::atomic<bool> record_running{};
@@ -401,6 +415,7 @@ struct Pending {
     std::vector<NativeBone> game; // [game_first, game_first + size)
     std::uint32_t game_first{};
     std::uintptr_t game_buffer{}, game_interface{};
+    std::uint64_t play_ticket{}, written_ticket{};
 };
 Pending& pending() {
     static auto* p = new Pending;
@@ -892,6 +907,7 @@ void on_animation(std::uintptr_t component) noexcept {
             p.bones.clear();
             p.deltas = deltas;
             p.at = at;
+            p.play_ticket=0;
         } else if (last > first) {
             for (std::size_t i = first; i < last; ++i)
                 if (!finite(l.pose[i])) throw std::runtime_error("a clip made a broken pose; nothing was written");
@@ -917,6 +933,8 @@ void on_animation(std::uintptr_t component) noexcept {
                 p.bones.assign(l.bones.begin() + static_cast<std::ptrdiff_t>(first), l.bones.begin() + static_cast<std::ptrdiff_t>(last));
                 p.deltas.clear();
                 p.at = at;
+                p.play_ticket=snap->play && clip==snap->play->clip.get() ? snap->serial : 0;
+                observe_playback(p.play_ticket,0,t);
             }
             if (clip) {
                 auto& pr = probe();
@@ -1066,6 +1084,7 @@ void on_render(std::uintptr_t animation_interface) noexcept {
         auto& p = pending();
         std::lock_guard lock(p.mutex);
         p.game.clear(); // only ever what this render wrote over
+        p.written_ticket=0;
         const auto count = [](int Probe::*n) {
             auto& pr = probe();
             std::lock_guard probe_lock(pr.mutex);
@@ -1118,6 +1137,8 @@ void on_render(std::uintptr_t animation_interface) noexcept {
             p.game_first = p.first;
             p.game_buffer = layout.buffer;
             p.game_interface = animation_interface;
+            p.written_ticket=p.play_ticket;
+            observe_playback(p.written_ticket,1);
         } else {
             p.game.clear();
         }
@@ -1132,9 +1153,12 @@ void on_drawn(std::uintptr_t animation_interface) noexcept {
     try {
         auto& p = pending();
         std::lock_guard lock(p.mutex);
-        if (!p.game.empty() && animation_interface == p.game_interface)
+        if (!p.game.empty() && animation_interface == p.game_interface) {
+            observe_playback(p.written_ticket,2);
             (void)poke(p.game_buffer + p.game_first * sizeof(NativeBone), p.game.data(), p.game.size() * sizeof(NativeBone));
+        }
         p.game.clear();
+        p.written_ticket=0;
     } catch (...) {
     }
     SetLastError(error);
@@ -1231,7 +1255,18 @@ std::uint64_t try_play(Play clip) {
         clip.loop || clip.paused || serial == UINT64_MAX) return 0;
     play(std::move(clip));
     borrowed_play = plan_draft.serial;
+    {
+        std::lock_guard lock(playback_evidence_mutex);
+        playback_observed={borrowed_play,0,0,0,0,0};
+    }
     return borrowed_play;
+}
+std::optional<PlaybackEvidence> playback_evidence(std::uint64_t ticket) noexcept {
+    try {
+        std::lock_guard lock(playback_evidence_mutex);
+        if(ticket && playback_observed.ticket==ticket)return playback_observed;
+    } catch(...) {}
+    return std::nullopt;
 }
 bool can_play() noexcept {
     return hooked && plan_draft.allowed && live().component.load(std::memory_order_acquire) && !playing();

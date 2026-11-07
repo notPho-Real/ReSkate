@@ -24,6 +24,14 @@ struct WriterProbe {
 WriterProbe writer_probe() noexcept;
 void writer_event(const WriterProbe&,unsigned stage,const char* reason,
     std::uint32_t state,bool state_known,std::uintptr_t callback_core) noexcept;
+// Retained-contact diagnostics only. This snapshot grants no geometry or input
+// admission; events are ignored after its actual collision identity changes.
+struct GeometryProbe {
+    std::uint64_t contact{},raw{};
+    NativeInputFrame native{};
+};
+GeometryProbe geometry_probe() noexcept;
+void geometry_event(const GeometryProbe&,unsigned stage,const char* reason) noexcept;
 // XInput/physics callers only signal; animation API remains client-thread-only.
 void interrupt_animation() noexcept;
 void cancel() noexcept;

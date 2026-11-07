@@ -35,8 +35,7 @@ Loader& loader() { static auto* value = new Loader; return *value; }
 bool permitted{};
 NoBailSkater held_owner{};
 std::uint64_t ticket{}, began{}, occurrence{};
-float last_time{};
-bool clock_reported{};
+bool pose_reported{};
 enum class Availability { unknown, not_started, loading, failed, busy, cannot_play, context_rejected, ready };
 Availability last_availability{Availability::unknown};
 unsigned availability_reports{};
@@ -111,14 +110,26 @@ bool context(const NoBailSkater& expected, unsigned& pose) noexcept {
     pose = (flags[4] ? 2u : 0u) + (flags[2] ? 1u : 0u);
     return true;
 }
+void report_pose(bool final) noexcept {
+    if(!ticket)return;
+    try {
+        const auto evidence=skater_animation::playback_evidence(ticket);
+        if(!evidence || (!final && (pose_reported || evidence->samples<2 || !evidence->draws)))return;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT POSE EVIDENCE: occurrence={} ticket={} final={} samples={} writes={} draws={} sample_first={} sample_last={} approximation=true actor_initialized=false foot_wall_alignment_verified=false.",
+            occurrence,ticket,final,evidence->samples,evidence->writes,evidence->draws,
+            evidence->first_sample,evidence->last_sample);
+        pose_reported=true;
+    } catch(...) {}
+}
 }
 
 void cancel() noexcept {
+    report_pose(true);
     try { skater_animation::cancel_play(ticket); } catch (...) { }
     ticket = began = occurrence = 0;
     held_owner = {};
-    last_time = 0;
-    clock_reported = false;
+    pose_reported = false;
 }
 void tick(bool gameplay) noexcept {
     permitted = gameplay;
@@ -133,17 +144,9 @@ void tick(bool gameplay) noexcept {
         if (!context(held_owner, pose) || now < began || now - began >= lifetime_ms || !skater_animation::owns_play(ticket)) {
             cancel(); return;
         }
-        // Clock advancement only: deliberately not called native actor or
-        // rendered-pose acceptance. The existing pose hooks log actual draws.
-        if (const auto time = skater_animation::play_time(); time && *time > last_time) {
-            if (!clock_reported) {
-                logging::log(logging::Level::info, logging::Channel::skater,
-                    "ARCADE WALLPLANT POSE: occurrence={} clip={} clock_before={} clock_after={} approximation=true actor_initialized=false render_verified=false.",
-                    occurrence, names[pose / 2], last_time, *time);
-                clock_reported = true;
-            }
-            last_time = *time;
-        }
+        // Original local callbacks report sampling, successful render writes,
+        // and the renderer's copied-pose callback for this owned ticket only.
+        report_pose(false);
     } catch (...) { cancel(); }
 }
 bool available(const NoBailSkater& owner) noexcept {
@@ -175,10 +178,10 @@ bool request(const NoBailSkater& owner, std::uint64_t identity) noexcept {
         const auto accepted = skater_animation::try_play(std::move(play));
         if (!accepted) return false;
         ticket = accepted; held_owner = owner; occurrence = identity; began = GetTickCount64();
-        last_time = 0; clock_reported = false;
+        pose_reported = false;
         logging::log(logging::Level::info, logging::Channel::skater,
-            "ARCADE WALLPLANT POSE: occurrence={} clip={} mirrored={} duration={} approximation=true requested=true actor_initialized=false render_verified=false.",
-            occurrence, names[pose / 2], (pose & 1u) != 0, duration);
+            "ARCADE WALLPLANT POSE: occurrence={} ticket={} clip={} mirrored={} duration={} approximation=true requested=true actor_initialized=false render_verified=false.",
+            occurrence, ticket, names[pose / 2], (pose & 1u) != 0, duration);
         return true;
     } catch (...) { return false; }
 }

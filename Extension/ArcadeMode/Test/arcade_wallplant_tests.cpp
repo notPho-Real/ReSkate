@@ -1,4 +1,5 @@
 #include "Extension/ArcadeMode/arcade_wallplant.h"
+#include "Extension/ArcadeMode/arcade_wallplant_visual.h"
 #include <cstdlib>
 #include <iostream>
 #include <limits>
@@ -43,6 +44,76 @@ struct Fixture {
 };
 }
 int main() {
+    {
+        NativeInputState producer;const NativeInputOwner owner{1,2,3,4,5};
+        NativeRequestSample sample{};sample.valid=true;sample.state=201;sample.crouch_mode=2;
+        WallplantCommand completed{};completed.motion.ready=true;completed.input_sequence=9;
+        completed.native=producer.observe(1000,owner,sample,{});completed.issued_at=1034;
+        WallplantVisual visual;
+        visual.completed(completed,false);
+        check(!visual.pending(),"unsuccessful body write creates no visual handoff");
+        visual.completed(completed,true);
+        check(visual.pending() && !visual.take(completed.native,1034),"completion alone cannot fabricate resumed AIR");
+        sample.state=100;sample.crouch_mode=1;sample.words[1]=0x8000;
+        const auto ground=producer.observe(1046,owner,sample,{});
+        visual.observe(ground,1046);
+        check(visual.pending() && !visual.take(ground,1047),"first genuine native100 preserves only pending visual receipt");
+        const auto second_ground=producer.observe(1062,owner,sample,{});
+        visual.observe(second_ground,1062);
+        check(visual.pending(),"same short contact100 phase may span original physics steps");
+        sample.state=200;sample.words[1]=0;
+        const auto resumed=producer.observe(1098,owner,sample,{});
+        visual.observe(resumed,1098);
+        const auto played=visual.take(resumed,1100);
+        check(played.input_sequence==9 && wallplant_same_observation(played.native,completed.native),
+            "observed100 then newAIR admits original immutable occurrence exactly once");
+        check(!visual.take(resumed,1101) && !visual.pending(),"visual ticket cannot replay");
+        for(unsigned fault=0;fault<15;++fault) {
+            visual.completed(completed,true);visual.observe(ground,1046);
+            auto changed=resumed;auto now=std::uint64_t{1098};
+            switch(fault) {
+            case 0:changed.valid=false;break;
+            case 1:++changed.owner.core;break;
+            case 2:++changed.owner_generation;break;
+            case 3:changed.rail_family=true;break;
+            case 4:changed.state=504;changed.airborne=false;break;
+            case 5:changed.state=103;changed.airborne=false;break;
+            case 6:changed.state=300;changed.airborne=false;break;
+            case 7:++changed.airborne_episode;break;
+            case 8:changed.airborne_episode=completed.native.airborne_episode;break;
+            case 9:++changed.air_departure;break;
+            case 10:changed.air_departure=completed.native.air_departure;break;
+            case 11:now=1185;changed.sampled_at=now;break;
+            case 12:changed.sampled_at=1100;break;
+            case 13:changed.physics_step=ground.physics_step;break;
+            case 14:changed.sampled_at=1045;break;
+            }
+            visual.observe(changed,now);
+            check(!visual.pending() && !visual.take(resumed,1100),"owner/time/state/episode discontinuity drops visual without relaxing native admission");
+        }
+        visual.completed(completed,true);visual.observe(ground,1046);visual.observe(resumed,1098);
+        auto landed=resumed;landed.state=100;landed.airborne=false;++landed.physics_step;
+        ++landed.air_departure;landed.sampled_at=1110;
+        visual.observe(landed,1110);
+        check(!visual.pending(),"a second actual landing cancels resumed visual even inside original lease");
+        for(const auto* reason:{"off","focus","owner","trick_interrupt"}) {
+            visual.completed(completed,true);visual.observe(ground,1046);visual.cancel(reason);
+            visual.observe(resumed,1098);
+            check(!visual.pending() && !visual.take(resumed,1100),"hard cancellation cannot be revived by subsequent AIR");
+        }
+        visual.completed(completed,true);visual.observe(ground,1046);visual.observe(resumed,1098);
+        check(!visual.take(resumed,1185) && !visual.pending(),"client delay does not renew original command lease");
+        visual.completed(completed,true);visual.observe(ground,1046);visual.observe(resumed,1098);
+        auto replaced=resumed;++replaced.physics_step;
+        check(!visual.take(replaced,1100) && !visual.pending(),"client must request from the exact last original observation");
+        visual.completed(completed,true);
+        auto direct=completed.native;++direct.physics_step;direct.sampled_at=1046;
+        visual.observe(direct,1046);
+        check(bool(visual.take(direct,1047)),"ordinary same-flight visual completion remains supported");
+        auto invalid=completed;invalid.native.state=100;
+        visual.completed(invalid,true);
+        check(!visual.pending(),"ground command cannot create a visual receipt");
+    }
     {
         NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
         NativeRequestSample air{};air.valid=true;air.state=201;air.crouch_mode=2;
