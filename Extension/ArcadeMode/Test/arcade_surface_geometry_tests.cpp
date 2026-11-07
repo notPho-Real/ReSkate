@@ -36,6 +36,10 @@ struct Fixture {
     unsigned reject_owner_at{},reject_shape_at{},shape_checks{},context_failure_after_owners{};
     SurfaceGeometryWorldOwner world_owner{{7,70,50331648},77,69,50331648,0,1234};
     SurfaceGeometryVector wall_normal{0,0,1}, wall_point{0,1.5f,0};
+    SurfaceGeometryVector contact_velocity{};
+    float contact_seconds{1.f/30.f};
+    bool explicit_contact_motion{};
+    std::array<SurfaceGeometrySegment,5> wall_segments{};
     Fixture() { running=this; table[1]=reinterpret_cast<std::uintptr_t>(&pop); allocator=reinterpret_cast<std::uintptr_t>(table.data()); }
     static std::uint64_t now(void* user) noexcept { return static_cast<Fixture*>(user)->time; }
     static bool current(void* user,const SurfaceGeometryContext& context) noexcept {
@@ -94,6 +98,7 @@ struct Fixture {
         if (f.wall) {
             SurfaceGeometryVector start{}, end{};
             for (unsigned axis=0;axis<3;++axis) { start[axis]=ray_value->start[axis]; end[axis]=ray_value->end[axis]; }
+            if(f.calls<=f.wall_segments.size())f.wall_segments[f.calls-1]={start,end};
             const float distance=surface_geometry_detail::dot(surface_geometry_detail::sub(start,f.wall_point),f.wall_normal);
             const float length=surface_geometry_detail::dot(surface_geometry_detail::sub(start,end),f.wall_normal);
             f.fractions[f.first]=f.self_hit ? .1f : distance/length;
@@ -135,7 +140,9 @@ struct Fixture {
                                      SurfaceGeometryBody body={7,1,9}) {
         wall=true;
         const auto context=live;
-        const auto result=query_wall_geometry(api(),context,body,point,normal);
+        const SurfaceGeometryVector velocity=explicit_contact_motion?contact_velocity:
+            SurfaceGeometryVector{-normal[0],-normal[1],-normal[2]};
+        const auto result=query_wall_geometry(api(),context,body,point,normal,velocity,contact_seconds);
         check(calls==pops && calls==frees,"wall query releases every native result scope");
         return result;
     }
@@ -305,6 +312,59 @@ int main() {
           "oblique patch remains on the measured plane"); }
     { Fixture f;auto point=f.wall_point;point[2]+=.1001f;
       check(!f.query_wall(point,f.wall_normal).valid,"nearby plane beyond original reach remains unavailable"); }
+    // Actual ea89 AIR contact: the authenticated solver point is 324mm in
+    // front of the same shape's plane; its original 30Hz step travels 346mm
+    // inward. This query does not infer a collision from that travel.
+    { Fixture f;f.wall_point={129.46672f,1.5966883f,-136.594f};
+      f.explicit_contact_motion=true;f.contact_velocity={-4.8446026f,-1.2898192f,-10.376561f};
+      f.contact_seconds=.03333333f;
+      const SurfaceGeometryVector point{129.46672f,1.5966883f,-136.26971f};
+      const auto sample=f.query_wall(point,f.wall_normal);
+      check(sample.valid&&f.calls==5,"measured 324mm gap is corroborated inside original 346mm inward step");
+      check(std::abs(sample.point[2]-f.wall_point[2])<.0001f,"native ray supplies actual plane, not velocity extrapolation");
+      check(std::abs(f.wall_segments[0].end[2]-(point[2]-10.376561f*f.contact_seconds))<.00002f,
+          "first ray reaches precisely measured normal travel without additive margin");
+      check(std::abs(f.wall_segments[0].start[2]-(point[2]+.1f))<.00002f,"outward center bracket is unchanged");
+      for(unsigned i=1;i<5;++i) {
+          check(std::abs(f.wall_segments[i].start[2]-(f.wall_point[2]+.1f))<.00002f&&
+              std::abs(f.wall_segments[i].end[2]-(f.wall_point[2]-.1f))<.00002f,
+              "four broad-plane rays retain original tight bracket");
+      }
+    }
+    { Fixture f;f.wall_normal={-.6f,0,.8f};f.explicit_contact_motion=true;
+      // 10m/s toward the normal and 20m/s along the tangent.
+      f.contact_velocity={22,0,4};auto point=f.wall_point;
+      for(unsigned axis=0;axis<3;++axis)point[axis]+=.32f*f.wall_normal[axis];
+      const auto sample=f.query_wall(point,f.wall_normal);
+      check(sample.valid&&f.calls==5,"oblique inward travel corroborates the same measured plane");
+      const float reach=-surface_geometry_detail::dot(surface_geometry_detail::sub(f.wall_segments[0].end,point),f.wall_normal);
+      check(std::abs(reach-10.f*f.contact_seconds)<.00001f,"tangential speed never enlarges normal search");
+    }
+    for(float gap:{.346f,.40f}) {
+        Fixture f;f.explicit_contact_motion=true;f.contact_velocity={0,0,-10.376561f};
+        f.contact_seconds=.03333333f;auto point=f.wall_point;point[2]+=gap;
+        check(!f.query_wall(point,f.wall_normal).valid&&f.calls==1,
+            "wall beyond original inward step rejects without ray retry or margin expansion");
+    }
+    for(float seconds:{0.f,-.01f,.0009f,.1001f,std::numeric_limits<float>::infinity(),
+                       std::numeric_limits<float>::quiet_NaN()}) {
+        Fixture f;f.contact_seconds=seconds;
+        check(!f.query_wall().valid&&f.calls==0,"invalid native step rejects before any native query");
+    }
+    for(auto velocity:{SurfaceGeometryVector{0,0,0},SurfaceGeometryVector{0,0,1},
+                       SurfaceGeometryVector{1,0,0},SurfaceGeometryVector{0,0,-1000},
+                       SurfaceGeometryVector{0,0,-std::numeric_limits<float>::infinity()},
+                       SurfaceGeometryVector{std::numeric_limits<float>::quiet_NaN(),0,-10}}) {
+        Fixture f;f.explicit_contact_motion=true;f.contact_velocity=velocity;
+        check(!f.query_wall().valid&&f.calls==0,"non-inward, invalid or excessive query motion rejects before native calls");
+    }
+    { Fixture f;f.explicit_contact_motion=true;f.contact_velocity={0,0,-10.376561f};
+      auto point=f.wall_point;point[2]+=.32429f;
+      check(!f.query_wall(point,f.wall_normal,{7,2,9}).valid&&f.calls==1,
+          "extended center search cannot substitute another shape"); }
+    { Fixture f;f.explicit_contact_motion=true;f.contact_velocity={0,0,-10.376561f};
+      f.upper_gap=true;auto point=f.wall_point;point[2]+=.32429f;
+      check(!f.query_wall(point,f.wall_normal).valid,"native-step center reach still rejects missing broad wall geometry"); }
     { Fixture f; f.wall_normal={.02f,0,std::sqrt(1.f-.02f*.02f)};
       check(!f.query_wall(f.wall_point,{0,0,1}).valid,"contact normal and intersected plane must agree across broad patch"); }
     for (const auto normal : {SurfaceGeometryVector{0,1,0},SurfaceGeometryVector{0,-1,0},

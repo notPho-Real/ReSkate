@@ -45,8 +45,11 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi&, co
                                              const SurfaceGeometryRequest&, SurfaceGeometryTrace* = nullptr) noexcept;
 // Corroborates the broad vertical face around an independently recorded real
 // collision. This is geometry only; it must never create a wall-contact event.
+// Motion must come from that retained collision's validated original step.
+// It bounds the first ray's inward search, never predicts or moves a contact.
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi&, const SurfaceGeometryContext&,
     SurfaceGeometryBody contacted_body, SurfaceGeometryVector point, SurfaceGeometryVector normal,
+    SurfaceGeometryVector approach_velocity, float native_seconds,
     SurfaceGeometryTrace* = nullptr) noexcept;
 // Call only in the same supported client/park callback contract. Never renews
 // queried_at; physics/input consumers receive the copied publication only.

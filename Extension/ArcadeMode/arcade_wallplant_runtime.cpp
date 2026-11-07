@@ -258,7 +258,7 @@ void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const Surface
         }
         const SurfaceGeometryBody shape{hit.shape.world,hit.shape.index,hit.shape.generation};
         SurfaceGeometryTrace trace;
-        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal,&trace);
+        const auto wall=query_wall_geometry(api,ctx,shape,hit.point,hit.normal,source.velocity,source.seconds,&trace);
         if(!wall.valid)diagnose_query("wall",trace,source,f,identity);
         if(!wall.valid){geometry(9,"broad_wall",now);continue;}
         if(!native_wall_contact::current(hit,ctx.world)){geometry(10,"hit_current_after_query",now);continue;}

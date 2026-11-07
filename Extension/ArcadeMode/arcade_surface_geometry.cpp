@@ -190,7 +190,8 @@ SurfaceGeometrySample query_surface_geometry(const SurfaceGeometryNativeApi& api
     } catch (...) { return fail("ground_exception"); }
 }
 SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,const SurfaceGeometryContext& ctx,
-        SurfaceGeometryBody body,SurfaceGeometryVector point,SurfaceGeometryVector normal,SurfaceGeometryTrace* trace) noexcept {
+        SurfaceGeometryBody body,SurfaceGeometryVector point,SurfaceGeometryVector normal,
+        SurfaceGeometryVector approach_velocity,float native_seconds,SurfaceGeometryTrace* trace) noexcept {
     const auto fail=[&](const char* reason) -> SurfaceGeometrySample {if(trace)trace->reason=reason;return {};};
     if(trace)*trace={};
     try {
@@ -200,6 +201,16 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
         // width/height use the retained classic arcade minimum plant height (24 inches).
         constexpr float extent=24.f*.0254f;
         constexpr float depth=.1f; // Query reach only, never a displacement.
+        // Match the existing NativeInputState timestep admission. The runtime
+        // additionally matches this value to the retained original physics frame.
+        if(!finite(approach_velocity) || !std::isfinite(native_seconds) ||
+           native_seconds<.001f || native_seconds>.1f)return fail("wall_step_motion");
+        const float approach=-dot(approach_velocity,normal);
+        if(!std::isfinite(approach) || approach<=0)return fail("wall_step_approach");
+        const float inward=std::max(depth,approach*native_seconds);
+        // Keep the existing surface-query maximum segment length; malformed
+        // native motion must not turn corroboration into an unbounded search.
+        if(!std::isfinite(inward) || inward+depth>20.f)return fail("wall_step_reach");
         const SurfaceGeometryVector right{-normal[2],0,normal[0]};
         auto up=cross(right,normal);
         if(!unit(up))return fail("wall_basis");
@@ -210,13 +221,14 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
             SurfaceGeometrySegment segment;
             // Solver contact coordinates are not a triangle-plane promise:
             // the pinned AIR contact can precede the same shape's ray plane.
-            // Keep the original bounded center ray, then measure the broad
-            // patch around its actual hit instead of the solver's point.
+            // Search inward by at most the observed step's normal travel, then
+            // measure the broad patch around the actual same-shape hit. This
+            // does not assert a speculative-contact or separation-field meaning.
             const auto anchor=i?points[0]:point;
             for(unsigned axis=0;axis<3;++axis) {
                 const float center=anchor[axis]+right[axis]*offsets[i][0]+up[axis]*offsets[i][1];
                 segment.start[axis]=center+normal[axis]*depth;
-                segment.end[axis]=center-normal[axis]*depth;
+                segment.end[axis]=center-normal[axis]*(i?depth:inward);
             }
             if(trace)trace->ray=static_cast<unsigned>(i);
             const auto hit=cast(api,ctx,segment,excluded,trace);
