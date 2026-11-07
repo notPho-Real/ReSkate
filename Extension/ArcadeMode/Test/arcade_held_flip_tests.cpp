@@ -119,6 +119,19 @@ void physical_repetition() {
         auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
         const auto step=1000/hz;
         h->poll(1200,{},201,id,true);
+        const auto out=h->poll(1200+step,{0x4000},201,id,true);
+        check(!h->repeats && h->bridge_calls==1 && !out.authored_playback &&
+            !out.right_x && !out.right_y,
+            "a new repeat cannot begin its multi-frame gesture inside the already-open native consumption window");
+        h->poll(1300,{},201,id,false);
+        h->poll(1334,{0x4000},201,id,true);
+        check(!h->repeats && h->bridge_calls==1,
+            "a later preparation flag cannot turn a missed repeat into a disconnected flip");
+    }
+    for(unsigned hz:{30u,60u,120u}) for(std::int16_t direction:{std::int16_t{0},std::int16_t{25000}}) {
+        auto h=std::make_unique<Route>();h->first(direction);const auto id=h->requested;
+        const auto step=1000/hz;
+        h->poll(1200,{},201,id,true);
         h->poll(1200+step,{},201,id,false);
         const auto out=h->poll(1200+2*step,{0x4000},201,id,false);
         check(!h->repeats && h->bridge_calls==1 && !out.authored_playback &&

@@ -49,3 +49,34 @@ samples. In particular, the previous 250 ms bail no longer reproduced.
 The exact captures and observations are in `rc3-native-repeat-window-28.json`.
 These observations establish native rotations and catch for these timings;
 numeric scoring and exact trajectory equality remain unverified.
+
+## P0 repeat inside the consumption window
+
+RC3-30 source `4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d`, DLL
+`f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c`,
+Mega Park, native30Hz: capture raw SHA-256
+`86062de5888d271b7a9dc1c3e36c5f5879caf240f72ce33743aaecec2f8db2fc`.
+Single X returned ground100 after0.9914 turns. Repeats100/150ms after X
+returned ground100 after1.9913 turns, original held-loop advancement and
+extra-count1. The200ms repeat ended offboard504 after1.9916 turns, without
+HeldFlip intent, loop acknowledgment or extra-count1. The planned twelve
+attempts stopped after these four; this is not a three-repeat reliability pass.
+
+In the failed attempt, A released at0.30s and X pressed at0.52s and0.72s.
+PrepareHeldFlip was true at0.7094s and false at0.7762s. Arcade started its
+multi-frame gesture inside that consumption window, withdrew at its200ms
+readiness deadline, then observed a later preparation flag and held animation
+without the original action's intent or completed count. The original EAT
+condition23124/action10792 and the existing authored playback explain the
+timing mismatch: a held gesture must already be prepared when the native
+window consumes it. A boolean window still being open does not establish
+enough time to prepare a new gesture.
+
+New requests now require that the first native preparation window has not yet
+been observed. Existing early repeats retain their current gesture, admission,
+count and catch logic. No elapsed-time cutoff, native state write, animation
+extension or physics change is added. The focused physical-input regression
+failed before this change and exercises both flip identities at30/60/120Hz.
+Windows CI and a hardware repeat of the failed200ms case remain required;
+software rejection alone does not prove a safe single-flip landing. The usable
+double-input interval remains native-phase dependent, not a guaranteed300ms.

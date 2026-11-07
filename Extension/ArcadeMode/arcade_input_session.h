@@ -662,7 +662,13 @@ private:
             if (request.form==InputForm::held_repeat) {
                 const auto id=request.air.trick==ArcadeTrick::double_kickflip?2:
                     request.air.trick==ArcadeTrick::double_heelflip?3:0;
-                if (!id || request.presses!=2 || request.nollie || held_flip_used_ || held_prepare_retired_ || !air_action_ ||
+                // The native Prepare window consumes a gesture already in
+                // progress. Starting our multi-frame flick inside it missed
+                // HeldTrick admission in the 200ms hardware repeat and caused
+                // an uncaught rotation. Keep early prepared repeats; a new
+                // request after this window opens leaves the single intact.
+                if (!id || request.presses!=2 || request.nollie || held_flip_used_ || held_prepare_seen_ ||
+                    held_prepare_retired_ || !air_action_ ||
                     air_followup_id_!=id || launch_context_!=GestureContext::ground ||
                     !admission.native_context.required || !admission.native_context.fresh(now_) ||
                     admission.native_context.air_episode()!=air_actor_episode_ || admission.external_owner ||
