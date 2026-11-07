@@ -1,5 +1,55 @@
 # RC3 implementation status — incomplete candidate
 
+## November 6: RC3-30 candidate and RC3-28 native evidence
+
+RC3-30 is frozen at `4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d`.
+It preserves the ground-grab Into lifetime correction and adds state-driven
+one-footer release: withdraw the foot input first, retain the established
+native hand while OneFootAir/OneFootExit is active, then release it. Missing
+state, owner loss, stale input, landing and Arcade OFF still revoke ownership.
+All 20 local targeted suites pass. Exact-source development and targeted CI
+have passed; upstream Windows integration is still building. This candidate
+has not been installed or gameplay accepted.
+
+The correction follows an original-controller Airwalk comparison: releasing
+the feet before the hand landed cleanly, whereas releasing both together
+bailed. These are source and native-control evidence for the mechanism, not
+acceptance of RC3-30. See [native-one-footer-release.md](native-one-footer-release.md)
+and [rc3-native-footer-release-28.json](rc3-native-footer-release-28.json).
+
+RC3-28 source `2c2ce125d0a71d01e0decd73c8ec6ba4688660f7` and DLL
+`47846bee8b8272be2436faff590def2ed203177308c43a2836f356a20dd9d3b1`
+were installed and loaded for all following Mega Park trials:
+
+- Repeated X at 100/150ms produced approximately two actual board rotations,
+  original HeldFlip loop advancement and native extra count1. Single X,
+  250/350ms repeats and post-landing repeats remained one rotation/count0.
+  All six trials returned to ground100. Numeric scoring and exact trajectory
+  equality remain unverified. See [rc3-native-repeat-window-28.json](rc3-native-repeat-window-28.json).
+- The requested 120Hz manual matrix reached all 20 Manual and 20 Nose Manual
+  contacts before A. Measured cadence was only 90.76–99.19 steps/s despite
+  native/cached1/120, so this is not a 120Hz acceptance pass. Three isolated
+  unknown state reads also remain recorded. Original30Hz was restored.
+  See [rc3-manual-entry-high-rate-28.json](rc3-manual-entry-high-rate-28.json).
+- BS Finger Heelflip23 and BS Varial10 advanced their exact native actors,
+  returned to their destination grabs and landed cleanly with B held through
+  landing. Native hand/grab flags then cleared. See
+  [rc3-native-finger-bindings-28.json](rc3-native-finger-bindings-28.json).
+- BS-to-Weddle9 landed with B held, but two earlier-release trials bailed.
+  FS-to-Stale12 reached its exact actor and destination but bailed even with
+  B held. Destination entry is not proof of completion of the original
+  30-tick switch blend. Original-controller comparisons remain required;
+  neither trial establishes an adapter-only defect. See
+  [rc3-native-finger-switch-28.json](rc3-native-finger-switch-28.json) and
+  [rc3-native-finger-failure-28.json](rc3-native-finger-failure-28.json).
+
+RC3 is still incomplete. Full one-footer/fingerflip lifecycle acceptance,
+ground FS/BS correction verification, remaining native contexts, final fakie
+pose/blend proof, scoring and protected-control regressions remain open.
+The machine-readable coverage preserves failures and these limits; actor
+initialization is not a blanket gameplay pass. The exact RC2 rollback is
+unchanged and no baseline promotion, upstream merge or release occurred.
+
 ## RC3-24 installed-build verification
 
 Runtime source `5c841c20c82b5782f6ff4ac861aa0e9683159d97`, DLL
