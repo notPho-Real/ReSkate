@@ -56,7 +56,8 @@ constexpr bool native_metadata(const NativeTrial& t) noexcept {
         !t.observation.empty() && t.game_build!=0;
 }
 constexpr bool same_trial(const NativeTrial& a,const NativeTrial& b) noexcept {
-    return !a.capture_digest.empty() && a.capture_digest==b.capture_digest && a.trial_id==b.trial_id;
+    return !a.capture_digest.empty() && a.capture_digest==b.capture_digest &&
+        (a.trial_id==b.trial_id || (!a.reference.empty() && a.reference==b.reference));
 }
 constexpr bool current_trial(const NativeTrial& t,unsigned build,std::string_view fingerprint) noexcept {
     if(!native_metadata(t) || t.invalidated || t.game_build!=build || !hex_digest(fingerprint,64))return false;
@@ -123,6 +124,7 @@ constexpr EvidenceView evidence_group(const TrickEvidence& evidence,AcceptancePo
 constexpr EvidenceSummary evaluate_evidence(const TrickEvidence& evidence,AcceptancePolicy policy,
                                            unsigned build,std::string_view fingerprint) noexcept {
     EvidenceSummary out;
+    bool current_conflict{},historical_conflict{};
     for(const auto& t:evidence.trials) {
         if(t.invalidated || evidence.invalidated){++out.invalidated_records;continue;}
         if(t.kind==EvidenceKind::native_control){++out.comparison_records;continue;}
@@ -130,10 +132,17 @@ constexpr EvidenceSummary evaluate_evidence(const TrickEvidence& evidence,Accept
         const bool current=current_trial(t,build,fingerprint);
         if(!current)++out.historical_records;
         const auto group=evidence_group(evidence,policy,t,build,fingerprint,current);
+        (current?current_conflict:historical_conflict)|=group.conflicting;
         auto& best=current?out.current:out.historical;
         // Keep one comparable context; never assemble a pass from unrelated runs.
-        if(group.maturity>best.maturity || (group.maturity==best.maturity && group.successful_trials>best.successful_trials) || best.context.empty())best=group;
+        // A larger entry-only batch must not hide a complete acceptance context.
+        if(best.context.empty() || (group.verified && !best.verified) ||
+            (group.verified==best.verified && (group.maturity>best.maturity ||
+                (group.maturity==best.maturity && group.successful_trials>best.successful_trials))))best=group;
     }
+    out.current.conflicting|=current_conflict;out.historical.conflicting|=historical_conflict;
+    if(current_conflict)out.current.verified=false;
+    if(historical_conflict)out.historical.verified=false;
     // Checklist observations span contexts for transparency, but certification
     // still requires one comparable group. Do not label an out-of-group test
     // "Not tested" merely because another context has more execution trials.

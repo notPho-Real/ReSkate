@@ -7,7 +7,7 @@ void evidence_tests() {
     const auto policy=acceptance_policy(t);
     NativeTrial first{capture,"attempt-1","fixture/native",source,"documented native context","ordinary/30Hz",
         20260929,EvidenceKind::native_gameplay,true,false,policy.execution,0,"native observation","",fingerprint,"","",""};
-    auto second=first;second.trial_id="attempt-2";
+    auto second=first;second.trial_id="attempt-2";second.reference="fixture/native#attempt-2";
     std::array trials{first,second};
     t.evidence.trials={};
     auto summary=[&]{return trickpedia::evidence_summary(t,20260929,fingerprint);};
@@ -19,6 +19,8 @@ void evidence_tests() {
     require(summary().current.successful_trials==2 && label_for()=="Experimental / Repeatable","two independent successes");
     trials[1]=trials[0];
     require(summary().current.successful_trials==1,"one capture segment counted twice");
+    trials[1].trial_id="renamed-attempt";
+    require(summary().current.successful_trials==1,"renaming the same capture reference created another trial");
     trials[1]=second;trials[1].comparable_context="different/rate";
     require(summary().current.successful_trials==1,"incomparable contexts pooled");
     trials[1]=second;
@@ -26,7 +28,19 @@ void evidence_tests() {
     require(label_for()=="Experimental / Acceptance Pending","repeated core flow maturity");
     for(auto& trial:trials)trial.passed=policy.required;
     require(trick_status(t,20260929,fingerprint)==TrickStatus::verified && label_for()=="Verified","all applicable repeated criteria");
-    auto uncertain=trials[0];uncertain.trial_id="attempt-3";
+    const auto verified_lines=trickpedia::evidence_details(t,false,20260929,fingerprint);
+    require(std::find(verified_lines.begin(),verified_lines.end(),"Current compatible evidence: all applicable acceptance criteria satisfied.")!=verified_lines.end(),"Verified detail still reports acceptance pending");
+    std::array mixed{trials[0],trials[1],trials[0],trials[1],trials[0]};
+    for(unsigned i=2;i<mixed.size();++i) {
+        mixed[i].capture_digest=fingerprint;mixed[i].comparable_context="another/comparable/context";
+        mixed[i].passed=policy.core;
+    }
+    mixed[4].trial_id="attempt-3";mixed[4].reference="fixture/native#attempt-3";t.evidence.trials=mixed;
+    require(summary().current.verified && summary().current.successful_trials==2,"larger incomplete batch hid complete acceptance context");
+    mixed[4]=mixed[2];mixed[4].passed=policy.execution;
+    require(summary().current.conflicting && !summary().current.verified,"conflict in another context was hidden");
+    t.evidence.trials=trials;
+    auto uncertain=trials[0];uncertain.trial_id="attempt-3";uncertain.reference="fixture/native#attempt-3";
     uncertain.passed&=~criterion(Criterion::combo);uncertain.inconclusive=criterion(Criterion::combo);
     std::array with_uncertain{trials[0],trials[1],uncertain};t.evidence.trials=with_uncertain;
     require(!summary().current.verified && summary().current.passes[static_cast<unsigned>(Criterion::combo)]==2,

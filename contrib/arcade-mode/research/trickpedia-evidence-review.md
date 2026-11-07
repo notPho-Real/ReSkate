@@ -16,6 +16,9 @@ canonical bindings and production execution remain included.
 It stores no primary status or maturity. A trial is identified by the digest of
 its native capture and its documented execution segment. Separate report rows,
 observer samples or duplicate imports do not create independent successes.
+Renaming a trial while retaining the same capture/reference also cannot increase
+the count. A complete acceptance context takes precedence over a larger incomplete
+batch; conflicting records in any current context prevent verification.
 Several documented attempts within one capture may count independently, but
 only under their distinct source trial names/serials. Counts are successful
 execution observations, **not all attempts**. A successful entry may have a

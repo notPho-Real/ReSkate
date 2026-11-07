@@ -59,12 +59,14 @@ inline std::vector<std::string> evidence_details(const TrickDefinition& t,bool t
     lines.emplace_back("Applicable game build: "+std::to_string(build));
     if(t.executor==TrickExecutor::none)lines.emplace_back("No executable implementation in this build.");
     else {
-        lines.emplace_back("Current compatible evidence: "+std::string(maturity_names[static_cast<unsigned>(e.current.maturity)]));
+        lines.emplace_back(e.current.verified?"Current compatible evidence: all applicable acceptance criteria satisfied.":
+            "Current compatible evidence: "+std::string(maturity_names[static_cast<unsigned>(e.current.maturity)]));
         lines.emplace_back(std::to_string(e.current.successful_trials)+" independent successful executions in the strongest comparable context; not a count of all attempts.");
         if(!e.current.context.empty())lines.emplace_back("Context: "+std::string(e.current.context));
         if(e.current.regression)lines.emplace_back("Known failure/regression: see failed criteria and trial details. Earlier successes do not establish reliability.");
+        if(e.current.conflicting)lines.emplace_back("Conflicting evidence records; verification withheld.");
     }
-    if(e.historical_records)lines.emplace_back("Historical evidence: "+std::string(maturity_names[static_cast<unsigned>(e.historical.maturity)])+
+    if(e.historical_records)lines.emplace_back("Historical evidence: "+std::string(e.historical.verified?"applicable criteria satisfied in the historical context":maturity_names[static_cast<unsigned>(e.historical.maturity)])+
         " ("+std::to_string(e.historical.successful_trials)+" independent successes in one context); not certified compatible with this build.");
     if(e.historical.regression)lines.emplace_back("Historical failures also recorded; see trial details. Historical successes are not a reliability claim.");
     if(e.invalidated_records)lines.emplace_back(std::to_string(e.invalidated_records)+" invalidated records retained; excluded from acceptance.");
