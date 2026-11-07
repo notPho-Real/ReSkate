@@ -118,6 +118,7 @@ struct Hub {
     int tools_tab{};
     arcade_mode::trickpedia::Query trick_query;
     bool trick_keyboard{};
+    bool trick_evidence_details{};
     ULONGLONG trick_back_until{};
     arcade_mode::ArcadeTrick selected_trick{arcade_mode::ArcadeTrick::ollie};
     // Recording a bind (the BINDS tab): which action (0: none), what has been pressed so far,
@@ -1061,7 +1062,7 @@ void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
         if(arcade_mode::enabled()){trickpedia_page(ui,a,z);return;}
         h.tools_tab=player_tab;h.trick_query={};h.selected_trick=arcade_mode::ArcadeTrick::ollie;
         set_typing(h,0);h.focus=0;h.last.clear();
-        h.trick_keyboard=false;h.trick_back_until=0;
+        h.trick_keyboard=false;h.trick_evidence_details=false;h.trick_back_until=0;
     }
     const auto &m = h.full;
     const auto &mp = m.multiplayer;
@@ -1512,7 +1513,7 @@ bool hub_page_pending() {
         h.searched = false;
         h.last.clear();
         h.focus = 0;
-        h.trick_keyboard=false;h.trick_back_until=0;
+        h.trick_keyboard=false;h.trick_evidence_details=false;h.trick_back_until=0;
         set_typing(h, 0);
         if (!shown) {
             dingosdk::multiplayer::hold_native_menu_back(false);

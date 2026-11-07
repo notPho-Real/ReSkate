@@ -1,4 +1,5 @@
 #pragma once
+#include "arcade_evidence_types.h"
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -118,22 +119,6 @@ struct TrickBinding {
     BindingSequence sequence{};
     bool operator==(const TrickBinding&) const = default;
 };
-enum class Acceptance : unsigned { action=1, physics=2, recognition=4, exit_landing=8, scoring_combo=16 };
-enum class EvidenceKind : std::uint8_t { none, native_gameplay, source_asset, automated_test };
-struct NativeEvidence {
-    Acceptance criterion{};
-    std::string_view capture, observation;
-    bool invalidated{};
-    EvidenceKind kind{};
-    unsigned repeat_count{};
-};
-struct TrickEvidence {
-    std::string_view revision, context, reference, remaining;
-    unsigned game_build{20260929}, required{31};
-    bool invalidated{};
-    std::array<NativeEvidence,5> observations{};
-    std::string_view implementation_fingerprint{};
-};
 // Context-selected semantics; these identities do not name native methods.
 enum class InputAirTableKind : std::uint8_t { none, grab_extra, pressure, count };
 enum class ContextualPredicate : std::uint8_t { press, air_direction };
@@ -188,6 +173,7 @@ struct TrickDefinition {
     FingerflipBinding fingerflip{};
     SpecialMetadata special{};
 };
+#include "arcade_trick_acceptance.inl"
 #include "arcade_trick_evidence.inl"
 inline constexpr auto trick_registry=[] {
 std::array entries{
@@ -503,13 +489,7 @@ inline constexpr std::string_view gameplay_fingerprint{};
 constexpr TrickStatus trick_status(const TrickDefinition& trick,unsigned game_build=20260929,
                                   std::string_view implementation=gameplay_fingerprint) noexcept {
     if(trick.executor==TrickExecutor::none)return TrickStatus::planned;
-    const auto& e=trick.evidence;
-    unsigned observed{};
-    for(const auto& item:e.observations)if(!item.invalidated && item.kind==EvidenceKind::native_gameplay &&
-        item.repeat_count>=2 && !item.capture.empty() && !item.observation.empty())
-        observed|=static_cast<unsigned>(item.criterion);
-    if(!e.invalidated && e.game_build==game_build && e.revision.size()==40 && !implementation.empty() && e.implementation_fingerprint==implementation &&
-       !e.context.empty() && !e.reference.empty() && e.required && (observed&e.required)==e.required)
+    if(evaluate_evidence(trick.evidence,acceptance_policy(trick),game_build,implementation).current.verified)
         return TrickStatus::verified;
     return TrickStatus::experimental;
 }

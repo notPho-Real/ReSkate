@@ -51,7 +51,7 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
         const auto id=hash(t->key,47);
         if(button(ui,id,ImVec2(a.x,top),ImVec2(split-36*u,top+88*u),std::string(t->name),
                   h.selected_trick==t->id?Look::chosen:Look::plain,true,
-                  guide::status_names[static_cast<unsigned>(trick_status(*t))],&list.box)) {
+                  guide::evidence_label(*t),&list.box)) {
             h.selected_trick=t->id;h.scrolls[hash("trick-detail")]=0;
         }
         list.reveal(id,top,88*u);
@@ -70,7 +70,7 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
         detail.reveal(id,top,pixels);
     };
     line(std::string(t->name));
-    line(guide::status_names[static_cast<unsigned>(trick_status(*t))],theme::muted);
+    line(guide::evidence_label(*t),theme::muted);
     if(!t->binding_count)line("Controls not assigned.");
     for(unsigned i=0;i<t->binding_count;++i) {
         const auto& b=t->bindings[i];const auto d=guide::diagram(*t,b,arcade_mode::selected_grab());
@@ -88,5 +88,14 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     line("Direction: left stick / D-pad. Release between repeated presses.",theme::muted);
     if(t->nollie_flip)line("Native regular and nollie variants; live stance admission applies.",theme::muted);
     line(std::string(t->evidence.remaining),theme::muted);
+    {
+        bool drawn{};const float top=detail.next(84*u,8*u,drawn);
+        const auto id=hash("trick-evidence-details");
+        if(button(ui,id,ImVec2(split,top),ImVec2(z.x-16*u,top+84*u),
+                  h.trick_evidence_details?"HIDE TRIAL DETAILS":"SHOW TRIAL DETAILS",Look::tile,true,{},&detail.box))
+            h.trick_evidence_details=!h.trick_evidence_details;
+        detail.reveal(id,top,84*u);
+    }
+    for(const auto& text:guide::evidence_details(*t,h.trick_evidence_details))line(text,theme::muted);
     detail.end();
 }

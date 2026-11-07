@@ -91,13 +91,14 @@ acceptance; source inspection and portable tests do not establish them.
 ## Status and acceptance
 
 Every record resolves to exactly Verified, Experimental or Planned. Executable
-RC3 paths remain Experimental because the cited RC3 report leaves full acceptance
-open. No family-wide Verified claim is made. Verified requires complete action,
-physics/contact, recognition, exit/landing and scoring/combo coverage, a capture
-reference and context, matching game build and implementation fingerprint, and no
-invalidation. Missing or stale evidence falls back to Experimental; no handler
-means Planned. Each acceptance criterion needs its own capture and native
-observation. A success bitmask alone cannot produce Verified.
+RC3 paths remain Experimental with independently derived Implemented, Observed,
+Repeatable or Acceptance Pending maturity. Per-trick native observations and
+applicable acceptance policies replace the generic incomplete-RC3 receipt.
+Verified requires all applicable criteria repeatedly established in comparable
+native contexts, build/source compatibility and no invalidation or applicable
+current failure. Missing or stale evidence falls back to Experimental; no handler
+means Planned. See [the evidence review](trickpedia-evidence-review.md) for the
+source comparisons, imported captures, checklist and retained historical results.
 Source-asset and automated-test records are explicitly different evidence kinds
 and cannot satisfy gameplay acceptance. Each required native criterion needs at
 least two documented repetitions; a single successful input or capture cannot
@@ -112,7 +113,8 @@ The runtime and overlay receive a SHA-256 fingerprint of the gameplay and engine
 sources from CMake. A receipt records both its tested source revision and that
 fingerprint. Editing gameplay, engine code or canonical bindings invalidates
 previous receipts automatically. Evidence-only updates live in
-`arcade_trick_evidence.inl`, so documenting a tested implementation does not
+the evidence, acceptance and presentation files excluded explicitly by CMake,
+so documenting a tested implementation does not
 invalidate its own source fingerprint. New receipts must refer to that trick's
 independent native observations; there are no accepted receipts in this candidate.
 

@@ -11,6 +11,67 @@ namespace dingosdk::arcade_mode::trickpedia {
 inline constexpr std::array category_names{"Flip Tricks", "Grab Tricks", "Grinds and Slides",
     "Manuals and Reverts", "Footplants", "Wall Tricks", "Flatground Tricks", "Special Tricks"};
 inline constexpr std::array status_names{"Verified", "Experimental", "Planned"};
+inline constexpr std::array maturity_names{"Implemented", "Observed", "Repeatable", "Acceptance Pending"};
+inline constexpr std::array criterion_state_names{"Not tested", "Observed once", "Satisfied repeatedly", "Failed", "Pass and failure recorded", "Tested; inconclusive"};
+inline EvidenceSummary evidence_summary(const TrickDefinition& t,unsigned build=20260929,
+                                      std::string_view fingerprint=gameplay_fingerprint) {
+    return evaluate_evidence(t.evidence,acceptance_policy(t),build,fingerprint);
+}
+inline std::string evidence_label(const TrickDefinition& t,unsigned build=20260929,
+                                  std::string_view fingerprint=gameplay_fingerprint) {
+    const auto status=trick_status(t,build,fingerprint);
+    std::string result=status_names[static_cast<unsigned>(status)];
+    if(status==TrickStatus::experimental) {
+        const auto e=evidence_summary(t,build,fingerprint);
+        result+=" / ";result+=maturity_names[static_cast<unsigned>(e.current.maturity)];
+        if(e.current.regression)result+=" / failures recorded";
+    }
+    return result;
+}
+// The same evaluated evidence feeds the detail view and presentation tests.
+inline std::vector<std::string> evidence_details(const TrickDefinition& t,bool technical=false,
+                                               unsigned build=20260929,std::string_view fingerprint=gameplay_fingerprint) {
+    std::vector<std::string> lines;
+    const auto e=evidence_summary(t,build,fingerprint);const auto policy=acceptance_policy(t);
+    lines.emplace_back("Applicable game build: "+std::to_string(build));
+    if(t.executor==TrickExecutor::none)lines.emplace_back("No executable implementation in this build.");
+    else {
+        lines.emplace_back("Current compatible evidence: "+std::string(maturity_names[static_cast<unsigned>(e.current.maturity)]));
+        lines.emplace_back(std::to_string(e.current.successful_trials)+" independent successful executions in the strongest comparable context; not a count of all attempts.");
+        if(!e.current.context.empty())lines.emplace_back("Context: "+std::string(e.current.context));
+        if(e.current.regression)lines.emplace_back("Known failure/regression: see failed criteria and trial details. Earlier successes do not establish reliability.");
+    }
+    if(e.historical_records)lines.emplace_back("Historical evidence: "+std::string(maturity_names[static_cast<unsigned>(e.historical.maturity)])+
+        " ("+std::to_string(e.historical.successful_trials)+" independent successes in one context); not certified compatible with this build.");
+    if(e.historical.regression)lines.emplace_back("Historical failures also recorded; see trial details. Historical successes are not a reliability claim.");
+    if(e.invalidated_records)lines.emplace_back(std::to_string(e.invalidated_records)+" invalidated records retained; excluded from acceptance.");
+    if(e.incomplete_records)lines.emplace_back(std::to_string(e.incomplete_records)+" incomplete/non-gameplay records; excluded from native trial counts.");
+    if(e.comparison_records)lines.emplace_back(std::to_string(e.comparison_records)+" original-control comparison records; not Arcade acceptance.");
+    if(policy.required)lines.emplace_back("Applicable checklist across current-compatible contexts. Verification additionally requires repeatable results in comparable conditions.");
+    for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)if(policy.required&(Criteria{1}<<c))
+        lines.emplace_back(std::string(criterion_names[c])+": "+criterion_state_names[static_cast<unsigned>(e.current_checklist.state(static_cast<Criterion>(c)))]);
+    if(!technical)return lines;
+    lines.emplace_back("Required criteria: "+std::string(policy.rationale));
+    lines.emplace_back("Policy source: "+std::string(policy.source));
+    lines.emplace_back("Current implementation fingerprint: "+std::string(fingerprint.empty()?"unavailable":fingerprint));
+    for(const auto& trial:t.evidence.trials) {
+        const auto compatible=current_trial(trial,build,fingerprint) && !t.evidence.invalidated;
+        const auto scope=trial.invalidated || t.evidence.invalidated?"Invalidated":
+            trial.kind==EvidenceKind::native_control?"Original-control comparison":!native_metadata(trial)?"Incomplete legacy record":compatible?"Current-compatible":"Historical";
+        lines.emplace_back(std::string(scope)+" / "+std::string(trial.trial_id)+" / build "+std::to_string(trial.game_build));
+        lines.emplace_back("Tested source: "+std::string(trial.revision)+"; "+std::string(trial.context));
+        lines.emplace_back(std::string(trial.observation));
+        for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)if((trial.passed|trial.failed)&(Criteria{1}<<c))
+            lines.emplace_back(std::string(criterion_names[c])+((trial.failed&(Criteria{1}<<c))?": Failed":": Observed"));
+        for(unsigned c=0;c<static_cast<unsigned>(Criterion::count);++c)if(trial.inconclusive&(Criteria{1}<<c))
+            lines.emplace_back(std::string(criterion_names[c])+": Tested; inconclusive");
+        if(!trial.limitations.empty())lines.emplace_back("Open / limited: "+std::string(trial.limitations));
+        lines.emplace_back("Capture: "+std::string(trial.reference)+"; SHA-256 "+std::string(trial.capture_digest));
+        if(compatible && trial.implementation_fingerprint!=fingerprint)
+            lines.emplace_back("Compatibility review: "+std::string(trial.compatibility_reference)+"; "+std::string(trial.compatibility_scope));
+    }
+    return lines;
+}
 struct InputDiagram {
     std::vector<InputStep> steps;
     std::uint64_t window_ms{};

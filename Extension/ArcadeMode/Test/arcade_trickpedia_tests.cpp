@@ -9,6 +9,7 @@ namespace {
 void require(bool good,const char* message){if(!good){std::cerr<<message<<'\n';std::exit(1);}}
 std::string label(std::uint32_t button){return button==0x1000?"A":button==0x4000?"X":button==0x2000?"B":"other";}
 }
+#include "arcade_evidence_tests.inl"
 int main() {
     const auto errors=validate_registry(trick_registry);for(const auto& e:errors)std::cerr<<e<<'\n';
     require(errors.empty(),"registry invalid");
@@ -51,25 +52,7 @@ int main() {
     require(!validate_registry(changed).empty(),"missing name accepted");
     changed=trick_registry;changed[0].executor=TrickExecutor::none;
     require(!validate_registry(changed).empty(),"Planned entry retained executable mapping");
-    changed=trick_registry;changed[0].evidence.observations[0]={Acceptance::action,"capture-a","native actor"};
-    changed[0].evidence.observations[1]={Acceptance::action,"capture-b","conflicting action record"};
-    require(!validate_registry(changed).empty(),"conflicting evidence records accepted");
-    auto receipt=trick_registry[0];receipt.evidence.implementation_fingerprint="tested-source";
-    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"source match alone was treated as gameplay evidence");
-    for(unsigned i=0;i<5;++i)receipt.evidence.observations[i]={static_cast<Acceptance>(1u<<i),"test-fixture/capture","independent native observation",false,EvidenceKind::native_gameplay,2};
-    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::verified,"complete pinned receipt rejected");
-    for(const auto kind:{EvidenceKind::none,EvidenceKind::source_asset,EvidenceKind::automated_test}) {
-        receipt.evidence.observations[0].kind=kind;
-        require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"asset/CI evidence granted gameplay verification");
-    }
-    receipt.evidence.observations[0].kind=EvidenceKind::native_gameplay;
-    receipt.evidence.observations[0].repeat_count=1;
-    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"single observation granted repeatable verification");
-    receipt.evidence.observations[0].repeat_count=2;
-    require(trick_status(receipt,20260930,"tested-source")==TrickStatus::experimental,"wrong build verified");
-    require(trick_status(receipt,20260929,"other revision")==TrickStatus::experimental,"stale revision verified");
-    receipt.evidence.invalidated=true;
-    require(trick_status(receipt,20260929,"tested-source")==TrickStatus::experimental,"regression verified");
+    evidence_tests();
     for(bool enabled:{false,true,false,true,false})require(trickpedia::show_arcade(enabled,true)==enabled,"same-session OFF restoration policy");
     require(!trickpedia::show_arcade(true,false) && !trickpedia::show_arcade(true,true,true),"focus/load leak");
     require(trickpedia::browse({"kickflip",-1,-1}).size()>=3,"search");

@@ -63,14 +63,22 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
                     if(conflicting_bindings(t,bind,other,other.bindings[y]))fail("conflicting binding in same context");
             }
         }
-        unsigned criteria{};
-        for(const auto& item:t.evidence.observations)if(!item.capture.empty() || !item.observation.empty()) {
-            const auto bit=static_cast<unsigned>(item.criterion);
-            if(!bit || (bit&(bit-1)) || bit>16 || (criteria&bit) || item.capture.empty() || item.observation.empty())
-                fail("conflicting or incomplete native evidence record");
-            criteria|=bit;
-            if(t.executor==TrickExecutor::none && item.kind==EvidenceKind::native_gameplay)
-                fail("unsupported trick claims native gameplay acceptance");
+        const auto policy=acceptance_policy(t);
+        constexpr auto valid_criteria=(Criteria{1}<<static_cast<unsigned>(Criterion::count))-1;
+        if(t.executor!=TrickExecutor::none && (!policy.execution || (policy.execution&policy.core)!=policy.execution ||
+            (policy.core&policy.required)!=policy.core || (policy.required&~valid_criteria) || policy.source.empty() || policy.rationale.empty()))
+            fail("missing or inconsistent applicable acceptance policy");
+        for(std::size_t x=0;x<t.evidence.trials.size();++x) {
+            const auto& trial=t.evidence.trials[x];
+            if(((trial.passed|trial.failed|trial.inconclusive)&~valid_criteria) || (trial.passed&trial.failed) ||
+                ((trial.passed|trial.failed)&trial.inconclusive))fail("conflicting criterion results");
+            if(!trial.compatible_fingerprint.empty() && (!hex_digest(trial.compatible_fingerprint,64) ||
+                trial.compatibility_reference.empty() || trial.compatibility_scope.empty() || !native_metadata(trial)))
+                fail("incomplete source compatibility review");
+            if(t.executor==TrickExecutor::none && current_trial(trial,20260929,gameplay_fingerprint))
+                fail("unsupported trick claims current gameplay acceptance");
+            for(std::size_t y=x+1;y<t.evidence.trials.size();++y)if(same_trial(trial,t.evidence.trials[y]))
+                fail("duplicate or conflicting native trial record");
         }
         for(unsigned v=0;v<t.grab_variant_count;++v) {
             const auto& variant=t.grab_variants[v];
