@@ -63,6 +63,18 @@ template<class T> void body_write(std::uintptr_t address, const T& value) {
     T written{};
     source_require(memory::peek(address, written) && written == value, "Debug setting write could not be verified.");
 }
+// Shared by ordinary motion and the pending-only chooser handoff. All callers
+// stage and revalidate their entire original snapshot before this write loop.
+template<class Parts,class Vectors,class Flags,class Completed>
+void write_arcade_bodies(const Parts& parts,const Vectors& velocities,const Vectors& spins,
+        const Flags& flags,bool linear,bool angular,Completed completed) {
+    for(std::size_t i=0;i<parts.size();++i) {
+        if(linear)body_write(parts[i]+0x70,velocities[i]);
+        if(angular)body_write(parts[i]+0x90,spins[i]);
+        body_write(parts[i]+0x60,flags[i]|(linear?8u:0u)|(angular?0x20u:0u));
+        completed();
+    }
+}
 }
 void debug_stop_noclip(InteractiveDebug& debug) noexcept {
     debug.noclip = false;
@@ -568,6 +580,92 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     if (ground_turn) *ground_turn = candidate_turn;
     return true;
 }
+void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
+    // Pinned chooser contract: core+440 owns selector, selector+8 is context.
+    // Its caller 47da1b0 commits the returned state only after this call. Native
+    // body +70 / dirty8 remains the same verified synchronization facility;
+    // this does not clear contact inputs or change the chooser's return value.
+    const auto probe=arcade_mode::wallplant_runtime::writer_probe();
+    if(!probe.input)return;
+    SourceLastError error;
+    auto& state=source_state();
+    if(!state.initialized.load(std::memory_order_acquire) ||
+       !state.velocity_guard_active.load(std::memory_order_acquire) ||
+       !state.motion_original.load(std::memory_order_acquire))return;
+    // Foreign selectors must neither consume a pending request nor its receipt.
+    std::uintptr_t core_selector{};
+    if(!memory::peek(probe.native.owner.core+0x440,core_selector) || core_selector!=selector)return;
+    const auto note=[&](unsigned stage,const char* reason) {
+        arcade_mode::wallplant_runtime::writer_event(probe,stage,reason,current,true,probe.native.owner.core);
+    };
+    note(10,"before_selection");
+    if(state.busy.test_and_set(std::memory_order_acquire)){note(11,"selection_source_busy");return;}
+    SourceBusyScope scope{state.busy};
+    arcade_mode::WallplantCommand command{};
+    try {
+        const auto now=GetTickCount64();
+        arcade_mode::AirMotionIntent intent{};
+        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
+            now>=intent.sampled_at && now-intent.sampled_at<=150 && !multiplayer_session_active(),
+            "Wallplant selection intent is unavailable.");
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,
+            "Wallplant selection yields to editing or flight.");
+        const auto& identity=push_speed();
+        source_require(now<identity.expires.load(std::memory_order_acquire),"Wallplant selection identity is stale.");
+        const auto client=identity.client.load(std::memory_order_relaxed),entity=identity.entity.load(std::memory_order_relaxed);
+        const auto bodies=debug_noclip_bodies(state.trial.base,client,entity);
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner.core==probe.native.owner.core && bodies.core==owner.core &&
+            !bodies.offboard && !bodies.wipeout && owner.base==state.trial.base && owner.entity==entity &&
+            owner.context==bodies.context && owner.rig==bodies.rig_wrapper,
+            "Wallplant selection local ownership changed.");
+        SourceReader reader;
+        source_require(reader.value<std::uint8_t>(entity,0x7e0)==0,"Wallplant selection yields to teleport.");
+        namespace native=game::build::v20260929::arcade_native_probe;
+        const auto selected=reader.value<std::uint32_t>(bodies.context,native::selected_state);
+        const arcade_mode::NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        const auto owned_selector=reader.pointer(owner.core,0x440),selector_context=reader.pointer(selector,8);
+        source_require(arcade_mode::wallplant_selection_current(probe.native,input_owner,selector,owned_selector,
+            selector_context,current,selected,now),"Wallplant selection frame or selector changed.");
+        arcade_mode::NativeRequestSample sampled{};sampled.valid=true;sampled.state=selected;
+        sampled.crouch_mode=reader.value<std::uint32_t>(bodies.rig_wrapper,native::crouch_mode);
+        sampled.words[0]=reader.value<std::uint32_t>(bodies.context,native::request_words);
+        sampled.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4)&0xc000u;
+        const char* frame_reason="frame_not_read";
+        const auto frame=arcade_mode::native_air_context(now,input_owner,sampled,nullptr,&frame_reason);
+        note(12,frame_reason);
+        source_require(arcade_mode::wallplant_selection_current(frame,input_owner,selector,owned_selector,
+            selector_context,current,selected,now),"Wallplant selection native admission changed.");
+        std::array<std::array<float,3>,32> velocities{},spins{};
+        std::array<std::uint32_t,32> flags{};
+        for(std::size_t i=0;i<bodies.parts.size();++i) {
+            velocities[i]=reader.value<std::array<float,3>>(bodies.parts[i],0x70);
+            spins[i]=reader.value<std::array<float,3>>(bodies.parts[i],0x90);
+            flags[i]=reader.value<std::uint32_t>(bodies.parts[i],0x60);
+            for(float v:spins[i])source_require(std::isfinite(v)&&std::abs(v)<1000,"Invalid native angular velocity.");
+        }
+        command=arcade_mode::wallplant_runtime::consume(now,frame,velocities[0]);
+        note(13,command?"selection_command_ready":"selection_consume_empty");
+        if(!command)return;
+        source_require(arcade_mode::AirMotion::apply_bodies(command.motion,velocities,spins,bodies.up),
+            "Wallplant selection motion is invalid.");
+        reader.verify();NoBailSkater after{};
+        source_require(no_bail_skater(after) && after==owner,"Wallplant selection ownership changed before writing.");
+        source_require(arcade_mode::wallplant_runtime::current(command,now,frame,command.before),
+            "Wall contact changed before rebound.");
+        write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
+        // Retire the preceding Ollie's cached trajectory, not its angular
+        // channel. Ordinary controller/ground stepping remains post-original.
+        auto& air=arcade_air();
+        air.controller.yield_ordinary_motion();air.output.vertical=air.output.horizontal=false;
+        arcade_mode::wallplant_runtime::completed(command,true);
+        note(14,"selection_committed");
+    } catch(...) {
+        if(command)arcade_mode::wallplant_runtime::completed(command,false);
+        try{throw;}catch(const SourceGuard& issue){note(15,issue.message);}
+        catch(...){note(15,"selection_exception");}
+    }
+}
 void arcade_air_apply(std::uintptr_t core) noexcept {
     const auto wall_probe=arcade_mode::wallplant_runtime::writer_probe();
     std::uint32_t wall_probe_state{};
@@ -685,13 +783,10 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             angular_observation.validated(); // Angular writer observation.
             writer_observation.writing(); // Ground writer observation.
             angular_observation.writing(); // Angular writer observation.
-            for (std::size_t i=0;i<bodies.parts.size();++i) {
-                if (linear) body_write(bodies.parts[i]+0x70,velocities[i]);
-                if (angular) body_write(bodies.parts[i]+0x90,spins[i]);
-                body_write(bodies.parts[i]+0x60,flags[i] | (linear?8u:0u) | (angular?0x20u:0u));
+            write_arcade_bodies(bodies.parts,velocities,spins,flags,linear,angular,[&] {
                 writer_observation.body_completed(); // Ground writer observation.
                 angular_observation.body_completed(); // Angular writer observation.
-            }
+            });
             writer_observation.verified(); // Ground writer observation.
             angular_observation.verified(); // Angular writer observation.
             if (resistance_change<0) push_speed().arcade_drive.account_resistance(resistance_change);
@@ -1748,6 +1843,9 @@ void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
 
 namespace dingosdk {
 using namespace client_source::detail;
+void apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
+    arcade_wallplant_before_selection(selector,current);
+}
 
 bool queue_skater_push_velocity(std::uintptr_t client,std::uintptr_t entity,const std::array<float,3>& velocity) noexcept {
     try {

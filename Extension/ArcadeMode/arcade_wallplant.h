@@ -3,6 +3,18 @@
 #include "arcade_surface_geometry.h"
 
 namespace dingosdk::arcade_mode {
+// The existing native chooser receives the current state before its caller
+// commits the returned state. This proof admits only the already-observed AIR
+// owner at that seam; it never supplies or overrides the next native state.
+inline bool wallplant_selection_current(const NativeInputFrame& frame,
+        const NativeInputOwner& owner,std::uintptr_t selector,std::uintptr_t core_selector,
+        std::uintptr_t selector_context,std::uint32_t current,std::uint32_t selected,
+        std::uint64_t now) noexcept {
+    return frame.valid && frame.airborne && frame.owner.valid() && frame.owner==owner &&
+        selector && selector==core_selector && selector_context==owner.context &&
+        (current==200 || current==201) && selected==current && frame.state==current &&
+        now>=frame.sampled_at && now-frame.sampled_at<=InputTiming::native_sample_lease_ms;
+}
 // A real riding collision supplies this record. SurfaceGeometrySample (a ray
 // query) deliberately cannot be converted into a collision record here.
 struct WallplantContact {

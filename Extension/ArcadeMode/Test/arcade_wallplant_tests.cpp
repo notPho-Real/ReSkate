@@ -44,6 +44,28 @@ struct Fixture {
 }
 int main() {
     {
+        Fixture f;f.frame.native.state=201;f.sync();
+        auto owner=f.frame.native.owner;
+        const auto admitted=[&](std::uint32_t current=201,std::uint32_t selected=201,
+                std::uintptr_t selector=6,std::uintptr_t owned_selector=6,std::uintptr_t context=4) {
+            return wallplant_selection_current(f.frame.native,owner,selector,owned_selector,context,
+                current,selected,f.frame.now);
+        };
+        check(admitted(),"observed AIR owner admitted before native chooser commits its next state");
+        check(!admitted(100,100) && !admitted(504,504),"chooser handoff cannot re-air ground or offboard state");
+        check(!admitted(201,100) && !admitted(200,201),"current argument and committed native state must agree");
+        check(!admitted(201,201,6,7) && !admitted(201,201,0,0),"foreign or absent selector cannot consume local work");
+        check(!admitted(201,201,6,6,8),"selector must retain the verified local context");
+        ++owner.core;check(!admitted(),"replacement owner cannot borrow admitted flight");owner=f.frame.native.owner;
+        f.frame.now=1151;check(!admitted(),"preselector seam does not extend original frame lease");
+        f.frame.now=999;check(!admitted(),"future original observation cannot grant handoff");f.frame.now=1000;
+        f.frame.native.valid=false;check(!admitted(),"invalid native sample blocks handoff");f.frame.native.valid=true;
+        f.frame.native.airborne=false;check(!admitted(),"AIR state number alone cannot establish airborne eligibility");
+        f.frame.native.airborne=true;
+        const auto command=f.run();check(bool(command),"qualified preselector command consumes original physical press");
+        check(!f.run(),"later ordinary writer cannot replay the same wallplant input");
+    }
+    {
         const auto parameters=WallplantParameters::reference_prototype();
         const float apex=parameters.maximum_vertical_speed*parameters.maximum_vertical_speed/(2*AirMotion::ordinary_gravity);
         const SurfaceGeometryVector root{10,apex,20};
