@@ -167,6 +167,7 @@ std::atomic<bool> ready{true},reset_physical_manual{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
 bool mode=true,push{},air{};
 std::atomic<bool> mode_enabled{true};
+std::atomic<ActionExperiment> action_mode{ActionExperiment::classic};
 NativeInputState native_input_state,motion_cleanup_state;
 std::uint64_t clock_ms=1000;
 namespace game=dingosdk::game;
@@ -325,6 +326,70 @@ void run(){
             require(!native_air_context(acquired_at,owner,live_sample,nullptr,&diagnostic).valid,
                 "wallplant phase does not relax the ordinary motion accessor");++checks;
         }
+    }
+    for(unsigned boundary=0;boundary<11;++boundary) {
+        clock_ms=1035;mode_enabled=true;action_mode=ActionExperiment::classic;
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_input_state={};
+        NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;
+        const auto original_frame=native_input_state.observe(1000,owner,original,{});
+        set_controller_source(1,1000);
+        ArcadeInput::Physical physical{true,1035,0,0,0,0,0,0,0};
+        observe(controller_route,1,physical);controller_route.select(1035,3,true,original_frame);
+        arcade_input.publish_native_context(original_frame);arcade_input.publish_authority(1035,original_frame.owner_generation,1,true);
+        if(boundary==1)mode_enabled=false;
+        if(boundary==2)action_mode=ActionExperiment::off;
+        if(boundary==3)physical.buttons=0x4000;
+        if(boundary==4)physical.lt=31;
+        if(boundary==5)physical.rt=31;
+        if(boundary==6)controller_route.clear();
+        if(boundary==7)arcade_input.invalidate_authority();
+        if(boundary==8)clock_ms=1151;
+        if(boundary==9) {
+            const auto next=native_input_state.observe(1035,owner,original,{});
+            arcade_input.publish_native_context(next);
+        }
+        if(boundary==10) {
+            auto next=original_frame;++next.owner_generation;
+            arcade_input.publish_native_context(next);arcade_input.publish_authority(1035,next.owner_generation,1,true);
+        }
+        if(boundary>=3&&boundary<=5)observe(controller_route,1,physical);
+        std::uint64_t checked_at{};
+        require(native_wallplant_execution_authorized(original_frame,checked_at)==(boundary==0),
+            "post-native handoff retains controller/OFF/classic/conflict/trigger/freshness/exact-episode authority");++checks;
+        require(checked_at==clock_ms,"post-native handoff samples current time after input serialization");++checks;
+    }
+    // Start a real session-owned crouch through the production recognizer,
+    // then publish a native AIR observation without releasing its held input.
+    // A matching AIR frame/route must not turn this competing owner into a kick.
+    {
+        clock_ms=1000;mode_enabled=true;action_mode=ActionExperiment::classic;
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_input_state={};
+        NativeRequestSample ground{};ground.valid=true;ground.state=100;ground.crouch_mode=1;ground.words[1]=0xc000;
+        const auto grounded=native_input_state.observe(1000,owner,ground,{true,-1,0x300000});
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,grounded);arcade_input.publish_native_context(grounded);
+        arcade_input.publish_authority(1000,grounded.owner_generation,1,true);
+        const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}}};
+        const auto poll=[&](std::uint64_t at,std::uint16_t buttons) {
+            return arcade_input.poll(0,at,buttons,0,0,0,0,true,true,false,0,false,false,true,
+                at/17,false,prepared,false,true,SkatePose::riding);
+        };
+        poll(1000,0);
+        const auto held=poll(1017,0x1000);
+        require(held.authored_playback&&arcade_input.busy(0)&&!arcade_input.wallplant_controls_unowned(0),
+            "actual admitted held crouch owns the session before late wallplant execution");++checks;
+        auto air_sample=ground;air_sample.state=201;air_sample.crouch_mode=2;air_sample.words[1]=0;
+        const auto airborne=native_input_state.observe(1035,owner,air_sample,{true,1,0x300000});
+        clock_ms=1035;observe(controller_route,1,{true,1035,0x1000,0,0,0,0,0,0});
+        controller_route.select(1035,3,true,airborne);arcade_input.publish_native_context(airborne);
+        arcade_input.publish_authority(1035,airborne.owner_generation,1,true);
+        std::uint64_t checked_at{};
+        require(arcade_input.admitted(0,1035)&&controller_route.physical(1035).valid&&
+            wallplant_same_observation(airborne,arcade_input.native_context(1035)),
+            "competing-session test retains otherwise valid exact frame and controller authority");++checks;
+        require(!native_wallplant_execution_authorized(airborne,checked_at),
+            "production late execution rejects a real busy held session even with matching AIR proof");++checks;
     }
     std::cout<<checks<<" exact production binding API checks passed\n";
 }

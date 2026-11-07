@@ -580,21 +580,32 @@ bool read_arcade_air(arcade_mode::AirMotionIntent& out, arcade_mode::NativeManua
     if (ground_turn) *ground_turn = candidate_turn;
     return true;
 }
-void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
+struct WallplantHandoff {
+    arcade_mode::WallplantExecutionProof execution{};
+    arcade_mode::wallplant_runtime::WriterProbe probe{};
+    arcade_mode::WallplantSelectionTicket ticket{};
+    std::uint64_t intent_generation{};
+};
+// A different scheduler/thread is rejected; no cross-thread frame is invented.
+WallplantHandoff& wallplant_handoff() { static thread_local WallplantHandoff value;return value; }
+std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
     // Pinned chooser contract: core+440 owns selector, selector+8 is context.
     // Its caller 47da1b0 commits the returned state only after this call. Native
     // body +70 / dirty8 remains the same verified synchronization facility;
     // this does not clear contact inputs or change the chooser's return value.
+    auto& handoff=wallplant_handoff();
+    if(handoff.ticket.selector==selector)handoff={};
     const auto probe=arcade_mode::wallplant_runtime::writer_probe();
-    if(!probe.input)return;
+    if(!probe.input)return 0;
     SourceLastError error;
     auto& state=source_state();
     if(!state.initialized.load(std::memory_order_acquire) ||
        !state.velocity_guard_active.load(std::memory_order_acquire) ||
-       !state.motion_original.load(std::memory_order_acquire))return;
+       !state.motion_original.load(std::memory_order_acquire))return 0;
     // Foreign selectors must neither consume a pending request nor its receipt.
     std::uintptr_t core_selector{};
-    if(!memory::peek(probe.native.owner.core+0x440,core_selector) || core_selector!=selector)return;
+    if(!memory::peek(probe.native.owner.core+0x440,core_selector) || core_selector!=selector)return 0;
+    handoff={};
     const auto note=[&](unsigned stage,const char* reason) {
         arcade_mode::wallplant_runtime::writer_event(probe,stage,reason,current,true,probe.native.owner.core);
     };
@@ -604,10 +615,9 @@ void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t cur
     const auto execution=arcade_mode::native_wallplant_context(probe.native.owner,now,&frame_reason);
     const auto& frame=execution.native;
     note(12,frame_reason);
-    if(!frame.valid){note(15,"Wallplant selection native admission changed.");return;}
-    if(state.busy.test_and_set(std::memory_order_acquire)){note(11,"selection_source_busy");return;}
+    if(!frame.valid){note(15,"Wallplant selection native admission changed.");return 0;}
+    if(state.busy.test_and_set(std::memory_order_acquire)){note(11,"selection_source_busy");return 0;}
     SourceBusyScope scope{state.busy};
-    arcade_mode::WallplantCommand command{};
     try {
         arcade_mode::AirMotionIntent intent{};
         source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
@@ -640,6 +650,71 @@ void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t cur
         live.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4);
         source_require(arcade_mode::wallplant_execution_current(execution,input_owner,live,now),
             "Wallplant selection native sample changed after admission.");
+        reader.verify();NoBailSkater after{};
+        source_require(no_bail_skater(after) && after==owner,"Wallplant selection owner changed.");
+        static thread_local std::uint64_t invocation{};
+        source_require(invocation!=UINT64_MAX,"Wallplant chooser invocation exhausted.");
+        handoff={execution,probe,{++invocation,probe.input,selector,current,0,false},intent.generation};
+        note(13,"selection_handoff_ready");
+        return invocation;
+    } catch(...) {
+        try{throw;}catch(const SourceGuard& issue){note(15,issue.message);}
+        catch(...){note(15,"selection_exception");}
+    }
+    return 0;
+}
+void arcade_wallplant_after_reconstruction(const WallplantHandoff& handoff,std::uintptr_t core) noexcept {
+    if(!handoff.ticket.selected || core!=handoff.execution.native.owner.core)return;
+    SourceLastError error;
+    std::uint64_t now{};
+    const auto note=[&](unsigned stage,const char* reason,std::uint32_t selected=0) {
+        arcade_mode::wallplant_runtime::writer_event(handoff.probe,stage,reason,selected,selected!=0,core);
+    };
+    note(16,"reconstruction_writer_entry");
+    if(!arcade_mode::native_wallplant_execution_authorized(handoff.execution.native,now)) {
+        note(19,"reconstruction_controller_authority");return;
+    }
+    auto& state=source_state();
+    if(state.busy.test_and_set(std::memory_order_acquire)){note(19,"reconstruction_source_busy");return;}
+    SourceBusyScope scope{state.busy};
+    arcade_mode::WallplantCommand command{};
+    try {
+        source_require(state.initialized.load(std::memory_order_acquire) &&
+            state.velocity_guard_active.load(std::memory_order_acquire) &&
+            state.motion_original.load(std::memory_order_acquire),"Wallplant reconstruction writer unavailable.");
+        arcade_mode::AirMotionIntent intent{};
+        source_require(read_arcade_air(intent,nullptr,nullptr) && intent.enabled &&
+            intent.generation==handoff.intent_generation && now>=intent.sampled_at &&
+            now-intent.sampled_at<=150 && !multiplayer_session_active(),"Wallplant reconstruction intent changed.");
+        source_require(!state.trial.debug.noclip && !state.trial.debug.park_editor,
+            "Wallplant reconstruction yields to editing or flight.");
+        const auto& identity=push_speed();
+        source_require(now<identity.expires.load(std::memory_order_acquire),"Wallplant reconstruction identity stale.");
+        const auto client=identity.client.load(std::memory_order_relaxed),entity=identity.entity.load(std::memory_order_relaxed);
+        const auto bodies=debug_noclip_bodies(state.trial.base,client,entity);
+        NoBailSkater owner{};
+        source_require(no_bail_skater(owner) && owner.core==core && bodies.core==core &&
+            !bodies.offboard && !bodies.wipeout && owner.base==state.trial.base && owner.entity==entity &&
+            owner.context==bodies.context && owner.rig==bodies.rig_wrapper,
+            "Wallplant reconstruction owner changed.");
+        SourceReader reader;
+        source_require(reader.value<std::uint8_t>(entity,0x7e0)==0,"Wallplant reconstruction yields to teleport.");
+        const arcade_mode::NativeInputOwner input_owner{owner.base,owner.entity,owner.core,owner.context,owner.rig};
+        namespace native=game::build::v20260929::arcade_native_probe;
+        const auto selector=reader.pointer(core,0x440);
+        source_require(reader.pointer(selector,8)==owner.context,"Wallplant reconstruction selector changed.");
+        arcade_mode::NativeRequestSample live{};live.valid=true;
+        live.state=reader.value<std::uint32_t>(bodies.context,native::selected_state);
+        live.crouch_mode=reader.value<std::uint32_t>(bodies.rig_wrapper,native::crouch_mode);
+        live.words[0]=reader.value<std::uint32_t>(bodies.context,native::request_words);
+        live.words[1]=reader.value<std::uint32_t>(bodies.context,native::request_words+4);
+        const auto previous=reader.value<std::uint32_t>(bodies.context,native::previous_selected_state);
+        source_require(arcade_mode::wallplant_reconstruction_current(handoff.ticket,handoff.execution,
+            input_owner,selector,previous,live,now),"Wallplant native reconstruction or chooser result changed.");
+        const auto pending=arcade_mode::wallplant_runtime::writer_probe();
+        source_require(pending.input==handoff.probe.input && pending.contact==handoff.probe.contact &&
+            pending.raw==handoff.probe.raw && arcade_mode::wallplant_same_observation(
+                handoff.execution.native,pending.native),"Wallplant reconstruction input or episode changed.");
         std::array<std::array<float,3>,32> velocities{},spins{};
         std::array<std::uint32_t,32> flags{};
         for(std::size_t i=0;i<bodies.parts.size();++i) {
@@ -648,29 +723,30 @@ void arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t cur
             flags[i]=reader.value<std::uint32_t>(bodies.parts[i],0x60);
             for(float v:spins[i])source_require(std::isfinite(v)&&std::abs(v)<1000,"Invalid native angular velocity.");
         }
-        command=arcade_mode::wallplant_runtime::consume(now,frame,velocities[0]);
-        note(13,command?"selection_command_ready":"selection_consume_empty");
+        // Consume once, using actual reconstructed velocities and the unchanged
+        // original AIR observation. The current native100 state is only a
+        // completion phase of this recorded selector invocation, never admission.
+        command=arcade_mode::wallplant_runtime::consume(now,handoff.execution.native,velocities[0],handoff.ticket.input);
+        note(17,command?"reconstruction_command_ready":"reconstruction_consume_empty",live.state);
         if(!command)return;
         source_require(arcade_mode::AirMotion::apply_bodies(command.motion,velocities,spins,bodies.up),
-            "Wallplant selection motion is invalid.");
+            "Wallplant reconstructed motion invalid.");
         reader.verify();NoBailSkater after{};
-        source_require(no_bail_skater(after) && after==owner,"Wallplant selection ownership changed before writing.");
-        source_require(arcade_mode::wallplant_runtime::current(command,now,frame,command.before),
-            "Wall contact changed before rebound.");
+        source_require(no_bail_skater(after) && after==owner,"Wallplant reconstruction ownership changed before writing.");
+        source_require(arcade_mode::wallplant_runtime::current(command,now,handoff.execution.native,command.before),
+            "Wall contact changed before reconstructed rebound.");
         write_arcade_bodies(bodies.parts,velocities,spins,flags,true,false,[]{});
-        // Retire the preceding Ollie's cached trajectory, not its angular
-        // channel. Ordinary controller/ground stepping remains post-original.
         auto& air=arcade_air();
         air.controller.yield_ordinary_motion();air.output.vertical=air.output.horizontal=false;
         arcade_mode::wallplant_runtime::completed(command,true);
-        note(14,"selection_committed");
+        note(18,"reconstruction_committed",live.state);
     } catch(...) {
         if(command)arcade_mode::wallplant_runtime::completed(command,false);
-        try{throw;}catch(const SourceGuard& issue){note(15,issue.message);}
-        catch(...){note(15,"selection_exception");}
+        try{throw;}catch(const SourceGuard& issue){note(19,issue.message);}
+        catch(...){note(19,"reconstruction_exception");}
     }
 }
-void arcade_air_apply(std::uintptr_t core) noexcept {
+void arcade_air_apply(std::uintptr_t core,bool wallplant_handoff_active=false) noexcept {
     const auto wall_probe=arcade_mode::wallplant_runtime::writer_probe();
     std::uint32_t wall_probe_state{};
     bool wall_probe_state_known{};
@@ -832,7 +908,7 @@ void arcade_air_apply(std::uintptr_t core) noexcept {
             release_turn(!manual.admitted,true);
         }
         wall_writer(5,"before_consume");
-        wallplant=arcade_mode::wallplant_runtime::consume(now,native_frame,velocities[0]);
+        if(!wallplant_handoff_active)wallplant=arcade_mode::wallplant_runtime::consume(now,native_frame,velocities[0]);
         wall_writer(6,wallplant?"consumed_command":"consume_empty");
         if(wallplant)a.controller.yield_ordinary_motion();
         const auto output = a.controller.step(intent, {now, static_cast<std::uint64_t>(core), physics, bodies.seconds,
@@ -1719,6 +1795,11 @@ void trainer_transition(std::uintptr_t core) noexcept {
     } catch (...) {}
 }
 void noclip_physics_update(std::uintptr_t core) {
+    WallplantHandoff handoff{};
+    auto& staged=wallplant_handoff();
+    if(core==staged.execution.native.owner.core) {
+        handoff=staged;handoff.ticket=staged.ticket.take();staged={};
+    }
     const auto probe=arcade_mode::wallplant_runtime::writer_probe();
     const auto observe_phase=[&](unsigned stage,const char* reason) {
         if(!probe.input || core!=probe.native.owner.core)return;
@@ -1738,13 +1819,16 @@ void noclip_physics_update(std::uintptr_t core) {
     trainer_apply_jump_scale(core);
     if (const auto callback = physics_step_callback.load(std::memory_order_acquire)) callback();
     trainer_push_speed(core);
-    arcade_air_apply(core);
+    arcade_air_apply(core,handoff.ticket.selected);
     apply_push_velocity(core);
     apply_plugin_velocity(core);
     trainer_pump_power(core);
     trainer_air_gravity(core);
     trainer_revert_boost(core);
     trainer_transition(core);
+    // Native100 entry 482c200 has reconstructed body velocities before this
+    // existing +58 update. All ordinary writers finish before the single kick.
+    arcade_wallplant_after_reconstruction(handoff,core);
 }
 bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float,16>* supplied, std::array<float,16>& target) noexcept {
@@ -1847,8 +1931,12 @@ void noclip_skater_motion(std::uintptr_t rig, std::uintptr_t context,
 
 namespace dingosdk {
 using namespace client_source::detail;
-void apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
-    arcade_wallplant_before_selection(selector,current);
+std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
+    return arcade_wallplant_before_selection(selector,current);
+}
+void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
+        std::uint32_t current,std::uint32_t chosen) noexcept {
+    if(ticket)wallplant_handoff().ticket.finish(ticket,selector,current,chosen);
 }
 
 bool queue_skater_push_velocity(std::uintptr_t client,std::uintptr_t entity,const std::array<float,3>& velocity) noexcept {

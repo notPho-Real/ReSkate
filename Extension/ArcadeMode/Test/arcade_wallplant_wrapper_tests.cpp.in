@@ -1,0 +1,152 @@
+// Production-composed chooser/velocity wrapper seam. These stubs observe call
+// ownership/order only; they are not a physics or hardware acceptance model.
+#include "Extension/ArcadeMode/arcade_wallplant.h"
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+namespace dingosdk::arcade_mode::wallplant_runtime {
+struct WriterProbe { std::uint64_t input{}; NativeInputFrame native{}; };
+inline WriterProbe writer_probe(){return {};}
+inline void writer_event(const WriterProbe&,unsigned,const char*,std::uint32_t,bool,std::uintptr_t){}
+}
+namespace {
+namespace arcade_mode=dingosdk::arcade_mode;
+unsigned checks{};
+void check(bool ok,const char* message){++checks;if(!ok){std::cerr<<"wrapper: "<<message<<'\n';std::exit(1);}}
+struct Event { std::string name;std::uintptr_t core;bool active; };
+std::vector<Event> events;
+void event(const char* name,std::uintptr_t core=0,bool active=false){events.push_back({name,core,active});}
+std::uint32_t native_result=100;
+unsigned native_calls{},chooser_calls{},writes{};
+bool reenter{},admit=true;
+std::uint64_t serial{};
+struct SourceLastError { SourceLastError(){} };
+struct LastError { LastError(){} };
+struct SourceReader { bool raw(std::uintptr_t,void*,std::size_t){return false;} };
+namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0; }
+struct NativeState { std::atomic<void(*)(std::uintptr_t)> velocity_update_original{}; } native_state;
+NativeState& source_state(){return native_state;}
+std::atomic<void(*)()> physics_step_callback{};
+void noclip_physics_update(std::uintptr_t);
+void native_update(std::uintptr_t core){
+ ++native_calls;event("native",core);
+ if(reenter){reenter=false;noclip_physics_update(core);}
+}
+#define ORDINARY(name) void name(std::uintptr_t core){event(#name,core);}
+ORDINARY(noclip_apply_velocity) ORDINARY(trainer_apply_jump_scale)
+ORDINARY(trainer_push_speed) ORDINARY(apply_push_velocity) ORDINARY(apply_plugin_velocity)
+ORDINARY(trainer_pump_power) ORDINARY(trainer_air_gravity) ORDINARY(trainer_revert_boost)
+ORDINARY(trainer_transition)
+#undef ORDINARY
+void callback(){event("callback");}
+void arcade_air_apply(std::uintptr_t core,bool active){event("arcade_air_apply",core,active);}
+@wallplant_wrapper_handoff@
+void arcade_wallplant_after_reconstruction(const WallplantHandoff& staged,std::uintptr_t core) noexcept {
+ if(!staged.ticket.selected || staged.execution.native.owner.core!=core)return;
+ ++writes;event("final_write",core);
+}
+std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
+ event("prepare",selector);
+ if(!admit)return 0;
+ auto& staged=wallplant_handoff();staged={};
+ staged.execution.native.owner.core=1;
+ staged.ticket={++serial,7,selector,current,0,false};
+ return serial;
+}
+@wallplant_wrapper_finish@
+struct Owner { std::uintptr_t selector{}; };
+struct Wanted {std::atomic<std::uint64_t> until{};std::atomic<float> magnitude{};} wanted_value;
+Wanted& wanted_wipeout(){return wanted_value;}
+struct Watch {
+ std::atomic<std::uintptr_t> selector{},causes{};
+ std::atomic<std::uint64_t> until{},since{};
+ std::atomic<std::uint32_t> state{},previous{},changes{},wipeouts{};
+ std::atomic<long long> previous_ticks{};
+} watch;
+Watch& state_watch(){return watch;}
+constexpr std::uint32_t wipeout_physics_state=504;
+constexpr unsigned wanted_wipeout_reason=1;
+std::uint64_t GetTickCount64(){return 100;}
+bool protected_owner(std::uintptr_t,std::uintptr_t Owner::*){return false;}
+void record_cause(std::uintptr_t,unsigned,float){}
+void hold_off_board(std::uintptr_t,std::uint32_t){}
+std::pair<std::uint64_t,bool> take_balance_bail(std::uintptr_t,std::uint32_t){return {};}
+void dark_pop_before(std::uintptr_t,std::uint32_t){}
+bool filter_requests(std::uintptr_t,std::uintptr_t Owner::*){return false;}
+std::uint32_t original_choose(std::uintptr_t selector,std::uint32_t){
+ ++chooser_calls;event("choose_original",selector);return native_result;
+}
+struct Protection {
+ std::uint32_t (*choose_original)(std::uintptr_t,std::uint32_t)=original_choose;
+ int lock{};struct Balance{void finish(std::uint64_t,bool,std::uint32_t){}} balance_bail;
+} protection_value;
+Protection& protection(){return protection_value;}
+void AcquireSRWLockExclusive(int*){}
+void ReleaseSRWLockExclusive(int*){}
+namespace logging {enum class Level{debug};enum class Channel{skater};template<class... T>void log(Level,Channel,const char*,T...){}}
+std::uint32_t dark_pop_after(std::uintptr_t,std::uint32_t,std::uint32_t value){return value;}
+void fast_probe_record(std::uintptr_t,std::uint32_t,std::uint32_t,std::uint32_t){}
+struct LARGE_INTEGER{long long QuadPart{};};
+void QueryPerformanceCounter(LARGE_INTEGER* value){value->QuadPart=1000;}
+namespace skater_events {void note_wipeout(std::uintptr_t){}}
+void track_spin(std::uintptr_t selector,std::uint32_t){event("track_spin",selector);}
+@wallplant_wrapper_choose@
+@wallplant_wrapper_physics@
+void reset(){
+ events.clear();wallplant_handoff()={};native_calls=chooser_calls=writes=0;
+ native_result=100;reenter=false;admit=true;
+ native_state.velocity_update_original.store(native_update);
+ physics_step_callback.store(callback);
+}
+std::size_t find(const char* name,std::size_t start=0){
+ for(std::size_t i=start;i<events.size();++i)if(events[i].name==name)return i;
+ return events.size();
+}
+void run(){
+ for(auto result:{100u,201u,504u}){
+  reset();native_result=result;
+  check(choose_state(9,201)==result,"chooser result is not replaced by wallplant");
+  check(chooser_calls==1,"original chooser called once");
+  check(find("prepare")<find("choose_original") && find("choose_original")<find("track_spin"),"ticket surrounds native selection");
+  check(wallplant_handoff().ticket.selected==(result!=504),"only accepted original result arms handoff");
+  noclip_physics_update(1);
+  check(native_calls==1,"native reconstruction called once");
+  check(writes==(result!=504?1u:0u),"cancelled selection cannot write");
+  if(result!=504){
+   const auto final=find("final_write");
+   for(const char* name:{"native","noclip_apply_velocity","trainer_apply_jump_scale","callback","trainer_push_speed","arcade_air_apply","apply_push_velocity","apply_plugin_velocity","trainer_pump_power","trainer_air_gravity","trainer_revert_boost","trainer_transition"})
+    check(find(name)<final,"final write follows native and every ordinary writer");
+   check(events[find("arcade_air_apply")].active,"ordinary writer sees already-owned pending input");
+   check(final+1==events.size(),"no later wrapper writer overwrites rebound");
+  }
+  noclip_physics_update(1);check(writes==(result!=504?1u:0u),"handoff is one-use");
+ }
+ reset();choose_state(9,201);const auto ticket=wallplant_handoff().ticket.invocation;
+ noclip_physics_update(2);
+ check(wallplant_handoff().ticket.invocation==ticket && writes==0,"foreign core cannot steal handoff");
+ check(!events[find("arcade_air_apply")].active,"foreign core ordinary ownership unchanged");
+ noclip_physics_update(1);check(writes==1,"right owner consumes after foreign callback");
+ reset();choose_state(9,201);reenter=true;noclip_physics_update(1);
+ check(native_calls==2 && writes==1,"nested native callback cannot duplicate handoff");
+ unsigned active{};for(const auto& e:events)if(e.name=="arcade_air_apply"&&e.active)++active;
+ check(active==1 && find("final_write")+1==events.size(),"nested callback cannot steal final ownership");
+ reset();choose_state(9,201);
+ std::thread other([]{noclip_physics_update(1);});other.join();
+ check(writes==0 && wallplant_handoff().ticket.selected,"foreign thread cannot take local ticket");
+ noclip_physics_update(1);check(writes==1,"originating thread retains single handoff");
+ reset();admit=false;choose_state(9,201);noclip_physics_update(1);check(writes==0,"unadmitted selection cannot write");
+ reset();choose_state(9,201);const auto call=wallplant_handoff().ticket.invocation;
+ finish_arcade_wallplant_selection(call+1,9,201,100);noclip_physics_update(1);check(writes==0,"mismatched invocation cancels");
+ reset();choose_state(9,201);finish_arcade_wallplant_selection(wallplant_handoff().ticket.invocation,10,201,100);
+ noclip_physics_update(1);check(writes==0,"mismatched selector cancels");
+ std::cout<<checks<<" production wrapper ordering checks passed\n";
+}
+}
+void run_wallplant_wrapper_tests(){run();}
+#ifdef ARCADE_WALLPLANT_WRAPPER_STANDALONE
+int main(){run_wallplant_wrapper_tests();}
+#endif

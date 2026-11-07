@@ -1588,6 +1588,17 @@ WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,s
     }
     return {frame,sample,imported_contact};
 }
+bool native_wallplant_execution_authorized(const NativeInputFrame& original,std::uint64_t& now) noexcept {
+    std::lock_guard lock(ollie_mutex);
+    now=GetTickCount64();
+    const auto physical=controller_route.physical(now);
+    return mode_enabled.load(std::memory_order_acquire) &&
+        action_mode.load(std::memory_order_acquire)==ActionExperiment::classic && !grind_change.active() &&
+        physical.valid && physical.lt<=30 && physical.rt<=30 && !(physical.buttons&0xe030u) &&
+        arcade_input.admitted(0,now) && arcade_input.wallplant_controls_unowned(0) &&
+        original.owner_generation==arcade_input.owner_epoch() &&
+        wallplant_same_observation(original,arcade_input.native_context(now));
+}
 // Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
     std::unique_lock lock(ollie_mutex,std::try_to_lock);

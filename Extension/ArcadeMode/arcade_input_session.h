@@ -158,6 +158,7 @@ public:
     }
     void set_recognition_capture(bool enabled) noexcept {input_.set_recognition_capture(enabled);}
     bool busy() const noexcept { return footplant_ || ground_grab_ || auxiliary_.busy() || authored_.busy() || manual_.busy() || rail_ || board_active_ || extension_started_; }
+    bool wallplant_controls_unowned() const noexcept { return !busy() && !holding_; }
     const UnifiedInput::Diagnostic& diagnostic() const noexcept { return input_.diagnostic(); }
     const InputHistory& history() const noexcept { return input_.history(); }
     InputRequest pending_manual() const noexcept { return input_.pending_manual(); }
@@ -399,7 +400,7 @@ public:
         environment.surface.can_plant = environment.surface.can_plant &&
             admission.pose==SkatePose::air && admission.extensions.request &&
             admission.action_mode==ActionExperiment::classic && !admission.external_owner &&
-            !busy() && !holding_ && !triggers && !(physical.buttons&0xe030u);
+            wallplant_controls_unowned() && !triggers && !(physical.buttons&0xe030u);
         environment.native_footplants=admission.footplant.submit && admission.footplant.controls &&
             admission.action_mode==ActionExperiment::classic && !authored_.busy() && !auxiliary_.busy() &&
             !manual_.busy() && !rail_ && !board_active_ && !triggers && !(physical.buttons&0xe3f0u);

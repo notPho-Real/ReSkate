@@ -34,6 +34,9 @@ NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& o
 // input lock before returning; caller must revalidate its owner/selector.
 WallplantExecutionProof native_wallplant_context(const NativeInputOwner& owner,std::uint64_t& now,
                                          const char** diagnostic_reason = nullptr) noexcept;
+// Final staged handoff only, before source busy. Recheck existing input/control
+// ownership against the unchanged AIR observation; never correlate ground as AIR.
+bool native_wallplant_execution_authorized(const NativeInputFrame&,std::uint64_t& now) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Existing client callback supplies immutable query observations only.

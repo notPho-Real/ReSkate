@@ -43,6 +43,65 @@ struct Fixture {
 };
 }
 int main() {
+    {
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+        NativeRequestSample air{};air.valid=true;air.state=201;air.crouch_mode=2;
+        const auto observed=producer.observe(1000,owner,air,{});
+        auto imported=air;imported.crouch_mode=1;imported.words[1]=0x8000;
+        const WallplantExecutionProof proof{observed,imported,true};
+        WallplantSelectionTicket ticket{7,9,10,201,0,false};
+        auto ground=imported;ground.state=100;
+        check(!wallplant_reconstruction_current(ticket,proof,owner,10,201,ground,1035),
+            "native previous AIR alone does not authorize a ground write");
+        check(ticket.finish(7,10,201,100),"exact original chooser result finishes this invocation");
+        check(wallplant_reconstruction_current(ticket,proof,owner,10,201,ground,1035),
+            "recorded AIR wall contact can finish after original native100 reconstruction");
+        const auto once=ticket.take();
+        check(!ticket.take().invocation && once.invocation==7,"handoff is removed before callbacks and cannot replay");
+        for(unsigned fault=0;fault<18;++fault) {
+            auto t=once;auto p=proof;auto o=owner;auto live=ground;
+            std::uintptr_t selector=10;std::uint32_t previous=201;std::uint64_t now=1035;
+            switch(fault) {
+            case 0:t.invocation=0;break;case 1:t.input=0;break;case 2:t.selected=false;break;
+            case 3:selector=11;break;case 4:t.before=100;break;case 5:live.state=504;break;
+            case 6:previous=100;break;case 7:p.imported_contact=false;break;
+            case 8:p.native.valid=false;break;case 9:p.native.airborne=false;break;
+            case 10:++o.core;break;case 11:live.valid=false;break;
+            case 12:now=999;break;case 13:now=1151;break;case 14:live.crouch_mode=2;break;
+            case 15:live.words[0]=0x20;break;case 16:live.words[1]=0xc000;break;
+            case 17:p.live.valid=false;break;
+            }
+            check(!wallplant_reconstruction_current(t,p,o,selector,previous,live,now),
+                "changed owner/state/callback/native contact or stale original proof cancels handoff");
+        }
+        for(unsigned fault=0;fault<5;++fault) {
+            WallplantSelectionTicket t{7,9,10,201,0,false};
+            check(!t.finish(fault==0?8:7,fault==1?11:10,fault==2?200:201,fault==3?504:fault==4?200:100),
+                "wrong chooser invocation and unrelated state transitions cannot finish a ticket");
+            check(!t.invocation,"rejected chooser result discards staged authority");
+        }
+        check(wallplant_same_observation(observed,observed),"original frame identity is retained");
+        for(unsigned fault=0;fault<9;++fault) {
+            auto changed=observed;
+            switch(fault) {
+            case 0:++changed.physics_step;break;case 1:++changed.sampled_at;break;
+            case 2:++changed.owner_generation;break;case 3:++changed.contact_generation;break;
+            case 4:++changed.action_generation;break;case 5:++changed.airborne_episode;break;
+            case 6:++changed.air_departure;break;case 7:++changed.owner.rig;break;
+            case 8:changed.airborne=false;break;
+            }
+            check(!wallplant_same_observation(observed,changed),"next observation or cancelled episode cannot revive handoff");
+        }
+        Fixture f;f.contact.normal={0,0,1};f.contact.approach_velocity={-5.3687f,-1.4435f,-8.9189f};
+        f.frame.velocity={-5.81f,-2.3358f,-8.9f};
+        const auto command=f.run();
+        check(bool(command),"single command calculated from actual post-native reconstruction velocity");
+        std::array<SurfaceGeometryVector,2> velocities{f.frame.velocity,SurfaceGeometryVector{-4.81f,-1.3358f,-7.9f}};
+        std::array<SurfaceGeometryVector,2> spins{};
+        check(WallplantPolicy::apply_bodies(command,velocities,spins),"one final transaction applies after reconstruction");
+        check(near(velocities[0][1],12.7f)&&velocities[0][2]>0&&near(velocities[1][1]-velocities[0][1],1),
+            "final kick upward and outward preserves articulated body differences");
+    }
     for(unsigned contacts:{0x4000u,0x8000u}) {
         NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
         NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;

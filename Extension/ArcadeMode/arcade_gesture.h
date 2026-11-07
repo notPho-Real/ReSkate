@@ -239,6 +239,9 @@ public:
             sessions_[user].initial_ground_acquisition(now,InputNativeContext::from_frame(native));
     }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
+    bool wallplant_controls_unowned(unsigned user) const noexcept {
+        return user<sessions_.size() && sessions_[user].wallplant_controls_unowned();
+    }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,

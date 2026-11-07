@@ -45,6 +45,44 @@ inline bool wallplant_selection_current(const NativeInputFrame& frame,
         (current==200 || current==201) && selected==current && frame.state==current &&
         now>=frame.sampled_at && now-frame.sampled_at<=InputTiming::native_sample_lease_ms;
 }
+// Prepared only inside an admitted AIR chooser invocation. This records the
+// original result; it never supplies a selected state. Taking it removes its
+// authority before a native callback can reenter the writer.
+struct WallplantSelectionTicket {
+    std::uint64_t invocation{}, input{};
+    std::uintptr_t selector{};
+    std::uint32_t before{}, chosen{};
+    bool selected{};
+    bool finish(std::uint64_t call,std::uintptr_t current_selector,std::uint32_t current,
+            std::uint32_t result) noexcept {
+        if(!invocation || call!=invocation || selector!=current_selector || before!=current ||
+           (result!=before && !(before==201 && result==100))) { *this={};return false; }
+        chosen=result;selected=true;return true;
+    }
+    WallplantSelectionTicket take() noexcept { auto result=*this;*this={};return result; }
+};
+inline bool wallplant_same_observation(const NativeInputFrame& a,const NativeInputFrame& b) noexcept {
+    return a.valid && b.valid && a.owner==b.owner && a.owner_generation==b.owner_generation &&
+        a.contact_generation==b.contact_generation && a.action_generation==b.action_generation &&
+        a.physics_step==b.physics_step && a.sampled_at==b.sampled_at && a.state==b.state &&
+        a.airborne && b.airborne && a.airborne_episode==b.airborne_episode && a.air_departure==b.air_departure;
+}
+inline bool wallplant_reconstruction_current(const WallplantSelectionTicket& ticket,
+        const WallplantExecutionProof& proof,const NativeInputOwner& owner,std::uintptr_t selector,
+        std::uint32_t previous,const NativeRequestSample& live,std::uint64_t now) noexcept {
+    if(!ticket.invocation || !ticket.input || !ticket.selected || !selector || ticket.selector!=selector ||
+       (ticket.before!=200 && ticket.before!=201) || !proof.live.valid || proof.live.state!=ticket.before ||
+       ticket.before!=proof.native.state || live.state!=ticket.chosen || !proof.native.valid ||
+       !proof.native.airborne || !owner.valid() || owner!=proof.native.owner || !live.valid ||
+       now<proof.native.sampled_at || now-proof.native.sampled_at>InputTiming::native_sample_lease_ms ||
+       live.crouch_mode!=proof.live.crouch_mode || (live.words[0]&0x60u)!=(proof.live.words[0]&0x60u) ||
+       (live.words[1]&0xc000u)!=(proof.live.words[1]&0xc000u))return false;
+    if(ticket.chosen==ticket.before)return wallplant_execution_current(proof,owner,live,now);
+    // 47d3fa0 stores the old selected state in +1410 before native100 entry
+    // 482c200 reconstructs velocities. Corroborate this exact chooser result;
+    // the previous-state field never authorizes a ground request by itself.
+    return proof.imported_contact && ticket.before==201 && ticket.chosen==100 && previous==201;
+}
 // A real riding collision supplies this record. SurfaceGeometrySample (a ray
 // query) deliberately cannot be converted into a collision record here.
 struct WallplantContact {

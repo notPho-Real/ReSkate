@@ -10,7 +10,8 @@ void publish_geometry(const SurfaceGeometryNativeApi&,const SurfaceGeometryConte
     const NativeInputFrame&,SurfaceGeometryVector root,const SurfaceGeometrySample& ground) noexcept;
 InputSurfaceState surface(std::uint64_t now,const NativeInputFrame&) noexcept;
 InputDisposition request(const InputRequest&,std::uint64_t now,const NativeInputFrame&) noexcept;
-WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity) noexcept;
+WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity,
+    std::uint64_t expected_input=0) noexcept;
 bool current(const WallplantCommand&,std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity) noexcept;
 void completed(const WallplantCommand&,bool applied) noexcept;
 WallplantCommand latest_completed() noexcept;

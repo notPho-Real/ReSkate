@@ -324,9 +324,13 @@ InputDisposition request(const InputRequest& request,std::uint64_t now,const Nat
     disposition(3,"pending_accepted");
     return InputDisposition::started;
 }
-WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity) noexcept {
+WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometryVector velocity,
+        std::uint64_t expected_input) noexcept {
     std::lock_guard lock(mutex);
     if(!pending.sequence)return {};
+    // A selector handoff is valid only before another original physics
+    // observation. Do not consume a replacement input or renew its AIR frame.
+    if(expected_input && (pending.sequence!=expected_input || !wallplant_same_observation(f,observed)))return {};
     const auto press=pending;pending={};
     pending_writer_input.store(0,std::memory_order_release);
     const auto consumption=[&](unsigned stage,const char* reason) {
