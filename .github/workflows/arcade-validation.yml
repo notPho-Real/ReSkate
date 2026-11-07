@@ -149,13 +149,16 @@ jobs:
           New-Item -ItemType Directory -Path artifacts/arcade-dev -Force | Out-Null
           Copy-Item build/vs2022-x64/Release/ReSkate.dll artifacts/arcade-dev/ReSkate.dll
           Copy-Item build/vs2022-x64/arcade-gameplay-fingerprint.txt artifacts/arcade-dev/arcade-gameplay-fingerprint.txt
+          Copy-Item build/vs2022-x64/arcade-build-features.json artifacts/arcade-dev/arcade-build-features.json
           $hash = (Get-FileHash artifacts/arcade-dev/ReSkate.dll -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  ReSkate.dll" | Set-Content artifacts/arcade-dev/ReSkate.dll.sha256 -Encoding ascii
           $env:GITHUB_SHA | Set-Content artifacts/arcade-dev/commit.txt -Encoding ascii
       - name: Record runtime provenance
         env:
           FULL: ${{ needs.policy.outputs.full }}
-        run: python contrib/arcade-mode/ci/provenance.py create artifacts/arcade-dev
+        run: |
+          python contrib/arcade-mode/ci/provenance.py create artifacts/arcade-dev
+          python contrib/arcade-mode/ci/unified_candidate.py artifacts/arcade-dev
       - name: Upload development DLL
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -166,6 +169,8 @@ jobs:
             artifacts/arcade-dev/commit.txt
             artifacts/arcade-dev/provenance.json
             artifacts/arcade-dev/arcade-gameplay-fingerprint.txt
+            artifacts/arcade-dev/arcade-build-features.json
+            artifacts/arcade-dev/candidate.json
           if-no-files-found: error
           retention-days: 30
       - name: Stage tested recovery launcher
@@ -300,6 +305,9 @@ jobs:
           path: |
             artifacts/Install-ReSkate-Arcade.desktop
             artifacts/channel.json
+            artifacts/runtime/candidate.json
+            artifacts/runtime/arcade-gameplay-fingerprint.txt
+            artifacts/runtime/arcade-build-features.json
           if-no-files-found: error
 
 
