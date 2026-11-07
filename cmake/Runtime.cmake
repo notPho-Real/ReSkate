@@ -311,6 +311,7 @@ target_link_libraries(dingosdk_custom_level_manifest PUBLIC dingosdk_json)
 target_link_libraries(dingosdk_runtime PRIVATE dingosdk_custom_level_manifest)
 
 set_target_properties(dingosdk_runtime PROPERTIES OUTPUT_NAME "ReSkate" PREFIX "")
+include("${PROJECT_SOURCE_DIR}/cmake/ArcadeEvidence.cmake")
 
 # The game as a Spotify Connect device (Extension/Music/spotify_device.h): SpotifyHelper/, a
 # Rust library on librespot, built by cargo and linked into ReSkate.dll. Without cargo the DLL
@@ -326,3 +327,119 @@ if(WIN32 AND DINGOSDK_CARGO AND EXISTS "${dingosdk_spotify_dir}/Cargo.toml")
     add_custom_target(dingosdk_spotify_device
         COMMAND "${DINGOSDK_CARGO}" build --locked --release --lib
         BYPRODUCTS "${dingosdk_spotify_lib}"
+        WORKING_DIRECTORY "${dingosdk_spotify_dir}"
+        DEPENDS ${dingosdk_spotify_sources} "${dingosdk_spotify_dir}/Cargo.toml" "${dingosdk_spotify_dir}/Cargo.lock"
+        COMMENT "Building the Spotify device (cargo)"
+        VERBATIM)
+    add_dependencies(dingosdk_runtime dingosdk_spotify_device)
+    # (An import library of the Windows API that the Rust code is linked against, which cargo
+    # has fetched beside the code that uses it.)
+    if(DEFINED ENV{CARGO_HOME})
+        set(dingosdk_cargo_home "$ENV{CARGO_HOME}")
+    else()
+        set(dingosdk_cargo_home "$ENV{USERPROFILE}/.cargo")
+    endif()
+    file(GLOB dingosdk_windows_import "${dingosdk_cargo_home}/registry/src/*/windows_x86_64_msvc-0.52.*/lib/windows.0.52.0.lib")
+    list(GET dingosdk_windows_import 0 dingosdk_windows_import)
+    set(dingosdk_spotify_release "$<NOT:$<CONFIG:Debug>>")
+    target_compile_definitions(dingosdk_runtime PRIVATE "DINGOSDK_SPOTIFY_DEVICE=${dingosdk_spotify_release}")
+    target_link_libraries(dingosdk_runtime PRIVATE
+        "$<${dingosdk_spotify_release}:${dingosdk_spotify_lib}>" "$<${dingosdk_spotify_release}:${dingosdk_windows_import}>"
+        ntdll advapi32 credui secur32 userenv dbghelp legacy_stdio_definitions)
+else()
+    target_compile_definitions(dingosdk_runtime PRIVATE DINGOSDK_SPOTIFY_DEVICE=0)
+endif()
+dingosdk_version_info(dingosdk_runtime "ReSkate mod runtime" "ReSkate.dll" VFT_DLL)
+target_include_directories(dingosdk_runtime SYSTEM PRIVATE "${PROJECT_SOURCE_DIR}/External/steam_networking")
+target_link_libraries(dingosdk_runtime PRIVATE dingosdk_lz4 dingosdk_zstd)
+
+# Menu fonts shared with the launcher (licences in External/fonts).
+set(dingosdk_menu_fonts "${PROJECT_SOURCE_DIR}/External/fonts")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/menu_fonts.rc"
+    "FONT_HEADING RCDATA \"${dingosdk_menu_fonts}/Montserrat-ExtraBold.ttf\"\n"
+    "FONT_BODY RCDATA \"${dingosdk_menu_fonts}/Montserrat-SemiBold.ttf\"\n"
+    "FONT_BRUSH RCDATA \"${dingosdk_menu_fonts}/PermanentMarker-Regular.ttf\"\n")
+target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/menu_fonts.rc")
+
+# The startup window's picture (PNG or JPEG), built into ReSkate.dll when the
+# repository has one. ReSkate.Splash.png/.jpg beside the DLL still takes
+# precedence at run time.
+set(dingosdk_startup_art "${PROJECT_SOURCE_DIR}/assets/startup_splash.png")
+if(NOT EXISTS "${dingosdk_startup_art}")
+    set(dingosdk_startup_art "${PROJECT_SOURCE_DIR}/assets/startup_splash.jpg")
+endif()
+include("${PROJECT_SOURCE_DIR}/cmake/OptionalAssets.cmake")
+# Chat emotes (Better Chat's pack format; Extension/UI/Overlay/chat_emotes.h), built into
+# ReSkate.dll when the repository has assets/emotes/emotes.json and emotes.png (globbed likewise).
+set(dingosdk_emotes "${PROJECT_SOURCE_DIR}/assets/emotes")
+if(EXISTS "${dingosdk_emotes}/emotes.json" AND EXISTS "${dingosdk_emotes}/emotes.png")
+    file(TO_NATIVE_PATH "${dingosdk_emotes}" dingosdk_emotes_native)
+    string(REPLACE "\\" "\\\\" dingosdk_emotes_native "${dingosdk_emotes_native}")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/emotes.rc"
+        "EMOTES_JSON RCDATA \"${dingosdk_emotes_native}\\\\emotes.json\"\n"
+        "EMOTES_PNG RCDATA \"${dingosdk_emotes_native}\\\\emotes.png\"\n")
+    target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/emotes.rc")
+endif()
+# Game content ReSkate carries itself (Engine/Vfs/builtin_packs.h), one zip each in assets/builtin:
+# the Throwdowns page's logo grid (tools/builtin/build_throwdown_menu_pack.py). A missing zip is
+# left out.
+# Each zip is made into a zstd pack by ReSkateBuiltinPacker as the build goes (again only when the
+# zip changes), which is what the DLL carries: compressed whole, a pack's repeated files cost
+# next to nothing.
+set(dingosdk_builtin_rc "")
+set(dingosdk_builtin_packs "")
+foreach(pack IN ITEMS "THROWDOWN_MENU throwdown_menu")
+    separate_arguments(pack)
+    list(GET pack 0 pack_resource)
+    list(GET pack 1 pack_file)
+    set(pack_zip "${PROJECT_SOURCE_DIR}/assets/builtin/${pack_file}.zip")
+    if(EXISTS "${pack_zip}")
+        set(pack_out "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin/${pack_file}.rskpack")
+        add_custom_command(OUTPUT "${pack_out}"
+            COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin"
+            COMMAND dingosdk_builtin_packer "${pack_zip}" "${pack_out}"
+            DEPENDS "${pack_zip}" dingosdk_builtin_packer
+            COMMENT "Packing built-in content ${pack_file}"
+            VERBATIM)
+        file(TO_NATIVE_PATH "${pack_out}" pack_out_native)
+        string(REPLACE "\\" "\\\\" pack_out_native "${pack_out_native}")
+        string(APPEND dingosdk_builtin_rc "BUILTIN_PACK_${pack_resource} RCDATA \"${pack_out_native}\"\n")
+        list(APPEND dingosdk_builtin_packs "${pack_out}")
+    endif()
+endforeach()
+if(dingosdk_builtin_rc)
+    add_custom_target(dingosdk_builtin_content DEPENDS ${dingosdk_builtin_packs})
+    add_dependencies(dingosdk_runtime dingosdk_builtin_content)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc" "${dingosdk_builtin_rc}")
+    target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc")
+    set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/builtin_packs.rc" APPEND PROPERTY OBJECT_DEPENDS "${dingosdk_builtin_packs}")
+endif()
+# The music sources' setup page (Extension/Music/spotify_dashboard.h).
+file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Extension/Music/setup_page.html" dingosdk_music_page_native)
+string(REPLACE "\\" "\\\\" dingosdk_music_page_native "${dingosdk_music_page_native}")
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/music_setup_page.rc"
+    "MUSIC_SETUP_HTML RCDATA \"${dingosdk_music_page_native}\"\n")
+target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/music_setup_page.rc")
+set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/generated/music_setup_page.rc" APPEND PROPERTY OBJECT_DEPENDS "${PROJECT_SOURCE_DIR}/Extension/Music/setup_page.html")
+# The Spotify station's picture in the music screen (Extension/Music/spotify_cover.h).
+if(EXISTS "${PROJECT_SOURCE_DIR}/assets/spotify.png")
+    file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/assets/spotify.png" dingosdk_spotify_art_native)
+    string(REPLACE "\\" "\\\\" dingosdk_spotify_art_native "${dingosdk_spotify_art_native}")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/spotify_art.rc"
+        "SPOTIFY_PNG RCDATA \"${dingosdk_spotify_art_native}\"\n")
+    if(EXISTS "${PROJECT_SOURCE_DIR}/assets/liked.png")
+        file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/assets/liked.png" dingosdk_liked_art_native)
+        string(REPLACE "\\" "\\\\" dingosdk_liked_art_native "${dingosdk_liked_art_native}")
+        file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/generated/spotify_art.rc"
+            "LIKED_PNG RCDATA \"${dingosdk_liked_art_native}\"\n")
+    endif()
+    target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/spotify_art.rc")
+endif()
+if(EXISTS "${dingosdk_startup_art}")
+    file(TO_NATIVE_PATH "${dingosdk_startup_art}" dingosdk_startup_art_native)
+    string(REPLACE "\\" "\\\\" dingosdk_startup_art_native "${dingosdk_startup_art_native}")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_art.rc"
+        "STARTUP_SPLASH RCDATA \"${dingosdk_startup_art_native}\"\n")
+    target_sources(dingosdk_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_art.rc")
+endif()
+target_link_libraries(dingosdk_runtime PRIVATE dingosdk_capture)

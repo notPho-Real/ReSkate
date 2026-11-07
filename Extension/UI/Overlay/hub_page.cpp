@@ -1,5 +1,6 @@
 #include "overlay_internal.h"
 #include "Extension/ArcadeMode/arcade_mode.h"
+#include "Extension/ArcadeMode/arcade_trickpedia.h"
 #include "skate_style.h"
 #include "skate_menu_internal.h"
 #include "cursor.h"
@@ -115,6 +116,11 @@ struct Hub {
     // Mod Options: the same rows and actions the page has always had (native_tools_view.h).
     native_tools::State tools;
     int tools_tab{};
+    arcade_mode::trickpedia::Query trick_query;
+    bool trick_keyboard{};
+    bool trick_evidence_details{};
+    ULONGLONG trick_back_until{};
+    arcade_mode::ArcadeTrick selected_trick{arcade_mode::ArcadeTrick::ollie};
     // Recording a bind (the BINDS tab): which action (0: none), what has been pressed so far,
     // and when it gives up (GetTickCount64).
     int recording_bind{};
@@ -981,7 +987,7 @@ void failed_page(Ui &ui, ImVec2 a, ImVec2 z) {
 
 // ---------------------------------------------------------------- Mod Options
 
-enum ToolsTab : int { official_tab, custom_tab, world_tab, parks_tab, player_tab, online_tab, visuals_tab, binds_tab };
+enum ToolsTab : int { official_tab, custom_tab, world_tab, parks_tab, player_tab, online_tab, visuals_tab, binds_tab, trickpedia_tab };
 
 // The next (or the one before) of a setting's steps from where it is now; it stops at the ends.
 template<std::size_t N> float stepped(float current, const std::array<float, N> &steps, int direction) {
@@ -1054,8 +1060,15 @@ struct Column {
 // The page's tabs. What a control does, and when it can, is the same as on ReSkate's own menu
 // (native_tools_view.h for travel, parks and the world; the same requests and commands that
 // menu sends for the rest); how it is laid out is here.
+#include "trickpedia_page.inl"
 void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
     auto &h = ui.h;
+    if(h.tools_tab==trickpedia_tab) {
+        if(arcade_mode::enabled()){trickpedia_page(ui,a,z);return;}
+        h.tools_tab=player_tab;h.trick_query={};h.selected_trick=arcade_mode::ArcadeTrick::ollie;
+        set_typing(h,0);h.focus=0;h.last.clear();
+        h.trick_keyboard=false;h.trick_evidence_details=false;h.trick_back_until=0;
+    }
     const auto &m = h.full;
     const auto &mp = m.multiplayer;
     const auto &cb = h.callbacks;
@@ -1233,6 +1246,8 @@ void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
         list.heading("SKATE YOUR WAY");
         if (list.setting("Arcade Mode", arcade_mode::enabled() ? "ON" : "OFF", console))
             run(arcade_mode::enabled() ? "arcademode off" : "arcademode on");
+        if(arcade_mode::enabled() && list.setting("Arcade Trickpedia", "OPEN", true))
+            h.tools_tab=trickpedia_tab;
         if (list.setting("Noclip", on_off(d.noclip), (d.noclip_available || d.noclip) && debugging)) debug({DebugAction::set_noclip, !d.noclip});
         if (list.setting("No bail", on_off(d.no_bail), (d.no_bail_available || d.no_bail) && debugging)) debug({DebugAction::set_no_bail, !d.no_bail});
         const auto &wear = m.offline.board_wear;
@@ -1506,6 +1521,7 @@ bool hub_page_pending() {
     auto &h = hub();
     auto &s = state();
     const auto now = Clock::now();
+    const auto previous_section = h.page.section;
     if (now >= h.next_page) {
         h.next_page = now + 40ms;
         h.page = {};
@@ -1521,11 +1537,14 @@ bool hub_page_pending() {
         mods.visited = false;
         offer_apply(mods);
     }
-    if (shown != h.shown) {
+    if (shown != h.shown || (shown && previous_section != h.page.section)) {
         h.shown = shown;
         h.next_model = {};
         h.searched = false;
         h.last.clear();
+        h.focus = 0;
+        h.trick_keyboard=false;h.trick_evidence_details=false;h.trick_back_until=0;
+        set_typing(h, 0);
         if (!shown) {
             dingosdk::multiplayer::hold_native_menu_back(false);
             if (!mod_page().leaving) mod_page().declined = false;
@@ -1638,11 +1657,21 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
     // back to the list there, and keep holding it until they are let go.
     auto &mods_page = mod_page();
     const bool on_mods = !embedded && h.page.section == 2;
+    const bool on_tricks = !embedded && arcade_mode::enabled() &&
+        (h.page.section==3 || (h.page.section==1 && h.tools_tab==trickpedia_tab));
     const bool back_down = keys[7] || (ui.pad.buttons & 0x2000);
+    if(ui.input && on_tricks && h.typing==hash("trick-search") && (pressed&0x2000)) {
+        set_typing(h,0);h.trick_back_until=GetTickCount64()+300;
+    }
     if (ui.input && !typing_before) {
         // Back closes the game's menu, which takes a moment to say so: this goes at once.
         if (!embedded && (key_new(7) || (pressed & 0x2000))) {
-            if (on_mods && mods_hold_back(mods_page)) mods_back(h, mods_page), mods_page.hold_back_until = GetTickCount64() + 300, h.sound = sound_select;
+            if(on_tricks && h.trick_keyboard) {
+                h.trick_keyboard=false;h.trick_back_until=GetTickCount64()+300;
+                h.focus_next=hash("trick-search");h.sound=sound_select;
+            }
+            else if(on_tricks && GetTickCount64()<h.trick_back_until) {}
+            else if (on_mods && mods_hold_back(mods_page)) mods_back(h, mods_page), mods_page.hold_back_until = GetTickCount64() + 300, h.sound = sound_select;
             else if (on_mods && guard_leave(mods_page)) offer_leave(mods_page), h.sound = sound_select;
             else if (!on_mods || GetTickCount64() >= mods_page.hold_back_until) h.dismissed = true;
         }
@@ -1673,6 +1702,7 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         next_tab = key_new(6) || (pressed & 0x20000);
     }
     if (back_down && GetTickCount64() < mods_page.hold_back_until) mods_page.hold_back_until = GetTickCount64() + 300;
+    if(back_down && GetTickCount64()<h.trick_back_until)h.trick_back_until=GetTickCount64()+300;
     // The answer to leaving with changes not applied: LATER (or an apply that reloads nothing) lets go
     // of Back, and a moment later presses it for the player, on the pad only the game reads.
     if (const int answer = mods_page.leave_answer.exchange(0)) {
@@ -1691,7 +1721,9 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         }
     }
     if (!embedded)
-        dingosdk::multiplayer::hold_native_menu_back(on_mods && (mods_hold_back(mods_page) || guard_leave(mods_page) || GetTickCount64() < mods_page.hold_back_until));
+        dingosdk::multiplayer::hold_native_menu_back(
+            (on_tricks && (h.trick_keyboard || h.typing==hash("trick-search") || GetTickCount64()<h.trick_back_until)) ||
+            (on_mods && (mods_hold_back(mods_page) || guard_leave(mods_page) || GetTickCount64() < mods_page.hold_back_until)));
     h.keys_before = keys;
     // A key that ended the typing (Enter, Escape) is still down: it is not a fresh press of anything.
     // And so is one held while the game was not the window in front.
@@ -1700,7 +1732,8 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
     h.items.clear();
 
     // ---- the page's tabs
-    const bool tools = !embedded && h.page.section == 1;
+    const bool trickpedia = !embedded && h.page.section == 3;
+    const bool tools = !embedded && (h.page.section == 1 || trickpedia);
     const bool mods = !embedded && h.page.section == 2;
     {
         // (Each page keeps the tab it was left on.)
@@ -1709,10 +1742,13 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         int &open = tools ? h.tools_tab : mods ? mod_page().tab : multiplayer_tab;
         if (mods) {
             tabs = {{browse_tab, "BROWSE"}, {installed_tab, "MY MODS"}, {updates_tab, "UPDATES"}};
+        } else if (trickpedia) {
+            tabs={{trickpedia_tab,"ARCADE CONTROLS"}};h.tools_tab=trickpedia_tab;
         } else if (tools) {
             if (h.tools_tab == custom_tab) h.tools_tab = official_tab;
             tabs = {{official_tab, "MAPS"}, {world_tab, "WORLD"}, {parks_tab, "PARKS"},
                     {player_tab, "PLAYER"}, {online_tab, "ONLINE"}, {visuals_tab, "VISUALS"}, {binds_tab, "BINDS"}};
+            if(arcade_mode::enabled())tabs.emplace_back(trickpedia_tab,"TRICKS");
         } else {
             tabs = {{static_cast<int>(Tab::browser), "SERVER BROWSER"}, {static_cast<int>(Tab::host), "HOST LOBBY"}};
             // The session and its voice chat are only there in one.

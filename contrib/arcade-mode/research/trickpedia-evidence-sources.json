@@ -1,0 +1,92 @@
+[
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-repeated-flip-observations.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "22ee33034b896372ae2b0e9caa045568f12ae651fbd6b9b8c8b357f790d4ab77"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-heelflip-24.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "9ef9ffc0177bdef234c21ffa0d9c0d4c20d4430add7c6b742223b458d7773da9"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-repeat-window-28.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "aa3f02e67b76c6b6f3064912b3992df104f04b121e91fea272a7d19a8ddeb757"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-repeat-window-24.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "6d112b8f46c1a807b4f02ff1764f4ead24abe037b4f52e8f5722e7723b0981c7"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-manual-entry-60hz.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "71e67d92f426a6ba60745a3671631225d068016e137332ab6f0d768729562062"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-manual-lifetime-observations.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "e41a7bc512ac0b9280d6f77c8337a5d71dc5a9bd269df1df26ace08372db54f9"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-grab-observations.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "97bbdd12c06122c401d228e6b6fc4767f2e53dc669e9c31182cb6fe0c5b92044"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-grab-ramp-lifecycle.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "4a65eeb2c797d6c1db773dc051bed22e77c1bc879ad3622a54d648ee10831fc6"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-finger-bindings-28.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "99ff4fb177f856fdc68337510341a63d9c299ba81b418663788e80c24b3d4c9f"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-finger-switch-28.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "031faf8fc8772d26611753cda6b884fd1cabb22c93315a45cf4d287fee1b8216"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-finger-failure-28.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "b0e34a0a792d6052bcef0acbb0cc0cd5f5f2557f96e5bd6dc06805d8357ada35"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-grab-lifecycle-failures.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "e2b2111517acca8a2d9c2eae495193ab376d30792aba3d70be9e7099e56bf202"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-native-footer-release-28.json",
+    "report_revision": "a18aa002a438080cc58b78b53de059774b5ba2aa",
+    "sha256": "aa9c7204e259a7434e6ef08463c28c2f76e540662ad4445b33720b452b37bcec"
+  },
+  {
+    "path": "contrib/arcade-mode/research/native-footplant-entry.md",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "32f172a821c5ca19d12d270478895855389b945007d75810e9724743ba8e9c8f"
+  },
+  {
+    "path": "contrib/arcade-mode/research/rc3-gameplay-status.md",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "c6f606b36bbd81e07c5f3c94c93b58e41e5c6b5aeddff2ed3ee18523ff6c4d36"
+  },
+  {
+    "path": "contrib/arcade-mode/research/GRIND_TRANSITIONS_2026_10_30.md",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "932396510d6c1a631d23c7852f319ae92f5ec4901cfbdf318558eec2902ca399"
+  },
+  {
+    "path": "contrib/arcade-mode/research/grind-fixture-results.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "c16db579a7efd2cd03bc3e943a593fed0e553f91dcaf67e05fa83586eced124f"
+  },
+  {
+    "path": "contrib/arcade-mode/research/grind-exit-results.json",
+    "report_revision": "9906af3b5d4816c15d4506430d51afb7d860b970",
+    "sha256": "48b1d5ad6e6c4b7cd10a9829a0434d09b23183e9bc3ea944653c3c1eacb497b3"
+  }
+]

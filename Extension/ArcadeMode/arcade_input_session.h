@@ -660,8 +660,7 @@ private:
                 out.unsupported = true; return InputDisposition::unsupported;
             }
             if (request.form==InputForm::held_repeat) {
-                const auto id=request.air.trick==ArcadeTrick::double_kickflip?2:
-                    request.air.trick==ArcadeTrick::double_heelflip?3:0;
+                const auto id=static_cast<int>(held_flip_base(request.air.trick));
                 // The native Prepare window consumes a gesture already in
                 // progress. Starting our multi-frame flick inside it missed
                 // HeldTrick admission in the 200ms hardware repeat and caused
@@ -724,7 +723,7 @@ private:
                      request.air.trick != ArcadeTrick::kickflip || request.air.predicate != AirInputPredicate::face)) {
                     out.unsupported = true; return InputDisposition::unsupported;
                 }
-                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? ArcadeTrick::kickflip :
+                const auto selected=(request.form == InputForm::neutral_release || request.form == InputForm::neutral_press) ? neutral_flip_trick() :
                     select_named_trick(TrickFamily::flip,direction(request.direction),request.presses);
                 if(request.air.trick!=ArcadeTrick::none && (request.air.family!=TrickFamily::flip || request.air.trick!=selected)){
                     out.unsupported=true;return InputDisposition::unsupported;

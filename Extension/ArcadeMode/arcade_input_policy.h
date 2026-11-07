@@ -1,18 +1,8 @@
 #pragma once
 #include "Engine/Game/Skater/native_orientation.h"
 #include <cstdint>
+#include "arcade_trick_registry.h"
 namespace dingosdk::arcade_mode {
-struct InputTiming {
-    // Physical opposite strokes, in either ground or airborne preparation.
-    // This does not extend native admission, acquisition or balance deadlines.
-    static constexpr std::uint64_t manual_throw_pair_ms = 450;
-    static constexpr std::uint64_t ground_pair_ms = 220;
-    static constexpr std::uint64_t ground_sample_slack_ms = 55;
-    static constexpr std::uint64_t air_pair_ms = 400, air_request_ms = 700;
-    static constexpr std::uint64_t direction_ms = 500, extra_press_ms = 300;
-    static constexpr std::uint64_t takeoff_preload_ms = 160, readiness_ms = 200;
-    static constexpr std::uint64_t native_sample_lease_ms = 150;
-};
 struct InputGenerations {
     std::uint64_t owner{}, contact{}, action{};
     bool operator==(const InputGenerations&) const = default;
