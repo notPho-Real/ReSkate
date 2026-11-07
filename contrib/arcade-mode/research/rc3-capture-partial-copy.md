@@ -31,3 +31,19 @@ nonempty instruction context, other threads, and stack-referenced heap bytes.
 It still requires the following real crash and all existing report metadata.
 Callback checks reject ignoring a read failure or taking over file/memory I/O.
 Windows execution remains pending CI; this macOS host cannot validate PSS.
+
+## Snapshot passes; report tag violates the envelope contract
+
+Run42327518591 at944406a5 completed every configured Windows target. Both the
+early fixture and the full123-test suite failed at `Cannot prepare a stuck-load
+report`; the other122 tests passed. This check occurs after the exact snapshot,
+exception/context, heap, thread and metadata assertions. The failure therefore
+does not indicate another partial-copy failure in this run.
+
+The new `capture.snapshot` tag was serialized as a JSON boolean, while
+`ReportEnvelope` deliberately accepts only string tag values. It now serializes
+as `"true"` or `"false"`; the native fixture requires the exact string and still
+constructs and streams the actual envelope. The envelope validator, PSS capture,
+dump flags and all native content checks remain unchanged. Full Windows CI
+must pass before deployment. Early failed-fixture logs are now uploaded before
+the full build so a future failure can be diagnosed without waiting for it.

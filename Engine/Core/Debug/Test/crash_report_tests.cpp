@@ -455,7 +455,7 @@ void stuck_check(const std::filesystem::path& root) {
     // The Windows integration fixture must exercise the stable snapshot path,
     // not pass by silently falling back to a live read. The runtime retains
     // live capture on hosts where PSS is unavailable.
-    check(tags.value("capture.snapshot", false) && tags.value("capture.snapshot_error", "") == "0",
+    check(tags.value("capture.snapshot", "") == "true" && tags.value("capture.snapshot_error", "") == "0",
         "Stuck-load fixture did not capture a process snapshot");
     check(tags.at("error.type").string() == "stall" && tags.at("load.stage").string() == "Starting level load" &&
         tags.at("load.seconds").string() == "130" && !tags.contains("crash.site") &&

@@ -117,7 +117,7 @@ bool publish_dump(HANDLE process, const std::filesystem::path& game_root,
     attributes["report.id"] = utf8(dump.stem().c_str());
     attributes["capture.source"] = source;
     if (stuck) {
-        attributes["capture.snapshot"] = snapshot;
+        attributes["capture.snapshot"] = snapshot ? "true" : "false";
         attributes["capture.snapshot_error"] = std::to_string(snapshot_error);
     }
     // (Tags for grouping crashes by the level and the graphics card; absent when unknown.)
