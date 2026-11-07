@@ -1,0 +1,575 @@
+{
+  "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+  "map": "skate3_megapark",
+  "arcade_enabled": false,
+  "arcade_acceptance": false,
+  "independent_variable": "Nose selector released before foot input, held through landing, or released with the foot input.",
+  "common_inputs": "Native push, native RS Ollie, nose grab, native both-feet input 3.35\u20133.75s; hand held until4.75s.",
+  "trials": [
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map_gate": {
+        "source": "live native descriptor and registered client sublevel list",
+        "base": 5368709120,
+        "context": 1167576128,
+        "client": 1911056448,
+        "state": 13,
+        "root": "Levels/Game/DingoLevel_Root/DingoLevel_Root",
+        "sublevel": "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark",
+        "descriptor_pointers": [
+          463641072,
+          401690400
+        ],
+        "list_object": 765602304,
+        "list_bounds": [
+          764932288,
+          764932296,
+          764932352
+        ],
+        "list_pointers": [
+          1115524448
+        ],
+        "client_sublevels": [
+          "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark"
+        ]
+      },
+      "error": null,
+      "observer_error": null,
+      "capture": "native-footer-neutral-held_controls-result.json.gz",
+      "capture_raw_sha256": "d8f430a3c39a03fcdcea2040119bb3a57d5554a424aa44a9c8aefe68bac9133d",
+      "rows": [
+        {
+          "name": "original_airwalk",
+          "samples": 742,
+          "transitions": [
+            {
+              "seconds": 0.009656,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.640054,
+              "state": 103,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.695064,
+              "state": 200,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.76768,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.129411,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.397307,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 12,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.803093,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": true,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.032862,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 1,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.069043,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 1,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.365694,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 9,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.795497,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            }
+          ]
+        }
+      ],
+      "native_actor_lines": [],
+      "final_state": 100,
+      "scoring_verified": false,
+      "capture_compressed_sha256": "63accb61f1e3cb376a5b77277d47bf54ce6652f729e6b03bf64be2335456267e",
+      "control": "neutral"
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map_gate": {
+        "source": "live native descriptor and registered client sublevel list",
+        "base": 5368709120,
+        "context": 1167576128,
+        "client": 1911056448,
+        "state": 13,
+        "root": "Levels/Game/DingoLevel_Root/DingoLevel_Root",
+        "sublevel": "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark",
+        "descriptor_pointers": [
+          463641072,
+          401690400
+        ],
+        "list_object": 765602304,
+        "list_bounds": [
+          764932288,
+          764932296,
+          764932352
+        ],
+        "list_pointers": [
+          1115524448
+        ],
+        "client_sublevels": [
+          "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark"
+        ]
+      },
+      "error": null,
+      "observer_error": null,
+      "capture": "native-footer-held-held_controls-result.json.gz",
+      "capture_raw_sha256": "6670ee5bd87dda66824e41ddb1ebc5ac2b27bfba75b46cdbe50c3722fbfd1607",
+      "rows": [
+        {
+          "name": "original_airwalk",
+          "samples": 726,
+          "transitions": [
+            {
+              "seconds": 0.010134,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.637906,
+              "state": 103,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.705547,
+              "state": 200,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.773286,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 0,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.14108,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.408687,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 12,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.808288,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": true,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.974784,
+              "state": 504,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.002725,
+              "state": 504,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.80972,
+              "state": 504,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            }
+          ]
+        }
+      ],
+      "native_actor_lines": [],
+      "final_state": 504,
+      "scoring_verified": false,
+      "capture_compressed_sha256": "dfdb786107d1d0b05160875d920395d4a0c0ac06bc0de13f494e257fc34302df",
+      "control": "held"
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map_gate": {
+        "source": "live native descriptor and registered client sublevel list",
+        "base": 5368709120,
+        "context": 1167576128,
+        "client": 1911056448,
+        "state": 13,
+        "root": "Levels/Game/DingoLevel_Root/DingoLevel_Root",
+        "sublevel": "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark",
+        "descriptor_pointers": [
+          463641072,
+          401690400
+        ],
+        "list_object": 765602304,
+        "list_bounds": [
+          764932288,
+          764932296,
+          764932352
+        ],
+        "list_pointers": [
+          1115524448
+        ],
+        "client_sublevels": [
+          "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark"
+        ]
+      },
+      "error": null,
+      "observer_error": null,
+      "capture": "native-footer-release-selector-held_controls-result.json.gz",
+      "capture_raw_sha256": "84a007902e6cfc0826da795646d55bdf685177a13ad16d0bb823dbc34d6a2943",
+      "rows": [
+        {
+          "name": "original_airwalk",
+          "samples": 734,
+          "transitions": [
+            {
+              "seconds": 0.00755,
+              "state": 100,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.626045,
+              "state": 103,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.692824,
+              "state": 200,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 2.760223,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 6,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.133024,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 2,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.392215,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 6,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 2,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 3.794046,
+              "state": 201,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": true,
+                "Bool.Anim.Is.OneFootExit": true,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 2,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.064331,
+              "state": 504,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": true,
+                "EnumGS.GrabType": 2,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": true,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            },
+            {
+              "seconds": 4.092217,
+              "state": 504,
+              "values": {
+                "EnumGS.OneFooterType": 0,
+                "Bool.State.Is.OneFootAir": false,
+                "Bool.Anim.Is.OneFootExit": false,
+                "Bool.GP.CanGrab": false,
+                "EnumGS.GrabType": 2,
+                "Bool.Intent.LeftHandGrab": false,
+                "Bool.Intent.RightHandGrab": false,
+                "Bool.GP.TwoFeetOnBoard": false
+              }
+            }
+          ]
+        }
+      ],
+      "native_actor_lines": [],
+      "final_state": 504,
+      "scoring_verified": false,
+      "capture_compressed_sha256": "94f7dc56a1e5edaefff7b5eac0ca950fefa70deabb76e2ddbd90f80b823a5e64",
+      "control": "release-selector"
+    }
+  ],
+  "limitations": [
+    "Original-input comparisons do not verify the Arcade adapter.",
+    "No scoring/composite ownership evidence.",
+    "Matched input timings do not prove identical physical trajectories.",
+    "Owner observed insufficient airtime. These controls provided only1.26\u20131.36s airborne; repeat with a faster approach and full native Ollie before attributing failure to the adapter.",
+    "The release-selector trial entered Christ Air6 from BS2 rather than Airwalk12 from Nose6. It is not a matched Airwalk control. No selector-release production change is justified by that trial."
+  ]
+}

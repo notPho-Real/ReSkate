@@ -8,8 +8,22 @@ one-footer release: withdraw the foot input first, retain the established
 native hand while OneFootAir/OneFootExit is active, then release it. Missing
 state, owner loss, stale input, landing and Arcade OFF still revoke ownership.
 All 20 local targeted suites pass. Exact-source development and targeted CI
-have passed; upstream Windows integration is still building. This candidate
-has not been installed or gameplay accepted.
+and upstream integration have all passed. The exact DLL is installed and
+its live mapping verified on Mega Park. It is not gameplay accepted. Two
+Airwalk trials initialized and advanced the correct native actors but bailed;
+the second preserved the hand through the exit tags, so the remaining catch
+problem is not solved by tag retention alone. See
+[rc3-native-footer-release-30.json](rc3-native-footer-release-30.json).
+
+A read-only observer using the SDK final-pose layout now captures actual
+body joints as well as board orientation, travel and wheel contact. Manual
+to fakie retained tail contact for 10.23 seconds: the lower foot and board
+end become leading relative to travel. Nose Manual shows the opposite
+physical slope after RT and retained nose contact for 10.06 seconds in the
+paired medium-speed trial. See
+[rc3-native-final-manual-pose-30.json](rc3-native-final-manual-pose-30.json).
+Chained reverts and owner visual acceptance remain pending.
+These observations do not establish scoring or the full grab catalog.
 
 The correction follows an original-controller Airwalk comparison: releasing
 the feet before the hand landed cleanly, whereas releasing both together

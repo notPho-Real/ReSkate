@@ -1,0 +1,282 @@
+{
+  "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+  "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+  "map": "skate3_megapark",
+  "observer": "Read-only SDK native_pose_layout and Bone Cam parent-local joint composition; independent board physics, travel and contact reads.",
+  "paired_revert_holds_verified": true,
+  "full_manual_acceptance": false,
+  "trials": [
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map_gate": {
+        "source": "live native descriptor and registered client sublevel list",
+        "base": 5368709120,
+        "context": 1167576128,
+        "client": 1911056448,
+        "state": 13,
+        "root": "Levels/Game/DingoLevel_Root/DingoLevel_Root",
+        "sublevel": "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark",
+        "descriptor_pointers": [
+          463641072,
+          401690400
+        ],
+        "list_object": 765602304,
+        "list_bounds": [
+          764932288,
+          764932296,
+          764932352
+        ],
+        "list_pointers": [
+          1115524448
+        ],
+        "client_sublevels": [
+          "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark"
+        ]
+      },
+      "mode": "manual_pose",
+      "capture": "final-pose-slow-manual_pose-result.json.gz",
+      "capture_raw_sha256": "0ed422adca5bcd851e7b545c0769b5d69f07c990000935733e6a5d339eb90094",
+      "error": null,
+      "observer_error": null,
+      "samples": 518,
+      "valid_final_pose_samples": 514,
+      "reported_continuous_fakie_hold_seconds": 10.234173017,
+      "windows": {
+        "before": {
+          "samples": 8,
+          "seconds": [
+            -0.207364509,
+            -0.022162517
+          ],
+          "medians": {
+            "speed": 7.566030816000828,
+            "board_forward_dot_travel": 0.9972579966196253,
+            "board_rise_toward_travel": 0.07341578602790833,
+            "right_minus_left_ankle_along_travel": 0.35608740523287985,
+            "right_minus_left_ankle_height": 0.020327831687366668,
+            "ankle_rise_toward_travel": 0.020327831687366668
+          }
+        },
+        "fakie_settled": {
+          "samples": 407,
+          "seconds": [
+            1.001026369,
+            11.880295681
+          ],
+          "medians": {
+            "speed": 3.642415340119689,
+            "board_forward_dot_travel": -0.9629879140858386,
+            "board_rise_toward_travel": -0.2695445716381073,
+            "right_minus_left_ankle_along_travel": -0.37172327763588225,
+            "right_minus_left_ankle_height": 0.10396030613993179,
+            "ankle_rise_toward_travel": -0.10396030613993179
+          }
+        }
+      },
+      "native_actor_lines": [
+        "[2026-11-06 16:34:36.313] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756109714 serial=15 pose=t_low_pose initialized=true before=0 after=2 delta=2 state=100 contacts=49152 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:36.315] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756109716 serial=15 pose=tail_regular initialized=true before=0 after=2 delta=2 state=100 contacts=49152 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:36.579] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756109980 serial=15 pose=tail_regular initialized=true before=16 after=18 delta=2 state=100 contacts=16384 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:36.846] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756110247 serial=15 pose=tail_regular initialized=true before=32 after=34 delta=2 state=101 contacts=16384 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:37.813] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111215 serial=15 pose=t_fakie_med_pose initialized=true before=0 after=1 delta=1 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:37.814] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111215 serial=15 pose=t_fakie_low_pose initialized=true before=0 after=1 delta=1 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:37.814] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111216 serial=15 pose=t_fakie_med_turn_fs initialized=true before=0 after=1 delta=1 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:37.815] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111217 serial=15 pose=tail_fakie initialized=true before=0 after=1 delta=1 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:38.077] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111479 serial=15 pose=tail_fakie initialized=true before=15 after=17 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:38.344] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756111746 serial=15 pose=tail_fakie initialized=true before=31 after=33 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:38.612] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756112013 serial=15 pose=tail_fakie initialized=true before=47 after=49 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:38.879] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756112281 serial=15 pose=tail_fakie initialized=true before=63 after=65 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:39.145] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756112546 serial=15 pose=tail_fakie initialized=true before=79 after=81 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:39.412] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756112814 serial=15 pose=tail_fakie initialized=true before=95 after=97 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:39.679] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756113081 serial=15 pose=tail_fakie initialized=true before=111 after=113 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:39.945] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756113346 serial=15 pose=tail_fakie initialized=true before=127 after=129 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:40.211] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756113613 serial=15 pose=tail_fakie initialized=true before=143 after=145 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:40.478] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756113879 serial=15 pose=tail_fakie initialized=true before=159 after=161 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:40.747] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756114148 serial=15 pose=tail_fakie initialized=true before=175 after=177 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:41.012] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756114413 serial=15 pose=tail_fakie initialized=true before=191 after=193 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:41.279] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756114680 serial=15 pose=tail_fakie initialized=true before=207 after=209 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:41.547] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756114949 serial=15 pose=tail_fakie initialized=true before=223 after=225 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:41.811] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756115212 serial=15 pose=tail_fakie initialized=true before=239 after=241 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:42.078] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756115479 serial=15 pose=tail_fakie initialized=true before=255 after=257 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:42.345] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756115746 serial=15 pose=tail_fakie initialized=true before=271 after=273 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:42.612] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756116013 serial=15 pose=tail_fakie initialized=true before=287 after=289 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:42.879] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756116280 serial=15 pose=tail_fakie initialized=true before=303 after=305 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:43.145] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756116547 serial=15 pose=tail_fakie initialized=true before=7 after=9 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:43.412] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756116812 serial=15 pose=tail_fakie initialized=true before=23 after=25 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:43.680] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756117081 serial=15 pose=tail_fakie initialized=true before=39 after=41 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:43.945] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756117345 serial=15 pose=tail_fakie initialized=true before=55 after=57 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:44.211] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756117613 serial=15 pose=tail_fakie initialized=true before=71 after=73 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:44.479] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756117881 serial=15 pose=tail_fakie initialized=true before=87 after=89 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:44.745] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756118146 serial=15 pose=tail_fakie initialized=true before=103 after=105 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:45.012] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756118413 serial=15 pose=tail_fakie initialized=true before=119 after=121 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:45.278] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756118679 serial=15 pose=tail_fakie initialized=true before=135 after=137 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:45.549] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756118949 serial=15 pose=tail_fakie initialized=true before=151 after=153 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:45.812] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756119213 serial=15 pose=tail_fakie initialized=true before=167 after=169 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:46.078] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756119479 serial=15 pose=tail_fakie initialized=true before=183 after=185 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:46.345] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756119746 serial=15 pose=tail_fakie initialized=true before=199 after=201 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:46.612] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756120012 serial=15 pose=tail_fakie initialized=true before=215 after=217 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:46.879] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756120280 serial=15 pose=tail_fakie initialized=true before=231 after=233 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:47.145] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756120546 serial=15 pose=tail_fakie initialized=true before=247 after=249 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:47.412] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756120813 serial=15 pose=tail_fakie initialized=true before=263 after=265 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:47.680] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756121081 serial=15 pose=tail_fakie initialized=true before=279 after=281 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:47.946] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756121348 serial=15 pose=tail_fakie initialized=true before=295 after=297 delta=2 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:34:48.212] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756121613 serial=15 pose=tail_fakie initialized=true before=311 after=312 delta=1 state=100 contacts=16384 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified."
+      ],
+      "limits": [
+        "Final joint positions and board physics were read independently; no pose or physics was written.",
+        "A sign reversal shows physical orientation relative to travel; it is not an automatic native-animation or scoring verdict.",
+        "Console cleanup ends the trial; post-cleanup state is not a sustained manual acceptance sample."
+      ],
+      "scoring_verified": false,
+      "capture_compressed_sha256": "fc7ee60c326c28b79f116e1dc56364fbe468d6ec9f6bd7248f5c3d5328a25579",
+      "native_actor_serial": 15
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map_gate": {
+        "source": "live native descriptor and registered client sublevel list",
+        "base": 5368709120,
+        "context": 1167576128,
+        "client": 1911056448,
+        "state": 13,
+        "root": "Levels/Game/DingoLevel_Root/DingoLevel_Root",
+        "sublevel": "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark",
+        "descriptor_pointers": [
+          463641072,
+          401690400
+        ],
+        "list_object": 765602304,
+        "list_bounds": [
+          764932288,
+          764932296,
+          764932352
+        ],
+        "list_pointers": [
+          1115524448
+        ],
+        "client_sublevels": [
+          "levels/game/dingolevel_reskate_skate3_megapark/dingolevel_reskate_skate3_megapark"
+        ]
+      },
+      "mode": "nose_pose",
+      "capture": "final-pose-medium-nose_pose-result.json.gz",
+      "capture_raw_sha256": "e3405c75c56e552aa0a0add92c05d87265cb08882f02bf31b5fa73cd0391d969",
+      "error": null,
+      "observer_error": null,
+      "samples": 539,
+      "valid_final_pose_samples": 535,
+      "reported_continuous_fakie_hold_seconds": 10.055419445,
+      "windows": {
+        "before": {
+          "samples": 12,
+          "seconds": [
+            -0.304510152,
+            -0.018560106
+          ],
+          "medians": {
+            "speed": 8.474517814315089,
+            "board_forward_dot_travel": 0.9944070919537356,
+            "board_rise_toward_travel": -0.10537675023078918,
+            "right_minus_left_ankle_along_travel": 0.41726133483286143,
+            "right_minus_left_ankle_height": -0.05413428171469119,
+            "ankle_rise_toward_travel": -0.05413428171469119
+          }
+        },
+        "fakie_settled": {
+          "samples": 398,
+          "seconds": [
+            1.000490092,
+            11.455649182
+          ],
+          "medians": {
+            "speed": 4.26001036213977,
+            "board_forward_dot_travel": -0.9629505233798286,
+            "board_rise_toward_travel": 0.2696782052516937,
+            "right_minus_left_ankle_along_travel": -0.407181468843818,
+            "right_minus_left_ankle_height": -0.1298970225629661,
+            "ankle_rise_toward_travel": 0.1298970225629661
+          }
+        }
+      },
+      "native_actor_lines": [
+        "[2026-11-06 16:40:52.751] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756486147 serial=26 pose=n_low_turn_fs initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:52.752] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756486148 serial=26 pose=n_low_pose initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:52.754] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756486149 serial=26 pose=nose_regular initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:53.018] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756486414 serial=26 pose=nose_regular initialized=true before=16 after=18 delta=2 state=100 contacts=32768 orientation_valid=true fakie=false blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.017] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487413 serial=26 pose=n_fakie_low_turn_fs initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.018] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487414 serial=26 pose=n_fakie_low_pose initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.019] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487415 serial=26 pose=n_fakie_med_pose initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.019] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487415 serial=26 pose=nose_fakie initialized=true before=0 after=2 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.283] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487679 serial=26 pose=nose_fakie initialized=true before=16 after=18 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.550] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756487946 serial=26 pose=nose_fakie initialized=true before=32 after=34 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:54.818] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756488214 serial=26 pose=nose_fakie initialized=true before=48 after=50 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:55.084] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756488480 serial=26 pose=nose_fakie initialized=true before=64 after=66 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:55.349] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756488745 serial=26 pose=nose_fakie initialized=true before=80 after=82 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:55.617] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756489013 serial=26 pose=nose_fakie initialized=true before=96 after=98 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:55.883] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756489279 serial=26 pose=nose_fakie initialized=true before=112 after=114 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:56.151] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756489547 serial=26 pose=nose_fakie initialized=true before=128 after=130 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:56.418] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756489814 serial=26 pose=nose_fakie initialized=true before=144 after=146 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:56.684] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756490080 serial=26 pose=nose_fakie initialized=true before=160 after=162 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:56.949] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756490345 serial=26 pose=nose_fakie initialized=true before=176 after=178 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:57.218] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756490614 serial=26 pose=nose_fakie initialized=true before=7 after=9 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:57.484] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756490880 serial=26 pose=nose_fakie initialized=true before=23 after=25 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:57.750] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756491146 serial=26 pose=nose_fakie initialized=true before=39 after=41 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:58.018] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756491414 serial=26 pose=nose_fakie initialized=true before=55 after=57 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:58.284] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756491680 serial=26 pose=nose_fakie initialized=true before=71 after=73 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:58.550] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756491946 serial=26 pose=nose_fakie initialized=true before=87 after=89 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:58.818] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756492214 serial=26 pose=nose_fakie initialized=true before=103 after=105 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:59.084] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756492479 serial=26 pose=nose_fakie initialized=true before=119 after=121 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:59.351] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756492747 serial=26 pose=nose_fakie initialized=true before=135 after=137 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:59.618] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756493014 serial=26 pose=nose_fakie initialized=true before=151 after=153 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:40:59.883] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756493279 serial=26 pose=nose_fakie initialized=true before=167 after=169 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:00.150] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756493546 serial=26 pose=nose_fakie initialized=true before=183 after=185 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:00.418] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756493814 serial=26 pose=nose_fakie initialized=true before=14 after=16 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:00.683] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756494079 serial=26 pose=nose_fakie initialized=true before=30 after=32 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:00.950] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756494346 serial=26 pose=nose_fakie initialized=true before=46 after=48 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:01.217] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756494613 serial=26 pose=nose_fakie initialized=true before=62 after=64 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:01.485] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756494881 serial=26 pose=nose_fakie initialized=true before=78 after=80 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:01.750] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756495146 serial=26 pose=nose_fakie initialized=true before=94 after=96 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:02.018] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756495413 serial=26 pose=nose_fakie initialized=true before=110 after=112 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:02.284] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756495680 serial=26 pose=nose_fakie initialized=true before=126 after=128 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:02.550] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756495946 serial=26 pose=nose_fakie initialized=true before=142 after=144 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:02.818] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756496214 serial=26 pose=nose_fakie initialized=true before=158 after=160 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:03.083] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756496479 serial=26 pose=nose_fakie initialized=true before=174 after=176 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:03.352] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756496748 serial=26 pose=nose_fakie initialized=true before=5 after=7 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:03.618] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756497014 serial=26 pose=nose_fakie initialized=true before=21 after=23 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:03.883] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756497279 serial=26 pose=nose_fakie initialized=true before=37 after=39 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified.",
+        "[2026-11-06 16:41:04.150] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE MANUAL POSE: ms=756497546 serial=26 pose=nose_fakie initialized=true before=53 after=55 delta=2 state=100 contacts=32768 orientation_valid=true fakie=true blend_weight=unverified scoring_acceptance=unverified."
+      ],
+      "limits": [
+        "Final joint positions and board physics were read independently; no pose or physics was written.",
+        "A sign reversal shows physical orientation relative to travel; it is not an automatic native-animation or scoring verdict.",
+        "Console cleanup ends the trial; post-cleanup state is not a sustained manual acceptance sample."
+      ],
+      "scoring_verified": false,
+      "capture_compressed_sha256": "b76531302a84298f43c1ac94535e4af360f92f582c7b609820b481834b1b0a15",
+      "native_actor_serial": 26
+    }
+  ],
+  "findings": [
+    "Manual retained physical tail contact and native tail_fakie actor advancement for at least ten seconds after RT. Final ankles and board slope reverse relative to travel, placing the lower end ahead.",
+    "Nose Manual retained physical nose contact and native nose_fakie actor advancement for at least ten seconds after RT. Final ankles and board slope show the corresponding opposite orientation.",
+    "The pose buffer was read twice per sample; changing snapshots were rejected, not interpolated."
+  ],
+  "remaining": [
+    "Chained reverts back to regular with final-pose evidence",
+    "Native score and composite ownership",
+    "Owner visual acceptance",
+    "True measured 120 Hz entry matrix"
+  ],
+  "other_trials": [
+    {
+      "capture": "final-pose-native-manual_pose-result.json.gz",
+      "result": "Contact ended near the test-area edge after six seconds; retained as a failed long-hold trial."
+    },
+    {
+      "capture": "final-pose-slow-nose_pose-result.json.gz",
+      "result": "Nose contact persisted but speed fell below native fakie threshold after eight seconds; not a ten-second fakie pass."
+    }
+  ]
+}
