@@ -3,12 +3,16 @@
 #include "Extension/ArcadeMode/arcade_grind_change.h"
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/Skater/no_bail.h"
+#include "Engine/Game/Build/20260929/arcade_native_probe.h"
 #include <atomic>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
+#include <string_view>
+#include <thread>
 using namespace dingosdk::arcade_mode;
 // Nonactuating native bridge boundary; these tests verify controller ownership.
 namespace dingosdk::arcade_mode::native_flip {
@@ -19,6 +23,10 @@ namespace dingosdk::arcade_mode::native_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_footplant {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_ground_grab {void cancel() noexcept {}}
 namespace dingosdk::arcade_mode::native_grind {void cancel() noexcept {}}
+namespace dingosdk::arcade_mode::wallplant_runtime {
+unsigned cancellations{};
+void cancel() noexcept {++cancellations;}
+}
 static void observe(NativeControllerRoute& route,unsigned slot,ArcadeInput::Physical pad){
     route.observe_unfiltered(slot,pad);route.observe(slot,pad);
 }
@@ -159,8 +167,29 @@ std::atomic<bool> ready{true},reset_physical_manual{};
 std::atomic<std::uint64_t> gameplay_valid_until{};
 bool mode=true,push{},air{};
 std::atomic<bool> mode_enabled{true};
+std::atomic<ActionExperiment> action_mode{ActionExperiment::classic};
 NativeInputState native_input_state,motion_cleanup_state;
 std::uint64_t clock_ms=1000;
+namespace game=dingosdk::game;
+namespace logging {
+enum class Level {info};enum class Channel {skater};
+unsigned correlation_rows{};
+template<class... Args> void log(Level,Channel,const char*,Args&&...) {++correlation_rows;}
+}
+NativeRequestSample live_sample;
+bool live_readable=true;
+namespace memory {
+bool peek(std::uintptr_t address,std::uint32_t& value) {
+    if(!live_readable)return false;
+    namespace native=game::build::v20260929::arcade_native_probe;
+    if(address==4+native::selected_state)value=live_sample.state;
+    else if(address==5+native::crouch_mode)value=live_sample.crouch_mode;
+    else if(address==4+native::request_words)value=live_sample.words[0];
+    else if(address==4+native::request_words+4)value=live_sample.words[1];
+    else return false;
+    return true;
+}
+}
 bool enabled(){return mode;}
 std::uint64_t GetTickCount64(){return clock_ms;}
 void set_arcade_push_intent(bool value){push=value;}
@@ -180,11 +209,16 @@ void run(){
         require(controller_route.accepts(slot,1000)&&arcade_input.admitted(0,1000),"explicit multi-connected route retains independent facade authority proof");++checks;
         playback_packets={};playback_packets[slot].sample(20,20,true);playback_packets[slot].sample(20,20,true);
         push=air=true;gameplay_valid_until=1150;reset_physical_manual=false;
+        const auto wallplant_cancellations=wallplant_runtime::cancellations;
         disconnect_xinput_source((slot+1)%4);
         require(arcade_input.admitted(0,1000)&&push&&air,"other source loss cannot withdraw selected actor");++checks;
+        require(wallplant_runtime::cancellations==wallplant_cancellations,
+            "other controller withdrawal cannot cancel selected wallplant ownership");++checks;
         disconnect_xinput_source(slot);
         require(!controller_route.accepts(slot,1000)&&!arcade_input.admitted(0,1000)&&!push&&!air&&!gameplay_valid_until&&reset_physical_manual,
             "actual disconnect callback revokes shared facade and native intentions immediately");++checks;
+        require(wallplant_runtime::cancellations==wallplant_cancellations+1,
+            "selected controller withdrawal cancels pending wallplant ownership once");++checks;
         require(playback_packets[slot].sample(22,22,false)==23,"actual revocation retires last synthetic packet without erasing collision debt");++checks;
         require(playback_packets[slot].sample(22,22,false)==22,"retirement is consumed exactly once");++checks;
         require(playback_packets[(slot+1)%4].sample(22,22,false)==22,"unowned controller retains native packet identity");++checks;
@@ -207,11 +241,198 @@ void run(){
     set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
     controller_route.select(1000,3,true,proof);arcade_input.publish_native_context(frame);arcade_input.publish_authority(1000,frame.owner_generation,1,true);
     MotionCleanupProof cleanup{};
-    require(native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"actual physics consumer accepts selected route and independent native owner");++checks;
+    const char* diagnostic{};
+    require(native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"actual physics consumer accepts selected route and independent native owner");++checks;
+    require(std::string_view(diagnostic)=="frame_valid","writer diagnostic copies successful correlation without another call");++checks;
+    auto changed=sample;changed.state=201;
+    require(!native_air_context(1000,owner,changed,&cleanup,&diagnostic).valid&&
+        std::string_view(diagnostic)=="frame_correlation","writer diagnostic distinguishes changed native state from route rejection");++checks;
+    bool contention_reported{};
+    {
+        std::lock_guard held(ollie_mutex);
+        std::thread consumer([&] {
+            MotionCleanupProof local_cleanup{};const char* reason{};
+            const auto unavailable=native_air_context(1000,owner,sample,&local_cleanup,&reason);
+            contention_reported=!unavailable.valid&&!local_cleanup.inspected&&std::string_view(reason)=="frame_lock_busy";
+        });
+        consumer.join();
+    }
+    require(contention_reported,"writer contention copies its reason without waiting, retrying or granting cleanup authority");++checks;
+    require(logging::correlation_rows==0,"ordinary correlation and contention never emit wallplant diagnostics");++checks;
+    // Extracted production accessor: a pending preselector waits for the
+    // publisher, then samples time/state and all existing admission gates.
+    // No sleep or retry budget; the publisher owns the mutex throughout edits.
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
+        controller_route.reset();arcade_input.enable(false);arcade_input.enable(true);
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,frame);arcade_input.publish_native_context(frame);
+        arcade_input.publish_authority(1000,frame.owner_generation,1,true);
+        NativeInputFrame acquired{};std::uint64_t acquired_at{};const char* reason{};
+        std::atomic<bool> entered{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread selector([&] {
+            entered.store(true,std::memory_order_release);
+            acquired=native_wallplant_context(owner,acquired_at,&reason).native;
+        });
+        while(!entered.load(std::memory_order_acquire))std::this_thread::yield();
+        clock_ms=boundary==1?1151:1001;
+        if(boundary==1)observe(controller_route,1,{true,clock_ms,0,0,0,0,0,0,0});
+        if(boundary==2)mode_enabled=false;
+        if(boundary==3)controller_route.clear();
+        if(boundary==4)live_sample.state=201;
+        if(boundary==5)live_readable=false;
+        if(boundary==6)arcade_input.invalidate_authority();
+        publisher.unlock();selector.join();
+        require(acquired_at==clock_ms,"preselector refreshes time after serialized acquisition");++checks;
+        require(acquired.valid==(boundary==0),"contention must not bypass stale/state/read/route/OFF/authority rejection");++checks;
+        if(boundary==0) {
+            require(acquired.sampled_at==1000&&acquired.physics_step==frame.physics_step&&
+                std::string_view(reason)=="frame_valid","serialized handoff returns the unchanged original native frame");++checks;
+        }
+    }
+    clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
+    require(logging::correlation_rows==2,"only pending correlation failures emit same-read diagnostics; earlier authority rejection stays unchanged");++checks;
     controller_route.clear();
-    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
+    require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
+    require(std::string_view(diagnostic)=="frame_route","writer diagnostic copies physical route rejection");++checks;
     mode_enabled=false;
-    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
+    require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
+    require(std::string_view(diagnostic)=="frame_disabled","writer diagnostic preserves OFF-before-route ordering");++checks;
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;live_readable=true;native_input_state={};
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();
+        NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;
+        const auto air_frame=native_input_state.observe(1000,owner,original,{});
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,air_frame);arcade_input.publish_native_context(air_frame);
+        arcade_input.publish_authority(1000,air_frame.owner_generation,1,true);
+        live_sample=original;live_sample.crouch_mode=1;live_sample.words[1]=0x8000;
+        clock_ms=1035;
+        if(boundary==1)mode_enabled=false;
+        if(boundary==2)controller_route.clear();
+        if(boundary==3)arcade_input.invalidate_authority();
+        if(boundary==4)clock_ms=1151;
+        if(boundary==5)live_sample.words[0]=0x20;
+        if(boundary==6)live_sample.state=100;
+        std::uint64_t acquired_at{};
+        const auto execution_proof=native_wallplant_context(owner,acquired_at,&diagnostic);
+        require(execution_proof.native.valid==(boundary==0),"production wallplant contact phase still requires controller, fresh frame, authority and exact native transition");++checks;
+        if(boundary==0) {
+            require(execution_proof.imported_contact&&execution_proof.native.mode==2&&execution_proof.native.contacts==0&&
+                execution_proof.native.sampled_at==1000&&execution_proof.native.physics_step==air_frame.physics_step&&
+                execution_proof.live.crouch_mode==1&&execution_proof.live.words[1]==0x8000,
+                "production handoff separates unchanged original frame from live imported contact");++checks;
+            require(!native_air_context(acquired_at,owner,live_sample,nullptr,&diagnostic).valid,
+                "wallplant phase does not relax the ordinary motion accessor");++checks;
+        }
+    }
+    for(unsigned boundary=0;boundary<11;++boundary) {
+        clock_ms=1035;mode_enabled=true;action_mode=ActionExperiment::classic;
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_input_state={};
+        NativeRequestSample original{};original.valid=true;original.state=201;original.crouch_mode=2;
+        const auto original_frame=native_input_state.observe(1000,owner,original,{});
+        set_controller_source(1,1000);
+        ArcadeInput::Physical physical{true,1035,0,0,0,0,0,0,0};
+        observe(controller_route,1,physical);controller_route.select(1035,3,true,original_frame);
+        arcade_input.publish_native_context(original_frame);arcade_input.publish_authority(1035,original_frame.owner_generation,1,true);
+        if(boundary==1)mode_enabled=false;
+        if(boundary==2)action_mode=ActionExperiment::off;
+        if(boundary==3)physical.buttons=0x4000;
+        if(boundary==4)physical.lt=31;
+        if(boundary==5)physical.rt=31;
+        if(boundary==6)controller_route.clear();
+        if(boundary==7)arcade_input.invalidate_authority();
+        if(boundary==8)clock_ms=1151;
+        if(boundary==9) {
+            const auto next=native_input_state.observe(1035,owner,original,{});
+            arcade_input.publish_native_context(next);
+        }
+        if(boundary==10) {
+            auto next=original_frame;++next.owner_generation;
+            arcade_input.publish_native_context(next);arcade_input.publish_authority(1035,next.owner_generation,1,true);
+        }
+        if(boundary>=3&&boundary<=5)observe(controller_route,1,physical);
+        std::uint64_t checked_at{};
+        require(native_wallplant_execution_authorized(original_frame,checked_at)==(boundary==0),
+            "post-native handoff retains controller/OFF/classic/conflict/trigger/freshness/exact-episode authority");++checks;
+        require(checked_at==clock_ms,"post-native handoff samples current time after input serialization");++checks;
+    }
+    // Start a real session-owned crouch through the production recognizer,
+    // then publish a native AIR observation without releasing its held input.
+    // A matching AIR frame/route must not turn this competing owner into a kick.
+    {
+        clock_ms=1000;mode_enabled=true;action_mode=ActionExperiment::classic;
+        arcade_input.enable(false);arcade_input.enable(true);controller_route.reset();native_input_state={};
+        NativeRequestSample ground{};ground.valid=true;ground.state=100;ground.crouch_mode=1;ground.words[1]=0xc000;
+        const auto grounded=native_input_state.observe(1000,owner,ground,{true,-1,0x300000});
+        set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
+        controller_route.select(1000,3,true,grounded);arcade_input.publish_native_context(grounded);
+        arcade_input.publish_authority(1000,grounded.owner_generation,1,true);
+        const std::array prepared{PreparedGesture{1,false,GestureContext::ground,
+            std::vector<AuthoredStickStep>{{0,0,-32767},{18,25000,28000},{21,0,0},{24,0,0}}}};
+        const auto poll=[&](std::uint64_t at,std::uint16_t buttons) {
+            return arcade_input.poll(0,at,buttons,0,0,0,0,true,true,false,0,false,false,true,
+                at/17,false,prepared,false,true,SkatePose::riding);
+        };
+        poll(1000,0);
+        const auto held=poll(1017,0x1000);
+        require(held.authored_playback&&arcade_input.busy(0)&&!arcade_input.wallplant_controls_unowned(0),
+            "actual admitted held crouch owns the session before late wallplant execution");++checks;
+        auto air_sample=ground;air_sample.state=201;air_sample.crouch_mode=2;air_sample.words[1]=0;
+        const auto airborne=native_input_state.observe(1035,owner,air_sample,{true,1,0x300000});
+        clock_ms=1035;observe(controller_route,1,{true,1035,0x1000,0,0,0,0,0,0});
+        controller_route.select(1035,3,true,airborne);arcade_input.publish_native_context(airborne);
+        arcade_input.publish_authority(1035,airborne.owner_generation,1,true);
+        std::uint64_t checked_at{};
+        require(arcade_input.admitted(0,1035)&&controller_route.physical(1035).valid&&
+            wallplant_same_observation(airborne,arcade_input.native_context(1035)),
+            "competing-session test retains otherwise valid exact frame and controller authority");++checks;
+        require(!native_wallplant_execution_authorized(airborne,checked_at),
+            "production late execution rejects a real busy held session even with matching AIR proof");++checks;
+    }
+    // Use the actual geometry accessors with a contended producer mutex.
+    // Ordinary callers still yield; retained wall queries wait for the owner
+    // then inspect the original frame at the real acquisition time.
+    for(unsigned boundary=0;boundary<7;++boundary) {
+        clock_ms=1000;mode_enabled=true;native_input_state={};
+        arcade_input.enable(false);arcade_input.enable(true);
+        NativeRequestSample air_sample{};air_sample.valid=true;air_sample.state=201;air_sample.crouch_mode=2;
+        const auto original=native_input_state.observe(1000,owner,air_sample,{});
+        arcade_input.publish_native_context(original);arcade_input.publish_authority(1000,original.owner_generation,1,true);
+        NativeInputFrame ordinary{},acquired{};const char* ordinary_reason{};const char* acquired_reason{};
+        std::atomic<bool> waiting{};
+        std::unique_lock publisher(ollie_mutex);
+        std::thread query([&] {
+            ordinary=surface_geometry_native_frame(clock_ms,&ordinary_reason);
+            waiting.store(true,std::memory_order_release);
+            acquired=wallplant_surface_geometry_native_frame(&acquired_reason);
+        });
+        while(!waiting.load(std::memory_order_acquire))std::this_thread::yield();
+        clock_ms=boundary==1?1151:boundary==6?999:1001;
+        if(boundary==2)mode_enabled=false;
+        if(boundary==3)arcade_input.invalidate_authority();
+        if(boundary==4)arcade_input.publish_native_context({});
+        if(boundary==5) {
+            auto landed=air_sample;landed.state=100;landed.crouch_mode=1;landed.words[1]=0x8000;
+            arcade_input.publish_native_context(native_input_state.observe(1001,owner,landed,{}));
+        }
+        publisher.unlock();query.join();
+        require(!ordinary.valid&&std::string_view(ordinary_reason)=="frame_lock_busy",
+            "ordinary geometry retains its nonblocking contention behavior");++checks;
+        require(acquired.valid==(boundary==0||boundary==5),
+            "synchronized wall query still rejects expired/future/OFF/authority/invalid native context");++checks;
+        if(boundary==0) {
+            require(acquired.sampled_at==original.sampled_at&&acquired.physics_step==original.physics_step&&
+                std::string_view(acquired_reason)=="frame_valid",
+                "contention resolution preserves original native timestamp and step");++checks;
+        }
+        if(boundary==5) {
+            require(acquired.state==100&&!acquired.airborne&&acquired.physics_step>original.physics_step&&
+                acquired.action_generation!=original.action_generation,
+                "native transition while waiting is returned honestly for existing callback provenance rejection");++checks;
+        }
+    }
     std::cout<<checks<<" exact production binding API checks passed\n";
 }
 }

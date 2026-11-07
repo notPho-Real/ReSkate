@@ -368,6 +368,7 @@ public:
         diagnostic_.recognition = {}; diagnostic_.recognition_count = diagnostic_.recognition_omitted = 0;
         active_flip_ = grab_repeat_available_ = surface_clocked_ = lip_clocked_ = false; last_event_ = manual_after_ = air_face_after_ = air_flip_after_ = native_grab_after_ = 0; clocked_ = false; manual_unknown_ = false;
         takeoff_release_at_=0;
+        wallplant_edge_={};
         grab_choice_event_=0;grab_choice_=ArcadeTrick::double_grab;
     }
     const Diagnostic& diagnostic() const noexcept { return diagnostic_; }
@@ -390,9 +391,17 @@ public:
     }
     void cancel_air_episode(bool preserve_history = false) noexcept {
         pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
+        wallplant_edge_={};
         active_flip_ = grab_repeat_available_ = false; direction_ = 0;
         // Keep physical held state and independently queued Manual/rail intent.
         if (!preserve_history) events_.discard_intent();
+    }
+    // A completed wall rebound retires only air intent. Keep the journal and
+    // physical held controls, but never reinterpret an earlier face press.
+    void retire_air_actions() noexcept {
+        cancel_air_episode(true);
+        air_face_after_=air_flip_after_=native_grab_after_=last_event_;
+        takeoff_release_at_=0;
     }
     InputRequest pending_rail() const noexcept { return pending_.slots()[InputRequestQueue::capacity + 1]; }
     void reset_manual_continuity() noexcept {
@@ -516,6 +525,7 @@ public:
         diagnostic_.stick = events_.vertical_direction(false); diagnostic_.pad = events_.vertical_direction(true);
         if (environment.conflict) {
             events_.discard_intent(); pending_.clear(); crouched_ = false;
+            wallplant_edge_={};
             diagnostic_.stick_first = diagnostic_.pad_first = 0;
             diagnostic_.stick_at = diagnostic_.pad_at = 0; diagnostic_.suppress_reverse = false;
             direction_ = 0; active_flip_ = grab_repeat_available_ = false;
@@ -526,6 +536,7 @@ public:
             now >= direction_at_ && now - direction_at_ > InputTiming::takeoff_preload_ms) direction_ = 0;
         if (previous_context_ == InputContext::air && environment.context != InputContext::air) {
             pending_.cancel(InputAction::flip); pending_.cancel(InputAction::grab);
+            wallplant_edge_={};
             direction_ = 0; active_flip_ = grab_repeat_available_ = false;
         }
         previous_context_ = environment.context;
@@ -564,6 +575,24 @@ public:
             const auto code = event.token.code;
             if (code == 14 && event.token.edge == InputEdge::release) flip_release = event.sequence;
             if (code == 12) {
+                if (event.token.edge == InputEdge::press) {
+                    wallplant_edge_={};
+                    // Associate native provenance with this journal edge only.
+                    // No surface permission, event ownership or time is created.
+                    if (environment.context==InputContext::air && native.required && native.fresh(event.at) &&
+                        native.airborne && native.airborne_episode && !native.rail_family)
+                        wallplant_edge_={event.sequence,event.at,native};
+                }
+                // Contact admission is supplied by the native surface owner.
+                // Retain immediate fresh-edge semantics. Delayed publication
+                // below can use only this same unowned, native-correlated edge.
+                if (event.token.edge == InputEdge::press && environment.context == InputContext::air &&
+                    environment.surface.fresh && environment.surface.can_plant &&
+                    environment.surface.generation && environment.surface.physics_step) {
+                    const auto match = consume(event);
+                    enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match);
+                    continue;
+                }
                 if (event.token.edge == InputEdge::press && environment.ollie_allowed && environment.context != InputContext::foot) {
                     if (environment.native_footplants && environment.context==InputContext::ground &&
                         !environment.nollie && recognize_footplant(now,environment,event)) continue;
@@ -632,6 +661,7 @@ public:
         if (environment.context == InputContext::ground && takeoff &&
             now-takeoff<=InputTiming::takeoff_preload_ms)
             recognize_flip(now,environment,flip_release);
+        recognize_wallplant_edge(now,environment);
         if (grab_pressed) direction_ = 0;
         recognize_manual(now, physical, environment);
         recognize_rail_selection(now, environment);
@@ -676,6 +706,8 @@ public:
             if (event.disposition == InputDisposition::started && (event.request.action == InputAction::manual ||
                 event.request.action == InputAction::nose_manual || event.request.action == InputAction::flip || event.request.action == InputAction::grab))
                 pending_.cancel(InputAction::rail_select);
+            if (event.disposition==InputDisposition::started && event.request.action!=InputAction::wall_command)
+                wallplant_edge_={};
             record_dispatch(event);
         }, native, environment.context == InputContext::rail && environment.rail.fresh && environment.rail.ready &&
             environment.rail.geometry_known && environment.rail.generation, air_tables_,takeoff);
@@ -683,6 +715,33 @@ public:
         diagnostic_.journal_overflows = events_.history().overflows();
     }
 private:
+    void recognize_wallplant_edge(std::uint64_t now,const InputEnvironment& environment) noexcept {
+        if (!wallplant_edge_.sequence) return;
+        const auto& native=environment.native_context;
+        const auto& origin=wallplant_edge_.native;
+        if (environment.context!=InputContext::air || !native.required || !native.fresh(now) ||
+            !native.airborne || native.rail_family || !native.airborne_episode ||
+            native.generations.owner!=origin.generations.owner || native.air_episode()!=origin.air_episode() ||
+            !native.follows(origin) || now<wallplant_edge_.pressed_at ||
+            now-wallplant_edge_.pressed_at>InputTiming::native_sample_lease_ms) {
+            wallplant_edge_={};return;
+        }
+        // A queued competing trick must not acquire the same handoff. Its
+        // ordinary recognition and dispatch remain unchanged.
+        for (const auto& request:pending_.slots())
+            if (request.action==InputAction::flip || request.action==InputAction::grab) {
+                wallplant_edge_={};return;
+            }
+        if (!environment.surface.fresh || !environment.surface.can_plant ||
+            !environment.surface.generation || !environment.surface.physics_step) return;
+        constexpr std::array token{InputToken{InputSource::buttons,12,InputEdge::press}};
+        const auto match=events_.history().match({token,InputTiming::native_sample_lease_ms,
+            ~std::uint32_t{0},true,false,true},now);
+        if (!match || match.events[0]!=wallplant_edge_.sequence || match.first_at!=wallplant_edge_.pressed_at) return;
+        if (!events_.history().consume(match,InputConsumption::regular)) return;
+        wallplant_edge_={};
+        enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match);
+    }
     void record_dispatch(InputDispatchEvent event) noexcept {
         if (diagnostic_.dispatched < diagnostic_.dispatch.size()) diagnostic_.dispatch[diagnostic_.dispatched++] = event;
         else ++diagnostic_.dispatch_dropped;
@@ -742,7 +801,7 @@ private:
         if (environment.native_context.required) {
             request.generations = lineage ? *lineage : environment.native_context.generations;
             request.generation_mask = generation_dependencies(action,environment.context);
-            if (action == InputAction::flip || action == InputAction::grab)
+            if (action == InputAction::flip || action == InputAction::grab || (action==InputAction::wall_command && variant==1))
                 request.air_episode = environment.native_context.air_episode();
             if (action == InputAction::flip) request.waiting_flip = environment.native_context.flip;
             // The first flip legitimately changes the action generation.
@@ -750,8 +809,8 @@ private:
             // current base ID; owner and airborne episode remain mandatory here.
             if (action==InputAction::flip && form==InputForm::held_repeat) request.generation_mask=1;
         }
-        if (action == InputAction::rail_request || action == InputAction::lip_request) {
-            request.control = 0x8000;
+        if (action == InputAction::rail_request || action == InputAction::lip_request || (action==InputAction::wall_command && variant==1)) {
+            request.control = action==InputAction::wall_command ? 0x1000 : 0x8000;
             request.physical_pressed_at = footprint ? footprint->first_at : now;
             request.input_sequence = footprint && footprint->count ? footprint->events[footprint->count-1] : 0;
         }
@@ -1143,18 +1202,6 @@ private:
         if (!surface.fresh || environment.context == InputContext::foot) return;
         if (surface_clocked_ && surface.generation == surface_generation_ && surface.physics_step == surface_step_) return;
         surface_clocked_ = true; surface_generation_ = surface.generation; surface_step_ = surface.physics_step;
-        const InputToken jump{InputSource::buttons,12,InputEdge::press};
-        if (surface.can_plant) {
-            for (auto code : {std::int16_t{2},std::int16_t{1},std::int16_t{3}})
-                for (bool reverse : {false,true}) {
-                    const InputToken direction{InputSource::direction,code,InputEdge::press};
-                    const std::array tokens{reverse ? jump : direction, reverse ? direction : jump};
-                    const auto match = events_.history().match({tokens,450},now);
-                    if (match && events_.history().consume(match,InputConsumption::regular)) {
-                        enqueue(InputAction::wall_command,now,1,environment,1,1,0,0,{},&match); return;
-                    }
-                }
-        }
         if (surface.can_push && events_.held({InputSource::buttons,15,InputEdge::press})) {
             enqueue(InputAction::wall_command,now,1,environment,1,2); return;
         }
@@ -1489,6 +1536,10 @@ private:
     std::array<InputAirTable,static_cast<std::size_t>(InputAirTableKind::count)> table_seals_{};
     std::array<bool,static_cast<std::size_t>(InputAirTableKind::count)> table_retired_{};
     InputNativeContext native_{};
+    struct WallplantEdge {
+        std::uint64_t sequence{},pressed_at{};
+        InputNativeContext native{};
+    } wallplant_edge_{};
     InputGenerations flip_generations_{}, grab_generations_{};
     InputNativeContext grab_native_{};
     bool native_required_{};

@@ -202,6 +202,17 @@ public:
     std::int32_t authored_air_followup(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) ? sessions_[0].authored_air_followup(now,InputNativeContext::from_frame(frame)) : 0;
     }
+    bool acknowledge_wallplant(std::uint64_t now,const NativeInputFrame& proof,
+                               std::uint64_t input_sequence) noexcept {
+        const auto current=native_context(now);
+        const auto source=InputNativeContext::from_frame(proof);
+        const auto observed=InputNativeContext::from_frame(current);
+        if (!admitted(0,now) || !current.valid || !proof.valid || current.owner!=proof.owner ||
+            current.owner_generation!=proof.owner_generation || !source.fresh(now) || !observed.follows(source) ||
+            !current.airborne || current.airborne_episode!=proof.airborne_episode || current.air_departure!=proof.air_departure)
+            return false;
+        return sessions_[0].acknowledge_wallplant(now,source,input_sequence);
+    }
     bool rail_followup_active(std::uint64_t now,const NativeInputFrame& frame) const noexcept {
         return enabled_ && admitted(0,now) && sessions_[0].rail_followup_active(now,InputNativeContext::from_frame(frame));
     }
@@ -228,6 +239,9 @@ public:
             sessions_[user].initial_ground_acquisition(now,InputNativeContext::from_frame(native));
     }
     bool busy(unsigned user) const noexcept { return user < sessions_.size() && sessions_[user].busy(); }
+    bool wallplant_controls_unowned(unsigned user) const noexcept {
+        return user<sessions_.size() && sessions_[user].wallplant_controls_unowned();
+    }
     NativeGesture::Output poll(unsigned user, std::uint64_t now, std::uint16_t buttons,
             std::int16_t lx, std::int16_t ly, std::int16_t rx, std::int16_t ry,
             bool game_input, bool may_start, bool may_push = false, float speed = 0,
@@ -239,7 +253,7 @@ public:
             bool offboard = false, bool action_busy = false, bool flip_ready = true, bool neutral_ready = false,
             std::uint8_t lt = 0, std::uint8_t rt = 0, ActionExperiment mode = ActionExperiment::off,
             bool action_fresh = false, bool inspected_stance = false, bool manual_balance_admitted = false,
-            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}) noexcept {
+            NativeFlipRequest normal_flip = {}, NativeGrabRequest normal_grab = {}, InputRailState rail = {}, InputAdapter extensions = {}, HeldFlipObservation held_flip = {}, NativeFootplantRequest footplant = {}, NativeGroundGrabRequest ground_grab = {}, InputSurfaceState surface = {}) noexcept {
         if (!enabled_ || user >= sessions_.size() || (native_bound_ && user != 0)) return {buttons, rx, ry};
         if (native_bound_ && (!focused_ || now < authority_at_ || now-authority_at_ > 150 || !game_input)) {
             cancel_commands(); game_input = false;
@@ -262,6 +276,7 @@ public:
         admission.ground_grab=ground_grab;
         admission.rail=rail;
         admission.extensions=extensions;
+        admission.surface=surface;
         admission.input_policy = policy_;
         admission.export_rail_requests = native_bound_;
         const auto native = native_context(now);

@@ -8,6 +8,39 @@ void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<
 NativeRequestSample sample(unsigned state=100,unsigned contacts=0xc000){NativeRequestSample s{};s.valid=true;s.state=state;s.crouch_mode=1;s.words[1]=contacts;return s;}
 }
 int main(){
+    for(unsigned boundary=0;boundary<10;++boundary) {
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+        auto live=sample(201,0);live.crouch_mode=2;
+        const auto original=producer.observe(1000,owner,live,{});
+        auto reader=owner;std::uint64_t now=1027;std::uint32_t expected{};
+        using D=NativeInputCorrelation;
+        switch(boundary) {
+        case 1:producer.invalidate();expected=D::invalid_frame;break;
+        case 2:live.valid=false;expected=D::invalid_sample;break;
+        case 3:++reader.context;expected=D::owner_changed;break;
+        case 4:now=999;expected=D::future_frame;break;
+        case 5:now=1151;expected=D::expired_frame;break;
+        case 6:live.state=100;expected=D::state_changed;break;
+        case 7:live.crouch_mode=1;expected=D::mode_changed;break;
+        case 8:live.words[1]=0x8000;expected=D::contacts_changed;break;
+        case 9:live.words[0]=0x20;expected=D::stance_changed;break;
+        default:break;
+        }
+        NativeInputCorrelation diagnostic{};
+        const auto observed=producer.correlate(now,reader,live,&diagnostic);
+        check(observed.valid==producer.correlate(now,reader,live).valid,"diagnostics do not alter native correlation decisions");
+        check(diagnostic.mismatches==expected,"same-read diagnostic identifies each precise correlation predicate");
+        check(diagnostic.observed.physics_step==original.physics_step&&diagnostic.observed.sampled_at==1000,
+            "diagnostic copy neither advances nor refreshes original physics evidence");
+    }
+    {
+        NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
+        producer.observe(1000,owner,sample(),{});producer.invalidate();
+        auto live=sample(201,0);live.valid=false;live.crouch_mode=2;live.words[0]=0x40;++owner.core;
+        NativeInputCorrelation diagnostic{};
+        check(!producer.correlate(999,owner,live,&diagnostic).valid&&diagnostic.mismatches==495,
+            "diagnostic reports simultaneous mismatches rather than hiding later predicates");
+    }
     for(unsigned phase:{100u,101u}) {
         NativeInputState producer;NativeInputOwner owner{1,2,3,4,5};
         const auto admitted=producer.observe(1000,owner,sample(phase),{true,-1});

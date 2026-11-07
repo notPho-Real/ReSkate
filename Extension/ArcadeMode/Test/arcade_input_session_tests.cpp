@@ -613,6 +613,57 @@ struct ConformanceFacade {
         return out;
     }
 };
+void completed_wallplant_air_followup() {
+    for (unsigned cadence:{8u,17u,34u}) for (bool ready:{false,true}) {
+        auto fixture=std::make_unique<ConformanceFacade>();auto& h=*fixture;h.cadence=cadence;
+        h.poll(1000,200);
+        check(h.poll(1000+cadence,200,{0x4000}).requested_id==2,
+            "wallplant fixture begins with the production airborne kickflip");
+        const auto now=1000+2*cadence;
+        h.poll(now,200,{0x1000});
+        const auto proof=h.input.native_context(now);
+        const auto journal=h.input.history(0)->events();
+        std::uint64_t sequence{};
+        for (const auto& event:journal) if(event.token==InputToken{InputSource::buttons,12,InputEdge::press})sequence=event.sequence;
+        const auto count=journal.size();const auto last=journal.back().sequence;
+        check(sequence && h.input.authored_air_followup(now,proof)==2,
+            "A request alone leaves the existing airborne flip lineage intact");
+        for(unsigned bad=0;bad<9;++bad) {
+            auto invalid=proof;auto when=now;auto identity=sequence;
+            if(bad==0)invalid.valid=false;
+            if(bad==1)++invalid.owner.core;
+            if(bad==2)++invalid.owner_generation;
+            if(bad==3)++invalid.airborne_episode;
+            if(bad==4)++invalid.air_departure;
+            if(bad==5)invalid.airborne=false;
+            if(bad==6)when+=151;
+            if(bad==7)identity=0;
+            if(bad==8)identity=last+1;
+            check(!h.input.acknowledge_wallplant(when,invalid,identity),
+                "unproven stale foreign or mismatched wallplant receipt cannot retire the actor");
+            check(h.input.authored_air_followup(now,proof)==2,"invalid receipt preserves the first flip lineage");
+        }
+        check(h.input.acknowledge_wallplant(now,proof,sequence),"completed same-flight rebound retires old air intent once");
+        check(!h.input.acknowledge_wallplant(now,proof,sequence),"repeated receipt cannot retire another action");
+        check(!h.input.authored_air_followup(now,proof) && h.input.history(0)->events().size()==count &&
+            h.input.history(0)->events().back().sequence==last,
+            "receipt preserves physical journal and does not create a native airborne trick");
+        h.flip_ready=ready;
+        auto out=h.poll(now+cadence,200,{0x4000});
+        const auto& diagnostic=*h.input.input_diagnostic(0);
+        check(diagnostic.recognition_count==1 && diagnostic.recognition[0].request.presses==1,
+            "fresh post-rebound X is a separate flip, never the pre-wallplant double-flip child");
+        check(!out.jump.setup_started && !out.jump.released && !out.native_flip_request,
+            "post-rebound air gesture creates neither a second launch nor a ground-pop native bridge request");
+        check(ready ? out.requested_id==2 : !out.requested_id,"post-rebound flip respects genuine native readiness");
+        if(!ready) {
+            h.flip_ready=true;out=h.poll(now+2*cadence,200,{0x4000});
+            check(out.requested_id==2,"queued post-rebound flip starts once readiness returns without a new edge");
+        }
+        check(!h.input.acknowledge_wallplant(now+2*cadence,proof,sequence),
+            "old receipt cannot cancel the new post-rebound actor");
+    }
+}
 void grounded_manual_readiness_wait() {
     InputNativeContext context{true,true,{1,1,1},1,1000};
     context.flip.state = 101; context.flip.mode = 1;
@@ -1124,6 +1175,7 @@ void revert_crouch_ownership() {
  }
 }
 int main() {
+    completed_wallplant_air_followup();
     established_manual_revert_retains_pressure();
     revert_crouch_ownership(); native_manual_revert_links(); native_revert_stances(); jump_idle_tests::run();
     grounded_manual_readiness_wait(); manual_context_window_contracts(); manual_transition_continuity_negatives();

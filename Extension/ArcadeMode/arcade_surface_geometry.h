@@ -12,6 +12,15 @@ struct SurfaceGeometryBody {
     bool operator==(const SurfaceGeometryBody&) const = default;
 };
 static_assert(sizeof(SurfaceGeometryBody) == 16);
+// A validated static non-ECS owner is distinct from an unknown/zero ECS ID.
+// Retain both native owner incarnation and shape-to-body association.
+struct SurfaceGeometryWorldOwner {
+    SurfaceGeometryBody body;
+    std::uintptr_t store{};
+    std::uint32_t index{UINT32_MAX}, generation{}, kind{};
+    std::uint64_t value{};
+    bool operator==(const SurfaceGeometryWorldOwner&) const = default;
+};
 enum class SurfaceGeometryPhase : std::uint8_t { unavailable, client, park };
 struct SurfaceGeometryContext {
     std::array<std::uintptr_t, 5> owner{};
@@ -36,6 +45,7 @@ struct SurfaceGeometrySample {
     std::uint64_t body_owner{}, queried_at{};
     SurfaceGeometryVector point{}, query_normal{};
     bool valid{};
+    SurfaceGeometryWorldOwner world_owner{};
     // This is query geometry, never actual board support or prediction normal.
     // Revalidation of the live body is also required in the authorized callback.
     bool fresh_for(const SurfaceGeometryContext& current, std::uint64_t now) const noexcept {

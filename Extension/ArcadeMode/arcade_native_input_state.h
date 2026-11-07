@@ -49,6 +49,15 @@ struct MotionCleanupProof {
     MotionCleanupProof() = default;
     explicit MotionCleanupProof(NativeInputFrame frame) noexcept : observed(frame), inspected(true) {}
 };
+// Copied evidence only. The mask names every failed correlation predicate;
+// no diagnostic field supplies authority or modifies the original frame.
+struct NativeInputCorrelation {
+    enum : std::uint32_t { invalid_frame=1,invalid_sample=2,owner_changed=4,
+        future_frame=8,expired_frame=16,state_changed=32,mode_changed=64,
+        contacts_changed=128,stance_changed=256 };
+    NativeInputFrame observed{};
+    std::uint32_t mismatches{};
+};
 // Serialized by the existing input mutex. Only a validated native physics step
 // produces frames; client ticks and input polls can only consume them.
 class NativeInputState {
@@ -102,7 +111,18 @@ public:
         continuity_ = true;
         return frame_;
     }
-    NativeInputFrame correlate(std::uint64_t now, NativeInputOwner owner, NativeRequestSample sample) const noexcept {
+    NativeInputFrame correlate(std::uint64_t now, NativeInputOwner owner, NativeRequestSample sample,
+            NativeInputCorrelation* diagnostic=nullptr) const noexcept {
+        if(diagnostic) {
+            *diagnostic={frame_,0};
+            using D=NativeInputCorrelation;
+            diagnostic->mismatches=(!frame_.valid?D::invalid_frame:0u)|(!sample.valid?D::invalid_sample:0u)|
+                (owner!=frame_.owner?D::owner_changed:0u)|(now<frame_.sampled_at?D::future_frame:0u)|
+                (now>=frame_.sampled_at&&now-frame_.sampled_at>150?D::expired_frame:0u)|
+                (sample.state!=frame_.state?D::state_changed:0u)|(sample.crouch_mode!=frame_.mode?D::mode_changed:0u)|
+                ((sample.words[1]&0xc000u)!=frame_.contacts?D::contacts_changed:0u)|
+                ((sample.words[0]&0x60u)!=frame_.stance_and_push?D::stance_changed:0u);
+        }
         if (!frame_.valid || !sample.valid || owner != frame_.owner || now < frame_.sampled_at ||
             now-frame_.sampled_at > 150 || sample.state != frame_.state || sample.crouch_mode != frame_.mode ||
             (sample.words[1] & 0xc000u) != frame_.contacts ||

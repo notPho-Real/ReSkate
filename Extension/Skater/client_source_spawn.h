@@ -10,6 +10,11 @@ namespace dingosdk {
 void initialize_client_source_spawn(std::uintptr_t base);
 // Installs the exact camera-reset handler guard; forwarding is unchanged until a Noclip request is queued.
 bool start_client_noclip_velocity(std::uintptr_t base) noexcept;
+// Prepare one admitted AIR wallplant for the immediate native velocity update.
+// The ticket records the original chooser result; neither call changes it.
+std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept;
+void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
+    std::uint32_t current,std::uint32_t chosen) noexcept;
 // A plugin's push (skater_push.h): one horizontal velocity at the next on-board physics step,
 // in competition physics only. Uses the verified local physics owner and never enables trainer
 // boosts.

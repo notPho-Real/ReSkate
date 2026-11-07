@@ -1,4 +1,5 @@
 #include "no_bail.h"
+#include "client_source_spawn.h"
 #include "Extension/Skater/skater_events.h"
 #include "Engine/Game/Input/controller_bindings.h"
 #include "Engine/Core/Hooks/hooks.h"
@@ -2051,6 +2052,7 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
     // transitions can still run. Some contact tests return Wipeout directly;
     // retain the current state only for that result, never ordinary Offboard.
     const bool filtered = filter_requests(selector, &Owner::selector);
+    const auto wallplant_ticket=apply_arcade_wallplant_before_selection(selector,current);
     auto next = protection().choose_original(selector, current);
     LastError error;
     if (force_wipeout && next != wipeout_physics_state) {
@@ -2082,6 +2084,7 @@ std::uint32_t choose_state(std::uintptr_t selector, std::uint32_t current) {
         }
     }
     track_spin(selector, chosen);
+    finish_arcade_wallplant_selection(wallplant_ticket,selector,current,chosen);
     return chosen;
 }
 void skeleton_response(std::uintptr_t rig, float seconds, bool wipeout) {

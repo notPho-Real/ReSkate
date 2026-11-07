@@ -2,6 +2,7 @@
 #include "Extension/ArcadeMode/arcade_ground_rotation.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/ArcadeMode/arcade_native_mapping.h"
+#include "Extension/ArcadeMode/arcade_wallplant.h"
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -10,6 +11,16 @@
 #include <thread>
 #include <vector>
 using namespace dingosdk::arcade_mode;
+namespace arcade_mode=dingosdk::arcade_mode;
+// Native wall identity is a controlled service boundary. The production
+// commit guard, body staging and completion call remain in extracted source.
+namespace dingosdk::arcade_mode::wallplant_runtime {
+bool contact_current=true;unsigned validations{},completions{};
+bool current(const WallplantCommand&,std::uint64_t,const NativeInputFrame&,SurfaceGeometryVector) noexcept {
+    ++validations;return contact_current;
+}
+void completed(const WallplantCommand&,bool applied) noexcept {if(applied)++completions;}
+}
 namespace dingosdk::arcade_mode {
 InputTelemetryLink input_telemetry;
 CaptureCorrelationProducer input_capture_correlation;
@@ -84,8 +95,11 @@ struct Reader{void verify(){source_require(verify_ok,"source changed");}};
 struct Drive{unsigned calls{};void account_resistance(float){++calls;}};
 struct Push{Drive arcade_drive;}push;
 Push& push_speed(){return push;}
-void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_source=true,unsigned copy_error=0,unsigned peek_error=0,bool later_error=false,bool observe_angular=false){
+void commit_case(bool linear,bool angular,bool valid_owner=true,bool valid_source=true,unsigned copy_error=0,unsigned peek_error=0,bool later_error=false,bool observe_angular=false,bool rebound=false,bool valid_contact=true){
     reset();emissions=0;write_calls=0;owner_ok=valid_owner;verify_ok=valid_source;fail_copy=copy_error;fail_peek=peek_error;push={};memory_bytes.clear();
+    WallplantCommand wallplant{};wallplant.motion.ready=rebound;
+    const std::uint64_t now=1000;const auto native_frame=frame();
+    wallplant_runtime::contact_current=valid_contact;wallplant_runtime::validations=0;
     auto ground_ticket=ticket();
     AngularWriterEvidence angular_ticket;
     if(observe_angular){
@@ -125,13 +139,13 @@ namespace arcade_mode=dingosdk::arcade_mode;
 struct Adapter{GroundYawOutput ground_output{};AirMotionOutput output{};GroundTurnAngularLease turn_write,air_write;};
 struct Bodies{GroundTurnAngularLease::Parts parts{};std::array<float,3>up{0,.8f,.6f};};
 bool consume(Adapter& a,const AirMotionOutput& output,const NativeInputFrame& native_frame,const MotionCleanupProof& cleanup,
-             Bodies& bodies,GroundTurnAngularLease::Spins& spins,std::uint64_t now,bool permitted=true,bool off=false){
+             Bodies& bodies,GroundTurnAngularLease::Spins& spins,std::uint64_t now,bool permitted=true,bool off=false,const WallplantCommand& wallplant={}){
     std::array<std::array<float,3>,32>velocities{};
     const bool ordinary=AirMotion::ordinary_basis(bodies.up);
     bool angular_release{},wrote{};float resistance_change{};
     AngularWriterEvidence angular_row;
     AirMotionIntent intent{};intent.angular_allowed=permitted;struct{bool admitted{};}manual;
-    const auto commit_motion=[&](bool,bool angular){wrote=angular;};
+    const auto commit_motion=[&](bool linear,bool angular){wrote=linear||angular;};
 @ANGULAR_RELEASE@
     if(off){release_turn(permitted,true);commit_motion(false,angular_release);return wrote;}
 @ANGULAR_BODY@
@@ -172,6 +186,14 @@ struct Fixture{
     }
 };
 void run(){
+    {
+        Adapter a;Bodies bodies;GroundTurnAngularLease::Spins spins{};
+        bodies.up={0,1,0};WallplantCommand rebound{};
+        rebound.motion.ready=true;rebound.motion.velocity_y=2;rebound.motion.delta_x=1;rebound.motion.delta_z=-1;
+        wallplant_runtime::completions=0;
+        check(consume(a,{},NativeInputFrame{},MotionCleanupProof{},bodies,spins,1000,true,false,rebound) &&
+            wallplant_runtime::completions==1,"actual rebound staging requests one linear commit and one completion");
+    }
     const std::array<std::array<float,3>,3> bases{{{0,1,0},{0,.8f,.6f},{-.6f,.8f,0}}};
     for(const auto up:bases)for(const auto side:{BoardChord::lb,BoardChord::rb})for(unsigned stop=0;stop<3;++stop){
         Fixture f(side,up);const auto before=f.spins;const float length=std::hypot(up[0],up[1],up[2]);
@@ -398,6 +420,12 @@ int main(){
     std::unique_lock schema4_lock(ollie_mutex);std::thread schema4_contender([]{check(!ticket().capture,"unsupported capture skips before trying the observer lock");});schema4_contender.join();schema4_lock.unlock();
     check(input_telemetry.client_dropped()==drops,"unsupported capture cannot introduce observer loss");
     commit_case(true,true);check(emitted.stage==GroundWriterStage::verified&&emitted.completed==2&&!emitted.unwinding&&write_calls==6&&push.arcade_drive.calls==1,"full verified loop retains all original writes/accounting");
+    commit_case(true,false,true,true,0,0,false,false,true,false);
+    check(wallplant_runtime::validations==1&&!write_calls&&emitted.unwinding,
+        "actual wallplant guard rejects changed contact before the first body write");
+    commit_case(true,false,true,true,0,0,false,false,true,true);
+    check(wallplant_runtime::validations==1&&write_calls==4&&emitted.stage==GroundWriterStage::verified,
+        "actual wallplant guard permits the existing verified writer on current contact");
     commit_case(false,false);check(emitted.stage==GroundWriterStage::staged&&!write_calls&&!emitted.completed,"no requested writes is not commit");
     commit_case(true,false,false);check(emitted.stage==GroundWriterStage::staged&&emitted.unwinding&&!write_calls,"owner rejection never positive commit");
     commit_case(true,false,true,false);check(emitted.stage==GroundWriterStage::staged&&emitted.unwinding&&!write_calls,"source rejection never positive commit");

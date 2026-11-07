@@ -19,6 +19,8 @@ inline constexpr Fingerprint crouch_producer{0x1009e29, {
 // Same verified offboard selector class used by No Bail; portable readers share it.
 inline constexpr std::uint32_t offboard_state = 504;
 inline constexpr std::uintptr_t request_words = 0x13c4;
+// Native state commit 47d3feb saves the preceding selected state here.
+inline constexpr std::uintptr_t previous_selected_state = 0x1410;
 inline constexpr std::uintptr_t selected_state = 0x1414;
 inline constexpr std::uintptr_t crouch_mode = 0x59a8;
 }
