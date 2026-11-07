@@ -19,7 +19,7 @@ fork/source notes found no reusable one-footer release adapter. Extend the
 existing Lease, actor acknowledgment, state-block resolver and owner checks.
 On release, withdraw foot input and retain the established native hand/selector
 while fresh original one-footer tags remain active. When both tags clear,
-either tag cannot be read, the owner/air episode ends, the heartbeat expires or
+no active tag can be read, the owner/air episode ends, the heartbeat expires or
 Arcade turns off, withdraw the hand. Restore the existing tweak request while
 the native exit owns the pose. No fixed-duration exit, animation clock write,
 identity write, new asset, velocity change or scoring write is used.
@@ -30,3 +30,13 @@ Ordinary grabs keep their immediate acknowledged-release behavior. These are
 software checks. The new runtime must still demonstrate exact original exit
 actor advancement, clean landing and no foot retrigger on the Deck. Repeat the
 Airwalk comparison and test other one-footer families before acceptance.
+
+RC3-30 hardware follow-up
+
+Two Airwalk trials still bailed. The first retired at B release; the second
+retained its hand until both native tags cleared, then bailed after returning
+to the grab. The first-flight exit field may not yet have a state slot. Read
+the tags independently and retain ownership when either verified tag is true;
+unknown fields never count as active. Preserve the original lowercase dingo
+in the exit asset lookup. This addresses admission of the release hold, not
+the still-unverified return blend/catch. See rc3-native-footer-release-30.json.

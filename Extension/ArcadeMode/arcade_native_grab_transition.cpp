@@ -55,7 +55,7 @@ std::array<Asset,17> assets{{
     {"Animation/Dingo/Bool.Intent.GrabStale",contract::stale},
     {"Animation/Dingo/Bool.Intent.GrabWeddle",contract::weddle},
     {"Animation/Dingo/Bool.State.Is.OneFootAir",contract::one_foot_air},
-    {"Animation/Dingo/Bool.Anim.Is.OneFootExit",contract::one_foot_exit}
+    {"Animation/dingo/Bool.Anim.Is.OneFootExit",contract::one_foot_exit}
 }};
 static_assert(std::size(pilots)==contract::actor_assets.size());
 static_assert(std::size(fingerflips)==finger_contract::actors.size());
@@ -107,6 +107,7 @@ struct Session {
     OwnershipObservation last_invalid{};
     unsigned other_actor_reports{};
     unsigned state_recheck_reports{};
+    unsigned footer_observation{0xffu};
 } session;
 // Exit actors start after the input lease has withdrawn. This separate,
 // read-only receipt retains correlation, never permission to hold an input.
@@ -381,10 +382,21 @@ FingerflipObservation finger_observation() noexcept {
 void observe_footer_release(std::uint64_t now) noexcept {
     const auto* selected=session.lease.selected();
     if(!selected || !selected->one_footer || session.finger.active())return;
-    bool air{},exit{};
-    const auto air_at=address(15),exit_at=address(16);
-    const bool known=air_at && exit_at && read(air_at,air) && read(exit_at,exit);
-    session.lease.observe_footer(now,known,air,exit);
+    const auto observed=sample_footer_state([](unsigned index,bool& value) noexcept {
+        const auto at=address(index);
+        return at && read(at,value);
+    });
+    const auto bits=(observed.air_known?1u:0u)|(observed.air?2u:0u)|
+        (observed.exit_known?4u:0u)|(observed.exit?8u:0u);
+    if(session.lease.acknowledged() && bits!=session.footer_observation) {
+        session.footer_observation=bits;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE NATIVE FOOTER STATE: ms={} serial={} footer={} air_known={} air={} exit_known={} exit={} active={}.",
+            now,session.serial,selected->one_footer,observed.air_known,observed.air,
+            observed.exit_known,observed.exit,observed.active());
+    }
+    session.lease.observe_footer(now,observed.known(),
+        observed.air_known && observed.air,observed.exit_known && observed.exit);
 }
 int actor_index(std::uintptr_t actor) noexcept {
     const auto asset=pointer(actor+0x60);

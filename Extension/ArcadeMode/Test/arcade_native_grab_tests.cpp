@@ -15,6 +15,18 @@ namespace {
 unsigned checks{};
 void check(bool value,const char* why){++checks;if(!value){std::cerr<<"FAIL: "<<why<<'\n';std::exit(1);}}
 void native_footer_exit_contract() {
+    for(unsigned known=0;known<4;++known) for(unsigned active=0;active<4;++active) {
+        unsigned reads{};
+        const auto observed=native_grab::sample_footer_state([&](unsigned index,bool& value) {
+            check(index==15 || index==16,"footer observations read only original state tags");
+            const auto bit=1u<<(index-15);++reads;
+            value=(active&bit)!=0;
+            return (known&bit)!=0;
+        });
+        check(reads==2,"an absent first field does not suppress the independent second read");
+        check(observed.active()==((known&active)!=0),"only readable active tags retain native ownership");
+        check(observed.known()==((known&active)!=0 || known==3),"an active air tag survives an unallocated first-exit slot");
+    }
     for(unsigned hz:{30u,60u,120u}) for(const auto& profile:native_grab::pilots) {
         if(!profile.one_footer)continue;
         const auto dt=(1000u+hz-1)/hz;

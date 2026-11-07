@@ -36,6 +36,21 @@ struct IdentityObservation {
     std::int32_t detail{},one_footer{};
     bool valid{};
 };
+struct FooterObservation {
+    bool air_known{},air{},exit_known{},exit{};
+    // The exit field may not have a state-page slot until the first exit.
+    // Either independently readable active tag proves native ownership; an
+    // unreadable inactive sibling cannot disprove that positive observation.
+    bool active() const noexcept {return (air_known && air) || (exit_known && exit);}
+    bool known() const noexcept {return active() || (air_known && exit_known);}
+};
+template<class Read>
+FooterObservation sample_footer_state(Read&& read) noexcept {
+    FooterObservation out{};
+    out.air_known=read(15u,out.air);
+    out.exit_known=read(16u,out.exit);
+    return out;
+}
 template<class ReadIdentity>
 IdentityObservation observe_identity(const Pilot& profile,ReadIdentity&& read_identity) noexcept {
     IdentityObservation out{};
