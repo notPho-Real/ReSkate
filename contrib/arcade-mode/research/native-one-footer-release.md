@@ -40,3 +40,27 @@ the tags independently and retain ownership when either verified tag is true;
 unknown fields never count as active. Preserve the original lowercase dingo
 in the exit asset lookup. This addresses admission of the release hold, not
 the still-unverified return blend/catch. See rc3-native-footer-release-30.json.
+
+Higher-airtime follow-up
+
+The owner identified inadequate approach speed in those trials. A straight
+approach at roughly12m/s subsequently gave Airwalk, Benihana and One Foot Tailgrab exact original
+Into/Loop/Exit advancement and clean ground100 returns. Retain the earlier
+failures, but do not attribute them to a selector-retention defect. Judo's
+longer exit was still active at its landing in the corresponding trial.
+
+The existing source index resolves the second exit-to-loop condition as
+EBool.Anim.OneFoot.Exit.ToLoop (41088f69-90ad-9497-4108-8f6990ad9497).
+It references CanOneFoot, CanGrabDouble, TweakLeftRight and TweakFrontBack;
+the transition uses an8-tick DiffBlend. The separate unconditional return uses
+a16-tick VelocityBlend. The expression itself has not been fully decoded.
+These dependencies motivate a matched original-input catch comparison, not a
+boolean write, forced transition, arbitrary catch timer or scoring claim.
+
+The repeated-B Christ Air request was recognized, but the original family
+remained Nose6 and OneFooterType stayed0. A subsequent Tailgrab from stale
+family1 also selected the wrong family. Repeating that same Tailgrab/one-foot
+binding after native family clearance selected footer8, advanced its original
+Into/Loop/Exit and landed100. These are routing/state-context failures separate
+from the airtime problem. No enum reset, forced chooser or substitute actor is
+an acceptable repair. See the captures in rc3-native-high-footer-30.json.

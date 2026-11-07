@@ -1,0 +1,1185 @@
+{
+  "installed_source": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+  "owner_correction": "Increase approach speed and use a full native Ollie before judging footer catch.",
+  "setup": "Native ground trainer setup at146,1.029,-65 heading180; normal auto-push;600ms coast beyond Up\u2192A window; full A crouch/release.",
+  "physics_modified": false,
+  "scoring_verified": false,
+  "full_catalog_accepted": false,
+  "trials": [
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map": "skate3_megapark",
+      "capture": "high-airwalk-manual_pose-result.json.gz",
+      "raw_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+      "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+      "error": null,
+      "observer_error": null,
+      "pre_crouch_position": [
+        145.82859802246094,
+        0.02899310365319252,
+        -90.89408874511719
+      ],
+      "pre_crouch_velocity": [
+        -0.022669415920972824,
+        -2.2562089725397527e-06,
+        -11.81428050994873
+      ],
+      "air_sample_span_seconds": 1.595639742,
+      "peak_world_height": 6.137426853179932,
+      "trial_final_state": 100,
+      "post_cleanup_state": 100,
+      "native_transitions": [
+        {
+          "seconds": 0.023941348,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.8278350830078,
+            0.028993068262934685,
+            -91.28727722167969
+          ],
+          "velocity": [
+            -0.022825872525572777,
+            -2.4194064280891325e-06,
+            -11.896711349487305
+          ]
+        },
+        {
+          "seconds": 0.926897366,
+          "state": 103,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.8057098388672,
+            2.5883636474609375,
+            -100.00051879882812
+          ],
+          "velocity": [
+            0.037831876426935196,
+            7.707700729370117,
+            -0.41468581557273865
+          ]
+        },
+        {
+          "seconds": 1.036272355,
+          "state": 200,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.80825805664062,
+            3.3491861820220947,
+            -99.95514678955078
+          ],
+          "velocity": [
+            -0.37269356846809387,
+            5.328968048095703,
+            2.6140758991241455
+          ]
+        },
+        {
+          "seconds": 1.062234652,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.80133056640625,
+            3.57412052154541,
+            -99.91193389892578
+          ],
+          "velocity": [
+            -0.6985791325569153,
+            5.01165246963501,
+            2.1398978233337402
+          ]
+        },
+        {
+          "seconds": 1.410649787,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.78199768066406,
+            5.321123123168945,
+            -99.53897857666016
+          ],
+          "velocity": [
+            0.21397113800048828,
+            2.9143083095550537,
+            0.5443923473358154
+          ]
+        },
+        {
+          "seconds": 1.62656871,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 12,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.9280242919922,
+            5.9175872802734375,
+            -99.43504333496094
+          ],
+          "velocity": [
+            1.3733371496200562,
+            0.8574007749557495,
+            0.31796717643737793
+          ]
+        },
+        {
+          "seconds": 1.997456976,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": true,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.4089813232422,
+            5.187397003173828,
+            -98.88294982910156
+          ],
+          "velocity": [
+            -0.9228839874267578,
+            -2.755383014678955,
+            -0.3983367085456848
+          ]
+        },
+        {
+          "seconds": 2.446706365,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.0850067138672,
+            2.892314910888672,
+            -99.14132690429688
+          ],
+          "velocity": [
+            -1.6314514875411987,
+            -7.308672904968262,
+            -2.443612575531006
+          ]
+        },
+        {
+          "seconds": 2.472952723,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.019287109375,
+            2.610139846801758,
+            -99.21585083007812
+          ],
+          "velocity": [
+            -2.062418222427368,
+            -7.6688995361328125,
+            -2.629818916320801
+          ]
+        },
+        {
+          "seconds": 2.658124897,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.7890167236328,
+            1.101776123046875,
+            -99.43217468261719
+          ],
+          "velocity": [
+            0.6246841549873352,
+            -5.509072303771973,
+            4.119619846343994
+          ]
+        }
+      ],
+      "native_actor_lines": [
+        "[2026-11-06 17:02:50.468] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=3 episode=148 semantic=28 expected_detail=0 held=true pressed_at=757803909 released_at=0 recognized_at=757803909 direction=3 presses=1 acknowledged=false.",
+        "[2026-11-06 17:02:50.475] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a acceptance=false.",
+        "[2026-11-06 17:02:50.476] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=70052604,176bee7d,04260570,6b177dee acceptance=false.",
+        "[2026-11-06 17:02:50.477] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 acceptance=false.",
+        "[2026-11-06 17:02:50.478] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=7f45e55a,223c2010,5ae5457f,3c221020 acceptance=false.",
+        "[2026-11-06 17:02:50.740] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=0 actor=1076955488 actor_asset=31f883e8-df24-3cc3-31f8-83e8df243cc3 duration=24.",
+        "[2026-11-06 17:02:50.741] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076955488 actor_asset=31f883e8-df24-3cc3-31f8-83e8df243cc3 before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=1.1760416 phase=into.",
+        "[2026-11-06 17:02:50.973] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=0 actor=1076957568 actor_asset=975e9cd4-e25e-69ab-975e-9cd4e25e69ab duration=305.",
+        "[2026-11-06 17:02:50.974] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076957568 actor_asset=975e9cd4-e25e-69ab-975e-9cd4e25e69ab before=0 after=1.333333 delta=1.333333 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.0678573 phase=loop.",
+        "[2026-11-06 17:02:51.014] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a acceptance=false.",
+        "[2026-11-06 17:02:51.040] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=70052604,176bee7d,04260570,6b177dee acceptance=false.",
+        "[2026-11-06 17:02:51.042] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 acceptance=false.",
+        "[2026-11-06 17:02:51.044] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=3 semantic=28 expected_detail=0 expected_footer=12 guid_words_le=7f45e55a,223c2010,5ae5457f,3c221020 acceptance=false.",
+        "[2026-11-06 17:02:51.106] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT INIT: serial=3 episode=148 one_footer=12 actor=1104279744 actor_asset=63d2a772-5f77-cd8b-63d2-a7725f77cd8b duration=75 input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:02:51.107] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=757804581 serial=3 episode=148 one_footer=12 actor_asset=63d2a772-5f77-cd8b-63d2-a7725f77cd8b before=0 after=2 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:02:51.341] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=757804815 serial=3 episode=148 one_footer=12 actor_asset=63d2a772-5f77-cd8b-63d2-a7725f77cd8b before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:02:51.508] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=21 actor=1115379264 actor_asset=0ee0148c-33ca-1a09-0ee0-148c33ca1a09 duration=300.",
+        "[2026-11-06 17:02:51.509] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=22 actor=1097617568 actor_asset=c2fcff03-1b0f-dadd-c2fc-ff031b0fdadd duration=305.",
+        "[2026-11-06 17:02:51.568] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=3 episode=148 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=757805014 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false.",
+        "[2026-11-06 17:02:52.748] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=21 actor=1115379264 actor_asset=0ee0148c-33ca-1a09-0ee0-148c33ca1a09 duration=300.",
+        "[2026-11-06 17:02:52.777] [624:968] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=3 episode=148 detail=22 actor=1097617568 actor_asset=c2fcff03-1b0f-dadd-c2fc-ff031b0fdadd duration=305."
+      ],
+      "scoring_verified": false,
+      "limitation": "Air sample span excludes unsampled boundary intervals and does not prove identical trajectories."
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map": "skate3_megapark",
+      "capture": "high-benihana-later-manual_pose-result.json.gz",
+      "raw_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+      "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+      "error": null,
+      "observer_error": null,
+      "pre_crouch_position": [
+        145.796630859375,
+        0.0289931558072567,
+        -90.17574310302734
+      ],
+      "pre_crouch_velocity": [
+        -0.04165096953511238,
+        -2.246577651021653e-06,
+        -11.98780345916748
+      ],
+      "air_sample_span_seconds": 1.738664196,
+      "peak_world_height": 6.958501815795898,
+      "trial_final_state": 100,
+      "post_cleanup_state": 100,
+      "native_transitions": [
+        {
+          "seconds": 0.000367889,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.796630859375,
+            0.0289931558072567,
+            -90.17574310302734
+          ],
+          "velocity": [
+            -0.04165096953511238,
+            -2.246577651021653e-06,
+            -11.98780345916748
+          ]
+        },
+        {
+          "seconds": 1.186221835,
+          "state": 200,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.74920654296875,
+            3.882772922515869,
+            -100.03279113769531
+          ],
+          "velocity": [
+            -0.03881728649139404,
+            6.786503314971924,
+            -0.26064416766166687
+          ]
+        },
+        {
+          "seconds": 1.241454452,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.74659729003906,
+            4.3321380615234375,
+            -100.04389190673828
+          ],
+          "velocity": [
+            -0.0018486959161236882,
+            6.544057369232178,
+            -0.4100726246833801
+          ]
+        },
+        {
+          "seconds": 1.424101217,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.71119689941406,
+            5.32978630065918,
+            -99.8540267944336
+          ],
+          "velocity": [
+            -0.34964630007743835,
+            4.812143325805664,
+            1.746419906616211
+          ]
+        },
+        {
+          "seconds": 1.6842746,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 7,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.59201049804688,
+            6.7039289474487305,
+            -99.47494506835938
+          ],
+          "velocity": [
+            -0.0599944181740284,
+            2.214676856994629,
+            2.5256593227386475
+          ]
+        },
+        {
+          "seconds": 2.106178235,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": true,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.05966186523438,
+            6.568202972412109,
+            -98.72440338134766
+          ],
+          "velocity": [
+            0.24928736686706543,
+            -1.9586894512176514,
+            0.4311816990375519
+          ]
+        },
+        {
+          "seconds": 2.55142952,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.727294921875,
+            4.306360244750977,
+            -98.86487579345703
+          ],
+          "velocity": [
+            -0.16599664092063904,
+            -6.3139262199401855,
+            -3.056047201156616
+          ]
+        },
+        {
+          "seconds": 2.577371022,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.72666931152344,
+            4.047096252441406,
+            -98.97138977050781
+          ],
+          "velocity": [
+            -0.12646423280239105,
+            -6.678194999694824,
+            -3.8837902545928955
+          ]
+        },
+        {
+          "seconds": 2.951040711,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.80911254882812,
+            1.6433734893798828,
+            -99.71635437011719
+          ],
+          "velocity": [
+            0.15007159113883972,
+            -4.782550811767578,
+            2.9600090980529785
+          ]
+        }
+      ],
+      "native_actor_lines": [
+        "[2026-11-06 17:08:12.280] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=4 episode=150 semantic=27 expected_detail=0 held=true pressed_at=758125760 released_at=0 recognized_at=758125760 direction=1 presses=1 acknowledged=false.",
+        "[2026-11-06 17:08:12.320] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=5ca70500,b36d2a51,0005a75c,6db3512a acceptance=false.",
+        "[2026-11-06 17:08:12.321] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 acceptance=false.",
+        "[2026-11-06 17:08:12.322] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=e520edd0,ffc0fbea,d0ed20e5,c0ffeafb acceptance=false.",
+        "[2026-11-06 17:08:12.322] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a acceptance=false.",
+        "[2026-11-06 17:08:12.619] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=0 actor=1076954048 actor_asset=199d8b43-b79f-9aab-199d-8b43b79f9aab duration=20.",
+        "[2026-11-06 17:08:12.620] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076954048 actor_asset=199d8b43-b79f-9aab-199d-8b43b79f9aab before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.5238223 phase=into.",
+        "[2026-11-06 17:08:12.819] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=0 actor=1076960768 actor_asset=4d89358e-0ba5-665f-4d89-358e0ba5665f duration=305.",
+        "[2026-11-06 17:08:12.820] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076960768 actor_asset=4d89358e-0ba5-665f-4d89-358e0ba5665f before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.9826422 phase=loop.",
+        "[2026-11-06 17:08:12.856] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=5ca70500,b36d2a51,0005a75c,6db3512a acceptance=false.",
+        "[2026-11-06 17:08:12.858] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=25803f9a,6daec724,9a3f8025,ae6d24c7 acceptance=false.",
+        "[2026-11-06 17:08:12.884] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=e520edd0,ffc0fbea,d0ed20e5,c0ffeafb acceptance=false.",
+        "[2026-11-06 17:08:12.886] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB OTHER ACTOR: serial=4 semantic=27 expected_detail=0 expected_footer=7 guid_words_le=d966c571,e67c6aab,71c566d9,7ce6ab6a acceptance=false.",
+        "[2026-11-06 17:08:13.051] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT INIT: serial=4 episode=150 one_footer=7 actor=1076960608 actor_asset=fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6 duration=75 input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:08:13.052] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758126546 serial=4 episode=150 one_footer=7 actor_asset=fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6 before=0 after=2 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:08:13.285] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758126779 serial=4 episode=150 one_footer=7 actor_asset=fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6 before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:08:13.453] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=12 actor=1115377344 actor_asset=a17e991f-11f3-cf4c-a17e-991f11f3cf4c duration=305.",
+        "[2026-11-06 17:08:13.455] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=11 actor=1097617568 actor_asset=85ea64bf-95e1-5875-85ea-64bf95e15875 duration=305.",
+        "[2026-11-06 17:08:13.514] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=4 episode=150 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=758126984 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false.",
+        "[2026-11-06 17:08:14.602] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=12 actor=1115377344 actor_asset=a17e991f-11f3-cf4c-a17e-991f11f3cf4c duration=305.",
+        "[2026-11-06 17:08:14.619] [624:968] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=4 episode=150 detail=11 actor=1097617568 actor_asset=85ea64bf-95e1-5875-85ea-64bf95e15875 duration=305."
+      ],
+      "scoring_verified": false,
+      "limitation": "Air sample span excludes unsampled boundary intervals and does not prove identical trajectories."
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map": "skate3_megapark",
+      "capture": "high-judo-manual_pose-result.json.gz",
+      "raw_sha256": "1c42bbb5bc0c7de3a5d10b648661402b1277910d62712e9933b4e73d3c2adb97",
+      "compressed_sha256": "a89d6c6f2f2af09d8be71af3e2a7fa805a4665043652b18de1d47ad94a4e2aa3",
+      "error": null,
+      "observer_error": null,
+      "pre_crouch_position": [
+        146.07205200195312,
+        0.028993092477321625,
+        -91.0306167602539
+      ],
+      "pre_crouch_velocity": [
+        0.08331424742937088,
+        -2.882763965317281e-06,
+        -11.799821853637695
+      ],
+      "air_sample_span_seconds": 1.87134691,
+      "peak_world_height": 6.522672653198242,
+      "trial_final_state": 504,
+      "post_cleanup_state": 504,
+      "native_transitions": [
+        {
+          "seconds": 0.012008961,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.07205200195312,
+            0.028993092477321625,
+            -91.0306167602539
+          ],
+          "velocity": [
+            0.08331424742937088,
+            -2.882763965317281e-06,
+            -11.799821853637695
+          ]
+        },
+        {
+          "seconds": 0.829674391,
+          "state": 103,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.13755798339844,
+            1.8282012939453125,
+            -99.84042358398438
+          ],
+          "velocity": [
+            0.1620892435312271,
+            8.444117546081543,
+            -2.2969906330108643
+          ]
+        },
+        {
+          "seconds": 0.9092814,
+          "state": 200,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.14553833007812,
+            2.409961700439453,
+            -99.98066711425781
+          ],
+          "velocity": [
+            -0.16176769137382507,
+            7.584484577178955,
+            2.394866466522217
+          ]
+        },
+        {
+          "seconds": 0.935143789,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.1453094482422,
+            2.698953628540039,
+            -99.99861145019531
+          ],
+          "velocity": [
+            -0.39053401350975037,
+            6.261905193328857,
+            2.5646393299102783
+          ]
+        },
+        {
+          "seconds": 1.52405934,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 2,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.12876892089844,
+            6.139830589294434,
+            -99.59925079345703
+          ],
+          "velocity": [
+            -0.5461121201515198,
+            1.9423056840896606,
+            0.3110504448413849
+          ]
+        },
+        {
+          "seconds": 1.7365374,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 4,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 2,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.9901580810547,
+            6.229679107666016,
+            -99.45641326904297
+          ],
+          "velocity": [
+            -0.6753716468811035,
+            -0.6632190942764282,
+            0.0772964283823967
+          ]
+        },
+        {
+          "seconds": 2.110834909,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": true,
+            "EnumGS.GrabType": 2,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.63087463378906,
+            5.799792289733887,
+            -99.5490951538086
+          ],
+          "velocity": [
+            -0.9489539861679077,
+            -3.533705234527588,
+            -0.6144799590110779
+          ]
+        },
+        {
+          "seconds": 2.80752137,
+          "state": 504,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 2,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.63180541992188,
+            0.8756484985351562,
+            -99.00133514404297
+          ],
+          "velocity": [
+            0.8489533066749573,
+            -3.8583593368530273,
+            4.886172294616699
+          ]
+        }
+      ],
+      "native_actor_lines": [
+        "[2026-11-06 17:10:08.741] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=5 episode=151 semantic=34 expected_detail=0 held=true pressed_at=758242215 released_at=0 recognized_at=758242215 direction=9 presses=2 acknowledged=false.",
+        "[2026-11-06 17:10:08.948] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1076493760 actor_asset=5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0 duration=24.",
+        "[2026-11-06 17:10:08.949] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1104246624 actor_asset=5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0 duration=24.",
+        "[2026-11-06 17:10:08.950] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB UNTRACKED ADVANCE: serial=5 actor_index=60 before=0 after=3 delta=3 initialized=true same_actor=false acceptance=false.",
+        "[2026-11-06 17:10:08.951] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=5 episode=151 detail=0 one_footer=4 actor=1104246624 actor_asset=5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0 before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.6382359 phase=into.",
+        "[2026-11-06 17:10:09.181] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1085115712 actor_asset=ba14f0b3-1e6e-d3a1-ba14-f0b31e6ed3a1 duration=305.",
+        "[2026-11-06 17:10:09.182] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1085113152 actor_asset=ba14f0b3-1e6e-d3a1-ba14-f0b31e6ed3a1 duration=305.",
+        "[2026-11-06 17:10:09.183] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB UNTRACKED ADVANCE: serial=5 actor_index=46 before=0 after=1.333333 delta=1.333333 initialized=true same_actor=false acceptance=false.",
+        "[2026-11-06 17:10:09.184] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=5 episode=151 detail=0 one_footer=4 actor=1085113152 actor_asset=ba14f0b3-1e6e-d3a1-ba14-f0b31e6ed3a1 before=0 after=1.333333 delta=1.333333 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.3424652 phase=loop.",
+        "[2026-11-06 17:10:09.313] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT INIT: serial=5 episode=151 one_footer=4 actor=1076957568 actor_asset=61ebfa04-5fb3-45fa-61eb-fa045fb345fa duration=75 input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:10:09.315] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758242815 serial=5 episode=151 one_footer=4 actor_asset=61ebfa04-5fb3-45fa-61eb-fa045fb345fa before=0 after=2 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:10:09.517] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758243016 serial=5 episode=151 one_footer=4 actor_asset=61ebfa04-5fb3-45fa-61eb-fa045fb345fa before=12 after=14 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:10:09.559] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1076493760 actor_asset=5e94ea5a-007e-6ed0-5e94-ea5a007e6ed0 duration=24.",
+        "[2026-11-06 17:10:09.748] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758243248 serial=5 episode=151 one_footer=4 actor_asset=61ebfa04-5fb3-45fa-61eb-fa045fb345fa before=26 after=28 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:10:09.861] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=5 episode=151 detail=0 actor=1085115712 actor_asset=ba14f0b3-1e6e-d3a1-ba14-f0b31e6ed3a1 duration=305.",
+        "[2026-11-06 17:10:09.981] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758243481 serial=5 episode=151 one_footer=4 actor_asset=61ebfa04-5fb3-45fa-61eb-fa045fb345fa before=40 after=42 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:10:10.010] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=5 episode=151 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=758243487 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false."
+      ],
+      "scoring_verified": false,
+      "limitation": "Air sample span excludes unsampled boundary intervals and does not prove identical trajectories."
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map": "skate3_megapark",
+      "capture": "high-christ-manual_pose-result.json.gz",
+      "raw_sha256": "c5f5ac55fc45c88896a279996383ff4a4db7b19d2e8d21d4fa9d8c132da0c3c9",
+      "compressed_sha256": "fec4165d8267b0b69e6d6829978c977c47b9089e7194d540e9434e326ce06799",
+      "error": null,
+      "observer_error": null,
+      "pre_crouch_position": [
+        145.7892608642578,
+        0.02899303287267685,
+        -91.76273345947266
+      ],
+      "pre_crouch_velocity": [
+        -0.04155021533370018,
+        -2.253725824630237e-06,
+        -11.957677841186523
+      ],
+      "air_sample_span_seconds": 1.713785579,
+      "peak_world_height": 6.455112457275391,
+      "trial_final_state": 100,
+      "post_cleanup_state": 100,
+      "native_transitions": [
+        {
+          "seconds": 0.010645323,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.7892608642578,
+            0.02899303287267685,
+            -91.76273345947266
+          ],
+          "velocity": [
+            -0.04155021533370018,
+            -2.253725824630237e-06,
+            -11.957677841186523
+          ]
+        },
+        {
+          "seconds": 0.848657436,
+          "state": 103,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.75302124023438,
+            2.653615951538086,
+            -100.00122833251953
+          ],
+          "velocity": [
+            -0.0332038439810276,
+            8.078166007995605,
+            -0.14514128863811493
+          ]
+        },
+        {
+          "seconds": 0.925926839,
+          "state": 200,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.75518798828125,
+            3.1753501892089844,
+            -99.9841537475586
+          ],
+          "velocity": [
+            -0.15843845903873444,
+            6.095895290374756,
+            3.5713868141174316
+          ]
+        },
+        {
+          "seconds": 0.951678077,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.75454711914062,
+            3.4247612953186035,
+            -99.96549987792969
+          ],
+          "velocity": [
+            -0.4116600751876831,
+            4.954627513885498,
+            3.021151542663574
+          ]
+        },
+        {
+          "seconds": 1.431096967,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.75282287597656,
+            5.828149795532227,
+            -99.57530212402344
+          ],
+          "velocity": [
+            -0.013517896644771099,
+            2.4262516498565674,
+            0.6085465550422668
+          ]
+        },
+        {
+          "seconds": 1.748431748,
+          "state": 0,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.04306030273438,
+            6.357194900512695,
+            -99.46501159667969
+          ],
+          "velocity": [
+            1.7484978437423706,
+            -0.4993346035480499,
+            1.582837462425232
+          ]
+        },
+        {
+          "seconds": 1.777522258,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 6,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.04306030273438,
+            6.357194900512695,
+            -99.46501159667969
+          ],
+          "velocity": [
+            1.979821801185608,
+            -1.2467297315597534,
+            1.4931361675262451
+          ]
+        },
+        {
+          "seconds": 2.667770225,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 1,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            145.8811798095703,
+            1.0841522216796875,
+            -99.36351013183594
+          ],
+          "velocity": [
+            0.5483464002609253,
+            -5.096660137176514,
+            3.8855550289154053
+          ]
+        },
+        {
+          "seconds": 2.69388949,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 1,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            145.88890075683594,
+            0.8973579406738281,
+            -99.21327209472656
+          ],
+          "velocity": [
+            -0.17604736983776093,
+            -5.128304481506348,
+            4.641525745391846
+          ]
+        }
+      ],
+      "native_actor_lines": [
+        "[2026-11-06 17:22:22.444] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=6 episode=154 semantic=28 expected_detail=0 held=true pressed_at=758975948 released_at=0 recognized_at=758975948 direction=3 presses=1 acknowledged=false.",
+        "[2026-11-06 17:22:22.612] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=7 episode=154 semantic=36 expected_detail=0 held=true pressed_at=758976128 released_at=0 recognized_at=758976128 direction=3 presses=2 acknowledged=false.",
+        "[2026-11-06 17:22:22.620] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB UNTRACKED ADVANCE: serial=7 actor_index=71 before=6 after=8 delta=2 initialized=false same_actor=false acceptance=false.",
+        "[2026-11-06 17:22:22.820] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=7 episode=154 detail=21 actor=1115379264 actor_asset=373592a2-c4b8-1678-3735-92a2c4b81678 duration=305.",
+        "[2026-11-06 17:22:23.640] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=7 episode=154 detail=21 actor=1115379264 actor_asset=373592a2-c4b8-1678-3735-92a2c4b81678 duration=305.",
+        "[2026-11-06 17:22:23.777] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=7 episode=154 acknowledged=false airborne=false intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=758977284 owner_verified=true owner_failure=0 state_read=true state=100 last_invalid_at=758977284 validity_failure=4 invalid_owner_failure=0 invalid_state_read=true invalid_state=100 invalid_state_rechecked=false invalid_recheck_owner_verified=true."
+      ],
+      "scoring_verified": false,
+      "limitation": "Air sample span excludes unsampled boundary intervals and does not prove identical trajectories."
+    },
+    {
+      "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+      "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+      "map": "skate3_megapark",
+      "capture": "high-tail_footer-later-manual_pose-result.json.gz",
+      "raw_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+      "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+      "error": null,
+      "observer_error": null,
+      "pre_crouch_position": [
+        146.11831665039062,
+        0.028993139043450356,
+        -90.5147933959961
+      ],
+      "pre_crouch_velocity": [
+        0.10764582455158234,
+        -2.2847341369924834e-06,
+        -11.982951164245605
+      ],
+      "air_sample_span_seconds": 1.80741208,
+      "peak_world_height": 6.895520210266113,
+      "trial_final_state": 100,
+      "post_cleanup_state": 504,
+      "native_transitions": [
+        {
+          "seconds": 0.012665764,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.11831665039062,
+            0.028993139043450356,
+            -90.5147933959961
+          ],
+          "velocity": [
+            0.10764582455158234,
+            -2.2847341369924834e-06,
+            -11.982951164245605
+          ]
+        },
+        {
+          "seconds": 1.145206498,
+          "state": 200,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.2213592529297,
+            3.820732593536377,
+            -100.01423645019531
+          ],
+          "velocity": [
+            0.05731390789151192,
+            6.772695064544678,
+            -0.18729276955127716
+          ]
+        },
+        {
+          "seconds": 1.196756422,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.22525024414062,
+            4.270043849945068,
+            -100.02754211425781
+          ],
+          "velocity": [
+            0.004420491401106119,
+            6.799658298492432,
+            0.20051400363445282
+          ]
+        },
+        {
+          "seconds": 1.406200202,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.1839599609375,
+            5.4162139892578125,
+            -99.85344696044922
+          ],
+          "velocity": [
+            -0.23491688072681427,
+            4.517637252807617,
+            1.1080795526504517
+          ]
+        },
+        {
+          "seconds": 1.66826199,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 8,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.14251708984375,
+            6.439281463623047,
+            -99.47444152832031
+          ],
+          "velocity": [
+            0.06403364986181259,
+            2.277287244796753,
+            1.3073540925979614
+          ]
+        },
+        {
+          "seconds": 2.114320395,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": true,
+            "Bool.Anim.Is.OneFootExit": true,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.0164031982422,
+            6.5146331787109375,
+            -99.27568054199219
+          ],
+          "velocity": [
+            0.29473721981048584,
+            -1.8258029222488403,
+            0.3044147193431854
+          ]
+        },
+        {
+          "seconds": 2.528515799,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 3,
+            "Bool.GP.CanGrab": true
+          },
+          "position": [
+            146.1806640625,
+            4.81329345703125,
+            -99.24403381347656
+          ],
+          "velocity": [
+            0.07253890484571457,
+            -6.626457691192627,
+            -0.7156604528427124
+          ]
+        },
+        {
+          "seconds": 2.582778634,
+          "state": 201,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.1847686767578,
+            4.597076416015625,
+            -99.26612091064453
+          ],
+          "velocity": [
+            0.09770481288433075,
+            -6.990582466125488,
+            -0.563414990901947
+          ]
+        },
+        {
+          "seconds": 2.979256932,
+          "state": 100,
+          "values": {
+            "EnumGS.OneFooterType": 0,
+            "Bool.State.Is.OneFootAir": false,
+            "Bool.Anim.Is.OneFootExit": false,
+            "EnumGS.GrabType": 0,
+            "Bool.GP.CanGrab": false
+          },
+          "position": [
+            146.175048828125,
+            1.1535568237304688,
+            -99.33901977539062
+          ],
+          "velocity": [
+            -0.09753088653087616,
+            -6.779865741729736,
+            3.6233463287353516
+          ]
+        }
+      ],
+      "native_actor_lines": [
+        "[2026-11-06 17:29:18.129] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=9 episode=156 semantic=24 expected_detail=11 held=true pressed_at=759391666 released_at=0 recognized_at=759391666 direction=2 presses=1 acknowledged=false.",
+        "[2026-11-06 17:29:18.302] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB UNTRACKED ADVANCE: serial=10 actor_index=72 before=6 after=8 delta=2 initialized=false same_actor=false acceptance=false.",
+        "[2026-11-06 17:29:18.329] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB REQUEST: serial=10 episode=156 semantic=32 expected_detail=0 held=true pressed_at=759391846 released_at=0 recognized_at=759391846 direction=2 presses=2 acknowledged=false.",
+        "[2026-11-06 17:29:18.468] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=0 actor=1076960928 actor_asset=8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c duration=20.",
+        "[2026-11-06 17:29:18.469] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1076960928 actor_asset=8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.180809 phase=into.",
+        "[2026-11-06 17:29:18.668] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=0 actor=1085141952 actor_asset=cf36f3b9-00ac-35af-cf36-f3b900ac35af duration=305.",
+        "[2026-11-06 17:29:18.669] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1085141952 actor_asset=cf36f3b9-00ac-35af-cf36-f3b900ac35af before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.3976325 phase=loop.",
+        "[2026-11-06 17:29:18.902] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT INIT: serial=10 episode=156 one_footer=8 actor=1088616160 actor_asset=fa0f8662-ec0c-197c-fa0f-8662ec0c197c duration=75 input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:29:18.903] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=759392448 serial=10 episode=156 one_footer=8 actor_asset=fa0f8662-ec0c-197c-fa0f-8662ec0c197c before=0 after=2 delta=2 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:29:19.135] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=759392680 serial=10 episode=156 one_footer=8 actor_asset=fa0f8662-ec0c-197c-fa0f-8662ec0c197c before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "[2026-11-06 17:29:19.302] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=12 actor=1076960768 actor_asset=a17e991f-11f3-cf4c-a17e-991f11f3cf4c duration=305.",
+        "[2026-11-06 17:29:19.303] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=11 actor=1076959168 actor_asset=85ea64bf-95e1-5875-85ea-64bf95e15875 duration=305.",
+        "[2026-11-06 17:29:19.363] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB END: serial=10 episode=156 acknowledged=true airborne=true intent_withdrawn=true landing_scoring_acceptance=unverified reason=refresh observed_at=759392882 owner_verified=true owner_failure=0 state_read=true state=201 last_invalid_at=0 validity_failure=0 invalid_owner_failure=0 invalid_state_read=false invalid_state=0 invalid_state_rechecked=false invalid_recheck_owner_verified=false.",
+        "[2026-11-06 17:29:20.580] [624:968] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=12 actor=1076960768 actor_asset=a17e991f-11f3-cf4c-a17e-991f11f3cf4c duration=305.",
+        "[2026-11-06 17:29:20.586] [624:720] Native(C): [Skater] [INFO] Repeated 1 more times: ARCADE NATIVE GRAB INIT: serial=10 episode=156 detail=11 actor=1076959168 actor_asset=85ea64bf-95e1-5875-85ea-64bf95e15875 duration=305."
+      ],
+      "scoring_verified": false,
+      "limitation": "Air sample span excludes unsampled boundary intervals and does not prove identical trajectories."
+    }
+  ]
+}

@@ -10,9 +10,15 @@ state, owner loss, stale input, landing and Arcade OFF still revoke ownership.
 All 20 local targeted suites pass. Exact-source development and targeted CI
 and upstream integration have all passed. The exact DLL is installed and
 its live mapping verified on Mega Park. It is not gameplay accepted. Two
-Airwalk trials initialized and advanced the correct native actors but bailed;
-the second preserved the hand through the exit tags, so the remaining catch
-problem is not solved by tag retention alone. See
+Airwalk trials initialized and advanced the correct native actors but bailed
+with limited airtime. The owner identified the inadequate approach speed.
+A longer straight approach and full native Ollie subsequently produced exact
+Airwalk, Benihana and One Foot Tailgrab Into, Loop and Exit advancement,
+input withdrawal, native identity clearance and clean ground100 returns.
+The repeated-B Christ Air request still retained the wrong native family;
+the Judo Exit was still active at landing. Scoring remains unverified. See
+[rc3-native-high-footer-30.json](rc3-native-high-footer-30.json). The earlier
+failures remain recorded in
 [rc3-native-footer-release-30.json](rc3-native-footer-release-30.json).
 
 A read-only observer using the SDK final-pose layout now captures actual

@@ -2232,7 +2232,7 @@
       }
     }
   ],
-  "native_actor_evidence_count": 55,
+  "native_actor_evidence_count": 64,
   "counts": {
     "declarations": {
       "ALIAS/DEPENDENT": 77,
@@ -6088,7 +6088,7 @@
         "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
@@ -6139,6 +6139,68 @@
         "namespace": "Enum.OneFooterType",
         "value": 7
       },
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 7,
+            "resource": 25254,
+            "actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_benihanna_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+            "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+            "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+            "native_kind": "benihana",
+            "native_one_footer_type": 7,
+            "binding": "Down-Left+B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:08:12.620] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076954048 actor_asset=199d8b43-b79f-9aab-199d-8b43b79f9aab before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.5238223 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.738664196,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+          "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+          "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+          "native_kind": "benihana",
+          "native_one_footer_type": 7,
+          "binding": "Down-Left+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:08:12.820] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076960768 actor_asset=4d89358e-0ba5-665f-4d89-358e0ba5665f before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.9826422 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.738664196,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
+        }
+      ],
       "native_lifecycle_failure": {
         "native_id": 7,
         "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
@@ -6220,10 +6282,10 @@
         "Down+B,B within 250ms; or Select \"One Foot Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -6270,7 +6332,69 @@
       "dependency": {
         "namespace": "Enum.OneFooterType",
         "value": 8
-      }
+      },
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 8,
+            "resource": 31566,
+            "actor": "8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c",
+            "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_onefoot_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+            "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+            "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+            "native_kind": "tail_footer",
+            "native_one_footer_type": 8,
+            "binding": "Down+B,B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:29:18.469] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1076960928 actor_asset=8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.180809 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.80741208,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+          "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+          "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+          "native_kind": "tail_footer",
+          "native_one_footer_type": 8,
+          "binding": "Down+B,B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:29:18.669] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1085141952 actor_asset=cf36f3b9-00ac-35af-cf36-f3b900ac35af before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.3976325 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.80741208,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
+        }
+      ]
     },
     {
       "native_name": "Tailwalk",
@@ -7236,7 +7360,7 @@
         "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "ALIAS/DEPENDENT",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
@@ -7287,6 +7411,68 @@
         "namespace": "Enum.OneFooterType",
         "value": 12
       },
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 12,
+            "resource": 26676,
+            "actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "sequence": "Animation/Dingo/seq_onb_grab_nose_2ft_airwalk_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+            "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+            "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+            "native_kind": "airwalk",
+            "native_one_footer_type": 12,
+            "binding": "Down-Right+B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:02:50.741] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076955488 actor_asset=31f883e8-df24-3cc3-31f8-83e8df243cc3 before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=1.1760416 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.595639742,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+          "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+          "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+          "native_kind": "airwalk",
+          "native_one_footer_type": 12,
+          "binding": "Down-Right+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:02:50.974] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076957568 actor_asset=975e9cd4-e25e-69ab-975e-9cd4e25e69ab before=0 after=1.333333 delta=1.333333 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.0678573 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.595639742,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
+        }
+      ],
       "native_lifecycle_failure": {
         "native_id": 12,
         "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
@@ -17610,7 +17796,7 @@
         "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "BLOCKED",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
@@ -17655,6 +17841,68 @@
             "compressed_sha1": "2f87f7046b6911f6ee83e7f666077e65801c9d1e",
             "decoded_sha256": "f2a23b5c24f4f5243e9d54d607eddb21381060a88c07aa4fb6a3af8272a1049f"
           }
+        }
+      ],
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 7,
+            "resource": 25254,
+            "actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
+            "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_benihanna_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+            "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+            "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+            "native_kind": "benihana",
+            "native_one_footer_type": 7,
+            "binding": "Down-Left+B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:08:12.620] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076954048 actor_asset=199d8b43-b79f-9aab-199d-8b43b79f9aab before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.5238223 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.738664196,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+          "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+          "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+          "native_kind": "benihana",
+          "native_one_footer_type": 7,
+          "binding": "Down-Left+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:08:12.820] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076960768 actor_asset=4d89358e-0ba5-665f-4d89-358e0ba5665f before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.9826422 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.738664196,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
         }
       ],
       "native_lifecycle_failure": {
@@ -17738,10 +17986,10 @@
         "Down+B,B within 250ms; or Select \"One Foot Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
-      "release_landing_evidence": "No RC3 native capture",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
+      "release_landing_evidence": "SDK input-request withdrawal is recorded where present; this does not by itself prove native intent clearance. Exact native exit actor and numeric landing/combo scoring remain unverified; consult each receipt for its gameplay context and lifecycle limits.",
       "scoring_evidence": "Native numeric scoring unverified",
-      "remaining_blocker": "Owner gameplay and full native animation/hold/exit/landing/scoring acceptance outstanding",
+      "remaining_blocker": "Remaining variants, changed-stance behavior, complete hold/exit/landing/scoring and owner visual acceptance remain pending.",
       "prior_evidence": {
         "native_action": "unverified",
         "native_animation": "unverified",
@@ -17783,6 +18031,68 @@
             "compressed_sha1": "99a1df9bff5c1d6b5696d2e71d8e279013bf2cf6",
             "decoded_sha256": "f9a41b2ece2927321f8f691a0eaeed83b9ab1331650a8ce364c0bfab72af887f"
           }
+        }
+      ],
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 8,
+            "resource": 31566,
+            "actor": "8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c",
+            "sequence": "Animation/Dingo/seq_onb_grab_tail_1ft_onefoot_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+            "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+            "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+            "native_kind": "tail_footer",
+            "native_one_footer_type": 8,
+            "binding": "Down+B,B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:29:18.469] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1076960928 actor_asset=8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.180809 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.80741208,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+          "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+          "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+          "native_kind": "tail_footer",
+          "native_one_footer_type": 8,
+          "binding": "Down+B,B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:29:18.669] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1085141952 actor_asset=cf36f3b9-00ac-35af-cf36-f3b900ac35af before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.3976325 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.80741208,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
         }
       ]
     },
@@ -18102,7 +18412,7 @@
         "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B"
       ],
       "implementation_state": "BLOCKED",
-      "native_animation_acknowledgment": "Runtime requires exact actor initialization, positive advancement and matching native detail or OneFooterType; tests inject observations only",
+      "native_animation_acknowledgment": "Exact original actor initialized and advanced; see each receipt's source SHA in rc3_native_evidence. This does not establish every variant in this row.",
       "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Native numeric scoring unverified",
       "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
@@ -18147,6 +18457,68 @@
             "compressed_sha1": "ef4b3dd15dc646c80c0b80088998338facb50cdb",
             "decoded_sha256": "23d19b788909738e7b07ae61aff2c698da7885826508af3ebff1463e89c91bd0"
           }
+        }
+      ],
+      "rc3_native_entry_evidence": [
+        {
+          "asset": {
+            "one_footer": 12,
+            "resource": 26676,
+            "actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
+            "sequence": "Animation/Dingo/seq_onb_grab_nose_2ft_airwalk_into"
+          },
+          "evidence": {
+            "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+            "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+            "map": "skate3_megapark",
+            "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+            "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+            "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+            "native_kind": "airwalk",
+            "native_one_footer_type": 12,
+            "binding": "Down-Right+B",
+            "actor_initialized": true,
+            "positive_advancement": true,
+            "native_phase": "into",
+            "native_receipt": "[2026-11-06 17:02:50.741] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076955488 actor_asset=31f883e8-df24-3cc3-31f8-83e8df243cc3 before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=1.1760416 phase=into.",
+            "native_exit_actor_verified": true,
+            "intent_withdrawal_observed": true,
+            "native_identity_clearance_observed": true,
+            "ground_state_100_observed": true,
+            "landing_scoring_verified": false,
+            "air_sample_span_seconds": 1.595639742,
+            "limits": [
+              "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+              "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+            ]
+          }
+        }
+      ],
+      "rc3_native_evidence": [
+        {
+          "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+          "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+          "map": "skate3_megapark",
+          "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+          "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+          "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+          "native_kind": "airwalk",
+          "native_one_footer_type": 12,
+          "binding": "Down-Right+B",
+          "actor_initialized": true,
+          "positive_advancement": true,
+          "native_phase": "loop",
+          "native_receipt": "[2026-11-06 17:02:50.974] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076957568 actor_asset=975e9cd4-e25e-69ab-975e-9cd4e25e69ab before=0 after=1.333333 delta=1.333333 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.0678573 phase=loop.",
+          "native_exit_actor_verified": true,
+          "intent_withdrawal_observed": true,
+          "native_identity_clearance_observed": true,
+          "ground_state_100_observed": true,
+          "landing_scoring_verified": false,
+          "air_sample_span_seconds": 1.595639742,
+          "limits": [
+            "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+            "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+          ]
         }
       ],
       "native_lifecycle_failure": {
@@ -20478,7 +20850,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down+B,B within 250ms; or Select \"One Foot Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -20489,7 +20861,32 @@
       },
       "native_actor": "fa0f8662-ec0c-197c-fa0f-8662ec0c197c",
       "native_gameplay_context": "Original airborne one-footer exit phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+        "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+        "native_kind": "tail_footer",
+        "native_one_footer_type": 8,
+        "binding": "Down+B,B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "exit",
+        "native_receipt": "[2026-11-06 17:29:19.135] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=759392680 serial=10 episode=156 one_footer=8 actor_asset=fa0f8662-ec0c-197c-fa0f-8662ec0c197c before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.80741208,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 3413,
@@ -20596,11 +20993,36 @@
       "identity_links": [],
       "implementation_state": "IMPLEMENTED — GAMEPLAY PENDING",
       "arcade_binding": "Down+B,B within 250ms; or Select \"One Foot Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "RC3 native lifecycle and scoring acceptance outstanding",
-      "native_actor": "cf36f3b9-00ac-35af-cf36-f3b900ac35af"
+      "native_actor": "cf36f3b9-00ac-35af-cf36-f3b900ac35af",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+        "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+        "native_kind": "tail_footer",
+        "native_one_footer_type": 8,
+        "binding": "Down+B,B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "loop",
+        "native_receipt": "[2026-11-06 17:29:18.669] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1085141952 actor_asset=cf36f3b9-00ac-35af-cf36-f3b900ac35af before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.3976325 phase=loop.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.80741208,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 3927,
@@ -21565,7 +21987,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -21576,7 +21998,32 @@
       },
       "native_actor": "63d2a772-5f77-cd8b-63d2-a7725f77cd8b",
       "native_gameplay_context": "Original airborne one-footer exit phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+        "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+        "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+        "native_kind": "airwalk",
+        "native_one_footer_type": 12,
+        "binding": "Down-Right+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "exit",
+        "native_receipt": "[2026-11-06 17:02:51.341] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=757804815 serial=3 episode=148 one_footer=12 actor_asset=63d2a772-5f77-cd8b-63d2-a7725f77cd8b before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.595639742,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 10614,
@@ -21638,11 +22085,36 @@
       "identity_links": [],
       "implementation_state": "BLOCKED",
       "arcade_binding": "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "Both trials initialized and advanced the original Airwalk Into actor. Footer12 and family6 cleared with native GrabExit before impact, but both landed in504. Earlier release2.45s instead of2.80s did not prevent the bail. Last airborne board tilt was approximately56 and34 degrees respectively; this observation does not establish the bail cause.",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Reliable native Airwalk catch/posture and landing remain unresolved after successful intent/family cleanup. Exact Exit actor, pose ownership and original-control comparison are required; do not force board orientation or suppress native bail.",
       "native_actor": "975e9cd4-e25e-69ab-975e-9cd4e25e69ab",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+        "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+        "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+        "native_kind": "airwalk",
+        "native_one_footer_type": 12,
+        "binding": "Down-Right+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "loop",
+        "native_receipt": "[2026-11-06 17:02:50.974] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076957568 actor_asset=975e9cd4-e25e-69ab-975e-9cd4e25e69ab before=0 after=1.333333 delta=1.333333 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-1.0678573 phase=loop.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.595639742,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      },
       "native_lifecycle_failure": {
         "native_id": 12,
         "source_sha": "5c841c20c82b5782f6ff4ac861aa0e9683159d97",
@@ -23886,11 +24358,36 @@
       "identity_links": [],
       "implementation_state": "BLOCKED",
       "arcade_binding": "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "OneFooterType7 at1.591s cleared at1.762s, ground100 at2.030s without observed bail; GrabType3 persisted. A preceding capture initialized and advanced the exact Into actor but bailed and also retained GrabType3.",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "The earlier flat-ground cleanup failure remains unresolved. A native ramp capture clears foot intent, footer and grab identity before ground return; exact Loop/Exit advancement, numeric scoring and other contexts remain pending.",
       "native_actor": "4d89358e-0ba5-665f-4d89-358e0ba5665f",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+        "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+        "native_kind": "benihana",
+        "native_one_footer_type": 7,
+        "binding": "Down-Left+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "loop",
+        "native_receipt": "[2026-11-06 17:08:12.820] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076960768 actor_asset=4d89358e-0ba5-665f-4d89-358e0ba5665f before=0 after=2 delta=2 initialized=true native_evaluation=true velocity_known=true vertical_velocity=-0.9826422 phase=loop.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.738664196,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      },
       "native_lifecycle_failure": {
         "native_id": 7,
         "source_sha": "ae52b74c67e3f8b90439473066140760efa417cc",
@@ -24897,7 +25394,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -24908,7 +25405,32 @@
       },
       "native_actor": "199d8b43-b79f-9aab-199d-8b43b79f9aab",
       "native_gameplay_context": "Original airborne one-footer into phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+        "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+        "native_kind": "benihana",
+        "native_one_footer_type": 7,
+        "binding": "Down-Left+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "into",
+        "native_receipt": "[2026-11-06 17:08:12.620] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=4 episode=150 detail=0 one_footer=7 actor=1076954048 actor_asset=199d8b43-b79f-9aab-199d-8b43b79f9aab before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.5238223 phase=into.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.738664196,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 25691,
@@ -25338,7 +25860,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down-right+B; or Select \"Airwalk\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -25349,7 +25871,32 @@
       },
       "native_actor": "31f883e8-df24-3cc3-31f8-83e8df243cc3",
       "native_gameplay_context": "Original airborne one-footer into phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-airwalk-manual_pose-result.json.gz",
+        "uncompressed_sha256": "680331e02351130564b01cb840fa4f2f8d73405a1a3e27aa4f129a3ba325c11d",
+        "compressed_sha256": "83d0bfce56937e8782d5b175c41fec58acb6b0db3311e92992962ec49b5bc6cf",
+        "native_kind": "airwalk",
+        "native_one_footer_type": 12,
+        "binding": "Down-Right+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "into",
+        "native_receipt": "[2026-11-06 17:02:50.741] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=3 episode=148 detail=0 one_footer=12 actor=1076955488 actor_asset=31f883e8-df24-3cc3-31f8-83e8df243cc3 before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=1.1760416 phase=into.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.595639742,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 26770,
@@ -26114,7 +26661,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down-left+B; or Select \"Benihana\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -26125,7 +26672,32 @@
       },
       "native_actor": "fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6",
       "native_gameplay_context": "Original airborne one-footer exit phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-benihana-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "5473b698b41e2eb61e6847be9601757dc0a32fd60943c475f3517ed8bedf0a02",
+        "compressed_sha256": "a5416195939852d9b40861876c672ff85bd2d9218ad5a3e62b80ba1fd585a58f",
+        "native_kind": "benihana",
+        "native_one_footer_type": 7,
+        "binding": "Down-Left+B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "exit",
+        "native_receipt": "[2026-11-06 17:08:13.285] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB EXIT: ms=758126779 serial=4 episode=150 one_footer=7 actor_asset=fcc3d0fc-d3bb-9ec6-fcc3-d0fcd3bb9ec6 before=14 after=15 delta=1 initialized=true native_evaluation=true input_ownership=false landing_scoring_acceptance=unverified.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.738664196,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 31453,
@@ -26152,7 +26724,7 @@
       "identity_links": [],
       "implementation_state": "ALIAS/DEPENDENT",
       "arcade_binding": "Down+B,B within 250ms; or Select \"One Foot Tailgrab\" in Arcade Mode > R3+B grab; center LS, hold R3 and press B",
-      "native_animation_acknowledgment": "No RC3 capture",
+      "native_animation_acknowledgment": "Exact original phase actor initialized and advanced in the attached receipt; no other phase or lifecycle acceptance is implied.",
       "release_landing_evidence": "No RC3 capture",
       "scoring_evidence": "Unverified",
       "remaining_blocker": "Dependent original phase is mapped and observed by production code; exact actor advancement and the parent trick's hold/exit/landing/scoring acceptance remain separate requirements.",
@@ -26163,7 +26735,32 @@
       },
       "native_actor": "8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c",
       "native_gameplay_context": "Original airborne one-footer into phase",
-      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request"
+      "native_mechanism": "Original OneFooters StateFlow and CDB; reached through the parent grab's entry/release, not a separate trick request",
+      "rc3_native_evidence": {
+        "source_sha": "4cbb0f2d6d29a9cd17b53e1d5af29b6469355e8d",
+        "dll_sha256": "f0b7116bdb24e2a9ef799ff14b089c0fdb6fce6d6ebeaa50e4e604556a21016c",
+        "map": "skate3_megapark",
+        "capture": "artifacts/RC3-30/high-tail_footer-later-manual_pose-result.json.gz",
+        "uncompressed_sha256": "d55b6e3ffbb82914df3d23e7251ace0af43ba793d588538af9cc40261f726974",
+        "compressed_sha256": "13fd7c894fa9421300a3c8f28038a160bd23973434599f12db4e220477e844a7",
+        "native_kind": "tail_footer",
+        "native_one_footer_type": 8,
+        "binding": "Down+B,B",
+        "actor_initialized": true,
+        "positive_advancement": true,
+        "native_phase": "into",
+        "native_receipt": "[2026-11-06 17:29:18.469] [624:772] Native(C): [Skater] [INFO] ARCADE NATIVE GRAB: serial=10 episode=156 detail=0 one_footer=8 actor=1076960928 actor_asset=8b1e82a5-1ec3-e16c-8b1e-82a51ec3e16c before=0 after=3 delta=3 initialized=true native_evaluation=true velocity_known=true vertical_velocity=2.180809 phase=into.",
+        "native_exit_actor_verified": true,
+        "intent_withdrawal_observed": true,
+        "native_identity_clearance_observed": true,
+        "ground_state_100_observed": true,
+        "landing_scoring_verified": false,
+        "air_sample_span_seconds": 1.80741208,
+        "limits": [
+          "Faster straight Mega Park ramp approach; low-airtime failures remain retained.",
+          "Native animation and landing evidence only; scoring/composite and owner acceptance remain pending."
+        ]
+      }
     },
     {
       "resource_index": 31585,
