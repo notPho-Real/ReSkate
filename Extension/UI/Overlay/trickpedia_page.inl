@@ -51,7 +51,7 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
         const auto id=hash(t->key,47);
         if(button(ui,id,ImVec2(a.x,top),ImVec2(split-36*u,top+88*u),std::string(t->name),
                   h.selected_trick==t->id?Look::chosen:Look::plain,true,
-                  guide::evidence_label(*t),&list.box)) {
+                  guide::evidence_row_label(*t),&list.box)) {
             h.selected_trick=t->id;h.scrolls[hash("trick-detail")]=0;
         }
         list.reveal(id,top,88*u);
@@ -61,13 +61,15 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     Scroller detail(ui,hash("trick-detail"),ImVec2(split,a.y+110*u),z);
     unsigned detail_line=0;
     const auto line=[&](const std::string& text,ImU32 color=theme::paper,float height=84.f) {
+      for(const auto& fragment:guide::detail_chunks(text)) {
         const float wrap=std::max(100*u,z.x-split-44*u);
-        const float pixels=std::max(height*u,ui.body->CalcTextSizeA(32*u,FLT_MAX,wrap,text.c_str()).y+24*u);
+        const float pixels=std::max(height*u,ui.body->CalcTextSizeA(32*u,FLT_MAX,wrap,fragment.c_str()).y+24*u);
         bool drawn{};const float top=detail.next(pixels,8*u,drawn);
-        if(drawn)ui.draw->AddText(ui.body,32*u,ImVec2(split+20*u,top+12*u),color,text.c_str(),nullptr,wrap);
+        if(drawn)ui.draw->AddText(ui.body,32*u,ImVec2(split+20*u,top+12*u),color,fragment.c_str(),nullptr,wrap);
         // A focusable line lets controller users scroll through every alternative.
-        const auto id=hash(text,++detail_line);item(ui,id,ImVec2(split,top),ImVec2(z.x-16*u,top+pixels),&detail.box);
+        const auto id=hash(fragment,++detail_line);item(ui,id,ImVec2(split,top),ImVec2(z.x-16*u,top+pixels),&detail.box);
         detail.reveal(id,top,pixels);
+      }
     };
     line(std::string(t->name));
     line(guide::evidence_label(*t),theme::muted);

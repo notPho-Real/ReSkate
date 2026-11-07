@@ -101,4 +101,15 @@ void evidence_tests() {
         }
     }
     require(imported>0 && compatible>0 && compatible<imported,"current versus historical import lost");
+    for(const auto mask:{Criteria{},policy.execution,policy.core,policy.required}) {
+        for(auto& trial:trials)trial.passed=mask;
+        require(trickpedia::evidence_row_label(t,20260929,fingerprint).size()<=20,"row maturity label crowds trick name");
+    }
+    const auto receipt_text=std::string(179,'x')+"\xc3\xa9 "+std::string(500,'y');
+    std::string reconstructed;
+    for(const auto& chunk:trickpedia::detail_chunks(receipt_text)) {
+        require(chunk.size()<=180 && (static_cast<unsigned char>(chunk.front())&0xc0)!=0x80,"controller detail splits UTF-8 or exceeds focus fragment");
+        reconstructed+=chunk;
+    }
+    require(reconstructed==receipt_text,"controller detail fragment dropped evidence text");
 }

@@ -28,6 +28,29 @@ inline std::string evidence_label(const TrickDefinition& t,unsigned build=202609
     }
     return result;
 }
+inline std::string evidence_row_label(const TrickDefinition& t,unsigned build=20260929,
+                                      std::string_view fingerprint=gameplay_fingerprint) {
+    const auto status=trick_status(t,build,fingerprint);
+    if(status!=TrickStatus::experimental)return status_names[static_cast<unsigned>(status)];
+    const auto e=evidence_summary(t,build,fingerprint);
+    constexpr std::array compact{"Implemented", "Observed", "Repeatable", "Pending"};
+    return "Exp / "+std::string(compact[static_cast<unsigned>(e.current.maturity)])+(e.current.regression?" !":"");
+}
+inline std::vector<std::string> detail_chunks(std::string_view text) {
+    // Each fragment is separately focusable. A long capture receipt must not
+    // become one taller-than-viewport item that controller focus skips over.
+    std::vector<std::string> result;
+    while(!text.empty()) {
+        std::size_t end=std::min<std::size_t>(180,text.size());
+        if(end<text.size()) {
+            while(end && (static_cast<unsigned char>(text[end])&0xc0)==0x80)--end;
+            const auto space=text.substr(0,end).find_last_of(" \n");
+            if(space!=std::string_view::npos && space>90)end=space+1;
+        }
+        result.emplace_back(text.substr(0,end));text.remove_prefix(end);
+    }
+    return result;
+}
 // The same evaluated evidence feeds the detail view and presentation tests.
 inline std::vector<std::string> evidence_details(const TrickDefinition& t,bool technical=false,
                                                unsigned build=20260929,std::string_view fingerprint=gameplay_fingerprint) {
