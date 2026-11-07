@@ -20,6 +20,9 @@ try {
         $fingerprint = & python ../contrib/arcade-mode/ci/archive_fingerprint.py target/release/reskate_spotify.lib
         if ($LASTEXITCODE) { throw 'Archive parsing failed' }
         $fingerprint = $fingerprint | ConvertFrom-Json
+        if ($mode -ne 'warm') {
+            Copy-Item target/release/reskate_spotify.lib "../artifacts/spotify-$mode.lib"
+        }
         $report.measurements += [ordered]@{mode=$mode; seconds=$timer.Elapsed.TotalSeconds; fingerprint=$fingerprint}
     }
     $report.raw_equal = @($report.measurements.fingerprint.raw_sha256 | Select-Object -Unique).Count -eq 1
