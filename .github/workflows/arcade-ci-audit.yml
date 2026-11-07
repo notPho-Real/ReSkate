@@ -3,6 +3,7 @@ on:
   push:
     branches: ['ci-optimization/arcade']
     paths:
+      - '.github/actions/spotify-cache/action.yml'
       - '.github/workflows/arcade-ci-audit.yml'
       - 'contrib/arcade-mode/ci/audit_cargo.ps1'
       - 'contrib/arcade-mode/ci/archive_fingerprint.py'

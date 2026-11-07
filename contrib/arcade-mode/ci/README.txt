@@ -59,13 +59,19 @@ supersession, not all platform-capacity waits.
 
 Cache boundaries
 ----------------
-Spotify keeps the existing compiler/Cargo/MSVC/image/flags/config/lock/source
-keys. Cargo must always validate fingerprints; a cache hit is never a build
+Spotify keys include compiler/Cargo/MSVC/image/flags/config/lock, the cache
+implementation and exact source SHA, with a compatible dependency fallback.
+Cargo must always validate fingerprints; a cache hit is never a build
 success. Only registry data and SpotifyHelper/target are cached. Credentials,
 CMake trees, generated headers and complete DLLs are never compilation caches.
 PR events bypass cache reads and writes, keeping fork code out of trusted cache
 population. cold_cache bypasses both restore and save on manual full runs.
 The toolchain fingerprint is now retained in runtime provenance.
+SOURCE_DATE_EPOCH is the checked-out commit's timestamp. This replaces
+librespot's random build ID with reproducible source metadata. After a compiled
+cache restore, librespot-core is explicitly cleaned so Git/date metadata and
+dependent crates are regenerated for this revision. Other dependency outputs
+can still be reused. The v2 namespace cannot restore older random-ID caches.
 
 arcade-ci-audit.yml is a read-only, hosted Windows benchmark. It compares
 restored-cache, immediate warm and clean Cargo release libraries by SHA-256,

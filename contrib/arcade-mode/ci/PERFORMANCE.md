@@ -80,7 +80,10 @@ Trickpedia additionally duplicated a fast push check with a PR fast check.
   groups; no parent cancellation wraps packaging, publication or hardware.
 - Publication requires the same graph's full release-eligibility gate. Failed,
   cancelled or skipped dependencies cannot qualify a DLL from another run/SHA.
-- Existing Cargo caching is retained and now used by the full build too.
+- Cargo dependency caching is available to the full build too. A new v2
+  compiled-output namespace includes the cache implementation and exact source.
+  SOURCE_DATE_EPOCH uses the checked-out commit timestamp, and librespot-core
+  is explicitly cleaned after restore to regenerate source-dependent metadata.
   PR events bypass cache reads/writes. No CMake build tree is cached.
 - C++ caching is deliberately not enabled without a supported generator and
   measured clean/cached equivalence. No unmeasured sccache speedup is claimed.
@@ -96,8 +99,8 @@ from completed hosted samples, not inferred from the reduced workflow count.
 Local actionlint 1.7.12 passes the actual workflows. Eight policy/provenance tests
 exercise the YAML expressions and all negative gate states. Twelve security
 tests preserve the read-only graph, exact action pins and publication-only write
-permission. The complete local lab suite completed 458 tests with one existing
-CMake-unavailable skip. Native negative controls in hosted CI explicitly require
+permission. With CMake available, the complete local lab suite passed all 459
+tests; the 20 standalone native tests also passed. Native negative controls in hosted CI explicitly require
 both compiler errors and failing CTest tests to produce nonzero exit status.
 
 Hosted runs are linked in draft PR #3. The first iteration exposed the existing
@@ -115,6 +118,15 @@ still detected. A passing normalized audit would establish content equivalence,
 not raw timestamp reproducibility. Raw installer DLL checksums remain unchanged. Immediate warm
 is an in-job no-change measurement, not a second hosted cache restore. Retained
 Cargo caches must pass that content audit; native outputs remain clean CMake builds.
+
+The diagnostic audit 42316765630 captured both libraries. Six of 6,939 archive
+members differ beyond timestamps, including librespot's random build ID
+(`KuLRlmHy` versus `cV2iPo7W`) embedded in the root object. The dependency's
+[versioned build script](https://github.com/librespot-org/librespot/blob/v0.8.0/core/build.rs)
+uses SOURCE_DATE_EPOCH when present and randomness otherwise. The v2 experiment
+sets that variable and rebuilds the source-sensitive dependency after restore;
+it must pass the unchanged content comparison before being retained. The
+comparison does not mask build IDs, code, symbols or string-table differences.
 
 The final optimized timing comparison, audit hashes and exact hosted run links
 are recorded in the PR description after validation completes. Recording those

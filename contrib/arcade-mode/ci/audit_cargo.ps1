@@ -2,6 +2,7 @@ $ErrorActionPreference = 'Stop'
 $report = [ordered]@{
     source_sha = $env:GITHUB_SHA
     toolchain = $env:ARCADE_TOOLCHAIN
+    source_date_epoch = $env:SOURCE_DATE_EPOCH
     measurements = @()
     equal = $false
 }
