@@ -313,8 +313,17 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   auto& world=world_layers_runtime();std::unique_lock lifetime(world.lifetime_mutex);
   if(!local.active||cosmetic_runtime().update_thread!=GetCurrentThreadId()||!world.model.ready||!world.root_generation){note(2,"local_world_guard");return;}
   const char* frame_reason{};
-  const auto frame=arcade_mode::surface_geometry_native_frame(GetTickCount64(),&frame_reason);NoBailSkater owner{};
-  if(!frame.valid){note(3,frame_reason);return;}
+  const auto ordinary_frame=arcade_mode::surface_geometry_native_frame(GetTickCount64(),&frame_reason);
+  const auto admission=wallplant_surface_frame(ordinary_frame,probe.contact!=0,[&] {
+   note(3,frame_reason);
+   return arcade_mode::wallplant_surface_geometry_native_frame(&frame_reason);
+  },[&](const NativeInputFrame& current) {
+   if(wallplant_runtime::geometry_probe_current(probe,current))return true;
+   frame_reason="retained_contact_changed";return false;
+  });
+  const auto& frame=admission.frame;NoBailSkater owner{};
+  if(!frame.valid){note(probe.contact?14u:3u,frame_reason);return;}
+  if(admission.wallplant_only)note(13,"retained_frame_acquired");
   if(!no_bail_skater(owner)||frame.owner!=NativeInputOwner{owner.base,owner.entity,owner.core,owner.context,owner.rig}||owner.base!=local.base){note(4,"native_owner");return;}
   static std::uintptr_t validated_base{};static bool self_ready{};
   if(validated_base!=local.base){
@@ -335,17 +344,18 @@ void tick_arcade_surface_geometry(std::uintptr_t client) noexcept {
   SurfaceGeometryNativeApi api;api.base=local.base;api.surface=callback.surface;
   api.picking={callback.picking.hit_body,callback.picking.body_valid,callback.picking.body_entity,callback.picking.ready};
   api.user=&callback;api.now=[](void*)noexcept->std::uint64_t{return GetTickCount64();};api.current=&surface_callback_current;api.read_bytes=&memory::read_bytes;
+  if(admission.wallplant_only)api.current=&wallplant_surface_callback_current;
   api.current_failure=[](void* user)noexcept{return static_cast<SurfaceCallback*>(user)->failure;};
   alignas(16) std::array<float,12> pose{};
   if(!placements.pose||placements.pose(pose.data(),self.query.data())!=pose.data()){note(9,"native_pose");return;}
-  if(!surface_callback_current(&callback,origin)){note(10,callback.failure);return;}
+  if(!api.current(&callback,origin)){note(10,callback.failure);return;}
   SurfaceGeometryRequest request;
   constexpr std::array<std::array<float,2>,5> offsets{{{0,0},{-.25f,0},{.25f,0},{0,-.25f},{0,.25f}}};
   for(std::size_t i=0;i<5;++i)request.segments[i]={{pose[8]+offsets[i][0],pose[9]+.75f,pose[10]+offsets[i][1]},
    {pose[8]+offsets[i][0],pose[9]-2.f,pose[10]+offsets[i][1]}};
   auto sample=query_surface_geometry(api,origin,request);
   if(sample.valid&&!revalidate_surface_geometry(api,origin,sample))sample={};
-  publish_surface_geometry(sample);
+  if(!admission.wallplant_only)publish_surface_geometry(sample);
   auto wallplant_api=api;wallplant_api.current=&wallplant_surface_callback_current;
   note(11,"before_publish");
   wallplant_runtime::publish_geometry(wallplant_api,origin,frame,{pose[8],pose[9],pose[10]},sample);

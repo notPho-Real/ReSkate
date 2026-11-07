@@ -588,11 +588,20 @@ struct WallplantHandoff {
 };
 // A different scheduler/thread is rejected; no cross-thread frame is invented.
 WallplantHandoff& wallplant_handoff() { static thread_local WallplantHandoff value;return value; }
+void wallplant_selection_phase(std::uintptr_t selector,std::uint32_t selected,unsigned stage,const char* reason) noexcept {
+    const auto probe=arcade_mode::wallplant_runtime::retained_writer_probe();
+    if(!probe.contact)return;
+    SourceLastError error;
+    std::uintptr_t owned_selector{};
+    if(memory::peek(probe.native.owner.core+game::build::v20260929::arcade_native_probe::core_selector,owned_selector) && owned_selector==selector)
+        arcade_mode::wallplant_runtime::retained_writer_event(probe,stage,reason,selected,true,probe.native.owner.core);
+}
 std::uint64_t arcade_wallplant_before_selection(std::uintptr_t selector,std::uint32_t current) noexcept {
     // Pinned chooser contract: core+440 owns selector, selector+8 is context.
     // Its caller 47da1b0 commits the returned state only after this call. Native
     // body +70 / dirty8 remains the same verified synchronization facility;
     // this does not clear contact inputs or change the chooser's return value.
+    wallplant_selection_phase(selector,current,0,"before_selection");
     auto& handoff=wallplant_handoff();
     if(handoff.ticket.selector==selector)handoff={};
     const auto probe=arcade_mode::wallplant_runtime::writer_probe();
@@ -1795,6 +1804,15 @@ void trainer_transition(std::uintptr_t core) noexcept {
     } catch (...) {}
 }
 void noclip_physics_update(std::uintptr_t core) {
+    const auto retained_probe=arcade_mode::wallplant_runtime::retained_writer_probe();
+    const auto retained_phase=[&](unsigned stage,const char* reason) {
+        if(!retained_probe.contact || core!=retained_probe.native.owner.core)return;
+        SourceLastError error;
+        std::uint32_t selected{};SourceReader reader;
+        const bool known=reader.raw(retained_probe.native.owner.context+
+            game::build::v20260929::arcade_native_probe::selected_state,&selected,sizeof(selected));
+        arcade_mode::wallplant_runtime::retained_writer_event(retained_probe,stage,reason,selected,known,core);
+    };
     WallplantHandoff handoff{};
     auto& staged=wallplant_handoff();
     if(core==staged.execution.native.owner.core) {
@@ -1811,10 +1829,12 @@ void noclip_physics_update(std::uintptr_t core) {
                 &selected,sizeof(selected));
         arcade_mode::wallplant_runtime::writer_event(probe,stage,reason,selected,known,core);
     };
+    retained_phase(2,"before_original");
     observe_phase(0,"before_original");
     const auto original = source_state().velocity_update_original.load(std::memory_order_acquire);
     if (original) original(core);
     observe_phase(1,"after_original");
+    retained_phase(3,"after_original");
     noclip_apply_velocity(core);
     trainer_apply_jump_scale(core);
     if (const auto callback = physics_step_callback.load(std::memory_order_acquire)) callback();
@@ -1829,6 +1849,7 @@ void noclip_physics_update(std::uintptr_t core) {
     // Native100 entry 482c200 has reconstructed body velocities before this
     // existing +58 update. All ordinary writers finish before the single kick.
     arcade_wallplant_after_reconstruction(handoff,core);
+    retained_phase(4,"after_reconstruction");
 }
 bool noclip_motion_target(std::uintptr_t rig, std::uintptr_t context,
     const std::array<float,16>* supplied, std::array<float,16>& target) noexcept {
@@ -1936,6 +1957,7 @@ std::uint64_t apply_arcade_wallplant_before_selection(std::uintptr_t selector,st
 }
 void finish_arcade_wallplant_selection(std::uint64_t ticket,std::uintptr_t selector,
         std::uint32_t current,std::uint32_t chosen) noexcept {
+    wallplant_selection_phase(selector,chosen,1,"after_selection");
     if(ticket)wallplant_handoff().ticket.finish(ticket,selector,current,chosen);
 }
 

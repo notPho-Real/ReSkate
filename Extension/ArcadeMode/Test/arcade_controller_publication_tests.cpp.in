@@ -4,6 +4,7 @@
 #include "Extension/ArcadeMode/arcade_playback_packet.h"
 #include "Extension/ArcadeMode/arcade_air_motion.h"
 #include "Extension/ArcadeMode/arcade_wallplant.h"
+#include "Extension/ArcadeMode/arcade_wallplant_geometry_admission.h"
 #include "Extension/ArcadeMode/arcade_rotation.h"
 #include "Extension/Skater/no_bail.h"
 #include "Engine/Game/Build/20260929/arcade_native_probe.h"
@@ -262,6 +263,17 @@ void run(){
     // Extracted production accessor: a pending preselector waits for the
     // publisher, then samples time/state and all existing admission gates.
     // No sleep or retry budget; the publisher owns the mutex throughout edits.
+    {
+        unsigned synchronizations{},revalidations{};
+        NativeInputFrame ordinary{};ordinary.valid=true;ordinary.sampled_at=17;
+        const auto sync=[&]{++synchronizations;return NativeInputFrame{};};
+        const auto validate=[&](const NativeInputFrame&){++revalidations;return true;};
+        const auto unchanged=wallplant_surface_frame(ordinary,true,sync,validate);
+        require(unchanged.frame.valid&&unchanged.frame.sampled_at==17&&!unchanged.wallplant_only&&
+            !synchronizations&&!revalidations,"ordinary successful query is never replaced or synchronized");++checks;
+        require(!wallplant_surface_frame({},false,sync,validate).frame.valid&&!synchronizations,
+            "absent retained contact never turns ordinary contention into blocking admission");++checks;
+    }
     for(unsigned boundary=0;boundary<7;++boundary) {
         clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
         controller_route.reset();arcade_input.enable(false);arcade_input.enable(true);
@@ -394,19 +406,25 @@ void run(){
     // Use the actual geometry accessors with a contended producer mutex.
     // Ordinary callers still yield; retained wall queries wait for the owner
     // then inspect the original frame at the real acquisition time.
-    for(unsigned boundary=0;boundary<7;++boundary) {
+    for(unsigned boundary=0;boundary<8;++boundary) {
         clock_ms=1000;mode_enabled=true;native_input_state={};
         arcade_input.enable(false);arcade_input.enable(true);
         NativeRequestSample air_sample{};air_sample.valid=true;air_sample.state=201;air_sample.crouch_mode=2;
         const auto original=native_input_state.observe(1000,owner,air_sample,{});
         arcade_input.publish_native_context(original);arcade_input.publish_authority(1000,original.owner_generation,1,true);
         NativeInputFrame ordinary{},acquired{};const char* ordinary_reason{};const char* acquired_reason{};
+        WallplantSurfaceFrame rescued{};bool retained_current=true;
         std::atomic<bool> waiting{};
         std::unique_lock publisher(ollie_mutex);
         std::thread query([&] {
             ordinary=surface_geometry_native_frame(clock_ms,&ordinary_reason);
             waiting.store(true,std::memory_order_release);
-            acquired=wallplant_surface_geometry_native_frame(&acquired_reason);
+            rescued=wallplant_surface_frame(ordinary,true,[&] {
+                acquired=wallplant_surface_geometry_native_frame(&acquired_reason);return acquired;
+            },[&](const NativeInputFrame& candidate_frame) {
+                return retained_current && candidate_frame.owner==original.owner && candidate_frame.owner_generation==original.owner_generation &&
+                    candidate_frame.airborne && candidate_frame.airborne_episode==original.airborne_episode && candidate_frame.air_departure==original.air_departure;
+            });
         });
         while(!waiting.load(std::memory_order_acquire))std::this_thread::yield();
         clock_ms=boundary==1?1151:boundary==6?999:1001;
@@ -417,11 +435,14 @@ void run(){
             auto landed=air_sample;landed.state=100;landed.crouch_mode=1;landed.words[1]=0x8000;
             arcade_input.publish_native_context(native_input_state.observe(1001,owner,landed,{}));
         }
+        if(boundary==7)retained_current=false;
         publisher.unlock();query.join();
         require(!ordinary.valid&&std::string_view(ordinary_reason)=="frame_lock_busy",
             "ordinary geometry retains its nonblocking contention behavior");++checks;
-        require(acquired.valid==(boundary==0||boundary==5),
+        require(acquired.valid==(boundary==0||boundary==5||boundary==7),
             "synchronized wall query still rejects expired/future/OFF/authority/invalid native context");++checks;
+        require(rescued.frame.valid==(boundary==0)&&rescued.wallplant_only==(boundary==0),
+            "retained-only admission rejects changed contact/ground and cannot publish rescued ordinary geometry");++checks;
         if(boundary==0) {
             require(acquired.sampled_at==original.sampled_at&&acquired.physics_step==original.physics_step&&
                 std::string_view(acquired_reason)=="frame_valid",

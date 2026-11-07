@@ -9,9 +9,15 @@
 #include <utility>
 #include <vector>
 namespace dingosdk::arcade_mode::wallplant_runtime {
-struct WriterProbe { std::uint64_t input{}; NativeInputFrame native{}; };
+struct WriterProbe { std::uint64_t input{},contact{},raw{}; NativeInputFrame native{}; };
 inline WriterProbe writer_probe(){return {};}
 inline void writer_event(const WriterProbe&,unsigned,const char*,std::uint32_t,bool,std::uintptr_t){}
+inline WriterProbe retained;
+inline std::vector<unsigned> retained_phases;
+inline WriterProbe retained_writer_probe(){return retained;}
+inline void retained_writer_event(const WriterProbe& probe,unsigned stage,const char*,std::uint32_t,bool,std::uintptr_t core){
+ if(probe.contact&&core==probe.native.owner.core)retained_phases.push_back(stage);
+}
 }
 namespace {
 namespace arcade_mode=dingosdk::arcade_mode;
@@ -26,8 +32,9 @@ bool reenter{},admit=true;
 std::uint64_t serial{};
 struct SourceLastError { SourceLastError(){} };
 struct LastError { LastError(){} };
-struct SourceReader { bool raw(std::uintptr_t,void*,std::size_t){return false;} };
-namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0; }
+struct SourceReader { bool raw(std::uintptr_t,void* target,std::size_t){*static_cast<std::uint32_t*>(target)=native_result;return true;} };
+namespace memory {template<class T>bool peek(std::uintptr_t,T& value){value=9;return true;}}
+namespace game::build::v20260929::arcade_native_probe { constexpr std::uintptr_t selected_state=0,core_selector=0x440; }
 struct NativeState { std::atomic<void(*)(std::uintptr_t)> velocity_update_original{}; } native_state;
 NativeState& source_state(){return native_state;}
 std::atomic<void(*)()> physics_step_callback{};
@@ -98,6 +105,7 @@ void track_spin(std::uintptr_t selector,std::uint32_t){event("track_spin",select
 @wallplant_wrapper_physics@
 void reset(){
  events.clear();wallplant_handoff()={};native_calls=chooser_calls=writes=0;
+ arcade_mode::wallplant_runtime::retained={};arcade_mode::wallplant_runtime::retained_phases.clear();
  native_result=100;reenter=false;admit=true;
  native_state.velocity_update_original.store(native_update);
  physics_step_callback.store(callback);
@@ -107,6 +115,24 @@ std::size_t find(const char* name,std::size_t start=0){
  return events.size();
 }
 void run(){
+ {
+  reset();
+  auto& scope=arcade_mode::wallplant_runtime::retained;
+  auto& phases=arcade_mode::wallplant_runtime::retained_phases;
+  wallplant_selection_phase(9,201,0,"before_selection");
+  check(phases.empty(),"ordinary selector has no retained-contact diagnostic");
+  scope.contact=1;scope.raw=2;scope.native.owner.core=1;scope.native.owner.context=3;
+  wallplant_selection_phase(8,201,0,"foreign");
+  check(phases.empty(),"foreign selector cannot consume retained diagnostic stages");
+  wallplant_selection_phase(9,201,0,"before_selection");
+  check(choose_state(9,201)==100,"diagnostic scope does not alter native selection");
+  noclip_physics_update(2);
+  check(phases==std::vector<unsigned>{0,1},"foreign core adds no retained phase observations");
+  noclip_physics_update(1);
+  check(phases==std::vector<unsigned>{0,1,2,3,4},"actual chooser and wrapper expose every original boundary even without pending input");
+  check(scope.input==0&&writes==1&&chooser_calls==1&&native_calls==2,
+        "diagnostic-only snapshot grants no extra command, native call or body write");
+ }
  for(auto result:{100u,201u,504u}){
   reset();native_result=result;
   check(choose_state(9,201)==result,"chooser result is not replaced by wallplant");

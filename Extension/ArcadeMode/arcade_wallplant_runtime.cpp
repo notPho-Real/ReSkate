@@ -36,6 +36,7 @@ std::atomic<bool> interrupt{};
 std::atomic<bool> stop_pose{};
 unsigned visual_reports{};
 std::atomic<std::uint64_t> pending_writer_input{};
+std::atomic<bool> retained_contact_hint{};
 // Diagnostic receipts only: bounded for the process lifetime and emitted once
 // per stage/contact. This lock never acquires the runtime lock or calls native code.
 std::mutex diagnostic_mutex;
@@ -47,6 +48,41 @@ DiagnosticSeen writer_seen{};
 unsigned writer_diagnostic_count{};
 DiagnosticSeen prepublish_seen{};
 unsigned prepublish_count{};
+DiagnosticSeen retained_writer_seen{};
+unsigned retained_writer_count{};
+struct RetainedPhaseRow {
+    WriterProbe probe{};
+    std::uint64_t now{},pending{};
+    std::uintptr_t core{};
+    unsigned stage{};
+    const char* reason{};
+    std::uint32_t state{};
+    bool known{};
+};
+std::array<RetainedPhaseRow,128> retained_writer_rows{};
+unsigned retained_writer_read{};
+std::atomic<bool> retained_writer_queued{};
+void flush_retained_phases() noexcept {
+    if(!retained_writer_queued.load(std::memory_order_acquire))return;
+    try {
+        for(;;) {
+            RetainedPhaseRow row{};
+            {
+                std::lock_guard lock(diagnostic_mutex);
+                if(retained_writer_read==retained_writer_count) {
+                    retained_writer_queued.store(false,std::memory_order_release);return;
+                }
+                row=retained_writer_rows[retained_writer_read++];
+            }
+            const auto& p=row.probe;
+            logging::log(logging::Level::info,logging::Channel::skater,
+                "ARCADE WALLPLANT PHASE: ms={} stage={} reason={} input_snapshot={} pending_now={} contact={} raw={} callback_core={} owner_generation={} step={} frame_ms={} frame_state={} state_known={} state={}.",
+                row.now,row.stage,row.reason,p.input,row.pending,p.contact,p.raw,row.core,
+                p.native.owner_generation,p.native.physics_step,p.native.sampled_at,
+                p.native.state,row.known,row.state);
+        }
+    } catch(...) {}
+}
 void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Raw& source,
         const NativeInputFrame& f,std::uint64_t identity) noexcept {
     try {
@@ -146,6 +182,7 @@ void discard_visual(const char* reason,const NativeInputFrame& frame) noexcept {
 void withdraw(const char* reason,const NativeInputFrame* frame=nullptr,bool preserve_visual=false) noexcept {
     if(pending.sequence)diagnose(6,0,reason,raw,frame?*frame:observed,GetTickCount64(),contact_identity,
         0,0,0,pending.sequence,pending.pressed_at);
+    retained_contact_hint.store(false,std::memory_order_release);
     candidate={};raw={};raw_frame={};pending={};in_flight={};
     if(!preserve_visual)discard_visual(reason,frame?*frame:observed);
     pending_writer_input.store(0,std::memory_order_release);
@@ -160,6 +197,7 @@ void cancel() noexcept {
 }
 void interrupt_animation() noexcept {interrupt.store(true,std::memory_order_release);}
 void tick(std::uintptr_t base,bool gameplay) noexcept {
+    flush_retained_phases();
     const bool active=gameplay && native_wall_contact::start(base);
     native_wall_contact::enable(active);
     if(interrupt.exchange(false,std::memory_order_acq_rel)) {
@@ -237,12 +275,13 @@ void observe_physics(const NativeInputFrame& f) noexcept {
     if(contacts.sampled_at<preceding_at){retention(4,"raw_before_preceding_frame");return;}
     if(!std::isfinite(contacts.seconds) || contacts.seconds<=0 ||
        !AirMotion::same_velocity(contacts.seconds,f.physics_seconds)){retention(5,"physics_seconds");return;}
-    if(!wall){separated=true;contact_active=false;return;}
+    if(!wall){separated=true;contact_active=false;retained_contact_hint.store(false,std::memory_order_release);return;}
     if(!contact_active) {
         if(contact_identity==UINT64_MAX){withdraw("contact_overflow",&f);return;}
         ++contact_identity;
     }
     contact_active=true;raw=contacts;raw_frame=f;
+    retained_contact_hint.store(true,std::memory_order_release);
     retention(6,"retained");
 }
 void publish_geometry(const SurfaceGeometryNativeApi& supplied_api,const SurfaceGeometryContext& ctx,
@@ -422,9 +461,17 @@ void completed(const WallplantCommand& command,bool applied) noexcept {
 }
 WallplantCommand latest_completed() noexcept {std::lock_guard lock(mutex);return receipt;}
 GeometryProbe geometry_probe() noexcept {
+    if(!retained_contact_hint.load(std::memory_order_acquire))return {};
     std::lock_guard lock(mutex);
-    if(!permitted || !takeoff || !raw.valid || !contact_identity || !raw_frame.valid)return {};
+    if(!permitted || !takeoff || !contact_active || !raw.valid || !contact_identity || !fresh(raw_frame,GetTickCount64()))return {};
     return {contact_identity,raw.serial,raw_frame};
+}
+bool geometry_probe_current(const GeometryProbe& probe,const NativeInputFrame& frame) noexcept {
+    std::lock_guard lock(mutex);
+    const auto now=GetTickCount64();
+    return permitted && takeoff && contact_active && raw.valid && probe.contact==contact_identity &&
+        probe.raw==raw.serial && wallplant_same_observation(probe.native,raw_frame) &&
+        fresh(raw_frame,now) && fresh(frame,now) && flight(raw_frame,frame);
 }
 void geometry_event(const GeometryProbe& probe,unsigned stage,const char* reason) noexcept {
     if(!probe.contact || !probe.raw || stage>=64)return;
@@ -451,6 +498,28 @@ WriterProbe writer_probe() noexcept {
     if(!pending_writer_input.load(std::memory_order_acquire))return {};
     std::lock_guard lock(mutex);
     return {pending.sequence,contact_identity,raw.serial,observed};
+}
+WriterProbe retained_writer_probe() noexcept {
+    if(!retained_contact_hint.load(std::memory_order_acquire))return {};
+    std::lock_guard lock(mutex);
+    if(!permitted || !takeoff || !contact_active || !raw.valid || !contact_identity || !fresh(raw_frame,GetTickCount64()))return {};
+    return {pending.sequence,contact_identity,raw.serial,raw_frame};
+}
+void retained_writer_event(const WriterProbe& probe,unsigned stage,const char* reason,
+        std::uint32_t state,bool state_known,std::uintptr_t core) noexcept {
+    if(!probe.contact || !probe.raw || core!=probe.native.owner.core || stage>=64)return;
+    const auto now=GetTickCount64();
+    const auto pending_now=pending_writer_input.load(std::memory_order_acquire);
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(retained_writer_count>=128)return;
+        if(retained_writer_seen.contact!=probe.contact)retained_writer_seen={probe.contact,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(retained_writer_seen.stages&bit)return;
+        retained_writer_seen.stages|=bit;
+        retained_writer_rows[retained_writer_count++]={probe,now,pending_now,core,stage,reason,state,state_known};
+        retained_writer_queued.store(true,std::memory_order_release);
+    } catch(...) {}
 }
 void writer_event(const WriterProbe& probe,unsigned stage,const char* reason,
         std::uint32_t state,bool state_known,std::uintptr_t core) noexcept {
