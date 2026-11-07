@@ -169,6 +169,11 @@ std::atomic<bool> mode_enabled{true};
 NativeInputState native_input_state,motion_cleanup_state;
 std::uint64_t clock_ms=1000;
 namespace game=dingosdk::game;
+namespace logging {
+enum class Level {info};enum class Channel {skater};
+unsigned correlation_rows{};
+template<class... Args> void log(Level,Channel,const char*,Args&&...) {++correlation_rows;}
+}
 NativeRequestSample live_sample;
 bool live_readable=true;
 namespace memory {
@@ -251,6 +256,7 @@ void run(){
         consumer.join();
     }
     require(contention_reported,"writer contention copies its reason without waiting, retrying or granting cleanup authority");++checks;
+    require(logging::correlation_rows==0,"ordinary correlation and contention never emit wallplant diagnostics");++checks;
     // Extracted production accessor: a pending preselector waits for the
     // publisher, then samples time/state and all existing admission gates.
     // No sleep or retry budget; the publisher owns the mutex throughout edits.
@@ -284,6 +290,7 @@ void run(){
         }
     }
     clock_ms=1000;mode_enabled=true;live_readable=true;live_sample=sample;
+    require(logging::correlation_rows==2,"only pending correlation failures emit same-read diagnostics; earlier authority rejection stays unchanged");++checks;
     controller_route.clear();
     require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
     require(std::string_view(diagnostic)=="frame_route","writer diagnostic copies physical route rejection");++checks;

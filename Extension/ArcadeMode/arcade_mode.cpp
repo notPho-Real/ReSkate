@@ -1527,13 +1527,14 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources,bool angul
 
 // Controller route binding_context publication begin.
 static NativeInputFrame native_air_context_locked(std::uint64_t now,const NativeInputOwner& owner,
-        const NativeRequestSample& sample,MotionCleanupProof* cleanup,const char** diagnostic_reason) noexcept {
+        const NativeRequestSample& sample,MotionCleanupProof* cleanup,const char** diagnostic_reason,
+        NativeInputCorrelation* diagnostic=nullptr) noexcept {
     const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
     if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
     if (!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
     if (!controller_route.physical(now).valid)return unavailable("frame_route");
     if (!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
-    const auto frame = native_input_state.correlate(now,owner,sample);
+    const auto frame = native_input_state.correlate(now,owner,sample,diagnostic);
     if(!frame.valid)return unavailable("frame_correlation");
     if(frame.owner_generation!=arcade_input.owner_epoch())return unavailable("frame_owner_generation");
     if(diagnostic_reason)*diagnostic_reason="frame_valid";
@@ -1565,7 +1566,20 @@ NativeInputFrame native_wallplant_context(const NativeInputOwner& owner,std::uin
         memory::peek(owner.context+native::request_words,sample.words[0]) &&
         memory::peek(owner.context+native::request_words+4,sample.words[1]);
     sample.words[1]&=0xc000u;
-    return native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason);
+    NativeInputCorrelation diagnostic{};
+    const auto frame=native_air_context_locked(now,owner,sample,nullptr,diagnostic_reason,&diagnostic);
+    static unsigned reported{}; // Serialized by ollie_mutex; pending accessor only.
+    if(diagnostic.mismatches && reported<64) {
+        ++reported;
+        const auto& original=diagnostic.observed;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT CORRELATION: ms={} mismatch={} owner={} owner_equal={} original_valid={} sample_valid={} step={} frame_ms={} age_valid={} age={} original_state={} live_state={} original_mode={} live_mode={} original_contacts={} live_contacts={} original_stance={} live_stance={}.",
+            now,diagnostic.mismatches,owner.core,owner==original.owner,original.valid,sample.valid,
+            original.physics_step,original.sampled_at,now>=original.sampled_at,
+            now>=original.sampled_at?now-original.sampled_at:0,original.state,sample.state,original.mode,sample.crouch_mode,
+            original.contacts,sample.words[1]&0xc000u,original.stance_and_push,sample.words[0]&0x60u);
+    }
+    return frame;
 }
 // Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
