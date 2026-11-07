@@ -30,13 +30,16 @@ WallplantCommand in_flight{},receipt{},play_pending{};
 std::uint64_t contact_identity{},last_raw{},last_used_contact{},last_success_at{},last_handled_input{};
 bool grounded{},takeoff{},separated{},contact_active{},permitted{},animation_ready{};
 std::atomic<bool> interrupt{};
+std::atomic<std::uint64_t> pending_writer_input{};
 // Diagnostic receipts only: bounded for the process lifetime and emitted once
 // per stage/contact. This lock never acquires the runtime lock or calls native code.
 std::mutex diagnostic_mutex;
 struct DiagnosticSeen {std::uint64_t contact{},stages{};};
-std::array<DiagnosticSeen,6> diagnostic_seen{};
+std::array<DiagnosticSeen,7> diagnostic_seen{};
 unsigned diagnostic_count{};
 unsigned query_diagnostic_count{};
+DiagnosticSeen writer_seen{};
+unsigned writer_diagnostic_count{};
 void diagnose_query(const char* query,const SurfaceGeometryTrace& trace,const Raw& source,
         const NativeInputFrame& f,std::uint64_t identity) noexcept {
     try {
@@ -118,14 +121,17 @@ WallplantFrame frame(std::uint64_t now,const NativeInputFrame& f,SurfaceGeometry
     out.takeoff_observed=takeoff;out.clearance_known=candidate.valid;out.separated=separated;
     return out;
 }
-void withdraw() noexcept {
+void withdraw(const char* reason,const NativeInputFrame* frame=nullptr) noexcept {
+    if(pending.sequence)diagnose(6,0,reason,raw,frame?*frame:observed,GetTickCount64(),contact_identity,
+        0,0,0,pending.sequence,pending.pressed_at);
     candidate={};raw={};raw_frame={};pending={};in_flight={};play_pending={};
+    pending_writer_input.store(0,std::memory_order_release);
     takeoff=grounded=separated=contact_active=animation_ready=false;policy.cancel();
 }
 }
 
 void cancel() noexcept {
-    {std::lock_guard lock(mutex);permitted=false;withdraw();observed={};last_handled_input=0;receipt={};}
+    {std::lock_guard lock(mutex);permitted=false;withdraw("cancel");observed={};last_handled_input=0;receipt={};}
     interrupt.store(true,std::memory_order_release);
     native_wall_contact::enable(false);
 }
@@ -141,7 +147,7 @@ void tick(std::uintptr_t base,bool gameplay) noexcept {
     NativeInputFrame f{};WallplantCommand play{};
     {
         std::lock_guard lock(mutex);permitted=active;
-        if(!active){withdraw();observed={};return;}
+        if(!active){withdraw("inactive");observed={};return;}
         f=observed;play=play_pending;play_pending={};
     }
     if(play) {
@@ -173,11 +179,11 @@ void observe_physics(const NativeInputFrame& f) noexcept {
             (same?1ull:0ull)|(permitted?2ull:0ull)|(takeoff?4ull:0ull)|
             (contacts.serial==last_raw?8ull:0ull),contacts.seconds,f.physics_seconds);
     };
-    if(!same) {withdraw();last_used_contact=last_success_at=0;policy.reset();}
+    if(!same) {withdraw("physics_continuity",&f);last_used_contact=last_success_at=0;policy.reset();}
     if(!f.valid || !f.owner.valid()) {retention(0,"invalid_frame");observed={};return;}
     if(!f.airborne) {
         retention(1,"not_airborne");
-        withdraw();grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
+        withdraw("physics_not_airborne",&f);grounded=!f.rail_family && (f.state==100 || f.state==103);observed=f;
         interrupt.store(true,std::memory_order_release);return;
     }
     if(same && grounded && !observed.airborne)takeoff=true;
@@ -190,7 +196,7 @@ void observe_physics(const NativeInputFrame& f) noexcept {
        !AirMotion::same_velocity(contacts.seconds,f.physics_seconds)){retention(5,"physics_seconds");return;}
     if(!wall){separated=true;contact_active=false;return;}
     if(!contact_active) {
-        if(contact_identity==UINT64_MAX){withdraw();return;}
+        if(contact_identity==UINT64_MAX){withdraw("contact_overflow",&f);return;}
         ++contact_identity;
     }
     contact_active=true;raw=contacts;raw_frame=f;
@@ -314,6 +320,7 @@ InputDisposition request(const InputRequest& request,std::uint64_t now,const Nat
        now<request.physical_pressed_at || now-request.physical_pressed_at>InputTiming::native_sample_lease_ms)
         {disposition(2,"request_provenance");return InputDisposition::cancelled;}
     pending={context(f),request.input_sequence,request.physical_pressed_at,true};
+    pending_writer_input.store(pending.sequence,std::memory_order_release);
     disposition(3,"pending_accepted");
     return InputDisposition::started;
 }
@@ -321,6 +328,7 @@ WallplantCommand consume(std::uint64_t now,const NativeInputFrame& f,SurfaceGeom
     std::lock_guard lock(mutex);
     if(!pending.sequence)return {};
     const auto press=pending;pending={};
+    pending_writer_input.store(0,std::memory_order_release);
     const auto consumption=[&](unsigned stage,const char* reason) {
         diagnose(5,stage,reason,raw,f,now,contact_identity,0,0,0,press.sequence,press.pressed_at);
     };
@@ -352,4 +360,25 @@ void completed(const WallplantCommand& command,bool applied) noexcept {
         command.point[0],command.point[1],command.point[2],command.normal[0],command.normal[1],command.normal[2]);
 }
 WallplantCommand latest_completed() noexcept {std::lock_guard lock(mutex);return receipt;}
+WriterProbe writer_probe() noexcept {
+    if(!pending_writer_input.load(std::memory_order_acquire))return {};
+    std::lock_guard lock(mutex);
+    return {pending.sequence,contact_identity,raw.serial,observed};
+}
+void writer_event(const WriterProbe& probe,unsigned stage,const char* reason,
+        std::uint32_t state,bool state_known,std::uintptr_t core) noexcept {
+    if(!probe.input || core!=probe.native.owner.core || stage>=64)return;
+    try {
+        std::lock_guard lock(diagnostic_mutex);
+        if(writer_diagnostic_count>=96)return;
+        if(writer_seen.contact!=probe.input)writer_seen={probe.input,0};
+        const auto bit=std::uint64_t{1}<<stage;
+        if(writer_seen.stages&bit)return;
+        writer_seen.stages|=bit;++writer_diagnostic_count;
+        logging::log(logging::Level::info,logging::Channel::skater,
+            "ARCADE WALLPLANT WRITER: ms={} stage={} reason={} input={} contact={} raw={} callback_core={} owner={} owner_generation={} step={} frame_ms={} frame_state={} state_known={} state={}.",
+            GetTickCount64(),stage,reason,probe.input,probe.contact,probe.raw,core,probe.native.owner.core,
+            probe.native.owner_generation,probe.native.physics_step,probe.native.sampled_at,probe.native.state,state_known,state);
+    } catch(...) {}
+}
 }

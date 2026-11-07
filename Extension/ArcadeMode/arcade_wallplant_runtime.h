@@ -14,6 +14,15 @@ WallplantCommand consume(std::uint64_t now,const NativeInputFrame&,SurfaceGeomet
 bool current(const WallplantCommand&,std::uint64_t now,const NativeInputFrame&,SurfaceGeometryVector velocity) noexcept;
 void completed(const WallplantCommand&,bool applied) noexcept;
 WallplantCommand latest_completed() noexcept;
+// Read-only pending-work receipt. A zero token avoids runtime locking and all
+// native reads/logging on ordinary physics updates; it grants no write rights.
+struct WriterProbe {
+    std::uint64_t input{},contact{},raw{};
+    NativeInputFrame native{};
+};
+WriterProbe writer_probe() noexcept;
+void writer_event(const WriterProbe&,unsigned stage,const char* reason,
+    std::uint32_t state,bool state_known,std::uintptr_t callback_core) noexcept;
 // XInput/physics callers only signal; animation API remains client-thread-only.
 void interrupt_animation() noexcept;
 void cancel() noexcept;

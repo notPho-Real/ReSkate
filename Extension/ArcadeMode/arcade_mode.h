@@ -26,7 +26,8 @@ void finish_ground_writer_observation(const GroundWriterEvidence&) noexcept;
 // Optional typed cleanup proof is sampled under the same lock. It never makes
 // the returned input frame valid while mode/authority is disabled.
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup = nullptr) noexcept;
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup = nullptr,
+                                   const char** diagnostic_reason = nullptr) noexcept;
 // Bounded physics-side check; contention or changed native generation yields.
 bool native_manual_contact_current(const NativeManualContact& proof) noexcept;
 // Existing client callback supplies immutable query observations only.

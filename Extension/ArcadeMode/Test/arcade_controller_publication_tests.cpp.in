@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
+#include <string_view>
+#include <thread>
 using namespace dingosdk::arcade_mode;
 // Nonactuating native bridge boundary; these tests verify controller ownership.
 namespace dingosdk::arcade_mode::native_flip {
@@ -216,11 +218,29 @@ void run(){
     set_controller_source(1,1000);observe(controller_route,1,{true,1000,0,0,0,0,0,0,0});
     controller_route.select(1000,3,true,proof);arcade_input.publish_native_context(frame);arcade_input.publish_authority(1000,frame.owner_generation,1,true);
     MotionCleanupProof cleanup{};
-    require(native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"actual physics consumer accepts selected route and independent native owner");++checks;
+    const char* diagnostic{};
+    require(native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"actual physics consumer accepts selected route and independent native owner");++checks;
+    require(std::string_view(diagnostic)=="frame_valid","writer diagnostic copies successful correlation without another call");++checks;
+    auto changed=sample;changed.state=201;
+    require(!native_air_context(1000,owner,changed,&cleanup,&diagnostic).valid&&
+        std::string_view(diagnostic)=="frame_correlation","writer diagnostic distinguishes changed native state from route rejection");++checks;
+    bool contention_reported{};
+    {
+        std::lock_guard held(ollie_mutex);
+        std::thread consumer([&] {
+            MotionCleanupProof local_cleanup{};const char* reason{};
+            const auto unavailable=native_air_context(1000,owner,sample,&local_cleanup,&reason);
+            contention_reported=!unavailable.valid&&!local_cleanup.inspected&&std::string_view(reason)=="frame_lock_busy";
+        });
+        consumer.join();
+    }
+    require(contention_reported,"writer contention copies its reason without waiting, retrying or granting cleanup authority");++checks;
     controller_route.clear();
-    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
+    require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"route withdrawal suppresses motion command without destroying cleanup proof");++checks;
+    require(std::string_view(diagnostic)=="frame_route","writer diagnostic copies physical route rejection");++checks;
     mode_enabled=false;
-    require(!native_air_context(1000,owner,sample,&cleanup).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
+    require(!native_air_context(1000,owner,sample,&cleanup,&diagnostic).valid&&cleanup.observed.valid,"OFF cannot revive command authority through independent cleanup proof");++checks;
+    require(std::string_view(diagnostic)=="frame_disabled","writer diagnostic preserves OFF-before-route ordering");++checks;
     std::cout<<checks<<" exact production binding API checks passed\n";
 }
 }

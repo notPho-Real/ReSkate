@@ -1527,14 +1527,21 @@ bool set_input_capture(unsigned duration_ms,unsigned required_sources,bool angul
 
 // Controller route binding_context publication begin.
 NativeInputFrame native_air_context(std::uint64_t now, const NativeInputOwner& owner,
-                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup) noexcept {
+                                   const NativeRequestSample& sample, MotionCleanupProof* cleanup,
+                                   const char** diagnostic_reason) noexcept {
     if (cleanup) *cleanup={};
     std::unique_lock lock(ollie_mutex,std::try_to_lock);
-    if (!lock.owns_lock()) return {};
+    const auto unavailable=[&](const char* reason) {if(diagnostic_reason)*diagnostic_reason=reason;return NativeInputFrame{};};
+    if (!lock.owns_lock()) return unavailable("frame_lock_busy");
     if (cleanup) *cleanup=MotionCleanupProof{motion_cleanup_state.correlate(now,owner,sample)};
-    if (!mode_enabled.load(std::memory_order_acquire) || !controller_route.physical(now).valid || !arcade_input.admitted(0,now)) return {};
+    if (!mode_enabled.load(std::memory_order_acquire))return unavailable("frame_disabled");
+    if (!controller_route.physical(now).valid)return unavailable("frame_route");
+    if (!arcade_input.admitted(0,now))return unavailable("frame_not_admitted");
     const auto frame = native_input_state.correlate(now,owner,sample);
-    return frame.valid && frame.owner_generation == arcade_input.owner_epoch() ? frame : NativeInputFrame{};
+    if(!frame.valid)return unavailable("frame_correlation");
+    if(frame.owner_generation!=arcade_input.owner_epoch())return unavailable("frame_owner_generation");
+    if(diagnostic_reason)*diagnostic_reason="frame_valid";
+    return frame;
 }
 // Controller route binding_context publication end.
 NativeInputFrame surface_geometry_native_frame(std::uint64_t now,const char** diagnostic_reason) noexcept {
