@@ -5,6 +5,7 @@ struct TrickpediaPageLease {
     Address manager{};
     Value root{}, target{}, saved{}, replacement{};
     std::uint64_t seen{}, next_scan{};
+    bool back_held{};
 };
 TrickpediaPageLease trickpedia_page;
 std::atomic<std::uint64_t> trickpedia_seen{};
@@ -29,6 +30,19 @@ void update_trickpedia(const Context& c,std::uint64_t now) {
         const auto focus=c.path(lease.target,{0xfafda1a6,0x20a39d92,0x6b01fd01});
         const bool shown=game_in_menu.load(std::memory_order_relaxed) && read<int>(c.address(focus))>=0;
         if(!shown){restore_trickpedia(c);return;}
+        const bool held=back_wanted.load(std::memory_order_relaxed);
+        if(held!=lease.back_held) {
+            if(held) {
+                // Use the existing Page Back action's input-swallowing state.
+                // Restoring copies the original navigation, never ToggleMenu.
+                const auto action=c.path(lease.target,{0x10810f0b,button_field,0xa704272a,0xc52416ef,0xa704272a});
+                const auto back=c.field(action,0xa2b71c93);
+                c.set(c.field(back,0x3d00de27),Address{});
+                c.text(c.field(back,0xb1e14cd6),"");
+                c.set(c.field(action,0x4b3146e9),true);
+            } else c.copy(c.field(lease.target,276893451U),c.address(c.field(lease.saved,276893451U)));
+            lease.back_held=held;
+        }
         trickpedia_seen.store(shown?now:0,std::memory_order_release);
         return;
     }

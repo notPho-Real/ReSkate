@@ -650,7 +650,7 @@ void tick_page(std::uintptr_t base, bool loading) noexcept {
             page_shown.store(static_cast<int>(shown_slot), std::memory_order_relaxed);
             page_seen.store(on_screen ? now : 0, std::memory_order_relaxed);
         }
-        if (s.slot == menu_view::mods_page && active.model.handle == s.core.handle && s.page.handle &&
+        if ((s.slot == menu_view::mods_page || s.slot == menu_view::tools_page) && active.model.handle == s.core.handle && s.page.handle &&
             context.type_of(s.page.handle) == s.page.type && back_wanted.load(std::memory_order_relaxed) != s.back_held)
             hold_back(context, s, !s.back_held);
         bool pending{};

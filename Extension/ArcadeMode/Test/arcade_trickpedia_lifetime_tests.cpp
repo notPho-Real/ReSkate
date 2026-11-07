@@ -12,20 +12,29 @@ namespace {
 using Address=std::uintptr_t;
 struct Value { std::uint64_t handle{},type{}; };
 struct Root { Value model; };
-constexpr unsigned page=1,text_field=2;
+constexpr unsigned page=1,text_field=2,button_field=3;
 namespace arcade_mode { bool on{};bool enabled(){return on;} }
 namespace menu_view { constexpr unsigned tools_page=1; }
 struct State { Address manager{10};Value page{3,1}; } fixture_page;
 const State& page_state(unsigned){return fixture_page;}
 std::atomic<bool> game_in_menu{true};
+std::atomic<bool> back_wanted{};
+struct Back {
+    int identity{};
+    Address input{123};
+    std::string navigation{"OriginalBack"};
+    bool active{true};
+    bool operator==(const Back&) const = default;
+};
 struct Model {
-    int focus{},back{};
+    int focus{};
+    Back back{};
     std::string title,content;
     bool operator==(const Model&) const = default;
 };
 struct Context {
     Address manager{10};
-    mutable std::map<std::uint64_t,Model> models{{2,{0,77,"Native","Flick controls"}},{3,{0,88,"Tools","Overlay shell"}}};
+    mutable std::map<std::uint64_t,Model> models{{2,{0,{77},"Native","Flick controls"}},{3,{0,{88},"Tools","Overlay shell"}}};
     mutable unsigned next{4};
     mutable unsigned creates{},copies{},destroys{};
     mutable unsigned fail_create{},fail_copy{};
@@ -35,10 +44,14 @@ struct Context {
     Value field(Value value,std::uint32_t key)const {
         if(value.handle==1 && key==1244125067U)return {2,1};
         if(key==276893451U)return {value.handle,3};
+        if(key==0xa2b71c93)return {value.handle,6};
+        if(key==0x3d00de27)return {value.handle,7};
+        if(key==0xb1e14cd6)return {value.handle,8};
+        if(key==0x4b3146e9)return {value.handle,9};
         throw std::runtime_error("unknown field");
     }
     Value path(Value value,std::initializer_list<std::uint32_t> keys)const {
-        return {value.handle,*keys.begin()==0xfafda1a6?2u:4u};
+        return {value.handle,*keys.begin()==0xfafda1a6?2u:*keys.begin()==0x10810f0b?5u:4u};
     }
     Address address(Value value)const {
         const auto& model=models.at(value.handle);
@@ -53,17 +66,22 @@ struct Context {
     void copy(Value target,Address from)const {
         if(++copies==fail_copy)throw std::runtime_error("injected publication failure");
         auto& model=models.at(target.handle);
-        if(target.type==3)model.back=*reinterpret_cast<const int*>(from);
+        if(target.type==3)model.back=*reinterpret_cast<const Back*>(from);
         else model=*reinterpret_cast<const Model*>(from);
     }
     void set(Value value,int focus)const{models.at(value.handle).focus=focus;}
-    void text(Value value,const std::string& text)const{models.at(value.handle).title=text;}
+    void set(Value value,Address input)const{models.at(value.handle).back.input=input;}
+    void set(Value value,bool active)const{models.at(value.handle).back.active=active;}
+    void text(Value value,const std::string& text)const{
+        if(value.type==8)models.at(value.handle).back.navigation=text;
+        else models.at(value.handle).title=text;
+    }
     void destroy(Value value)const {if(models.erase(value.handle))++destroys;}
 };
 template<class T>T read(Address at){return *reinterpret_cast<const T*>(at);}
 #include "Extension/UI/NativeMenu/native_trickpedia.inl"
 void require(bool value,const char* why){if(!value){std::cerr<<why<<'\n';std::exit(1);}}
-void reset(){trickpedia_page={};trickpedia_seen=0;arcade_mode::on=true;game_in_menu=true;fixture_page.manager=10;}
+void reset(){trickpedia_page={};trickpedia_seen=0;back_wanted=false;arcade_mode::on=true;game_in_menu=true;fixture_page.manager=10;}
 }
 int main(){
     reset();Context context;const auto original=context.models.at(2);
@@ -72,7 +90,15 @@ int main(){
         require(context.models.at(2).title=="ARCADE TRICKPEDIA","native entry did not switch");
         require(context.models.at(2).back==original.back,"original Back action replaced");
         require(context.models.size()==4,"retained copies missing");
+        back_wanted=true;update_trickpedia(context,1001+round*1000);
+        require(context.models.at(2).back.input==0 && context.models.at(2).back.navigation.empty() &&
+            context.models.at(2).back.active,"search did not swallow native Back");
+        if(round!=1) {
+            back_wanted=false;update_trickpedia(context,1002+round*1000);
+            require(context.models.at(2).back==original.back,"closing search replaced original Back navigation");
+        }
         arcade_mode::on=false;update_trickpedia(context,1001+round*1000);
+        back_wanted=false;
         require(context.models.at(2)==original,"same-session original page not restored");
         require(context.models.size()==2 && !trickpedia_seen.load(),"menu ownership leaked after OFF");
     }
