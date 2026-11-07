@@ -93,10 +93,11 @@ struct Fixture {
             const float distance=surface_geometry_detail::dot(surface_geometry_detail::sub(start,f.wall_point),f.wall_normal);
             const float length=surface_geometry_detail::dot(surface_geometry_detail::sub(start,end),f.wall_normal);
             f.fractions[f.first]=f.self_hit ? .1f : distance/length;
+            if(f.fractions[f.first]<0 || f.fractions[f.first]>1)result->count=0;
             if ((f.upper_gap && start[1]>f.wall_point[1]+.1f) ||
                 (f.lower_gap && start[1]<f.wall_point[1]-.1f)) result->count=0;
         } else f.fractions[f.first]=f.self_hit ? .1f : (ray_value->start[1]-height)/(ray_value->start[1]-ray_value->end[1]);
-        f.fractions[f.first+1]=.9f;
+        f.fractions[f.first+1]=f.wall ? 1.f : .9f;
         if (f.bad_fraction) f.fractions[f.first]=std::numeric_limits<float>::quiet_NaN();
         f.data[1]=f.bad_data ? 0 : reinterpret_cast<std::uintptr_t>(f.fractions.data());
         if (f.edge && x>0) result->count=0;
@@ -259,7 +260,23 @@ int main() {
     }
     { Fixture f; f.edge=true; check(!f.query_wall().valid,"wall edge missing a side sample rejects"); }
     { Fixture f; f.seam=true; check(!f.query_wall().valid,"wall seam cannot join different collision bodies"); }
-    { Fixture f; auto point=f.wall_point; point[2]+=.02f; check(!f.query_wall(point,f.wall_normal).valid,"nearby parallel plane cannot replace real contact point"); }
+    // Actual 2ce4 hardware: genuine AIR solver points precede the exact same
+    // shape's measured plane. Reach is unchanged; only patch origin changes.
+    { Fixture f;f.wall_point={130.50424f,1.556511f,-136.594f};
+      const auto sample=f.query_wall({130.50424f,1.556511f,-136.49689f},f.wall_normal);
+      check(sample.valid&&f.calls==5,"measured 97mm solver-to-plane offset admits same-shape broad patch");
+      check(std::abs(sample.point[2]-f.wall_point[2])<.0001f,"published center is original ray plane, never synthetic solver plane"); }
+    { Fixture f;f.wall_point={130.48776f,1.5352534f,-136.594f};
+      check(!f.query_wall({130.48776f,1.5352534f,-136.46881f},f.wall_normal).valid&&f.calls==1,
+          "measured earlier contact outside existing 100mm bracket still rejects"); }
+    { Fixture f;f.wall_normal={-.6f,0,.8f};auto point=f.wall_point;
+      for(unsigned axis=0;axis<3;++axis)point[axis]+=.09710693f*f.wall_normal[axis];
+      const auto sample=f.query_wall(point,f.wall_normal);
+      check(sample.valid&&f.calls==5,"oblique same-shape center establishes plane without wider reach");
+      check(std::abs(surface_geometry_detail::dot(surface_geometry_detail::sub(sample.point,f.wall_point),f.wall_normal))<.00001f,
+          "oblique patch remains on the measured plane"); }
+    { Fixture f;auto point=f.wall_point;point[2]+=.1001f;
+      check(!f.query_wall(point,f.wall_normal).valid,"nearby plane beyond original reach remains unavailable"); }
     { Fixture f; f.wall_normal={.02f,0,std::sqrt(1.f-.02f*.02f)};
       check(!f.query_wall(f.wall_point,{0,0,1}).valid,"contact normal and intersected plane must agree across broad patch"); }
     for (const auto normal : {SurfaceGeometryVector{0,1,0},SurfaceGeometryVector{0,-1,0},

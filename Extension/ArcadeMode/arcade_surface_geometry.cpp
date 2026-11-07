@@ -196,8 +196,13 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
         Exclusions excluded;std::array<SurfaceGeometryVector,5> points{};
         for(std::size_t i=0;i<points.size();++i) {
             SurfaceGeometrySegment segment;
+            // Solver contact coordinates are not a triangle-plane promise:
+            // the pinned AIR contact can precede the same shape's ray plane.
+            // Keep the original bounded center ray, then measure the broad
+            // patch around its actual hit instead of the solver's point.
+            const auto anchor=i?points[0]:point;
             for(unsigned axis=0;axis<3;++axis) {
-                const float center=point[axis]+right[axis]*offsets[i][0]+up[axis]*offsets[i][1];
+                const float center=anchor[axis]+right[axis]*offsets[i][0]+up[axis]*offsets[i][1];
                 segment.start[axis]=center+normal[axis]*depth;
                 segment.end[axis]=center-normal[axis]*depth;
             }
@@ -206,9 +211,9 @@ SurfaceGeometrySample query_wall_geometry(const SurfaceGeometryNativeApi& api,co
             if(!hit)return {};
             if(hit->body!=body || (i && (hit->owner!=sample.body_owner || hit->world_owner!=sample.world_owner)))return fail("wall_shape_seam");
             sample.body_owner=hit->owner;sample.world_owner=hit->world_owner;points[i]=hit->point;
-            const auto separation=std::abs(dot(sub(hit->point,point),normal));
+            const auto separation=std::abs(dot(sub(hit->point,points[0]),normal));
             if(trace)trace->value=separation;
-            if(separation>.005f)return fail("wall_contact_plane_offset");
+            if(separation>.005f)return fail("wall_patch_plane_offset");
         }
         auto measured=cross(sub(points[4],points[3]),sub(points[2],points[1]));
         if(!unit(measured) || dot(measured,normal)<.995f)return fail("wall_plane_normal");
