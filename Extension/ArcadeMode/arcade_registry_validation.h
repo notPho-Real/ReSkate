@@ -20,6 +20,7 @@ inline bool registry_handler_present(const TrickDefinition& t) {
         for(unsigned i=0;i<t.binding_count;++i)if(t.bindings[i].pattern==BindingPattern::rail_change)return true;
         return false;
     case TrickExecutor::native_fingerflip:return t.fingerflip.identity && t.fingerflip.family && t.fingerflip.gestures && t.fingerflip.destination;
+    case TrickExecutor::ground_turn:return t.id==ArcadeTrick::ground_half_turn && t.binding_count==1 && t.bindings[0].pattern==BindingPattern::ground_turn;
     }
     return false;
 }
@@ -80,7 +81,7 @@ inline std::vector<std::string> validate_registry(std::span<const TrickDefinitio
             }
         }
     }
-    for(unsigned id=1;id<=static_cast<unsigned>(ArcadeTrick::feeble);++id) {
+    for(unsigned id=1;id<=static_cast<unsigned>(ArcadeTrick::ground_half_turn);++id) {
         bool found{};
         for(const auto& t:catalog) {
             found=found || static_cast<unsigned>(t.id)==id;

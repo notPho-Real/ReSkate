@@ -733,7 +733,7 @@ private:
             environment.rail.geometry_index(), environment.rail.geometry_known, environment.rail.generation, InputHistory::direction_token(inherited) ? inherited.source : direction_source_,
             static_cast<std::uint16_t>(action == InputAction::grab ? TrickControls::mask(TrickControls::grab) : action == InputAction::flip ? TrickControls::mask(TrickControls::flip) :
                 action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? TrickControls::mask(TrickControls::ollie) :
-                action == InputAction::ground_turn ? 0x0200u :
+                action == InputAction::ground_turn ? TrickControls::mask(trick_definition(ArcadeTrick::ground_half_turn)->bindings[0].first_button) :
                 action == InputAction::board_toggle ? (environment.board_binding.pattern == InputBoardPattern::shoulder_overlap ? 0x0300u : environment.board_binding.control_mask) : 0u),
             action == InputAction::crouch || action == InputAction::ollie_release || action == InputAction::jump_variant ? crouch_at_ : now,
             action == InputAction::ollie_release || action == InputAction::jump_variant ? now : 0, InputHistory::direction_token(inherited), environment.named_grabs, environment.surface.generation,
@@ -767,7 +767,10 @@ private:
             // withdrawal or landing; do not expire it before genuine takeoff.
             request.unbounded=environment.native_pop_transition && request.pop_release_at!=0;
         }
-        if (action == InputAction::ground_turn) { request.direction = 2; request.direction_source = InputSource::direction; }
+        if (action == InputAction::ground_turn) {
+            for(const auto row:air_direction_rows)if(row.direction==trick_definition(ArcadeTrick::ground_half_turn)->bindings[0].direction)request.direction=row.code;
+            request.direction_source = InputSource::direction;
+        }
         if (form == InputForm::repeated_direction || ((action == InputAction::flip || action == InputAction::grab) && defined_direction)) {
             request.direction = defined_direction; request.direction_source = InputSource::direction;
             request.direction_inherited = false;
@@ -904,9 +907,17 @@ private:
     InputMatch directional_prefix(InputAction action, InputContext context, std::uint64_t now, std::int16_t& selected) const noexcept {
         // Ordinary rows precede base directional actions. Repeating a direction
         // is distinct from a face press within an installed parent's extra table.
+        if(action==InputAction::ground_turn && context==InputContext::ground) {
+            const auto& binding=trick_definition(ArcadeTrick::ground_half_turn)->bindings[0];
+            for(const auto row:air_direction_rows)if(row.direction==binding.direction) {
+                const InputToken token{InputSource::direction,row.code,InputEdge::press};
+                const auto match=events_.history().triple(token,token,{InputSource::buttons,binding.first_button,InputEdge::press},binding.parameter,2,now,ordinary_reject);
+                if(match){selected=row.code;return match;}
+            }
+            return {};
+        }
         struct Definition { InputAction action; InputContext context; std::int16_t direction, terminal; std::uint64_t window; };
         static constexpr std::array definitions{
-            Definition{InputAction::ground_turn,InputContext::ground,2,9,333},
             Definition{InputAction::flip,InputContext::air,4,14,300},
             Definition{InputAction::flip,InputContext::air,6,14,300},
             Definition{InputAction::flip,InputContext::air,8,14,300},

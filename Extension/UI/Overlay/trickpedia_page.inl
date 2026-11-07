@@ -9,7 +9,17 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
     }
     const auto old_query=query.search;const auto old_category=query.category,old_status=query.status;
     const float split=a.x+(z.x-a.x)*.42f;
+    // A controller/Enter activation opens ordinary focusable buttons, so search
+    // never requires an external keyboard or a separate input owner.
+    if(h.fire==hash("trick-search")) {
+        h.fire=0;set_typing(h,0);h.trick_keyboard=true;
+        h.focus_next=hash("trick-key",1);
+        dingosdk::multiplayer::hold_native_menu_back(true);
+    }
+    const bool search_typing=h.typing==hash("trick-search");
     field(ui,hash("trick-search"),a,ImVec2(split-24*u,a.y+82*u),query.search,"SEARCH TRICKS");
+    if(search_typing && h.typing!=hash("trick-search"))h.trick_back_until=GetTickCount64()+300;
+    if(h.typing==hash("trick-search"))dingosdk::multiplayer::hold_native_menu_back(true);
     const auto category=query.category<0?"All categories":guide::category_names[static_cast<unsigned>(query.category)];
     const auto status=query.status<0?"All statuses":guide::status_names[static_cast<unsigned>(query.status)];
     if(button(ui,hash("trick-category"),ImVec2(split,a.y),ImVec2(split+(z.x-split)*.6f-12*u,a.y+82*u),category))
@@ -18,6 +28,19 @@ void trickpedia_page(Ui& ui,ImVec2 a,ImVec2 z) {
         query.status=query.status==2?-1:query.status+1;
     if(query.search!=old_query || query.category!=old_category || query.status!=old_status) {
         h.scrolls[hash("trick-list")]=0;h.scrolls[hash("trick-detail")]=0;
+    }
+    if(h.trick_keyboard) {
+        const float width=(z.x-a.x)/8.f,height=std::min(96.f*u,(z.y-a.y-110.f*u)/5.f);
+        for(unsigned key=0;key<guide::search_keys.size();++key) {
+            const ImVec2 start(a.x+static_cast<float>(key%8)*width,a.y+110*u+static_cast<float>(key/8)*height);
+            if(button(ui,hash("trick-key",key+1),start,ImVec2(start.x+width-12*u,start.y+height-12*u),std::string(guide::search_keys[key]))) {
+                if(guide::search_key(query,key)) {
+                    h.trick_keyboard=false;h.focus_next=hash("trick-search");
+                }
+                h.scrolls[hash("trick-list")]=0;h.scrolls[hash("trick-detail")]=0;
+            }
+        }
+        return;
     }
     const auto entries=guide::browse(query);
     const auto selected=std::find_if(entries.begin(),entries.end(),[&](const auto* t){return t->id==h.selected_trick;});

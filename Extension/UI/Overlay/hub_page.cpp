@@ -117,6 +117,8 @@ struct Hub {
     native_tools::State tools;
     int tools_tab{};
     arcade_mode::trickpedia::Query trick_query;
+    bool trick_keyboard{};
+    ULONGLONG trick_back_until{};
     arcade_mode::ArcadeTrick selected_trick{arcade_mode::ArcadeTrick::ollie};
     // Recording a bind (the BINDS tab): which action (0: none), what has been pressed so far,
     // and when it gives up (GetTickCount64).
@@ -1059,6 +1061,7 @@ void tools_page(Ui &ui, ImVec2 a, ImVec2 z) {
         if(arcade_mode::enabled()){trickpedia_page(ui,a,z);return;}
         h.tools_tab=player_tab;h.trick_query={};h.selected_trick=arcade_mode::ArcadeTrick::ollie;
         set_typing(h,0);h.focus=0;h.last.clear();
+        h.trick_keyboard=false;h.trick_back_until=0;
     }
     const auto &m = h.full;
     const auto &mp = m.multiplayer;
@@ -1509,6 +1512,7 @@ bool hub_page_pending() {
         h.searched = false;
         h.last.clear();
         h.focus = 0;
+        h.trick_keyboard=false;h.trick_back_until=0;
         set_typing(h, 0);
         if (!shown) {
             dingosdk::multiplayer::hold_native_menu_back(false);
@@ -1622,11 +1626,21 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
     // back to the list there, and keep holding it until they are let go.
     auto &mods_page = mod_page();
     const bool on_mods = !embedded && h.page.section == 2;
+    const bool on_tricks = !embedded && arcade_mode::enabled() &&
+        (h.page.section==3 || (h.page.section==1 && h.tools_tab==trickpedia_tab));
     const bool back_down = keys[7] || (ui.pad.buttons & 0x2000);
+    if(ui.input && on_tricks && h.typing==hash("trick-search") && (pressed&0x2000)) {
+        set_typing(h,0);h.trick_back_until=GetTickCount64()+300;
+    }
     if (ui.input && !typing_before) {
         // Back closes the game's menu, which takes a moment to say so: this goes at once.
         if (!embedded && (key_new(7) || (pressed & 0x2000))) {
-            if (on_mods && mods_hold_back(mods_page)) mods_back(h, mods_page), mods_page.hold_back_until = GetTickCount64() + 300, h.sound = sound_select;
+            if(on_tricks && h.trick_keyboard) {
+                h.trick_keyboard=false;h.trick_back_until=GetTickCount64()+300;
+                h.focus_next=hash("trick-search");h.sound=sound_select;
+            }
+            else if(on_tricks && GetTickCount64()<h.trick_back_until) {}
+            else if (on_mods && mods_hold_back(mods_page)) mods_back(h, mods_page), mods_page.hold_back_until = GetTickCount64() + 300, h.sound = sound_select;
             else if (on_mods && guard_leave(mods_page)) offer_leave(mods_page), h.sound = sound_select;
             else if (!on_mods || GetTickCount64() >= mods_page.hold_back_until) h.dismissed = true;
         }
@@ -1657,6 +1671,7 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         next_tab = key_new(6) || (pressed & 0x20000);
     }
     if (back_down && GetTickCount64() < mods_page.hold_back_until) mods_page.hold_back_until = GetTickCount64() + 300;
+    if(back_down && GetTickCount64()<h.trick_back_until)h.trick_back_until=GetTickCount64()+300;
     // The answer to leaving with changes not applied: LATER (or an apply that reloads nothing) lets go
     // of Back, and a moment later presses it for the player, on the pad only the game reads.
     if (const int answer = mods_page.leave_answer.exchange(0)) {
@@ -1675,7 +1690,9 @@ void hub_frame(Hub &h, ImDrawList *draw, float u, ImVec2 a, ImVec2 z, float tabs
         }
     }
     if (!embedded)
-        dingosdk::multiplayer::hold_native_menu_back(on_mods && (mods_hold_back(mods_page) || guard_leave(mods_page) || GetTickCount64() < mods_page.hold_back_until));
+        dingosdk::multiplayer::hold_native_menu_back(
+            (on_tricks && (h.trick_keyboard || h.typing==hash("trick-search") || GetTickCount64()<h.trick_back_until)) ||
+            (on_mods && (mods_hold_back(mods_page) || guard_leave(mods_page) || GetTickCount64() < mods_page.hold_back_until)));
     h.keys_before = keys;
     // A key that ended the typing (Enter, Escape) is still down: it is not a fresh press of anything.
     // And so is one held while the game was not the window in front.

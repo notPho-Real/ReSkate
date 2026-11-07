@@ -59,6 +59,11 @@ identities referencing individual canonical outcomes. Noseslide, Tailslide,
 Crooked, Overcrook, Smith, Feeble, Boardslide and Lipslide each have their own
 record and status; the grouped request never grants acceptance to its outcomes.
 Prototype contextual pressure/lip adapters without native producers are Planned.
+The existing grounded half-turn also has its own canonical flatground record;
+its repeated direction, terminal button and timing are consumed directly by the
+production recognizer. Its existing contact/physics executor remains unchanged.
+The generic repeated-direction air, balance-branch and lip recognizer tables
+without production native handlers are not advertised as executable tricks.
 
 ## Native integration and fallback
 
@@ -97,6 +102,11 @@ Source-asset and automated-test records are explicitly different evidence kinds
 and cannot satisfy gameplay acceptance. Each required native criterion needs at
 least two documented repetitions; a single successful input or capture cannot
 promote the canonical record.
+
+Controller activation of Search opens an alphabet/digit keypad made from the
+existing focusable Hub buttons. Physical keyboard typing remains available.
+Back dismisses the keypad or text edit before leaving the page, retaining the
+query; Clear resets it. The native Back action is held until that press is released.
 
 The runtime and overlay receive a SHA-256 fingerprint of the gameplay and engine
 sources from CMake. A receipt records both its tested source revision and that

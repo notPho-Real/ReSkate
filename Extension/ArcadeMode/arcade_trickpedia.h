@@ -50,6 +50,11 @@ inline InputDiagram diagram(const TrickDefinition& trick,const TrickBinding& b,
     const auto then=[&]{step(StepKind::then);};
     const auto together=[&]{step(StepKind::together);};
     switch(b.pattern) {
+    case BindingPattern::ground_turn:
+        direction(b.direction);then();step(StepKind::release_direction);then();direction(b.direction);
+        then();step(StepKind::press,TrickControls::mask(b.first_button));out.window_ms=b.parameter;
+        out.condition+="; riding on four wheels; no grab, manual, trigger hold or competing action; Arcade rotation enabled";
+        break;
     case BindingPattern::rail_entry:
         if(b.direction!=TrickDirection::none){direction(b.direction);then();}
         if(b.parameter==2){step(StepKind::release_direction);then();direction(b.direction);then();}
@@ -142,6 +147,22 @@ inline std::string fold(std::string_view text) {
     std::string out(text);for(auto& c:out)c=static_cast<char>(std::tolower(static_cast<unsigned char>(c)));return out;
 }
 struct Query { std::string search; int category{-1}, status{-1}; };
+inline constexpr std::array<std::string_view,40> search_keys{
+    "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P",
+    "Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5",
+    "6","7","8","9","SPACE","ERASE","CLEAR","DONE"};
+// The controller keypad uses the same query as physical keyboard input.
+inline bool search_key(Query& query,unsigned key) {
+    if(key>=search_keys.size())return false;
+    if(key==39)return true;
+    if(key==38)query.search.clear();
+    else if(key==37 && !query.search.empty()) {
+        auto start=query.search.size()-1;
+        while(start && (static_cast<unsigned char>(query.search[start])&0xc0)==0x80)--start;
+        query.search.erase(start);
+    } else if(key<37 && query.search.size()<64)query.search+=key==36?" ":search_keys[key];
+    return false;
+}
 inline std::vector<const TrickDefinition*> browse(const Query& query,unsigned game_build=20260929,std::string_view implementation=gameplay_fingerprint) {
     std::vector<const TrickDefinition*> out;const auto search=fold(query.search);
     for(const auto& t:trick_registry) {

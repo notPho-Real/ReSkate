@@ -73,6 +73,16 @@ int main() {
     for(bool enabled:{false,true,false,true,false})require(trickpedia::show_arcade(enabled,true)==enabled,"same-session OFF restoration policy");
     require(!trickpedia::show_arcade(true,false) && !trickpedia::show_arcade(true,true,true),"focus/load leak");
     require(trickpedia::browse({"kickflip",-1,-1}).size()>=3,"search");
+    trickpedia::Query controller_query;
+    for(unsigned key:{10u,8u,2u,10u,5u,11u,8u,15u})trickpedia::search_key(controller_query,key);
+    require(trickpedia::browse(controller_query)==trickpedia::browse({"kickflip",-1,-1}),"controller and keyboard searches differ");
+    require(trickpedia::search_key(controller_query,39) && controller_query.search=="KICKFLIP","finishing search lost query");
+    trickpedia::search_key(controller_query,37);require(controller_query.search=="KICKFLI","controller erase");
+    trickpedia::search_key(controller_query,38);require(controller_query.search.empty(),"controller clear");
+    controller_query.search=std::string(64,'A');trickpedia::search_key(controller_query,0);
+    require(controller_query.search.size()==64,"controller query exceeded field bound");
+    controller_query.search="caf\xc3\xa9";trickpedia::search_key(controller_query,37);
+    require(controller_query.search=="caf","controller erase split physical keyboard UTF-8 input");
     require(trickpedia::browse({"",-1,0}).empty(),"unverified family advertised verified");
     const auto specials=trickpedia::browse({"",7,2});require(specials.size()>=3,"planned specials missing");
     for(const auto* t:specials)require(t->executor==TrickExecutor::none,"planned special substitutes handler");
@@ -90,6 +100,11 @@ int main() {
     require(trick_status(proposed)==TrickStatus::planned && registry_handler_present(proposed),"proposed sequence became executable");
     require(manual_pair_trick(1,-1)==ArcadeTrick::manual && manual_pair_trick(-1,1)==ArcadeTrick::nose_manual,"manual registry binding");
     require(neutral_flip_trick()==ArcadeTrick::kickflip,"neutral production binding");
+    const auto* turn=trick_definition(ArcadeTrick::ground_half_turn);
+    require(turn && turn->executor==TrickExecutor::ground_turn,"executable ground turn missing");
+    const auto turn_diagram=trickpedia::diagram(*turn,turn->bindings[0]);
+    require(turn_diagram.window_ms==333 && turn_diagram.steps.back().buttons==(1u<<9) &&
+        turn_diagram.steps.front().direction==TrickDirection::down,"ground turn guide differs from recognizer descriptor");
     const auto* boneless=trick_definition(ArcadeTrick::boneless);
     const auto steps=trickpedia::diagram(*boneless,boneless->bindings[0]);
     require(steps.window_ms==footplant_repeat_ms && trickpedia::diagram_text(steps,label)=="Up -> release direction -> Up -> A","multi-stage diagram");
