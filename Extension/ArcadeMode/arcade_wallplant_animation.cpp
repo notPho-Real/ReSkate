@@ -28,6 +28,7 @@ struct Clips { std::array<std::shared_ptr<const anim_studio::Clip>, 4> poses; };
 struct Loader {
     std::once_flag started;
     std::atomic<std::shared_ptr<const Clips>> clips;
+    std::atomic<bool> loading_started{};
     std::atomic<bool> failed{};
 };
 Loader& loader() { static auto* value = new Loader; return *value; }
@@ -36,6 +37,29 @@ NoBailSkater held_owner{};
 std::uint64_t ticket{}, began{}, occurrence{};
 float last_time{};
 bool clock_reported{};
+enum class Availability { unknown, not_started, loading, failed, busy, cannot_play, context_rejected, ready };
+Availability last_availability{Availability::unknown};
+unsigned availability_reports{};
+
+void report_availability(const NoBailSkater& expected, Availability reason) noexcept {
+    if (reason == last_availability || availability_reports >= 32) return;
+    try {
+        namespace physics = game::build::v20260929::arcade_held_flip;
+        NoBailSkater before{}, after{};
+        std::uint32_t state{}, checked_state{};
+        if (!no_bail_skater(before) || before != expected ||
+            !memory::peek(before.context + physics::physics_state, state) || (state != 200 && state != 201) ||
+            !no_bail_skater(after) || after != before ||
+            !memory::peek(after.context + physics::physics_state, checked_state) || checked_state != state) return;
+        constexpr std::array labels{"unknown", "loader_not_started", "loader_loading", "loader_failed",
+            "busy_ticket", "can_play_false", "native_context_rejected", "ready"};
+        logging::log(logging::Level::info, logging::Channel::skater,
+            "ARCADE WALLPLANT ANIMATION AVAILABILITY: ms={} core={} state={} reason={} ticket={} approximation=true.",
+            GetTickCount64(), before.core, state, labels[static_cast<std::size_t>(reason)], ticket);
+        last_availability = reason;
+        ++availability_reports;
+    } catch (...) { }
+}
 
 void preload() {
     const auto library = anim_studio::game_clips::library();
@@ -45,6 +69,7 @@ void preload() {
         // Match game_clips' process-lifetime loader: only immutable clips cross
         // to the client thread, and no worker touches a skater or playback plan.
         std::thread([library, &state] {
+            state.loading_started.store(true, std::memory_order_release);
             try {
                 auto clips = std::make_shared<Clips>();
                 for (std::size_t i = 0; i < names.size(); ++i) {
@@ -123,8 +148,16 @@ void tick(bool gameplay) noexcept {
 }
 bool available(const NoBailSkater& owner) noexcept {
     unsigned pose{};
-    return !ticket && loader().clips.load(std::memory_order_acquire) &&
-        skater_animation::can_play() && context(owner, pose);
+    auto reason = Availability::ready;
+    if (ticket) reason = Availability::busy;
+    else if (!loader().clips.load(std::memory_order_acquire)) {
+        if (loader().failed.load(std::memory_order_acquire)) reason = Availability::failed;
+        else reason = loader().loading_started.load(std::memory_order_acquire) ?
+            Availability::loading : Availability::not_started;
+    } else if (!skater_animation::can_play()) reason = Availability::cannot_play;
+    else if (!context(owner, pose)) reason = Availability::context_rejected;
+    report_availability(owner, reason);
+    return reason == Availability::ready;
 }
 bool request(const NoBailSkater& owner, std::uint64_t identity) noexcept {
     try {
